@@ -24,7 +24,13 @@ Each terminal handler also calls the corresponding `AgentService` method, so DB 
 
 ## Builtins
 
-Builtin tool handlers registered in `tools_builtin/builtins.go`; run `grep -n Register tools_builtin/*.go` for the canonical list.
+Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal there is the canonical list.
+
+`read_document` (`tools_builtin/read_document.go`) materializes a named input artifact and returns its bytes as an image/document content block so the model can read it natively (OCR scanned PDFs, photos). PDF → document block, PNG/JPEG → image block; other types return a text error. Capped at 32 MiB. It implements `MediaToolHandler` (see below).
+
+## Multimodal Tool Results
+
+`provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. `provider/anthropic/translate.go:translateMediaBlock` maps each `MediaBlock` to the SDK `ToolResultBlockParamContentUnion` (`OfImage` base64 / `OfDocument` base64 PDF). Image media types: jpeg/png/gif/webp; document: application/pdf only.
 
 ## HTTP Tool Handler
 

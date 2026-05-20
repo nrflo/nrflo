@@ -270,6 +270,61 @@ func TestTranslateRequest_ContentBlocks_ToolResult(t *testing.T) {
 	}
 }
 
+func TestTranslateRequest_ContentBlocks_ToolResultMedia(t *testing.T) {
+	req := provider.Request{
+		Model:     "claude-opus-4-7",
+		MaxTokens: 10,
+		Messages: []provider.Message{{
+			Role: "user",
+			Content: []provider.ContentBlock{{
+				Type:      "tool_result",
+				ToolUseID: "tool_doc",
+				Output:    "Loaded chanote.pdf (application/pdf).",
+				OutputMedia: []provider.MediaBlock{
+					{Kind: "document", MediaType: "application/pdf", DataB64: "JVBERi0=", Name: "chanote.pdf"},
+					{Kind: "image", MediaType: "image/png", DataB64: "iVBORw0KGgo="},
+				},
+			}},
+		}},
+	}
+	body := marshaledParams(t, req)
+	out := string(body)
+	if !strings.Contains(out, `"tool_use_id":"tool_doc"`) {
+		t.Errorf("tool_result id missing: %s", out)
+	}
+	if !strings.Contains(out, `"type":"document"`) || !strings.Contains(out, `"media_type":"application/pdf"`) {
+		t.Errorf("document block missing: %s", out)
+	}
+	if !strings.Contains(out, `"JVBERi0="`) {
+		t.Errorf("document base64 data missing: %s", out)
+	}
+	if !strings.Contains(out, `"type":"image"`) || !strings.Contains(out, `"media_type":"image/png"`) {
+		t.Errorf("image block missing: %s", out)
+	}
+	if !strings.Contains(out, `"title":"chanote.pdf"`) {
+		t.Errorf("document title missing: %s", out)
+	}
+}
+
+func TestTranslateRequest_ContentBlocks_ToolResultMediaBadType(t *testing.T) {
+	req := provider.Request{
+		Model:     "claude-opus-4-7",
+		MaxTokens: 10,
+		Messages: []provider.Message{{
+			Role: "user",
+			Content: []provider.ContentBlock{{
+				Type:        "tool_result",
+				ToolUseID:   "tool_bad",
+				OutputMedia: []provider.MediaBlock{{Kind: "image", MediaType: "image/tiff", DataB64: "AA=="}},
+			}},
+		}},
+	}
+	_, err := translateRequest(req)
+	if err == nil || !strings.Contains(err.Error(), "unsupported image media type") {
+		t.Fatalf("err = %v, want unsupported image media type", err)
+	}
+}
+
 func TestTranslateRequest_ContentBlocks_UnknownType(t *testing.T) {
 	req := provider.Request{
 		Model:     "claude-opus-4-7",

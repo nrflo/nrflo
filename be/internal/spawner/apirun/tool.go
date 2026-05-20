@@ -19,6 +19,15 @@ type ToolHandler interface {
 	Invoke(ctx context.Context, env ToolEnv, input json.RawMessage) (output string, isError bool, err error)
 }
 
+// MediaToolHandler is an optional extension a tool implements when its result
+// includes image/document content blocks (e.g. read_document feeding a scanned
+// PDF to the model for native OCR). The runner prefers InvokeMedia when the
+// handler satisfies this interface; otherwise it falls back to Invoke.
+type MediaToolHandler interface {
+	ToolHandler
+	InvokeMedia(ctx context.Context, env ToolEnv, input json.RawMessage) (output string, media []provider.MediaBlock, isError bool, err error)
+}
+
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
 // It carries the in-process services and identifiers handlers need to
 // mirror the CLI socket flow without going over the network.

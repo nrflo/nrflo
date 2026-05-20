@@ -119,17 +119,69 @@ func translateContentBlocks(blocks []provider.ContentBlock) ([]sdk.ContentBlockP
 			if b.IsError {
 				tr.IsError = param.NewOpt(true)
 			}
+			var content []sdk.ToolResultBlockParamContentUnion
 			if b.Output != "" {
-				tr.Content = []sdk.ToolResultBlockParamContentUnion{
-					{OfText: &sdk.TextBlockParam{Text: b.Output}},
-				}
+				content = append(content, sdk.ToolResultBlockParamContentUnion{
+					OfText: &sdk.TextBlockParam{Text: b.Output},
+				})
 			}
+			for _, m := range b.OutputMedia {
+				mb, err := translateMediaBlock(m)
+				if err != nil {
+					return nil, fmt.Errorf("tool_result %s: %w", b.ToolUseID, err)
+				}
+				content = append(content, mb)
+			}
+			tr.Content = content
 			out = append(out, sdk.ContentBlockParamUnion{OfToolResult: tr})
 		default:
 			return nil, fmt.Errorf("unsupported content block type: %q", b.Type)
 		}
 	}
 	return out, nil
+}
+
+// translateMediaBlock maps a provider.MediaBlock into the SDK's tool_result
+// content union (image or document base64 source).
+func translateMediaBlock(m provider.MediaBlock) (sdk.ToolResultBlockParamContentUnion, error) {
+	switch m.Kind {
+	case "image":
+		var mt sdk.Base64ImageSourceMediaType
+		switch m.MediaType {
+		case "image/jpeg":
+			mt = sdk.Base64ImageSourceMediaTypeImageJPEG
+		case "image/png":
+			mt = sdk.Base64ImageSourceMediaTypeImagePNG
+		case "image/gif":
+			mt = sdk.Base64ImageSourceMediaTypeImageGIF
+		case "image/webp":
+			mt = sdk.Base64ImageSourceMediaTypeImageWebP
+		default:
+			return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported image media type: %q", m.MediaType)
+		}
+		return sdk.ToolResultBlockParamContentUnion{
+			OfImage: &sdk.ImageBlockParam{
+				Source: sdk.ImageBlockParamSourceUnion{
+					OfBase64: &sdk.Base64ImageSourceParam{Data: m.DataB64, MediaType: mt},
+				},
+			},
+		}, nil
+	case "document":
+		if m.MediaType != "application/pdf" {
+			return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported document media type: %q", m.MediaType)
+		}
+		doc := &sdk.DocumentBlockParam{
+			Source: sdk.DocumentBlockParamSourceUnion{
+				OfBase64: &sdk.Base64PDFSourceParam{Data: m.DataB64},
+			},
+		}
+		if m.Name != "" {
+			doc.Title = param.NewOpt(m.Name)
+		}
+		return sdk.ToolResultBlockParamContentUnion{OfDocument: doc}, nil
+	default:
+		return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported media kind: %q", m.Kind)
+	}
 }
 
 // decodeToolInputSchema parses the raw JSON schema from ToolSpec into the

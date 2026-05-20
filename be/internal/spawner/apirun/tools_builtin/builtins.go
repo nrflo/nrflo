@@ -38,5 +38,7 @@ func Builtins() map[string]apirun.ToolHandler {
 		"artifact_add":  artifactAddHandler{},
 		"artifact_list": artifactListHandler{},
 		"artifact_get":  artifactGetHandler{},
+
+		"read_document": readDocumentHandler{},
 	}
 }

@@ -43,6 +43,21 @@ type ContentBlock struct {
 	Input     json.RawMessage
 	Output    string
 	IsError   bool
+	// OutputMedia carries image/document blocks returned by a tool alongside
+	// (or instead of) Output text. Only meaningful on a "tool_result" block.
+	// Providers that support multimodal tool results render these; others may
+	// ignore them.
+	OutputMedia []MediaBlock
+}
+
+// MediaBlock is an image or document payload, base64-encoded, that a tool can
+// return inside its tool_result so the model can read the bytes natively
+// (e.g. OCR a scanned PDF or photo).
+type MediaBlock struct {
+	Kind      string // "image" | "document"
+	MediaType string // "image/jpeg" | "image/png" | "application/pdf"
+	DataB64   string // base64-encoded bytes
+	Name      string // optional title shown to the model (filename)
 }
 
 // ToolSpec describes a single tool the model may invoke.

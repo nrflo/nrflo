@@ -174,7 +174,17 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 			continue
 		}
 
-		out, isErr, terr := handler.Invoke(ctx, r.cfg.Env, block.Input)
+		var (
+			out   string
+			media []provider.MediaBlock
+			isErr bool
+			terr  error
+		)
+		if mh, ok := handler.(MediaToolHandler); ok {
+			out, media, isErr, terr = mh.InvokeMedia(ctx, r.cfg.Env, block.Input)
+		} else {
+			out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
+		}
 
 		var ts TerminalSignal
 		if errors.As(terr, &ts) {
@@ -187,13 +197,15 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 		if terr != nil {
 			out = terr.Error()
 			isErr = true
+			media = nil
 		}
 		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), "tool_result")
 		results = append(results, provider.ContentBlock{
-			Type:      "tool_result",
-			ToolUseID: block.ToolUseID,
-			Output:    out,
-			IsError:   isErr,
+			Type:        "tool_result",
+			ToolUseID:   block.ToolUseID,
+			Output:      out,
+			IsError:     isErr,
+			OutputMedia: media,
 		})
 	}
 	return results, false

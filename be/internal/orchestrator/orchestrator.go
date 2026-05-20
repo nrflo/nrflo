@@ -41,8 +41,12 @@ type RunRequest struct {
 	ScopeType             string                   `json:"scope_type"`   // "ticket" (default) or "project"
 	Interactive           bool                     `json:"interactive"`  // If true, start with interactive PTY session before layer execution
 	PlanMode              bool                     `json:"plan_mode"`    // If true, start with planning PTY session, read plan file after
-	CloseTicketOnComplete bool                     `json:"close_ticket_on_complete"`
-	Force                 bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
+	CloseTicketOnComplete      bool                     `json:"close_ticket_on_complete"`
+	FinalizeSuccessCommand     string                   `json:"finalize_success_command"`
+	FinalizeSuccessScriptID    string                   `json:"finalize_success_script_id"`
+	FinalizeFailureCommand     string                   `json:"finalize_failure_command"`
+	FinalizeFailureScriptID    string                   `json:"finalize_failure_script_id"`
+	Force                      bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
 	EndlessLoop           bool                     `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
 	ScheduledTaskID       string                   `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
 	SeedFindings          map[string]string        `json:"seed_findings,omitempty"`     // Pre-seed findings rows at scope=workflow_instance on run start
@@ -260,6 +264,10 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("workflow '%s' has no phases", req.WorkflowName)
 	}
 	req.CloseTicketOnComplete = svcWf.CloseTicketOnComplete
+	req.FinalizeSuccessCommand = svcWf.FinalizeSuccessCommand
+	req.FinalizeSuccessScriptID = svcWf.FinalizeSuccessScriptID
+	req.FinalizeFailureCommand = svcWf.FinalizeFailureCommand
+	req.FinalizeFailureScriptID = svcWf.FinalizeFailureScriptID
 
 	// Init workflow instance — always creates a fresh instance
 	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
@@ -807,11 +815,15 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 
 	// Build run request
 	req := RunRequest{
-		ProjectID:             projectID,
-		TicketID:              ticketID,
-		WorkflowName:          workflowName,
-		ScopeType:             scopeType,
-		CloseTicketOnComplete: svcWf.CloseTicketOnComplete,
+		ProjectID:                  projectID,
+		TicketID:                   ticketID,
+		WorkflowName:               workflowName,
+		ScopeType:                  scopeType,
+		CloseTicketOnComplete:      svcWf.CloseTicketOnComplete,
+		FinalizeSuccessCommand:     svcWf.FinalizeSuccessCommand,
+		FinalizeSuccessScriptID:    svcWf.FinalizeSuccessScriptID,
+		FinalizeFailureCommand:     svcWf.FinalizeFailureCommand,
+		FinalizeFailureScriptID:    svcWf.FinalizeFailureScriptID,
 	}
 
 	// Create orchestration context detached from HTTP request context

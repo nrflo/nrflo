@@ -32,31 +32,39 @@ type AgentConfig struct {
 
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
-	Description           string         `json:"description"`
-	ScopeType             string         `json:"scope_type"` // "ticket" or "project"
-	CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
-	Groups                []string       `json:"groups"`
-	NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
-	Phases                []PhaseDef     `json:"-"`
-	LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
-	ObserverContext       string         `json:"-"`
-	ObserverProvider      *string        `json:"-"`
-	ObserverModel         *string        `json:"-"`
+	Description                string         `json:"description"`
+	ScopeType                  string         `json:"scope_type"` // "ticket" or "project"
+	CloseTicketOnComplete      bool           `json:"close_ticket_on_complete"`
+	Groups                     []string       `json:"groups"`
+	NextWorkflowOnSuccess      string         `json:"next_workflow_on_success"`
+	FinalizeSuccessCommand     string         `json:"finalize_success_command,omitempty"`
+	FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
+	FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
+	FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+	Phases                     []PhaseDef     `json:"-"`
+	LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
+	ObserverContext            string         `json:"-"`
+	ObserverProvider           *string        `json:"-"`
+	ObserverModel              *string        `json:"-"`
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases
 func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 	type Alias struct {
-		Description           string         `json:"description"`
-		ScopeType             string         `json:"scope_type"`
-		CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
-		Groups                []string       `json:"groups"`
-		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
-		Phases                []PhaseDef     `json:"phases"`
-		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
-		ObserverContext       string         `json:"observer_context,omitempty"`
-		ObserverProvider      *string        `json:"observer_provider,omitempty"`
-		ObserverModel         *string        `json:"observer_model,omitempty"`
+		Description                string         `json:"description"`
+		ScopeType                  string         `json:"scope_type"`
+		CloseTicketOnComplete      bool           `json:"close_ticket_on_complete"`
+		Groups                     []string       `json:"groups"`
+		NextWorkflowOnSuccess      string         `json:"next_workflow_on_success"`
+		FinalizeSuccessCommand     string         `json:"finalize_success_command,omitempty"`
+		FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
+		FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
+		FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+		Phases                     []PhaseDef     `json:"phases"`
+		LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
+		ObserverContext            string         `json:"observer_context,omitempty"`
+		ObserverProvider           *string        `json:"observer_provider,omitempty"`
+		ObserverModel              *string        `json:"observer_model,omitempty"`
 	}
 	phases := wf.Phases
 	if phases == nil {
@@ -71,31 +79,39 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		groups = []string{}
 	}
 	return json.Marshal(Alias{
-		Description:           wf.Description,
-		ScopeType:             scopeType,
-		CloseTicketOnComplete: wf.CloseTicketOnComplete,
-		Groups:                groups,
-		NextWorkflowOnSuccess: wf.NextWorkflowOnSuccess,
-		Phases:                phases,
-		LayerPolicies:         wf.LayerPolicies,
-		ObserverContext:       wf.ObserverContext,
-		ObserverProvider:      wf.ObserverProvider,
-		ObserverModel:         wf.ObserverModel,
+		Description:                wf.Description,
+		ScopeType:                  scopeType,
+		CloseTicketOnComplete:      wf.CloseTicketOnComplete,
+		Groups:                     groups,
+		NextWorkflowOnSuccess:      wf.NextWorkflowOnSuccess,
+		FinalizeSuccessCommand:     wf.FinalizeSuccessCommand,
+		FinalizeSuccessScriptID:    wf.FinalizeSuccessScriptID,
+		FinalizeFailureCommand:     wf.FinalizeFailureCommand,
+		FinalizeFailureScriptID:    wf.FinalizeFailureScriptID,
+		Phases:                     phases,
+		LayerPolicies:              wf.LayerPolicies,
+		ObserverContext:            wf.ObserverContext,
+		ObserverProvider:           wf.ObserverProvider,
+		ObserverModel:              wf.ObserverModel,
 	})
 }
 
 // UnmarshalJSON deserializes WorkflowDef
 func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		Description           string         `json:"description"`
-		ScopeType             string         `json:"scope_type"`
-		CloseTicketOnComplete bool           `json:"close_ticket_on_complete"`
-		NextWorkflowOnSuccess string         `json:"next_workflow_on_success"`
-		Phases                []PhaseDef     `json:"phases"`
-		LayerPolicies         map[int]string `json:"layer_policies,omitempty"`
-		ObserverContext       string         `json:"observer_context,omitempty"`
-		ObserverProvider      *string        `json:"observer_provider,omitempty"`
-		ObserverModel         *string        `json:"observer_model,omitempty"`
+		Description                string         `json:"description"`
+		ScopeType                  string         `json:"scope_type"`
+		CloseTicketOnComplete      bool           `json:"close_ticket_on_complete"`
+		NextWorkflowOnSuccess      string         `json:"next_workflow_on_success"`
+		FinalizeSuccessCommand     string         `json:"finalize_success_command,omitempty"`
+		FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
+		FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
+		FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+		Phases                     []PhaseDef     `json:"phases"`
+		LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
+		ObserverContext            string         `json:"observer_context,omitempty"`
+		ObserverProvider           *string        `json:"observer_provider,omitempty"`
+		ObserverModel              *string        `json:"observer_model,omitempty"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -104,6 +120,10 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.ScopeType = raw.ScopeType
 	wf.CloseTicketOnComplete = raw.CloseTicketOnComplete
 	wf.NextWorkflowOnSuccess = raw.NextWorkflowOnSuccess
+	wf.FinalizeSuccessCommand = raw.FinalizeSuccessCommand
+	wf.FinalizeSuccessScriptID = raw.FinalizeSuccessScriptID
+	wf.FinalizeFailureCommand = raw.FinalizeFailureCommand
+	wf.FinalizeFailureScriptID = raw.FinalizeFailureScriptID
 	wf.Phases = raw.Phases
 	wf.LayerPolicies = raw.LayerPolicies
 	wf.ObserverContext = raw.ObserverContext

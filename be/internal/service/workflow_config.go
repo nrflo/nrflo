@@ -39,11 +39,15 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			scopeType = "ticket"
 		}
 		workflows[wf.ID] = SpawnerWorkflowDef{
-			Description:           wf.Description,
-			ScopeType:             scopeType,
-			CloseTicketOnComplete: wf.CloseTicketOnComplete,
-			Phases:                phases,
-			Groups:                wf.GetGroups(),
+			Description:                wf.Description,
+			ScopeType:                  scopeType,
+			CloseTicketOnComplete:      wf.CloseTicketOnComplete,
+			FinalizeSuccessCommand:     wf.FinalizeSuccessCommand,
+			FinalizeSuccessScriptID:    wf.FinalizeSuccessScriptID,
+			FinalizeFailureCommand:     wf.FinalizeFailureCommand,
+			FinalizeFailureScriptID:    wf.FinalizeFailureScriptID,
+			Phases:                     phases,
+			Groups:                     wf.GetGroups(),
 		}
 	}
 
@@ -61,12 +65,16 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 
 // SpawnerWorkflowDef mirrors spawner.WorkflowDef for shared config building
 type SpawnerWorkflowDef struct {
-	Description           string            `json:"description"`
-	ScopeType             string            `json:"scope_type"`
-	CloseTicketOnComplete bool              `json:"close_ticket_on_complete"`
-	Phases                []SpawnerPhaseDef `json:"phases"`
-	Groups                []string          `json:"groups"`
-	LayerPolicies         map[int]string    `json:"layer_policies,omitempty"`
+	Description                string            `json:"description"`
+	ScopeType                  string            `json:"scope_type"`
+	CloseTicketOnComplete      bool              `json:"close_ticket_on_complete"`
+	FinalizeSuccessCommand     string            `json:"finalize_success_command"`
+	FinalizeSuccessScriptID    string            `json:"finalize_success_script_id"`
+	FinalizeFailureCommand     string            `json:"finalize_failure_command"`
+	FinalizeFailureScriptID    string            `json:"finalize_failure_script_id"`
+	Phases                     []SpawnerPhaseDef `json:"phases"`
+	Groups                     []string          `json:"groups"`
+	LayerPolicies              map[int]string    `json:"layer_policies,omitempty"`
 }
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building

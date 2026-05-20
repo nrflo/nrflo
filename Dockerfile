@@ -30,9 +30,9 @@ RUN cd be && go mod download
 
 # Source + embed inputs (matches Makefile build-ui + embed-assets targets)
 COPY be/ ./be/
-COPY agent_manual.md ./agent_manual.md
+COPY doc/ ./doc/
 COPY --from=ui-builder /src/ui/dist ./be/internal/static/dist
-RUN cp agent_manual.md be/internal/static/agent_manual.md
+RUN mkdir -p be/internal/static/doc && cp doc/*.md be/internal/static/doc/
 
 # Pure-static build: no CGO, no `tray` tag (uses serve_notray.go).
 # `creack/pty` is pure-Go on Linux; modernc.org/sqlite is pure-Go too.

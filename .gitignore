@@ -60,4 +60,5 @@ node_modules/
 # Embedded build artifacts
 be/internal/static/dist/
 !be/internal/static/dist/.gitkeep
-be/internal/static/agent_manual.md
+be/internal/static/doc/
+!be/internal/static/doc/.gitkeep

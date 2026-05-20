@@ -21,17 +21,20 @@ GOARCH     ?= $(shell $(GO) env GOARCH)
 BE_DIR     := be
 UI_DIR     := ui
 STATIC_DIR := $(BE_DIR)/internal/static/dist
-EMBED_MANUAL := $(BE_DIR)/internal/static/agent_manual.md
+EMBED_DOC_DIR := $(BE_DIR)/internal/static/doc
+DOC_SRCS      := $(wildcard doc/*.md)
+EMBED_DOCS    := $(patsubst doc/%.md,$(EMBED_DOC_DIR)/%.md,$(DOC_SRCS))
 EMBED_GITKEEP := $(STATIC_DIR)/.gitkeep
 
 # --- Primary targets ---
 
 all: build
 
-## embed-assets: Ensure go:embed prerequisites exist (agent_manual.md + dist/.gitkeep). Required before any go build/test.
-embed-assets: $(EMBED_MANUAL) $(EMBED_GITKEEP)
+## embed-assets: Ensure go:embed prerequisites exist (doc/*.md + dist/.gitkeep). Required before any go build/test.
+embed-assets: $(EMBED_DOCS) $(EMBED_GITKEEP)
 
-$(EMBED_MANUAL): agent_manual.md
+$(EMBED_DOC_DIR)/%.md: doc/%.md
+	@mkdir -p $(EMBED_DOC_DIR)
 	cp $< $@
 
 $(EMBED_GITKEEP):
@@ -49,7 +52,7 @@ build-ui:
 	cd $(UI_DIR) && $(NPM) run build
 	rm -rf $(STATIC_DIR)
 	cp -r $(UI_DIR)/dist $(STATIC_DIR)
-	cp agent_manual.md $(BE_DIR)/internal/static/agent_manual.md
+	mkdir -p $(EMBED_DOC_DIR) && cp doc/*.md $(EMBED_DOC_DIR)/
 
 ## build-server: Build server binary with tray (includes UI build)
 build-server: build-ui
@@ -185,7 +188,7 @@ tidy:
 clean:
 	rm -f $(BE_DIR)/nrflo $(BE_DIR)/nrflo_server
 	rm -rf $(STATIC_DIR)
-	rm -f $(BE_DIR)/internal/static/agent_manual.md
+	rm -rf $(EMBED_DOC_DIR)
 	mkdir -p $(STATIC_DIR) && touch $(STATIC_DIR)/.gitkeep
 
 ## release-check: Validate GoReleaser config

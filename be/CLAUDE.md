@@ -19,7 +19,7 @@ Top-level packages under `be/internal/`:
 - `pty/` — PTY session management for interactive agent control
 - `config/` — Configuration management
 - `client/` — Unix socket + HTTP clients
-- `static/` — Embedded UI assets (`//go:embed`)
+- `static/` — Embedded UI assets + per-kind agent docs (`//go:embed`; `Manual(kind)`)
 - `socket/` — Unix socket server (agent communication: findings, callbacks, ws.broadcast)
 - `notify/` — Notification dispatch: Slack/Telegram/Script transports, async retry queue
 - `service/` — Business logic layer (see [service/CLAUDE.md](internal/service/CLAUDE.md))

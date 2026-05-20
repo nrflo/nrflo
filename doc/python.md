@@ -138,10 +138,15 @@ c.findings.get("setup-analyzer", "files_to_modify")
 
 | Method | Description |
 |--------|-------------|
-| `c.context(refresh=False)` | Return 12-key dict (cached; pass `refresh=True` to refetch) |
+| `c.context(refresh=False)` | Return 17-key dict (cached; pass `refresh=True` to refetch) |
 | `c.user_instructions()` | Return user-supplied instructions string ("" if none) |
 | `c.callback_info()` | Return callback dict or `None` |
 | `c.previous_data()` | Return `to_resume` string from a prior session ("" if none) |
+| `c.seed_findings()` | Return caller-supplied seed findings dict (`{}` if none) |
+| `c.workflow_result()` | Return `"pass"`, `"fail"`, or `""` (derived from instance status) |
+| `c.workflow_status()` | Return raw workflow instance status string |
+| `c.workflow_final_result()` | Return the run's final-result summary ("" if none) |
+| `c.failure_reason()` | Return the recorded failure reason ("" if none) |
 | `c.skip(tag)` | Add a skip tag to the workflow instance |
 | `c.log(type, message, payload=None)` | Insert a message row visible in the Logs UI Messages tab |
 
@@ -164,6 +169,11 @@ c.findings.get("setup-analyzer", "files_to_modify")
 | `user_instructions` | User-supplied instructions (empty string if none) |
 | `callback` | `None` or `{"instructions": "...", "from_agent": "...", "level": N}` |
 | `previous_data` | Content of `to_resume` finding from prior session ("" if none) |
+| `seed_findings` | Caller-supplied seed findings (excludes `user_instructions` and underscore-prefixed keys) |
+| `workflow_status` | Raw workflow instance status string |
+| `workflow_result` | `"pass"`, `"fail"`, or `""` (derived from status) |
+| `workflow_final_result` | Final-result summary ("" if none) |
+| `failure_reason` | Recorded failure reason ("" if none) |
 
 ---
 

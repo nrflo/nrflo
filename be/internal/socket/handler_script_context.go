@@ -5,8 +5,21 @@ import (
 	"encoding/json"
 	"strings"
 
+	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
+
+func deriveWorkflowResult(status model.WorkflowInstanceStatus) string {
+	switch status {
+	case model.WorkflowInstanceCompleted, model.WorkflowInstanceProjectCompleted:
+		return "pass"
+	case model.WorkflowInstanceFailed:
+		return "fail"
+	default:
+		return ""
+	}
+}
 
 // rawFindingStr extracts a string value from a raw findings map.
 func rawFindingStr(raw map[string]json.RawMessage, key string) string {
@@ -104,19 +117,33 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		}
 	}
 
+	failureReason := ""
+	if frRaw, ok := wfiRaw["_failure_reason"]; ok {
+		var m map[string]interface{}
+		if json.Unmarshal(frRaw, &m) == nil {
+			if r, ok := m["reason"].(string); ok {
+				failureReason = r
+			}
+		}
+	}
+
 	return MakeResponse(req.ID, map[string]interface{}{
-		"session_id":          session.ID,
-		"instance_id":         wfi.ID,
-		"project_id":          session.ProjectID,
-		"agent_type":          session.AgentType,
-		"workflow_id":         wfi.WorkflowID,
-		"scope_type":          wfi.ScopeType,
-		"ticket_id":           ticketID,
-		"ticket_title":        ticketTitle,
-		"ticket_description":  ticketDescription,
-		"user_instructions":   userInstructions,
-		"callback":            callbackInfo,
-		"previous_data":       previousData,
-		"seed_findings":       seedFindings,
+		"session_id":            session.ID,
+		"instance_id":           wfi.ID,
+		"project_id":            session.ProjectID,
+		"agent_type":            session.AgentType,
+		"workflow_id":           wfi.WorkflowID,
+		"scope_type":            wfi.ScopeType,
+		"ticket_id":             ticketID,
+		"ticket_title":          ticketTitle,
+		"ticket_description":    ticketDescription,
+		"user_instructions":     userInstructions,
+		"callback":              callbackInfo,
+		"previous_data":         previousData,
+		"seed_findings":         seedFindings,
+		"workflow_status":       string(wfi.Status),
+		"workflow_result":       deriveWorkflowResult(wfi.Status),
+		"workflow_final_result": service.ExtractWorkflowFinalResultByInstanceID(h.pool, wfi.ID, h.clk),
+		"failure_reason":        failureReason,
 	})
 }

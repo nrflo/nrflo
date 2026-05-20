@@ -322,6 +322,12 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 				}
 			}
 		}
+		if fRaw, ok := wfRaw["_finalize"]; ok {
+			var fin map[string]interface{}
+			if json.Unmarshal(fRaw, &fin) == nil {
+				result["finalize_result"] = fin
+			}
+		}
 	}
 
 	// Extract workflow_final_result from agent session findings

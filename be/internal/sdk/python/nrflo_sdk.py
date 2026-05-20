@@ -351,6 +351,18 @@ class Client:
         v = self.context().get("seed_findings") or {}
         return v if isinstance(v, dict) else {}
 
+    def workflow_result(self) -> str:
+        return self.context().get("workflow_result", "")
+
+    def workflow_status(self) -> str:
+        return self.context().get("workflow_status", "")
+
+    def workflow_final_result(self) -> str:
+        return self.context().get("workflow_final_result", "")
+
+    def failure_reason(self) -> str:
+        return self.context().get("failure_reason", "")
+
     def skip(self, tag: str):
         _check(self._conn.send({
             "id": str(uuid.uuid4()), "method": "workflow.skip",

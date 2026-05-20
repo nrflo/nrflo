@@ -25,6 +25,7 @@ func TestPythonSDK_UnitTests(t *testing.T) {
 		"test_nrflo_sdk.py",
 		"test_nrflo_sdk_artifacts.py",
 		"test_nrflo_sdk_notification.py",
+		"test_nrflo_sdk_outcome_accessors.py",
 	}
 	for _, f := range testFiles {
 		data, err := os.ReadFile(filepath.Join(".", f))

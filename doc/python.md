@@ -106,6 +106,13 @@ for `NRFLO_SOCKET` override details).
 | `c.agent.continue_()` | Signal context exhaustion (triggers relaunch; rarely needed) |
 | `c.agent.callback(level)` | Trigger callback to re-run an earlier layer |
 
+### Workflow Control
+
+| Method | Description |
+|--------|-------------|
+| `c.workflow.continue_(instructions="", instance_id=None)` | Resume a paused (waiting) workflow instance (defaults to current instance) |
+| `c.workflow.fail(reason, instance_id=None)` | Fail a workflow instance with a reason (defaults to current instance) |
+
 ### Own Findings
 
 | Method | Description |

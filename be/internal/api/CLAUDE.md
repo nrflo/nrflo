@@ -71,6 +71,14 @@ Errors are returned as `{"error":"code","message":"..."}` for structured failure
 
 `GET /api/v1/import/jira/search` and `GET /api/v1/import/github/search` return 400 when `X-Project` is missing (matching `POST /api/v1/import/spec`).
 
+## Pause-Continue-Fail Routes
+
+`POST /api/v1/tickets/{id}/workflow/continue` — body `{workflow, instructions?}`: resume a waiting ticket-scoped instance (resolves most-recent waiting instance for that workflow). `POST /api/v1/tickets/{id}/workflow/fail` — body `{workflow, reason}` (reason required): fail an active or waiting ticket-scoped instance.
+
+`POST /api/v1/projects/{id}/workflow/continue` — body `{instance_id, instructions?}`: resume a waiting project-scoped instance by ID. `POST /api/v1/projects/{id}/workflow/fail` — body `{instance_id, reason}`: fail an active or waiting project-scoped instance by ID.
+
+All four routes are `protected` (accept SCS sessions, spawn tokens, and service tokens).
+
 ## Endless Loop Mode
 
 `POST /api/v1/projects/{id}/workflow/run` accepts `endless_loop: bool` (mutually exclusive with `interactive`/`plan_mode`; requires project-scope workflow). `POST .../stop-endless-loop` toggles the graceful-stop flag on an active instance without interrupting the in-flight iteration. See `handlers_project_workflow.go` for validation details.

@@ -48,9 +48,12 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 	home := t.TempDir()
 	t.Setenv("NRFLO_HOME", home)
 	dbPath := filepath.Join(home, "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := copyBuiltinTemplateDB(dbPath); err != nil {
+		t.Fatalf("copyBuiltinTemplateDB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
+		t.Fatalf("OpenPoolExisting: %v", err)
 	}
 	t.Cleanup(func() { pool.Close() })
 

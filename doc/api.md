@@ -71,6 +71,8 @@ time. Empty = no tools; `*` = all tools in scope.
 | `artifact_list` | List artifacts for this workflow instance |
 | `artifact_get` | Get the local path of a materialized artifact |
 | `workflow_skip` | Add a skip tag to the workflow instance |
+| `workflow_continue` | Resume a paused (waiting) workflow instance. Input: `{instance_id, instructions?}` |
+| `workflow_fail` | Fail a workflow instance with a reason. Input: `{instance_id, reason}` |
 
 **`read_document`** materializes a named input artifact and returns its bytes
 as an image or document content block so the model can read it natively (OCR
@@ -130,3 +132,18 @@ They are registered in the tool registry and must be matched by the agent's
 For implementation depth on the turn loop, provider error classification, and
 per-agent registry resolution, see
 [be/internal/spawner/apirun/CLAUDE.md](../be/internal/spawner/apirun/CLAUDE.md).
+
+---
+
+## REST Continue/Fail Endpoints
+
+External callers (service tokens, web UI) can continue or fail a paused workflow
+via REST:
+
+- `POST /api/v1/tickets/{id}/workflow/continue` — body `{workflow, instructions?}`
+- `POST /api/v1/tickets/{id}/workflow/fail` — body `{workflow, reason}`
+- `POST /api/v1/projects/{id}/workflow/continue` — body `{instance_id, instructions?}`
+- `POST /api/v1/projects/{id}/workflow/fail` — body `{instance_id, reason}`
+
+All routes accept SCS sessions, spawn tokens, and service tokens (same as
+`retry-failed`). See [be/internal/api/CLAUDE.md](../be/internal/api/CLAUDE.md).

@@ -90,6 +90,8 @@ type WorkflowOrchestrator interface {
 	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (instanceID string, err error)
 	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
 	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error
+	ContinueWorkflow(ctx context.Context, projectID, instanceID, instructions string) error
+	FailWorkflow(ctx context.Context, projectID, instanceID, reason string) error
 }
 
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner

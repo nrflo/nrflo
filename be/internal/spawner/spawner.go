@@ -182,6 +182,9 @@ type Config struct {
 	// and #{ARTIFACT[S]} template expansion. Optional (nil-safe): when nil, NRF_ARTIFACTS_DIR
 	// still resolves to the stage dir but artifacts are not pre-materialized.
 	ArtifactSvc *service.ArtifactService
+	// WorkflowControl allows API-mode workflow_continue/workflow_fail builtins to act on the workflow.
+	// Optional (nil-safe).
+	WorkflowControl apirun.WorkflowController
 }
 
 // taskInfo tracks an in-flight Task/Agent tool invocation for tool_result correlation
@@ -1191,6 +1194,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			Agent:              s.config.AgentSvcReal,
 			Workflow:           s.config.WorkflowSvc,
 			ArtifactSvc:        s.config.ArtifactSvc,
+			WorkflowControl:    s.config.WorkflowControl,
 		}
 		prep.apiMaxIterations = maxIter
 		prep.apiMaxTokens = maxTokens

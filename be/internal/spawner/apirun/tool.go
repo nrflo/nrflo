@@ -28,6 +28,13 @@ type MediaToolHandler interface {
 	InvokeMedia(ctx context.Context, env ToolEnv, input json.RawMessage) (output string, media []provider.MediaBlock, isError bool, err error)
 }
 
+// WorkflowController allows API-mode agents to continue or fail a workflow instance.
+// Nil-safe; guard with env.WorkflowControl == nil before calling.
+type WorkflowController interface {
+	ContinueWorkflow(ctx context.Context, projectID, instanceID, instructions string) error
+	FailWorkflow(ctx context.Context, projectID, instanceID, reason string) error
+}
+
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
 // It carries the in-process services and identifiers handlers need to
 // mirror the CLI socket flow without going over the network.
@@ -49,7 +56,10 @@ type ToolEnv struct {
 	ArtifactSvc        *service.ArtifactService
 	// DispatchRepo is required for tools that record dispatch rows (tools_http, tools_python).
 	// Nil-safe: handlers skip Insert when nil.
-	DispatchRepo       *repo.DispatchRepo
+	DispatchRepo *repo.DispatchRepo
+	// WorkflowControl allows workflow_continue/workflow_fail builtins to act on the workflow.
+	// Nil when the orchestrator is not wired (e.g. tests).
+	WorkflowControl WorkflowController
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

@@ -197,6 +197,104 @@ func (s *Server) handleRetryFailedProjectAgent(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, map[string]string{"status": "retrying"})
 }
 
+// handleContinueWorkflowProject resumes a paused (waiting) project-scoped workflow.
+// POST /api/v1/projects/{id}/workflow/continue
+func (s *Server) handleContinueWorkflowProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		InstanceID   string `json:"instance_id"`
+		Instructions string `json:"instructions"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.InstanceID == "" {
+		writeError(w, http.StatusBadRequest, "instance_id is required")
+		return
+	}
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+	wi, err := wfiRepo.Get(body.InstanceID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "workflow instance not found")
+		return
+	}
+	if !strings.EqualFold(wi.ProjectID, projectID) {
+		writeError(w, http.StatusBadRequest, "instance does not belong to this project")
+		return
+	}
+
+	if err := s.orchestrator.ContinueWorkflow(r.Context(), projectID, wi.TicketID, wi.WorkflowID, body.InstanceID, body.Instructions); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "continuing", "instance_id": body.InstanceID})
+}
+
+// handleFailWorkflowProject fails a project-scoped workflow instance.
+// POST /api/v1/projects/{id}/workflow/fail
+func (s *Server) handleFailWorkflowProject(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project ID required")
+		return
+	}
+
+	if s.orchestrator == nil {
+		writeError(w, http.StatusServiceUnavailable, "orchestrator not available")
+		return
+	}
+
+	var body struct {
+		InstanceID string `json:"instance_id"`
+		Reason     string `json:"reason"`
+	}
+	if err := readJSON(r, &body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if body.InstanceID == "" {
+		writeError(w, http.StatusBadRequest, "instance_id is required")
+		return
+	}
+	if body.Reason == "" {
+		writeError(w, http.StatusBadRequest, "reason is required")
+		return
+	}
+
+	wfiRepo := repo.NewWorkflowInstanceRepo(s.pool, s.clock)
+	wi, err := wfiRepo.Get(body.InstanceID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "workflow instance not found")
+		return
+	}
+	if !strings.EqualFold(wi.ProjectID, projectID) {
+		writeError(w, http.StatusBadRequest, "instance does not belong to this project")
+		return
+	}
+
+	if err := s.orchestrator.FailWorkflow(r.Context(), projectID, wi.TicketID, wi.WorkflowID, body.InstanceID, body.Reason); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "failing", "instance_id": body.InstanceID})
+}
+
 // handleTakeControlProject initiates a take-control flow for a project-scoped workflow.
 // POST /api/v1/projects/{id}/workflow/take-control
 func (s *Server) handleTakeControlProject(w http.ResponseWriter, r *http.Request) {

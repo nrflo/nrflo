@@ -1451,6 +1451,7 @@ func (o *Orchestrator) runLoop(
 		PythonPath:                pythonPath,
 		PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
 		ArtifactSvc:               artifactSvcRun,
+		WorkflowControl:           apiWorkflowControl{o: o, pool: pool},
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.

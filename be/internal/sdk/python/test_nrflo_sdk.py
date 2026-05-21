@@ -259,6 +259,111 @@ class TestClientLog(unittest.TestCase):
             c.close()
 
 
+class TestWorkflowNamespace(unittest.TestCase):
+    """Tests for c.workflow (the _Workflow class) — no running server needed."""
+
+    _SOCK = "/tmp/nrflo-sdk-unit-test-no-server.sock"
+
+    def _make_client(self):
+        return nrflo_sdk.client(
+            sock_path=self._SOCK,
+            session_id="s",
+            instance_id="wfi-1",
+            project="p",
+            trx="t",
+        )
+
+    def test_workflow_namespace_exists(self):
+        c = self._make_client()
+        self.assertTrue(hasattr(c, "workflow"), "Client must have 'workflow' attribute")
+        c.close()
+
+    def test_workflow_has_continue_and_fail(self):
+        c = self._make_client()
+        for method in ("continue_", "fail"):
+            self.assertTrue(callable(getattr(c.workflow, method, None)),
+                            f"workflow.{method} missing or not callable")
+        c.close()
+
+    def test_workflow_continue_raises_nrflo_error_without_server(self):
+        """continue_() with no server raises NrfloError (socket absent), not AttributeError."""
+        c = self._make_client()
+        try:
+            c.workflow.continue_()
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except (AttributeError, TypeError) as e:
+            self.fail(f"unexpected error type — signature or attribute broken: {e}")
+        finally:
+            c.close()
+
+    def test_workflow_continue_with_instructions_raises_nrflo_error(self):
+        """continue_(instructions=...) has correct signature; error is NrfloError from socket."""
+        c = self._make_client()
+        try:
+            c.workflow.continue_(instructions="do the thing")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except TypeError as e:
+            self.fail(f"TypeError — signature broken for continue_(instructions=...): {e}")
+        finally:
+            c.close()
+
+    def test_workflow_continue_with_explicit_instance_id_raises_nrflo_error(self):
+        """continue_(instance_id=...) accepts explicit instance override."""
+        c = self._make_client()
+        try:
+            c.workflow.continue_(instance_id="wfi-other")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except TypeError as e:
+            self.fail(f"TypeError — signature broken for continue_(instance_id=...): {e}")
+        finally:
+            c.close()
+
+    def test_workflow_fail_raises_nrflo_error_without_server(self):
+        """fail(reason) with no server raises NrfloError, not AttributeError."""
+        c = self._make_client()
+        try:
+            c.workflow.fail("something went wrong")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except (AttributeError, TypeError) as e:
+            self.fail(f"unexpected error type: {e}")
+        finally:
+            c.close()
+
+    def test_workflow_fail_with_explicit_instance_id_raises_nrflo_error(self):
+        """fail(reason, instance_id=...) accepts explicit instance override."""
+        c = self._make_client()
+        try:
+            c.workflow.fail("bad", instance_id="wfi-other")
+            self.fail("expected NrfloError (no server)")
+        except nrflo_sdk.NrfloError:
+            pass
+        except TypeError as e:
+            self.fail(f"TypeError — signature broken for fail(reason, instance_id=...): {e}")
+        finally:
+            c.close()
+
+    def test_workflow_continue_defaults_to_current_instance(self):
+        """continue_() without instance_id uses the client's own _iid."""
+        c = self._make_client()
+        # Reach into the private _Workflow._iid to confirm it matches the client's instance_id.
+        self.assertEqual(c.workflow._iid, "wfi-1")
+        c.close()
+
+    def test_workflow_fail_defaults_to_current_instance(self):
+        """fail() without instance_id uses the client's own _iid."""
+        c = self._make_client()
+        self.assertEqual(c.workflow._iid, "wfi-1")
+        c.close()
+
+
 class TestDefaultSocketPath(unittest.TestCase):
     def test_nrflo_socket_env_wins(self):
         with unittest.mock.patch.dict(os.environ, {"NRFLO_SOCKET": "/custom/x.sock"}, clear=True):

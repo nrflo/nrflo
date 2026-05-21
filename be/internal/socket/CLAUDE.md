@@ -32,6 +32,8 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.record_event` | Record Claude/codex hook event; PreToolUse inserts message row + WS broadcast; PostToolUse no-op; Stop flushes codex JSONL messages |
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
+| `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
+| `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 | `script.context` | Return 17-key auto-injectable dict for script-mode session (incl. `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |

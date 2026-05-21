@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"be/internal/logger"
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
@@ -434,6 +435,69 @@ func (h *Handler) handleWorkflow(ctx context.Context, req Request, action string
 			"tag":         params.Tag,
 		})
 		return MakeResponse(req.ID, map[string]string{"status": "added", "tag": params.Tag})
+
+	case "continue":
+		var params struct {
+			SessionID    string `json:"session_id"`
+			InstanceID   string `json:"instance_id"`
+			Instructions string `json:"instructions"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.SessionID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+		}
+		if params.InstanceID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instance_id is required"))
+		}
+		session, err := repo.NewAgentSessionRepo(h.pool, h.clk).Get(params.SessionID)
+		if err != nil {
+			return MakeErrorResponse(req.ID, NewNotFoundError("session not found"))
+		}
+		if session.WorkflowInstanceID != params.InstanceID {
+			return MakeErrorResponse(req.ID, NewValidationError("session does not belong to this workflow instance"))
+		}
+		if h.workflowRunner == nil {
+			return MakeErrorResponse(req.ID, NewInternalError("workflow runner not available"))
+		}
+		if err := h.workflowRunner.ContinueWorkflow(ctx, session.ProjectID, params.InstanceID, params.Instructions); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "continuing"})
+
+	case "fail":
+		var params struct {
+			SessionID  string `json:"session_id"`
+			InstanceID string `json:"instance_id"`
+			Reason     string `json:"reason"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.SessionID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+		}
+		if params.InstanceID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("instance_id is required"))
+		}
+		if params.Reason == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("reason is required"))
+		}
+		session, err := repo.NewAgentSessionRepo(h.pool, h.clk).Get(params.SessionID)
+		if err != nil {
+			return MakeErrorResponse(req.ID, NewNotFoundError("session not found"))
+		}
+		if session.WorkflowInstanceID != params.InstanceID {
+			return MakeErrorResponse(req.ID, NewValidationError("session does not belong to this workflow instance"))
+		}
+		if h.workflowRunner == nil {
+			return MakeErrorResponse(req.ID, NewInternalError("workflow runner not available"))
+		}
+		if err := h.workflowRunner.FailWorkflow(ctx, session.ProjectID, params.InstanceID, params.Reason); err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "failing"})
 
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "workflow."+action)

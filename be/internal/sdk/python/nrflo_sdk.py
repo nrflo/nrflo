@@ -311,6 +311,33 @@ class _Notification:
         return self._raw
 
 
+class _Workflow:
+    def __init__(self, conn: _Connection, sid: str, iid: str, proj: str, trx: str):
+        self._conn = conn
+        self._sid = sid
+        self._iid = iid
+        self._proj = proj
+        self._trx = trx
+
+    def continue_(self, instructions: str = "", instance_id: str = None):
+        """Resume a paused (waiting) workflow instance."""
+        params = {"session_id": self._sid, "instance_id": instance_id or self._iid}
+        if instructions:
+            params["instructions"] = instructions
+        _check(self._conn.send({
+            "id": str(uuid.uuid4()), "method": "workflow.continue",
+            "project": self._proj, "trx": self._trx, "params": params,
+        }))
+
+    def fail(self, reason: str, instance_id: str = None):
+        """Fail a workflow instance with the given reason."""
+        params = {"session_id": self._sid, "instance_id": instance_id or self._iid, "reason": reason}
+        _check(self._conn.send({
+            "id": str(uuid.uuid4()), "method": "workflow.fail",
+            "project": self._proj, "trx": self._trx, "params": params,
+        }))
+
+
 class Client:
     """nrflo script-mode client. Obtain via nrflo_sdk.client()."""
 
@@ -326,6 +353,7 @@ class Client:
         self.project_findings = _ProjectFindings(conn, sid, iid, proj, trx)
         self.agent = _Agent(conn, sid, iid, proj, trx)
         self.artifacts = _Artifacts(conn, sid, iid, proj, trx)
+        self.workflow = _Workflow(conn, sid, iid, proj, trx)
 
     def context(self, refresh: bool = False) -> dict:
         """Return the auto-injectable variable dict for this session (cached)."""

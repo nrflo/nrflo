@@ -3,11 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { Toggle } from '@/components/ui/Toggle'
 import { AgentDefForm } from '@/components/workflow/AgentDefForm'
 import { AgentDefCard } from '@/components/workflow/AgentDefCard'
 import { LayerPolicyControl } from '@/components/workflow/LayerPolicyControl'
 import { listAgentDefs, createAgentDef } from '@/api/agentDefs'
-import { listLayerPolicies } from '@/api/workflowLayerPolicies'
+import { listLayerPolicies, setLayerPolicy } from '@/api/workflowLayerPolicies'
 import { useProjectStore } from '@/stores/projectStore'
 import type { AgentDefCreateRequest } from '@/types/workflow'
 
@@ -35,6 +36,14 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentDefsQueryKey })
       setCreating(false)
+    },
+  })
+
+  const pauseToggleMutation = useMutation({
+    mutationFn: ({ layer, passPolicy, pauseAfter }: { layer: number; passPolicy: string; pauseAfter: boolean }) =>
+      setLayerPolicy(workflowId, layer, passPolicy, pauseAfter),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: layerPoliciesQueryKey })
     },
   })
 
@@ -80,10 +89,11 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
         {sortedLayers.map((layer) => {
           const layerDefs = byLayer[layer] ?? []
           const isMulti = layerDefs.length >= 2
-          const policy = layerPolicies?.[layer]
+          const policy = layerPolicies?.layer_policies?.[layer]
+          const pauseAfter = layerPolicies?.layer_pause?.[layer] ?? false
           return (
             <div key={layer} className="space-y-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {isMulti ? (
                   <LayerPolicyControl
                     workflowId={workflowId}
@@ -98,6 +108,13 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
                     <Badge variant="outline" className="text-xs">any</Badge>
                   </div>
                 )}
+                <Toggle
+                  checked={pauseAfter}
+                  onChange={(checked) =>
+                    pauseToggleMutation.mutate({ layer, passPolicy: policy ?? 'any', pauseAfter: checked })
+                  }
+                  label="Pause after"
+                />
               </div>
               <div className="space-y-2">
                 {layerDefs.map((def) => (

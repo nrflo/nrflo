@@ -65,8 +65,8 @@ describe('WorkflowDefForm — Finalize section', () => {
       renderForm()
       const commandBtns = screen.getAllByRole('button', { name: /^command$/i })
       const scriptBtns = screen.getAllByRole('button', { name: /^script$/i })
-      expect(commandBtns).toHaveLength(2)
-      expect(scriptBtns).toHaveLength(2)
+      expect(commandBtns).toHaveLength(3)
+      expect(scriptBtns).toHaveLength(3)
     })
 
     it('command input is not visible before toggling command mode on', () => {

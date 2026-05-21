@@ -9,6 +9,8 @@ import type {
   TakeControlResponse,
   ExitInteractiveRequest,
   ResumeSessionRequest,
+  ContinueWorkflowRequest,
+  FailWorkflowRequest,
 } from '@/types/workflow'
 
 /** Get workflow state for a project (all project-scoped instances) */
@@ -168,6 +170,28 @@ export async function killInteractiveProject(
 ): Promise<{ status: string }> {
   return apiPost<{ status: string }>(
     `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/kill-interactive`,
+    params
+  )
+}
+
+/** Resume a paused (waiting) project-scoped workflow instance */
+export async function continueProjectWorkflow(
+  projectId: string,
+  params: ContinueWorkflowRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/continue`,
+    params
+  )
+}
+
+/** Fail an active or waiting project-scoped workflow instance */
+export async function failProjectWorkflow(
+  projectId: string,
+  params: FailWorkflowRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/workflow/fail`,
     params
   )
 }

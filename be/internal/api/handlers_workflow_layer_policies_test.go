@@ -102,7 +102,7 @@ func doLayerPolicyRequest(t *testing.T, s *Server, method, projectID, workflowID
 
 func layerPtr(n int) *int { return &n }
 
-// TestLayerPolicies_GetEmpty verifies that GET returns an empty object when no policies exist.
+// TestLayerPolicies_GetEmpty verifies that GET returns a wrapped object with empty sub-maps when no policies exist.
 func TestLayerPolicies_GetEmpty(t *testing.T) {
 	s := newLayerPolicyServer(t)
 	seedLayerPolicyWorkflow(t, s, "proj", "wf1", map[string]int{"agent-a": 0, "agent-b": 0})
@@ -114,8 +114,17 @@ func TestLayerPolicies_GetEmpty(t *testing.T) {
 	}
 	var result map[string]interface{}
 	json.NewDecoder(rr.Body).Decode(&result)
-	if len(result) != 0 {
-		t.Errorf("expected empty policies, got %v", result)
+	if _, ok := result["layer_policies"]; !ok {
+		t.Errorf("expected layer_policies key in response, got %v", result)
+	}
+	if _, ok := result["layer_pause"]; !ok {
+		t.Errorf("expected layer_pause key in response, got %v", result)
+	}
+	if policies, ok := result["layer_policies"].(map[string]interface{}); ok && len(policies) != 0 {
+		t.Errorf("expected empty layer_policies, got %v", policies)
+	}
+	if pause, ok := result["layer_pause"].(map[string]interface{}); ok && len(pause) != 0 {
+		t.Errorf("expected empty layer_pause, got %v", pause)
 	}
 }
 
@@ -130,15 +139,19 @@ func TestLayerPolicies_PutGetDelete(t *testing.T) {
 		t.Fatalf("PUT: expected 200, got %d: %s", rr.Code, rr.Body.String())
 	}
 
-	// GET — should see the policy
+	// GET — should see the policy nested under layer_policies
 	rrGet := doLayerPolicyRequest(t, s, http.MethodGet, "proj2", "wf2", nil, "")
 	if rrGet.Code != http.StatusOK {
 		t.Fatalf("GET: expected 200, got %d", rrGet.Code)
 	}
-	var policies map[string]interface{}
-	json.NewDecoder(rrGet.Body).Decode(&policies)
-	if policies["1"] != "quorum:2" {
-		t.Errorf("expected layer 1 policy quorum:2, got %v", policies)
+	var result map[string]interface{}
+	json.NewDecoder(rrGet.Body).Decode(&result)
+	layerPolicies, ok := result["layer_policies"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected layer_policies to be a map, got %T: %v", result["layer_policies"], result)
+	}
+	if layerPolicies["1"] != "quorum:2" {
+		t.Errorf("expected layer 1 policy quorum:2, got %v", layerPolicies)
 	}
 
 	// DELETE layer 1
@@ -147,12 +160,13 @@ func TestLayerPolicies_PutGetDelete(t *testing.T) {
 		t.Fatalf("DELETE: expected 200, got %d: %s", rrDel.Code, rrDel.Body.String())
 	}
 
-	// GET again — should be empty
+	// GET again — layer_policies should be empty
 	rrGet2 := doLayerPolicyRequest(t, s, http.MethodGet, "proj2", "wf2", nil, "")
-	var policies2 map[string]interface{}
-	json.NewDecoder(rrGet2.Body).Decode(&policies2)
-	if len(policies2) != 0 {
-		t.Errorf("expected empty after DELETE, got %v", policies2)
+	var result2 map[string]interface{}
+	json.NewDecoder(rrGet2.Body).Decode(&result2)
+	layerPolicies2, _ := result2["layer_policies"].(map[string]interface{})
+	if len(layerPolicies2) != 0 {
+		t.Errorf("expected empty layer_policies after DELETE, got %v", layerPolicies2)
 	}
 }
 
@@ -191,6 +205,34 @@ func TestLayerPolicies_WS_BroadcastOnPut(t *testing.T) {
 
 	if !drainForEvent(ch, ws.EventWorkflowDefUpdated, 500*time.Millisecond) {
 		t.Error("expected workflow_def.updated WS event after PUT, got none")
+	}
+}
+
+// TestLayerPolicies_PauseAfter_RoundTrip verifies PUT pause_after:true persists and GET returns it in layer_pause.
+func TestLayerPolicies_PauseAfter_RoundTrip(t *testing.T) {
+	s := newLayerPolicyServer(t)
+	seedLayerPolicyWorkflow(t, s, "proj6", "wf6", map[string]int{"a": 0, "b": 0})
+
+	// PUT with pause_after:true on layer 0
+	rr := doLayerPolicyRequest(t, s, http.MethodPut, "proj6", "wf6", layerPtr(0), `{"pass_policy":"any","pause_after":true}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT: expected 200, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// GET — layer_pause["0"] must be true
+	rrGet := doLayerPolicyRequest(t, s, http.MethodGet, "proj6", "wf6", nil, "")
+	if rrGet.Code != http.StatusOK {
+		t.Fatalf("GET: expected 200, got %d", rrGet.Code)
+	}
+	var result map[string]interface{}
+	json.NewDecoder(rrGet.Body).Decode(&result)
+
+	layerPause, ok := result["layer_pause"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected layer_pause to be a map, got %T: %v", result["layer_pause"], result)
+	}
+	if layerPause["0"] != true {
+		t.Errorf("expected layer_pause[0]=true, got %v", layerPause["0"])
 	}
 }
 

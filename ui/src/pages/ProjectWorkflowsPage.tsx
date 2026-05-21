@@ -12,6 +12,8 @@ import {
   useResumeSessionProject,
   useDeleteProjectWorkflowInstance,
   useSetStopEndlessLoopAfterIteration,
+  useContinueProjectWorkflow,
+  useFailProjectWorkflow,
 } from '@/hooks/useTickets'
 import { listWorkflowDefs } from '@/api/workflows'
 import { cancelUpload } from '@/api/artifacts'
@@ -76,6 +78,8 @@ export function ProjectWorkflowsPage() {
   const resumeSessionMutation = useResumeSessionProject()
   const deleteMutation = useDeleteProjectWorkflowInstance()
   const stopEndlessLoopMutation = useSetStopEndlessLoopAfterIteration()
+  const continueMutation = useContinueProjectWorkflow()
+  const failMutation = useFailProjectWorkflow()
 
   // Filter to project-scoped workflows only
   const projectWorkflows = workflowDefs
@@ -494,6 +498,20 @@ export function ProjectWorkflowsPage() {
             }}
             resumeSessionPending={resumeSessionMutation.isPending}
             projectFindings={projectFindings}
+            onContinue={(instructions) =>
+              currentProject && continueMutation.mutate({
+                projectId: currentProject,
+                params: { instance_id: resolvedInstanceId || undefined, instructions: instructions || undefined },
+              })
+            }
+            continuePending={continueMutation.isPending}
+            onFail={(reason) =>
+              currentProject && failMutation.mutate({
+                projectId: currentProject,
+                params: { instance_id: resolvedInstanceId || undefined, reason },
+              })
+            }
+            failPending={failMutation.isPending}
           />
         </>
       )}

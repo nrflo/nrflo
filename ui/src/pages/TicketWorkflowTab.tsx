@@ -13,6 +13,8 @@ import {
   useRetryFailedAgent,
   useTakeControl,
   useResumeSession,
+  useContinueWorkflow,
+  useFailWorkflow,
 } from '@/hooks/useTickets'
 import { useInteractiveSessionsStore } from '@/stores/interactiveSessionsStore'
 import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
@@ -55,6 +57,8 @@ export function TicketWorkflowTab({
   const retryFailedMutation = useRetryFailedAgent()
   const takeControlMutation = useTakeControl()
   const resumeSessionMutation = useResumeSession()
+  const continueMutation = useContinueWorkflow()
+  const failMutation = useFailWorkflow()
 
   const workflows = workflowData?.workflows ?? []
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
@@ -323,6 +327,20 @@ export function TicketWorkflowTab({
             payload={{ scope: 'workflow', project_id: currentProject, workflow_id: displayedWorkflowName }}
           />
         }
+        onContinue={(instructions) =>
+          ticketId && continueMutation.mutate({
+            ticketId,
+            params: { workflow: displayedWorkflowName || undefined, instructions: instructions || undefined },
+          })
+        }
+        continuePending={continueMutation.isPending}
+        onFail={(reason) =>
+          ticketId && failMutation.mutate({
+            ticketId,
+            params: { workflow: displayedWorkflowName || undefined, reason },
+          })
+        }
+        failPending={failMutation.isPending}
       />
     </>
   )

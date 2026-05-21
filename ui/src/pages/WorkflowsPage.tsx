@@ -34,6 +34,8 @@ interface EditingWorkflow {
   finalize_success_script_id?: string
   finalize_failure_command?: string
   finalize_failure_script_id?: string
+  pause_event_command?: string
+  pause_event_script_id?: string
 }
 
 export function WorkflowsPage() {

@@ -71,7 +71,7 @@ describe('AgentDefsSection - layer policy display', () => {
       makeAgent({ id: 'a2' }),
     ])
     const { listLayerPolicies } = await import('@/api/workflowLayerPolicies')
-    vi.mocked(listLayerPolicies).mockResolvedValueOnce({ 0: 'quorum:2' })
+    vi.mocked(listLayerPolicies).mockResolvedValueOnce({ layer_policies: { 0: 'quorum:2' }, layer_pause: {} })
 
     renderWithQuery(<AgentDefsSection workflowId="wf-1" groups={[]} />)
 

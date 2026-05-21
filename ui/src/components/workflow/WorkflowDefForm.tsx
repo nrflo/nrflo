@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { FinalizeSection, type FinalizeState } from '@/components/workflow/WorkflowDefForm.finalize-slot'
+import { PauseSection, type PauseState } from '@/components/workflow/WorkflowDefForm.pause-slot'
 import { useProjectStore } from '@/stores/projectStore'
 import { useCLIModels } from '@/hooks/useCLIModels'
 import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
@@ -29,6 +30,8 @@ interface WorkflowDefFormProps {
     finalize_success_script_id?: string
     finalize_failure_command?: string
     finalize_failure_script_id?: string
+    pause_event_command?: string
+    pause_event_script_id?: string
   }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
@@ -53,6 +56,11 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
     failureMode: initial?.finalize_failure_command ? 'command' : initial?.finalize_failure_script_id ? 'script' : '',
     failureCommand: initial?.finalize_failure_command || '',
     failureScriptId: initial?.finalize_failure_script_id || '',
+  })
+  const [pause, setPause] = useState<PauseState>({
+    mode: initial?.pause_event_command ? 'command' : initial?.pause_event_script_id ? 'script' : '',
+    command: initial?.pause_event_command || '',
+    scriptId: initial?.pause_event_script_id || '',
   })
 
   const project = useProjectStore((s) => s.currentProject)
@@ -109,6 +117,8 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       finalize_success_script_id: finalize.successMode === 'script' ? finalize.successScriptId || undefined : undefined,
       finalize_failure_command: finalize.failureMode === 'command' ? finalize.failureCommand || undefined : undefined,
       finalize_failure_script_id: finalize.failureMode === 'script' ? finalize.failureScriptId || undefined : undefined,
+      pause_event_command: pause.mode === 'command' ? pause.command || undefined : undefined,
+      pause_event_script_id: pause.mode === 'script' ? pause.scriptId || undefined : undefined,
     }
     if (isCreate) {
       onSubmit({ id: id.trim(), ...shared } as WorkflowDefCreateRequest)
@@ -280,6 +290,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       </div>
 
       <FinalizeSection state={finalize} onChange={(patch) => setFinalize((prev) => ({ ...prev, ...patch }))} />
+      <PauseSection state={pause} onChange={(patch) => setPause((prev) => ({ ...prev, ...patch }))} />
     </form>
   )
 }

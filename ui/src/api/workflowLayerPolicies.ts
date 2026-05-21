@@ -1,22 +1,23 @@
 import { apiGet, apiPut, apiDelete } from './client'
-import type { LayerPassPolicy } from '@/types/workflow'
+import type { LayerPassPolicy, LayerPoliciesResponse } from '@/types/workflow'
 
-/** List all layer policies for a workflow (keyed by layer number) */
-export async function listLayerPolicies(workflowId: string): Promise<Record<number, LayerPassPolicy>> {
-  return apiGet<Record<number, LayerPassPolicy>>(
+/** List all layer policies and pause-after flags for a workflow */
+export async function listLayerPolicies(workflowId: string): Promise<LayerPoliciesResponse> {
+  return apiGet<LayerPoliciesResponse>(
     `/api/v1/workflows/${encodeURIComponent(workflowId)}/layer-policies`
   )
 }
 
-/** Set (or update) the pass policy for a specific layer */
+/** Set (or update) the pass policy and optional pause-after flag for a specific layer */
 export async function setLayerPolicy(
   workflowId: string,
   layer: number,
-  pass_policy: LayerPassPolicy
+  pass_policy: LayerPassPolicy,
+  pause_after?: boolean
 ): Promise<{ status: string }> {
   return apiPut<{ status: string }>(
     `/api/v1/workflows/${encodeURIComponent(workflowId)}/layer-policies/${layer}`,
-    { pass_policy }
+    pause_after !== undefined ? { pass_policy, pause_after } : { pass_policy }
   )
 }
 

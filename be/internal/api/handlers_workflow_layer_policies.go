@@ -25,7 +25,16 @@ func (s *Server) handleListLayerPolicies(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, policies)
+	pauseAfter, err := svc.GetLayerPauseAfter(projectID, workflowID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"layer_policies": policies,
+		"layer_pause":    pauseAfter,
+	})
 }
 
 // handleSetLayerPolicy upserts the pass_policy for a specific layer.

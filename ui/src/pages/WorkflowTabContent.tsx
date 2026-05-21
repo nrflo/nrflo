@@ -26,6 +26,8 @@ import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { ConflictResolverBanner } from '@/components/workflow/ConflictResolverBanner'
 import { FinalizeResultPanel } from '@/components/workflow/FinalizeResultPanel'
+import { PauseResultPanel } from '@/components/workflow/PauseResultPanel'
+import { WorkflowPauseControls, WorkflowFailControl } from '@/components/workflow/WorkflowPauseControls'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { cn, formatDateTime, formatDurationSec, formatTokenCount } from '@/lib/utils'
@@ -63,6 +65,10 @@ interface WorkflowTabContentProps {
   projectFindings?: Record<string, unknown>
   blockedReason?: string
   headerExtra?: React.ReactNode
+  onContinue?: (instructions: string) => void
+  continuePending?: boolean
+  onFail?: (reason: string) => void
+  failPending?: boolean
 }
 
 export function WorkflowTabContent({
@@ -98,6 +104,10 @@ export function WorkflowTabContent({
   projectFindings,
   blockedReason,
   headerExtra,
+  onContinue,
+  continuePending,
+  onFail,
+  failPending,
 }: WorkflowTabContentProps) {
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
@@ -157,6 +167,9 @@ export function WorkflowTabContent({
                       )}
                       Stop
                     </Button>
+                    {onFail && displayedState?.status !== 'waiting' && (
+                      <WorkflowFailControl onFail={onFail} failPending={failPending} />
+                    )}
                     {onTakeControl && takeControlTarget?.session_id && (
                       <Tooltip text="Take interactive control of agent" placement="top">
                         <Button
@@ -265,6 +278,14 @@ export function WorkflowTabContent({
                 />
               </div>
             )}
+            {displayedState.status === 'waiting' && onContinue && (
+              <WorkflowPauseControls
+                onContinue={onContinue}
+                continuePending={continuePending}
+                onFail={onFail}
+                failPending={failPending}
+              />
+            )}
             {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && !sessions?.some(s => s.agent_type === 'conflict-resolver' && s.status === 'running') && !agentHistory?.some(a => a.agent_type === 'conflict-resolver' && !a.result) && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -297,6 +318,7 @@ export function WorkflowTabContent({
               </div>
             )}
             <FinalizeResultPanel result={displayedState.finalize_result} />
+            <PauseResultPanel result={displayedState.pause_result} />
             <ConflictResolverBanner
               sessions={sessions ?? []}
               agentHistory={agentHistory ?? []}

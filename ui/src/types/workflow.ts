@@ -107,6 +107,21 @@ export interface FinalizeResult {
   timestamp?: string
 }
 
+export interface PauseEvent {
+  kind: 'command' | 'script'
+  target: string
+  exit_code: number
+  status: 'ok' | 'failed' | 'timeout'
+  output_tail?: string
+}
+
+export interface PauseResult {
+  paused_after_layer: number
+  resume_layer: number
+  event?: PauseEvent
+  timestamp?: string
+}
+
 export interface WorkflowState {
   workflow?: string
   instance_id?: string
@@ -121,6 +136,7 @@ export interface WorkflowState {
   total_tokens_used?: number
   workflow_final_result?: string
   finalize_result?: FinalizeResult
+  pause_result?: PauseResult
   phases?: Record<string, PhaseState>
   phase_order?: string[]
   phase_layers?: Record<string, number>
@@ -261,6 +277,11 @@ export interface PhaseDef {
   layer: number
 }
 
+export interface LayerPoliciesResponse {
+  layer_policies: Record<number, LayerPassPolicy>
+  layer_pause: Record<number, boolean>
+}
+
 /** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
 export interface WorkflowDefSummary {
   description: string
@@ -275,6 +296,8 @@ export interface WorkflowDefSummary {
   finalize_success_script_id?: string
   finalize_failure_command?: string
   finalize_failure_script_id?: string
+  pause_event_command?: string
+  pause_event_script_id?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
 }
@@ -295,6 +318,8 @@ export interface WorkflowDef {
   finalize_success_script_id?: string
   finalize_failure_command?: string
   finalize_failure_script_id?: string
+  pause_event_command?: string
+  pause_event_script_id?: string
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
@@ -315,6 +340,8 @@ export interface WorkflowDefCreateRequest {
   finalize_success_script_id?: string
   finalize_failure_command?: string
   finalize_failure_script_id?: string
+  pause_event_command?: string
+  pause_event_script_id?: string
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -330,6 +357,20 @@ export interface WorkflowDefUpdateRequest {
   finalize_success_script_id?: string
   finalize_failure_command?: string
   finalize_failure_script_id?: string
+  pause_event_command?: string
+  pause_event_script_id?: string
+}
+
+export interface ContinueWorkflowRequest {
+  workflow?: string
+  instance_id?: string
+  instructions?: string
+}
+
+export interface FailWorkflowRequest {
+  workflow?: string
+  instance_id?: string
+  reason: string
 }
 
 // Agent definition types (DB-stored)

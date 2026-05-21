@@ -80,6 +80,8 @@ export type WSEventType =
   | 'chain.run_failed'
   | 'workflow.finalize_succeeded'
   | 'workflow.finalize_failed'
+  | 'workflow.paused'
+  | 'workflow.resumed'
   | 'project.env_vars_updated'
   | 'service_tokens.updated'
   | 'spec_import.started'

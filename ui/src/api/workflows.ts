@@ -12,6 +12,8 @@ import type {
   TakeControlResponse,
   ExitInteractiveRequest,
   ResumeSessionRequest,
+  ContinueWorkflowRequest,
+  FailWorkflowRequest,
 } from '@/types/workflow'
 
 // Export/Import types mirroring be/internal/types/workflow_export_request.go
@@ -186,6 +188,28 @@ export async function killInteractive(
 ): Promise<{ status: string }> {
   return apiPost<{ status: string }>(
     `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/kill-interactive`,
+    params
+  )
+}
+
+/** Resume a paused (waiting) workflow instance */
+export async function continueWorkflow(
+  ticketId: string,
+  params: ContinueWorkflowRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/continue`,
+    params
+  )
+}
+
+/** Fail an active or waiting workflow instance */
+export async function failWorkflow(
+  ticketId: string,
+  params: FailWorkflowRequest
+): Promise<{ status: string }> {
+  return apiPost<{ status: string }>(
+    `/api/v1/tickets/${encodeURIComponent(ticketId)}/workflow/fail`,
     params
   )
 }

@@ -105,6 +105,7 @@ for `NRFLO_SOCKET` override details).
 | `c.agent.fail(reason="")` | Signal failure and exit |
 | `c.agent.continue_()` | Signal context exhaustion (triggers relaunch; rarely needed) |
 | `c.agent.callback(level)` | Trigger callback to re-run an earlier layer |
+| `c.agent.consult(consultant, question)` | Synchronously ask a named workflow consultant; blocks for and returns the answer string. `consultant` must be an api-mode consultant defined in the same workflow; the script agent shares the same ticket/findings/artifacts context. |
 
 ### Workflow Control
 

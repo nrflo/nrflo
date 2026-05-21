@@ -229,11 +229,11 @@ class _Agent:
         self._proj = proj
         self._trx = trx
 
-    def _call(self, action: str, extra: dict = None):
+    def _call(self, action: str, extra: dict = None) -> dict:
         params = {"session_id": self._sid, "instance_id": self._iid}
         if extra:
             params.update(extra)
-        _check(self._conn.send({
+        return _check(self._conn.send({
             "id": str(uuid.uuid4()), "method": f"agent.{action}",
             "project": self._proj, "trx": self._trx, "params": params,
         }))
@@ -252,6 +252,14 @@ class _Agent:
 
     def chain_next_ticket(self, ticket_id: str):
         self._call("chain_next_ticket", {"ticket_id": ticket_id})
+
+    def consult(self, consultant: str, question: str) -> str:
+        if not isinstance(consultant, str) or not consultant:
+            raise ValueError("consultant must be a non-empty string")
+        if not isinstance(question, str) or not question:
+            raise ValueError("question must be a non-empty string")
+        result = self._call("consult", {"consultant": consultant, "question": question})
+        return (result or {}).get("answer", "")
 
 
 class _Notification:

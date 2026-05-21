@@ -35,7 +35,7 @@ c = nrflo_sdk.client()
 |-------|---------|
 | `c.findings` | `add(key, value)`, `add_bulk(dict)`, `append(key, value)`, `append_bulk(dict)`, `get(agent_type=None, *, key=None, keys=None, layer=None)`, `delete(*keys)` — `layer=N` returns a flat `{agent_type: findings_dict\|None}` map; `agent_type` and `layer` are mutually exclusive |
 | `c.project_findings` | Same shape as `c.findings` but scoped to project |
-| `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)` |
+| `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)`, `consult(consultant, question) -> str` |
 | `c.workflow` | `continue_(instructions="", instance_id=None)`, `fail(reason, instance_id=None)` — continue/fail a workflow instance (defaults to current `_iid`) |
 | `c.artifacts` | `add(name, content, content_type=None)`, `list()`, `get(name)` |
 | `c.context(refresh=False)` | Cached call to the `script.context` socket method (17-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |

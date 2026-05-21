@@ -24,6 +24,7 @@ func TestPythonSDK_UnitTests(t *testing.T) {
 	testFiles := []string{
 		"test_nrflo_sdk.py",
 		"test_nrflo_sdk_artifacts.py",
+		"test_nrflo_sdk_consult.py",
 		"test_nrflo_sdk_notification.py",
 		"test_nrflo_sdk_outcome_accessors.py",
 	}

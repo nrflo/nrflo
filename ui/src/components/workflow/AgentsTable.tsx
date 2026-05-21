@@ -177,7 +177,7 @@ export function AgentsTable({
                 <Fragment key={row.phaseName}>
                   {showSeparator && (
                     <TableRow className="hover:bg-transparent border-0 pointer-events-none" aria-hidden="true">
-                      <TableCell colSpan={8} className="p-0 h-3 bg-muted/30 border-0" />
+                      <TableCell colSpan={8} className="p-0 h-3 bg-muted-foreground/30 border-0" />
                     </TableRow>
                   )}
                 <TableRow

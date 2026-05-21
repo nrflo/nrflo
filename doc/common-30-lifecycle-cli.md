@@ -30,6 +30,11 @@ nrflo skip <tag>
 # Workflow chain handoff — set data for the next step before finishing
 nrflo agent chain-next-instructions --instructions "<text>"
 nrflo agent chain-next-ticket --ticket-id "<id>"
+
+# Consult an api-mode consultant agent — blocks until answer is returned
+nrflo agent consult --consultant <id> --question "<text>"
+nrflo agent consult --consultant <id> --question -   # read question from stdin
+nrflo agent consult --consultant <id> --question "<text>" --json  # emit {"answer":...}
 ```
 
 | Command | When to use |
@@ -41,6 +46,7 @@ nrflo agent chain-next-ticket --ticket-id "<id>"
 | `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
 | `chain-next-instructions` | Pass instructions to the next chain step; call before `finished` |
 | `chain-next-ticket` | Set the ticket ID for the next ticket-scope chain step; call before `finished` |
+| `consult --consultant <id> --question <q>` | Synchronous expert consult; blocks until the consultant answers; prints answer to stdout. Requires `NRF_SESSION_ID`; consultant must be an api-mode consultant defined in the same workflow. |
 
 **Completion semantics:** Exit 0 or `agent finished` = pass. Non-zero exit or
 `agent fail` = fail. `agent continue` triggers a fresh relaunch for

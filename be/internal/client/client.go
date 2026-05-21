@@ -57,6 +57,10 @@ func ServerNotRunningError() error {
 
 // Execute sends a request and returns the response
 func (c *Client) Execute(method string, params interface{}) (*socket.Response, error) {
+	return c.executeWithReadDeadline(method, params, 5*time.Minute)
+}
+
+func (c *Client) executeWithReadDeadline(method string, params interface{}, readDeadline time.Duration) (*socket.Response, error) {
 	var conn net.Conn
 	var err error
 
@@ -113,7 +117,7 @@ func (c *Client) Execute(method string, params interface{}) (*socket.Response, e
 	}
 
 	// Read response
-	conn.SetReadDeadline(time.Now().Add(5 * time.Minute))
+	conn.SetReadDeadline(time.Now().Add(readDeadline))
 	reader := bufio.NewReader(conn)
 	respLine, err := reader.ReadBytes('\n')
 	if err != nil {
@@ -131,6 +135,27 @@ func (c *Client) Execute(method string, params interface{}) (*socket.Response, e
 // ExecuteAndUnmarshal sends a request and unmarshals the result
 func (c *Client) ExecuteAndUnmarshal(method string, params interface{}, result interface{}) error {
 	resp, err := c.Execute(method, params)
+	if err != nil {
+		return err
+	}
+
+	if resp.Error != nil {
+		return resp.Error
+	}
+
+	if result != nil && len(resp.Result) > 0 {
+		if err := json.Unmarshal(resp.Result, result); err != nil {
+			return fmt.Errorf("failed to unmarshal result: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// ExecuteAndUnmarshalWithReadDeadline is like ExecuteAndUnmarshal but uses a custom read deadline.
+// Use for calls that may block longer than the default 5-minute deadline (e.g. agent.consult).
+func (c *Client) ExecuteAndUnmarshalWithReadDeadline(method string, params interface{}, result interface{}, readDeadline time.Duration) error {
+	resp, err := c.executeWithReadDeadline(method, params, readDeadline)
 	if err != nil {
 		return err
 	}

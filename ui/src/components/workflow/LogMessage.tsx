@@ -28,11 +28,29 @@ export function parseToolName(message: string): { toolName: string | null; rest:
   return { toolName: match[1], rest: match[2] }
 }
 
-export function ToolBadge({ name }: { name: string }) {
+// Names longer than this are abbreviated to their token initials in compact mode.
+const COMPACT_NAME_MAX = 12
+
+// "enrich_treasury" -> "ET", "mcp__claude_ai_Gmail" -> "MCAG", "WebSearch" -> "WS".
+export function abbreviateToolName(name: string): string {
+  const tokens = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[_\s]+/)
+    .filter(Boolean)
+  if (tokens.length < 2) return name
+  return tokens.map((t) => t[0]!.toUpperCase()).join('')
+}
+
+export function ToolBadge({ name, compact = false }: { name: string; compact?: boolean }) {
   const colorClass = TOOL_COLORS[name] ?? DEFAULT_TOOL_COLOR
+  const abbreviated = compact && name.length > COMPACT_NAME_MAX
+  const display = abbreviated ? abbreviateToolName(name) : name
   return (
-    <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0', colorClass)}>
-      {name}
+    <span
+      title={abbreviated ? name : undefined}
+      className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 max-w-full', colorClass)}
+    >
+      {display}
     </span>
   )
 }

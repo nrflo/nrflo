@@ -289,8 +289,8 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             <Table className="[&>table]:text-xs [&>table]:table-fixed" data-testid="message-table">
               <TableHeader>
                 <TableRow data-testid="message-table-header">
-                  <TableHead className="w-[110px]">Time</TableHead>
-                  <TableHead className="w-[100px]">Tool</TableHead>
+                  <TableHead className="w-[80px] px-2">Time</TableHead>
+                  <TableHead className="w-[112px] px-2">Tool</TableHead>
                   <TableHead>Message</TableHead>
                 </TableRow>
               </TableHeader>
@@ -313,10 +313,10 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                       )}
                       data-testid="message-row"
                     >
-                      <TableCell className="py-1 w-[110px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                      <TableCell className="py-1 px-2 w-[80px] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                         {formatTime(msg.created_at)}
                       </TableCell>
-                      <TableCell className="py-1 w-[100px] overflow-hidden">
+                      <TableCell className="py-1 px-2 w-[112px] overflow-hidden">
                         {isUserInput ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-primary/10 text-primary border border-primary/40">
                             User
@@ -334,7 +334,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
                             Validation
                           </span>
                         ) : (
-                          toolName && <ToolBadge name={toolName} />
+                          toolName && <ToolBadge name={toolName} compact />
                         )}
                       </TableCell>
                       <TableCell className="py-1 whitespace-pre-wrap break-words text-foreground/90 align-top">

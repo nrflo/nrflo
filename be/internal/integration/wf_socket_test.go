@@ -45,6 +45,10 @@ func (f *fakeSocketWorkflowRunner) FailWorkflow(_ context.Context, projectID, in
 	return f.failErr
 }
 
+func (f *fakeSocketWorkflowRunner) Consult(_ context.Context, _, _, _ string) (string, error) {
+	return "", nil
+}
+
 func TestWorkflowContinueSocket_OwnerSession_CallsRunner(t *testing.T) {
 	env := NewTestEnv(t)
 	env.CreateTicket(t, "WC-1", "continue ticket")

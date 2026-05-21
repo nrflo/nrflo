@@ -392,6 +392,35 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "ok"})
 
+	case "consult":
+		var params struct {
+			SessionID  string `json:"session_id"`
+			InstanceID string `json:"instance_id"`
+			Consultant string `json:"consultant"`
+			Question   string `json:"question"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.SessionID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+		}
+		if params.Consultant == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("consultant is required"))
+		}
+		if params.Question == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("question is required"))
+		}
+		if h.workflowRunner == nil {
+			return MakeErrorResponse(req.ID, NewInternalError("workflow runner not available"))
+		}
+		answer, err := h.workflowRunner.Consult(ctx, params.SessionID, params.Consultant, params.Question)
+		if err != nil {
+			logger.Error(ctx, "socket handler error", "method", req.Method, "error", err)
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		return MakeResponse(req.ID, map[string]string{"answer": answer})
+
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "agent."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("agent."+action))

@@ -68,6 +68,10 @@ Before spawning agents for each layer, the orchestrator checks `skip_tags`:
 
 Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `createSkippedSessions()`.
 
+## Consult
+
+`Orchestrator.Consult(ctx, callerSessionID, consultantID, question)` (`consult.go`) is the synchronous consult entry point. It resolves the caller session context, enforces the socket-boundary recursion guard (consultants cannot initiate a consult), builds an api-capable `spawner.Config`, then delegates to `Spawner.Consult`.
+
 ## Automatic Merge Conflict Resolution
 
 Merge conflicts auto-resolved by the system agent defined in `be/internal/orchestrator/orchestrator_merge_resolve.go`.

@@ -71,11 +71,11 @@ func GetServerAddr() (network, address string) {
 
 // Server is the Unix socket server
 type Server struct {
-	pool     *db.Pool
-	listener net.Listener
-	handler  *Handler
-	socketPath  string
-	wsHub       *ws.Hub
+	pool       *db.Pool
+	listener   net.Listener
+	handler    *Handler
+	socketPath string
+	wsHub      *ws.Hub
 
 	// Shutdown handling
 	shutdown chan struct{}
@@ -92,6 +92,7 @@ type WorkflowOrchestrator interface {
 	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error
 	ContinueWorkflow(ctx context.Context, projectID, instanceID, instructions string) error
 	FailWorkflow(ctx context.Context, projectID, instanceID, reason string) error
+	Consult(ctx context.Context, callerSessionID, consultantID, question string) (string, error)
 }
 
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner
@@ -283,7 +284,7 @@ type Handler struct {
 	projectEnvVarSvc   *service.ProjectEnvVarService
 	globalSettingsSvc  *service.GlobalSettingsService
 	wsHub              *ws.Hub
-	signaler           TerminalSignaler    // optional; nil-safe
+	signaler           TerminalSignaler     // optional; nil-safe
 	workflowRunner     WorkflowOrchestrator // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
@@ -319,4 +320,3 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 func (s *Server) SetWorkflowRunner(r WorkflowOrchestrator) {
 	s.handler.workflowRunner = r
 }
-

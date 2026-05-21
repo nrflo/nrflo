@@ -29,6 +29,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.context_update` | Update `context_left` for a session; broadcasts `agent.context_updated` |
 | `agent.chain_next_instructions` | Set instructions for the next pending chain step |
 | `agent.chain_next_ticket` | Set ticket ID for the next pending ticket-scope chain step |
+| `agent.consult` | Synchronously spawn an api-mode consultant under the caller workflow instance and return its answer. Params: `{session_id, consultant, question}`. Requires `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()` (nil → internal error). |
 | `agent.record_event` | Record Claude/codex hook event; PreToolUse inserts message row + WS broadcast; PostToolUse no-op; Stop flushes codex JSONL messages |
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |

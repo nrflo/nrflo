@@ -18,7 +18,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
   const isBlocked = isPendingTicket(ticket) && ticket.is_blocked
 
   return (
-    <Link to={`/tickets/${encodeURIComponent(ticket.id)}`}>
+    <Link to={`/tickets/${encodeURIComponent(ticket.id)}`} className="block min-w-0">
       <Card className="hover:border-primary/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
@@ -34,7 +34,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   </span>
                 )}
               </div>
-              <h3 className="font-medium text-sm truncate break-words">{ticket.title}</h3>
+              <h3 className="font-medium text-sm truncate">{ticket.title}</h3>
               {ticket.description && (
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                   {ticket.description}

@@ -91,6 +91,11 @@ func (s *WorkflowExportService) Export(projectID string, workflowIDs []string) (
 			return nil, err
 		}
 
+		layerPauseAfter, err := s.layerPolicySvc.GetLayerPauseAfter(projectID, wfID)
+		if err != nil {
+			return nil, err
+		}
+
 		channels, err := s.notifySvc.List(projectID, wfID)
 		if err != nil {
 			return nil, err
@@ -101,10 +106,11 @@ func (s *WorkflowExportService) Export(projectID string, workflowIDs []string) (
 		}
 
 		bundle.Workflows = append(bundle.Workflows, types.WorkflowBundleEntry{
-			Workflow:      wf,
-			Agents:        agents,
-			LayerPolicies: policies,
-			Notifications: channels,
+			Workflow:        wf,
+			Agents:          agents,
+			LayerPolicies:   policies,
+			LayerPauseAfter: layerPauseAfter,
+			Notifications:   channels,
 		})
 	}
 
@@ -129,11 +135,12 @@ func (s *WorkflowExportService) Export(projectID string, workflowIDs []string) (
 // fetchWorkflowModel queries the workflows table and returns a model.Workflow.
 func (s *WorkflowExportService) fetchWorkflowModel(projectID, workflowID string) (*model.Workflow, error) {
 	var desc, scopeType, groupsStr, nextWF string
+	var pauseEventCommand, pauseEventScriptID string
 	var closeOnComplete bool
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success
+		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, pause_event_command, pause_event_script_id
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&desc, &scopeType, &groupsStr, &closeOnComplete, &nextWF)
+		projectID, workflowID).Scan(&desc, &scopeType, &groupsStr, &closeOnComplete, &nextWF, &pauseEventCommand, &pauseEventScriptID)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -147,6 +154,8 @@ func (s *WorkflowExportService) fetchWorkflowModel(projectID, workflowID string)
 		ScopeType:             scopeType,
 		CloseTicketOnComplete: closeOnComplete,
 		NextWorkflowOnSuccess: nextWF,
+		PauseEventCommand:     pauseEventCommand,
+		PauseEventScriptID:    pauseEventScriptID,
 		Groups:                groupsStr,
 	}, nil
 }

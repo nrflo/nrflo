@@ -203,6 +203,8 @@ type WorkflowDefCreateRequest struct {
 	FinalizeSuccessScriptID     string   `json:"finalize_success_script_id,omitempty"`
 	FinalizeFailureCommand      string   `json:"finalize_failure_command,omitempty"`
 	FinalizeFailureScriptID     string   `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand           string   `json:"pause_event_command,omitempty"`
+	PauseEventScriptID          string   `json:"pause_event_script_id,omitempty"`
 	ObserverContext             string   `json:"observer_context,omitempty"`
 	ObserverProvider            *string  `json:"observer_provider,omitempty"`
 	ObserverModel               *string  `json:"observer_model,omitempty"`
@@ -219,9 +221,23 @@ type WorkflowDefUpdateRequest struct {
 	FinalizeSuccessScriptID     *string   `json:"finalize_success_script_id,omitempty"`
 	FinalizeFailureCommand      *string   `json:"finalize_failure_command,omitempty"`
 	FinalizeFailureScriptID     *string   `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand           *string   `json:"pause_event_command,omitempty"`
+	PauseEventScriptID          *string   `json:"pause_event_script_id,omitempty"`
 	ObserverContext             *string   `json:"observer_context,omitempty"`
 	ObserverProvider            *string   `json:"observer_provider,omitempty"`
 	ObserverModel               *string   `json:"observer_model,omitempty"`
+}
+
+// ContinueWorkflowRequest is the request for continuing a paused workflow instance.
+type ContinueWorkflowRequest struct {
+	InstanceID   string `json:"instance_id"`
+	Instructions string `json:"instructions,omitempty"`
+}
+
+// FailWorkflowRequest is the request for failing a workflow instance.
+type FailWorkflowRequest struct {
+	InstanceID string `json:"instance_id"`
+	Reason     string `json:"reason,omitempty"`
 }
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
@@ -236,114 +252,6 @@ type ProjectWorkflowRunRequest struct {
 	InputArtifacts  []InputArtifactRef `json:"input_artifacts,omitempty"`
 }
 
-// AgentDefCreateRequest is the request for creating an agent definition
-type AgentDefCreateRequest struct {
-	ID                     string    `json:"id"`
-	Model                  string    `json:"model,omitempty"`
-	Timeout                int       `json:"timeout,omitempty"`
-	Prompt                 string    `json:"prompt"`
-	Layer                  int       `json:"layer"`
-	RestartThreshold       *int      `json:"restart_threshold,omitempty"`
-	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
-	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
-	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
-	Tag                    string    `json:"tag,omitempty"`
-	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
-	ExecutionMode          string    `json:"execution_mode,omitempty"`
-	Tools                  string    `json:"tools,omitempty"`
-	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
-	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
-	PythonScriptID         *string   `json:"python_script_id,omitempty"`
-	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
-}
-
-// AgentDefUpdateRequest is the request for updating an agent definition
-type AgentDefUpdateRequest struct {
-	Model                  *string   `json:"model,omitempty"`
-	Timeout                *int      `json:"timeout,omitempty"`
-	Prompt                 *string   `json:"prompt,omitempty"`
-	Layer                  *int      `json:"layer,omitempty"`
-	RestartThreshold       *int      `json:"restart_threshold,omitempty"`
-	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
-	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
-	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
-	Tag                    *string   `json:"tag,omitempty"`
-	LowConsumptionModel    *string   `json:"low_consumption_model,omitempty"`
-	ExecutionMode          *string   `json:"execution_mode,omitempty"`
-	Tools                  *string   `json:"tools,omitempty"`
-	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
-	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
-	PythonScriptID         *string   `json:"python_script_id,omitempty"`
-	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
-}
-
-// SystemAgentDefCreateRequest is the request for creating a system agent definition
-type SystemAgentDefCreateRequest struct {
-	ID                     string `json:"id"`
-	Role                   string `json:"role,omitempty"`
-	ExecutionMode          string `json:"execution_mode,omitempty"`
-	Model                  string `json:"model,omitempty"`
-	Timeout                int    `json:"timeout,omitempty"`
-	Prompt                 string `json:"prompt"`
-	Tools                  string `json:"tools,omitempty"`
-	APIMaxIterations       *int   `json:"api_max_iterations,omitempty"`
-	APIMaxTokens           *int   `json:"api_max_tokens,omitempty"`
-	RestartThreshold       *int   `json:"restart_threshold,omitempty"`
-	MaxFailRestarts        *int   `json:"max_fail_restarts,omitempty"`
-	StallStartTimeoutSec   *int   `json:"stall_start_timeout_sec,omitempty"`
-	StallRunningTimeoutSec *int   `json:"stall_running_timeout_sec,omitempty"`
-}
-
-// SystemAgentDefUpdateRequest is the request for updating a system agent definition
-type SystemAgentDefUpdateRequest struct {
-	Role                   *string `json:"role,omitempty"`
-	ExecutionMode          *string `json:"execution_mode,omitempty"`
-	Model                  *string `json:"model,omitempty"`
-	Timeout                *int    `json:"timeout,omitempty"`
-	Prompt                 *string `json:"prompt,omitempty"`
-	Tools                  *string `json:"tools,omitempty"`
-	APIMaxIterations       *int    `json:"api_max_iterations,omitempty"`
-	APIMaxTokens           *int    `json:"api_max_tokens,omitempty"`
-	RestartThreshold       *int    `json:"restart_threshold,omitempty"`
-	MaxFailRestarts        *int    `json:"max_fail_restarts,omitempty"`
-	StallStartTimeoutSec   *int    `json:"stall_start_timeout_sec,omitempty"`
-	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
-}
-
-// DefaultTemplateCreateRequest is the request for creating a default template
-type DefaultTemplateCreateRequest struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Template string `json:"template"`
-}
-
-// DefaultTemplateUpdateRequest is the request for updating a default template
-type DefaultTemplateUpdateRequest struct {
-	Name     *string `json:"name,omitempty"`
-	Type     *string `json:"type,omitempty"`
-	Template *string `json:"template,omitempty"`
-}
-
-// CLIModelCreateRequest is the request for creating a CLI model
-type CLIModelCreateRequest struct {
-	ID              string `json:"id"`
-	CLIType         string `json:"cli_type"`
-	DisplayName     string `json:"display_name"`
-	MappedModel     string `json:"mapped_model"`
-	ReasoningEffort string `json:"reasoning_effort"`
-	ContextLength   int    `json:"context_length"`
-}
-
-// CLIModelUpdateRequest is the request for updating a CLI model
-type CLIModelUpdateRequest struct {
-	DisplayName     *string `json:"display_name,omitempty"`
-	MappedModel     *string `json:"mapped_model,omitempty"`
-	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
-	ContextLength   *int    `json:"context_length,omitempty"`
-	Enabled         *bool   `json:"enabled,omitempty"`
-}
-
 // DependencyRequest is the request for adding/removing dependencies
 type DependencyRequest struct {
 	Child  string `json:"child"`
@@ -354,32 +262,4 @@ type DependencyRequest struct {
 type StatusRequest struct {
 	PendingLimit   int `json:"pending_limit,omitempty"`
 	CompletedLimit int `json:"completed_limit,omitempty"`
-}
-
-// InputArtifactRef references a staged upload to attach to a workflow run.
-type InputArtifactRef struct {
-	UploadID string `json:"upload_id"`
-	Name     string `json:"name,omitempty"`
-}
-
-// ArtifactUploadResponse is returned after staging an upload.
-type ArtifactUploadResponse struct {
-	UploadID    string `json:"upload_id"`
-	Name        string `json:"name"`
-	SizeBytes   int64  `json:"size_bytes"`
-	ContentType string `json:"content_type"`
-}
-
-// ArtifactDTO is the API representation of a stored artifact.
-type ArtifactDTO struct {
-	ID                 string `json:"id"`
-	ProjectID          string `json:"project_id"`
-	WorkflowInstanceID string `json:"workflow_instance_id"`
-	Name               string `json:"name"`
-	Type               string `json:"type"`
-	SizeBytes          int64  `json:"size_bytes"`
-	ContentType        string `json:"content_type,omitempty"`
-	Source             string `json:"source"`
-	CreatedBySession   string `json:"created_by_session,omitempty"`
-	CreatedAt          string `json:"created_at"`
 }

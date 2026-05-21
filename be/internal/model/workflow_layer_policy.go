@@ -8,6 +8,7 @@ type WorkflowLayerPolicy struct {
 	WorkflowID string    `json:"workflow_id"`
 	Layer      int       `json:"layer"`
 	PassPolicy string    `json:"pass_policy"`
+	PauseAfter bool      `json:"pause_after"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 }

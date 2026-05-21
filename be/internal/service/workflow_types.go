@@ -41,6 +41,8 @@ type WorkflowDef struct {
 	FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
 	FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
 	FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand          string         `json:"pause_event_command,omitempty"`
+	PauseEventScriptID         string         `json:"pause_event_script_id,omitempty"`
 	Phases                     []PhaseDef     `json:"-"`
 	LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
 	ObserverContext            string         `json:"-"`
@@ -60,6 +62,8 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
 		FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
 		FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+		PauseEventCommand          string         `json:"pause_event_command,omitempty"`
+		PauseEventScriptID         string         `json:"pause_event_script_id,omitempty"`
 		Phases                     []PhaseDef     `json:"phases"`
 		LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
 		ObserverContext            string         `json:"observer_context,omitempty"`
@@ -88,6 +92,8 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		FinalizeSuccessScriptID:    wf.FinalizeSuccessScriptID,
 		FinalizeFailureCommand:     wf.FinalizeFailureCommand,
 		FinalizeFailureScriptID:    wf.FinalizeFailureScriptID,
+		PauseEventCommand:          wf.PauseEventCommand,
+		PauseEventScriptID:         wf.PauseEventScriptID,
 		Phases:                     phases,
 		LayerPolicies:              wf.LayerPolicies,
 		ObserverContext:            wf.ObserverContext,
@@ -107,6 +113,8 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 		FinalizeSuccessScriptID    string         `json:"finalize_success_script_id,omitempty"`
 		FinalizeFailureCommand     string         `json:"finalize_failure_command,omitempty"`
 		FinalizeFailureScriptID    string         `json:"finalize_failure_script_id,omitempty"`
+		PauseEventCommand          string         `json:"pause_event_command,omitempty"`
+		PauseEventScriptID         string         `json:"pause_event_script_id,omitempty"`
 		Phases                     []PhaseDef     `json:"phases"`
 		LayerPolicies              map[int]string `json:"layer_policies,omitempty"`
 		ObserverContext            string         `json:"observer_context,omitempty"`
@@ -124,6 +132,8 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.FinalizeSuccessScriptID = raw.FinalizeSuccessScriptID
 	wf.FinalizeFailureCommand = raw.FinalizeFailureCommand
 	wf.FinalizeFailureScriptID = raw.FinalizeFailureScriptID
+	wf.PauseEventCommand = raw.PauseEventCommand
+	wf.PauseEventScriptID = raw.PauseEventScriptID
 	wf.Phases = raw.Phases
 	wf.LayerPolicies = raw.LayerPolicies
 	wf.ObserverContext = raw.ObserverContext

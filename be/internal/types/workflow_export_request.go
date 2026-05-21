@@ -12,10 +12,11 @@ type WorkflowBundle struct {
 
 // WorkflowBundleEntry holds one workflow and all its nested definitions.
 type WorkflowBundleEntry struct {
-	Workflow      *model.Workflow              `json:"workflow"`
-	Agents        []*model.AgentDefinition     `json:"agents"`
-	LayerPolicies map[int]string               `json:"layer_policies"`
-	Notifications []*model.NotificationChannel `json:"notifications"`
+	Workflow        *model.Workflow              `json:"workflow"`
+	Agents          []*model.AgentDefinition     `json:"agents"`
+	LayerPolicies   map[int]string               `json:"layer_policies"`
+	LayerPauseAfter map[int]bool                 `json:"layer_pause_after,omitempty"`
+	Notifications   []*model.NotificationChannel `json:"notifications"`
 }
 
 // ImportConflicts lists entity IDs that already exist in the target project.

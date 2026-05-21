@@ -46,6 +46,7 @@ func (s *Server) handleSetLayerPolicy(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		PassPolicy string `json:"pass_policy"`
+		PauseAfter *bool  `json:"pause_after,omitempty"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -60,6 +61,13 @@ func (s *Server) handleSetLayerPolicy(w http.ResponseWriter, r *http.Request) {
 	if err := svc.SetLayerPolicy(projectID, workflowID, layer, req.PassPolicy); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	if req.PauseAfter != nil {
+		if err := svc.SetLayerPauseAfter(projectID, workflowID, layer, *req.PauseAfter); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 
 	if s.wsHub != nil {

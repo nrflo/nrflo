@@ -24,6 +24,7 @@ const (
 	WorkflowInstanceCompleted        WorkflowInstanceStatus = "completed"
 	WorkflowInstanceFailed           WorkflowInstanceStatus = "failed"
 	WorkflowInstanceProjectCompleted WorkflowInstanceStatus = "project_completed"
+	WorkflowInstanceWaiting          WorkflowInstanceStatus = "waiting"
 )
 
 // WorkflowInstance represents a running workflow on a ticket or project

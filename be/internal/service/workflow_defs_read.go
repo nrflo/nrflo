@@ -12,15 +12,17 @@ import (
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
 	var description, scopeType, groupsStr, nextWorkflowOnSuccess string
 	var finalizeSuccessCommand, finalizeSuccessScriptID, finalizeFailureCommand, finalizeFailureScriptID string
+	var pauseEventCommand, pauseEventScriptID string
 	var closeTicketOnComplete bool
 	var observerContext string
 	var observerProvider, observerModel sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, observer_context, observer_provider, observer_model
+		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess,
 		&finalizeSuccessCommand, &finalizeSuccessScriptID, &finalizeFailureCommand, &finalizeFailureScriptID,
+		&pauseEventCommand, &pauseEventScriptID,
 		&observerContext, &observerProvider, &observerModel)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
@@ -42,6 +44,8 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	wf.FinalizeSuccessScriptID = finalizeSuccessScriptID
 	wf.FinalizeFailureCommand = finalizeFailureCommand
 	wf.FinalizeFailureScriptID = finalizeFailureScriptID
+	wf.PauseEventCommand = pauseEventCommand
+	wf.PauseEventScriptID = pauseEventScriptID
 	wf.ObserverContext = observerContext
 	if observerProvider.Valid && observerProvider.String != "" {
 		wf.ObserverProvider = &observerProvider.String
@@ -63,7 +67,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, observer_context, observer_provider, observer_model
+		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -75,6 +79,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		id, description, scopeType, groupsStr, nextWorkflowOnSuccess string
 		finalizeSuccessCommand, finalizeSuccessScriptID               string
 		finalizeFailureCommand, finalizeFailureScriptID               string
+		pauseEventCommand, pauseEventScriptID                         string
 		closeTicketOnComplete                                          bool
 		observerContext                                                string
 		observerProvider, observerModel                               sql.NullString
@@ -84,6 +89,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		var m wfMeta
 		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess,
 			&m.finalizeSuccessCommand, &m.finalizeSuccessScriptID, &m.finalizeFailureCommand, &m.finalizeFailureScriptID,
+			&m.pauseEventCommand, &m.pauseEventScriptID,
 			&m.observerContext, &m.observerProvider, &m.observerModel); err != nil {
 			return nil, err
 		}
@@ -113,6 +119,8 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		wf.FinalizeSuccessScriptID = m.finalizeSuccessScriptID
 		wf.FinalizeFailureCommand = m.finalizeFailureCommand
 		wf.FinalizeFailureScriptID = m.finalizeFailureScriptID
+		wf.PauseEventCommand = m.pauseEventCommand
+		wf.PauseEventScriptID = m.pauseEventScriptID
 		wf.ObserverContext = m.observerContext
 		if m.observerProvider.Valid && m.observerProvider.String != "" {
 			wf.ObserverProvider = &m.observerProvider.String

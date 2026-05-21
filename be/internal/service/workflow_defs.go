@@ -58,6 +58,10 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		return nil, err
 	}
 
+	if err := s.validatePauseSlot(projectID, req.PauseEventCommand, req.PauseEventScriptID); err != nil {
+		return nil, err
+	}
+
 	closeTicketOnComplete := true
 	if req.CloseTicketOnComplete != nil {
 		closeTicketOnComplete = *req.CloseTicketOnComplete
@@ -75,6 +79,8 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		FinalizeSuccessScriptID:     req.FinalizeSuccessScriptID,
 		FinalizeFailureCommand:      req.FinalizeFailureCommand,
 		FinalizeFailureScriptID:     req.FinalizeFailureScriptID,
+		PauseEventCommand:           req.PauseEventCommand,
+		PauseEventScriptID:          req.PauseEventScriptID,
 		Groups:                      string(groupsJSON),
 		CreatedAt:                   s.clock.Now().UTC(),
 		UpdatedAt:                   s.clock.Now().UTC(),
@@ -89,10 +95,11 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	}
 
 	_, err := s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, observer_context, observer_provider, observer_model, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess,
 		wf.FinalizeSuccessCommand, wf.FinalizeSuccessScriptID, wf.FinalizeFailureCommand, wf.FinalizeFailureScriptID,
+		wf.PauseEventCommand, wf.PauseEventScriptID,
 		req.ObserverContext, observerProvider, observerModel, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
@@ -181,6 +188,28 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 	if req.FinalizeFailureScriptID != nil {
 		updates = append(updates, "finalize_failure_script_id = ?")
 		args = append(args, *req.FinalizeFailureScriptID)
+	}
+
+	if req.PauseEventCommand != nil || req.PauseEventScriptID != nil {
+		pauseCmd := ""
+		pauseScript := ""
+		if req.PauseEventCommand != nil {
+			pauseCmd = *req.PauseEventCommand
+		}
+		if req.PauseEventScriptID != nil {
+			pauseScript = *req.PauseEventScriptID
+		}
+		if err := s.validatePauseSlot(projectID, pauseCmd, pauseScript); err != nil {
+			return err
+		}
+	}
+	if req.PauseEventCommand != nil {
+		updates = append(updates, "pause_event_command = ?")
+		args = append(args, *req.PauseEventCommand)
+	}
+	if req.PauseEventScriptID != nil {
+		updates = append(updates, "pause_event_script_id = ?")
+		args = append(args, *req.PauseEventScriptID)
 	}
 
 	if req.ObserverContext != nil {

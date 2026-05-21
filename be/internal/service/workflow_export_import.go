@@ -142,6 +142,8 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 			Groups:                entry.Workflow.GetGroups(),
 			CloseTicketOnComplete: &closeOnComplete,
 			NextWorkflowOnSuccess: entry.Workflow.NextWorkflowOnSuccess,
+			PauseEventCommand:     entry.Workflow.PauseEventCommand,
+			PauseEventScriptID:    entry.Workflow.PauseEventScriptID,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create workflow %s: %w", finalID, err)
@@ -190,6 +192,12 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 		for layer, policy := range entry.LayerPolicies {
 			if err := s.layerPolicySvc.SetLayerPolicy(projectID, wf.ID, layer, policy); err != nil {
 				return nil, fmt.Errorf("set layer policy %d in workflow %s: %w", layer, wf.ID, err)
+			}
+		}
+
+		for layer, pauseAfter := range entry.LayerPauseAfter {
+			if err := s.layerPolicySvc.SetLayerPauseAfter(projectID, wf.ID, layer, pauseAfter); err != nil {
+				return nil, fmt.Errorf("set layer pause_after %d in workflow %s: %w", layer, wf.ID, err)
 			}
 		}
 

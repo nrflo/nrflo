@@ -44,6 +44,11 @@ func (s *WorkflowService) validateFinalizeSlots(
 	return validateFinalizeSlot(s, projectID, "finalize_failure", failureCmd, failureScriptID)
 }
 
+// validatePauseSlot checks mutual exclusivity of command vs script_id for the pause_event slot.
+func (s *WorkflowService) validatePauseSlot(projectID, cmd, scriptID string) error {
+	return validateFinalizeSlot(s, projectID, "pause_event", cmd, scriptID)
+}
+
 func validateFinalizeSlot(s *WorkflowService, projectID, slot, cmd, scriptID string) error {
 	if cmd != "" && scriptID != "" {
 		return fmt.Errorf("%s: command and script_id are mutually exclusive", slot)

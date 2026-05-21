@@ -33,8 +33,15 @@ func (s *WorkflowLayerPolicyService) GetLayerPolicies(projectID, workflowID stri
 	return result, nil
 }
 
+// GetLayerPauseAfter returns a map of layer → pause_after for the given workflow.
+func (s *WorkflowLayerPolicyService) GetLayerPauseAfter(projectID, workflowID string) (map[int]bool, error) {
+	r := repo.NewWorkflowLayerPolicyRepo(s.pool, s.clock)
+	return r.GetLayerPauseAfter(projectID, workflowID)
+}
+
 // SetLayerPolicy validates and upserts a pass policy for a specific layer.
 // The policy is validated against the current agent count in that layer.
+// Preserves the existing pause_after value for the layer.
 func (s *WorkflowLayerPolicyService) SetLayerPolicy(projectID, workflowID string, layer int, policy string) error {
 	agentDefRepo := repo.NewAgentDefinitionRepo(s.pool, s.clock)
 	defs, err := agentDefRepo.List(projectID, workflowID)
@@ -54,11 +61,43 @@ func (s *WorkflowLayerPolicyService) SetLayerPolicy(projectID, workflowID string
 	}
 
 	r := repo.NewWorkflowLayerPolicyRepo(s.pool, s.clock)
+	pauseMap, err := r.GetLayerPauseAfter(projectID, workflowID)
+	if err != nil {
+		return err
+	}
+
 	return r.Upsert(&model.WorkflowLayerPolicy{
 		ProjectID:  projectID,
 		WorkflowID: workflowID,
 		Layer:      layer,
 		PassPolicy: policy,
+		PauseAfter: pauseMap[layer],
+	})
+}
+
+// SetLayerPauseAfter upserts the pause_after flag for a specific layer.
+// Preserves the existing pass_policy value for the layer (defaulting to "any").
+func (s *WorkflowLayerPolicyService) SetLayerPauseAfter(projectID, workflowID string, layer int, pauseAfter bool) error {
+	r := repo.NewWorkflowLayerPolicyRepo(s.pool, s.clock)
+	rows, err := r.ListByWorkflow(projectID, workflowID)
+	if err != nil {
+		return err
+	}
+
+	passPolicy := "any"
+	for _, row := range rows {
+		if row.Layer == layer {
+			passPolicy = row.PassPolicy
+			break
+		}
+	}
+
+	return r.Upsert(&model.WorkflowLayerPolicy{
+		ProjectID:  projectID,
+		WorkflowID: workflowID,
+		Layer:      layer,
+		PassPolicy: passPolicy,
+		PauseAfter: pauseAfter,
 	})
 }
 

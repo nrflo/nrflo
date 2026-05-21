@@ -35,6 +35,12 @@ type WorkflowController interface {
 	FailWorkflow(ctx context.Context, projectID, instanceID, reason string) error
 }
 
+// ConsultantSpawner allows API-mode agents to ask a named consultant a question inline.
+// Nil-safe; guard with env.Consultant == nil before calling.
+type ConsultantSpawner interface {
+	Consult(ctx context.Context, callerSessionID, consultantID, question string) (string, error)
+}
+
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
 // It carries the in-process services and identifiers handlers need to
 // mirror the CLI socket flow without going over the network.
@@ -60,6 +66,9 @@ type ToolEnv struct {
 	// WorkflowControl allows workflow_continue/workflow_fail builtins to act on the workflow.
 	// Nil when the orchestrator is not wired (e.g. tests).
 	WorkflowControl WorkflowController
+	// Consultant allows the consult builtin to spawn a named consultant inline.
+	// Nil when not wired (e.g. tests, or when agent is itself a consultant).
+	Consultant ConsultantSpawner
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

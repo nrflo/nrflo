@@ -1169,6 +1169,18 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, fmt.Errorf("api mode: %w", regErr)
 		}
 
+		// Recursion guard: consultant agents may not call consult themselves.
+		if agentDef != nil && agentDef.Consultant {
+			delete(handlers, "consult")
+			filtered := specs[:0]
+			for _, spec := range specs {
+				if spec.Name != "consult" {
+					filtered = append(filtered, spec)
+				}
+			}
+			specs = filtered
+		}
+
 		if suffix != "" {
 			prep.apiSystem = strings.TrimSpace(defaultAPISystemPrompt + "\n\n" + suffix)
 		} else {
@@ -1195,6 +1207,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			Workflow:           s.config.WorkflowSvc,
 			ArtifactSvc:        s.config.ArtifactSvc,
 			WorkflowControl:    s.config.WorkflowControl,
+			Consultant:         s,
 		}
 		prep.apiMaxIterations = maxIter
 		prep.apiMaxTokens = maxTokens

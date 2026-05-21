@@ -91,6 +91,9 @@ const (
 	EventChainRunFailed             = "chain.run_failed"
 	EventArtifactCreated            = "artifact.created"
 	EventArtifactDeleted            = "artifact.deleted"
+	EventConsultStarted             = "consult.started"
+	EventConsultAnswered            = "consult.answered"
+	EventConsultFailed              = "consult.failed"
 )
 
 // Event represents a WebSocket event to broadcast

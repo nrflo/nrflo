@@ -73,11 +73,14 @@ time. Empty = no tools; `*` = all tools in scope.
 | `workflow_skip` | Add a skip tag to the workflow instance |
 | `workflow_continue` | Resume a paused (waiting) workflow instance. Input: `{instance_id, instructions?}` |
 | `workflow_fail` | Fail a workflow instance with a reason. Input: `{instance_id, reason}` |
+| `consult` | Ask a named consultant agent a question and receive an inline answer (api-mode only). Input: `{consultant, question}` |
 
 **`read_document`** materializes a named input artifact and returns its bytes
 as an image or document content block so the model can read it natively (OCR
 scanned PDFs, photos). PDF → document block; PNG/JPEG → image block. Capped
 at 32 MiB.
+
+**`consult`** synchronously spawns a named consultant agent (agent definition with `consultant=true` and `execution_mode=api`) under the same workflow instance. The caller's recent message transcript and the question are passed as `${CALLER_TRANSCRIPT}` and `${CONSULT_QUESTION}` template variables. The consultant must write a `_consult_answer` finding (string) and then call `agent_finished`. The answer is returned inline to the calling agent; the `_consult` phase is hidden from the read model. Consultant agents cannot call `consult` themselves (recursion guard). WebSocket events: `consult.started`, `consult.answered`, `consult.failed`.
 
 **HTTP tool definitions** — custom tools whose invocations are forwarded via
 HTTP POST to a configured endpoint. Defined per-project and scoped by project

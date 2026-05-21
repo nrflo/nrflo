@@ -82,6 +82,10 @@ Default: claude + codex → resume (with agent-path fallback); opencode/api → 
 
 When context usage crosses the threshold, the spawner kills the agent, saves context via the path above, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go` and `context_save_resume.go`.
 
+## Consult
+
+`Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline. It validates the target def (`consultant=true`, `execution_mode=api`), reads + truncates the caller transcript, then synchronously spawns a child `Spawner` running a single `_consult`-phase workflow under the caller's `workflow_instance_id` + ticket. The consultant writes a `_consult_answer` finding (read + deleted by session id) returned to the caller as the `consult` builtin's tool result. `prepareSpawn` strips `consult` from any consultant's own toolset (recursion guard). Broadcasts `consult.started`/`consult.answered`/`consult.failed`; the `_consult` phase is hidden from the v4 read model.
+
 ## Rate-Limit Restart
 
 For `cli_interactive` agents: when an agent exits non-zero and `ClassifyExit` (on the adapter) matches a rate-limit pattern in the last ~10 output/stderr blocks, `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts` in the DB, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` then sleeps with exponential backoff (`min(InitialBackoff * 2^(retryCount-1), MaxWait)`), using `s.config.Clock.After` so tests control time. `rateLimitRetryCount` is a separate counter from `failRestartCount` and carries across relaunches via `relaunchForContinuation`.

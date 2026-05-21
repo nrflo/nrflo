@@ -13,9 +13,9 @@ import (
 )
 
 // transientAgentTypeExclusion is the shared SQL WHERE fragment that hides system/internal
-// agent types (named excludes) and underscore-prefixed transient hook sessions (_finalize,
-// _pause, _notification, …) from the v4 read model.
-const transientAgentTypeExclusion = `agent_type NOT IN ('planner', 'context-saver', 'conflict-resolver') AND agent_type NOT LIKE '\_%' ESCAPE '\'`
+// agent types (named excludes), underscore-prefixed transient hook sessions (_finalize,
+// _pause, _notification, …), and underscore-prefixed phases (_consult, …) from the v4 read model.
+const transientAgentTypeExclusion = `agent_type NOT IN ('planner', 'context-saver', 'conflict-resolver') AND agent_type NOT LIKE '\_%' ESCAPE '\' AND phase NOT LIKE '\_%' ESCAPE '\'`
 
 func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[string][]RestartDetail) map[string]interface{} {
 	agents := make(map[string]interface{})

@@ -76,7 +76,7 @@ func (o *Orchestrator) runFinalize(ctx context.Context, wfiID string, req RunReq
 		exitCode, status, outputTail = runFinalizeCommand(ctx5s, cmd, projectRoot, env)
 	} else {
 		kind, target = "script", scriptID
-		exitCode, status, outputTail = o.runFinalizeScript(ctx5s, pool, req.ProjectID, projectRoot, scriptID, wfiID, env)
+		exitCode, status, outputTail = o.runFinalizeScript(ctx5s, pool, req.ProjectID, req.TicketID, projectRoot, scriptID, wfiID, env)
 	}
 
 	persistFinalizeFinding(o, pool, wfiID, req, slot, kind, target, exitCode, status, outputTail)
@@ -122,7 +122,7 @@ func runFinalizeCommand(ctx context.Context, cmd, dir string, env []string) (int
 	return -1, "failed", out
 }
 
-func (o *Orchestrator) runFinalizeScript(ctx context.Context, pool *db.Pool, projectID, projectRoot, scriptID, wfiID string, env []string) (int, string, string) {
+func (o *Orchestrator) runFinalizeScript(ctx context.Context, pool *db.Pool, projectID, ticketID, projectRoot, scriptID, wfiID string, env []string) (int, string, string) {
 	scriptRepo := repo.NewPythonScriptRepo(pool, o.clock)
 	script, err := scriptRepo.Get(projectID, scriptID)
 	if err != nil {
@@ -163,6 +163,7 @@ func (o *Orchestrator) runFinalizeScript(ctx context.Context, pool *db.Pool, pro
 	sess := &model.AgentSession{
 		ID:                 sid,
 		ProjectID:          projectID,
+		TicketID:           ticketID,
 		WorkflowInstanceID: wfiID,
 		AgentType:          "_finalize",
 		Status:             model.AgentSessionRunning,

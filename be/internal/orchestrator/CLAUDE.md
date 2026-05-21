@@ -135,9 +135,20 @@ After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes
 
 - Slot source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` (from `workflow_definitions`). Both empty for the outcome → no-op (no finding, no event).
 - **Command slot**: `sh -c <cmd>` with outcome env (`NRF_WORKFLOW_STATUS`, `NRF_WORKFLOW_RESULT`=`pass`/`fail`, plus `NRF_WORKFLOW_FINAL_RESULT` on success / `NRF_FAILURE_REASON` on failure) on top of `loadProjectEnv`.
-- **Python-script slot**: runs the `python_scripts` row via per-project venv python through a transient `_finalize` `agent_session` (token mint + real `workflow_instance_id`) so `script.context` resolves; reuses the `_notification` transport shape.
+- **Python-script slot**: runs the `python_scripts` row via per-project venv python through a transient `_finalize` `agent_session`; uses `runHookScript` from `hookexec.go` with `agentType="_finalize"`.
 - Persists a `_finalize` finding (`{slot,kind,target,exit_code,status,output_tail,timestamp}`) via `persistFinalizeFinding` (`finalize_persist.go`). On non-`ok` status: `errorSvc.RecordError` + `EventWorkflowFinalizeFailed`; on success: `EventWorkflowFinalizeSucceeded`.
 - Wired into success path (between `markCompleted` and `maybeStartNextOnSuccess`) and the tail of `markFailed` (after writing a `_failure_reason` finding), **skipped** when the failure reason is `reasonCancelled` (user Stop). `forceStopInstance` bypasses `markFailed`, so force-stop never finalizes.
+
+## Pause Slots
+
+`workflow_layer_policies.pause_after=true` causes `runLoop` to pause after that layer completes (including when skipped), setting instance status to `waiting` and removing it from `o.runs`.
+
+- Hook source: `RunRequest.PauseEvent{Command,ScriptID}` (from `workflow_definitions`). Both empty → no hook fires, but pause still occurs.
+- Env: `NRF_WORKFLOW_STATUS=waiting`, `NRF_PAUSED_AFTER_LAYER`, `NRF_NEXT_LAYER`, `NRF_WORKFLOW_INSTANCE_ID` plus `loadProjectEnv`.
+- **Python-script slot**: transient `_pause` `agent_session` via `runHookScript` in `hookexec.go`.
+- Persists a `_pause` finding (`{paused_after_layer,resume_layer,event:{kind,target,exit_code,status,output_tail},timestamp}`) and broadcasts `EventWorkflowPaused`.
+- Resume via `ContinueWorkflow` (`continue.go`): validates `status=waiting`, reads `resume_layer` from `_pause` finding, re-launches `runLoop` at the resume-layer index. Optionally appends instructions to `user_instructions` finding.
+- Fail via `FailWorkflow` (`fail.go`): running instance → set `rs.failReason` + `cancel()`; waiting instance → `markFailed` directly (fires failure-finalize slot).
 
 ## Scheduled Task Origin Tracking
 

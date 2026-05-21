@@ -328,6 +328,12 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 				result["finalize_result"] = fin
 			}
 		}
+		if pRaw, ok := wfRaw["_pause"]; ok {
+			var pause map[string]interface{}
+			if json.Unmarshal(pRaw, &pause) == nil {
+				result["pause_result"] = pause
+			}
+		}
 	}
 
 	// Extract workflow_final_result from agent session findings

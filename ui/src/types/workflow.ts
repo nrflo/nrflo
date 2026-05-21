@@ -393,6 +393,7 @@ export interface AgentDef {
   api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string
+  consultant?: boolean
   created_at: string
   updated_at: string
 }
@@ -413,6 +414,7 @@ export interface AgentDefCreateRequest {
   api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string[]
+  consultant?: boolean
 }
 
 export interface AgentDefUpdateRequest {
@@ -430,6 +432,7 @@ export interface AgentDefUpdateRequest {
   api_max_tokens?: number
   python_script_id?: string
   validation_commands?: string[]
+  consultant?: boolean
 }
 
 // Orchestration types

@@ -150,3 +150,29 @@ via REST:
 
 All routes accept SCS sessions, spawn tokens, and service tokens (same as
 `retry-failed`). See [be/internal/api/CLAUDE.md](../be/internal/api/CLAUDE.md).
+
+---
+
+## Consultants
+
+A consultant is a named api-mode agent that a caller invokes inline via the `consult` builtin tool to get a focused answer without spinning up a full workflow layer.
+
+**Requirements:**
+- `execution_mode` must be `api` — enforced by the service layer at create and update time; saving a consultant def with any other mode is rejected.
+- The **Consultant** toggle in the agent editor sets the `consultant=true` flag on the definition.
+
+**Context the consultant receives:**
+- All caller ticket data, findings, and artifacts (shared `workflow_instance_id`).
+- `${CALLER_TRANSCRIPT}` — recent message history of the calling agent (truncated to fit context).
+- `${CONSULT_QUESTION}` — the question string passed by the caller to the `consult` tool.
+
+**Required lifecycle:**
+1. Do the work using available tools.
+2. Write the answer to the `_consult_answer` finding (string value).
+3. Call `agent_finished` — this unblocks the caller and delivers the answer inline.
+
+**Constraints:**
+- Consultant agents cannot call `consult` themselves (recursion guard enforced in `prepareSpawn`).
+- The `_consult` phase is hidden from the v4 read model; the caller's run timeline is uninterrupted.
+
+**Caller usage:** pass `{consultant: "<agent_id>", question: "<text>"}` to the `consult` builtin tool. The call blocks until the consultant finishes and returns the `_consult_answer` value as the tool result.

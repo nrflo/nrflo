@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { Toggle } from '@/components/ui/Toggle'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
@@ -44,6 +45,7 @@ export function AgentDefForm({
   const [validationCommands, setValidationCommands] = useState<string[]>(() => {
     try { return JSON.parse(initial?.validation_commands ?? '[]') } catch { return [] }
   })
+  const [consultant, setConsultant] = useState(initial?.consultant ?? false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
   const apiModeEnabled = useAPIModeEnabled()
@@ -51,6 +53,10 @@ export function AgentDefForm({
     const next = v as ExecutionMode
     if (next !== 'script') setPythonScriptId('')
     setExecutionMode(next)
+  }
+  const handleConsultantChange = (checked: boolean) => {
+    setConsultant(checked)
+    if (checked) setExecutionMode('api')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,7 +78,7 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -84,9 +90,12 @@ export function AgentDefForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 p-4 border border-border rounded-lg bg-muted/30">
+      <div className="flex items-center gap-4">
+        <Toggle checked={consultant} onChange={handleConsultantChange} label="Consultant" />
+      </div>
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">Execution Mode</label>
-        <Dropdown value={executionMode} onChange={handleExecutionModeChange} options={executionModeOptions} />
+        <Dropdown value={executionMode} onChange={handleExecutionModeChange} options={executionModeOptions} disabled={consultant} />
       </div>
       {isCreate && (
         <div>
@@ -94,11 +103,13 @@ export function AgentDefForm({
           <input type="text" value={id} onChange={(e) => setId(e.target.value)} placeholder="e.g., setup-analyzer" required className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
         </div>
       )}
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Layer</label>
-        <input type="number" value={layer} onChange={(e) => setLayer(Number(e.target.value))} min={0} className="w-32 rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
-        <p className="text-xs text-muted-foreground mt-1">Execution order. Layer 0 runs first. Same-layer agents run concurrently.</p>
-      </div>
+      {!consultant && (
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Layer</label>
+          <input type="number" value={layer} onChange={(e) => setLayer(Number(e.target.value))} min={0} className="w-32 rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
+          <p className="text-xs text-muted-foreground mt-1">Execution order. Layer 0 runs first. Same-layer agents run concurrently.</p>
+        </div>
+      )}
       <div className="flex gap-3">
         {executionMode !== 'script' && (
           <div className="flex-1">
@@ -110,16 +121,18 @@ export function AgentDefForm({
           <label className="block text-xs font-medium text-muted-foreground mb-1">Timeout (min)</label>
           <input type="number" value={timeout} onChange={(e) => setTimeout(Number(e.target.value))} min={1} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
         </div>
-        {executionMode !== 'script' && (
+        {executionMode !== 'script' && !consultant && (
           <div className="w-32">
             <label className="block text-xs font-medium text-muted-foreground mb-1">Restart % (ctx)</label>
             <input type="number" value={restartThreshold} onChange={(e) => setRestartThreshold(e.target.value === '' ? '' : Number(e.target.value))} placeholder="25" min={1} max={99} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
           </div>
         )}
-        <div className="w-32">
-          <label className="block text-xs font-medium text-muted-foreground mb-1">Fail restarts</label>
-          <input type="number" value={maxFailRestarts} onChange={(e) => setMaxFailRestarts(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0" min={0} max={10} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
-        </div>
+        {!consultant && (
+          <div className="w-32">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Fail restarts</label>
+            <input type="number" value={maxFailRestarts} onChange={(e) => setMaxFailRestarts(e.target.value === '' ? '' : Number(e.target.value))} placeholder="0" min={0} max={10} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />
+          </div>
+        )}
       </div>
       <div>
         <label className="block text-xs font-medium text-muted-foreground mb-1">Validation commands</label>

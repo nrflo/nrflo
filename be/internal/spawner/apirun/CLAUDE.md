@@ -28,6 +28,8 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `read_document` (`tools_builtin/read_document.go`) materializes a named input artifact and returns its bytes as an image/document content block so the model can read it natively (OCR scanned PDFs, photos). PDF → document block, PNG/JPEG → image block; other types return a text error. Capped at 32 MiB. It implements `MediaToolHandler` (see below).
 
+`consult` (`tools_builtin/consult.go`) synchronously spawns a named consultant agent via `apirun.ConsultantSpawner` and returns the `_consult_answer` finding inline; see [doc/api.md § Consultants](../../../../doc/api.md#consultants) for authoring requirements.
+
 ## Multimodal Tool Results
 
 `provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. `provider/anthropic/translate.go:translateMediaBlock` maps each `MediaBlock` to the SDK `ToolResultBlockParamContentUnion` (`OfImage` base64 / `OfDocument` base64 PDF). Image media types: jpeg/png/gif/webp; document: application/pdf only.

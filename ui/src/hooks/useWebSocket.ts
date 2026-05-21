@@ -90,6 +90,9 @@ export type WSEventType =
   | 'artifact.created'
   | 'artifact.deleted'
   | 'agent.rate_limited'
+  | 'consult.started'
+  | 'consult.answered'
+  | 'consult.failed'
   | 'test.echo'
 
 export interface WSEvent {

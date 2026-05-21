@@ -17,6 +17,7 @@ const TOOL_COLORS: Record<string, string> = {
   rate_limit: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
   TodoWrite: 'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-300',
   Skill: 'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
+  consult: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300',
 }
 
 const DEFAULT_TOOL_COLOR = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
@@ -62,11 +63,28 @@ interface LogMessageProps {
   className?: string
 }
 
+function renderConsultContent(rest: string): string {
+  if (rest.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(rest) as { consultant?: string; question?: string }
+      const parts: string[] = []
+      if (parsed.consultant) parts.push(`consulted ${parsed.consultant}`)
+      if (parsed.question) parts.push(parsed.question)
+      return parts.join(' — ')
+    } catch {
+      return rest
+    }
+  }
+  // tool-result: "→ answer" or plain answer
+  return rest.startsWith('→ ') ? rest.slice(2) : rest
+}
+
 export function LogMessage({ message, category, variant = 'compact', className }: LogMessageProps) {
   const { toolName, rest } = parseToolName(message)
   const isUserInput = category === 'user_input'
   const isError = category === 'error'
   const isResult = category === 'result'
+  const isConsult = toolName === 'consult'
 
   return (
     <div
@@ -78,6 +96,7 @@ export function LogMessage({ message, category, variant = 'compact', className }
         isUserInput && 'border-l-4 border-l-primary bg-primary/5',
         isError && 'border-l-4 border-l-destructive bg-destructive/5',
         isResult && 'border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20',
+        isConsult && 'border-l-4 border-l-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20',
         className,
       )}
     >
@@ -96,7 +115,7 @@ export function LogMessage({ message, category, variant = 'compact', className }
       ) : (
         toolName && <ToolBadge name={toolName} />
       )}
-      {rest}
+      {isConsult ? renderConsultContent(rest) : rest}
     </div>
   )
 }

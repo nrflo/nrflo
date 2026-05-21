@@ -76,9 +76,14 @@ export function AgentDefCard({
               {def.tag}
             </Badge>
           )}
-          {def.execution_mode === 'api' && (
+          {def.execution_mode === 'api' && !def.consultant && (
             <Badge variant="outline" className="text-xs border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400">
               API
+            </Badge>
+          )}
+          {def.consultant && (
+            <Badge variant="outline" className="text-xs border-indigo-300 text-indigo-600 dark:border-indigo-700 dark:text-indigo-400">
+              Consultant
             </Badge>
           )}
           {def.low_consumption_model && (

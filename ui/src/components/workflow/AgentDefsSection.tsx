@@ -47,14 +47,16 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
     },
   })
 
-  // Group defs by layer, sorted ascending
+  // Split consultants from phase defs; consultants are excluded from layer layout
+  const consultantDefs = defs?.filter((d) => d.consultant) ?? []
+  const phaseDefs = defs?.filter((d) => !d.consultant) ?? []
+
+  // Group phase defs by layer, sorted ascending
   const byLayer: Record<number, typeof defs> = {}
-  if (defs) {
-    for (const def of defs) {
-      const l = def.layer ?? 0
-      if (!byLayer[l]) byLayer[l] = []
-      byLayer[l]!.push(def)
-    }
+  for (const def of phaseDefs) {
+    const l = def.layer ?? 0
+    if (!byLayer[l]) byLayer[l] = []
+    byLayer[l]!.push(def)
   }
   const sortedLayers = Object.keys(byLayer).map(Number).sort((a, b) => a - b)
 
@@ -130,6 +132,24 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
           )
         })}
       </div>
+
+      {consultantDefs.length > 0 && (
+        <div className="space-y-2 mt-4">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Consultants
+          </h4>
+          <div className="space-y-2">
+            {consultantDefs.map((def) => (
+              <AgentDefCard
+                key={def.id}
+                def={def}
+                workflowId={workflowId}
+                groups={groups}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

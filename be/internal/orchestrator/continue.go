@@ -61,7 +61,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		return fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
 	}
 	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	dbAgentDefs, err := adRepo.List(projectID, dbWorkflow.ID)
+	dbAgentDefs, err := adRepo.ListExecutable(projectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load agent definitions: %w", err)
 	}

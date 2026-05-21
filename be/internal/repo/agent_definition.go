@@ -149,6 +149,31 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 	}
 	defer rows.Close()
 
+	return scanAgentDefRows(rows)
+}
+
+// ListExecutable retrieves non-consultant agent definitions for a workflow.
+// Use this for execution graph construction; consultants must never become workflow phases.
+func (r *AgentDefinitionRepo) ListExecutable(projectID, workflowID string) ([]*model.AgentDefinition, error) {
+	rows, err := r.db.Query(`
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		FROM agent_definitions
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0
+		ORDER BY layer ASC, id ASC`, projectID, workflowID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanAgentDefRows(rows)
+}
+
+func scanAgentDefRows(rows interface {
+	Next() bool
+	Scan(...interface{}) error
+	Close() error
+}) ([]*model.AgentDefinition, error) {
+
 	var defs []*model.AgentDefinition
 	for rows.Next() {
 		def := &model.AgentDefinition{}

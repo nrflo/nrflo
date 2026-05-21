@@ -252,7 +252,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, fmt.Errorf("workflow definition '%s' not found: %w", req.WorkflowName, err)
 	}
 	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	dbAgentDefs, err := adRepo.List(req.ProjectID, dbWorkflow.ID)
+	dbAgentDefs, err := adRepo.ListExecutable(req.ProjectID, dbWorkflow.ID)
 	if err != nil {
 		database.Close()
 		return nil, fmt.Errorf("failed to load agent definitions: %w", err)
@@ -718,7 +718,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
 	}
 	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	dbAgentDefs, err := adRepo.List(projectID, dbWorkflow.ID)
+	dbAgentDefs, err := adRepo.ListExecutable(projectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load agent definitions: %w", err)
 	}

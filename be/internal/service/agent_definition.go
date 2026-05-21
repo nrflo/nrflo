@@ -387,7 +387,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			s.pool.QueryRow(
 				`SELECT COUNT(*) FROM agent_definitions
 				 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-				   AND layer = ? AND LOWER(id) != LOWER(?)`,
+				   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0`,
 				projectID, workflowID, oldLayer, id).Scan(&remaining)
 			if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, oldLayer, remaining); err != nil {
 				return err

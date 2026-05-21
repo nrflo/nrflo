@@ -14,7 +14,7 @@ func (s *AgentDefinitionService) validateLayerConfigForWorkflow(projectID, workf
 	// Load all existing agent definitions for this workflow
 	rows, err := s.pool.Query(`
 		SELECT id, layer FROM agent_definitions
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0`,
 		projectID, workflowID)
 	if err != nil {
 		return fmt.Errorf("failed to load agent definitions: %w", err)
@@ -89,12 +89,12 @@ func (s *AgentDefinitionService) DeleteAgentDef(projectID, workflowID, id string
 		return fmt.Errorf("agent definition not found: %s", id)
 	}
 
-	// Count remaining agents in this layer after deletion
+	// Count remaining non-consultant agents in this layer after deletion
 	var remaining int
 	s.pool.QueryRow(
 		`SELECT COUNT(*) FROM agent_definitions
 		 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-		   AND layer = ? AND LOWER(id) != LOWER(?)`,
+		   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0`,
 		projectID, workflowID, currentLayer, id).Scan(&remaining)
 
 	if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, currentLayer, remaining); err != nil {

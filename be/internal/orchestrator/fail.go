@@ -79,7 +79,7 @@ func (o *Orchestrator) buildMinimalReq(pool *db.Pool, projectID, ticketID, workf
 		return RunRequest{}, fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
 	}
 	adRepo := repo.NewAgentDefinitionRepo(pool, o.clock)
-	dbAgentDefs, err := adRepo.List(projectID, dbWorkflow.ID)
+	dbAgentDefs, err := adRepo.ListExecutable(projectID, dbWorkflow.ID)
 	if err != nil {
 		return RunRequest{}, fmt.Errorf("failed to load agent definitions: %w", err)
 	}

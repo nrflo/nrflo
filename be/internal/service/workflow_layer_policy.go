@@ -44,7 +44,7 @@ func (s *WorkflowLayerPolicyService) GetLayerPauseAfter(projectID, workflowID st
 // Preserves the existing pause_after value for the layer.
 func (s *WorkflowLayerPolicyService) SetLayerPolicy(projectID, workflowID string, layer int, policy string) error {
 	agentDefRepo := repo.NewAgentDefinitionRepo(s.pool, s.clock)
-	defs, err := agentDefRepo.List(projectID, workflowID)
+	defs, err := agentDefRepo.ListExecutable(projectID, workflowID)
 	if err != nil {
 		return err
 	}

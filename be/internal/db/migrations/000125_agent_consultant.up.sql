@@ -1,0 +1,1 @@
+ALTER TABLE agent_definitions ADD COLUMN consultant INTEGER NOT NULL DEFAULT 0;

@@ -23,6 +23,7 @@ type AgentDefinition struct {
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     string    `json:"validation_commands"`
+	Consultant             bool      `json:"consultant"`
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

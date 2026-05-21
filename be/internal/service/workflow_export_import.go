@@ -184,6 +184,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				APIMaxTokens:           agent.APIMaxTokens,
 				PythonScriptID:         scriptID,
 				ValidationCommands:     validationCmds,
+				Consultant:             agent.Consultant,
 			}); err != nil {
 				return nil, fmt.Errorf("create agent %s in workflow %s: %w", agent.ID, wf.ID, err)
 			}

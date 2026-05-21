@@ -19,6 +19,7 @@ type AgentDefCreateRequest struct {
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
+	Consultant             bool      `json:"consultant,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -39,6 +40,7 @@ type AgentDefUpdateRequest struct {
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
+	Consultant             *bool     `json:"consultant,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

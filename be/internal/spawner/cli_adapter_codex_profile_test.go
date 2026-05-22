@@ -123,18 +123,53 @@ func TestWriteCodexProfile_CopiesAuthJSON(t *testing.T) {
 	}
 }
 
-// TestStripHookTables covers the array-of-tables, single-table, and bare-table
-// hook header forms while preserving surrounding content.
-func TestStripHookTables(t *testing.T) {
-	in := "model = \"x\"\n[[hooks.PreToolUse]]\nc = 1\n[features]\nfoo = true\n[hooks.Stop]\nc = 2\n[other]\nk = 1\n"
-	out := string(stripHookTables([]byte(in)))
-	if strings.Contains(out, "hooks.") {
-		t.Errorf("hook tables not stripped: %s", out)
+// TestStripTOMLTables covers array-of-tables, single-table, and bare-table
+// header forms for both hook and project tables, preserving surrounding content.
+func TestStripTOMLTables(t *testing.T) {
+	in := "model = \"x\"\n[[hooks.PreToolUse]]\nc = 1\n[features]\nfoo = true\n[hooks.Stop]\nc = 2\n[projects.\"/a/b\"]\ntrust_level = \"trusted\"\n[other]\nk = 1\n"
+	out := string(stripTOMLTables([]byte(in), codexStripTablePrefixes))
+	if strings.Contains(out, "hooks.") || strings.Contains(out, "[projects.") {
+		t.Errorf("hook/project tables not stripped: %s", out)
 	}
 	for _, keep := range []string{`model = "x"`, "[features]", "foo = true", "[other]", "k = 1"} {
 		if !strings.Contains(out, keep) {
-			t.Errorf("stripHookTables dropped %q\nfull:\n%s", keep, out)
+			t.Errorf("stripTOMLTables dropped %q\nfull:\n%s", keep, out)
 		}
+	}
+}
+
+// TestWriteCodexProfile_NoDuplicateProjectKey guards the app-server regression:
+// the user's config already trusts the spawn workdir, so a naive append would
+// produce a duplicate `[projects."<dir>"]` table that the app-server's strict
+// parser rejects (rpc -32600). The profile must contain exactly one.
+func TestWriteCodexProfile_NoDuplicateProjectKey(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	codexHome := filepath.Join(fakeHome, ".codex")
+	if err := os.MkdirAll(codexHome, 0o755); err != nil {
+		t.Fatalf("mkdir codex home: %v", err)
+	}
+	workDir := t.TempDir()
+	resolved, _ := filepath.EvalSymlinks(workDir)
+	// User config already trusts the workdir (+ another project, + a hook).
+	userConfig := fmt.Sprintf("model = \"gpt-5.4\"\n\n[projects.%q]\ntrust_level = \"trusted\"\n\n[projects.\"/other\"]\ntrust_level = \"trusted\"\n", resolved)
+	if err := os.WriteFile(filepath.Join(codexHome, "config.toml"), []byte(userConfig), 0o644); err != nil {
+		t.Fatalf("write user config: %v", err)
+	}
+
+	dir := t.TempDir()
+	if err := writeCodexProfileForSession(dir, workDir); err != nil {
+		t.Fatalf("writeCodexProfileForSession() error: %v", err)
+	}
+	content := readFileString(t, filepath.Join(dir, "config.toml"))
+	if n := strings.Count(content, fmt.Sprintf("[projects.%q]", resolved)); n != 1 {
+		t.Errorf("workdir project table appears %d times, want exactly 1\nfull:\n%s", n, content)
+	}
+	if strings.Contains(content, `[projects."/other"]`) {
+		t.Errorf("stale user project entries should be stripped\nfull:\n%s", content)
+	}
+	if !strings.Contains(content, `model = "gpt-5.4"`) {
+		t.Errorf("non-project settings should survive: %s", content)
 	}
 }
 

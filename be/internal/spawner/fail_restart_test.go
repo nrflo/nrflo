@@ -244,7 +244,7 @@ func TestAutoRestart_CounterIncrementSequence(t *testing.T) {
 	}
 
 	// First restart
-	if !(proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts) {
+	if proc.finalStatus != "FAIL" || proc.maxFailRestarts <= 0 || proc.failRestartCount >= proc.maxFailRestarts {
 		t.Fatal("first restart: condition should be true")
 	}
 	proc.failRestartCount++
@@ -256,7 +256,7 @@ func TestAutoRestart_CounterIncrementSequence(t *testing.T) {
 
 	// Simulate second failure on the new proc
 	proc.finalStatus = "FAIL"
-	if !(proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts) {
+	if proc.finalStatus != "FAIL" || proc.maxFailRestarts <= 0 || proc.failRestartCount >= proc.maxFailRestarts {
 		t.Fatal("second restart: condition should be true")
 	}
 	proc.failRestartCount++

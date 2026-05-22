@@ -41,7 +41,10 @@ func setupDeriveTestEnv(t *testing.T) (*db.Pool, *WorkflowService, string) {
 	}
 
 	// Insert agent definitions with layers (phases are derived from agent_definitions)
-	for _, ad := range []struct{ id string; layer int }{{"analyzer", 0}, {"builder", 1}} {
+	for _, ad := range []struct {
+		id    string
+		layer int
+	}{{"analyzer", 0}, {"builder", 1}} {
 		if _, err = pool.Exec(
 			`INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, created_at, updated_at) VALUES (?, ?, 'test-wf', '', ?, ?, ?)`,
 			ad.id, projectID, ad.layer, now, now); err != nil {

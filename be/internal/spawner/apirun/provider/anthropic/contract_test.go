@@ -19,11 +19,11 @@ import (
 
 type discardSink struct{}
 
-func (discardSink) OnTextDelta(string)                   {}
-func (discardSink) OnToolUseStart(string, string)        {}
-func (discardSink) OnToolUseInputDelta(string, string)   {}
+func (discardSink) OnTextDelta(string)                    {}
+func (discardSink) OnToolUseStart(string, string)         {}
+func (discardSink) OnToolUseInputDelta(string, string)    {}
 func (discardSink) OnToolUseStop(string, json.RawMessage) {}
-func (discardSink) OnUsage(provider.Usage)               {}
+func (discardSink) OnUsage(provider.Usage)                {}
 
 func TestLiveAnthropic_SmokeRun(t *testing.T) {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {

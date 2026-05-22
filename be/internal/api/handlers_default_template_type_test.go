@@ -44,11 +44,11 @@ func TestHandleListDefaultTemplates_FilterByTypeInjectable(t *testing.T) {
 		t.Fatalf("len = %d, want 5 (injectable-type templates)", len(list))
 	}
 	wantIDs := map[string]bool{
-		"low-context":         true,
-		"callback":            true,
-		"user-instructions":   true,
+		"low-context":          true,
+		"callback":             true,
+		"user-instructions":    true,
 		"system-prompt-suffix": true,
-		"finish-reminder":     true,
+		"finish-reminder":      true,
 	}
 	for _, tmpl := range list {
 		if tmpl.Type != "injectable" {

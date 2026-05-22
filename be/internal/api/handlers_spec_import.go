@@ -30,12 +30,6 @@ func rawFindingsToInterface(raw map[string]json.RawMessage) map[string]interface
 
 const specImportWorkflowID = "__spec_import__"
 
-// specImportAdapter is a minimal interface covering both Fetch and the source query.
-type specImportAdapter interface {
-	Source() spec_import.Source
-	Fetch(ctx context.Context, in spec_import.Input) (spec_import.FetchedSpec, error)
-}
-
 // gitHubSearcher is implemented by spec_import.GitHubAdapter.
 type gitHubSearcher interface {
 	Search(ctx context.Context, q, ownerRepo string, env map[string]string) ([]spec_import.GitHubIssueSummary, error)

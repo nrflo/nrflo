@@ -51,7 +51,7 @@ func (s *Spawner) expandFindings(template, projectID, ticketID, workflowName, wf
 }
 
 // fetchFindings retrieves findings from the database using the FindingsService
-func (s *Spawner) fetchFindings(projectID, ticketID, workflowName, agentType, wfiID string, keys []string) (interface{}, error) {
+func (s *Spawner) fetchFindings(_, _, _, agentType, wfiID string, keys []string) (interface{}, error) {
 	pool := s.pool()
 	if pool == nil {
 		return nil, fmt.Errorf("failed to get database pool")
@@ -198,7 +198,7 @@ func (s *Spawner) formatFindingsError(agentType string) string {
 // expandLayerFindings replaces #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS} patterns.
 // #{PRIOR_LAYER_FINDINGS} expands to layer currentLayer-1 (or "_No prior layer_" when currentLayer==0).
 // #{LAYER_FINDINGS:N} expands to a flat sibling roster for layer N sorted by agent_type.
-func (s *Spawner) expandLayerFindings(template string, currentLayer int, projectID, wfiID string) (string, error) {
+func (s *Spawner) expandLayerFindings(template string, currentLayer int, _, wfiID string) (string, error) {
 	if !layerFindingsPattern.MatchString(template) {
 		return template, nil
 	}

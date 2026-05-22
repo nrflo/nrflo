@@ -313,10 +313,10 @@ func TestCLIModel_Update(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(types.CLIModelCreateRequest{
-		ID:          "upd-model",
-		CLIType:     "claude",
-		DisplayName: "Original Name",
-		MappedModel: "original-model",
+		ID:            "upd-model",
+		CLIType:       "claude",
+		DisplayName:   "Original Name",
+		MappedModel:   "original-model",
 		ContextLength: 50000,
 	}); err != nil {
 		t.Fatalf("Create: %v", err)

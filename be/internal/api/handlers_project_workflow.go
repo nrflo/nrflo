@@ -102,7 +102,7 @@ func (s *Server) handleStopProjectWorkflow(w http.ResponseWriter, r *http.Reques
 		Workflow   string `json:"workflow"`
 		InstanceID string `json:"instance_id"`
 	}
-	readJSON(r, &body)
+	_ = readJSON(r, &body)
 
 	err := s.orchestrator.StopByProject(projectID, body.Workflow, body.InstanceID)
 	if err != nil {

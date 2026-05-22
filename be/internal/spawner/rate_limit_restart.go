@@ -65,7 +65,7 @@ func (s *Spawner) handleRateLimitRetry(ctx context.Context, proc *processInfo, r
 // waitForRateLimitRetry sleeps for the exponential-backoff delay before the
 // next spawn. Uses the clock abstraction so tests can control time without
 // real sleeps. Returns true if the wait completed, false if ctx was cancelled.
-func (s *Spawner) waitForRateLimitRetry(ctx context.Context, proc *processInfo, req SpawnRequest) bool {
+func (s *Spawner) waitForRateLimitRetry(ctx context.Context, proc *processInfo, _ SpawnRequest) bool {
 	delay := computeRateLimitDelay(proc.rateLimitConfig, proc.rateLimitRetryCount)
 
 	logger.Info(ctx, "rate-limit retry: waiting before relaunch",

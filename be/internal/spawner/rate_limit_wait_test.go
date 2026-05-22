@@ -188,7 +188,6 @@ func TestRateLimitCarryover_FieldsPropagate(t *testing.T) {
 
 // immediateSpyClock is a Clock that records After(d) calls and fires them immediately.
 type immediateSpyClock struct {
-	t       time.Time
 	onAfter func(d time.Duration)
 }
 

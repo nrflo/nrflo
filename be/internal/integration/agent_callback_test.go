@@ -160,7 +160,7 @@ func TestAgentCallbackNoActiveAgent(t *testing.T) {
 		"workflow":    "test",
 		"agent_type":  "analyzer",
 		"session_id":  "nonexistent-session",
-		"level":        1,
+		"level":       1,
 		"instance_id": wfiID,
 	}, -32603) // Internal error
 }

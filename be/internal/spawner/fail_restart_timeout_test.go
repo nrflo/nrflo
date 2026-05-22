@@ -102,7 +102,7 @@ func TestAutoRestart_MixedFailAndTimeoutShareCounter(t *testing.T) {
 	}
 
 	// First event: exit-code failure → restart
-	if !(proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts) {
+	if proc.finalStatus != "FAIL" || proc.maxFailRestarts <= 0 || proc.failRestartCount >= proc.maxFailRestarts {
 		t.Fatal("first restart (FAIL): condition should be true")
 	}
 	proc.failRestartCount++
@@ -113,7 +113,7 @@ func TestAutoRestart_MixedFailAndTimeoutShareCounter(t *testing.T) {
 
 	// Second event: timeout → restart (counter is now 1, still under limit)
 	proc.finalStatus = "TIMEOUT"
-	if !(proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts) {
+	if proc.maxFailRestarts <= 0 || proc.failRestartCount >= proc.maxFailRestarts {
 		t.Fatal("second restart (TIMEOUT): condition should be true when failRestartCount=1 < maxFailRestarts=2")
 	}
 	proc.failRestartCount++
@@ -156,9 +156,9 @@ func TestAutoRestart_TimeoutDisabledAtZero(t *testing.T) {
 	}
 
 	proc := &processInfo{
-		sessionID:       env.sessionID,
-		finalStatus:     "TIMEOUT",
-		maxFailRestarts: 0, // disabled
+		sessionID:        env.sessionID,
+		finalStatus:      "TIMEOUT",
+		maxFailRestarts:  0, // disabled
 		failRestartCount: 0,
 	}
 

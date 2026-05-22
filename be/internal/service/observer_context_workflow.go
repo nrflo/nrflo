@@ -17,14 +17,14 @@ func buildWorkflowDynamicContext(s *ObserverService, projectID, workflowID strin
 	// Workflow definition
 	wfDef, err := s.workflowSvc.GetWorkflowDef(projectID, workflowID)
 	if err != nil {
-		b.WriteString(fmt.Sprintf("_Workflow %q not found._\n\n", workflowID))
+		fmt.Fprintf(&b, "_Workflow %q not found._\n\n", workflowID)
 	} else {
-		b.WriteString(fmt.Sprintf("### Workflow: %s\n\n", workflowID))
-		b.WriteString(fmt.Sprintf("**Description:** %s\n\n", wfDef.Description))
+		fmt.Fprintf(&b, "### Workflow: %s\n\n", workflowID)
+		fmt.Fprintf(&b, "**Description:** %s\n\n", wfDef.Description)
 		if len(wfDef.Phases) > 0 {
 			b.WriteString("**Phases:**\n\n")
 			for _, p := range wfDef.Phases {
-				b.WriteString(fmt.Sprintf("- layer %d: %s (%s)\n", p.Layer, p.ID, p.Agent))
+				fmt.Fprintf(&b, "- layer %d: %s (%s)\n", p.Layer, p.ID, p.Agent)
 			}
 			b.WriteString("\n")
 		}
@@ -42,7 +42,7 @@ func buildWorkflowDynamicContext(s *ObserverService, projectID, workflowID strin
 			if wi.WorkflowID != workflowID {
 				continue
 			}
-			b.WriteString(fmt.Sprintf("- **%s** status=%s created=%s\n", wi.ID, wi.Status, wi.CreatedAt.Format("2006-01-02T15:04:05Z")))
+			fmt.Fprintf(&b, "- **%s** status=%s created=%s\n", wi.ID, wi.Status, wi.CreatedAt.Format("2006-01-02T15:04:05Z"))
 
 			// Per-instance findings
 			findings, fErr := s.findingsSvc.Get(&types.FindingsGetRequest{InstanceID: wi.ID})
@@ -74,7 +74,7 @@ func buildWorkflowDynamicContext(s *ObserverService, projectID, workflowID strin
 			if sess.Workflow != workflowID {
 				continue
 			}
-			b.WriteString(fmt.Sprintf("- %s phase=%s status=%s\n", sess.ID[:8], sess.Phase, sess.Status))
+			fmt.Fprintf(&b, "- %s phase=%s status=%s\n", sess.ID[:8], sess.Phase, sess.Status)
 			count++
 		}
 		b.WriteString("\n")

@@ -32,6 +32,9 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 
 	// Create blocker and dependent tickets
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependentID} {
 		_, err = database.Exec(`
@@ -118,6 +121,9 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 
 	// Create blocker and three dependent tickets
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, dependent1ID, dependent2ID, dependent3ID} {
 		_, err = database.Exec(`
@@ -189,7 +195,6 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	}
 }
 
-
 // TestCloseBlockerWithClosedDependent verifies behavior when a blocker is closed
 // and one of its dependents is already closed (broadcasts for all, including closed ones).
 func TestCloseBlockerWithClosedDependent(t *testing.T) {
@@ -208,6 +213,9 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 
 	// Create blocker and two dependents (one open, one closed)
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{blockerID, openDependentID} {
 		_, err = database.Exec(`
@@ -293,6 +301,9 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 
 	// Create ticket
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -369,6 +380,9 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 
 	// Create closed blocker and open dependent
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)

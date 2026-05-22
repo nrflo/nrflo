@@ -92,8 +92,8 @@ func toRestartDetails(t *testing.T, raw []interface{}) []service.RestartDetail {
 			t.Fatalf("restart_details[%d]: expected map, got %T", i, item)
 		}
 		d := service.RestartDetail{
-			Reason:      m["reason"].(string),
-			DurationSec: m["duration_sec"].(float64),
+			Reason:       m["reason"].(string),
+			DurationSec:  m["duration_sec"].(float64),
 			MessageCount: int(m["message_count"].(float64)),
 		}
 		if cl, ok := m["context_left"]; ok && cl != nil {

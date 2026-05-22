@@ -60,12 +60,3 @@ func (s *opencodeTestSink) RecordError(projectID, errType, sessionID, msg string
 	s.errors = append(s.errors, msg)
 	s.mu.Unlock()
 }
-
-// snapshotMessages returns a copy of recordedMsgs for assertion (avoids
-// races between the calling test goroutine and any still-running adapter
-// goroutines that may still hold the mutex briefly).
-func (s *opencodeTestSink) snapshotMessages() []recordedMsg {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return append([]recordedMsg(nil), s.recordedMsgs...)
-}

@@ -1,0 +1,47 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+# Report every finding — no per-linter or duplicate caps. A gate that hides
+# issues behind a cap is not a gate.
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+linters:
+  # 'standard' = errcheck, govet, ineffassign, staticcheck, unused.
+  default: standard
+  enable:
+    - misspell
+    - unconvert
+    - unparam
+  settings:
+    unparam:
+      check-exported: false
+  exclusions:
+    generated: lax
+    paths:
+      - internal/static/dist
+    rules:
+      # Tests routinely ignore errors from setup/teardown helpers on purpose.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam
+      # errcheck: ignore conventional fire-and-forget calls on teardown,
+      # streaming, and best-effort cleanup paths. Matched on the reported
+      # expression so it covers every receiver type without enumerating them.
+      # Genuinely meaningful calls (Delete/Create/Unmarshal/Encode/...) are NOT
+      # listed here and must still handle their error.
+      - linters: [errcheck]
+        text: 'Error return value of `[^`]*\.(Close|Scan|Rollback|Kill|RecordError|Cleanup|SetReadDeadline|SetWriteDeadline|SetDeadline|Update[A-Za-z]*|SetEndedAt|SetLastMessage|DeleteLocksByChain|ResetAgentSessionsInWorkflow|FailRunningByInstance|StopByTicket|Write|WriteMessage|WriteString)`'
+      - linters: [errcheck]
+        text: 'Error return value of `(os\.Remove|os\.RemoveAll|fmt\.Fprint|fmt\.Fprintf|fmt\.Fprintln|syscall\.Kill)`'
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    paths:
+      - internal/static/dist

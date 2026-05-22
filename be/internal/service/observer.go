@@ -149,13 +149,13 @@ func (s *ObserverService) Launch(scope, projectID, workflowID string) (sessionID
 
 	sessionRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 	sess := &model.AgentSession{
-		ID:            sessionID,
-		ProjectID:     projectID,
-		TicketID:      "",
-		AgentType:     "_observer",
-		Phase:         "observer",
-		Status:        model.AgentSessionRunning,
-		Kind:          "observer",
+		ID:                 sessionID,
+		ProjectID:          projectID,
+		TicketID:           "",
+		AgentType:          "_observer",
+		Phase:              "observer",
+		Status:             model.AgentSessionRunning,
+		Kind:               "observer",
 		ObserverScope:      sql.NullString{String: scope, Valid: scope != ""},
 		ObserverWorkflowID: sql.NullString{String: workflowID, Valid: scope == "workflow" && workflowID != ""},
 		SpawnToken:         sql.NullString{String: spawnToken, Valid: true},

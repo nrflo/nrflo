@@ -155,8 +155,8 @@ func opencodeSQLiteTailRun(ctx context.Context, sessionID, workDir string, start
 // Mapping (part.data JSON `.type` field):
 //   - "text"             → category="text",  content = $.text
 //   - "tool"             → category="tool",  content = "<tool>: <input snippet>",
-//                          payload = full part JSON (for the agent-saver to
-//                          summarize tool use + outputs on context save)
+//     payload = full part JSON (for the agent-saver to
+//     summarize tool use + outputs on context save)
 //   - "reasoning"        → category="thinking", content = $.text
 //   - "step-start" / "step-finish" / unknown → skipped (internal events)
 //

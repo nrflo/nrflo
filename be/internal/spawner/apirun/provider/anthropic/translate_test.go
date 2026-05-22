@@ -391,7 +391,7 @@ func TestTranslateRequest_BasicShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("translateRequest: %v", err)
 	}
-	if string(params.Model) != "claude-opus-4-7" {
+	if params.Model != "claude-opus-4-7" {
 		t.Errorf("Model = %q, want %q", params.Model, "claude-opus-4-7")
 	}
 	if params.MaxTokens != 256 {

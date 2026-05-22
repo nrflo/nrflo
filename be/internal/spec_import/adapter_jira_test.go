@@ -216,4 +216,3 @@ func TestJiraAdapter_Fetch_MissingDescription(t *testing.T) {
 		t.Errorf("AttachedRefs len = %d, want 1", len(spec.AttachedRefs))
 	}
 }
-

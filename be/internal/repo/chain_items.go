@@ -14,7 +14,7 @@ import (
 // ChainItemRepo handles chain execution item operations
 type ChainItemRepo struct {
 	clock clock.Clock
-	pool *db.Pool
+	pool  *db.Pool
 }
 
 // NewChainItemRepo creates a new chain item repository
@@ -186,13 +186,8 @@ func (r *ChainItemRepo) GetTicketIDsByChain(chainID string) ([]string, error) {
 	return ids, rows.Err()
 }
 
-// DeletePendingByTicketIDs deletes pending items matching the given ticket IDs.
+// DeletePendingByTicketIDsTx deletes pending items matching the given ticket IDs.
 // Returns the number of rows actually deleted.
-func (r *ChainItemRepo) DeletePendingByTicketIDs(chainID string, ticketIDs []string) (int64, error) {
-	return r.DeletePendingByTicketIDsTx(r.pool, chainID, ticketIDs)
-}
-
-// DeletePendingByTicketIDsTx is the transactional variant of DeletePendingByTicketIDs.
 func (r *ChainItemRepo) DeletePendingByTicketIDsTx(exec interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }, chainID string, ticketIDs []string) (int64, error) {

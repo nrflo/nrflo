@@ -150,7 +150,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	workflows map[string]spawner.WorkflowDef,
 	agents map[string]spawner.AgentConfig,
 	pool *db.Pool,
-	projectRoot string,
+	_ string,
 	modelConfigs map[string]spawner.ModelConfig,
 	claudeSettingsJSON string,
 ) ([]string, error) {
@@ -224,7 +224,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	// Resolve mapped model: DB-sourced MappedModel wins, else fall back to
 	// the Claude adapter's hardcoded mapping. Without this, the raw nrflo ID
 	// (e.g. "opus_4_7") reaches `claude --model` and the CLI rejects it.
-	ptyModel := modelName
+	var ptyModel string
 	if cfg, ok := modelConfigs[modelName]; ok && cfg.MappedModel != "" {
 		ptyModel = cfg.MappedModel
 	} else {

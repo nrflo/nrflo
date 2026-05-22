@@ -201,7 +201,9 @@ func TestUpdateUser_LastAdmin(t *testing.T) {
 		t.Fatalf("GET /auth/me: %v", err)
 	}
 	var meOut struct {
-		User struct{ ID string `json:"id"` } `json:"user"`
+		User struct {
+			ID string `json:"id"`
+		} `json:"user"`
 	}
 	json.NewDecoder(meResp.Body).Decode(&meOut)
 	drain(meResp)

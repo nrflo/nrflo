@@ -25,8 +25,3 @@ func (g *Generator) Generate() (string, error) {
 	}
 	return fmt.Sprintf("%s-%s", g.prefix, hex.EncodeToString(bytes)), nil
 }
-
-// GetPrefix returns the current prefix
-func (g *Generator) GetPrefix() string {
-	return g.prefix
-}

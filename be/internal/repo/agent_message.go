@@ -27,7 +27,7 @@ type MessageWithTime struct {
 // AgentMessageRepo handles agent message CRUD operations
 type AgentMessageRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewAgentMessageRepo creates a new agent message repository
@@ -193,7 +193,7 @@ func (r *AgentMessageRepo) GetCountsBySessionIDs(sessionIDs []string) (map[strin
 // AgentMessagePoolRepo handles agent message operations using the connection pool
 type AgentMessagePoolRepo struct {
 	clock clock.Clock
-	pool *db.Pool
+	pool  *db.Pool
 }
 
 // NewAgentMessagePoolRepo creates a new agent message pool repository

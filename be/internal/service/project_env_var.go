@@ -13,19 +13,19 @@ import (
 var validNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var reservedNames = map[string]bool{
-	"NRFLO_PROJECT":              true,
-	"NRFLO_AGENT_TOKEN":          true,
-	"NRFLO_SDK_DIR":              true,
-	"NRFLO_HOME":                 true,
-	"NRF_SESSION_ID":             true,
-	"NRF_WORKFLOW_INSTANCE_ID":   true,
-	"NRF_TRX":                    true,
-	"NRF_SPAWNED":                true,
-	"NRF_CONTEXT_THRESHOLD":      true,
-	"NRF_MAX_CONTEXT":            true,
-	"CLAUDECODE":                 true,
-	"PATH":                       true,
-	"HOME":                       true,
+	"NRFLO_PROJECT":            true,
+	"NRFLO_AGENT_TOKEN":        true,
+	"NRFLO_SDK_DIR":            true,
+	"NRFLO_HOME":               true,
+	"NRF_SESSION_ID":           true,
+	"NRF_WORKFLOW_INSTANCE_ID": true,
+	"NRF_TRX":                  true,
+	"NRF_SPAWNED":              true,
+	"NRF_CONTEXT_THRESHOLD":    true,
+	"NRF_MAX_CONTEXT":          true,
+	"CLAUDECODE":               true,
+	"PATH":                     true,
+	"HOME":                     true,
 }
 
 const maxValueLen = 4096

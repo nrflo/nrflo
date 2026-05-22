@@ -155,11 +155,11 @@ func (s *Server) handleDeleteProject(w http.ResponseWriter, r *http.Request) {
 
 // UpdateProjectRequest represents the request body for updating a project
 type UpdateProjectRequest struct {
-	Name            *string `json:"name,omitempty"`
-	RootPath        *string `json:"root_path,omitempty"`
-	DefaultBranch   *string `json:"default_branch,omitempty"`
-	UseGitWorktrees *bool   `json:"use_git_worktrees,omitempty"`
-	PushAfterMerge  *bool   `json:"push_after_merge,omitempty"`
+	Name             *string `json:"name,omitempty"`
+	RootPath         *string `json:"root_path,omitempty"`
+	DefaultBranch    *string `json:"default_branch,omitempty"`
+	UseGitWorktrees  *bool   `json:"use_git_worktrees,omitempty"`
+	PushAfterMerge   *bool   `json:"push_after_merge,omitempty"`
 	ClaudeSafetyHook *string `json:"claude_safety_hook,omitempty"`
 }
 

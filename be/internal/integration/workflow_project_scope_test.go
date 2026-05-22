@@ -11,12 +11,11 @@ import (
 func TestProjectWorkflowDefCreate(t *testing.T) {
 	env := NewTestEnv(t)
 
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "project-workflow",
 		Description: "Project-scoped workflow",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 
 	if err != nil {
@@ -37,7 +36,6 @@ func TestProjectWorkflowDefCreate(t *testing.T) {
 // TestProjectWorkflowDefDefaultScopeType tests that workflows default to scope_type=ticket
 func TestProjectWorkflowDefDefaultScopeType(t *testing.T) {
 	env := NewTestEnv(t)
-
 
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "default-scope",
@@ -65,12 +63,11 @@ func TestProjectWorkflowDefDefaultScopeType(t *testing.T) {
 func TestProjectWorkflowDefInvalidScopeType(t *testing.T) {
 	env := NewTestEnv(t)
 
-
 	_, err := env.WorkflowSvc.CreateWorkflowDef(env.ProjectID, &types.WorkflowDefCreateRequest{
 		ID:          "invalid-scope",
 		Description: "Invalid scope workflow",
 
-		ScopeType:   "invalid",
+		ScopeType: "invalid",
 	})
 
 	if err == nil {
@@ -92,7 +89,7 @@ func TestProjectWorkflowInit(t *testing.T) {
 		ID:          "proj-init-test",
 		Description: "Test project workflow",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -141,7 +138,7 @@ func TestProjectWorkflowInitMultipleAllowed(t *testing.T) {
 		ID:          "proj-dup-test",
 		Description: "Test multi-instance",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -178,7 +175,7 @@ func TestProjectWorkflowInitWrongScope(t *testing.T) {
 		ID:          "ticket-scope-def",
 		Description: "Ticket-scoped workflow",
 
-		ScopeType:   "ticket",
+		ScopeType: "ticket",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -207,7 +204,7 @@ func TestTicketWorkflowInitWrongScope(t *testing.T) {
 		ID:          "proj-scope-def",
 		Description: "Project-scoped workflow",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -237,7 +234,7 @@ func TestProjectWorkflowStateRetrieval(t *testing.T) {
 		ID:          "proj-state-test",
 		Description: "Test state retrieval",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -309,7 +306,7 @@ func TestProjectWorkflowMultiInstance(t *testing.T) {
 		ID:          "multi-test",
 		Description: "Test multi-instance",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create workflow def: %v", err)
@@ -396,7 +393,7 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 		ID:          "mixed-project",
 		Description: "Project workflow",
 
-		ScopeType:   "project",
+		ScopeType: "project",
 	})
 	if err != nil {
 		t.Fatalf("failed to create project workflow: %v", err)
@@ -407,7 +404,7 @@ func TestProjectWorkflowMixedScopes(t *testing.T) {
 		ID:          "mixed-ticket",
 		Description: "Ticket workflow",
 
-		ScopeType:   "ticket",
+		ScopeType: "ticket",
 	})
 	if err != nil {
 		t.Fatalf("failed to create ticket workflow: %v", err)

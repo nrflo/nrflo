@@ -250,7 +250,7 @@ func (s *Server) handleGetTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var response map[string]interface{}
-	json.Unmarshal(ticketJSON, &response)
+	_ = json.Unmarshal(ticketJSON, &response)
 
 	if blockers == nil {
 		blockers = []*model.Dependency{}

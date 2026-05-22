@@ -129,10 +129,10 @@ func TestStallTimeout_ResolutionPriority(t *testing.T) {
 func TestStallTimeout_ResolutionPriority_Running(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		globalRunning  *int
-		agentDefRun    *int
-		wantRunning    time.Duration
+		name          string
+		globalRunning *int
+		agentDefRun   *int
+		wantRunning   time.Duration
 	}{
 		{
 			name:          "neither_set_uses_hardcoded_default",
@@ -321,12 +321,12 @@ func TestLoadAgentDefinition_StallTimeoutFieldsNil(t *testing.T) {
 
 	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	if err := adRepo.Create(&model.AgentDefinition{
-		ID:        "no-stall-agent",
-		ProjectID: env.project,
+		ID:         "no-stall-agent",
+		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:     "opus_4_7",
-		Timeout:   60,
-		Prompt:    "no stall timeout",
+		Model:      "opus_4_7",
+		Timeout:    60,
+		Prompt:     "no stall timeout",
 		// StallStartTimeoutSec and StallRunningTimeoutSec intentionally nil
 	}); err != nil {
 		t.Fatalf("create agent def: %v", err)

@@ -28,12 +28,12 @@ func TestReadCallbackFindings(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name         string
-		findings     map[string]interface{}
-		wantMode     string
-		wantLevel    int
-		wantAgent    string
-		wantChain    []string
+		name      string
+		findings  map[string]interface{}
+		wantMode  string
+		wantLevel int
+		wantAgent string
+		wantChain []string
 	}{
 		{
 			name: "mode=layer explicit with level",
@@ -77,8 +77,8 @@ func TestReadCallbackFindings(t *testing.T) {
 			wantLevel: 1,
 		},
 		{
-			name:     "callback_level as float64 is converted correctly",
-			findings: map[string]interface{}{"callback_mode": "layer", "callback_level": float64(5)},
+			name:      "callback_level as float64 is converted correctly",
+			findings:  map[string]interface{}{"callback_mode": "layer", "callback_level": float64(5)},
 			wantMode:  "layer",
 			wantLevel: 5,
 		},

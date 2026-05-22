@@ -53,7 +53,7 @@ func scanTicketRow(scanner interface{ Scan(...interface{}) error }) (*model.Tick
 // TicketService handles ticket business logic
 type TicketService struct {
 	clock clock.Clock
-	pool   *db.Pool
+	pool  *db.Pool
 }
 
 // NewTicketService creates a new ticket service

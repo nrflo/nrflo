@@ -230,12 +230,12 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 
 	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
-		ID:          "analyzer",
-		ProjectID:   env.project,
-		WorkflowID:  "test",
-		Model:       "sonnet",
-		Timeout:     3600,
-		Prompt:      "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed with analysis.",
+		ID:         "analyzer",
+		ProjectID:  env.project,
+		WorkflowID: "test",
+		Model:      "sonnet",
+		Timeout:    3600,
+		Prompt:     "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed with analysis.",
 	})
 	if err != nil {
 		t.Fatalf("failed to create agent definition: %v", err)
@@ -298,12 +298,12 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 
 	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
-		ID:          "analyzer",
-		ProjectID:   env.project,
-		WorkflowID:  "test",
-		Model:       "sonnet",
-		Timeout:     3600,
-		Prompt:      "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\nProceed with analysis.",
+		ID:         "analyzer",
+		ProjectID:  env.project,
+		WorkflowID: "test",
+		Model:      "sonnet",
+		Timeout:    3600,
+		Prompt:     "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\nProceed with analysis.",
 	})
 	if err != nil {
 		t.Fatalf("failed to create agent definition: %v", err)
@@ -353,12 +353,12 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 
 	adRepo := repo.NewAgentDefinitionRepo(database, clock.Real())
 	err = adRepo.Create(&model.AgentDefinition{
-		ID:          "analyzer",
-		ProjectID:   env.project,
-		WorkflowID:  "test",
-		Model:       "sonnet",
-		Timeout:     3600,
-		Prompt:      "Agent: ${AGENT}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed.",
+		ID:         "analyzer",
+		ProjectID:  env.project,
+		WorkflowID: "test",
+		Model:      "sonnet",
+		Timeout:    3600,
+		Prompt:     "Agent: ${AGENT}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed.",
 	})
 	if err != nil {
 		t.Fatalf("failed to create agent definition: %v", err)

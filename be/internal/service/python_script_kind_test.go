@@ -155,7 +155,7 @@ func TestPythonScriptService_CreateKindTool_TimeoutRange(t *testing.T) {
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := svc.Create(projectID, &types.PythonScriptCreateRequest{
+			_, _ = svc.Create(projectID, &types.PythonScriptCreateRequest{
 				Name:            "ToolTimeout",
 				Kind:            "tool",
 				ToolDescription: "does x",
@@ -164,7 +164,7 @@ func TestPythonScriptService_CreateKindTool_TimeoutRange(t *testing.T) {
 				Code: strings.Repeat("x", i),
 			})
 			// Rename to avoid collision
-			_, err = svc.Create(projectID, &types.PythonScriptCreateRequest{
+			_, err := svc.Create(projectID, &types.PythonScriptCreateRequest{
 				Name:            "TT" + tc.name,
 				Kind:            "tool",
 				ToolDescription: "does x",
@@ -210,4 +210,3 @@ func TestPythonScriptService_CreateKindTool_Success(t *testing.T) {
 		t.Errorf("ID = %q, want ps- prefix", script.ID)
 	}
 }
-

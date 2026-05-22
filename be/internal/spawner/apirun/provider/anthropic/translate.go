@@ -15,7 +15,7 @@ import (
 // tests can inspect the result without going through the network.
 func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 	params := sdk.MessageNewParams{
-		Model:     sdk.Model(req.Model),
+		Model:     req.Model,
 		MaxTokens: int64(req.MaxTokens),
 	}
 

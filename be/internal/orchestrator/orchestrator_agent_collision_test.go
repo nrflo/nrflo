@@ -159,7 +159,11 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 	})
 
 	// Each individual workflow returns its own model.
-	singles := []struct{ wf *model.Workflow; def *model.AgentDefinition; want string }{
+	singles := []struct {
+		wf   *model.Workflow
+		def  *model.AgentDefinition
+		want string
+	}{
 		{workflows[0], defs[0], "opus_4_7"},
 		{workflows[1], defs[1], "sonnet"},
 		{workflows[2], defs[2], "haiku"},

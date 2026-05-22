@@ -197,24 +197,24 @@ func TestWorkflowFindings_SeparateFromCombinedFindings(t *testing.T) {
 // TestWorkflowFindings_TableDriven tests multiple scenarios for internal key filtering.
 func TestWorkflowFindings_InternalKeyFiltering(t *testing.T) {
 	cases := []struct {
-		name             string
-		ticketID         string
-		input            map[string]interface{}
-		wantPresent      bool
-		wantKeys         []string
-		wantAbsentKeys   []string
+		name           string
+		ticketID       string
+		input          map[string]interface{}
+		wantPresent    bool
+		wantKeys       []string
+		wantAbsentKeys []string
 	}{
 		{
-			name:     "single_public_key",
-			ticketID: "WFF-T1",
-			input:    map[string]interface{}{"result": "ok"},
+			name:        "single_public_key",
+			ticketID:    "WFF-T1",
+			input:       map[string]interface{}{"result": "ok"},
 			wantPresent: true,
 			wantKeys:    []string{"result"},
 		},
 		{
-			name:     "mixed_public_and_internal",
-			ticketID: "WFF-T2",
-			input:    map[string]interface{}{"pub": "val", "_priv": "hidden"},
+			name:           "mixed_public_and_internal",
+			ticketID:       "WFF-T2",
+			input:          map[string]interface{}{"pub": "val", "_priv": "hidden"},
 			wantPresent:    true,
 			wantKeys:       []string{"pub"},
 			wantAbsentKeys: []string{"_priv"},
@@ -232,9 +232,9 @@ func TestWorkflowFindings_InternalKeyFiltering(t *testing.T) {
 			wantPresent: false,
 		},
 		{
-			name:     "underscore_not_at_start",
-			ticketID: "WFF-T5",
-			input:    map[string]interface{}{"key_with_underscore": "val"},
+			name:        "underscore_not_at_start",
+			ticketID:    "WFF-T5",
+			input:       map[string]interface{}{"key_with_underscore": "val"},
 			wantPresent: true,
 			wantKeys:    []string{"key_with_underscore"},
 		},

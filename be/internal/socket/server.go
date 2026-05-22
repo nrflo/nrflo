@@ -242,7 +242,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		var req Request
 		if err := json.Unmarshal(line, &req); err != nil {
 			resp := MakeErrorResponse("", NewParseError(err.Error()))
-			s.writeResponse(conn, resp)
+			_ = s.writeResponse(conn, resp)
 			continue
 		}
 

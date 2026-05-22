@@ -23,12 +23,13 @@ func newScriptBackend(s *Spawner) *scriptBackend {
 	return &scriptBackend{s: s}
 }
 
-func (b *scriptBackend) Name() string                  { return "script" }
-func (b *scriptBackend) SupportsResume() bool          { return false }
-func (b *scriptBackend) SupportsTakeControl() bool     { return false }
-func (b *scriptBackend) RequiresPrompt() bool          { return false }
-func (b *scriptBackend) TracksContext() bool           { return false }
-func (b *scriptBackend) ParsesStructuredOutput() bool   { return false }
+func (b *scriptBackend) Name() string                 { return "script" }
+func (b *scriptBackend) SupportsResume() bool         { return false }
+func (b *scriptBackend) SupportsTakeControl() bool    { return false }
+func (b *scriptBackend) RequiresPrompt() bool         { return false }
+func (b *scriptBackend) TracksContext() bool          { return false }
+func (b *scriptBackend) ParsesStructuredOutput() bool { return false }
+
 // NaturalExitGrace returns 0 — script backend is a one-shot python3
 // invocation that exits as soon as its main returns; no end-of-turn
 // flush to wait for.

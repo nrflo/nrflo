@@ -114,19 +114,19 @@ func TestLoadModelConfigs_ContainsSeedModels(t *testing.T) {
 
 	// All seeded models with their expected CLIType
 	expected := map[string]string{
-		"opus_4_6":           "claude",
-		"opus_4_6_1m":        "claude",
-		"opus_4_7":           "claude",
-		"opus_4_7_1m":        "claude",
-		"sonnet":             "claude",
-		"haiku":              "claude",
+		"opus_4_6":                  "claude",
+		"opus_4_6_1m":               "claude",
+		"opus_4_7":                  "claude",
+		"opus_4_7_1m":               "claude",
+		"sonnet":                    "claude",
+		"haiku":                     "claude",
 		"opencode_minimax_m25_free": "opencode",
 		"opencode_qwen36_plus_free": "opencode",
 		"opencode_gpt54":            "opencode",
-		"codex_gpt_normal":    "codex",
-		"codex_gpt_high":      "codex",
-		"codex_gpt54_normal":  "codex",
-		"codex_gpt54_high":    "codex",
+		"codex_gpt_normal":          "codex",
+		"codex_gpt_high":            "codex",
+		"codex_gpt54_normal":        "codex",
+		"codex_gpt54_high":          "codex",
 	}
 
 	for model, wantCLI := range expected {

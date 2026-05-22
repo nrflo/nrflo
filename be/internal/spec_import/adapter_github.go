@@ -163,7 +163,7 @@ func (g *GitHubAdapter) Fetch(ctx context.Context, in Input) (FetchedSpec, error
 		sb.WriteString("Labels: " + strings.Join(names, ", ") + "\n\n")
 	}
 	for _, c := range comments {
-		sb.WriteString(fmt.Sprintf("**%s**: %s\n\n", c.User.Login, c.Body))
+		fmt.Fprintf(&sb, "**%s**: %s\n\n", c.User.Login, c.Body)
 	}
 
 	label := fmt.Sprintf("%s/%s#%d", owner, repo, number)

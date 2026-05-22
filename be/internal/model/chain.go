@@ -35,9 +35,9 @@ type ChainExecution struct {
 	ProjectID    string      `json:"project_id"`
 	Name         string      `json:"name"`
 	Status       ChainStatus `json:"status"`
-	WorkflowName  string      `json:"workflow_name"`
-	EpicTicketID  string      `json:"epic_ticket_id,omitempty"`
-	CreatedBy     string      `json:"created_by"`
+	WorkflowName string      `json:"workflow_name"`
+	EpicTicketID string      `json:"epic_ticket_id,omitempty"`
+	CreatedBy    string      `json:"created_by"`
 	CreatedAt    time.Time   `json:"created_at"`
 	UpdatedAt    time.Time   `json:"updated_at"`
 	StartedAt    *time.Time  `json:"started_at,omitempty"`

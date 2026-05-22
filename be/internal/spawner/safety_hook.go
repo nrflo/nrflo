@@ -116,7 +116,7 @@ func buildSafetyCommand(cfg SafetyHookConfig) string {
 	// Always-block hardcoded dangerous rm patterns
 	b.WriteString(`case "$CMD" in `)
 	for _, pattern := range []string{"rm -rf /", "rm -rf ~", "rm -rf .", "rm -rf .."} {
-		b.WriteString(fmt.Sprintf(`*"%s"*) echo "Blocked: %s" >&2; exit 2;; `, pattern, pattern))
+		fmt.Fprintf(&b, `*"%s"*) echo "Blocked: %s" >&2; exit 2;; `, pattern, pattern)
 	}
 	b.WriteString(`esac; `)
 
@@ -124,7 +124,7 @@ func buildSafetyCommand(cfg SafetyHookConfig) string {
 	if len(cfg.DangerousPatterns) > 0 {
 		for _, pat := range cfg.DangerousPatterns {
 			escaped := shellEscape(pat)
-			b.WriteString(fmt.Sprintf(`case "$CMD" in *"%s"*) echo "Blocked dangerous pattern: %s" >&2; exit 2;; esac; `, escaped, escaped))
+			fmt.Fprintf(&b, `case "$CMD" in *"%s"*) echo "Blocked dangerous pattern: %s" >&2; exit 2;; esac; `, escaped, escaped)
 		}
 	}
 
@@ -139,10 +139,10 @@ func buildSafetyCommand(cfg SafetyHookConfig) string {
 			escaped := shellEscape(allowed)
 			if strings.HasPrefix(allowed, "/") {
 				// Absolute path: prefix match
-				b.WriteString(fmt.Sprintf(`case "$TARGET" in %s*) ALLOWED=1;; esac; `, escaped))
+				fmt.Fprintf(&b, `case "$TARGET" in %s*) ALLOWED=1;; esac; `, escaped)
 			} else {
 				// Relative pattern: basename match
-				b.WriteString(fmt.Sprintf(`BASENAME=$(basename "$TARGET"); case "$BASENAME" in %s) ALLOWED=1;; esac; `, escaped))
+				fmt.Fprintf(&b, `BASENAME=$(basename "$TARGET"); case "$BASENAME" in %s) ALLOWED=1;; esac; `, escaped)
 			}
 		}
 		b.WriteString(`if [ "$ALLOWED" -eq 0 ]; then echo "Blocked: rm -rf $TARGET not in allowed paths" >&2; exit 2; fi; `)
@@ -157,7 +157,7 @@ func buildSafetyCommand(cfg SafetyHookConfig) string {
 		gitWriteOps := []string{"commit", "push", "merge", "rebase", "reset", "branch -d", "branch -D", "clean", "stash drop", "add -f"}
 		for _, op := range gitWriteOps {
 			escaped := shellEscape(op)
-			b.WriteString(fmt.Sprintf(`case "$CMD" in *"git %s"*) echo "Blocked: git %s" >&2; exit 2;; esac; `, escaped, escaped))
+			fmt.Fprintf(&b, `case "$CMD" in *"git %s"*) echo "Blocked: git %s" >&2; exit 2;; esac; `, escaped, escaped)
 		}
 	}
 

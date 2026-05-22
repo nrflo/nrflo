@@ -10,11 +10,11 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `ticket.go` | Ticket CRUD, close/reopen, search, `ValidateRunnable` (rejects blocked tickets) |
 | `workflow.go` | Workflow operations (ticket + project scope): init, start/complete phase, state queries |
 | `workflow_defs.go` (+ `_read`/`_validate`/`_agents`) | Workflow definitions CRUD (phases derived from agent_definitions at read time); validates `next_workflow_on_success` (no self-ref, must exist in same project, must be project-scoped) and `finalize_success`/`finalize_failure`/`pause_event` slots (same rules: `command` vs `script_id` mutually exclusive; any `script_id` must resolve to a `python_scripts` row of `kind='agent'`) |
-| `workflow_config.go` | `BuildSpawnerConfig`/`BuildSpawnerConfigWithPolicies`: phases from agent_definitions (layer ASC, id ASC) + LayerPolicies |
+| `workflow_config.go` | `BuildSpawnerConfig`: phases from agent_definitions (layer ASC, id ASC) |
 | `workflow_types.go` | Type definitions: `WorkflowDef`, `PhaseDef`, `RestartDetail` |
 | `layer_policy.go` | `ParseLayerPolicy`, `LayerPolicy.Required(denom)`, `ValidateLayerPolicy`; kinds: `any`, `all`, `quorum:N`, `percent:P` |
 | `workflow_layer_policy.go` | `WorkflowLayerPolicyService`: Get/Set/Delete; validates quorum ≤ agent count |
-| `workflow_validation.go` | `validateLayerConfig` (layer >= 0), `ValidateProjectScope`, `ValidateScopeType`, `ValidateGroups` |
+| `workflow_validation.go` | `validateLayerConfig` (layer >= 0), `ValidateScopeType`, `ValidateGroups` |
 | `workflow_response.go` | V4 response building: active agents, history, findings aggregation, phase status |
 | `workflow_restart_details.go` | Restart detail loading: duration, context, message count from continued sessions |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |

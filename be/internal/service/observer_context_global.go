@@ -18,17 +18,17 @@ func buildGlobalDynamicContext(s *ObserverService) (string, error) {
 		return b.String(), nil
 	}
 
-	b.WriteString(fmt.Sprintf("**Projects:** %d\n\n", len(projects)))
+	fmt.Fprintf(&b, "**Projects:** %d\n\n", len(projects))
 
 	if len(projects) > 0 {
 		b.WriteString("### Projects\n\n")
 		for _, p := range projects {
-			b.WriteString(fmt.Sprintf("- **%s** (%s)\n", p.ID, p.Name))
+			fmt.Fprintf(&b, "- **%s** (%s)\n", p.ID, p.Name)
 
 			// Per-project recent sessions count
 			sessions, sessErr := s.agentSvc.GetRecentSessions(p.ID, 5)
 			if sessErr == nil {
-				b.WriteString(fmt.Sprintf("  Recent sessions: %d\n", len(sessions)))
+				fmt.Fprintf(&b, "  Recent sessions: %d\n", len(sessions))
 			}
 		}
 		b.WriteString("\n")
@@ -42,7 +42,7 @@ func buildGlobalDynamicContext(s *ObserverService) (string, error) {
 			continue
 		}
 		for _, sess := range sessions {
-			b.WriteString(fmt.Sprintf("- [%s] %s phase=%s status=%s\n", p.ID, sess.ID[:8], sess.Phase, sess.Status))
+			fmt.Fprintf(&b, "- [%s] %s phase=%s status=%s\n", p.ID, sess.ID[:8], sess.Phase, sess.Status)
 		}
 	}
 	b.WriteString("\n")

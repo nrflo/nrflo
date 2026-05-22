@@ -22,7 +22,7 @@ type EventLogEntry struct {
 // EventLogRepo handles ws_event_log persistence
 type EventLogRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewEventLogRepo creates a new event log repository

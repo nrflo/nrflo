@@ -270,7 +270,7 @@ func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) 
 
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, map[string]interface{}{
 		"workflow":              workflowID,
-		"instance_id":          "wfi-123",
+		"instance_id":           "wfi-123",
 		"workflow_final_result": "Build completed successfully",
 	}))
 

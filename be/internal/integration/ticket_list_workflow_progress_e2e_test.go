@@ -57,7 +57,10 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Create agent definitions for the "feature" workflow (4 phases across 4 layers)
-	for _, ad := range []struct{ id string; layer int }{
+	for _, ad := range []struct {
+		id    string
+		layer int
+	}{
 		{"investigation", 0}, {"test-design", 1}, {"implementation", 2}, {"verification", 3},
 	} {
 		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
@@ -226,7 +229,10 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 
 	// Create agent definitions for the "feature" workflow (5 phases across 5 layers)
-	for _, ad := range []struct{ id string; layer int }{
+	for _, ad := range []struct {
+		id    string
+		layer int
+	}{
 		{"phase1", 0}, {"phase2", 1}, {"phase3", 2}, {"phase4", 3}, {"phase5", 4},
 	} {
 		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)

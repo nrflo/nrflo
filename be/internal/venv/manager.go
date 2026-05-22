@@ -27,8 +27,8 @@ type Manager struct {
 // New creates a Manager. dataDir is the nrflo data directory (e.g. ~/.nrflo).
 func New(dataDir string, clk clock.Clock) *Manager {
 	return &Manager{
-		dataDir: dataDir,
-		clk:     clk,
+		dataDir:  dataDir,
+		clk:      clk,
 		lookPath: exec.LookPath,
 		cmdFactory: func(ctx context.Context, name string, args ...string) *exec.Cmd {
 			return exec.CommandContext(ctx, name, args...)

@@ -277,7 +277,8 @@ func TestListProjectsReturnsDefaultBranch(t *testing.T) {
 			continue
 		}
 
-		if id == "list-proj-1" {
+		switch id {
+		case "list-proj-1":
 			proj1Found = true
 			defaultBranch, ok := proj["default_branch"]
 			if !ok {
@@ -286,7 +287,7 @@ func TestListProjectsReturnsDefaultBranch(t *testing.T) {
 			if defaultBranch != "main" {
 				t.Fatalf("expected default_branch 'main' for list-proj-1, got %v", defaultBranch)
 			}
-		} else if id == "list-proj-2" {
+		case "list-proj-2":
 			proj2Found = true
 			defaultBranch, ok := proj["default_branch"]
 			if !ok {

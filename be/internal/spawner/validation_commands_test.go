@@ -96,9 +96,9 @@ func TestValidationCommandsParsing_ValidJSON(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		rawJSON    string
-		wantCmds   []string
+		name     string
+		rawJSON  string
+		wantCmds []string
 	}{
 		{"empty_array", "[]", nil},
 		{"single_cmd", `["true"]`, []string{"true"}},

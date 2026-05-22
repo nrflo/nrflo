@@ -63,7 +63,7 @@ func walkADF(b *strings.Builder, node adfNode, listDepth int) {
 		idx := 1
 		for _, child := range node.Content {
 			if child.Type == "listItem" {
-				b.WriteString(fmt.Sprintf("%d. ", idx))
+				fmt.Fprintf(b, "%d. ", idx)
 				idx++
 				for _, c := range child.Content {
 					walkADF(b, c, listDepth+1)
@@ -108,7 +108,7 @@ func walkADF(b *strings.Builder, node adfNode, listDepth int) {
 
 	case "inlineCard", "mention":
 		if url, ok := node.Attrs["url"]; ok {
-			b.WriteString(fmt.Sprintf("%v", url))
+			fmt.Fprintf(b, "%v", url)
 		}
 
 	case "hardBreak":

@@ -257,8 +257,8 @@ func TestCheckSafetyHook_MultipleUserPatterns(t *testing.T) {
 	}{
 		{"DANGEROUS_QUERY users", true},
 		{"evalmalicious payload", true},
-		{"something foo|bar baz", true},  // pipe in pattern matched literally
-		{"ls /tmp", false},               // allowed — no dangerous pattern matches
+		{"something foo|bar baz", true}, // pipe in pattern matched literally
+		{"ls /tmp", false},              // allowed — no dangerous pattern matches
 	}
 	for _, tc := range cases {
 		t.Run(tc.cmd, func(t *testing.T) {

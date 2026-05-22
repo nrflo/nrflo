@@ -3,7 +3,8 @@
        build-server-notray build-release-server-notray \
        install clean test test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
-       embed-assets docker-build docker-buildx docker-login
+       embed-assets docker-build docker-buildx docker-login \
+       lint lint-fix lint-pkg deadcode cleanup
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -177,6 +178,52 @@ test-coverage: embed-assets
 test-race: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -race ./internal/... -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
+
+# --- Lint / dead-code (cleanup pipeline) ---
+# Pinned tooling is bootstrapped into be/bin (gitignored). golangci-lint's large
+# dependency tree is deliberately kept out of be/go.mod.
+GOLANGCI_VERSION ?= v2.12.2
+BE_BIN     := $(BE_DIR)/bin
+GOLANGCI   := $(BE_BIN)/golangci-lint
+DEADCODE   := $(BE_BIN)/deadcode
+
+$(GOLANGCI):
+	@mkdir -p $(BE_BIN)
+	@echo "Installing golangci-lint $(GOLANGCI_VERSION) -> $(BE_BIN)"
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+		| sh -s -- -b $(CURDIR)/$(BE_BIN) $(GOLANGCI_VERSION)
+
+$(DEADCODE):
+	@mkdir -p $(BE_BIN)
+	@cd $(BE_DIR) && GOBIN=$(CURDIR)/$(BE_BIN) $(GO) install golang.org/x/tools/cmd/deadcode@latest
+
+## lint: Run golangci-lint over the backend (cleanup gate; enforces gofmt)
+lint: embed-assets $(GOLANGCI)
+	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) run ./...
+
+## lint-fix: golangci-lint formatters + autofix
+lint-fix: embed-assets $(GOLANGCI)
+	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) fmt ./... && $(CURDIR)/$(GOLANGCI) run --fix ./...
+
+## lint-pkg: Lint one package (usage: make lint-pkg PKG=orchestrator)
+lint-pkg: embed-assets $(GOLANGCI)
+	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) run ./internal/$(PKG)/...
+
+## deadcode: Report unreachable funcs; fails on NEW dead code vs deadcode.baseline
+deadcode: embed-assets $(DEADCODE)
+	@cd $(BE_DIR) && $(CURDIR)/$(DEADCODE) -f '{{range .Funcs}}{{println $$.Path .Name}}{{end}}' ./cmd/server ./cmd/nrflo 2>/dev/null | sort -u > /tmp/nrflo-deadcode-now.txt
+	@grep -v '^#' $(BE_DIR)/deadcode.baseline | sort -u > /tmp/nrflo-deadcode-base.txt
+	@new=$$(comm -23 /tmp/nrflo-deadcode-now.txt /tmp/nrflo-deadcode-base.txt); \
+	if [ -n "$$new" ]; then \
+		echo "NEW unreachable funcs (not in be/deadcode.baseline):"; \
+		echo "$$new" | sed 's/^/  /'; \
+		echo "Delete the dead code, or (if reached via socket/reflection/tests) add the line(s) to be/deadcode.baseline."; \
+		exit 1; \
+	fi; \
+	echo "deadcode: no new unreachable funcs"
+
+## cleanup: Full cleanup gate — golangci-lint + dead-code check
+cleanup: lint deadcode
 
 # --- Housekeeping ---
 

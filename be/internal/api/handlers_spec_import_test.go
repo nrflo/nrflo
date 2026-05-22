@@ -19,14 +19,14 @@ import (
 // --- stub adapter ---
 
 type stubSpecImportAdapter struct {
-	src          spec_import.Source
-	fetchResult  spec_import.FetchedSpec
-	fetchErr     error
-	ghResults    []spec_import.GitHubIssueSummary
-	ghErr        error
-	jiraResults  []spec_import.JiraIssueSummary
-	jiraErr      error
-	capturedEnv  map[string]string
+	src         spec_import.Source
+	fetchResult spec_import.FetchedSpec
+	fetchErr    error
+	ghResults   []spec_import.GitHubIssueSummary
+	ghErr       error
+	jiraResults []spec_import.JiraIssueSummary
+	jiraErr     error
+	capturedEnv map[string]string
 }
 
 func (s *stubSpecImportAdapter) Source() spec_import.Source { return s.src }
@@ -301,11 +301,11 @@ func TestHandleEnvVarCatalog_ReturnsAllVars(t *testing.T) {
 
 	// Verify the expected names appear.
 	want := map[string]bool{
-		"GITHUB_TOKEN":         true,
-		"JIRA_BASE_URL":        true,
-		"JIRA_EMAIL":           true,
-		"JIRA_API_TOKEN":       true,
-		"ANTHROPIC_API_KEY":    true,
+		"GITHUB_TOKEN":          true,
+		"JIRA_BASE_URL":         true,
+		"JIRA_EMAIL":            true,
+		"JIRA_API_TOKEN":        true,
+		"ANTHROPIC_API_KEY":     true,
 		"ANTHROPIC_OAUTH_TOKEN": true,
 	}
 	for _, v := range vars {
@@ -389,8 +389,8 @@ func TestHandleJiraSearch_MissingEnv_412(t *testing.T) {
 	s, projectID := newSpecImportServer(t)
 	stub := &stubJiraAdapter{
 		stubSpecImportAdapter: stubSpecImportAdapter{
-			src:      spec_import.SourceJira,
-			jiraErr:  spec_import.MissingEnvError{Source: spec_import.SourceJira, Missing: []string{"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"}},
+			src:     spec_import.SourceJira,
+			jiraErr: spec_import.MissingEnvError{Source: spec_import.SourceJira, Missing: []string{"JIRA_BASE_URL", "JIRA_EMAIL", "JIRA_API_TOKEN"}},
 		},
 	}
 	s.specImportAdapterFunc = func(src string) (interface{}, error) { return stub, nil }

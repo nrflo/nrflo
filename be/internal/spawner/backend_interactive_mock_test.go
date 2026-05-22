@@ -64,7 +64,7 @@ func (m *mockPtySession) Kill() error {
 
 func (m *mockPtySession) Done() <-chan struct{} { return m.done }
 func (m *mockPtySession) ExitCode() int         { return m.exitCodeVal }
-func (m *mockPtySession) Pid() int               { return m.pidVal }
+func (m *mockPtySession) Pid() int              { return m.pidVal }
 
 // mockPtyManager implements ptyManagerIface for tests.
 type mockPtyManager struct {

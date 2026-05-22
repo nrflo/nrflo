@@ -179,7 +179,7 @@ func (r *FindingRepo) GetSessionFindingByKey(wfiID, key string) (json.RawMessage
 	return json.RawMessage(value), true
 }
 
-// findingAppendValue implements array-merge semantics (mirrors service.AppendValue).
+// findingAppendValue implements array-merge semantics for finding values.
 func findingAppendValue(existing, newVal interface{}) interface{} {
 	if existing == nil {
 		return newVal

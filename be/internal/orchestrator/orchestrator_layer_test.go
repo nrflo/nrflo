@@ -142,7 +142,6 @@ func TestParallelAgentsConcurrentExecution(t *testing.T) {
 	}
 }
 
-
 // TestMixedOutcomesLayerPassCount tests that a layer with mixed outcomes
 // (some pass, some fail) still allows the workflow to proceed if pass_count >= 1.
 func TestMixedOutcomesLayerPassCount(t *testing.T) {
@@ -151,10 +150,10 @@ func TestMixedOutcomesLayerPassCount(t *testing.T) {
 	//   if passCount == 0 { markFailed(); return }
 
 	tests := []struct {
-		name         string
-		passCount    int
-		failCount    int
-		shouldPass   bool
+		name       string
+		passCount  int
+		failCount  int
+		shouldPass bool
 	}{
 		{
 			name:       "1 pass, 1 fail - should proceed",
@@ -219,7 +218,7 @@ func TestAllFailLayerStopsWorkflow(t *testing.T) {
 	passCount = 1
 	failCount = 2
 
-	shouldStop = passCount == 0
+	shouldStop = passCount == 0 && failCount > 0
 
 	if shouldStop {
 		t.Error("expected workflow to continue when at least one agent passes")
@@ -335,4 +334,3 @@ func TestLayerPassPolicy_Callback_StillCountsAsPass(t *testing.T) {
 		t.Error("expected 'any' to succeed when callback counts as 1 pass")
 	}
 }
-

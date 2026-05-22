@@ -352,7 +352,7 @@ func New(config Config) *Spawner {
 // loadProjectPythonTools loads python_scripts rows with kind=tool for a project
 // and constructs apirun.ToolHandler instances for each. Returns nil slice (no error)
 // when PythonScriptRepo is not configured or no tool rows exist.
-func (s *Spawner) loadProjectPythonTools(projectID, sessionID string) ([]apirun.ToolHandler, error) {
+func (s *Spawner) loadProjectPythonTools(projectID, _ string) ([]apirun.ToolHandler, error) {
 	if s.config.PythonScriptRepo == nil {
 		return nil, nil
 	}

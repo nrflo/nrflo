@@ -191,8 +191,8 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 		createdAt time.Time
 		updatedAt *time.Time // nil means NULL
 	}{
-		{"OLD-1", now.Add(-4 * time.Hour), nil}, // NULL updated_at, oldest created
-		{"OLD-2", now.Add(-2 * time.Hour), nil}, // NULL updated_at, newer created
+		{"OLD-1", now.Add(-4 * time.Hour), nil},                              // NULL updated_at, oldest created
+		{"OLD-2", now.Add(-2 * time.Hour), nil},                              // NULL updated_at, newer created
 		{"NEW-1", now.Add(-3 * time.Hour), ptrTime(now.Add(-1 * time.Hour))}, // Has updated_at
 	}
 

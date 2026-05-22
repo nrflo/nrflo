@@ -98,4 +98,3 @@ func TestSpawner_RejectsAPIModeAgent_ViaConfigAgents(t *testing.T) {
 		t.Errorf("Spawn() error = %q; want error containing \"api_mode_disabled\"", spawnErr.Error())
 	}
 }
-

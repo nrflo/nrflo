@@ -244,4 +244,3 @@ func TestCreateAgentDef_DefaultEmptyLowConsumptionModel(t *testing.T) {
 		t.Errorf("GetAgentDef LowConsumptionModel = %q, want empty", got.LowConsumptionModel)
 	}
 }
-

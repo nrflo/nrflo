@@ -12,13 +12,13 @@ type mockBackend struct {
 	name string
 }
 
-func (m *mockBackend) Name() string                                                    { return m.name }
-func (m *mockBackend) SupportsResume() bool                                            { return false }
-func (m *mockBackend) SupportsTakeControl() bool                                       { return false }
-func (m *mockBackend) RequiresPrompt() bool                                            { return false }
-func (m *mockBackend) TracksContext() bool                                             { return false }
-func (m *mockBackend) ParsesStructuredOutput() bool                                    { return false }
-func (m *mockBackend) NaturalExitGrace() time.Duration                                 { return 0 }
+func (m *mockBackend) Name() string                                                   { return m.name }
+func (m *mockBackend) SupportsResume() bool                                           { return false }
+func (m *mockBackend) SupportsTakeControl() bool                                      { return false }
+func (m *mockBackend) RequiresPrompt() bool                                           { return false }
+func (m *mockBackend) TracksContext() bool                                            { return false }
+func (m *mockBackend) ParsesStructuredOutput() bool                                   { return false }
+func (m *mockBackend) NaturalExitGrace() time.Duration                                { return 0 }
 func (m *mockBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error   { return nil }
 func (m *mockBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error { return nil }
 

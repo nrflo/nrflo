@@ -254,4 +254,3 @@ func TestRunnerSink_ToolUseStop_UnknownIDFallback(t *testing.T) {
 		t.Errorf("call[0].category = %q, want tool", calls[0].category)
 	}
 }
-

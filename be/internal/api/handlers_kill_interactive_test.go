@@ -1,37 +1,12 @@
 package api
 
 import (
-	"database/sql"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
-
-// insertInteractiveSessionForKill inserts an agent_sessions row with status=user_interactive
-// for handler tests that exercise KillInteractive.
-func insertInteractiveSessionForKill(t *testing.T, s *Server, wfiID, projectID, ticketID, sessionID string) {
-	t.Helper()
-	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err := s.pool.Exec(`
-		INSERT INTO agent_sessions
-			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
-			 model_id, status, result, result_reason, pid,
-			 context_left, ancestor_session_id, spawn_command, prompt,
-			 restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'phase', 'agent',
-			?, 'user_interactive', NULL, NULL, NULL,
-			NULL, NULL, NULL, NULL,
-			0, ?, NULL, ?, ?)`,
-		sessionID, projectID, ticketID, wfiID,
-		sql.NullString{String: "claude:sonnet", Valid: true},
-		now, now, now,
-	)
-	if err != nil {
-		t.Fatalf("insertInteractiveSessionForKill: %v", err)
-	}
-}
 
 // ── Ticket-scoped kill-interactive ───────────────────────────────────────────
 

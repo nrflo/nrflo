@@ -190,4 +190,3 @@ func TestAddSkipTag_WorkflowNoGroups(t *testing.T) {
 		t.Fatal("expected error when workflow has no groups, got nil")
 	}
 }
-

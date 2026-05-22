@@ -143,8 +143,8 @@ func TestUpdateWorkflowDef_ObserverNilFieldNoChange(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	if _, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:              "wf-nil-obs",
-		ObserverContext: "original-ctx",
+		ID:               "wf-nil-obs",
+		ObserverContext:  "original-ctx",
 		ObserverProvider: strPtr("claude"),
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
@@ -176,8 +176,8 @@ func TestListWorkflowDefs_ObserverFields(t *testing.T) {
 	_, svc := setupWorkflowDefsTestEnv(t)
 
 	if _, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:              "wf-list-obs",
-		ObserverContext: "list-ctx",
+		ID:               "wf-list-obs",
+		ObserverContext:  "list-ctx",
 		ObserverProvider: strPtr("claude"),
 		ObserverModel:    strPtr("opus"),
 	}); err != nil {

@@ -29,22 +29,22 @@ const (
 
 // WorkflowInstance represents a running workflow on a ticket or project
 type WorkflowInstance struct {
-	ID            string                 `json:"id"`
-	ProjectID     string                 `json:"project_id"`
-	TicketID      string                 `json:"ticket_id"`
-	WorkflowID    string                 `json:"workflow_id"`
-	ScopeType     string                 `json:"scope_type"` // "ticket" or "project"
-	Status        WorkflowInstanceStatus `json:"status"`
-	SkipTags      string                 `json:"-"` // JSON array of skip tag strings
-	RetryCount    int                    `json:"retry_count"`
-	ParentSession sql.NullString         `json:"-"`
-	WorktreePath  sql.NullString         `json:"-"`
-	BranchName    sql.NullString         `json:"-"`
-	EndlessLoop                   bool   `json:"endless_loop"`
-	StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
-	ScheduledTaskID               string `json:"scheduled_task_id,omitempty"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	ID                            string                 `json:"id"`
+	ProjectID                     string                 `json:"project_id"`
+	TicketID                      string                 `json:"ticket_id"`
+	WorkflowID                    string                 `json:"workflow_id"`
+	ScopeType                     string                 `json:"scope_type"` // "ticket" or "project"
+	Status                        WorkflowInstanceStatus `json:"status"`
+	SkipTags                      string                 `json:"-"` // JSON array of skip tag strings
+	RetryCount                    int                    `json:"retry_count"`
+	ParentSession                 sql.NullString         `json:"-"`
+	WorktreePath                  sql.NullString         `json:"-"`
+	BranchName                    sql.NullString         `json:"-"`
+	EndlessLoop                   bool                   `json:"endless_loop"`
+	StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+	ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
+	CreatedAt                     time.Time              `json:"created_at"`
+	UpdatedAt                     time.Time              `json:"updated_at"`
 }
 
 // IsProjectScope returns true if this is a project-scoped workflow instance
@@ -56,7 +56,7 @@ func (wi *WorkflowInstance) IsProjectScope() bool {
 func (wi *WorkflowInstance) GetSkipTags() []string {
 	var tags []string
 	if wi.SkipTags != "" {
-		json.Unmarshal([]byte(wi.SkipTags), &tags)
+		_ = json.Unmarshal([]byte(wi.SkipTags), &tags)
 	}
 	if tags == nil {
 		tags = []string{}
@@ -108,38 +108,38 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 	skipTags := wi.GetSkipTags()
 
 	return json.Marshal(&struct {
-		ID            string                 `json:"id"`
-		ProjectID     string                 `json:"project_id"`
-		TicketID      string                 `json:"ticket_id,omitempty"`
-		WorkflowID    string                 `json:"workflow_id"`
-		ScopeType     string                 `json:"scope_type"`
-		Status        WorkflowInstanceStatus `json:"status"`
-		SkipTags      []string               `json:"skip_tags"`
-		RetryCount    int                    `json:"retry_count"`
-		ParentSession *string                `json:"parent_session,omitempty"`
-		WorktreePath  *string                `json:"worktree_path,omitempty"`
-		BranchName    *string                `json:"branch_name,omitempty"`
-		EndlessLoop                   bool   `json:"endless_loop"`
-		StopEndlessLoopAfterIteration bool   `json:"stop_endless_loop_after_iteration"`
-		ScheduledTaskID               string `json:"scheduled_task_id,omitempty"`
-		CreatedAt     time.Time              `json:"created_at"`
-		UpdatedAt     time.Time              `json:"updated_at"`
+		ID                            string                 `json:"id"`
+		ProjectID                     string                 `json:"project_id"`
+		TicketID                      string                 `json:"ticket_id,omitempty"`
+		WorkflowID                    string                 `json:"workflow_id"`
+		ScopeType                     string                 `json:"scope_type"`
+		Status                        WorkflowInstanceStatus `json:"status"`
+		SkipTags                      []string               `json:"skip_tags"`
+		RetryCount                    int                    `json:"retry_count"`
+		ParentSession                 *string                `json:"parent_session,omitempty"`
+		WorktreePath                  *string                `json:"worktree_path,omitempty"`
+		BranchName                    *string                `json:"branch_name,omitempty"`
+		EndlessLoop                   bool                   `json:"endless_loop"`
+		StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+		ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
+		CreatedAt                     time.Time              `json:"created_at"`
+		UpdatedAt                     time.Time              `json:"updated_at"`
 	}{
-		ID:            wi.ID,
-		ProjectID:     wi.ProjectID,
-		TicketID:      wi.TicketID,
-		WorkflowID:    wi.WorkflowID,
-		ScopeType:     scopeType,
-		Status:        wi.Status,
-		SkipTags:      skipTags,
-		RetryCount:    wi.RetryCount,
-		ParentSession: parentSession,
-		WorktreePath:  worktreePath,
-		BranchName:    branchName,
+		ID:                            wi.ID,
+		ProjectID:                     wi.ProjectID,
+		TicketID:                      wi.TicketID,
+		WorkflowID:                    wi.WorkflowID,
+		ScopeType:                     scopeType,
+		Status:                        wi.Status,
+		SkipTags:                      skipTags,
+		RetryCount:                    wi.RetryCount,
+		ParentSession:                 parentSession,
+		WorktreePath:                  worktreePath,
+		BranchName:                    branchName,
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
 		ScheduledTaskID:               wi.ScheduledTaskID,
-		CreatedAt:     wi.CreatedAt,
-		UpdatedAt:     wi.UpdatedAt,
+		CreatedAt:                     wi.CreatedAt,
+		UpdatedAt:                     wi.UpdatedAt,
 	})
 }

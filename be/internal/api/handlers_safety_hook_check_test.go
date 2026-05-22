@@ -110,10 +110,10 @@ func TestHandleCheckSafetyHook_AllowedCommand(t *testing.T) {
 	s := newSafetyHookCheckServer(t)
 	body := map[string]interface{}{
 		"config": map[string]interface{}{
-			"enabled":            true,
-			"allow_git":          true,
+			"enabled":             true,
+			"allow_git":           true,
 			"rm_rf_allowed_paths": []string{"/tmp"},
-			"dangerous_patterns": []string{},
+			"dangerous_patterns":  []string{},
 		},
 		"command": "ls -la",
 	}
@@ -156,8 +156,8 @@ func TestHandleCheckSafetyHook_BlockedGitOp(t *testing.T) {
 	s := newSafetyHookCheckServer(t)
 	body := map[string]interface{}{
 		"config": map[string]interface{}{
-			"enabled":            true,
-			"allow_git":          false,
+			"enabled":             true,
+			"allow_git":           false,
 			"rm_rf_allowed_paths": []string{"/tmp"},
 		},
 		"command": "git push origin main",
@@ -180,8 +180,8 @@ func TestHandleCheckSafetyHook_ResponseShape(t *testing.T) {
 	s := newSafetyHookCheckServer(t)
 	body := map[string]interface{}{
 		"config": map[string]interface{}{
-			"enabled":            true,
-			"allow_git":          true,
+			"enabled":             true,
+			"allow_git":           true,
 			"rm_rf_allowed_paths": []string{"/tmp"},
 		},
 		"command": "echo hello",
@@ -208,8 +208,8 @@ func TestHandleCheckSafetyHook_AllowedReasonEmpty(t *testing.T) {
 	s := newSafetyHookCheckServer(t)
 	body := map[string]interface{}{
 		"config": map[string]interface{}{
-			"enabled":            true,
-			"allow_git":          true,
+			"enabled":             true,
+			"allow_git":           true,
 			"rm_rf_allowed_paths": []string{"/tmp"},
 		},
 		"command": "cat README.md",

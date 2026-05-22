@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-
 func TestHash_ReturnsPHCFormat(t *testing.T) {
 	t.Parallel()
 	hash, err := Hash("somepassword")

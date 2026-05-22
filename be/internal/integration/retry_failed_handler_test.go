@@ -331,6 +331,9 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 
 	// Create project-scoped workflow
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	pool := db.WrapAsPool(database)
 
 	// Update workflow to project scope

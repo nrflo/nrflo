@@ -328,4 +328,3 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 func (h *Handler) recordPostToolUse(_ context.Context, req Request, _ string, _ map[string]interface{}) Response {
 	return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 }
-

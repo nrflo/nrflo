@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	serviceTokenPrefix = "nrf_"
-	serviceTokenBodyLen = 32
+	serviceTokenPrefix     = "nrf_"
+	serviceTokenBodyLen    = 32
 	maxServiceTokenNameLen = 64
 )
 

@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 	"time"
 
@@ -256,13 +255,4 @@ func TestInteractiveWaits_ConcurrentAccess(t *testing.T) {
 			t.Fatalf("timeout waiting for concurrent interactive completions (completed %d/%d)", i, len(sessions))
 		}
 	}
-}
-
-// containsConstraintError returns true if err looks like a DB CHECK constraint failure.
-func containsConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "constraint") || strings.Contains(msg, "check")
 }

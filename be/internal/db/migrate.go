@@ -40,30 +40,3 @@ func RunMigrations(sqlDB *sql.DB) error {
 
 	return nil
 }
-
-// MigrationVersion returns the current migration version and dirty state.
-func MigrationVersion(sqlDB *sql.DB) (version uint, dirty bool, err error) {
-	sourceDriver, err := iofs.New(migrations.FS, ".")
-	if err != nil {
-		return 0, false, fmt.Errorf("migration source: %w", err)
-	}
-
-	dbDriver, err := sqlite.WithInstance(sqlDB, &sqlite.Config{
-		DatabaseName: "main",
-		NoTxWrap:     true,
-	})
-	if err != nil {
-		return 0, false, fmt.Errorf("migration db driver: %w", err)
-	}
-
-	m, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite", dbDriver)
-	if err != nil {
-		return 0, false, fmt.Errorf("migration init: %w", err)
-	}
-
-	v, d, err := m.Version()
-	if err != nil {
-		return 0, false, err
-	}
-	return v, d, nil
-}

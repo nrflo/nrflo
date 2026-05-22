@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -77,7 +78,7 @@ func TestServerStart_AddrFormat(t *testing.T) {
 			go func() { _ = srv.Start(tc.host, port) }()
 
 			waitHTTP(t, fmt.Sprintf("http://127.0.0.1:%d", port), 3*time.Second)
-			t.Cleanup(func() { srv.Stop(nil) })
+			t.Cleanup(func() { srv.Stop(context.TODO()) })
 
 			if srv.httpServer == nil {
 				t.Fatal("httpServer is nil after Start()")
@@ -99,7 +100,7 @@ func TestServerStart_DefaultHostBindsLocalhost(t *testing.T) {
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	waitHTTP(t, baseURL, 3*time.Second)
-	t.Cleanup(func() { srv.Stop(nil) })
+	t.Cleanup(func() { srv.Stop(context.TODO()) })
 
 	jar, _ := cookiejar.New(nil)
 	authClient := &http.Client{Jar: jar}

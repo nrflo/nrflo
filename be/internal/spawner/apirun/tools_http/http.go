@@ -66,7 +66,7 @@ func (h *httpToolHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 func (h *httpToolHandler) invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool) {
 	body := map[string]interface{}{
 		"tool":  h.def.Name,
-		"input": json.RawMessage(input),
+		"input": input,
 		"context": map[string]string{
 			"project_id": env.ProjectID,
 			"workflow":   env.WorkflowName,

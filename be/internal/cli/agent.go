@@ -16,10 +16,10 @@ var agentCmd = &cobra.Command{
 
 // Agent fail/continue/callback flags
 var (
-	agentFailReason         string
-	agentCallbackLevel      int
+	agentFailReason          string
+	agentCallbackLevel       int
 	agentCallbackTargetAgent string
-	agentCallbackChain      []string
+	agentCallbackChain       []string
 	// context-update flags
 	agentContextUpdatePctUsed float64
 )

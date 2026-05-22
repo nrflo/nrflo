@@ -14,7 +14,7 @@ import (
 // WorkflowInstanceRepo handles workflow instance CRUD operations using Pool
 type WorkflowInstanceRepo struct {
 	clock clock.Clock
-	pool *db.Pool
+	pool  *db.Pool
 }
 
 // NewWorkflowInstanceRepo creates a new workflow instance repository

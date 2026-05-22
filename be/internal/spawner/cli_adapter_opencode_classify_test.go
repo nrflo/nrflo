@@ -10,9 +10,9 @@ import (
 // content without byte-cap truncation. Each case uses text > 1024 bytes (the
 // removed old cap) to catch any surviving truncation.
 func TestClassifyOpencodePart(t *testing.T) {
-	longText := strings.Repeat("a", 1200)     // old cap was 1024 B
-	longReason := strings.Repeat("b", 1200)   // old cap was 1024 B
-	longCommand := strings.Repeat("c", 1200)  // old cap was 1024 B
+	longText := strings.Repeat("a", 1200)    // old cap was 1024 B
+	longReason := strings.Repeat("b", 1200)  // old cap was 1024 B
+	longCommand := strings.Repeat("c", 1200) // old cap was 1024 B
 
 	cases := []struct {
 		name         string
@@ -102,4 +102,3 @@ func TestClassifyOpencodePart_SkippedTypes(t *testing.T) {
 		})
 	}
 }
-

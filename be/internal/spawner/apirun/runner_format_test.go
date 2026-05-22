@@ -64,4 +64,3 @@ func TestFormatToolResult_EmptyOutput(t *testing.T) {
 		}
 	}
 }
-

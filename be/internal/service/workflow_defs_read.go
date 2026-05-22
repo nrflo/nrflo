@@ -55,7 +55,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	}
 	var groups []string
 	if groupsStr != "" {
-		json.Unmarshal([]byte(groupsStr), &groups)
+		_ = json.Unmarshal([]byte(groupsStr), &groups)
 	}
 	if groups == nil {
 		groups = []string{}
@@ -77,12 +77,12 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 
 	type wfMeta struct {
 		id, description, scopeType, groupsStr, nextWorkflowOnSuccess string
-		finalizeSuccessCommand, finalizeSuccessScriptID               string
-		finalizeFailureCommand, finalizeFailureScriptID               string
-		pauseEventCommand, pauseEventScriptID                         string
-		closeTicketOnComplete                                          bool
-		observerContext                                                string
-		observerProvider, observerModel                               sql.NullString
+		finalizeSuccessCommand, finalizeSuccessScriptID              string
+		finalizeFailureCommand, finalizeFailureScriptID              string
+		pauseEventCommand, pauseEventScriptID                        string
+		closeTicketOnComplete                                        bool
+		observerContext                                              string
+		observerProvider, observerModel                              sql.NullString
 	}
 	var metas []wfMeta
 	for rows.Next() {
@@ -130,7 +130,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		}
 		var groups []string
 		if m.groupsStr != "" {
-			json.Unmarshal([]byte(m.groupsStr), &groups)
+			_ = json.Unmarshal([]byte(m.groupsStr), &groups)
 		}
 		if groups == nil {
 			groups = []string{}

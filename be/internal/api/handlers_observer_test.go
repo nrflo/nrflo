@@ -293,9 +293,9 @@ func TestHandleListObservers_FiltersKindAndStatus(t *testing.T) {
 
 	insertObserverSession(t, pool, "obs-running", "proj-x", "observer", "running")
 	insertObserverSession(t, pool, "obs-interactive", "proj-x", "observer", "user_interactive")
-	insertObserverSession(t, pool, "wf-running", "proj-x", "workflow_agent", "running")     // wrong kind
-	insertObserverSession(t, pool, "obs-completed", "proj-x", "observer", "completed")      // wrong status
-	insertObserverSession(t, pool, "obs-failed", "proj-x", "observer", "failed")           // wrong status
+	insertObserverSession(t, pool, "wf-running", "proj-x", "workflow_agent", "running") // wrong kind
+	insertObserverSession(t, pool, "obs-completed", "proj-x", "observer", "completed")  // wrong status
+	insertObserverSession(t, pool, "obs-failed", "proj-x", "observer", "failed")        // wrong status
 
 	rr := listObserversRequest(t, s, "")
 	if rr.Code != http.StatusOK {

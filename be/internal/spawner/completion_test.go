@@ -79,8 +79,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 	spawner := New(Config{
 		DataPath: dbPath,
 		WSHub:    hub,
-		Pool:               db.WrapAsPool(database),
-		Clock:              clock.Real(),
+		Pool:     db.WrapAsPool(database),
+		Clock:    clock.Real(),
 	})
 
 	return &testEnv{

@@ -391,12 +391,6 @@ func (r *AgentSessionRepo) UpdateAncestorSession(id string, ancestorSessionID st
 	return nil
 }
 
-// DeleteByTicket deletes all agent sessions for a ticket
-func (r *AgentSessionRepo) DeleteByTicket(projectID, ticketID string) error {
-	_, err := r.db.Exec("DELETE FROM agent_sessions WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?)", projectID, ticketID)
-	return err
-}
-
 // ResetSingleAgentSession resets a single agent session (by phase/agent ID) to callback state,
 // clearing findings and ended_at. Excludes running and continued sessions.
 func (r *AgentSessionRepo) ResetSingleAgentSession(wfiID, phaseAgentID string) error {

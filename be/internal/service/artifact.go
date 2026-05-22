@@ -144,8 +144,8 @@ func (s *ArtifactService) AttachInputArtifacts(ctx context.Context, projectID, w
 
 	rollback := func() {
 		for i, id := range committedIDs {
-			storage.Delete(ctx, committedKeys[i])
-			artifactRepo.Delete(id)
+			_ = storage.Delete(ctx, committedKeys[i])
+			_ = artifactRepo.Delete(id)
 		}
 	}
 
@@ -191,7 +191,7 @@ func (s *ArtifactService) AttachInputArtifacts(ctx context.Context, projectID, w
 			Source:             model.ArtifactSourceInput,
 		}
 		if err := artifactRepo.Create(a); err != nil {
-			storage.Delete(ctx, storageKey)
+			_ = storage.Delete(ctx, storageKey)
 			rollback()
 			return fmt.Errorf("record artifact %s: %w", name, err)
 		}
@@ -270,7 +270,7 @@ func (s *ArtifactService) AddFromAgent(ctx context.Context, sessionID, projectID
 
 	artifactRepo := repo.NewArtifactRepo(s.pool, s.clock)
 	if err := artifactRepo.Create(a); err != nil {
-		storage.Delete(ctx, storageKey)
+		_ = storage.Delete(ctx, storageKey)
 		return nil, fmt.Errorf("record artifact: %w", err)
 	}
 

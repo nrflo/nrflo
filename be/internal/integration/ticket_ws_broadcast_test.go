@@ -137,6 +137,9 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -193,6 +196,9 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -249,6 +255,9 @@ func TestTicketReopenBroadcastsWSEvent(t *testing.T) {
 
 	// Create closed ticket
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -303,6 +312,9 @@ func TestTicketDeleteBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -357,6 +369,9 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 
 	// Create ticket first
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -413,6 +428,9 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 
 	// Create ticket first
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err = database.Exec(`
 		INSERT INTO tickets (id, project_id, title, status, priority, issue_type, created_by, created_at, updated_at)
@@ -461,6 +479,9 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 
 	// Create both tickets
 	database, err := db.Open(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
+	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	for _, tid := range []string{ticket1ID, ticket2ID} {
 		_, err = database.Exec(`

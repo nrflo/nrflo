@@ -177,8 +177,8 @@ func TestObserverNilRunner_Trigger(t *testing.T) {
 	seedObserverSession(t, env, "obs-nil-trigger", "global", env.project, "")
 
 	resp := env.handler.Handle(obsReq("observer.workflow.trigger", map[string]interface{}{
-		"session_id": "obs-nil-trigger",
-		"project_id": env.project,
+		"session_id":  "obs-nil-trigger",
+		"project_id":  env.project,
 		"workflow_id": "test",
 	}))
 	if resp.Error == nil {

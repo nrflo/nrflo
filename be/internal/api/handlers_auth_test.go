@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,7 +44,7 @@ func newAuthServer(t *testing.T) *authServer {
 	go func() { _ = srv.Start("127.0.0.1", port) }()
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
 	waitHTTP(t, baseURL, 3*time.Second)
-	t.Cleanup(func() { srv.Stop(nil) })
+	t.Cleanup(func() { srv.Stop(context.TODO()) })
 
 	jar, _ := cookiejar.New(nil)
 	return &authServer{baseURL: baseURL, pool: pool, srv: srv, client: &http.Client{Jar: jar}}

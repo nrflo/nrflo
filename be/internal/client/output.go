@@ -23,14 +23,14 @@ func FormatTicketList(tickets []*model.Ticket, jsonOutput bool) (string, error) 
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%-15s %-12s %-10s %-8s %s\n", "ID", "TYPE", "STATUS", "PRIORITY", "TITLE"))
+	fmt.Fprintf(&sb, "%-15s %-12s %-10s %-8s %s\n", "ID", "TYPE", "STATUS", "PRIORITY", "TITLE")
 	sb.WriteString("-------------------------------------------------------------------------------\n")
 	for _, t := range tickets {
 		title := t.Title
 		if len(title) > 40 {
 			title = title[:37] + "..."
 		}
-		sb.WriteString(fmt.Sprintf("%-15s %-12s %-10s %-8d %s\n", t.ID, t.IssueType, t.Status, t.Priority, title))
+		fmt.Fprintf(&sb, "%-15s %-12s %-10s %-8d %s\n", t.ID, t.IssueType, t.Status, t.Priority, title)
 	}
 	return sb.String(), nil
 }
@@ -46,68 +46,19 @@ func FormatTicketShow(ticket *model.Ticket, jsonOutput bool) (string, error) {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("ID:          %s\n", ticket.ID))
-	sb.WriteString(fmt.Sprintf("Project:     %s\n", ticket.ProjectID))
-	sb.WriteString(fmt.Sprintf("Title:       %s\n", ticket.Title))
-	sb.WriteString(fmt.Sprintf("Type:        %s\n", ticket.IssueType))
-	sb.WriteString(fmt.Sprintf("Status:      %s\n", ticket.Status))
-	sb.WriteString(fmt.Sprintf("Priority:    %d\n", ticket.Priority))
-	sb.WriteString(fmt.Sprintf("Created By:  %s\n", ticket.CreatedBy))
-	sb.WriteString(fmt.Sprintf("Created:     %s\n", ticket.CreatedAt.Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("Updated:     %s\n", ticket.UpdatedAt.Format("2006-01-02 15:04:05")))
+	fmt.Fprintf(&sb, "ID:          %s\n", ticket.ID)
+	fmt.Fprintf(&sb, "Project:     %s\n", ticket.ProjectID)
+	fmt.Fprintf(&sb, "Title:       %s\n", ticket.Title)
+	fmt.Fprintf(&sb, "Type:        %s\n", ticket.IssueType)
+	fmt.Fprintf(&sb, "Status:      %s\n", ticket.Status)
+	fmt.Fprintf(&sb, "Priority:    %d\n", ticket.Priority)
+	fmt.Fprintf(&sb, "Created By:  %s\n", ticket.CreatedBy)
+	fmt.Fprintf(&sb, "Created:     %s\n", ticket.CreatedAt.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(&sb, "Updated:     %s\n", ticket.UpdatedAt.Format("2006-01-02 15:04:05"))
 
 	if ticket.Description.Valid && ticket.Description.String != "" {
-		sb.WriteString(fmt.Sprintf("\nDescription:\n%s\n", ticket.Description.String))
+		fmt.Fprintf(&sb, "\nDescription:\n%s\n", ticket.Description.String)
 	}
-
-	return sb.String(), nil
-}
-
-// FormatProjectList formats a list of projects for display
-func FormatProjectList(projects []*model.Project, jsonOutput bool) (string, error) {
-	if jsonOutput {
-		data, err := json.MarshalIndent(projects, "", "  ")
-		if err != nil {
-			return "", err
-		}
-		return string(data), nil
-	}
-
-	if len(projects) == 0 {
-		return "No projects found.\n\nCreate one with: nrflo project create <project-id>", nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%-20s %-30s\n", "ID", "NAME"))
-	sb.WriteString(strings.Repeat("-", 55) + "\n")
-	for _, p := range projects {
-		name := p.Name
-		if len(name) > 28 {
-			name = name[:25] + "..."
-		}
-		sb.WriteString(fmt.Sprintf("%-20s %-30s\n", p.ID, name))
-	}
-	return sb.String(), nil
-}
-
-// FormatProjectShow formats a single project for display
-func FormatProjectShow(project *model.Project, jsonOutput bool) (string, error) {
-	if jsonOutput {
-		data, err := json.MarshalIndent(project, "", "  ")
-		if err != nil {
-			return "", err
-		}
-		return string(data), nil
-	}
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("ID:               %s\n", project.ID))
-	sb.WriteString(fmt.Sprintf("Name:             %s\n", project.Name))
-	if project.RootPath.Valid {
-		sb.WriteString(fmt.Sprintf("Root Path:        %s\n", project.RootPath.String))
-	}
-	sb.WriteString(fmt.Sprintf("Created:          %s\n", project.CreatedAt.Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("Updated:          %s\n", project.UpdatedAt.Format("2006-01-02 15:04:05")))
 
 	return sb.String(), nil
 }

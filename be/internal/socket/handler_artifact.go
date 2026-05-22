@@ -27,8 +27,8 @@ func (h *Handler) resolveSessionContext(sessionID string) (projectID, wfiID stri
 	return projectID, wfiID, nil
 }
 
-func newValidationErr(msg string) error  { return &rpcErr{NewValidationError(msg)} }
-func newNotFoundErr(msg string) error    { return &rpcErr{NewNotFoundError(msg)} }
+func newValidationErr(msg string) error { return &rpcErr{NewValidationError(msg)} }
+func newNotFoundErr(msg string) error   { return &rpcErr{NewNotFoundError(msg)} }
 
 type rpcErr struct{ info *ErrorInfo }
 

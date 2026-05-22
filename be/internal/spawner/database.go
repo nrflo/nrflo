@@ -43,7 +43,7 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		StartedAt:          sql.NullString{String: now, Valid: true},
 		Config:             s.config.ClaudeSettingsJSON,
 	}
-	sessionRepo.Create(session)
+	_ = sessionRepo.Create(session) // best-effort: void hot path, sibling status writes are also fire-and-forget
 
 	s.broadcast(ws.EventAgentStarted, projectID, ticketID, workflowName, map[string]interface{}{
 		"agent_id":          agentID,
@@ -253,4 +253,3 @@ func (s *Spawner) broadcastGlobal() {
 	event := ws.NewEvent(ws.EventGlobalRunningAgents, "", "", "", nil)
 	s.config.WSHub.BroadcastGlobal(event)
 }
-

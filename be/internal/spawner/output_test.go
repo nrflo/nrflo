@@ -144,7 +144,6 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		Clock:    testClock,
 	})
 
-
 	// Get workflow instance ID
 	var wfiID string
 	err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,

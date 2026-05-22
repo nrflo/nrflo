@@ -15,7 +15,7 @@ import (
 
 // ErrorService provides error tracking operations.
 type ErrorService struct {
-	pool *db.Pool
+	pool  *db.Pool
 	clock clock.Clock
 	hub   *ws.Hub
 }

@@ -124,7 +124,7 @@ func (s *Spawner) sendNudge(ctx context.Context, proc *processInfo, req SpawnReq
 
 // handleNudgeAutoFail marks the agent as failed with reason "unresponsive_after_nudges",
 // requests a terminal kill signal, and records an error.
-func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, req SpawnRequest) {
+func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, _ SpawnRequest) {
 	logger.Warn(ctx, "idle nudge: auto-fail after cap exhausted",
 		"session_id", proc.sessionID, "agent_type", proc.agentType,
 		"nudge_count", proc.nudgeCount)

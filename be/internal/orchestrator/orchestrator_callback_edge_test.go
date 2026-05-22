@@ -51,7 +51,10 @@ func TestHandleCallback_ChainOutOfOrder(t *testing.T) {
 // TestHandleCallback_ChainExceedsOriginatorLayer verifies chain agent above originator fails.
 func TestHandleCallback_ChainExceedsOriginatorLayer(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "chain-exceed", "Chain exceed", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "chain-exceed", "Chain exceed", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-CE", "Chain exceed")
@@ -148,7 +151,10 @@ func TestHandleCallback_SessionsExcludeRunningAndContinued(t *testing.T) {
 // TestHandleCallback_ProjectScope verifies project-scoped workflows broadcast with empty ticket_id.
 func TestHandleCallback_ProjectScope(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "proj-cb", "Project callback", "project", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "proj-cb", "Project callback", "project", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1},
 	})
 

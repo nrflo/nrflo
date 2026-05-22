@@ -3,10 +3,10 @@ package model
 import "time"
 
 const (
-	ArtifactSourceInput    = "input"
-	ArtifactSourceAgent    = "agent"
-	ArtifactTypeInternal   = "internal"
-	ArtifactTypeS3         = "s3"
+	ArtifactSourceInput      = "input"
+	ArtifactSourceAgent      = "agent"
+	ArtifactTypeInternal     = "internal"
+	ArtifactTypeS3           = "s3"
 	ArtifactTypeCloudflareR2 = "cloudflare_r2"
 )
 

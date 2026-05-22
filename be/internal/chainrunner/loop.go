@@ -144,12 +144,13 @@ func (r *Runner) cancelRun(ctx context.Context, pool *db.Pool, run *model.Workfl
 	rr := repo.NewWorkflowChainRunRepo(pool, r.clock)
 	steps, _ := rr.ListRunSteps(run.ID)
 	for _, s := range steps {
-		if s.Status == "running" {
+		switch s.Status {
+		case "running":
 			if s.WorkflowInstanceID.Valid {
 				r.orch.StopByInstance(run.ProjectID, s.WorkflowInstanceID.String) //nolint:errcheck
 			}
 			rr.UpdateRunStepStatus(s.ID, "canceled") //nolint:errcheck
-		} else if s.Status == "pending" {
+		case "pending":
 			rr.UpdateRunStepStatus(s.ID, "canceled") //nolint:errcheck
 		}
 	}

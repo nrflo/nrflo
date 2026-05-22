@@ -422,15 +422,15 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 // (the function only reads Name()).
 type fakeBackend struct{ name string }
 
-func (b fakeBackend) Name() string                                                       { return b.name }
-func (b fakeBackend) SupportsResume() bool                                                { return false }
-func (b fakeBackend) SupportsTakeControl() bool                                           { return false }
-func (b fakeBackend) RequiresPrompt() bool                                                { return false }
-func (b fakeBackend) TracksContext() bool                                                 { return false }
-func (b fakeBackend) ParsesStructuredOutput() bool                                        { return false }
-func (b fakeBackend) NaturalExitGrace() time.Duration                                     { return 0 }
-func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error        { return nil }
-func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error      { return nil }
+func (b fakeBackend) Name() string                                                   { return b.name }
+func (b fakeBackend) SupportsResume() bool                                           { return false }
+func (b fakeBackend) SupportsTakeControl() bool                                      { return false }
+func (b fakeBackend) RequiresPrompt() bool                                           { return false }
+func (b fakeBackend) TracksContext() bool                                            { return false }
+func (b fakeBackend) ParsesStructuredOutput() bool                                   { return false }
+func (b fakeBackend) NaturalExitGrace() time.Duration                                { return 0 }
+func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error   { return nil }
+func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error { return nil }
 
 func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
 	t.Parallel()
@@ -499,4 +499,3 @@ func TestShouldUseAgentSave_UnknownAdapterFallsThrough(t *testing.T) {
 		t.Error("unknown adapter must NOT force agent save (graceful fallback to resume; resume itself will warn)")
 	}
 }
-

@@ -245,7 +245,7 @@ func (r *WorkflowChainRunRepo) SetRunStepInstance(runStepID, instanceID, ticketI
 // GetActiveRuns returns all workflow chain runs with status=running across all projects.
 func (r *WorkflowChainRunRepo) GetActiveRuns() ([]*model.WorkflowChainRun, error) {
 	rows, err := r.db.Query(
-		`SELECT `+wfChainRunCols+` FROM workflow_chain_runs WHERE status = 'running' ORDER BY created_at ASC`)
+		`SELECT ` + wfChainRunCols + ` FROM workflow_chain_runs WHERE status = 'running' ORDER BY created_at ASC`)
 	if err != nil {
 		return nil, err
 	}

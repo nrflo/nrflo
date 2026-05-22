@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
-
 )
 
 // ticketResponse is used to decode ticket JSON responses with nullable fields.

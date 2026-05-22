@@ -914,11 +914,12 @@ func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
 	}
 
 	for _, item := range items {
-		if item.TicketID == "tk-a" {
+		switch item.TicketID {
+		case "tk-a":
 			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiA); err != nil {
 				t.Fatalf("failed to set workflow instance for TK-A: %v", err)
 			}
-		} else if item.TicketID == "tk-b" {
+		case "tk-b":
 			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiB); err != nil {
 				t.Fatalf("failed to set workflow instance for TK-B: %v", err)
 			}
@@ -1145,11 +1146,12 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 	}
 
 	for _, item := range items {
-		if item.TicketID == "tk-f" {
+		switch item.TicketID {
+		case "tk-f":
 			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiF); err != nil {
 				t.Fatalf("failed to set workflow instance for TK-F: %v", err)
 			}
-		} else if item.TicketID == "tk-g" {
+		case "tk-g":
 			if err := itemRepo.SetWorkflowInstanceID(item.ID, wfiG); err != nil {
 				t.Fatalf("failed to set workflow instance for TK-G: %v", err)
 			}

@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/spawner"
 	"be/internal/ws"
-	"be/internal/clock"
 )
 
 // insertInteractiveSession inserts an agent_sessions row with status=user_interactive.

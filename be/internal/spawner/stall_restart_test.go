@@ -65,9 +65,9 @@ func TestCheckStall_LowContextSavingSkips(t *testing.T) {
 		lowContextSaving:   true,
 		hasReceivedMessage: false,
 		// last message far in the past — would stall if not for lowContextSaving
-		lastMessageTime:    clk.Now().Add(-10 * time.Minute),
-		stallStartTimeout:  2 * time.Minute,
-		stallRestartCount:  0,
+		lastMessageTime:   clk.Now().Add(-10 * time.Minute),
+		stallStartTimeout: 2 * time.Minute,
+		stallRestartCount: 0,
 	}
 
 	got := s.checkStall(context.Background(), proc, SpawnRequest{})
@@ -168,7 +168,7 @@ func TestCheckStall_RunningStallDisabled(t *testing.T) {
 	proc := &processInfo{
 		hasReceivedMessage:  true,
 		lastMessageTime:     clk.Now().Add(-10 * time.Minute), // way overdue
-		stallRunningTimeout: 0,                                 // disabled
+		stallRunningTimeout: 0,                                // disabled
 		stallRestartCount:   0,
 	}
 
@@ -177,4 +177,3 @@ func TestCheckStall_RunningStallDisabled(t *testing.T) {
 		t.Error("checkStall should return false when stallRunningTimeout=0 (disabled)")
 	}
 }
-

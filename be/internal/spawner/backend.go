@@ -95,12 +95,13 @@ func newAPIBackend(s *Spawner) *apiBackend {
 	}
 }
 
-func (b *apiBackend) Name() string                   { return "api" }
-func (b *apiBackend) SupportsResume() bool           { return false }
-func (b *apiBackend) SupportsTakeControl() bool      { return false }
-func (b *apiBackend) RequiresPrompt() bool           { return true }
-func (b *apiBackend) TracksContext() bool            { return true }
-func (b *apiBackend) ParsesStructuredOutput() bool   { return false }
+func (b *apiBackend) Name() string                 { return "api" }
+func (b *apiBackend) SupportsResume() bool         { return false }
+func (b *apiBackend) SupportsTakeControl() bool    { return false }
+func (b *apiBackend) RequiresPrompt() bool         { return true }
+func (b *apiBackend) TracksContext() bool          { return true }
+func (b *apiBackend) ParsesStructuredOutput() bool { return false }
+
 // NaturalExitGrace returns 0 — api backend is in-process; there's no
 // child to wait for, doneCh closes synchronously with the runner exit.
 func (b *apiBackend) NaturalExitGrace() time.Duration { return 0 }

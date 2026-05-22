@@ -175,12 +175,12 @@ func TestProcessOutput_ItemCompleted_CommandExecution_TracksAsBashToolUse(t *tes
 	processJSON(s, proc, map[string]interface{}{
 		"type": "item.completed",
 		"item": map[string]interface{}{
-			"id":               "item_2",
-			"type":             "command_execution",
-			"command":          "/bin/zsh -lc \"ls\"",
+			"id":                "item_2",
+			"type":              "command_execution",
+			"command":           "/bin/zsh -lc \"ls\"",
 			"aggregated_output": "file1\nfile2",
-			"exit_code":        0,
-			"status":           "completed",
+			"exit_code":         0,
+			"status":            "completed",
 		},
 	})
 

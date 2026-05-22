@@ -154,8 +154,8 @@ func TestWorkflowSet(t *testing.T) {
 	// Set retry_count
 	err := env.WorkflowSvc.Set(env.ProjectID, "WF-3", &types.WorkflowSetRequest{
 		Workflow: "test",
-		Key:     "retry_count",
-		Value:   "3",
+		Key:      "retry_count",
+		Value:    "3",
 	})
 	if err != nil {
 		t.Fatalf("failed to set retry_count: %v", err)
@@ -175,8 +175,8 @@ func TestWorkflowSet(t *testing.T) {
 	// Verify unknown keys are rejected
 	err = env.WorkflowSvc.Set(env.ProjectID, "WF-3", &types.WorkflowSetRequest{
 		Workflow: "test",
-		Key:     "custom_note",
-		Value:   "hello world",
+		Key:      "custom_note",
+		Value:    "hello world",
 	})
 	if err == nil {
 		t.Fatal("expected error for unknown key")
@@ -209,4 +209,3 @@ func TestWorkflowMultipleInit(t *testing.T) {
 		t.Fatal("second instance should have different ID from first")
 	}
 }
-

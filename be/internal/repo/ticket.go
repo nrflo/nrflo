@@ -14,7 +14,7 @@ import (
 // TicketRepo handles ticket CRUD operations
 type TicketRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewTicketRepo creates a new ticket repository

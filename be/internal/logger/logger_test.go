@@ -30,7 +30,7 @@ func TestNewTrx(t *testing.T) {
 			}
 			// Verify it's valid hex
 			for _, ch := range trx {
-				if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+				if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
 					t.Errorf("NewTrx() = %q contains non-hex char %c", trx, ch)
 				}
 			}

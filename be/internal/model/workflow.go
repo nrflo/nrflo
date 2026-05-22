@@ -32,7 +32,7 @@ type Workflow struct {
 func (w *Workflow) GetGroups() []string {
 	var groups []string
 	if w.Groups != "" {
-		json.Unmarshal([]byte(w.Groups), &groups)
+		_ = json.Unmarshal([]byte(w.Groups), &groups)
 	}
 	if groups == nil {
 		groups = []string{}

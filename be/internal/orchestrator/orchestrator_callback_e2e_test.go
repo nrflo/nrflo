@@ -14,7 +14,10 @@ import (
 // callback triggered → metadata saved → target layer notionally completes → metadata cleared.
 func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "callback-e2e", "Callback E2E workflow", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "callback-e2e", "Callback E2E workflow", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-E2E", "End-to-end callback test")
@@ -82,7 +85,10 @@ func TestCallback_EndToEnd_ClearingAfterLayerComplete(t *testing.T) {
 // TestCallback_EndToEnd_MultipleCallbacksWithClearing tests two sequential callback cycles.
 func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "multi-cb", "Multiple callback workflow", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "multi-cb", "Multiple callback workflow", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"verifier", 3},
 	})
 	env.createTicket(t, "CB-MULTI2", "Multiple callback cycles")
@@ -134,7 +140,10 @@ func TestCallback_EndToEnd_MultipleCallbacksWithClearing(t *testing.T) {
 // TestCallback_EndToEnd_NoLeakToNextLayer verifies cleared callback metadata does not appear.
 func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "leak-test", "Leak test", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "leak-test", "Leak test", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"tester", 2}, {"deployer", 3},
 	})
 	env.createTicket(t, "CB-LEAK2", "No leak test")
@@ -169,7 +178,10 @@ func TestCallback_EndToEnd_NoLeakToNextLayer(t *testing.T) {
 // TestCallback_EndToEnd_ProjectScope tests the full callback flow for project-scoped workflows.
 func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "proj-cb-e2e", "Project callback E2E", "project", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "proj-cb-e2e", "Project callback E2E", "project", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1},
 	})
 
@@ -207,7 +219,10 @@ func TestCallback_EndToEnd_ProjectScope(t *testing.T) {
 // requests from the same layer are merged into one plan.
 func TestCallback_EndToEnd_MultipleRequestsMerged(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "merge-cb", "Merge callback", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "merge-cb", "Merge callback", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"impl-a", 1}, {"impl-b", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-MERGE", "Merge test")

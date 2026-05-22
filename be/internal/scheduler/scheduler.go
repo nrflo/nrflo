@@ -20,15 +20,15 @@ import (
 
 // Scheduler drives per-project cron schedules that trigger orchestrator.Start calls.
 type Scheduler struct {
-	pool            *db.Pool
-	orch            *orchestrator.Orchestrator
-	hub             *ws.Hub
-	clock           clock.Clock
-	mu              sync.Mutex
-	cron            *cron.Cron
-	ctx             context.Context
-	wfChainRunSvc   *service.WorkflowChainRunService
-	wfChainRunner   *chainrunner.Runner
+	pool          *db.Pool
+	orch          *orchestrator.Orchestrator
+	hub           *ws.Hub
+	clock         clock.Clock
+	mu            sync.Mutex
+	cron          *cron.Cron
+	ctx           context.Context
+	wfChainRunSvc *service.WorkflowChainRunService
+	wfChainRunner *chainrunner.Runner
 }
 
 // New constructs a Scheduler. Call Start(ctx) to begin scheduling.

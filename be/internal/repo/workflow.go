@@ -14,7 +14,7 @@ import (
 // WorkflowRepo handles workflow definition CRUD operations
 type WorkflowRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewWorkflowRepo creates a new workflow repository
@@ -148,16 +148,16 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 
 // WorkflowUpdateFields contains fields that can be updated
 type WorkflowUpdateFields struct {
-	Description                *string
-	Groups                     *string
-	CloseTicketOnComplete      *bool
-	NextWorkflowOnSuccess      *string
-	FinalizeSuccessCommand     *string
-	FinalizeSuccessScriptID    *string
-	FinalizeFailureCommand     *string
-	FinalizeFailureScriptID    *string
-	PauseEventCommand          *string
-	PauseEventScriptID         *string
+	Description             *string
+	Groups                  *string
+	CloseTicketOnComplete   *bool
+	NextWorkflowOnSuccess   *string
+	FinalizeSuccessCommand  *string
+	FinalizeSuccessScriptID *string
+	FinalizeFailureCommand  *string
+	FinalizeFailureScriptID *string
+	PauseEventCommand       *string
+	PauseEventScriptID      *string
 }
 
 // Update updates a workflow definition

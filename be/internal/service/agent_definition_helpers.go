@@ -49,7 +49,7 @@ func (s *AgentDefinitionService) validateLayerConfigForWorkflow(projectID, workf
 func validateTagInGroups(tag, groupsStr string) error {
 	var groups []string
 	if groupsStr != "" {
-		json.Unmarshal([]byte(groupsStr), &groups)
+		_ = json.Unmarshal([]byte(groupsStr), &groups)
 	}
 	for _, g := range groups {
 		if g == tag {

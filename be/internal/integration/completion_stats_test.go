@@ -13,9 +13,9 @@ import (
 // TestCompletedWorkflowStats is an end-to-end test verifying all three
 // completion stats: completed_at, total_duration_sec, and total_tokens_used.
 // These correspond to the ticket acceptance criteria:
-//   1. Date/Time of completion
-//   2. Total time spent on workflow
-//   3. Total context consumption (200K token window * (100 - context_left)/100)
+//  1. Date/Time of completion
+//  2. Total time spent on workflow
+//  3. Total context consumption (200K token window * (100 - context_left)/100)
 func TestCompletedWorkflowStats(t *testing.T) {
 	env := NewTestEnv(t)
 

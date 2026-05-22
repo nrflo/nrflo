@@ -300,7 +300,10 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	env.createTicket(t, "RTR-8", "Retry test")
 
 	// Create a three-layer workflow
-	env.createWorkflowWithAgents(t, "test-3layer", "Three layer test", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "test-3layer", "Three layer test", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"phase1", 0}, {"phase2", 1}, {"phase3", 2},
 	})
 

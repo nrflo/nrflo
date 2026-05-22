@@ -414,4 +414,3 @@ func TestRunner_ToolUse_NoBlocksInResponse_Fails(t *testing.T) {
 		t.Errorf("expected 'no tool_use blocks' message, got %+v", sink.Calls())
 	}
 }
-

@@ -252,4 +252,3 @@ func mergeDeltaUsage(a provider.Usage, d sdk.MessageDeltaUsage) provider.Usage {
 	}
 	return a
 }
-

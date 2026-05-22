@@ -14,7 +14,7 @@ import (
 // ChainRepo handles chain execution CRUD operations
 type ChainRepo struct {
 	clock clock.Clock
-	pool *db.Pool
+	pool  *db.Pool
 }
 
 // NewChainRepo creates a new chain repository

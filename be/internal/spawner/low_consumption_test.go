@@ -232,9 +232,9 @@ func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
 func TestLowConsumptionSubstitution_CLINameAndModelID(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		lcModel      string
-		wantCLI      string
-		wantModelID  string
+		lcModel     string
+		wantCLI     string
+		wantModelID string
 	}{
 		{"opus_4_7", "claude", "claude:opus_4_7"},
 		{"opus_4_7_1m", "claude", "claude:opus_4_7_1m"},

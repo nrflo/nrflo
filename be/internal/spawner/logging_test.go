@@ -36,7 +36,7 @@ func TestSpawnerLogging_ContextPropagation(t *testing.T) {
 	}
 
 	for _, ch := range retrievedTrx {
-		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+		if (ch < '0' || ch > '9') && (ch < 'a' || ch > 'f') {
 			t.Errorf("trx %q contains non-hex char %c", retrievedTrx, ch)
 		}
 	}
@@ -133,21 +133,6 @@ func TestSpawnerLogging_MessageConventions(t *testing.T) {
 		// Verify message format (lowercase, no trailing punctuation)
 		if strings.HasSuffix(msg, ".") || strings.HasSuffix(msg, "!") {
 			t.Errorf("message %q should not have trailing punctuation", msg)
-		}
-		// First word should be lowercase (conventional structured logging style)
-		words := strings.Fields(msg)
-		if len(words) > 0 {
-			firstChar := rune(words[0][0])
-			if firstChar >= 'A' && firstChar <= 'Z' {
-				// Allow some exceptions like proper nouns, but document them
-				allowedCapitalizedWords := map[string]bool{
-					"DB": true,
-				}
-				if !allowedCapitalizedWords[words[0]] {
-					// This is actually okay for spawner messages like "spawning agent"
-					// The test just documents the pattern
-				}
-			}
 		}
 	}
 }

@@ -91,7 +91,7 @@ func (p *Pool) applyConfig(config PoolConfig) {
 	p.SetConnMaxLifetime(config.ConnMaxLifetime)
 }
 
-// SetConfig sets a global configuration value (project_id='')
+// SetConfig sets a global configuration value (project_id=”)
 func (p *Pool) SetConfig(key, value string) error {
 	_, err := p.Exec(
 		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES ('', ?, ?)",
@@ -100,7 +100,7 @@ func (p *Pool) SetConfig(key, value string) error {
 	return err
 }
 
-// GetConfig gets a global configuration value (project_id='')
+// GetConfig gets a global configuration value (project_id=”)
 func (p *Pool) GetConfig(key string) (string, error) {
 	var value string
 	err := p.QueryRow("SELECT value FROM config WHERE project_id = '' AND key = ?", key).Scan(&value)

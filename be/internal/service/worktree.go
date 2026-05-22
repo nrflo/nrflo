@@ -58,7 +58,7 @@ func (s *WorktreeService) Setup(projectRoot, defaultBranch, branchName string) (
 	_, err = runGit(projectRoot, "worktree", "add", worktreePath, branchName)
 	if err != nil {
 		// Clean up the branch we just created
-		runGit(projectRoot, "branch", "-D", branchName)
+		_, _ = runGit(projectRoot, "branch", "-D", branchName)
 		return "", fmt.Errorf("worktree setup: worktree creation failed: %w", err)
 	}
 
@@ -85,7 +85,7 @@ func (s *WorktreeService) MergeAndCleanup(projectRoot, defaultBranch, branchName
 
 	// Remove worktree BEFORE checkout/merge — commits live in .git/refs/heads,
 	// not in the worktree dir, so this is safe and eliminates worktree-originated lock contention.
-	runGit(projectRoot, "worktree", "remove", worktreePath)
+	_, _ = runGit(projectRoot, "worktree", "remove", worktreePath)
 
 	// Fetch remote updates and rebase feature branch before merge (best-effort)
 	fetchAndRebase(projectRoot, defaultBranch, branchName)
@@ -96,7 +96,7 @@ func (s *WorktreeService) MergeAndCleanup(projectRoot, defaultBranch, branchName
 	}
 
 	// Merge succeeded — delete the branch
-	runGit(projectRoot, "branch", "-d", branchName)
+	_, _ = runGit(projectRoot, "branch", "-d", branchName)
 	return nil
 }
 
@@ -121,7 +121,7 @@ func (s *WorktreeService) checkoutAndMergeWithRetry(projectRoot, defaultBranch, 
 
 		_, err = runGit(projectRoot, "merge", branchName, "--no-edit")
 		if err != nil {
-			runGit(projectRoot, "merge", "--abort")
+			_, _ = runGit(projectRoot, "merge", "--abort")
 			return fmt.Errorf("worktree merge: merge failed for branch '%s' — resolve manually: %w", branchName, err)
 		}
 
@@ -165,7 +165,7 @@ func fetchAndRebase(projectRoot, defaultBranch, branchName string) {
 
 	// Rebase feature branch onto updated defaultBranch
 	if _, err := runGit(projectRoot, "rebase", defaultBranch, branchName); err != nil {
-		runGit(projectRoot, "rebase", "--abort")
+		_, _ = runGit(projectRoot, "rebase", "--abort")
 		log.Printf("worktree: rebase %s onto %s failed (falling back to merge): %v", branchName, defaultBranch, err)
 	}
 }
@@ -207,12 +207,12 @@ func removeStaleLock(lockPath string) {
 // Errors are logged but not propagated — this is best-effort cleanup.
 func (s *WorktreeService) Cleanup(projectRoot, branchName, worktreePath string) error {
 	// Force-remove worktree (ignore errors — may already be gone)
-	runGit(projectRoot, "worktree", "remove", "--force", worktreePath)
+	_, _ = runGit(projectRoot, "worktree", "remove", "--force", worktreePath)
 
 	// Prune worktree metadata (handles case where directory was already deleted)
-	runGit(projectRoot, "worktree", "prune")
+	_, _ = runGit(projectRoot, "worktree", "prune")
 
 	// Force-delete branch (ignore errors — may already be gone)
-	runGit(projectRoot, "branch", "-D", branchName)
+	_, _ = runGit(projectRoot, "branch", "-D", branchName)
 	return nil
 }

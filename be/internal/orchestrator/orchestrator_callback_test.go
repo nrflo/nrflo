@@ -14,7 +14,10 @@ import (
 // TestHandleCallback_LevelMode verifies level-mode callback: plan built, sessions reset, WS broadcast.
 func TestHandleCallback_LevelMode(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "callback-test", "Callback workflow", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "callback-test", "Callback workflow", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-1", "Callback test")
@@ -76,7 +79,10 @@ func TestHandleCallback_LevelMode(t *testing.T) {
 // TestHandleCallback_AgentMode verifies agent-mode callback produces a per-agent plan step.
 func TestHandleCallback_AgentMode(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "agent-cb", "Agent callback", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "agent-cb", "Agent callback", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-A", "Agent mode")
@@ -117,7 +123,10 @@ func TestHandleCallback_AgentMode(t *testing.T) {
 // TestHandleCallback_ChainMode verifies chain-mode callback.
 func TestHandleCallback_ChainMode(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "chain-cb", "Chain callback", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "chain-cb", "Chain callback", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"builder", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-C", "Chain mode")
@@ -148,7 +157,10 @@ func TestHandleCallback_ChainMode(t *testing.T) {
 // TestHandleCallback_MultipleRequests verifies multiple concurrent callbacks are merged.
 func TestHandleCallback_MultipleRequests(t *testing.T) {
 	env := newTestEnv(t)
-	env.createWorkflowWithAgents(t, "multi-req-cb", "Multi-request callback", "", []struct{ ID string; Layer int }{
+	env.createWorkflowWithAgents(t, "multi-req-cb", "Multi-request callback", "", []struct {
+		ID    string
+		Layer int
+	}{
 		{"analyzer", 0}, {"impl-a", 1}, {"impl-b", 1}, {"verifier", 2},
 	})
 	env.createTicket(t, "CB-MR", "Multi-request")

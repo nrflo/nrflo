@@ -41,12 +41,7 @@ func (r *ChainLockRepo) DeleteLocksByChain(chainID string) error {
 	return err
 }
 
-// DeleteLocksByTicketIDs removes locks for specific tickets in a chain
-func (r *ChainLockRepo) DeleteLocksByTicketIDs(chainID string, ticketIDs []string) error {
-	return r.DeleteLocksByTicketIDsTx(r.pool, chainID, ticketIDs)
-}
-
-// DeleteLocksByTicketIDsTx is the transactional variant of DeleteLocksByTicketIDs.
+// DeleteLocksByTicketIDsTx removes locks for specific tickets in a chain.
 func (r *ChainLockRepo) DeleteLocksByTicketIDsTx(exec interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 }, chainID string, ticketIDs []string) error {

@@ -193,39 +193,39 @@ type AgentCallbackRequest struct {
 
 // WorkflowDefCreateRequest is the request for creating a workflow definition
 type WorkflowDefCreateRequest struct {
-	ID                          string   `json:"id"`
-	Description                 string   `json:"description,omitempty"`
-	ScopeType                   string   `json:"scope_type,omitempty"` // "ticket" (default) or "project"
-	Groups                      []string `json:"groups,omitempty"`
-	CloseTicketOnComplete       *bool    `json:"close_ticket_on_complete,omitempty"`
-	NextWorkflowOnSuccess       string   `json:"next_workflow_on_success,omitempty"`
-	FinalizeSuccessCommand      string   `json:"finalize_success_command,omitempty"`
-	FinalizeSuccessScriptID     string   `json:"finalize_success_script_id,omitempty"`
-	FinalizeFailureCommand      string   `json:"finalize_failure_command,omitempty"`
-	FinalizeFailureScriptID     string   `json:"finalize_failure_script_id,omitempty"`
-	PauseEventCommand           string   `json:"pause_event_command,omitempty"`
-	PauseEventScriptID          string   `json:"pause_event_script_id,omitempty"`
-	ObserverContext             string   `json:"observer_context,omitempty"`
-	ObserverProvider            *string  `json:"observer_provider,omitempty"`
-	ObserverModel               *string  `json:"observer_model,omitempty"`
+	ID                      string   `json:"id"`
+	Description             string   `json:"description,omitempty"`
+	ScopeType               string   `json:"scope_type,omitempty"` // "ticket" (default) or "project"
+	Groups                  []string `json:"groups,omitempty"`
+	CloseTicketOnComplete   *bool    `json:"close_ticket_on_complete,omitempty"`
+	NextWorkflowOnSuccess   string   `json:"next_workflow_on_success,omitempty"`
+	FinalizeSuccessCommand  string   `json:"finalize_success_command,omitempty"`
+	FinalizeSuccessScriptID string   `json:"finalize_success_script_id,omitempty"`
+	FinalizeFailureCommand  string   `json:"finalize_failure_command,omitempty"`
+	FinalizeFailureScriptID string   `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand       string   `json:"pause_event_command,omitempty"`
+	PauseEventScriptID      string   `json:"pause_event_script_id,omitempty"`
+	ObserverContext         string   `json:"observer_context,omitempty"`
+	ObserverProvider        *string  `json:"observer_provider,omitempty"`
+	ObserverModel           *string  `json:"observer_model,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
 type WorkflowDefUpdateRequest struct {
-	Description                 *string   `json:"description,omitempty"`
-	ScopeType                   *string   `json:"scope_type,omitempty"`
-	Groups                      *[]string `json:"groups,omitempty"`
-	CloseTicketOnComplete       *bool     `json:"close_ticket_on_complete,omitempty"`
-	NextWorkflowOnSuccess       *string   `json:"next_workflow_on_success,omitempty"`
-	FinalizeSuccessCommand      *string   `json:"finalize_success_command,omitempty"`
-	FinalizeSuccessScriptID     *string   `json:"finalize_success_script_id,omitempty"`
-	FinalizeFailureCommand      *string   `json:"finalize_failure_command,omitempty"`
-	FinalizeFailureScriptID     *string   `json:"finalize_failure_script_id,omitempty"`
-	PauseEventCommand           *string   `json:"pause_event_command,omitempty"`
-	PauseEventScriptID          *string   `json:"pause_event_script_id,omitempty"`
-	ObserverContext             *string   `json:"observer_context,omitempty"`
-	ObserverProvider            *string   `json:"observer_provider,omitempty"`
-	ObserverModel               *string   `json:"observer_model,omitempty"`
+	Description             *string   `json:"description,omitempty"`
+	ScopeType               *string   `json:"scope_type,omitempty"`
+	Groups                  *[]string `json:"groups,omitempty"`
+	CloseTicketOnComplete   *bool     `json:"close_ticket_on_complete,omitempty"`
+	NextWorkflowOnSuccess   *string   `json:"next_workflow_on_success,omitempty"`
+	FinalizeSuccessCommand  *string   `json:"finalize_success_command,omitempty"`
+	FinalizeSuccessScriptID *string   `json:"finalize_success_script_id,omitempty"`
+	FinalizeFailureCommand  *string   `json:"finalize_failure_command,omitempty"`
+	FinalizeFailureScriptID *string   `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand       *string   `json:"pause_event_command,omitempty"`
+	PauseEventScriptID      *string   `json:"pause_event_script_id,omitempty"`
+	ObserverContext         *string   `json:"observer_context,omitempty"`
+	ObserverProvider        *string   `json:"observer_provider,omitempty"`
+	ObserverModel           *string   `json:"observer_model,omitempty"`
 }
 
 // ContinueWorkflowRequest is the request for continuing a paused workflow instance.

@@ -27,7 +27,7 @@ func (r *AgentSessionRepo) ListActiveObservers(projectID string) ([]*model.Agent
 			ORDER BY started_at DESC`, projectID)
 	} else {
 		rows, err = r.db.Query(`
-			SELECT `+sessionCols+`
+			SELECT ` + sessionCols + `
 			FROM agent_sessions
 			WHERE kind = 'observer'
 			AND status IN ('running', 'user_interactive')

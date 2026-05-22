@@ -95,28 +95,6 @@ type SpawnerAgentConfig struct {
 	Tag     string `json:"tag"`
 }
 
-// BuildSpawnerConfigWithPolicies is like BuildSpawnerConfig but attaches per-layer
-// pass policies to each workflow definition. policiesByWorkflow maps workflow ID →
-// (layer → policy string). Entries absent from the map are left unset (callers
-// default to "any"). BuildSpawnerConfig remains unchanged so existing callers compile.
-func BuildSpawnerConfigWithPolicies(
-	dbWorkflows []*model.Workflow,
-	dbAgentDefs []*model.AgentDefinition,
-	policiesByWorkflow map[string]map[int]string,
-) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
-	workflows, agents := BuildSpawnerConfig(dbWorkflows, dbAgentDefs)
-	for wfID, policies := range policiesByWorkflow {
-		if len(policies) == 0 {
-			continue
-		}
-		if def, ok := workflows[wfID]; ok {
-			def.LayerPolicies = policies
-			workflows[wfID] = def
-		}
-	}
-	return workflows, agents
-}
-
 // parseWorkflowDefFromDB builds a WorkflowDef from agent definitions
 func parseWorkflowDefFromDB(description string, agentDefs []*model.AgentDefinition) *WorkflowDef {
 	var phases []PhaseDef

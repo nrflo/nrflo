@@ -51,10 +51,10 @@ func TestSanitizeInput(t *testing.T) {
 // TestSplitLines covers splitLines for various line-ending patterns.
 func TestSplitLines(t *testing.T) {
 	cases := []struct {
-		name    string
-		in      []byte
-		wantN   int
-		wantRem string
+		name      string
+		in        []byte
+		wantN     int
+		wantRem   string
 		wantLines []string // if non-nil, check each line
 	}{
 		{"nil input", nil, 0, "", nil},

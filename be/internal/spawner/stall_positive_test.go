@@ -39,7 +39,7 @@ func TestCheckStall_StartStall_ExceedsThreshold(t *testing.T) {
 	s := New(Config{Clock: clk})
 
 	proc := stallPositiveProc(clk, false, 0, 0) // lastMsgTime = now
-	clk.Advance(3 * time.Minute)                 // elapsed > stallStartTimeout(2m)
+	clk.Advance(3 * time.Minute)                // elapsed > stallStartTimeout(2m)
 
 	got := s.checkStall(context.Background(), proc, SpawnRequest{})
 	if !got {
@@ -61,7 +61,7 @@ func TestCheckStall_RunningStall_ExceedsThreshold(t *testing.T) {
 	s := New(Config{Clock: clk})
 
 	proc := stallPositiveProc(clk, true, 0, 0) // hasReceivedMessage=true
-	clk.Advance(9 * time.Minute)                // elapsed > stallRunningTimeout(8m)
+	clk.Advance(9 * time.Minute)               // elapsed > stallRunningTimeout(8m)
 
 	got := s.checkStall(context.Background(), proc, SpawnRequest{})
 	if !got {

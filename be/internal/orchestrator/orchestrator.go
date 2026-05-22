@@ -324,7 +324,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if len(req.InputArtifacts) > 0 {
 		artifactSvc := service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath)
 		if err := artifactSvc.AttachInputArtifacts(ctx, req.ProjectID, wi.ID, req.InputArtifacts); err != nil {
-			wfiRepo.Delete(wi.ID)
+			_ = wfiRepo.Delete(wi.ID)
 			pool.Close()
 			return nil, fmt.Errorf("input artifacts attach failed: %w", err)
 		}

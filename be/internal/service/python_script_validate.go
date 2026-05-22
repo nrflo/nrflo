@@ -81,10 +81,10 @@ func (v *PythonScriptValidator) Validate(ctx context.Context, code string) Valid
 	}
 
 	var raw struct {
-		OK    bool    `json:"ok"`
-		Error string  `json:"error"`
-		Line  *int    `json:"line"`
-		Col   *int    `json:"col"`
+		OK    bool   `json:"ok"`
+		Error string `json:"error"`
+		Line  *int   `json:"line"`
+		Col   *int   `json:"col"`
 	}
 	if err := json.Unmarshal(bytes.TrimSpace(stdout.Bytes()), &raw); err != nil {
 		return ValidationResult{OK: true}

@@ -51,9 +51,9 @@ func runEpicRequest(t *testing.T, client *http.Client, baseURL, projectID, epicI
 // titles without such prefix correctly receive the "Epic: " prepend.
 func TestRunEpicWorkflow_EpicPrefixCases(t *testing.T) {
 	cases := []struct {
-		name       string
-		epicTitle  string
-		wantName   string
+		name      string
+		epicTitle string
+		wantName  string
 	}{
 		{
 			name:      "title_without_prefix",

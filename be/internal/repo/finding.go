@@ -125,9 +125,9 @@ func (r *FindingRepo) upsertOnce(scope, scopeID, key string, value json.RawMessa
 	}
 
 	if err := writeHistoryTx(tx, HistoryRow{
-		ID:          uuid.New().String(),
-		FindingID:   sql.NullString{String: findingID, Valid: true},
-		Scope:       scope, ScopeID: scopeID, Key: key,
+		ID:        uuid.New().String(),
+		FindingID: sql.NullString{String: findingID, Valid: true},
+		Scope:     scope, ScopeID: scopeID, Key: key,
 		Operation: "add",
 		OldValue:  oldValue,
 		NewValue:  sql.NullString{String: valStr, Valid: true},
@@ -210,9 +210,9 @@ func (r *FindingRepo) appendOnce(scope, scopeID, key string, newValue json.RawMe
 	}
 
 	if err := writeHistoryTx(tx, HistoryRow{
-		ID:          uuid.New().String(),
-		FindingID:   sql.NullString{String: findingID, Valid: true},
-		Scope:       scope, ScopeID: scopeID, Key: key,
+		ID:        uuid.New().String(),
+		FindingID: sql.NullString{String: findingID, Valid: true},
+		Scope:     scope, ScopeID: scopeID, Key: key,
 		Operation: "append",
 		OldValue:  oldValueStr,
 		NewValue:  sql.NullString{String: mergedStr, Valid: true},
@@ -274,9 +274,9 @@ func (r *FindingRepo) deleteKeysOnce(scope, scopeID string, keys []string, actor
 		}
 
 		if err := writeHistoryTx(tx, HistoryRow{
-			ID:          uuid.New().String(),
-			FindingID:   sql.NullString{}, // finding deleted; FK becomes NULL via ON DELETE SET NULL
-			Scope:       scope, ScopeID: scopeID, Key: key,
+			ID:        uuid.New().String(),
+			FindingID: sql.NullString{}, // finding deleted; FK becomes NULL via ON DELETE SET NULL
+			Scope:     scope, ScopeID: scopeID, Key: key,
 			Operation: "delete",
 			OldValue:  oldValue,
 			NewValue:  sql.NullString{},
@@ -299,4 +299,3 @@ func (r *FindingRepo) deleteKeysOnce(scope, scopeID string, keys []string, actor
 	}
 	return deleted, nil
 }
-

@@ -305,10 +305,11 @@ func (cr *ChainRunner) handleCancel(pool *db.Pool, chainID, projectID, workflowN
 
 	items, _ := itemRepo.ListByChain(chainID)
 	for _, item := range items {
-		if item.Status == model.ChainItemRunning {
+		switch item.Status {
+		case model.ChainItemRunning:
 			cr.orchestrator.StopByTicket(projectID, item.TicketID, workflowName, "")
 			itemRepo.UpdateItemStatus(item.ID, model.ChainItemCanceled)
-		} else if item.Status == model.ChainItemPending {
+		case model.ChainItemPending:
 			itemRepo.UpdateItemStatus(item.ID, model.ChainItemCanceled)
 		}
 	}

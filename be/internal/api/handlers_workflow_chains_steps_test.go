@@ -364,4 +364,3 @@ func TestHandleCreateWorkflowChain_MultiStep_PositionsDense(t *testing.T) {
 		}
 	}
 }
-

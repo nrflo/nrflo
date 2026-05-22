@@ -243,7 +243,7 @@ func TestFindingRepo_GetOwn_MultipleKeys(t *testing.T) {
 	actor := Actor{Source: "agent"}
 
 	r.Upsert("project", "own-1", "key-a", json.RawMessage(`"va"`), Denorm{}, actor) //nolint:errcheck
-	r.Upsert("project", "own-1", "key-b", json.RawMessage(`42`), Denorm{}, actor)    //nolint:errcheck
+	r.Upsert("project", "own-1", "key-b", json.RawMessage(`42`), Denorm{}, actor)   //nolint:errcheck
 	// Different scope_id — should not appear
 	r.Upsert("project", "own-2", "key-c", json.RawMessage(`true`), Denorm{}, actor) //nolint:errcheck
 

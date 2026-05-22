@@ -91,14 +91,14 @@ func TestSendNudge_BroadcastFields_AttemptIncrements(t *testing.T) {
 	s := New(Config{Clock: clk, WSHub: hub})
 
 	proc := &processInfo{
-		nudgeMax:  5,
+		nudgeMax:   5,
 		nudgeCount: 2, // already sent 2 nudges
-		backend:   &cliInteractiveBackend{},
-		sessionID: "sess-inc",
-		agentType: "qa-verifier",
-		modelID:   "claude:opus",
-		projectID: "proj-inc",
-		ticketID:  "TKT-INC",
+		backend:    &cliInteractiveBackend{},
+		sessionID:  "sess-inc",
+		agentType:  "qa-verifier",
+		modelID:    "claude:opus",
+		projectID:  "proj-inc",
+		ticketID:   "TKT-INC",
 	}
 
 	s.sendNudge(context.Background(), proc, SpawnRequest{

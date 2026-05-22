@@ -1,0 +1,83 @@
+# deadcode.baseline — known-unreachable functions accepted by `make deadcode`.
+#
+# `golang.org/x/tools/cmd/deadcode` reports functions unreachable from the
+# `nrflo_server` and `nrflo` main packages. The entries below are unreachable
+# from those entry points but are NOT dead, for one of these reasons:
+#
+#   * test infrastructure — used only by *_test.go (deadcode does not treat
+#     per-package tests as roots): clock.NewTest / TestClock.*, ws.NewTestClient,
+#     db.Open*/*PoolExisting, repo CRUD exercised directly by tests, etc.
+#   * socket / reflection dispatch — reached by name over the unix socket or via
+#     interface dispatch the static call graph cannot see: api.getAgentSession.
+#
+# `make deadcode` fails only on NEW unreachable funcs (present in the analysis
+# but absent here). When you delete code, also delete its line(s) below.
+# Format: "<package import path> <FuncName | Type.Method>", sorted.
+#
+be/internal/api getAgentSession
+be/internal/client NewWithAddr
+be/internal/clock NewTest
+be/internal/clock TestClock.Advance
+be/internal/clock TestClock.After
+be/internal/clock TestClock.fireTimers
+be/internal/clock TestClock.Now
+be/internal/clock TestClock.Set
+be/internal/config Save
+be/internal/db NewPoolPathExisting
+be/internal/db OpenPathExisting
+be/internal/db OpenPoolExisting
+be/internal/logger GetWriter
+be/internal/logger SetWriter
+be/internal/model IsValidKind
+be/internal/model ValidKinds
+be/internal/notify Worker.Tick
+be/internal/orchestrator ChainRunner.IsRunning
+be/internal/orchestrator ChainRunner.WaitAll
+be/internal/repo AgentDefinitionRepo.Create
+be/internal/repo AgentDefinitionRepo.Delete
+be/internal/repo AgentDefinitionRepo.Exists
+be/internal/repo AgentDefinitionRepo.List
+be/internal/repo AgentDefinitionRepo.Update
+be/internal/repo AgentMessageRepo.CountBySessionFiltered
+be/internal/repo AgentMessageRepo.GetBySessionPaginated
+be/internal/repo AgentMessageRepo.GetBySessionPaginatedFiltered
+be/internal/repo AgentMessageRepo.GetCountsBySessionIDs
+be/internal/repo AgentSessionRepo.Delete
+be/internal/repo AgentSessionRepo.ResetSingleAgentSession
+be/internal/repo AgentSessionRepo.SetEffectiveMode
+be/internal/repo AgentSessionRepo.UpdateContextLeft
+be/internal/repo ArtifactRepo.ExistsByNameForInstance
+be/internal/repo ArtifactRepo.ListByProject
+be/internal/repo DailyStatsRepo.GetByDate
+be/internal/repo ProjectRepo.Exists
+be/internal/repo ScheduleRunRepo.Get
+be/internal/repo ScheduleRunRepo.UpdateStatus
+be/internal/repo ServiceTokenRepo.ListByProject
+be/internal/repo TicketRefRepo.Create
+be/internal/repo TicketRefRepo.ListByTicket
+be/internal/repo TicketRepo.GetReady
+be/internal/repo WorkflowRepo.Create
+be/internal/repo WorkflowRepo.Delete
+be/internal/repo WorkflowRepo.Exists
+be/internal/repo WorkflowRepo.List
+be/internal/repo WorkflowRepo.Update
+be/internal/service GlobalSettingsService.GetProjectConfig
+be/internal/service GlobalSettingsService.SetProjectConfig
+be/internal/service PendingTicket.MarshalJSON
+be/internal/service PendingTicket.UnmarshalJSON
+be/internal/service PythonScriptService.ListTools
+be/internal/service ServiceTokenService.ListByProject
+be/internal/service SystemAgentDefinitionService.List
+be/internal/service TicketService.Delete
+be/internal/service TicketService.GetReady
+be/internal/service TicketService.GetStatus
+be/internal/service TicketService.List
+be/internal/service TicketService.Update
+be/internal/service ValidateProjectScope
+be/internal/socket Server.SocketPath
+be/internal/spawner PidAlive
+be/internal/spawner PidMetrics
+be/internal/spawner processInfo.appendStderr
+be/internal/spawner writeCodexProfile
+be/internal/spawner/apirun/provider/anthropic NewWithHTTPClient
+be/internal/ws NewTestClient

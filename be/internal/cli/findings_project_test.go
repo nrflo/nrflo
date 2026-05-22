@@ -60,7 +60,7 @@ func TestProjectFindingsGetCmd(t *testing.T) {
 	// Verify -k/--key flag exists
 	keyFlag := projFindingsGetCmd.Flags().Lookup("key")
 	if keyFlag == nil {
-		t.Error("project-get missing -k/--key flag")
+		t.Fatal("project-get missing -k/--key flag")
 	}
 	if keyFlag.Shorthand != "k" {
 		t.Errorf("project-get key flag shorthand = %q, want 'k'", keyFlag.Shorthand)

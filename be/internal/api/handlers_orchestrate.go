@@ -573,7 +573,7 @@ func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {
 		InstanceID string `json:"instance_id"`
 	}
 	// Body is optional
-	readJSON(r, &body)
+	_ = readJSON(r, &body)
 
 	err := s.orchestrator.StopByTicket(projectID, ticketID, body.Workflow, body.InstanceID)
 	if err != nil {

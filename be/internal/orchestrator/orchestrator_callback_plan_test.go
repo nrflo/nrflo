@@ -40,7 +40,11 @@ func TestLayerIndexOf(t *testing.T) {
 
 func TestAgentLayerOf(t *testing.T) {
 	groups := threeLayerGroups()
-	tests := []struct{ agent string; wantLayer int; wantOK bool }{
+	tests := []struct {
+		agent     string
+		wantLayer int
+		wantOK    bool
+	}{
 		{"analyzer", 0, true},
 		{"builder", 1, true},
 		{"verifier", 2, true},
@@ -57,10 +61,10 @@ func TestAgentLayerOf(t *testing.T) {
 func TestValidateCallbackRequest(t *testing.T) {
 	groups := threeLayerGroups()
 	tests := []struct {
-		name        string
-		req         spawner.CallbackError
-		originator  int
-		wantErr     bool
+		name       string
+		req        spawner.CallbackError
+		originator int
+		wantErr    bool
 	}{
 		{"level_valid", spawner.CallbackError{Level: 1}, 2, false},
 		{"level_zero", spawner.CallbackError{Level: 0}, 2, false},
@@ -170,13 +174,13 @@ func TestMergeCallbackPlans_WholeLayerWins(t *testing.T) {
 	// Per-agent step + whole-layer step for same layer → whole-layer wins.
 	parts := []decomposedRequest{
 		{
-			agentID: "agent-a",
-			steps:   []callbackPlanStep{{layer: 1, wholeLayer: false, agents: []string{"builder"}, perAgentInstr: map[string]string{"builder": "fix"}}},
+			agentID:    "agent-a",
+			steps:      []callbackPlanStep{{layer: 1, wholeLayer: false, agents: []string{"builder"}, perAgentInstr: map[string]string{"builder": "fix"}}},
 			resetScope: []string{"builder"}, resumeLayer: 2,
 		},
 		{
-			agentID: "agent-b",
-			steps:   []callbackPlanStep{{layer: 1, wholeLayer: true, layerInstr: "full layer"}},
+			agentID:    "agent-b",
+			steps:      []callbackPlanStep{{layer: 1, wholeLayer: true, layerInstr: "full layer"}},
 			resetScope: []string{"builder"}, resumeLayer: 2,
 		},
 	}
@@ -236,9 +240,9 @@ func TestMergeCallbackPlans_MaxResumeLayer(t *testing.T) {
 func TestCumulativeAgentCount(t *testing.T) {
 	groups := fourLayerGroups() // layers: 0(1 agent), 1(2 agents), 2(1 agent), 3(1 agent)
 	tests := []struct {
-		name  string
-		plan  callbackPlan
-		want  int
+		name string
+		plan callbackPlan
+		want int
 	}{
 		{
 			"whole_layer_single_agent",

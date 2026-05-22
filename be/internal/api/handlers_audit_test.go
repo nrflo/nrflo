@@ -20,7 +20,9 @@ func TestListAuditLog_Admin(t *testing.T) {
 	r2 := postJSON(t, as.client, as.baseURL+"/api/v1/users",
 		`{"email":"al2@test.com","display_name":"AL2","password":"pass12345","role":"viewer"}`)
 	var u2body struct {
-		User struct{ ID string `json:"id"` } `json:"user"`
+		User struct {
+			ID string `json:"id"`
+		} `json:"user"`
 	}
 	json.NewDecoder(r2.Body).Decode(&u2body)
 	drain(r2)
@@ -73,7 +75,9 @@ func TestListAuditLog_FilterByAction(t *testing.T) {
 	r2 := postJSON(t, as.client, as.baseURL+"/api/v1/users",
 		`{"email":"fa2@test.com","display_name":"FA2","password":"pass12345","role":"viewer"}`)
 	var u2body struct {
-		User struct{ ID string `json:"id"` } `json:"user"`
+		User struct {
+			ID string `json:"id"`
+		} `json:"user"`
 	}
 	json.NewDecoder(r2.Body).Decode(&u2body)
 	drain(r2)
@@ -88,7 +92,9 @@ func TestListAuditLog_FilterByAction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET /audit-log: %v", err)
 	}
-	var allOut struct{ Total int `json:"total"` }
+	var allOut struct {
+		Total int `json:"total"`
+	}
 	json.NewDecoder(respAll.Body).Decode(&allOut)
 	drain(respAll)
 
@@ -98,7 +104,9 @@ func TestListAuditLog_FilterByAction(t *testing.T) {
 		t.Fatalf("GET /audit-log?action=user_create: %v", err)
 	}
 	defer drain(respFilt)
-	var filtOut struct{ Total int `json:"total"` }
+	var filtOut struct {
+		Total int `json:"total"`
+	}
 	json.NewDecoder(respFilt.Body).Decode(&filtOut)
 
 	if filtOut.Total >= allOut.Total {

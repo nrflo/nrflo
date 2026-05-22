@@ -14,7 +14,7 @@ import (
 // ProjectRepo handles project CRUD operations
 type ProjectRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewProjectRepo creates a new project repository

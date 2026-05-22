@@ -13,7 +13,7 @@ import (
 // DependencyRepo handles dependency CRUD operations
 type DependencyRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 // NewDependencyRepo creates a new dependency repository

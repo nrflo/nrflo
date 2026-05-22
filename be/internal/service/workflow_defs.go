@@ -10,9 +10,6 @@ import (
 	"be/internal/types"
 )
 
-// reservedWorkflowName is the internal workflow used by the spec-import UI flow.
-const reservedWorkflowName = "__spec_import__"
-
 // IsReservedWorkflowName returns true for internal system workflow names like __spec_import__.
 // Reserved workflows are excluded from the workflow definition listing.
 func IsReservedWorkflowName(name string) bool {
@@ -69,21 +66,21 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	wf := &model.Workflow{
-		ID:                          strings.ToLower(req.ID),
-		ProjectID:                   strings.ToLower(projectID),
-		Description:                 req.Description,
-		ScopeType:                   scopeType,
-		CloseTicketOnComplete:       closeTicketOnComplete,
-		NextWorkflowOnSuccess:       req.NextWorkflowOnSuccess,
-		FinalizeSuccessCommand:      req.FinalizeSuccessCommand,
-		FinalizeSuccessScriptID:     req.FinalizeSuccessScriptID,
-		FinalizeFailureCommand:      req.FinalizeFailureCommand,
-		FinalizeFailureScriptID:     req.FinalizeFailureScriptID,
-		PauseEventCommand:           req.PauseEventCommand,
-		PauseEventScriptID:          req.PauseEventScriptID,
-		Groups:                      string(groupsJSON),
-		CreatedAt:                   s.clock.Now().UTC(),
-		UpdatedAt:                   s.clock.Now().UTC(),
+		ID:                      strings.ToLower(req.ID),
+		ProjectID:               strings.ToLower(projectID),
+		Description:             req.Description,
+		ScopeType:               scopeType,
+		CloseTicketOnComplete:   closeTicketOnComplete,
+		NextWorkflowOnSuccess:   req.NextWorkflowOnSuccess,
+		FinalizeSuccessCommand:  req.FinalizeSuccessCommand,
+		FinalizeSuccessScriptID: req.FinalizeSuccessScriptID,
+		FinalizeFailureCommand:  req.FinalizeFailureCommand,
+		FinalizeFailureScriptID: req.FinalizeFailureScriptID,
+		PauseEventCommand:       req.PauseEventCommand,
+		PauseEventScriptID:      req.PauseEventScriptID,
+		Groups:                  string(groupsJSON),
+		CreatedAt:               s.clock.Now().UTC(),
+		UpdatedAt:               s.clock.Now().UTC(),
 	}
 
 	var observerProvider, observerModel interface{}

@@ -461,11 +461,6 @@ func (env *toResumeTestEnv) createContinuedSessionFull(t *testing.T, sessionID s
 	}
 }
 
-// contains is a helper to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
-}
-
 func containsHelper(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {
 		if s[i:i+len(substr)] == substr {

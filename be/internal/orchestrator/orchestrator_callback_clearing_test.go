@@ -31,7 +31,7 @@ func TestClearCallbackMetadata(t *testing.T) {
 
 	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
 	cbVal, _ := json.Marshal(map[string]interface{}{"level": 0, "instructions": "Fix it", "from_layer": 1, "from_agent": "builder"})
-	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"})           //nolint:errcheck
 	findingRepo.Upsert("workflow_instance", wfiID, "other_key", json.RawMessage(`"other_value"`), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
 
 	// Verify _callback exists before clearing
@@ -152,7 +152,7 @@ func TestClearCallbackMetadata_ProjectScope(t *testing.T) {
 
 	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
 	cbVal, _ := json.Marshal(map[string]interface{}{"level": 0, "instructions": "Project callback", "from_agent": "verifier"})
-	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"})     //nolint:errcheck
+	findingRepo.Upsert("workflow_instance", wfiID, "_callback", json.RawMessage(cbVal), repo.Denorm{}, repo.Actor{Source: "system"})               //nolint:errcheck
 	findingRepo.Upsert("workflow_instance", wfiID, "project_key", json.RawMessage(`"project_value"`), repo.Denorm{}, repo.Actor{Source: "system"}) //nolint:errcheck
 
 	// Clear callback metadata

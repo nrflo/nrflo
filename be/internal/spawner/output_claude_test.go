@@ -213,7 +213,7 @@ func TestProcessOutput_Claude_TaskToolUse_MissingID_NoPendingEntry(t *testing.T)
 		"message": map[string]interface{}{
 			"content": []interface{}{
 				map[string]interface{}{
-					"type":  "tool_use",
+					"type": "tool_use",
 					// no "id" field
 					"name":  "Task",
 					"input": map[string]interface{}{"description": "some task"},

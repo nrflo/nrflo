@@ -1,6 +1,9 @@
 # Binaries
 be/nrflo
 be/nrflo_server
+# Pinned lint/dead-code tooling (bootstrapped by `make lint`/`make deadcode`)
+be/bin/
+be/coverage.out
 nrworkflow
 nrworkflow_server
 be/nrworkflow

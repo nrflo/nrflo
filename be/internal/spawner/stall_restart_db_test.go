@@ -25,20 +25,20 @@ func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
 	close(doneCh)
 
 	proc := &processInfo{
-		cmd:               &exec.Cmd{},
-		backend:           fakeBackend{name: "cli_interactive"}, // cmd.Process == nil
-		doneCh:            doneCh,
-		sessionID:         env.sessionID,
-		agentID:           "test-agent-id",
-		agentType:         "implementor",
-		modelID:           "claude:sonnet",
+		cmd:                &exec.Cmd{},
+		backend:            fakeBackend{name: "cli_interactive"}, // cmd.Process == nil
+		doneCh:             doneCh,
+		sessionID:          env.sessionID,
+		agentID:            "test-agent-id",
+		agentType:          "implementor",
+		modelID:            "claude:sonnet",
 		workflowInstanceID: env.wfiID,
-		projectID:         env.projectID,
-		ticketID:          env.ticketID,
-		workflowName:      env.workflowID,
-		pendingMessages:   make([]repo.MessageEntry, 0),
-		lastMessageTime:   time.Now().Add(-5 * time.Minute),
-		stallRestartCount: 0,
+		projectID:          env.projectID,
+		ticketID:           env.ticketID,
+		workflowName:       env.workflowID,
+		pendingMessages:    make([]repo.MessageEntry, 0),
+		lastMessageTime:    time.Now().Add(-5 * time.Minute),
+		stallRestartCount:  0,
 	}
 
 	req := SpawnRequest{
@@ -87,20 +87,20 @@ func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
 	close(doneCh)
 
 	proc := &processInfo{
-		cmd:               &exec.Cmd{},
-		backend:           fakeBackend{name: "cli_interactive"},
-		doneCh:            doneCh,
-		sessionID:         env.sessionID,
-		agentID:           "test-agent-id",
-		agentType:         "qa-verifier",
-		modelID:           "claude:opus",
+		cmd:                &exec.Cmd{},
+		backend:            fakeBackend{name: "cli_interactive"},
+		doneCh:             doneCh,
+		sessionID:          env.sessionID,
+		agentID:            "test-agent-id",
+		agentType:          "qa-verifier",
+		modelID:            "claude:opus",
 		workflowInstanceID: env.wfiID,
-		projectID:         env.projectID,
-		ticketID:          env.ticketID,
-		workflowName:      env.workflowID,
-		pendingMessages:   make([]repo.MessageEntry, 0),
-		lastMessageTime:   time.Now().Add(-10 * time.Minute),
-		stallRestartCount: 1,
+		projectID:          env.projectID,
+		ticketID:           env.ticketID,
+		workflowName:       env.workflowID,
+		pendingMessages:    make([]repo.MessageEntry, 0),
+		lastMessageTime:    time.Now().Add(-10 * time.Minute),
+		stallRestartCount:  1,
 	}
 
 	req := SpawnRequest{
@@ -144,20 +144,20 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 	env.spawner.config.Clock = clk
 
 	proc := &processInfo{
-		cmd:               &exec.Cmd{},
-		backend:           fakeBackend{name: "cli_interactive"},
-		doneCh:            make(chan struct{}),
-		sessionID:         env.sessionID,
-		agentID:           "test-agent-id",
-		agentType:         "implementor",
-		modelID:           "claude:haiku",
-		projectID:         env.projectID,
-		ticketID:          env.ticketID,
-		workflowName:      env.workflowID,
-		pendingMessages:   make([]repo.MessageEntry, 0),
-		lastMessageTime:   clk.Now().Add(-10 * time.Minute),
-		stallStartTimeout: 2 * time.Minute,
-		stallRestartCount: maxStallRestarts, // already at limit
+		cmd:                &exec.Cmd{},
+		backend:            fakeBackend{name: "cli_interactive"},
+		doneCh:             make(chan struct{}),
+		sessionID:          env.sessionID,
+		agentID:            "test-agent-id",
+		agentType:          "implementor",
+		modelID:            "claude:haiku",
+		projectID:          env.projectID,
+		ticketID:           env.ticketID,
+		workflowName:       env.workflowID,
+		pendingMessages:    make([]repo.MessageEntry, 0),
+		lastMessageTime:    clk.Now().Add(-10 * time.Minute),
+		stallStartTimeout:  2 * time.Minute,
+		stallRestartCount:  maxStallRestarts, // already at limit
 		hasReceivedMessage: false,
 	}
 

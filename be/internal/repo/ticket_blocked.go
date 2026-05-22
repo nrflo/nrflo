@@ -287,7 +287,7 @@ func (r *TicketRepo) GetRecentlyClosed(projectID string, limit int) ([]*model.Ti
 // AttachWorkflowProgress enriches tickets with pre-computed workflow progress data.
 func AttachWorkflowProgress(tickets []*PendingTicket, progress map[string]*WorkflowProgress) {
 	for _, pt := range tickets {
-		wp, ok := progress[strings.ToLower(pt.Ticket.ID)]
+		wp, ok := progress[strings.ToLower(pt.ID)]
 		if !ok {
 			continue
 		}

@@ -158,10 +158,8 @@ func TestRestartAgent_LogsRestartRequest(t *testing.T) {
 
 	logBuf := setupLogCapture(t)
 
-	err := env.orch.RestartAgent(env.project, "LOG-4", "test", "some-session-id")
-	if err != nil {
-		// Error expected if no running orchestration, but log should still happen
-	}
+	// Error expected if no running orchestration, but the log should still happen.
+	_ = env.orch.RestartAgent(env.project, "LOG-4", "test", "some-session-id")
 
 	output := logBuf.String()
 
@@ -262,10 +260,8 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 	logBuf := setupLogCapture(t)
 
 	ctx := context.Background()
-	err = env.orch.RetryFailedAgent(ctx, env.project, "LOG-6", "test", sessionID)
-	if err != nil {
-		// May fail due to missing project root_path or other issues, but log should happen
-	}
+	// May fail due to missing project root_path or other issues, but the log should happen.
+	_ = env.orch.RetryFailedAgent(ctx, env.project, "LOG-6", "test", sessionID)
 
 	output := logBuf.String()
 

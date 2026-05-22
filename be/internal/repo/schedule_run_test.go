@@ -11,8 +11,8 @@ import (
 )
 
 type scheduleRunTestEnv struct {
-	taskRepo *ScheduledTaskRepo
-	runRepo  *ScheduleRunRepo
+	taskRepo  *ScheduledTaskRepo
+	runRepo   *ScheduleRunRepo
 	projectID string
 	taskID    string
 }

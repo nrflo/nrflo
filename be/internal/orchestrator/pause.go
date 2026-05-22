@@ -85,7 +85,7 @@ func (o *Orchestrator) maybePauseAfterLayer(
 }
 
 // persistPauseFinding upserts the _pause finding for a workflow instance.
-func persistPauseFinding(o *Orchestrator, pool *db.Pool, wfiID string, req RunRequest, pausedAfterLayer, resumeLayer int, kind, target string, exitCode int, status, outputTail string) {
+func persistPauseFinding(o *Orchestrator, pool *db.Pool, wfiID string, _ RunRequest, pausedAfterLayer, resumeLayer int, kind, target string, exitCode int, status, outputTail string) {
 	event := map[string]interface{}{
 		"kind":        kind,
 		"target":      target,

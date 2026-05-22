@@ -10,7 +10,7 @@ import (
 )
 
 type liveTestEnv struct {
-	pool  *db.Pool
+	pool   *db.Pool
 	projID string
 	wfiID  string
 }
@@ -53,10 +53,10 @@ func insertLiveSvcSession(t *testing.T, env *liveTestEnv, id, status string, pid
 		id, env.projID, env.wfiID, status, pid, started, now, now)
 }
 
-func stubPidAliveTrue(int64) bool                                     { return true }
-func stubPidAliveFalse(int64) bool                                    { return false }
-func stubPidMetrics(int64) (int64, float64, int64, bool)              { return 1024, 12.5, 30, true }
-func stubPidMetricsZero(int64) (int64, float64, int64, bool)          { return 0, 0, 0, false }
+func stubPidAliveTrue(int64) bool                            { return true }
+func stubPidAliveFalse(int64) bool                           { return false }
+func stubPidMetrics(int64) (int64, float64, int64, bool)     { return 1024, 12.5, 30, true }
+func stubPidMetricsZero(int64) (int64, float64, int64, bool) { return 0, 0, 0, false }
 
 func TestListLive_PidAliveFalse_DropsRow(t *testing.T) {
 	t.Parallel()

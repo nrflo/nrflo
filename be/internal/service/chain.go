@@ -114,13 +114,13 @@ func (s *ChainService) CreateChain(projectID string, req *types.ChainCreateReque
 	}
 	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 	if err := itemRepo.BatchInsert(items); err != nil {
-		chainRepo.Delete(chainID) // best-effort cleanup
+		_ = chainRepo.Delete(chainID) // best-effort cleanup
 		return nil, fmt.Errorf("failed to create chain items: %w", err)
 	}
 
 	// Insert locks
 	if err := lockRepo.InsertLocks(projectID, chainID, sorted); err != nil {
-		chainRepo.Delete(chainID) // cascades to items
+		_ = chainRepo.Delete(chainID) // cascades to items
 		return nil, fmt.Errorf("failed to acquire locks: %w", err)
 	}
 
@@ -464,4 +464,3 @@ func sortByCreatedThenID(ids []string, createdAt map[string]time.Time) {
 		return ids[i] < ids[j]
 	})
 }
-

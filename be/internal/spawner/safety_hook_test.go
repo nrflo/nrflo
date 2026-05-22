@@ -314,4 +314,3 @@ func TestBuildSafetyCommand_MultipleAllowedPaths(t *testing.T) {
 		}
 	}
 }
-

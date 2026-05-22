@@ -22,10 +22,10 @@ type ScheduleReloader interface {
 
 // ScheduledTaskService handles scheduled task business logic.
 type ScheduledTaskService struct {
-	pool         *db.Pool
-	clock        clock.Clock
-	reloader     ScheduleReloader
-	wfChainSvc   *WorkflowChainService
+	pool       *db.Pool
+	clock      clock.Clock
+	reloader   ScheduleReloader
+	wfChainSvc *WorkflowChainService
 }
 
 // NewScheduledTaskService creates a new ScheduledTaskService.

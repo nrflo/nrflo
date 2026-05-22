@@ -9,16 +9,16 @@ import (
 )
 
 type historyItem struct {
-	ID          string  `json:"id"`
-	FindingID   *string `json:"finding_id,omitempty"`
-	Scope       string  `json:"scope"`
-	ScopeID     string  `json:"scope_id"`
-	Key         string  `json:"key"`
-	Operation   string  `json:"operation"`
-	OldValue    *string `json:"old_value"`
-	NewValue    *string `json:"new_value"`
-	ActorID     string  `json:"actor_id"`
-	ActorSource string  `json:"actor_source"`
+	ID          string    `json:"id"`
+	FindingID   *string   `json:"finding_id,omitempty"`
+	Scope       string    `json:"scope"`
+	ScopeID     string    `json:"scope_id"`
+	Key         string    `json:"key"`
+	Operation   string    `json:"operation"`
+	OldValue    *string   `json:"old_value"`
+	NewValue    *string   `json:"new_value"`
+	ActorID     string    `json:"actor_id"`
+	ActorSource string    `json:"actor_source"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 

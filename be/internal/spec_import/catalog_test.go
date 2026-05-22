@@ -10,11 +10,11 @@ func TestCatalog_Length(t *testing.T) {
 
 func TestCatalog_Names(t *testing.T) {
 	want := map[string]bool{
-		"GITHUB_TOKEN":         true,
-		"JIRA_BASE_URL":        true,
-		"JIRA_EMAIL":           true,
-		"JIRA_API_TOKEN":       true,
-		"ANTHROPIC_API_KEY":    true,
+		"GITHUB_TOKEN":          true,
+		"JIRA_BASE_URL":         true,
+		"JIRA_EMAIL":            true,
+		"JIRA_API_TOKEN":        true,
+		"ANTHROPIC_API_KEY":     true,
 		"ANTHROPIC_OAUTH_TOKEN": true,
 	}
 	seen := map[string]int{}

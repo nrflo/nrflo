@@ -76,14 +76,6 @@ func RequireProject() error {
 	return nil
 }
 
-// GetProjectRootPath returns the root path for the current project
-func GetProjectRootPath() string {
-	if ProjectRoot != "" {
-		return ProjectRoot
-	}
-	return "."
-}
-
 // GetWorkflowInstanceID returns the workflow instance ID from env var (set by spawner)
 func GetWorkflowInstanceID() string {
 	return os.Getenv("NRF_WORKFLOW_INSTANCE_ID")

@@ -175,8 +175,8 @@ func TestFormatToolDetail_AllTools_LongDetail(t *testing.T) {
 	longVal := strings.Repeat("z", 300)
 
 	tests := []struct {
-		toolName string
-		input    map[string]interface{}
+		toolName   string
+		input      map[string]interface{}
 		wantSuffix string
 	}{
 		{"Bash", map[string]interface{}{"command": longVal}, longVal},

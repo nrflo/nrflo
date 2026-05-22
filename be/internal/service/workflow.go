@@ -126,7 +126,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 }
 
 // buildWorkflowInstance creates a WorkflowInstance from a workflow definition.
-func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
+func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, _ *WorkflowDef) *model.WorkflowInstance {
 	return &model.WorkflowInstance{
 		ID:         uuid.New().String(),
 		ProjectID:  projectID,
@@ -176,7 +176,7 @@ func (s *WorkflowService) GetStatus(projectID, ticketID string, req *types.Workf
 			for i, wi := range instances {
 				names[i] = wi.WorkflowID
 			}
-			return nil, fmt.Errorf("multiple workflows on %s: %s. Use workflow parameter to specify.", ticketID, strings.Join(names, ", "))
+			return nil, fmt.Errorf("multiple workflows on %s: %s — specify one with the workflow parameter", ticketID, strings.Join(names, ", "))
 		}
 	}
 

@@ -21,7 +21,7 @@ import (
 // Gemini's transcript writer uses os.homedir() (getpwuid) and ignores HOME.
 // We therefore search both locations and the unique session UUID picks the
 // right file out of the glob.
-func startGeminiJSONLTail(ctx context.Context, sessionID, geminiHome, workDir string, maxCtx int, sink Sink) context.CancelFunc {
+func startGeminiJSONLTail(ctx context.Context, sessionID, geminiHome, _ string, maxCtx int, sink Sink) context.CancelFunc {
 	cctx, cancel := context.WithCancel(ctx)
 	go geminiJSONLTailLoop(cctx, sessionID, geminiHome, maxCtx, sink)
 	return cancel

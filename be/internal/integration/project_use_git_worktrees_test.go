@@ -333,7 +333,8 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 			continue
 		}
 
-		if id == "list-proj-worktrees-1" {
+		switch id {
+		case "list-proj-worktrees-1":
 			proj1Found = true
 			useGitWorktrees, ok := proj["use_git_worktrees"]
 			if !ok {
@@ -342,7 +343,7 @@ func TestListProjectsReturnsUseGitWorktrees(t *testing.T) {
 			if useGitWorktrees != true {
 				t.Errorf("expected use_git_worktrees true for list-proj-worktrees-1, got %v", useGitWorktrees)
 			}
-		} else if id == "list-proj-worktrees-2" {
+		case "list-proj-worktrees-2":
 			proj2Found = true
 			useGitWorktrees, ok := proj["use_git_worktrees"]
 			if !ok {

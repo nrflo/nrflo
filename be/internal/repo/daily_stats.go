@@ -11,7 +11,7 @@ import (
 
 type DailyStatsRepo struct {
 	clock clock.Clock
-	db db.Querier
+	db    db.Querier
 }
 
 func NewDailyStatsRepo(database db.Querier, clk clock.Clock) *DailyStatsRepo {

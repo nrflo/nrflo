@@ -32,7 +32,7 @@ func TestMigration044_ConfigTableHasCompositePK(t *testing.T) {
 }
 
 // TestMigration044_GlobalConfigRowsPreserved verifies that existing global config
-// rows (project_id='') survive the migration intact.
+// rows (project_id=”) survive the migration intact.
 func TestMigration044_GlobalConfigRowsPreserved(t *testing.T) {
 	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
 	if err != nil {

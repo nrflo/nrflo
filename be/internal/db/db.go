@@ -102,19 +102,6 @@ func OpenPathExisting(path string) (*DB, error) {
 	return &DB{DB: db, Path: path}, nil
 }
 
-// OpenOrCreate opens an existing database or creates a new one.
-func OpenOrCreate(customPath string) (*DB, error) {
-	dbPath := GetDBPath(customPath)
-
-	// Ensure parent directory exists
-	dir := filepath.Dir(dbPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	return OpenPath(dbPath)
-}
-
 // buildDSN returns a DSN with per-connection pragmas (busy_timeout, foreign_keys).
 // These are set via _pragma in the DSN so every pooled connection gets them,
 // not just the first one (which is what happens with Exec-based PRAGMA calls).
@@ -139,7 +126,7 @@ func WrapAsPool(database *DB) *Pool {
 	return &Pool{DB: database.DB, Path: database.Path}
 }
 
-// SetConfig sets a global configuration value (project_id='')
+// SetConfig sets a global configuration value (project_id=”)
 func (db *DB) SetConfig(key, value string) error {
 	_, err := db.Exec(
 		"INSERT OR REPLACE INTO config (project_id, key, value) VALUES ('', ?, ?)",
@@ -148,7 +135,7 @@ func (db *DB) SetConfig(key, value string) error {
 	return err
 }
 
-// GetConfig gets a global configuration value (project_id='')
+// GetConfig gets a global configuration value (project_id=”)
 func (db *DB) GetConfig(key string) (string, error) {
 	var value string
 	err := db.QueryRow("SELECT value FROM config WHERE project_id = '' AND key = ?", key).Scan(&value)

@@ -14,9 +14,9 @@ import (
 )
 
 var (
-	ErrLastAdmin   = errors.New("service: cannot remove or demote the last active admin")
-	ErrSelfDelete  = errors.New("service: cannot delete your own account")
-	ErrSystemUser  = errors.New("service: user is system; cannot be deleted")
+	ErrLastAdmin  = errors.New("service: cannot remove or demote the last active admin")
+	ErrSelfDelete = errors.New("service: cannot delete your own account")
+	ErrSystemUser = errors.New("service: user is system; cannot be deleted")
 )
 
 // UserService handles user management operations.

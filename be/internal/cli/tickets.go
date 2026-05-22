@@ -17,7 +17,6 @@ var (
 	ticketsJSON   bool
 )
 
-
 func getHTTPClient() *client.HTTPClient {
 	baseURL := ticketsServer
 	if baseURL == "" {

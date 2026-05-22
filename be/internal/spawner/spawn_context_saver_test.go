@@ -63,4 +63,3 @@ func TestSpawnContextSaver_NoMessages(t *testing.T) {
 		t.Errorf("spawnContextSaver() = true, want false when no messages exist")
 	}
 }
-

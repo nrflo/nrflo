@@ -212,8 +212,8 @@ func TestSPAHandler_DeepSPARoutes(t *testing.T) {
 // assets/ also get the long cache header.
 func TestSPAHandler_MultipleAssetTypes(t *testing.T) {
 	fsys := buildSPAFS(fstest.MapFS{
-		"assets/style-xyz.css":      &fstest.MapFile{Data: []byte("body{}")},
-		"assets/font-abc.woff2":     &fstest.MapFile{Data: []byte{0x77, 0x4f}},
+		"assets/style-xyz.css":  &fstest.MapFile{Data: []byte("body{}")},
+		"assets/font-abc.woff2": &fstest.MapFile{Data: []byte{0x77, 0x4f}},
 	})
 	h := spaHandler(fsys)
 
@@ -305,6 +305,6 @@ func TestSPAHandler_APIPathReturns404(t *testing.T) {
 
 // Compile-time check: spaHandler must accept an fs.FS.
 var _ = func() bool {
-	var _ func(fs.FS) http.Handler = spaHandler
+	var _ func(fs.FS) http.Handler = spaHandler //nolint:staticcheck // intentional compile-time type assertion
 	return true
 }

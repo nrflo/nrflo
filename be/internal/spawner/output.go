@@ -56,17 +56,18 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 		for _, item := range content {
 			if itemMap, ok := item.(map[string]interface{}); ok {
 				itemType, _ := itemMap["type"].(string)
-				if itemType == "text" {
+				switch itemType {
+				case "text":
 					text, _ := itemMap["text"].(string)
 					if text != "" {
 						s.handleTextMessage(proc, text)
 					}
-				} else if itemType == "thinking" {
+				case "thinking":
 					thinking, _ := itemMap["thinking"].(string)
 					if thinking != "" {
 						s.handleTextMessage(proc, "[thinking] "+thinking)
 					}
-				} else if itemType == "tool_use" {
+				case "tool_use":
 					toolName, _ := itemMap["name"].(string)
 					if toolName != "" {
 						input, _ := itemMap["input"].(map[string]interface{})
@@ -494,7 +495,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 	}
 
 	msgRepo := repo.NewAgentMessageRepo(pool, s.config.Clock)
-	msgRepo.InsertBatch(proc.sessionID, seqStart, pending)
+	_ = msgRepo.InsertBatch(proc.sessionID, seqStart, pending) // best-effort message persistence
 
 	// Broadcast messages update for real-time UI (coalesced per session)
 	if proc.projectID != "" {

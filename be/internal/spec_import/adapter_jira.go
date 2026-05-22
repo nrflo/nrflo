@@ -78,10 +78,12 @@ func (j *JiraAdapter) basicAuth(email, token string) string {
 type jiraIssueResponse struct {
 	Key    string `json:"key"`
 	Fields struct {
-		Summary     string    `json:"summary"`
-		Description *adfNode  `json:"description"`
-		Labels      []string  `json:"labels"`
-		Components  []struct{ Name string `json:"name"` } `json:"components"`
+		Summary     string   `json:"summary"`
+		Description *adfNode `json:"description"`
+		Labels      []string `json:"labels"`
+		Components  []struct {
+			Name string `json:"name"`
+		} `json:"components"`
 	} `json:"fields"`
 }
 

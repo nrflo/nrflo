@@ -55,13 +55,6 @@ func makeGitHubServer(t *testing.T, issueStatus int, issueBody []byte, commentsB
 	return srv, &headers
 }
 
-func githubAdapterWithBase(base string) *GitHubAdapter {
-	a := &GitHubAdapter{client: &http.Client{}}
-	// patch sharedClient but adapter uses its own field
-	_ = base
-	return a
-}
-
 // issueURLForServer returns a fake GitHub issue URL rooted at srv.
 // We override the base URL inside the adapter by monkey-patching the URL.
 // Since adapter hardcodes "https://api.github.com", we redirect via transport.

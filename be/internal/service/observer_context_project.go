@@ -13,14 +13,14 @@ func buildProjectDynamicContext(s *ObserverService, projectID string) (string, e
 	var b strings.Builder
 
 	b.WriteString("## Project Context\n\n")
-	b.WriteString(fmt.Sprintf("**Project:** %s\n\n", projectID))
+	fmt.Fprintf(&b, "**Project:** %s\n\n", projectID)
 
 	// Workflow definitions
 	wfDefs, err := s.workflowSvc.ListWorkflowDefs(projectID)
 	if err == nil && len(wfDefs) > 0 {
 		b.WriteString("### Workflow Definitions\n\n")
 		for id, def := range wfDefs {
-			b.WriteString(fmt.Sprintf("- **%s**: %s (%d phases)\n", id, def.Description, len(def.Phases)))
+			fmt.Fprintf(&b, "- **%s**: %s (%d phases)\n", id, def.Description, len(def.Phases))
 		}
 		b.WriteString("\n")
 	}
@@ -34,7 +34,7 @@ func buildProjectDynamicContext(s *ObserverService, projectID string) (string, e
 			if i >= limit {
 				break
 			}
-			b.WriteString(fmt.Sprintf("- **%s** workflow=%s status=%s\n", wi.ID, wi.WorkflowID, wi.Status))
+			fmt.Fprintf(&b, "- **%s** workflow=%s status=%s\n", wi.ID, wi.WorkflowID, wi.Status)
 		}
 		b.WriteString("\n")
 	}
@@ -48,7 +48,7 @@ func buildProjectDynamicContext(s *ObserverService, projectID string) (string, e
 			if i >= limit {
 				break
 			}
-			b.WriteString(fmt.Sprintf("- %s workflow=%s phase=%s status=%s\n", sess.ID[:8], sess.Workflow, sess.Phase, sess.Status))
+			fmt.Fprintf(&b, "- %s workflow=%s phase=%s status=%s\n", sess.ID[:8], sess.Workflow, sess.Phase, sess.Status)
 		}
 		b.WriteString("\n")
 	}
@@ -59,7 +59,7 @@ func buildProjectDynamicContext(s *ObserverService, projectID string) (string, e
 		if fm, ok := findings.(map[string]interface{}); ok && len(fm) > 0 {
 			b.WriteString("### Project Findings\n\n")
 			for k, v := range fm {
-				b.WriteString(fmt.Sprintf("- **%s**: %v\n", k, v))
+				fmt.Fprintf(&b, "- **%s**: %v\n", k, v)
 			}
 			b.WriteString("\n")
 		}

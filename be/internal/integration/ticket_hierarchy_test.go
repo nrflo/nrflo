@@ -412,9 +412,9 @@ func TestGetTicketWithDependenciesAndTitles(t *testing.T) {
 	defer resp.Body.Close()
 
 	var result struct {
-		ID       string               `json:"id"`
-		Blockers []*model.Dependency  `json:"blockers"`
-		Blocks   []*model.Dependency  `json:"blocks"`
+		ID       string              `json:"id"`
+		Blockers []*model.Dependency `json:"blockers"`
+		Blocks   []*model.Dependency `json:"blocks"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("failed to decode response: %v", err)

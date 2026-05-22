@@ -157,7 +157,7 @@ That is a blind heuristic. An agent that genuinely paused to ask a question gets
 
 ### Current state (verified)
 - Claude hook set is registered in `BuildInteractiveSettingsJSON` (`hooks_settings.go:43-54`): `PreToolUse, PostToolUse, UserPromptSubmit, Notification, SubagentStop, PreCompact, SessionStart`. The set is deliberately conservative — adding hook keys the installed CLI doesn't recognize made the CLI reject `--settings` on bootstrap and broke prompt delivery (`hooks_settings.go:38-42`).
-- **`Stop` is NOT registered for Claude.** `handler_record_event.go:119` has a `Stop` case, but it only flushes Codex JSONL messages; for Claude it would be a no-op, and the hook never fires because it isn't in the settings.
+- **`Stop` is NOT registered for Claude.** `handler_record_event.go` has a `Stop` case (reached only by Gemini's `AfterAgent`→`Stop` normalization) that is now a no-op boundary ack; for Claude the hook never fires because it isn't in the settings.
 - **`Notification` IS registered** (`hooks_settings.go:48`) but `handler_record_event.go:80` just records `event["message"]` as a generic `"text"` agent_message. It never branches on it.
 - Claude is launched with `--dangerously-skip-permissions` (`cli_adapter_claude.go`), so permission-driven Notifications never fire.
 

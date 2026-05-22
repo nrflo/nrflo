@@ -38,28 +38,6 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 	normalizeGeminiHookEvent(event)
 	hookEventName, _ := event["hook_event_name"].(string)
 
-	// Codex interactive sessions don't include token usage in hook payloads,
-	// but every hook payload carries `transcript_path` pointing at the rollout
-	// JSONL where codex writes per-turn `token_count` events. Tail-scan it so
-	// we can update context_left for codex agents the same way Claude does
-	// from its assistant/result events. Best-effort: silently skipped when the
-	// path is absent (Claude hooks don't carry it) or unreadable.
-	if pct, ok := extractCodexContextLeft(event); ok {
-		projectID, ticketID, workflow, err := h.agentSvc.UpdateContextLeft(params.SessionID, pct)
-		if err != nil {
-			logger.Info(ctx, "record_event: codex context_update error (best-effort)", "error", err)
-		} else if projectID != "" {
-			service.BroadcastFromCtx(h.wsHub, ws.EventAgentContextUpdated, service.BroadcastCtx{
-				ProjectID: projectID,
-				TicketID:  ticketID,
-				Workflow:  workflow,
-			}, map[string]interface{}{
-				"session_id":   params.SessionID,
-				"context_left": pct,
-			})
-		}
-	}
-
 	switch hookEventName {
 	case "PreToolUse":
 		return h.recordPreToolUse(ctx, req, params.SessionID, event)
@@ -117,13 +95,9 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
 	case "Stop":
-		// Per-turn boundary. For codex sessions, flush any new
-		// `event_msg/agent_message` text from the rollout JSONL into
-		// agent_messages so the model's spoken output is visible. Reasoning
-		// blocks are NOT extracted (codex 0.125 emits only encrypted
-		// reasoning). Best-effort: silently no-op when transcript_path is
-		// absent (Claude Stop) or unreadable.
-		h.flushCodexAgentMessages(ctx, req, params.SessionID, event)
+		// Per-turn boundary (Gemini maps AfterAgent → Stop). Recorded only as
+		// an acknowledgement — no message row. Completion is signaled by
+		// `agent finished/fail/continue`, not by this event.
 		return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 	case "SessionEnd":
 		// Predictable per-session noise — ignored.
@@ -220,42 +194,6 @@ func extractErrorMessage(event map[string]interface{}) string {
 		}
 	}
 	return ""
-}
-
-// flushCodexAgentMessages reads new `event_msg/agent_message` records from
-// the codex rollout JSONL referenced by event["transcript_path"] and inserts
-// each as an agent_messages row (category=text). Tracks per-session byte
-// offsets so subsequent Stop fires only emit new text. Best-effort: errors
-// are logged at INFO and do not fail the response.
-func (h *Handler) flushCodexAgentMessages(ctx context.Context, req Request, sessionID string, event map[string]interface{}) {
-	path, _ := event["transcript_path"].(string)
-	if path == "" {
-		return
-	}
-
-	h.codexJSONLMu.Lock()
-	startOffset := h.codexJSONLOffsets[sessionID]
-	h.codexJSONLMu.Unlock()
-
-	msgs, newOffset, err := extractCodexNewAgentMessages(path, startOffset)
-	if err != nil {
-		logger.Info(ctx, "record_event: codex jsonl scan error (best-effort)", "error", err, "session_id", sessionID)
-		return
-	}
-
-	h.codexJSONLMu.Lock()
-	h.codexJSONLOffsets[sessionID] = newOffset
-	h.codexJSONLMu.Unlock()
-
-	for _, body := range msgs {
-		// recordSimpleEvent broadcasts messages.updated and bumps stall
-		// detection per row, mirroring the Pre/PostToolUse path. No truncation —
-		// matches the non-interactive batch path (TrackMessage) which stores
-		// agent text in full. The 2000-byte cap that used to live here was
-		// silently clipping legitimate model output and never matched the
-		// non-interactive UI behavior.
-		h.recordSimpleEvent(ctx, req, sessionID, body, "text")
-	}
 }
 
 // recordSimpleEvent inserts a single agent_messages row with the given content +

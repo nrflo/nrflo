@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -57,6 +56,10 @@ func (a *CodexAdapter) SupportsResume() bool {
 	return true
 }
 
+// BuildInteractiveCommand and the other PTY-path methods below are interface
+// compliance only: codex/cli_interactive is routed to the codex app-server
+// backend (codex_appserver_backend.go), not this PTY command. CodexAdapter is
+// still resolved for MapModel/GetReasoningEffort/ClassifyExit.
 func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--model", opts.Model,
@@ -67,21 +70,13 @@ func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *ex
 		// Prepend `resume <id>` subcommand so codex resumes the existing session.
 		args = append([]string{"resume", opts.ResumeSessionID}, args...)
 	}
-	// Codex's TUI in PTY contexts ignores `<CODEX_HOME>/config.toml` hooks
-	// entirely. The `-c` flag is documented as a session-layer override
-	// applied last (after user/managed config layers), so registering hooks
-	// inline via `-c hooks.<event>=[…]` is the only path that survives the
-	// TUI's hook-config bypass. One `-c` per event.
-	for _, h := range opts.Hooks {
-		args = append(args,
-			"-c",
-			fmt.Sprintf(`hooks.%s=[{matcher="*",hooks=[{type="command",command=%q,timeout=%d}]}]`,
-				h.Event, h.Command, h.TimeoutSec),
-		)
-	}
-	// Trust is persisted to `~/.codex/config.toml` from PrepareInteractive
-	// via ensureCodexUserTrust — codex 0.130 ignores `-c projects."<path>".trust_level=...`
-	// overrides (nested quoted-key keys are silently dropped by its parser).
+	// No hooks are injected: codex 0.133's TUI never fires hooks under PTY
+	// (openai/codex#21639) AND declaring any hook now raises a blocking
+	// "N hooks need review" gate at startup that `--dangerously-bypass-hook-trust`
+	// does not clear. Workdir trust is delivered through the per-session
+	// CODEX_HOME profile (writeCodexProfileForSession) — codex 0.133 reads the
+	// `[projects."<path>"] trust_level="trusted"` entry from CODEX_HOME/config.toml,
+	// which suppresses the otherwise-blocking directory-trust dialog.
 	// Codex's TUI input box has a wrapping bug (`tui/src/wrapping.rs:52`,
 	// usize subtraction underflow) that panics on multi-KB pasted bodies. We
 	// pass the prompt as an argv positional instead so codex pre-loads it as
@@ -101,22 +96,20 @@ func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *ex
 		env = append(env, "CODEX_HOME="+opts.CodexHome)
 	}
 	// Codex's TUI sends DSR/DA terminal capability queries (\x1b[6n, \x1b[c,
-	// \x1b[?u) on startup and bails out when no replies arrive. Our creack/pty
-	// PTY has no terminal emulator on the master side to answer them. Force
-	// TERM to a known value so codex skips those probes and proceeds to the
-	// interactive loop (where SessionStart fires and our hooks register).
-	if !envHasKey(env, "TERM=") {
+	// \x1b[?u) on startup and bails out when no replies arrive. Force TERM to a
+	// known value so codex skips those probes and proceeds to the interactive loop.
+	if !envHasTERM(env) {
 		env = append(env, "TERM=xterm-256color")
 	}
 	cmd.Env = env
 	return cmd
 }
 
-// envHasKey reports whether the env slice already contains an assignment for
-// the given prefix (e.g. "TERM=").
-func envHasKey(env []string, prefix string) bool {
+// envHasTERM reports whether the env slice already sets TERM.
+func envHasTERM(env []string) bool {
+	const p = "TERM="
 	for _, e := range env {
-		if len(e) >= len(prefix) && e[:len(prefix)] == prefix {
+		if len(e) >= len(p) && e[:len(p)] == p {
 			return true
 		}
 	}
@@ -137,57 +130,25 @@ func removeEnvKey(env []string, prefix string) []string {
 	return out
 }
 
-// PrepareInteractive creates a per-session CODEX_HOME profile dir (auth +
-// model/personality + [features] codex_hooks=true) and builds the hook event
-// list the backend must inject via repeated `-c hooks.<event>=…` flags. Also
-// idempotently appends a workDir trust entry to the user-level
-// `~/.codex/config.toml` — codex 0.130 reads trust ONLY from that file (the
-// per-session CODEX_HOME and the `-c projects."<path>".trust_level=...`
-// override are both silently ignored), and the trust prompt blocks even under
-// `--dangerously-bypass-approvals-and-sandbox`. Path is symlink-resolved so we
-// match codex's own canonicalization (e.g. `/var/folders` → `/private/var/folders`).
-// Returns a cleanup func that removes the temp dir (best-effort). The trust
-// entry is intentionally left in `~/.codex/config.toml` — codex itself writes
-// the same entry when a user clicks "yes", and self-pollution is normal.
+// PrepareInteractive creates a per-session CODEX_HOME profile dir holding the
+// user's auth + config (hook tables stripped) plus a `[projects."<workDir>"]
+// trust_level="trusted"` entry. codex 0.133 reads workdir trust from
+// CODEX_HOME/config.toml; without it the TUI blocks on a directory-trust dialog
+// even under `--dangerously-bypass-approvals-and-sandbox`. The workDir path is
+// symlink-resolved inside writeCodexProfileForSession to match codex's own cwd
+// canonicalization (e.g. `/var/folders` → `/private/var/folders` on macOS).
+// Returns a cleanup func that removes the temp dir (best-effort).
 func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error) {
 	dir, err := os.MkdirTemp("", "nrflo-codex-"+opts.SessionID+"-*")
 	if err != nil {
 		return InteractiveExtras{}, func() {}, err
 	}
-	if err := writeCodexProfileForSession(dir, resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID, opts.WorkDir); err != nil {
+	if err := writeCodexProfileForSession(dir, opts.WorkDir); err != nil {
 		_ = os.RemoveAll(dir)
 		return InteractiveExtras{}, func() {}, fmt.Errorf("write codex profile: %w", err)
 	}
-	var trustAdded bool
-	var trustResolved string
-	if opts.WorkDir != "" {
-		added, resolved, err := ensureCodexUserTrust(opts.WorkDir)
-		if err != nil {
-			// Non-fatal: codex will prompt for trust at TUI startup and the
-			// session will hang waiting for an answer. The failure is loud
-			// (timeout at the harness/orchestrator deadline) so we don't
-			// fail the spawn here.
-			_ = err
-		}
-		trustAdded = added
-		trustResolved = resolved
-	}
-
-	cmd := buildCodexHookCommand(resolvedNrfloPath(), opts.SessionID, opts.WorkflowInstanceID, opts.ProjectID)
-	hooks := make([]HookEvent, 0, len(codexHookEvents))
-	for _, ev := range codexHookEvents {
-		hooks = append(hooks, HookEvent{Event: ev, Command: cmd, TimeoutSec: 5})
-	}
-	cleanup := func() {
-		_ = os.RemoveAll(dir)
-		if trustAdded && trustResolved != "" {
-			// Only remove entries WE added — pre-existing user/codex-written
-			// entries (real projects where the user clicked "yes" once) stay
-			// put. Best-effort; failure leaves at most one stale entry.
-			_ = removeCodexUserTrust(trustResolved)
-		}
-	}
-	return InteractiveExtras{CodexHome: dir, Hooks: hooks}, cleanup, nil
+	cleanup := func() { _ = os.RemoveAll(dir) }
+	return InteractiveExtras{CodexHome: dir}, cleanup, nil
 }
 
 // DeliversPromptInline returns true — codex receives the prompt as the final
@@ -201,17 +162,14 @@ func (a *CodexAdapter) DeliversPromptInline() bool { return true }
 // PTY ferry must auto-answer them.
 func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
-// BumpsOnPTYBytes returns false — the rollout JSONL tailer (started in
-// PostStart) calls Sink.BumpLastMessage on every real agent event
-// (agent_message, function_call, function_call_output, token_count). PTY-byte
-// bumps are no longer the heartbeat; stall detection is reachable for
-// codex/cli_interactive at parity with Claude.
-func (a *CodexAdapter) BumpsOnPTYBytes() bool { return false }
+// BumpsOnPTYBytes returns true — codex 0.133 exposes no structured activity
+// channel under PTY (hooks never fire per openai/codex#21639, and the rollout
+// JSONL / thread DB are not written at all under the bypass-sandbox TUI). The
+// TUI's continuous redraws (spinner, token counter, streamed output) are the
+// only liveness signal, so PTY bytes drive the stall/idle heartbeat.
+func (a *CodexAdapter) BumpsOnPTYBytes() bool { return true }
 
-// NaturalExitGrace returns 2s — uniform default. Codex's JSONL tailer
-// emits records as they happen so a SIGTERM wouldn't strictly drop
-// telemetry, but the wait is bounded by doneCh — codex exits naturally
-// in well under 2s after its last function_call_output.
+// NaturalExitGrace returns 2s — uniform default for the grace before SIGTERM.
 func (a *CodexAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
 // ClassifyExit inspects recent output to classify an abnormal exit.
@@ -235,28 +193,4 @@ func (a *CodexAdapter) ClassifyExit(recentText, stderrTail string, exitCode int,
 		}
 	}
 	return RetryClassNone, ""
-}
-
-// PostStart launches the codex rollout JSONL tailer goroutine. Called by
-// cliInteractiveBackend.Start — the rollout JSONL signal is produced in all
-// interactive sessions (verified on codex 0.130.0).
-//
-// codex 0.130 has an upstream regression (openai/codex#21639) where hooks
-// never fire in TUI/PTY sessions, so we read agent activity straight from
-// codex's own rollout JSONL.
-//
-// Codex writes rollouts under $HOME/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
-// regardless of CODEX_HOME (verified empirically 2026-05-12 on 0.130). The
-// tailer identifies OUR rollout by matching session_meta.payload.cwd against
-// our resolved workdir; that's deterministic per scenario because each
-// harness/agent run has a unique workdir.
-//
-// Returns a cleanup func that cancels the tailer goroutine (called by the
-// backend when the session ends).
-func (a *CodexAdapter) PostStart(ctx context.Context, opts PostStartOptions) (func(), error) {
-	if opts.WorkDir == "" {
-		return func() {}, fmt.Errorf("codex PostStart: empty WorkDir")
-	}
-	cancel := startCodexJSONLTail(ctx, opts.SessionID, opts.WorkDir, opts.Sink)
-	return func() { cancel() }, nil
 }

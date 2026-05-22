@@ -72,11 +72,10 @@ type CLIAdapter interface {
 
 	// BumpsOnPTYBytes returns true when receiving PTY bytes should bump
 	// lastMessageTime / hasReceivedMessage for stall detection purposes.
-	// All current adapters return false: heartbeat comes from structured
-	// activity channels — PreToolUse/PostToolUse/Stop hooks (Claude), SSE
-	// message.part.updated/session.idle events (Opencode), or the rollout
-	// JSONL tailer (Codex). The method is kept on the interface so future
-	// adapters that lack a structured channel can opt back in.
+	// Claude (hooks), Opencode (SSE), and Gemini (JSONL tailer) return false
+	// because a structured activity channel drives the heartbeat. Codex returns
+	// true: codex 0.133 exposes no structured channel under PTY (no hooks, no
+	// rollout JSONL), so its TUI redraws are the only liveness signal.
 	BumpsOnPTYBytes() bool
 
 	// NaturalExitGrace is how long the terminal-signal handler should
@@ -103,10 +102,9 @@ type CLIAdapter interface {
 // forwards into InteractiveSpawnOptions. Fields are zero for adapters with no
 // extras.
 type InteractiveExtras struct {
-	CodexHome  string      // per-session CODEX_HOME dir (codex only)
-	GeminiHome string      // per-session GEMINI_HOME dir (gemini only)
-	Hooks      []HookEvent // event-keyed hook commands (codex only)
-	Port       int         // embedded HTTP server port (opencode only; 0 = not used)
+	CodexHome  string // per-session CODEX_HOME dir (codex only)
+	GeminiHome string // per-session GEMINI_HOME dir (gemini only)
+	Port       int    // embedded HTTP server port (opencode only; 0 = not used)
 }
 
 // InteractivePrepOptions carries the per-spawn context the adapter needs for
@@ -130,14 +128,13 @@ type InteractiveSpawnOptions struct {
 	ReasoningEffort  string // passed as --effort (Claude) or --variant (Opencode)
 	WorkDir          string
 	Env              []string
-	SystemPromptFile string      // path to suffix file; Claude: --append-system-prompt-file; others: ignored
-	SettingsJSON     string      // Claude: --settings JSON; others: ignored
-	CodexHome        string      // CODEX_HOME dir path; Codex only — ignored by other adapters
-	GeminiHome       string      // GEMINI_HOME dir path; Gemini only — ignored by other adapters
-	Prompt           string      // initial user prompt; Codex passes this as argv positional, others ignore
-	Hooks            []HookEvent // event-keyed hook commands; Codex injects via repeated `-c hooks.<event>=…` (TUI ignores config.toml hooks); other adapters ignore
-	Port             int         // embedded HTTP server port (opencode only; 0 = not used by other adapters)
-	ResumeSessionID  string      // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
+	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
+	SettingsJSON     string // Claude: --settings JSON; others: ignored
+	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
+	GeminiHome       string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
+	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
+	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
+	ResumeSessionID  string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -180,15 +177,6 @@ type PostStartOptions struct {
 // CLIAdapter itself — so adapters that don't need it (claude, opencode) are unaffected.
 type PostStarter interface {
 	PostStart(ctx context.Context, opts PostStartOptions) (cleanup func(), err error)
-}
-
-// HookEvent describes one hook event registration the spawner wants codex to
-// fire. Translated to a `-c hooks.<Event>=[{matcher="*",hooks=[{...}]}]`
-// inline-TOML CLI override at command-build time.
-type HookEvent struct {
-	Event      string // e.g. "SessionStart", "PostToolUse", "Stop"
-	Command    string // shell command codex execs when the event fires
-	TimeoutSec int    // hook timeout in seconds
 }
 
 // SpawnOptions contains parameters for building a spawn command

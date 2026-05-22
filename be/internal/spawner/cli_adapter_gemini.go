@@ -49,7 +49,7 @@ func (a *GeminiAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.GeminiHome != "" {
 		env = append(env, "HOME="+opts.GeminiHome)
 	}
-	if !envHasKey(env, "TERM=") {
+	if !envHasTERM(env) {
 		env = append(env, "TERM=xterm-256color")
 	}
 	cmd.Env = env

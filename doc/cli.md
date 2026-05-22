@@ -15,7 +15,7 @@ interactive telemetry.
 |-----|---------|--------------|-----------------|
 | `claude` | `ClaudeAdapter` | Versioned IDs (`opus_4_7`, `sonnet`) | `--settings` hooks |
 | `opencode` | `OpencodeAdapter` | `provider/model` (auto-mapped) | SQLite tail |
-| `codex` | `CodexAdapter` | Model aliases with reasoning levels | JSONL tail |
+| `codex` | `CodexAdapter` | Model aliases with reasoning levels | app-server JSON-RPC (token usage) |
 | `gemini` | `GeminiAdapter` | `gemini_pro\|flash\|flash_lite` | JSONL tail |
 
 ---

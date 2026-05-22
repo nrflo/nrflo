@@ -1,37 +1,35 @@
-"""S05 — context_left populated.
+"""S05 — context_left populated (codex via app-server).
 
-Tests:
-  - The CLI integration reports remaining context % to the server,
-    populating agent_sessions.context_left.
-  - claude: PreToolUse/PostToolUse hooks via `agent.context_update`.
-  - codex: rollout JSONL tailer (`cli_adapter_codex_jsonl_tail.go`).
-  - opencode: SQLite tailer (`cli_adapter_opencode_sqlite_tail.go`).
+codex/cli_interactive is driven by the `codex app-server` JSON-RPC backend
+(be/internal/spawner/codex_appserver_backend.go), not the PTY/TUI. codex 0.133
+exposes no usable structured channel under PTY (hooks never fire per
+openai/codex#21639; no rollout JSONL is written), so the app-server protocol is
+the source of truth. Its `thread/tokenUsage/updated` events carry
+`inputTokens` + `modelContextWindow`, which the backend maps to
+`agent_sessions.context_left` via ComputeContextLeftPct — restoring the
+context tracking (and low-context relaunch) that the PTY path could not provide.
 
-Why the prompt asks for substantial output:
-  - A trivial `nrflo agent finished`-only prompt consumes essentially
-    no input/output tokens, and some adapters (notably opencode) only
-    flush their per-turn token bookkeeping at end-of-turn via async
-    DB writes. Under parallel load that flush can be dropped entirely
-    for zero-work turns, leaving context_left=NULL even though the
-    pipeline is healthy.
-  - Forcing the model to produce a real response (~400-800 tokens of
-    output + reasoning) gives every adapter a real telemetry event
-    to record and exercises the actual code path users hit.
+This scenario also guards the regression that broke codex on 0.133 (the agent
+hung forever on the directory-trust dialog → endless start-stall loop): it
+asserts the workflow actually completes AND that context_left is populated,
+proving the structured backend is wired.
 
 Expected result:
-  - PASS  agent_sessions.context_left ∈ [0, 100]
-  - FAIL  context_left NULL — codex rollout JSONL tailer not wired.
+  - PASS  workflow project_completed, session result=pass, context_left ∈ [0,100]
+  - FAIL  workflow did not complete, or context_left NULL (token-usage events
+          not mapped — app-server backend not wired)
 """
 
 from __future__ import annotations
 
 from lib import db as db_mod
 from lib.runtime import (
-    Ctx, Result, first_session, make_project, next_id, resolve_model, wait_for_workflow,
+    Ctx, PASS_STATUSES, Result,
+    first_session, make_project, next_id, resolve_model, wait_for_workflow,
 )
 
 
-# Per-provider model overrides; empty = use the runner default (e.g. haiku).
+# Per-provider model overrides; empty = use the runner default.
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
 
@@ -62,10 +60,14 @@ def run(ctx: Ctx) -> Result:
     wait_for_workflow(ctx, pid, instance_id=wfi)
 
     sess = first_session(db_mod.agent_sessions_for_instance(ctx.server.home, wfi))
+    if sess["status"] not in PASS_STATUSES or sess["result"] != "pass":
+        return ("S05 context_left", "FAIL",
+                f"session status/result = {sess['status']}/{sess['result']} "
+                "(trust-dialog hang / start-stall loop?)")
     cl = sess.get("context_left")
     if cl is None:
         return ("S05 context_left", "FAIL",
-                "context_left NULL — codex rollout JSONL tailer not wired?")
+                "context_left NULL — app-server token-usage events not mapped?")
     if not (0 <= cl <= 100):
         return ("S05 context_left", "FAIL", f"context_left out of range: {cl}")
     return ("S05 context_left", "PASS", f"context_left={cl}")

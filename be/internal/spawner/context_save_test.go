@@ -421,10 +421,13 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 
 // fakeBackend implements ExecutionBackend purely for shouldUseAgentSave tests
 // (the function only reads Name()).
-type fakeBackend struct{ name string }
+type fakeBackend struct {
+	name           string
+	supportsResume bool
+}
 
 func (b fakeBackend) Name() string                                                   { return b.name }
-func (b fakeBackend) SupportsResume() bool                                           { return false }
+func (b fakeBackend) SupportsResume() bool                                           { return b.supportsResume }
 func (b fakeBackend) SupportsTakeControl() bool                                      { return false }
 func (b fakeBackend) RequiresPrompt() bool                                           { return false }
 func (b fakeBackend) TracksContext() bool                                            { return false }
@@ -454,17 +457,18 @@ func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
 	}
 }
 
-// TestShouldUseAgentSave_CodexUsesResume verifies that codex routes through the
-// resume path (SupportsResume=true) rather than the agent-save path.
-func TestShouldUseAgentSave_CodexUsesResume(t *testing.T) {
+// TestShouldUseAgentSave_CodexUsesAgent verifies that codex on the app-server
+// backend (SupportsResume=false) uses the agent-save path, not the PTY resume
+// path (which can't resume an app-server thread in place).
+func TestShouldUseAgentSave_CodexUsesAgent(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
-		modelID: "codex:gpt-5.3-codex",
-		backend: fakeBackend{name: "cli_interactive"},
+		modelID: "codex:gpt-5.4",
+		backend: newCodexAppServerBackend(s),
 	}
-	if s.shouldUseAgentSave(proc) {
-		t.Error("codex must use resume path (SupportsResume=true), not agent save")
+	if !s.shouldUseAgentSave(proc) {
+		t.Error("codex app-server backend must use agent save (SupportsResume=false)")
 	}
 }
 
@@ -473,7 +477,7 @@ func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "claude:sonnet",
-		backend: fakeBackend{name: "cli_interactive"},
+		backend: fakeBackend{name: "cli_interactive", supportsResume: true},
 	}
 	if s.shouldUseAgentSave(proc) {
 		t.Error("claude with default settings must use resume path; got forced agent save")
@@ -485,7 +489,7 @@ func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
 		modelID: "opencode:openai/gpt-5.4",
-		backend: fakeBackend{name: "cli_interactive"},
+		backend: fakeBackend{name: "cli_interactive", supportsResume: false},
 	}
 	if !s.shouldUseAgentSave(proc) {
 		t.Error("opencode must force agent save (SupportsResume=false)")

@@ -57,24 +57,9 @@ func (s *Spawner) checkIdleNudge(ctx context.Context, proc *processInfo, req Spa
 }
 
 // sendNudge writes the finish-reminder injectable to the agent's PTY stdin and
-// broadcasts agent.nudged. Treats the write as activity so the idle window resets.
+// records the nudge. Treats the write as activity so the idle window resets.
 func (s *Spawner) sendNudge(ctx context.Context, proc *processInfo, req SpawnRequest) {
-	attempt := proc.nudgeCount + 1
-
-	// Build standard vars for injectable expansion (mirrors template.go stdVars).
-	modelPart := proc.modelID
-	if idx := strings.Index(proc.modelID, ":"); idx >= 0 {
-		modelPart = proc.modelID[idx+1:]
-	}
-	stdVars := map[string]string{
-		"AGENT":      proc.agentType,
-		"TICKET_ID":  proc.ticketID,
-		"PROJECT_ID": proc.projectID,
-		"WORKFLOW":   proc.workflowName,
-		"MODEL_ID":   proc.modelID,
-		"MODEL":      modelPart,
-	}
-	body := s.expandInjectable("finish-reminder", stdVars)
+	body := s.nudgeBody(proc)
 
 	// Write to PTY stdin (best-effort — log on error, do not abort).
 	if s.config.PTYManager != nil {
@@ -82,12 +67,37 @@ func (s *Spawner) sendNudge(ctx context.Context, proc *processInfo, req SpawnReq
 		if sess != nil {
 			if _, err := sess.Write([]byte(body + "\n")); err != nil {
 				logger.Warn(ctx, "idle nudge: pty write error",
-					"session_id", proc.sessionID, "attempt", attempt, "error", err)
+					"session_id", proc.sessionID, "attempt", proc.nudgeCount+1, "error", err)
 			}
 		}
 	}
 
-	// Broadcast agent.nudged event.
+	s.recordNudgeSent(ctx, proc, req)
+}
+
+// nudgeBody expands the finish-reminder injectable for a proc (mirrors
+// template.go stdVars). Shared by the PTY and app-server nudge paths.
+func (s *Spawner) nudgeBody(proc *processInfo) string {
+	modelPart := proc.modelID
+	if idx := strings.Index(proc.modelID, ":"); idx >= 0 {
+		modelPart = proc.modelID[idx+1:]
+	}
+	return s.expandInjectable("finish-reminder", map[string]string{
+		"AGENT":      proc.agentType,
+		"TICKET_ID":  proc.ticketID,
+		"PROJECT_ID": proc.projectID,
+		"WORKFLOW":   proc.workflowName,
+		"MODEL_ID":   proc.modelID,
+		"MODEL":      modelPart,
+	})
+}
+
+// recordNudgeSent broadcasts agent.nudged, persists the nudge_count increment,
+// and resets the idle window. Shared by the PTY (sendNudge) and app-server
+// nudge paths — the delivery of the reminder is the caller's responsibility.
+func (s *Spawner) recordNudgeSent(ctx context.Context, proc *processInfo, req SpawnRequest) {
+	attempt := proc.nudgeCount + 1
+
 	s.broadcast(ws.EventAgentNudged, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"session_id": proc.sessionID,
 		"agent_type": proc.agentType,
@@ -96,7 +106,6 @@ func (s *Spawner) sendNudge(ctx context.Context, proc *processInfo, req SpawnReq
 		"max":        proc.nudgeMax,
 	})
 
-	// Persist the nudge count increment in DB.
 	if s.config.AgentSvcReal != nil {
 		newCount, err := s.config.AgentSvcReal.IncrementNudgeCount(proc.sessionID)
 		if err != nil {

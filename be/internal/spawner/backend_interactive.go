@@ -86,7 +86,6 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		CodexHome:        extras.CodexHome,
 		GeminiHome:       extras.GeminiHome,
 		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
-		Hooks:            extras.Hooks,
 		Port:             extras.Port, // embedded server port (opencode only; 0 for others)
 	}
 
@@ -115,7 +114,12 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	// disambiguate our session_id from prior history entries.
 	spawnStartedAt := time.Now()
 	b.ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])
-	sess, err := b.ptyMgr.Create(sessionID, workDir, env)
+	// Use cmd.Env (not the bare `env`): BuildInteractiveCommand is where adapters
+	// inject their per-session env (codex CODEX_HOME, gemini HOME/GEMINI_HOME,
+	// TERM). cmd.Env is opts.Env plus those additions; passing the bare `env`
+	// here silently dropped them, so codex never saw CODEX_HOME and read trust
+	// from ~/.codex instead of the per-session profile.
+	sess, err := b.ptyMgr.Create(sessionID, workDir, cmd.Env)
 	if err != nil {
 		if prep.suffixFile != "" {
 			os.Remove(prep.suffixFile)

@@ -1334,7 +1334,14 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	case "script":
 		backend = newScriptBackend(s)
 	case "cli_interactive":
-		backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
+		// codex 0.133 exposes no usable structured channel under PTY (no hooks,
+		// no rollout JSONL), so codex agents are driven via `codex app-server`
+		// JSON-RPC instead of the PTY/TUI. All other CLIs use the PTY backend.
+		if prep.cliName == "codex" {
+			backend = newCodexAppServerBackend(s)
+		} else {
+			backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
+		}
 	default:
 		return fmt.Errorf("unknown execution_mode %q for agent %q", prep.executionMode, proc.agentType)
 	}

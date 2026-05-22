@@ -128,15 +128,14 @@ func TestFerryPTYOutput_NilFirstByteCh(t *testing.T) {
 
 // === BumpsOnPTYBytes adapter contract ===
 
-// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns false — the rollout
-// JSONL tailer (cli_adapter_codex_jsonl_tail.go, started by PostStart)
-// calls Sink.BumpLastMessage on every real agent event (agent_message,
-// function_call, function_call_output, token_count), so PTY bytes must not
-// reset the stall timer or stall detection becomes unreachable during redraws.
+// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns true — codex 0.133
+// exposes no structured activity channel under PTY (no hooks per
+// openai/codex#21639, no rollout JSONL written at all), so the TUI's redraws
+// are the only liveness signal and PTY bytes must drive the heartbeat.
 func TestBumpsOnPTYBytes_Codex(t *testing.T) {
 	t.Parallel()
-	if (&CodexAdapter{}).BumpsOnPTYBytes() {
-		t.Error("CodexAdapter.BumpsOnPTYBytes() = true, want false (JSONL tailer drives heartbeat)")
+	if !(&CodexAdapter{}).BumpsOnPTYBytes() {
+		t.Error("CodexAdapter.BumpsOnPTYBytes() = false, want true (PTY redraws drive heartbeat)")
 	}
 }
 

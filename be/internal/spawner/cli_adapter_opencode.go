@@ -116,7 +116,7 @@ func (a *OpencodeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) 
 	cmd := exec.Command("opencode", args...)
 	cmd.Dir = opts.WorkDir
 	env := overridePWD(opts.Env, opts.WorkDir)
-	if !envHasKey(env, "TERM=") {
+	if !envHasTERM(env) {
 		env = append(env, "TERM=xterm-256color")
 	}
 	cmd.Env = env

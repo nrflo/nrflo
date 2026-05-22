@@ -113,8 +113,9 @@ SKIPs cleanly when no token is reachable.
 `s05`, `s35`, and `s27` are the only scenarios with provider-specific
 implementations:
 
-- `s05` validates each adapter's own context-reporting hook (claude
-  PreToolUse/PostToolUse vs codex rollout JSONL tailer, etc.).
+- `s05` validates each adapter's own context-reporting channel (claude
+  PreToolUse/PostToolUse, opencode/gemini tailers, codex `thread/tokenUsage/updated`
+  via the app-server backend). All providers assert context_left is populated.
 - `s35` registers a different `cli_type` + model id + timeout per provider.
 - `s27` is opencode's agent-saver branch of the low-context relaunch;
   engine covers the native-resume branch via `s26` under claude.

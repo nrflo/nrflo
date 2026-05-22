@@ -108,6 +108,13 @@ func formatAppServerCommand(it appServerItem) string {
 func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, maxCtx int) {
 	var p struct {
 		TokenUsage struct {
+			// `last` is the most recent model request's tokens = the current
+			// context-window occupancy. `total` is cumulative across all turns
+			// in the thread (each turn re-sends the growing history), so it
+			// overcounts and must NOT drive context_left.
+			Last struct {
+				InputTokens int `json:"inputTokens"`
+			} `json:"last"`
 			Total struct {
 				InputTokens int `json:"inputTokens"`
 			} `json:"total"`
@@ -122,7 +129,10 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 	if ctxWindow <= 0 {
 		ctxWindow = maxCtx
 	}
-	used := p.TokenUsage.Total.InputTokens
+	used := p.TokenUsage.Last.InputTokens
+	if used == 0 {
+		used = p.TokenUsage.Total.InputTokens // single-turn fallback
+	}
 	if ctxWindow > 0 && used > 0 {
 		sink.UpdateContextLeft(sessionID, ComputeContextLeftPct(used, ctxWindow))
 	}

@@ -153,13 +153,25 @@ func TestDispatchAppServer_DeltaHeartbeatOnly(t *testing.T) {
 
 func TestDispatchAppServer_TokenUsageContextLeft(t *testing.T) {
 	sink := &opencodeTestSink{}
-	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":9091},"modelContextWindow":258400}}`)}
+	// Multi-turn: total is cumulative (27279), last is current context (9115).
+	// context_left must derive from `last`, not the cumulative `total`.
+	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":27279},"last":{"inputTokens":9115},"modelContextWindow":258400}}`)}
 	dispatchAppServerEvent("s", n, sink, 200000)
 	if len(sink.contextUpdates) != 1 {
 		t.Fatalf("expected 1 context update, got %d", len(sink.contextUpdates))
 	}
-	// 100 - 100*9091/258400 ≈ 96
-	if pct := sink.contextUpdates[0]; pct < 90 || pct > 99 {
-		t.Errorf("context_left pct = %d, want ~96", pct)
+	// From last=9115: 100 - 100*9115/258400 ≈ 96. (From total=27279 it would be ~89 — wrong.)
+	if pct := sink.contextUpdates[0]; pct < 95 || pct > 97 {
+		t.Errorf("context_left pct = %d, want ~96 (must use last, not cumulative total)", pct)
+	}
+}
+
+func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
+	sink := &opencodeTestSink{}
+	// No `last` block → fall back to total (single-turn, where they coincide).
+	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":9091},"modelContextWindow":258400}}`)}
+	dispatchAppServerEvent("s", n, sink, 200000)
+	if len(sink.contextUpdates) != 1 || sink.contextUpdates[0] < 95 || sink.contextUpdates[0] > 97 {
+		t.Errorf("single-turn fallback context_left = %v, want ~96", sink.contextUpdates)
 	}
 }

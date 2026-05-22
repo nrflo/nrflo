@@ -69,13 +69,6 @@ export function AgentLogPanel({
     ) ?? selectedAgent.agent
   }, [selectedAgent, activeAgents])
 
-  // Auto-switch: when selected agent completes and other agents are running, return to all-running view
-  const liveAgentResult = liveAgent?.result
-  useEffect(() => {
-    if (!liveAgentResult || runningAgents.length === 0) return
-    onAgentSelect(null)
-  }, [liveAgentResult, runningAgents]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Tab state for multi-agent view (hooks must be before early returns)
   const [activeTabKey, setActiveTabKey] = useState<string | null>(null)
 

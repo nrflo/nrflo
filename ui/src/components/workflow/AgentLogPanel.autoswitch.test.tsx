@@ -66,10 +66,10 @@ function renderWithPanel(
   )
 }
 
-describe('AgentLogPanel auto-switch (nrflo-6c78e8)', () => {
+describe('AgentLogPanel selected-agent persistence (nrflo-6c78e8)', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('switches to next running agent when selected agent completes and runners remain', () => {
+  it('keeps selected agent detail shown when selected agent completes and other runners remain', () => {
     const agentA = makeAgent({
       agent_id: 'a-selected',
       agent_type: 'implementor',
@@ -88,7 +88,7 @@ describe('AgentLogPanel auto-switch (nrflo-6c78e8)', () => {
     const sessionB = makeSession({ id: 'sess-b', phase: 'verification', agent_type: 'tester' })
     const onAgentSelect = vi.fn()
 
-    const { rerender } = renderWithPanel({
+    const { rerender, getByTestId } = renderWithPanel({
       activeAgents: { 'a-selected': agentA, 'a-next': agentB },
       sessions: [sessionA, sessionB],
       collapsed: false,
@@ -96,7 +96,7 @@ describe('AgentLogPanel auto-switch (nrflo-6c78e8)', () => {
       onAgentSelect,
     })
 
-    // Initially no switch — liveAgentResult is undefined
+    // Initially detail view for agentA
     expect(onAgentSelect).not.toHaveBeenCalled()
 
     // agentA completes; agentB still running
@@ -113,8 +113,9 @@ describe('AgentLogPanel auto-switch (nrflo-6c78e8)', () => {
       </QueryClientProvider>
     )
 
-    // Should return to all-running view (null) instead of selecting next agent
-    expect(onAgentSelect).toHaveBeenCalledWith(null)
+    // Should stay on selected agent detail — no auto-deselect
+    expect(onAgentSelect).not.toHaveBeenCalledWith(null)
+    expect(getByTestId('detail-phase')).toHaveTextContent('implementation')
   })
 
   it('does not switch when selected agent completes but no running agents remain', () => {
@@ -185,5 +186,53 @@ describe('AgentLogPanel auto-switch (nrflo-6c78e8)', () => {
     )
 
     expect(onAgentSelect).not.toHaveBeenCalled()
+  })
+
+  it('keeps selected agent detail across layer transition (selected completes + new next-layer agent appears)', () => {
+    const agentA = makeAgent({
+      agent_id: 'a-selected',
+      agent_type: 'implementor',
+      phase: 'implementation',
+      session_id: 'sess-a',
+      result: undefined,
+    })
+    const agentB = makeAgent({
+      agent_id: 'a-next',
+      agent_type: 'tester',
+      phase: 'verification',
+      session_id: 'sess-b',
+      result: undefined,
+    })
+    const sessionA = makeSession({ id: 'sess-a', phase: 'implementation', agent_type: 'implementor' })
+    const sessionB = makeSession({ id: 'sess-b', phase: 'verification', agent_type: 'tester' })
+    const onAgentSelect = vi.fn()
+
+    const { rerender, getByTestId } = renderWithPanel({
+      activeAgents: { 'a-selected': agentA },
+      sessions: [sessionA],
+      collapsed: false,
+      selectedAgent: { phaseName: 'implementation', agent: agentA, session: sessionA },
+      onAgentSelect,
+    })
+
+    expect(getByTestId('detail-phase')).toHaveTextContent('implementation')
+
+    // agentA completes AND new next-layer agentB appears simultaneously
+    const completedA = { ...agentA, result: 'pass' }
+    rerender(
+      <QueryClientProvider client={makeQC()}>
+        <AgentLogPanel
+          activeAgents={{ 'a-selected': completedA, 'a-next': agentB }}
+          sessions={[sessionA, sessionB]}
+          collapsed={false}
+          selectedAgent={{ phaseName: 'implementation', agent: agentA, session: sessionA }}
+          onAgentSelect={onAgentSelect}
+        />
+      </QueryClientProvider>
+    )
+
+    // Still shows original selected agent detail — no switch to next-layer agent
+    expect(onAgentSelect).not.toHaveBeenCalledWith(null)
+    expect(getByTestId('detail-phase')).toHaveTextContent('implementation')
   })
 })

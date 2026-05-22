@@ -7,7 +7,7 @@ import (
 
 // TestPoolGetProjectConfig_NotFound returns empty string for missing key.
 func TestPoolGetProjectConfig_NotFound(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -24,7 +24,7 @@ func TestPoolGetProjectConfig_NotFound(t *testing.T) {
 
 // TestPoolSetProjectConfig_RoundTrip verifies set and get return the same value.
 func TestPoolSetProjectConfig_RoundTrip(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestPoolSetProjectConfig_RoundTrip(t *testing.T) {
 
 // TestPoolSetProjectConfig_UpdateExisting verifies INSERT OR REPLACE updates value.
 func TestPoolSetProjectConfig_UpdateExisting(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestPoolSetProjectConfig_UpdateExisting(t *testing.T) {
 // TestPoolGetProjectConfig_IsolatedFromGlobal verifies project config does not
 // leak into global config and vice versa.
 func TestPoolGetProjectConfig_IsolatedFromGlobal(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestPoolGetProjectConfig_IsolatedFromGlobal(t *testing.T) {
 // TestPoolGlobalConfig_BackwardCompat verifies existing SetConfig/GetConfig still
 // work after the migration that added project_id to the config table.
 func TestPoolGlobalConfig_BackwardCompat(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestPoolGlobalConfig_BackwardCompat(t *testing.T) {
 
 // TestPoolGetConfig_NotFound returns empty string for missing global key.
 func TestPoolGetConfig_NotFound(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

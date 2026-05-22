@@ -222,7 +222,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition with CALLBACK_INSTRUCTIONS variable
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -290,7 +290,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition WITHOUT CALLBACK_INSTRUCTIONS variable
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -345,7 +345,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition with CALLBACK_INSTRUCTIONS variable
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

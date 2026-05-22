@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 )
 
@@ -24,7 +23,7 @@ func seedWorkflow101(t *testing.T, pool *Pool, projectID, workflowID string) {
 // agent_definitions CHECK constraint accepts cli|cli_interactive|api|script and rejects foo/empty/batch.
 // This mirrors TestMigration085_ExecutionModeCheckIncludesScript but adds cli_interactive.
 func TestMigration101_AgentDefinitionsAcceptsCLIInteractive(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -66,7 +65,7 @@ func TestMigration101_AgentDefinitionsAcceptsCLIInteractive(t *testing.T) {
 // the system_agent_definitions CHECK constraint accepts cli|cli_interactive|api and rejects
 // script, foo, and empty (script is invalid for system agents).
 func TestMigration101_SystemAgentDefinitionsAcceptsCLIInteractive(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -105,7 +104,7 @@ func TestMigration101_SystemAgentDefinitionsAcceptsCLIInteractive(t *testing.T) 
 // no rows with key='interactive_cli_mode' in the config table. The migration deletes these rows
 // because the project-wide toggle is superseded by per-agent execution_mode='cli_interactive'.
 func TestMigration101_InteractiveCLIModeConfigDeleted(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

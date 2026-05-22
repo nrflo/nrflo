@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -9,7 +8,7 @@ import (
 // TestMigration044_ConfigTableHasCompositePK verifies the config table schema
 // has project_id as part of the primary key.
 func TestMigration044_ConfigTableHasCompositePK(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -34,7 +33,7 @@ func TestMigration044_ConfigTableHasCompositePK(t *testing.T) {
 // TestMigration044_GlobalConfigRowsPreserved verifies that existing global config
 // rows (project_id=”) survive the migration intact.
 func TestMigration044_GlobalConfigRowsPreserved(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -67,7 +66,7 @@ func TestMigration044_GlobalConfigRowsPreserved(t *testing.T) {
 
 // TestMigration044_ProjectIDColumnExists verifies project_id column exists in config.
 func TestMigration044_ProjectIDColumnExists(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -85,7 +84,7 @@ func TestMigration044_ProjectIDColumnExists(t *testing.T) {
 // TestMigration044_AgentSessionsConfigColumn verifies the config column
 // exists in agent_sessions and defaults to empty string.
 func TestMigration044_AgentSessionsConfigColumn(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -126,7 +125,7 @@ func TestMigration044_AgentSessionsConfigColumn(t *testing.T) {
 // TestMigration044_SameKeyDifferentProjectsAllowed verifies that two projects
 // can store the same key independently.
 func TestMigration044_SameKeyDifferentProjectsAllowed(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

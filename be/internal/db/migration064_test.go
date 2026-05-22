@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -9,7 +8,7 @@ import (
 // TestMigration064_SeedsSystemPromptSuffix verifies that migration 000064
 // inserts the system-prompt-suffix injectable template with expected values.
 func TestMigration064_SeedsSystemPromptSuffix(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -46,7 +45,7 @@ func TestMigration064_SeedsSystemPromptSuffix(t *testing.T) {
 // TestMigration064_SeedsFinishReminder verifies that migration 000064
 // inserts the finish-reminder injectable template with expected values.
 func TestMigration064_SeedsFinishReminder(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -81,7 +80,7 @@ func TestMigration064_SeedsFinishReminder(t *testing.T) {
 // TestMigration064_NewInjectableTemplatesHaveDefaultTemplate verifies that
 // both new readonly templates have default_template populated (for restore support).
 func TestMigration064_NewInjectableTemplatesHaveDefaultTemplate(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -104,7 +103,7 @@ func TestMigration064_NewInjectableTemplatesHaveDefaultTemplate(t *testing.T) {
 // TestMigration064_ContextSaverSweep verifies that migration 000064 removes
 // the "Do NOT call / just exit 0" guidance from the context-saver prompt.
 func TestMigration064_ContextSaverSweep(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -131,7 +130,7 @@ func TestMigration064_ContextSaverSweep(t *testing.T) {
 // TestMigration064_NewInjectablePromptsContainNoNoOpGuidance verifies that
 // neither new injectable template contains silent-exit / no-op style guidance.
 func TestMigration064_NewInjectablePromptsContainNoNoOpGuidance(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -166,7 +165,7 @@ func TestMigration064_NewInjectablePromptsContainNoNoOpGuidance(t *testing.T) {
 // TestMigration064_ExactlyTwoNewInjectablesSeeded verifies that exactly the
 // two expected injectable rows from migration 000064 are present.
 func TestMigration064_ExactlyTwoNewInjectablesSeeded(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

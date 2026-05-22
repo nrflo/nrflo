@@ -124,3 +124,12 @@ make test-race               # with race detector
 ```
 
 See [integration/CLAUDE.md](internal/integration/CLAUDE.md) for test harness details and helper methods.
+
+### DB tests never migrate per-test
+
+Running all migrations per test dominates wall time under `-p` parallelism. Every package whose tests need a migrated DB builds a **template once** and copies it:
+
+- A package `TestMain` migrates a template DB once (`db.NewPoolPath`) and stores its path.
+- Each test calls a `copyTemplateDB(t, dst)` helper, then opens the copy with `db.OpenPathExisting` / `db.NewPoolPathExisting` (or `db.OpenPoolExisting`) — which skip migrations. Per-test copies keep writes isolated.
+
+Implemented in `internal/db`, `internal/spawner`, `internal/integration`. Do **not** call `db.Open` / `db.NewPoolPath` in a test for a fresh DB. Migration tests assert the *outcome* of migrations (the template is that outcome); keep exactly one explicit from-scratch `NewPoolPath` test per package as the migrate-cleanly guarantee (e.g. `db.TestMigrationsApplyFromScratch`).

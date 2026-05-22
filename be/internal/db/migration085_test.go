@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -21,7 +20,7 @@ func seedWorkflow085(t *testing.T, pool *Pool, projectID, workflowID string) {
 }
 
 func TestMigration085_PythonScriptsColumns(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -43,7 +42,7 @@ func TestMigration085_PythonScriptsColumns(t *testing.T) {
 }
 
 func TestMigration085_AgentDefinitionsPythonScriptID(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -60,7 +59,7 @@ func TestMigration085_AgentDefinitionsPythonScriptID(t *testing.T) {
 }
 
 func TestMigration085_ExecutionModeCheckIncludesScript(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -97,7 +96,7 @@ func TestMigration085_ExecutionModeCheckIncludesScript(t *testing.T) {
 }
 
 func TestMigration085_PythonScriptIDNullableOnAgentDef(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -122,7 +121,7 @@ func TestMigration085_PythonScriptIDNullableOnAgentDef(t *testing.T) {
 }
 
 func TestMigration085_CascadeDeleteOnProject(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -148,7 +147,7 @@ func TestMigration085_CascadeDeleteOnProject(t *testing.T) {
 }
 
 func TestMigration085_UniqueIndexOnProjectIDAndID(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -170,7 +169,7 @@ func TestMigration085_UniqueIndexOnProjectIDAndID(t *testing.T) {
 }
 
 func TestMigration085_DifferentProjectsDifferentIDs(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -44,7 +43,7 @@ func loadSystemAgentPrompt(t *testing.T, pool *Pool, id string) string {
 // the dead no-op:no-op finding. Confirms migrations 000039/000052 were edited
 // to no longer seed the line; 000061's REPLACE is a no-op for fresh DBs.
 func TestMigration061_FreshMigrationLeavesNoNoOpSignal(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestMigration061_FreshMigrationLeavesNoNoOpSignal(t *testing.T) {
 // Migration 000059 has already rewritten "nrflow" → "nrflo", so the post-
 // migration text uses the renamed binary.
 func TestMigration061_ConflictResolverPromptIntactAfterMigrations(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -89,7 +88,7 @@ func TestMigration061_ConflictResolverPromptIntactAfterMigrations(t *testing.T) 
 // context-saver prompt retains the singular to_resume command and lost the
 // two-command block.
 func TestMigration061_ContextSaverPromptIntactAfterMigrations(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -111,7 +110,7 @@ func TestMigration061_ContextSaverPromptIntactAfterMigrations(t *testing.T) {
 // regression guard: no row in system_agent_definitions should reference the
 // dead no-op:no-op signal after migrations run.
 func TestMigration061_NoOpSignalAbsentFromAllSystemPrompts(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -142,7 +141,7 @@ func TestMigration061_NoOpSignalAbsentFromAllSystemPrompts(t *testing.T) {
 // user-customized) is a no-op. SQLite REPLACE is a literal substring match,
 // so missing patterns must leave content byte-for-byte unchanged.
 func TestMigration061_LeavesUserCustomizedPromptsAlone(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -182,7 +181,7 @@ func TestMigration061_LeavesUserCustomizedPromptsAlone(t *testing.T) {
 // real-world ordering — 000059 runs before 000061 — so the migration patterns
 // must match the post-rename "nrflo" binary name.
 func TestMigration061_StripsPostRenameLegacyPrompts(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

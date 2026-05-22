@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -16,7 +15,7 @@ func seedProject114(t *testing.T, pool *Pool, projectID string) {
 }
 
 func TestMigration114_NewColumns(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -55,7 +54,7 @@ func TestMigration114_NewColumns(t *testing.T) {
 }
 
 func TestMigration114_KindCheckConstraint(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -91,7 +90,7 @@ func TestMigration114_KindCheckConstraint(t *testing.T) {
 }
 
 func TestMigration114_KindDefault(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -115,7 +114,7 @@ func TestMigration114_KindDefault(t *testing.T) {
 }
 
 func TestMigration114_PartialUniqueIndex(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -161,7 +160,7 @@ func TestMigration114_PartialUniqueIndex(t *testing.T) {
 }
 
 func TestMigration114_ReviewItemsGone(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -179,7 +178,7 @@ func TestMigration114_ReviewItemsGone(t *testing.T) {
 }
 
 func TestMigration114_CustomerConfigVersionsGone(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -197,7 +196,7 @@ func TestMigration114_CustomerConfigVersionsGone(t *testing.T) {
 }
 
 func TestMigration114_ToolDispatchesCleanup(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

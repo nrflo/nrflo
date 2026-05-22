@@ -257,7 +257,8 @@ func setupContextSaveTestEnv(t *testing.T) *contextSaveTestEnv {
 	t.Helper()
 
 	dbPath := "/tmp/test_context_save_" + uuid.New().String() + ".db"
-	database, err := db.Open(dbPath)
+	copyTemplateDB(t, dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}

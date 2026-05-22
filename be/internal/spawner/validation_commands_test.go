@@ -16,7 +16,7 @@ func TestLoadAgentDefinition_ValidationCommandsField(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestLoadAgentDefinition_ValidationCommandsEmpty(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

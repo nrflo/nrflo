@@ -1,14 +1,13 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
 
 // TestMigration053_LayerColumnExists verifies agent_definitions has a layer column.
 func TestMigration053_LayerColumnExists(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -45,7 +44,7 @@ func TestMigration053_LayerColumnExists(t *testing.T) {
 
 // TestMigration053_PhasesColumnDropped verifies workflows table has no phases column.
 func TestMigration053_PhasesColumnDropped(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestMigration053_PhasesColumnDropped(t *testing.T) {
 
 // TestMigration053_LayerDefaultZero verifies that new agent_definitions rows default to layer=0.
 func TestMigration053_LayerDefaultZero(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -107,7 +106,7 @@ func TestMigration053_LayerDefaultZero(t *testing.T) {
 
 // TestMigration053_WorkflowInsertWithoutPhases verifies workflows can be inserted without phases column.
 func TestMigration053_WorkflowInsertWithoutPhases(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -136,7 +135,7 @@ func TestMigration053_WorkflowInsertWithoutPhases(t *testing.T) {
 
 // TestMigration053_AgentDefLayerExplicitValue verifies explicit layer values are stored.
 func TestMigration053_AgentDefLayerExplicitValue(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

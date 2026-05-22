@@ -14,7 +14,8 @@ import (
 func setupTestDB(t *testing.T) *db.Pool {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	copyTemplateDB(t, dbPath)
+	pool, err := db.NewPoolPathExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to open test pool: %v", err)
 	}

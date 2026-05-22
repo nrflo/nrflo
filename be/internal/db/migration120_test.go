@@ -1,14 +1,13 @@
 package db
 
 import (
-	"path/filepath"
 	"testing"
 )
 
 // TestMigration120_APICredentialsTableAbsent verifies that the api_credentials table
 // is absent from sqlite_master after all migrations have been applied.
 func TestMigration120_APICredentialsTableAbsent(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -27,7 +26,7 @@ func TestMigration120_APICredentialsTableAbsent(t *testing.T) {
 // TestMigration120_APICredentialsIndexAbsent verifies that idx_api_credentials_provider_project
 // is absent from sqlite_master after all migrations have been applied.
 func TestMigration120_APICredentialsIndexAbsent(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

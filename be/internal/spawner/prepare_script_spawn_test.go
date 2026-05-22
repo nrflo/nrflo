@@ -31,7 +31,8 @@ type scriptSpawnEnv struct {
 func setupScriptSpawnEnv(t *testing.T) *scriptSpawnEnv {
 	t.Helper()
 	dbPath := "/tmp/test_script_spawn_" + uuid.New().String() + ".db"
-	database, err := db.Open(dbPath)
+	copyTemplateDB(t, dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("db.Open: %v", err)
 	}

@@ -26,7 +26,7 @@ func TestConfig_LowConsumptionMode_DefaultFalse(t *testing.T) {
 // createAgentDefWithLCM inserts an agent definition with a LowConsumptionModel field.
 func createAgentDefWithLCM(t *testing.T, env *spawnerTestEnv, agentID, prompt, lcModel string) {
 	t.Helper()
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("createAgentDefWithLCM: open db: %v", err)
 	}

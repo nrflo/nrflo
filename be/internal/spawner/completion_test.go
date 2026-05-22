@@ -35,7 +35,8 @@ func setupTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 
 	dbPath := "/tmp/test_completion_" + uuid.New().String() + ".db"
-	database, err := db.Open(dbPath)
+	copyTemplateDB(t, dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}

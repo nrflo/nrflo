@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -61,7 +60,7 @@ func withinTolerance(got, want int) bool {
 // no readonly row has template != default_template. This is the acceptance
 // criterion "SELECT COUNT(*) ... WHERE readonly = 1 AND template != default_template → 0".
 func TestMigration058_TemplatesResynced(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -83,7 +82,7 @@ func TestMigration058_TemplatesResynced(t *testing.T) {
 // agent templates has the expected length (±2 bytes), template==default_template,
 // contains "## Role", and contains no legacy header fragments.
 func TestMigration058_SixAgentBaselinesUpdated(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -124,7 +123,7 @@ func TestMigration058_SixAgentBaselinesUpdated(t *testing.T) {
 // ticket-scoped agents reference ${TICKET_TITLE}; ticket-creator does NOT
 // (it is project-scoped).
 func TestMigration058_TicketScopedAgentsHaveTicketTitle(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -160,7 +159,7 @@ func TestMigration058_TicketScopedAgentsHaveTicketTitle(t *testing.T) {
 // migration 000058 explicitly does NOT touch keep their original lengths.
 // Also confirms the 'continuation' injectable row (removed by 000056) remains absent.
 func TestMigration058_InjectablesUntouched(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -198,7 +197,7 @@ func TestMigration058_InjectablesUntouched(t *testing.T) {
 // updated_at set to the migration 000059 timestamp 2026-04-19T00:00:00Z
 // (000059 rewrites the same rows after 000058 seeded them).
 func TestMigration058_UpdatedAtBumped(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -224,7 +223,7 @@ func TestMigration058_UpdatedAtBumped(t *testing.T) {
 // TestMigration058_ReadonlyFlagPreserved verifies migration 000058 did NOT
 // change the readonly flag (or any other metadata) on the six rows.
 func TestMigration058_ReadonlyFlagPreserved(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -256,7 +255,7 @@ func TestMigration058_ReadonlyFlagPreserved(t *testing.T) {
 // This mirrors the acceptance criterion "POST .../restore returns the new
 // template text".
 func TestMigration058_RestoreWouldReturnNewBaseline(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

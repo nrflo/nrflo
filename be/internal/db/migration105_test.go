@@ -2,7 +2,6 @@ package db
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 )
 
@@ -23,7 +22,7 @@ func seedWorkflow105(t *testing.T, pool *Pool, projectID, workflowID string) {
 // TestMigration105_AgentDefinitionsCheckMatrix verifies the rebuilt CHECK constraint:
 // cli rejected, cli_interactive/api/script accepted, foo/empty/batch rejected.
 func TestMigration105_AgentDefinitionsCheckMatrix(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -64,7 +63,7 @@ func TestMigration105_AgentDefinitionsCheckMatrix(t *testing.T) {
 // TestMigration105_SystemAgentDefinitionsCheckMatrix verifies the rebuilt CHECK constraint:
 // cli rejected, cli_interactive/api accepted, script/foo/empty rejected.
 func TestMigration105_SystemAgentDefinitionsCheckMatrix(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -102,7 +101,7 @@ func TestMigration105_SystemAgentDefinitionsCheckMatrix(t *testing.T) {
 // TestMigration105_AgentDefinitionsDefaultIsCLIInteractive verifies that inserting without
 // execution_mode yields cli_interactive (not the old default cli).
 func TestMigration105_AgentDefinitionsDefaultIsCLIInteractive(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -128,7 +127,7 @@ func TestMigration105_AgentDefinitionsDefaultIsCLIInteractive(t *testing.T) {
 // TestMigration105_SystemAgentDefinitionsDefaultIsCLIInteractive verifies the same default
 // for system_agent_definitions.
 func TestMigration105_SystemAgentDefinitionsDefaultIsCLIInteractive(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -151,7 +150,7 @@ func TestMigration105_SystemAgentDefinitionsDefaultIsCLIInteractive(t *testing.T
 // TestMigration105_ProviderConfigRowsDeleted verifies that provider_*_modes config rows
 // were removed by the migration.
 func TestMigration105_ProviderConfigRowsDeleted(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -171,7 +170,7 @@ func TestMigration105_ProviderConfigRowsDeleted(t *testing.T) {
 // TestMigration105_SystemAgentRoleModeIndexExists verifies that idx_system_agent_role_mode
 // was recreated after the table rebuild.
 func TestMigration105_SystemAgentRoleModeIndexExists(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -194,7 +193,7 @@ func TestMigration105_SystemAgentRoleModeIndexExists(t *testing.T) {
 // Because migrations auto-run before any user code sees the DB, we demonstrate the
 // post-coercion state: cli_interactive rows are accepted and readable.
 func TestMigration105_CoercionProof(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

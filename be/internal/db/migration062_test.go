@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -37,7 +36,7 @@ func tableColumns(t *testing.T, p *Pool, table string) map[string]columnInfo {
 
 // TestMigration062_AgentDefinitionsColumns verifies new columns exist.
 func TestMigration062_AgentDefinitionsColumns(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestMigration062_AgentDefinitionsColumns(t *testing.T) {
 // TestMigration062_AgentDefinitionsDefaults verifies legacy rows get cli_interactive/empty/null.
 // Note: migration 105 coerced the original 'cli' default to 'cli_interactive'.
 func TestMigration062_AgentDefinitionsDefaults(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -108,7 +107,7 @@ func TestMigration062_AgentDefinitionsDefaults(t *testing.T) {
 
 // TestMigration062_ExecutionModeCheck rejects values outside cli/api.
 func TestMigration062_ExecutionModeCheck(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -150,7 +149,7 @@ func TestMigration062_ExecutionModeCheck(t *testing.T) {
 
 // TestMigration062_ToolDefinitionsTable verifies CRUD on the new tool_definitions table.
 func TestMigration062_ToolDefinitionsTable(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -191,7 +190,7 @@ func TestMigration062_ToolDefinitionsTable(t *testing.T) {
 
 // TestMigration062_Indexes verifies the expected indexes were created.
 func TestMigration062_Indexes(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

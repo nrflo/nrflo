@@ -177,7 +177,8 @@ func TestMaterializeAll_EmptyArtifacts(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("NRFLO_HOME", dir)
 
-	pool, err := db.NewPoolPath(filepath.Join(dir, "test.db"), db.DefaultPoolConfig())
+	copyTemplateDB(t, filepath.Join(dir, "test.db"))
+	pool, err := db.NewPoolPathExisting(filepath.Join(dir, "test.db"), db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -201,7 +202,8 @@ func TestMaterializeAll_BestEffortOnStorageError(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("NRFLO_HOME", dir)
 
-	pool, err := db.NewPoolPath(filepath.Join(dir, "test.db"), db.DefaultPoolConfig())
+	copyTemplateDB(t, filepath.Join(dir, "test.db"))
+	pool, err := db.NewPoolPathExisting(filepath.Join(dir, "test.db"), db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

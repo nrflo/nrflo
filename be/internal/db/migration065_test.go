@@ -1,14 +1,13 @@
 package db
 
 import (
-	"path/filepath"
 	"testing"
 )
 
 // TestMigration065_NudgeCountColumnExists verifies that migration 000065 adds the
 // nudge_count column to agent_sessions with INTEGER type and NOT NULL DEFAULT 0.
 func TestMigration065_NudgeCountColumnExists(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -60,7 +59,7 @@ func TestMigration065_NudgeCountColumnExists(t *testing.T) {
 // TestMigration065_NudgeCountDefaultZero verifies that existing rows (inserted without
 // specifying nudge_count) default to 0 as required by the migration.
 func TestMigration065_NudgeCountDefaultZero(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -104,7 +103,7 @@ func TestMigration065_NudgeCountDefaultZero(t *testing.T) {
 
 // TestMigration065_NudgeCountIsUpdatable verifies nudge_count can be updated via SQL.
 func TestMigration065_NudgeCountIsUpdatable(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

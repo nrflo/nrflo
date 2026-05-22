@@ -2,14 +2,13 @@ package db
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 )
 
 // TestMigration125_ConsultantColumnSchema verifies migration 000125 adds the
 // consultant INTEGER NOT NULL DEFAULT 0 column to agent_definitions.
 func TestMigration125_ConsultantColumnSchema(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -35,7 +34,7 @@ func TestMigration125_ConsultantColumnSchema(t *testing.T) {
 // TestMigration125_ExistingRowsDefaultToZero verifies that a row inserted
 // without specifying consultant receives the DEFAULT 0 value.
 func TestMigration125_ExistingRowsDefaultToZero(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

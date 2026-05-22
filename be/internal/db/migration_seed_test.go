@@ -1,7 +1,6 @@
 package db
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -9,7 +8,7 @@ import (
 // TestMigration039_SeedsConflictResolver verifies that migration 000039 inserts
 // the conflict-resolver system agent definition with the expected values.
 func TestMigration039_SeedsConflictResolver(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -51,7 +50,7 @@ func TestMigration039_SeedsConflictResolver(t *testing.T) {
 // TestMigration039_NullableFieldsAreNull verifies that optional configuration fields
 // are NULL after seeding (spawner uses built-in defaults when NULL).
 func TestMigration039_NullableFieldsAreNull(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -82,7 +81,7 @@ func TestMigration039_NullableFieldsAreNull(t *testing.T) {
 
 // TestMigration039_TimestampsSet verifies that created_at and updated_at are populated.
 func TestMigration039_TimestampsSet(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -107,7 +106,7 @@ func TestMigration039_TimestampsSet(t *testing.T) {
 // (DELETE FROM system_agent_definitions WHERE id = 'conflict-resolver') removes
 // the seeded row, leaving no trace.
 func TestMigration039_DownMigrationDeletesRow(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -141,7 +140,7 @@ func TestMigration039_DownMigrationDeletesRow(t *testing.T) {
 // INSERT (not INSERT OR IGNORE), so if the conflict-resolver row already exists,
 // the insert fails loudly with a UNIQUE constraint violation.
 func TestMigration039_DuplicateInsertFails(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -163,7 +162,7 @@ func TestMigration039_DuplicateInsertFails(t *testing.T) {
 
 // TestMigration039_ExactlyOneRow verifies only one conflict-resolver row is seeded.
 func TestMigration039_ExactlyOneRow(t *testing.T) {
-	pool, err := NewPoolPath(filepath.Join(t.TempDir(), "test.db"), DefaultPoolConfig())
+	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

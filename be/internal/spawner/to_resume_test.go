@@ -338,7 +338,8 @@ func setupToResumeTestEnvInternal(t *testing.T, scopeType string) *toResumeTestE
 	t.Helper()
 
 	dbPath := "/tmp/test_to_resume_" + uuid.New().String() + ".db"
-	database, err := db.Open(dbPath)
+	copyTemplateDB(t, dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}

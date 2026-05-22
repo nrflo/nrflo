@@ -29,7 +29,8 @@ func newHandlerTestEnv(t *testing.T) *handlerTestEnv {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	copyTemplateDB(t, dbPath)
+	pool, err := db.NewPoolPathExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

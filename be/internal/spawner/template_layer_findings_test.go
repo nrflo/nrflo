@@ -18,7 +18,7 @@ import (
 // workflow at the given layer.
 func createAgentDefWithLayer(t *testing.T, env *spawnerTestEnv, agentID, prompt string, layer int) {
 	t.Helper()
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("createAgentDefWithLayer: open db: %v", err)
 	}

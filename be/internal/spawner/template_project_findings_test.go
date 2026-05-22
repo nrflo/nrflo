@@ -224,7 +224,7 @@ func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition with PROJECT_FINDINGS variable
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition with both patterns
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -349,7 +349,7 @@ func TestLoadTemplate_NoProjectFindings(t *testing.T) {
 	env.initWorkflow(t, ticketID)
 
 	// Create agent definition WITHOUT PROJECT_FINDINGS variable
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

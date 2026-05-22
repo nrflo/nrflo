@@ -202,7 +202,8 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 	t.Helper()
 
 	dbPath := "/tmp/test_to_resume_e2e_" + uuid.New().String() + ".db"
-	database, err := db.Open(dbPath)
+	copyTemplateDB(t, dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
 	}

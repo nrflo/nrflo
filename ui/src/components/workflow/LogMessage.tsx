@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Tooltip } from '@/components/ui/Tooltip'
 import type { MessageCategory } from '@/types/workflow'
 
 const TOOL_COLORS: Record<string, string> = {
@@ -46,14 +47,14 @@ export function ToolBadge({ name, compact = false }: { name: string; compact?: b
   const colorClass = TOOL_COLORS[name] ?? DEFAULT_TOOL_COLOR
   const abbreviated = compact && name.length > COMPACT_NAME_MAX
   const display = abbreviated ? abbreviateToolName(name) : name
-  return (
+  const badge = (
     <span
-      title={abbreviated ? name : undefined}
       className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 max-w-full', colorClass)}
     >
       {display}
     </span>
   )
+  return abbreviated ? <Tooltip text={name}>{badge}</Tooltip> : badge
 }
 
 interface LogMessageProps {

@@ -145,3 +145,54 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - Replacing native `cli_interactive` adapters for Claude/Codex/OpenCode. ACP is additive, not a replacement.
 - ACP for `cli_interactive`. PTY users want a real terminal; ACP has no terminal.
 - ACP for `api` mode. In-process Anthropic Messages is orthogonal.
+
+---
+
+## 3. Detect "agent is waiting for user input" instead of treating it as idle
+
+### Motivation
+For `cli_interactive` agents, nrflo cannot distinguish *"the agent is blocked waiting for a human to type something"* from *"the agent is just slow/idle."* Both look identical: no output for N seconds. The only response today is the time-based idle/nudge loop (`idle_nudge.go`) — after `idleStartTimeout`/`idleAfterMessageTimeout` it writes the `finish-reminder` injectable to PTY stdin, and after `nudgeMax` nudges + another idle window it auto-fails the session as `unresponsive_after_nudges`.
+
+That is a blind heuristic. An agent that genuinely paused to ask a question gets a generic "wrap up and call `nrflo agent continue/fail`" prompt shoved at it, and if it keeps waiting it's killed — rather than being surfaced to a human who could answer it. We have signals that would let us detect the wait precisely; we currently throw them away.
+
+### Current state (verified)
+- Claude hook set is registered in `BuildInteractiveSettingsJSON` (`hooks_settings.go:43-54`): `PreToolUse, PostToolUse, UserPromptSubmit, Notification, SubagentStop, PreCompact, SessionStart`. The set is deliberately conservative — adding hook keys the installed CLI doesn't recognize made the CLI reject `--settings` on bootstrap and broke prompt delivery (`hooks_settings.go:38-42`).
+- **`Stop` is NOT registered for Claude.** `handler_record_event.go:119` has a `Stop` case, but it only flushes Codex JSONL messages; for Claude it would be a no-op, and the hook never fires because it isn't in the settings.
+- **`Notification` IS registered** (`hooks_settings.go:48`) but `handler_record_event.go:80` just records `event["message"]` as a generic `"text"` agent_message. It never branches on it.
+- Claude is launched with `--dangerously-skip-permissions` (`cli_adapter_claude.go`), so permission-driven Notifications never fire.
+
+### Design
+
+Two candidate signals, in order of cost/benefit:
+
+**A. Branch on the `Notification` hook (lowest effort, highest signal).**
+Claude Code emits `Notification` when (a) it needs tool permission, and (b) the prompt has been idle waiting for input ~60s. With `--dangerously-skip-permissions`, only the idle-prompt notification fires — which is exactly "waiting for input." We already receive it. Change `handler_record_event.go:80` to pattern-match the message; on the input-wait variant:
+- mark the session `awaiting_input` (new agent_session status or a flag column),
+- broadcast a new `agent.awaiting_input` WS event,
+- suppress / reset the blind idle-nudge timer for that session so we don't auto-fail an agent that's correctly waiting,
+- optionally dispatch a notification (Slack/Telegram) so a human can take-control and answer.
+
+No new hook registration, no `--settings` bootstrap risk.
+
+**B. Add the `Stop` hook (more work, enables auto-continue).**
+`Stop` fires whenever Claude yields the turn back to the user — which includes "asked a question and waiting." Two caveats:
+1. **Ambiguous alone.** Stop fires on *every* turn boundary (finished / asked / paused all look identical). In nrflo's autonomous flow a normal completion also ends in a Stop after the agent calls `nrflo agent continue/fail`. To tell "stopped to ask" from "stopped because done" you must inspect the transcript (last assistant message: no tool call + a question?). The payload alone doesn't carry intent.
+2. **Its real payoff is the block/continue response.** A `Stop` hook can return `{"decision":"block","reason":"..."}`, forcing Claude to keep going with `reason` as the next turn — a protocol-level auto-continue, strictly cleaner than the current "write `finish-reminder` to PTY stdin and hope the TUI parses it" nudge. Adding `Stop` requires re-verifying the installed CLI accepts the key (the exact reason it was left out of the conservative set).
+
+### Surface area
+- `handler_record_event.go` (Notification branch; optional Stop branch + transcript read).
+- `hooks_settings.go` (only if adding `Stop`; gate behind CLI-version verification).
+- New agent_session status/flag + `agent.awaiting_input` WS event (`ws/`).
+- `idle_nudge.go` — skip/extend the nudge timer while a session is `awaiting_input`.
+- UI — show an "awaiting input" badge on the run view; tie into the existing take-control / PTY relay so a human can answer.
+- Notify (`notify/`) — optional dispatch when a session enters `awaiting_input`.
+
+### Open questions
+- **Notification message stability.** The idle-prompt notification text is CLI-version-dependent; matching on it is fragile. Pin to a substring and verify per CLI version, or accept best-effort?
+- **Other providers.** This is Claude-specific (hook-driven). Codex/Gemini/OpenCode have no equivalent "waiting for input" event — fall back to the idle heuristic, or derive it from their JSONL/SSE streams? Out of scope initially.
+- **Auto-continue vs. escalate.** When `awaiting_input` is detected, default to escalating to a human (notification + take-control), or attempt a Stop-block auto-continue first and only escalate if it recurs?
+- **Interaction with `unresponsive_after_nudges`.** Should `awaiting_input` fully disable auto-fail, or just extend the window? A truly stuck agent that emitted one input-wait notification shouldn't live forever.
+
+### Out of scope
+- Per-provider input-wait detection for non-Claude CLIs (no native signal).
+- Replacing the idle/nudge loop — this augments it (suppress nudges while genuinely awaiting input), not removes it.

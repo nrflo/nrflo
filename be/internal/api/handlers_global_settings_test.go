@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -35,86 +36,110 @@ func decodeSettingsResponse(t *testing.T, rr *httptest.ResponseRecorder) map[str
 	return resp
 }
 
-// TestHandleGetGlobalSettings_DefaultFalse verifies fresh DB returns false.
-func TestHandleGetGlobalSettings_DefaultFalse(t *testing.T) {
+// globalSettingsBoolFields are the boolean settings that share the identical
+// PATCH→GET set/get block in handlers_global_settings.go. All default to false
+// in a fresh (template) DB.
+var globalSettingsBoolFields = []string{
+	"low_consumption_mode",
+	"context_save_via_agent",
+	"simplified_agents_graph",
+	"experimental",
+	"api_mode_enabled",
+}
+
+// TestGlobalSettings_BoolFields exercises the shared bool-field code path for
+// every field × {default, enable, toggle}:
+//   - default: a fresh DB reports false
+//   - enable:  PATCH true → GET true
+//   - toggle:  PATCH true then PATCH false → GET false
+func TestGlobalSettings_BoolFields(t *testing.T) {
+	for _, field := range globalSettingsBoolFields {
+		field := field
+		t.Run(field, func(t *testing.T) {
+			t.Run("default", func(t *testing.T) {
+				s := newGlobalSettingsServer(t)
+				resp := getSettings(t, s)
+				v, ok := resp[field]
+				if !ok {
+					t.Fatalf("response missing %s field", field)
+				}
+				if v != false {
+					t.Errorf("%s = %v, want false", field, v)
+				}
+			})
+
+			t.Run("enable", func(t *testing.T) {
+				s := newGlobalSettingsServer(t)
+				patchSettings(t, s, fmt.Sprintf(`{%q:true}`, field))
+				resp := getSettings(t, s)
+				if v, ok := resp[field]; !ok {
+					t.Errorf("response missing %s", field)
+				} else if v != true {
+					t.Errorf("%s = %v, want true", field, v)
+				}
+			})
+
+			t.Run("toggle", func(t *testing.T) {
+				s := newGlobalSettingsServer(t)
+				patchSettings(t, s, fmt.Sprintf(`{%q:true}`, field))
+				patchSettings(t, s, fmt.Sprintf(`{%q:false}`, field))
+				resp := getSettings(t, s)
+				if v, ok := resp[field]; !ok {
+					t.Errorf("response missing %s", field)
+				} else if v != false {
+					t.Errorf("after toggle off, %s = %v, want false", field, v)
+				}
+			})
+		})
+	}
+}
+
+// TestGlobalSettings_BoolFieldAbsentPreserves verifies that a PATCH which does
+// not mention a previously enabled bool field leaves that field unchanged. The
+// other-field PATCH guarantees the request is non-empty so this also covers the
+// empty-body / null-field preserve case.
+func TestGlobalSettings_BoolFieldAbsentPreserves(t *testing.T) {
 	s := newGlobalSettingsServer(t)
 
+	// Enable context_save_via_agent.
+	patchSettings(t, s, `{"context_save_via_agent":true}`)
+
+	// PATCH only a different field — context_save_via_agent must be preserved.
+	patchSettings(t, s, `{"low_consumption_mode":true}`)
+
+	// An empty PATCH must likewise preserve everything.
+	patchSettings(t, s, `{}`)
+
+	resp := getSettings(t, s)
+	if resp["context_save_via_agent"] != true {
+		t.Errorf("context_save_via_agent = %v, want true (should be preserved)", resp["context_save_via_agent"])
+	}
+	if resp["low_consumption_mode"] != true {
+		t.Errorf("low_consumption_mode = %v, want true (should be preserved)", resp["low_consumption_mode"])
+	}
+}
+
+// getSettings issues GET /api/v1/settings and returns the decoded body, failing
+// the test on non-200.
+func getSettings(t *testing.T, s *Server) map[string]interface{} {
+	t.Helper()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
 	rr := httptest.NewRecorder()
 	s.handleGetGlobalSettings(rr, req)
-
 	if rr.Code != http.StatusOK {
-		t.Errorf("GET status = %d, want 200", rr.Code)
+		t.Fatalf("GET status = %d, want 200", rr.Code)
 	}
-
-	resp := decodeSettingsResponse(t, rr)
-	v, ok := resp["low_consumption_mode"]
-	if !ok {
-		t.Fatal("response missing low_consumption_mode field")
-	}
-	if v != false {
-		t.Errorf("low_consumption_mode = %v, want false", v)
-	}
+	return decodeSettingsResponse(t, rr)
 }
 
-// TestHandlePatchGlobalSettings_EnableThenGet verifies PATCH sets to true and GET reflects it.
-func TestHandlePatchGlobalSettings_EnableThenGet(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	// PATCH to enable
-	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"low_consumption_mode":true}`))
-	patchRR := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(patchRR, patchReq)
-	if patchRR.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", patchRR.Code)
-	}
-
-	// GET should return true
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-
-	if getRR.Code != http.StatusOK {
-		t.Errorf("GET status = %d, want 200", getRR.Code)
-	}
-	resp := decodeSettingsResponse(t, getRR)
-	if v, ok := resp["low_consumption_mode"]; !ok {
-		t.Error("response missing low_consumption_mode")
-	} else if v != true {
-		t.Errorf("low_consumption_mode = %v, want true", v)
-	}
-}
-
-// TestHandlePatchGlobalSettings_Toggle verifies enable then disable works correctly.
-func TestHandlePatchGlobalSettings_Toggle(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	// Enable
-	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"low_consumption_mode":true}`))
-	rr1 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr1, req1)
-	if rr1.Code != http.StatusOK {
-		t.Fatalf("enable PATCH status = %d, want 200", rr1.Code)
-	}
-
-	// Disable
-	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"low_consumption_mode":false}`))
-	rr2 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr2, req2)
-	if rr2.Code != http.StatusOK {
-		t.Fatalf("disable PATCH status = %d, want 200", rr2.Code)
-	}
-
-	// GET should return false
-	req3 := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	rr3 := httptest.NewRecorder()
-	s.handleGetGlobalSettings(rr3, req3)
-
-	resp := decodeSettingsResponse(t, rr3)
-	if v, ok := resp["low_consumption_mode"]; !ok {
-		t.Error("response missing low_consumption_mode")
-	} else if v != false {
-		t.Errorf("after toggle off, low_consumption_mode = %v, want false", v)
+// patchSettings issues PATCH /api/v1/settings with body, failing the test on non-200.
+func patchSettings(t *testing.T, s *Server, body string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(body))
+	rr := httptest.NewRecorder()
+	s.handlePatchGlobalSettings(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PATCH %s status = %d, want 200", body, rr.Code)
 	}
 }
 
@@ -128,39 +153,6 @@ func TestHandlePatchGlobalSettings_InvalidJSON(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rr.Code)
-	}
-}
-
-// TestHandlePatchGlobalSettings_NullFieldPreserves verifies PATCH with null field doesn't clear.
-func TestHandlePatchGlobalSettings_NullFieldPreserves(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	// Enable
-	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"low_consumption_mode":true}`))
-	rr1 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr1, req1)
-	if rr1.Code != http.StatusOK {
-		t.Fatalf("PATCH enable status = %d, want 200", rr1.Code)
-	}
-
-	// PATCH with empty body — should not change value
-	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{}`))
-	rr2 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr2, req2)
-	if rr2.Code != http.StatusOK {
-		t.Fatalf("empty PATCH status = %d, want 200", rr2.Code)
-	}
-
-	// GET should still return true
-	req3 := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	rr3 := httptest.NewRecorder()
-	s.handleGetGlobalSettings(rr3, req3)
-
-	resp := decodeSettingsResponse(t, rr3)
-	if v, ok := resp["low_consumption_mode"]; !ok {
-		t.Error("response missing low_consumption_mode")
-	} else if v != true {
-		t.Errorf("null-field PATCH: low_consumption_mode = %v, want true (field should be preserved)", v)
 	}
 }
 

@@ -30,123 +30,6 @@ func getSessionFindings(t *testing.T, env *TestEnv, sessionID string) map[string
 	return result
 }
 
-func TestAgentCallback(t *testing.T) {
-	env := NewTestEnv(t)
-
-	env.CreateTicket(t, "AGT-CB-1", "Agent callback")
-	env.InitWorkflow(t, "AGT-CB-1")
-
-	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-1", "test")
-	env.InsertAgentSession(t, "sess-cb-1", "AGT-CB-1", wfiID, "analyzer", "analyzer", "sonnet")
-
-	// Call agent.callback via socket
-	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":   "AGT-CB-1",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
-		"session_id":  "sess-cb-1",
-		"level":       1,
-		"instance_id": wfiID,
-	}, nil)
-
-	// Verify session result is "callback" via service
-	session, err := env.AgentSvc.GetSessionByID("sess-cb-1")
-	if err != nil {
-		t.Fatalf("failed to get session: %v", err)
-	}
-	if session.Result.String != "callback" {
-		t.Fatalf("expected analyzer result 'callback', got %v", session.Result.String)
-	}
-
-	// Verify callback_level finding is saved
-	findings := getSessionFindings(t, env, session.ID)
-	level, ok := findings["callback_level"]
-	if !ok {
-		t.Fatalf("expected callback_level finding to be set")
-	}
-	// JSON unmarshaling converts numbers to float64
-	levelFloat, ok := level.(float64)
-	if !ok {
-		t.Fatalf("expected callback_level to be a number, got %T", level)
-	}
-	if int(levelFloat) != 1 {
-		t.Fatalf("expected callback_level to be 1, got %v", levelFloat)
-	}
-}
-
-func TestAgentCallbackWithModel(t *testing.T) {
-	env := NewTestEnv(t)
-
-	env.CreateTicket(t, "AGT-CB-2", "Agent callback with model")
-	env.InitWorkflow(t, "AGT-CB-2")
-
-	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-2", "test")
-	env.InsertAgentSession(t, "sess-cb-2", "AGT-CB-2", wfiID, "builder", "builder", "opus_4_7")
-
-	// Call agent.callback with model filter
-	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":   "AGT-CB-2",
-		"workflow":    "test",
-		"agent_type":  "builder",
-		"model":       "opus_4_7",
-		"session_id":  "sess-cb-2",
-		"level":       2,
-		"instance_id": wfiID,
-	}, nil)
-
-	// Verify session result is "callback"
-	session, err := env.AgentSvc.GetSessionByID("sess-cb-2")
-	if err != nil {
-		t.Fatalf("failed to get session: %v", err)
-	}
-	if session.Result.String != "callback" {
-		t.Fatalf("expected builder result 'callback', got %v", session.Result.String)
-	}
-
-	// Verify callback_level finding
-	findings := getSessionFindings(t, env, session.ID)
-	level, ok := findings["callback_level"]
-	if !ok {
-		t.Fatalf("expected callback_level finding to be set")
-	}
-	levelFloat := level.(float64)
-	if int(levelFloat) != 2 {
-		t.Fatalf("expected callback_level to be 2, got %v", levelFloat)
-	}
-}
-
-func TestAgentCallbackZeroLevel(t *testing.T) {
-	env := NewTestEnv(t)
-
-	env.CreateTicket(t, "AGT-CB-3", "Agent callback level 0 accepted")
-	env.InitWorkflow(t, "AGT-CB-3")
-
-	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-3", "test")
-	env.InsertAgentSession(t, "sess-cb-3", "AGT-CB-3", wfiID, "analyzer", "analyzer", "haiku")
-
-	// level=0 must be accepted as the first-layer callback target. Layer mode
-	// is the default and Level=0 is its valid zero value, not "missing".
-	var result map[string]string
-	env.MustExecute(t, "agent.callback", map[string]interface{}{
-		"ticket_id":   "AGT-CB-3",
-		"workflow":    "test",
-		"agent_type":  "analyzer",
-		"session_id":  "sess-cb-3",
-		"level":       0,
-		"instance_id": wfiID,
-	}, &result)
-	if result["status"] != "callback" {
-		t.Fatalf("expected status=callback, got %q", result["status"])
-	}
-	findings := getSessionFindings(t, env, "sess-cb-3")
-	if got, ok := findings["callback_level"].(float64); !ok || int(got) != 0 {
-		t.Fatalf("expected callback_level=0 finding, got %v", findings["callback_level"])
-	}
-	if got, ok := findings["callback_mode"].(string); !ok || got != "layer" {
-		t.Fatalf("expected callback_mode='layer' finding, got %v", findings["callback_mode"])
-	}
-}
-
 func TestAgentCallbackNoActiveAgent(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -347,13 +230,21 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 	env := NewTestEnv(t)
 
 	testCases := []struct {
-		name     string
-		ticketID string
-		level    int
+		name        string
+		ticketID    string
+		agentType   string
+		cliModel    string
+		modelFilter string // sent as the "model" param when non-empty
+		level       int
+		// wantLayerMode asserts the callback_mode='layer' finding (only valid
+		// for level 0, the default-layer-mode zero value).
+		wantLayerMode bool
 	}{
-		{"Level 1", "AGT-CB-L1", 1},
-		{"Level 5", "AGT-CB-L5", 5},
-		{"Level 10", "AGT-CB-L10", 10},
+		{name: "Level 0", ticketID: "AGT-CB-L0", agentType: "analyzer", cliModel: "haiku", level: 0, wantLayerMode: true},
+		{name: "Level 1", ticketID: "AGT-CB-L1", agentType: "analyzer", cliModel: "sonnet", level: 1},
+		{name: "Level 2 with model filter", ticketID: "AGT-CB-L2", agentType: "builder", cliModel: "opus_4_7", modelFilter: "opus_4_7", level: 2},
+		{name: "Level 5", ticketID: "AGT-CB-L5", agentType: "analyzer", cliModel: "sonnet", level: 5},
+		{name: "Level 10", ticketID: "AGT-CB-L10", agentType: "analyzer", cliModel: "sonnet", level: 10},
 	}
 
 	for _, tc := range testCases {
@@ -363,28 +254,54 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 
 			wfiID := env.GetWorkflowInstanceID(t, tc.ticketID, "test")
 			sessionID := "sess-" + tc.ticketID
-			env.InsertAgentSession(t, sessionID, tc.ticketID, wfiID, "analyzer", "analyzer", "sonnet")
+			env.InsertAgentSession(t, sessionID, tc.ticketID, wfiID, tc.agentType, tc.agentType, tc.cliModel)
 
-			// Call agent.callback with specific level
-			env.MustExecute(t, "agent.callback", map[string]interface{}{
+			// Call agent.callback with specific level (and model filter if set)
+			params := map[string]interface{}{
 				"ticket_id":   tc.ticketID,
 				"workflow":    "test",
-				"agent_type":  "analyzer",
+				"agent_type":  tc.agentType,
 				"session_id":  sessionID,
 				"level":       tc.level,
 				"instance_id": wfiID,
-			}, nil)
+			}
+			if tc.modelFilter != "" {
+				params["model"] = tc.modelFilter
+			}
+			var result map[string]string
+			env.MustExecute(t, "agent.callback", params, &result)
 
-			// Verify callback_level
+			if result["status"] != "callback" {
+				t.Fatalf("expected status=callback, got %q", result["status"])
+			}
+
+			// Verify session result is "callback"
 			session, err := env.AgentSvc.GetSessionByID(sessionID)
 			if err != nil {
 				t.Fatalf("failed to get session: %v", err)
 			}
+			if session.Result.String != "callback" {
+				t.Fatalf("expected result 'callback', got %v", session.Result.String)
+			}
 
+			// Verify callback_level finding (JSON unmarshals numbers to float64)
 			findings := getSessionFindings(t, env, session.ID)
-			levelFloat := findings["callback_level"].(float64)
+			level, ok := findings["callback_level"]
+			if !ok {
+				t.Fatalf("expected callback_level finding to be set")
+			}
+			levelFloat, ok := level.(float64)
+			if !ok {
+				t.Fatalf("expected callback_level to be a number, got %T", level)
+			}
 			if int(levelFloat) != tc.level {
 				t.Fatalf("expected callback_level to be %d, got %v", tc.level, levelFloat)
+			}
+
+			if tc.wantLayerMode {
+				if got, ok := findings["callback_mode"].(string); !ok || got != "layer" {
+					t.Fatalf("expected callback_mode='layer' finding, got %v", findings["callback_mode"])
+				}
 			}
 		})
 	}

@@ -272,10 +272,3 @@ func TestSkipLayerWSEvents(t *testing.T) {
 		t.Errorf("EventLayerSkipped skip_tag = %v, want \"fe\"", layerEvent.Data["skip_tag"])
 	}
 }
-
-// TestEventLayerSkippedConstant verifies the EventLayerSkipped constant value matches spec.
-func TestEventLayerSkippedConstant(t *testing.T) {
-	if ws.EventLayerSkipped != "layer.skipped" {
-		t.Errorf("EventLayerSkipped = %q, want %q", ws.EventLayerSkipped, "layer.skipped")
-	}
-}

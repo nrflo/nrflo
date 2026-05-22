@@ -33,187 +33,83 @@ func seedFinalizeScripts(t *testing.T, svc *WorkflowService, projectID string) (
 	return agentID, toolID
 }
 
-// TestCreateWorkflowDef_FinalizeSuccess_CommandOnly verifies a command-only success slot is accepted.
-func TestCreateWorkflowDef_FinalizeSuccess_CommandOnly(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                     "wf-fin-cmd-ok",
-		FinalizeSuccessCommand: "echo done",
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkflowDef command-only: %v", err)
+// slotCreateRequest builds a WorkflowDefCreateRequest that sets command/script_id on
+// the named slot ("success", "failure", or "pause"). A "use-agent"/"use-tool"
+// scriptID sentinel is resolved to the seeded script IDs by the caller.
+func slotCreateRequest(id, slot, cmd, scriptID string) *types.WorkflowDefCreateRequest {
+	req := &types.WorkflowDefCreateRequest{ID: id}
+	switch slot {
+	case "success":
+		req.FinalizeSuccessCommand = cmd
+		req.FinalizeSuccessScriptID = scriptID
+	case "failure":
+		req.FinalizeFailureCommand = cmd
+		req.FinalizeFailureScriptID = scriptID
+	case "pause":
+		req.PauseEventCommand = cmd
+		req.PauseEventScriptID = scriptID
 	}
-	if wf == nil {
-		t.Fatal("expected non-nil workflow")
-	}
+	return req
 }
 
-// TestCreateWorkflowDef_FinalizeFailure_CommandOnly verifies a command-only failure slot is accepted.
-func TestCreateWorkflowDef_FinalizeFailure_CommandOnly(t *testing.T) {
+// TestCreateWorkflowDef_SlotValidation covers the shared validateFinalizeSlot logic
+// reached by all three slots (finalize_success, finalize_failure, pause_event).
+// command-only and agent-kind script are accepted; both-set, missing script, and
+// tool-kind script are rejected with the corresponding error.
+func TestCreateWorkflowDef_SlotValidation(t *testing.T) {
 	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
 
-	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                     "wf-fin-fail-cmd-ok",
-		FinalizeFailureCommand: "alert fail",
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkflowDef failure command-only: %v", err)
-	}
-	if wf == nil {
-		t.Fatal("expected non-nil workflow")
-	}
-}
+	// scriptID sentinels resolved against seeded scripts per subtest.
+	const (
+		useAgent = "<agent>"
+		useTool  = "<tool>"
+	)
 
-// TestCreateWorkflowDef_FinalizeSuccess_BothCommandAndScript verifies mutual exclusivity on success slot.
-func TestCreateWorkflowDef_FinalizeSuccess_BothCommandAndScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-both-succ",
-		FinalizeSuccessCommand:  "echo ok",
-		FinalizeSuccessScriptID: "some-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for both command+script_id on success slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("error = %q, want to contain 'mutually exclusive'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeFailure_BothCommandAndScript verifies mutual exclusivity on failure slot.
-func TestCreateWorkflowDef_FinalizeFailure_BothCommandAndScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-both-fail",
-		FinalizeFailureCommand:  "alert fail",
-		FinalizeFailureScriptID: "some-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for both command+script_id on failure slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("error = %q, want to contain 'mutually exclusive'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeSuccess_MissingScript verifies that a non-existent script_id is rejected.
-func TestCreateWorkflowDef_FinalizeSuccess_MissingScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-missing-ps",
-		FinalizeSuccessScriptID: "nonexistent-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for non-existent script_id, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_not_found") {
-		t.Errorf("error = %q, want to contain 'python_script_not_found'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeFailure_MissingScript verifies missing script rejected on failure slot.
-func TestCreateWorkflowDef_FinalizeFailure_MissingScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-fail-missing-ps",
-		FinalizeFailureScriptID: "ghost-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for non-existent failure script_id, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_not_found") {
-		t.Errorf("error = %q, want to contain 'python_script_not_found'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeSuccess_ToolKindScript verifies tool-kind script rejected on success slot.
-func TestCreateWorkflowDef_FinalizeSuccess_ToolKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	_, toolID := seedFinalizeScripts(t, svc, "proj1")
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-tool-succ",
-		FinalizeSuccessScriptID: toolID,
-	})
-	if err == nil {
-		t.Fatal("expected error for tool-kind script on success slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_kind_mismatch") {
-		t.Errorf("error = %q, want to contain 'python_script_kind_mismatch'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeFailure_ToolKindScript verifies tool-kind script rejected on failure slot.
-func TestCreateWorkflowDef_FinalizeFailure_ToolKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	_, toolID := seedFinalizeScripts(t, svc, "proj1")
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-tool-fail",
-		FinalizeFailureScriptID: toolID,
-	})
-	if err == nil {
-		t.Fatal("expected error for tool-kind script on failure slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_kind_mismatch") {
-		t.Errorf("error = %q, want to contain 'python_script_kind_mismatch'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_FinalizeSuccess_AgentKindScript verifies agent-kind script accepted on success slot.
-func TestCreateWorkflowDef_FinalizeSuccess_AgentKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	agentID, _ := seedFinalizeScripts(t, svc, "proj1")
-
-	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-agent-succ",
-		FinalizeSuccessScriptID: agentID,
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkflowDef with agent-kind script on success slot: %v", err)
-	}
-	if wf == nil {
-		t.Fatal("expected non-nil workflow")
+	cases := []struct {
+		name     string
+		cmd      string
+		scriptID string // "", literal, or a sentinel
+		wantErr  string // substring; "" means success expected
+	}{
+		{name: "command_only", cmd: "echo done"},
+		{name: "agent_kind_script", scriptID: useAgent},
+		{name: "both_command_and_script", cmd: "echo ok", scriptID: "some-script", wantErr: "mutually exclusive"},
+		{name: "missing_script", scriptID: "nonexistent-script", wantErr: "python_script_not_found"},
+		{name: "tool_kind_script", scriptID: useTool, wantErr: "python_script_kind_mismatch"},
 	}
 
-	def, err := svc.GetWorkflowDef("proj1", "wf-fin-agent-succ")
-	if err != nil {
-		t.Fatalf("GetWorkflowDef: %v", err)
-	}
-	if def.FinalizeSuccessScriptID != agentID {
-		t.Errorf("GetWorkflowDef FinalizeSuccessScriptID = %q, want %q", def.FinalizeSuccessScriptID, agentID)
-	}
-}
+	for _, slot := range []string{"success", "failure", "pause"} {
+		for _, tc := range cases {
+			t.Run(slot+"/"+tc.name, func(t *testing.T) {
+				t.Parallel()
+				_, svc := setupWorkflowDefsTestEnv(t)
+				agentID, toolID := seedFinalizeScripts(t, svc, "proj1")
 
-// TestCreateWorkflowDef_FinalizeFailure_AgentKindScript verifies agent-kind script accepted on failure slot.
-func TestCreateWorkflowDef_FinalizeFailure_AgentKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	agentID, _ := seedFinalizeScripts(t, svc, "proj1")
+				scriptID := tc.scriptID
+				switch scriptID {
+				case useAgent:
+					scriptID = agentID
+				case useTool:
+					scriptID = toolID
+				}
 
-	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                      "wf-fin-agent-fail",
-		FinalizeFailureScriptID: agentID,
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkflowDef with agent-kind script on failure slot: %v", err)
-	}
-	if wf == nil {
-		t.Fatal("expected non-nil workflow")
+				wfID := "wf-" + slot + "-" + tc.name
+				_, err := svc.CreateWorkflowDef("proj1", slotCreateRequest(wfID, slot, tc.cmd, scriptID))
+
+				if tc.wantErr == "" {
+					if err != nil {
+						t.Fatalf("CreateWorkflowDef(%s/%s): unexpected error: %v", slot, tc.name, err)
+					}
+					return
+				}
+				if err == nil {
+					t.Fatalf("CreateWorkflowDef(%s/%s): expected error containing %q, got nil", slot, tc.name, tc.wantErr)
+				}
+				if !strings.Contains(err.Error(), tc.wantErr) {
+					t.Errorf("CreateWorkflowDef(%s/%s): error = %q, want to contain %q", slot, tc.name, err.Error(), tc.wantErr)
+				}
+			})
+		}
 	}
 }
 

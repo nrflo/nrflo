@@ -9,87 +9,91 @@ import (
 )
 
 // TestAgentContextUpdateBroadcast verifies that agent.context_update broadcasts
-// agent.context_updated with correct session_id and context_left fields.
+// agent.context_updated with correct session_id and context_left fields, including
+// the edge case of context_left=0.
 func TestAgentContextUpdateBroadcast(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "TEST-1")
-
-	// Get workflow instance ID
-	var wfiID string
-	err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		env.project, "TEST-1", "test").Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to get workflow instance ID: %v", err)
+	cases := []struct {
+		name        string
+		ticketID    string
+		sessionID   string
+		contextLeft int
+	}{
+		{"non-zero context_left", "TEST-1", "sess-ctx-update", 42},
+		{"zero context_left", "TEST-2", "sess-ctx-zero", 0},
 	}
 
-	// Insert running agent session
-	sessionID := "sess-ctx-update"
-	_, err = env.pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', 'claude-opus-4', 'running', datetime('now'), datetime('now'))
-	`, sessionID, env.project, "TEST-1", wfiID)
-	if err != nil {
-		t.Fatalf("failed to insert agent session: %v", err)
-	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			env := newHandlerTestEnv(t)
+			env.createTicketAndWorkflow(t, tc.ticketID)
 
-	// Subscribe WS client
-	client, sendCh := ws.NewTestClient(env.hub, "test-client-ctx")
-	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
-	env.hub.Subscribe(client, env.project, "TEST-1")
+			var wfiID string
+			err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+				env.project, tc.ticketID, "test").Scan(&wfiID)
+			if err != nil {
+				t.Fatalf("failed to get workflow instance ID: %v", err)
+			}
 
-	// Send agent.context_update
-	params := map[string]interface{}{
-		"session_id":   sessionID,
-		"context_left": 42,
-	}
-	paramsData, _ := json.Marshal(params)
+			_, err = env.pool.Exec(`
+				INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
+				VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', 'claude-opus-4', 'running', datetime('now'), datetime('now'))
+			`, tc.sessionID, env.project, tc.ticketID, wfiID)
+			if err != nil {
+				t.Fatalf("failed to insert agent session: %v", err)
+			}
 
-	req := Request{
-		ID:      "req-ctx-1",
-		Method:  "agent.context_update",
-		Project: env.project,
-		Params:  paramsData,
-	}
+			client, sendCh := ws.NewTestClient(env.hub, "test-client-ctx")
+			env.hub.Register(client)
+			time.Sleep(50 * time.Millisecond)
+			env.hub.Subscribe(client, env.project, tc.ticketID)
 
-	resp := env.handler.Handle(req)
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
+			params := map[string]interface{}{
+				"session_id":   tc.sessionID,
+				"context_left": tc.contextLeft,
+			}
+			paramsData, _ := json.Marshal(params)
 
-	// Verify response status
-	var result map[string]string
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("failed to unmarshal response: %v", err)
-	}
-	if result["status"] != "updated" {
-		t.Errorf("expected status=updated, got: %v", result["status"])
-	}
+			req := Request{
+				ID:      "req-ctx-1",
+				Method:  "agent.context_update",
+				Project: env.project,
+				Params:  paramsData,
+			}
 
-	// Verify broadcast
-	select {
-	case msg := <-sendCh:
-		var event ws.Event
-		if err := json.Unmarshal(msg, &event); err != nil {
-			t.Fatalf("failed to unmarshal event: %v", err)
-		}
+			resp := env.handler.Handle(req)
+			if resp.Error != nil {
+				t.Fatalf("expected no error, got: %v", resp.Error)
+			}
 
-		if event.Type != ws.EventAgentContextUpdated {
-			t.Errorf("expected event type %s, got %s", ws.EventAgentContextUpdated, event.Type)
-		}
+			var result map[string]string
+			if err := json.Unmarshal(resp.Result, &result); err != nil {
+				t.Fatalf("failed to unmarshal response: %v", err)
+			}
+			if result["status"] != "updated" {
+				t.Errorf("expected status=updated, got: %v", result["status"])
+			}
 
-		gotSession, ok := event.Data["session_id"].(string)
-		if !ok || gotSession != sessionID {
-			t.Errorf("expected session_id=%s, got: %v", sessionID, event.Data["session_id"])
-		}
-
-		gotContextLeft, ok := event.Data["context_left"].(float64)
-		if !ok || int(gotContextLeft) != 42 {
-			t.Errorf("expected context_left=42, got: %v", event.Data["context_left"])
-		}
-
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for agent.context_updated broadcast")
+			select {
+			case msg := <-sendCh:
+				var event ws.Event
+				if err := json.Unmarshal(msg, &event); err != nil {
+					t.Fatalf("failed to unmarshal event: %v", err)
+				}
+				if event.Type != ws.EventAgentContextUpdated {
+					t.Errorf("expected event type %s, got %s", ws.EventAgentContextUpdated, event.Type)
+				}
+				gotSession, ok := event.Data["session_id"].(string)
+				if !ok || gotSession != tc.sessionID {
+					t.Errorf("expected session_id=%s, got: %v", tc.sessionID, event.Data["session_id"])
+				}
+				gotContextLeft, ok := event.Data["context_left"].(float64)
+				if !ok || int(gotContextLeft) != tc.contextLeft {
+					t.Errorf("expected context_left=%d, got: %v", tc.contextLeft, event.Data["context_left"])
+				}
+			case <-time.After(time.Second):
+				t.Fatalf("timeout waiting for agent.context_updated broadcast")
+			}
+		})
 	}
 }
 
@@ -154,68 +158,6 @@ func TestAgentContextUpdateMissingSessionID(t *testing.T) {
 	resp := env.handler.Handle(req)
 	if resp.Error == nil {
 		t.Fatal("expected validation error for missing session_id")
-	}
-}
-
-// TestAgentContextUpdateZeroContextLeft verifies context_left=0 is broadcast correctly.
-func TestAgentContextUpdateZeroContextLeft(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "TEST-2")
-
-	var wfiID string
-	err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		env.project, "TEST-2", "test").Scan(&wfiID)
-	if err != nil {
-		t.Fatalf("failed to get workflow instance ID: %v", err)
-	}
-
-	sessionID := "sess-ctx-zero"
-	_, err = env.pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', 'claude-sonnet-4', 'running', datetime('now'), datetime('now'))
-	`, sessionID, env.project, "TEST-2", wfiID)
-	if err != nil {
-		t.Fatalf("failed to insert agent session: %v", err)
-	}
-
-	client, sendCh := ws.NewTestClient(env.hub, "test-client-zero")
-	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
-	env.hub.Subscribe(client, env.project, "TEST-2")
-
-	params := map[string]interface{}{
-		"session_id":   sessionID,
-		"context_left": 0,
-	}
-	paramsData, _ := json.Marshal(params)
-
-	req := Request{
-		ID:      "req-ctx-zero",
-		Method:  "agent.context_update",
-		Project: env.project,
-		Params:  paramsData,
-	}
-
-	resp := env.handler.Handle(req)
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
-
-	select {
-	case msg := <-sendCh:
-		var event ws.Event
-		if err := json.Unmarshal(msg, &event); err != nil {
-			t.Fatalf("failed to unmarshal event: %v", err)
-		}
-		if event.Type != ws.EventAgentContextUpdated {
-			t.Errorf("expected event type %s, got %s", ws.EventAgentContextUpdated, event.Type)
-		}
-		gotContextLeft, ok := event.Data["context_left"].(float64)
-		if !ok || int(gotContextLeft) != 0 {
-			t.Errorf("expected context_left=0, got: %v", event.Data["context_left"])
-		}
-	case <-time.After(time.Second):
-		t.Fatal("timeout waiting for agent.context_updated broadcast with context_left=0")
 	}
 }
 

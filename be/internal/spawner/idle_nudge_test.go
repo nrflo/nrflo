@@ -8,47 +8,6 @@ import (
 	"be/internal/clock"
 )
 
-// TestIdleNudge_Constants verifies the idle/nudge detection constants match the spec.
-func TestIdleNudge_Constants(t *testing.T) {
-	t.Parallel()
-	if defaultIdleAfterMessageTimeout != 4*time.Minute {
-		t.Errorf("defaultIdleAfterMessageTimeout = %v, want 4m", defaultIdleAfterMessageTimeout)
-	}
-	if defaultIdleStartTimeout != 2*time.Minute {
-		t.Errorf("defaultIdleStartTimeout = %v, want 2m", defaultIdleStartTimeout)
-	}
-	if defaultNudgeMax != 5 {
-		t.Errorf("defaultNudgeMax = %d, want 5", defaultNudgeMax)
-	}
-}
-
-// TestIdleNudge_Fields_ProcessInfo verifies processInfo has the expected nudge fields.
-func TestIdleNudge_Fields_ProcessInfo(t *testing.T) {
-	t.Parallel()
-	proc := &processInfo{
-		nudgeCount:              2,
-		nudgeMax:                5,
-		idleStartTimeout:        2 * time.Minute,
-		idleAfterMessageTimeout: 3 * time.Minute,
-	}
-
-	if proc.nudgeCount != 2 {
-		t.Errorf("nudgeCount = %d, want 2", proc.nudgeCount)
-	}
-	if proc.nudgeMax != 5 {
-		t.Errorf("nudgeMax = %d, want 5", proc.nudgeMax)
-	}
-	if proc.idleStartTimeout != 2*time.Minute {
-		t.Errorf("idleStartTimeout = %v, want 2m", proc.idleStartTimeout)
-	}
-	if proc.idleAfterMessageTimeout != 3*time.Minute {
-		t.Errorf("idleAfterMessageTimeout = %v, want 3m", proc.idleAfterMessageTimeout)
-	}
-	if !proc.lastNudgeAt.IsZero() {
-		t.Error("default lastNudgeAt should be zero")
-	}
-}
-
 // TestCheckIdleNudge_DisabledWhenNudgeMaxZero verifies nudgeMax=0 skips all logic.
 func TestCheckIdleNudge_DisabledWhenNudgeMaxZero(t *testing.T) {
 	t.Parallel()

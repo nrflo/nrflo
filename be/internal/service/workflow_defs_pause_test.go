@@ -1,11 +1,15 @@
 package service
 
 import (
-	"strings"
 	"testing"
 
 	"be/internal/types"
 )
+
+// Pause-event slot validation (mutual exclusivity, missing/tool-kind script) is covered
+// by TestCreateWorkflowDef_SlotValidation in workflow_defs_finalize_test.go, since the
+// pause_event slot delegates to the shared validateFinalizeSlot. These tests cover the
+// pause-specific persistence/round-trip paths only.
 
 // TestCreateWorkflowDef_PauseEvent_CommandOnly verifies a command-only pause_event slot is accepted.
 func TestCreateWorkflowDef_PauseEvent_CommandOnly(t *testing.T) {
@@ -18,77 +22,6 @@ func TestCreateWorkflowDef_PauseEvent_CommandOnly(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("CreateWorkflowDef command-only pause: %v", err)
-	}
-	if wf == nil {
-		t.Fatal("expected non-nil workflow")
-	}
-}
-
-// TestCreateWorkflowDef_PauseEvent_BothCommandAndScript verifies mutual exclusivity.
-func TestCreateWorkflowDef_PauseEvent_BothCommandAndScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                 "wf-pause-both",
-		PauseEventCommand:  "echo paused",
-		PauseEventScriptID: "some-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for both command+script_id on pause_event slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("error = %q, want to contain 'mutually exclusive'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_PauseEvent_MissingScript verifies a non-existent script_id is rejected.
-func TestCreateWorkflowDef_PauseEvent_MissingScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                 "wf-pause-missing",
-		PauseEventScriptID: "ghost-script",
-	})
-	if err == nil {
-		t.Fatal("expected error for non-existent pause script_id, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_not_found") {
-		t.Errorf("error = %q, want to contain 'python_script_not_found'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_PauseEvent_ToolKindScript verifies tool-kind script rejected on pause_event slot.
-func TestCreateWorkflowDef_PauseEvent_ToolKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	_, toolID := seedFinalizeScripts(t, svc, "proj1")
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                 "wf-pause-tool",
-		PauseEventScriptID: toolID,
-	})
-	if err == nil {
-		t.Fatal("expected error for tool-kind script on pause_event slot, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_kind_mismatch") {
-		t.Errorf("error = %q, want to contain 'python_script_kind_mismatch'", err.Error())
-	}
-}
-
-// TestCreateWorkflowDef_PauseEvent_AgentKindScript verifies agent-kind script accepted on pause_event slot.
-func TestCreateWorkflowDef_PauseEvent_AgentKindScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	agentID, _ := seedFinalizeScripts(t, svc, "proj1")
-
-	wf, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID:                 "wf-pause-agent",
-		PauseEventScriptID: agentID,
-	})
-	if err != nil {
-		t.Fatalf("CreateWorkflowDef with agent-kind script on pause_event slot: %v", err)
 	}
 	if wf == nil {
 		t.Fatal("expected non-nil workflow")
@@ -170,31 +103,6 @@ func TestUpdateWorkflowDef_PauseEvent_CommandOnly(t *testing.T) {
 	}
 	if def.PauseEventCommand != "on-pause" {
 		t.Errorf("PauseEventCommand = %q, want %q", def.PauseEventCommand, "on-pause")
-	}
-}
-
-// TestUpdateWorkflowDef_PauseEvent_BothCommandAndScript verifies mutual exclusivity on update.
-func TestUpdateWorkflowDef_PauseEvent_BothCommandAndScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	if _, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{
-		ID: "wf-pause-upd-both",
-	}); err != nil {
-		t.Fatalf("CreateWorkflowDef: %v", err)
-	}
-
-	cmd := "cmd"
-	sid := "script"
-	err := svc.UpdateWorkflowDef("proj1", "wf-pause-upd-both", &types.WorkflowDefUpdateRequest{
-		PauseEventCommand:  &cmd,
-		PauseEventScriptID: &sid,
-	})
-	if err == nil {
-		t.Fatal("expected error for both command+script_id on update, got nil")
-	}
-	if !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("error = %q, want to contain 'mutually exclusive'", err.Error())
 	}
 }
 

@@ -200,13 +200,3 @@ func TestMaybePauseAfterLayer_NoHook(t *testing.T) {
 
 	expectEvent(t, ch, ws.EventWorkflowPaused, 2*time.Second)
 }
-
-// TestEventWorkflowPausedResumedConstants verifies the event type string values.
-func TestEventWorkflowPausedResumedConstants(t *testing.T) {
-	if ws.EventWorkflowPaused != "workflow.paused" {
-		t.Errorf("EventWorkflowPaused = %q, want %q", ws.EventWorkflowPaused, "workflow.paused")
-	}
-	if ws.EventWorkflowResumed != "workflow.resumed" {
-		t.Errorf("EventWorkflowResumed = %q, want %q", ws.EventWorkflowResumed, "workflow.resumed")
-	}
-}

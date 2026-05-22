@@ -133,43 +133,6 @@ func TestMarkCompletedTicketCloseFailureDoesNotBreakWorkflow(t *testing.T) {
 	}
 }
 
-func TestMarkCompletedAlreadyClosedTicket(t *testing.T) {
-	env := newTestEnv(t)
-
-	env.createTicket(t, "MC-5", "Already closed")
-	wfiID := env.initWorkflow(t, "MC-5")
-
-	// Close the ticket first with an explicit reason
-	ticketSvc := service.NewTicketService(env.pool, clock.Real())
-	err := ticketSvc.Close(env.project, "MC-5", "manually closed")
-	if err != nil {
-		t.Fatalf("failed to pre-close ticket: %v", err)
-	}
-
-	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:             env.project,
-		TicketID:              "MC-5",
-		WorkflowName:          "test",
-		CloseTicketOnComplete: true,
-	})
-
-	// Verify ticket is still closed and original close_reason is preserved
-	// (markCompleted must skip Close() when ticket is already closed)
-	ticket := env.getTicket(t, "MC-5")
-	if ticket.Status != model.StatusClosed {
-		t.Fatalf("expected ticket status 'closed', got %v", ticket.Status)
-	}
-	if !ticket.CloseReason.Valid || ticket.CloseReason.String != "manually closed" {
-		t.Errorf("expected original close_reason %q preserved, got %v", "manually closed", ticket.CloseReason)
-	}
-
-	// Workflow instance should still be completed
-	wi := env.getWorkflowInstance(t, wfiID)
-	if wi.Status != model.WorkflowInstanceCompleted {
-		t.Fatalf("expected workflow status 'completed', got %v", wi.Status)
-	}
-}
-
 // TestMarkCompleted_TicketAlreadyClosed_PreservesCloseMetadata is a regression
 // test verifying that markCompleted does not clobber closed_at or close_reason
 // when the ticket was already closed before workflow completion.

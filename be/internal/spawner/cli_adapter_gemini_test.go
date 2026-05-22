@@ -5,32 +5,6 @@ import (
 	"time"
 )
 
-func TestGeminiAdapterMapModel(t *testing.T) {
-	t.Parallel()
-	a := &GeminiAdapter{}
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"gemini_pro", "gemini-2.5-pro"},
-		{"gemini_flash", "gemini-2.5-flash"},
-		{"gemini_flash_lite", "gemini-2.5-flash-lite"},
-		{"gemini-2.5-pro", "gemini-2.5-pro"},
-		{"custom-model", "custom-model"},
-		{"unknown", "unknown"},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-			got := a.MapModel(tt.input)
-			if got != tt.want {
-				t.Errorf("MapModel(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestGeminiAdapterMethodValues(t *testing.T) {
 	t.Parallel()
 	a := &GeminiAdapter{}
@@ -204,20 +178,6 @@ func TestGetCLIAdapter_GeminiReturnsGeminiAdapter(t *testing.T) {
 	}
 	if _, ok := adapter.(*GeminiAdapter); !ok {
 		t.Errorf("GetCLIAdapter(\"gemini\") returned %T, want *GeminiAdapter", adapter)
-	}
-}
-
-func TestDefaultCLIForModel_GeminiModels(t *testing.T) {
-	t.Parallel()
-	for _, model := range []string{"gemini_pro", "gemini_flash", "gemini_flash_lite"} {
-		model := model
-		t.Run(model, func(t *testing.T) {
-			t.Parallel()
-			got := DefaultCLIForModel(model)
-			if got != "gemini" {
-				t.Errorf("DefaultCLIForModel(%q) = %q, want %q", model, got, "gemini")
-			}
-		})
 	}
 }
 

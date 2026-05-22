@@ -10,104 +10,23 @@ import (
 
 // ── handleRunWorkflow (ticket-scoped) ─────────────────────────────────────────
 
-// TestHandleRunWorkflow_MissingProject verifies 400 when ?project= is absent.
-func TestHandleRunWorkflow_MissingProject(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"feature"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets/TKT-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleRunWorkflow_Guards exercises the run-workflow (ticket-scoped) guard ladder.
+func TestHandleRunWorkflow_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project", "", false, true, `{"workflow":"feature"}`, http.StatusBadRequest, "X-Project"},
+		{"missing_ticket_id", "", true, false, `{"workflow":"feature"}`, http.StatusBadRequest, "ticket ID"},
+		{"orchestrator_nil", "", true, true, `{"workflow":"feature"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"invalid_body", "real", true, true, "{bad json", http.StatusBadRequest, "invalid request body"},
+		{"missing_workflow", "real", true, true, `{"interactive":false}`, http.StatusBadRequest, "workflow name is required"},
+		{"mutual_exclusivity", "real", true, true, `{"workflow":"feature","interactive":true,"plan_mode":true}`, http.StatusBadRequest, "mutually exclusive"},
 	}
-	assertErrorContains(t, rr, "X-Project")
-}
-
-// TestHandleRunWorkflow_MissingTicketID verifies 400 when ticket ID path param is empty.
-func TestHandleRunWorkflow_MissingTicketID(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"feature"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets//workflow/run", "proj"),
-		strings.NewReader(body))
-	// No path value "id" set → extractID returns ""
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/tickets/TKT-1/workflow/run", "TKT-1",
+				func(s *Server) http.HandlerFunc { return s.handleRunWorkflow })
+		})
 	}
-	assertErrorContains(t, rr, "ticket ID")
-}
-
-// TestHandleRunWorkflow_OrchestratorNil verifies 503 when orchestrator is not set.
-func TestHandleRunWorkflow_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"feature"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/run", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
-	}
-	assertErrorContains(t, rr, "orchestrator not available")
-}
-
-// TestHandleRunWorkflow_InvalidBody verifies 400 for malformed JSON.
-func TestHandleRunWorkflow_InvalidBody(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/run", "proj"),
-		strings.NewReader("{bad json"))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "invalid request body")
-}
-
-// TestHandleRunWorkflow_MissingWorkflow verifies 400 when workflow is empty.
-func TestHandleRunWorkflow_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"interactive":false}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/run", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleRunWorkflow_MutualExclusivity verifies 400 when both interactive and plan_mode are true.
-func TestHandleRunWorkflow_MutualExclusivity(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"feature","interactive":true,"plan_mode":true}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/run", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleRunWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400 for mutual exclusivity violation", rr.Code)
-	}
-	assertErrorContains(t, rr, "mutually exclusive")
 }
 
 // TestHandleRunWorkflow_InteractiveOnly_Passes verifies that interactive=true without plan_mode
@@ -157,125 +76,52 @@ func TestHandleRunWorkflow_PlanModeOnly_Passes(t *testing.T) {
 
 // ── handleRunProjectWorkflow (project-scoped) ─────────────────────────────────
 
-// TestHandleRunProjectWorkflow_MissingProjectID verifies 400 when project ID path param is empty.
-func TestHandleRunProjectWorkflow_MissingProjectID(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"feature"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/run",
-		strings.NewReader(body))
-	// No path value "id" set
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleRunProjectWorkflow_Guards exercises the run-workflow (project-scoped) guard ladder.
+func TestHandleRunProjectWorkflow_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project_id", "", false, false, `{"workflow":"feature"}`, http.StatusBadRequest, "project ID required"},
+		{"orchestrator_nil", "", false, true, `{"workflow":"feature"}`, http.StatusServiceUnavailable, ""},
+		{"invalid_body", "real", false, true, "{not json", http.StatusBadRequest, "invalid request body"},
+		{"missing_workflow", "real", false, true, `{"plan_mode":false}`, http.StatusBadRequest, "workflow name is required"},
+		{"mutual_exclusivity", "real", false, true, `{"workflow":"feature","interactive":true,"plan_mode":true}`, http.StatusBadRequest, "mutually exclusive"},
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-// TestHandleRunProjectWorkflow_OrchestratorNil verifies 503 when orchestrator is nil.
-func TestHandleRunProjectWorkflow_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"feature"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/projects/proj-1/workflow/run", "proj-1",
+				func(s *Server) http.HandlerFunc { return s.handleRunProjectWorkflow })
+		})
 	}
 }
 
-// TestHandleRunProjectWorkflow_InvalidBody verifies 400 for malformed JSON.
-func TestHandleRunProjectWorkflow_InvalidBody(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader("{not json"))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleRunProjectWorkflow_ValidModeFlagsPassCheck verifies that valid interactive/plan_mode
+// combinations (both false, and interactive-only) pass the mutual exclusivity check.
+func TestHandleRunProjectWorkflow_ValidModeFlagsPassCheck(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"both_false", `{"workflow":"feature","interactive":false,"plan_mode":false}`},
+		{"interactive_only", `{"workflow":"test","interactive":true,"plan_mode":false}`},
 	}
-	assertErrorContains(t, rr, "invalid request body")
-}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := newTakeControlServer(t)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
+				strings.NewReader(tc.body))
+			req.SetPathValue("id", "proj-1")
+			rr := httptest.NewRecorder()
+			s.handleRunProjectWorkflow(rr, req)
 
-// TestHandleRunProjectWorkflow_MissingWorkflow verifies 400 when workflow is omitted.
-func TestHandleRunProjectWorkflow_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"plan_mode":false}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleRunProjectWorkflow_MutualExclusivity verifies 400 when both interactive and plan_mode are true.
-func TestHandleRunProjectWorkflow_MutualExclusivity(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"feature","interactive":true,"plan_mode":true}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400 for mutual exclusivity violation", rr.Code)
-	}
-	assertErrorContains(t, rr, "mutually exclusive")
-}
-
-// TestHandleRunProjectWorkflow_BothFalse_PassesCheck verifies both false passes mutual exclusivity.
-func TestHandleRunProjectWorkflow_BothFalse_PassesCheck(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"feature","interactive":false,"plan_mode":false}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	// Should not return 400 for "mutually exclusive"
-	if rr.Code == http.StatusBadRequest {
-		var respBody map[string]string
-		json.NewDecoder(rr.Body).Decode(&respBody)
-		if strings.Contains(respBody["error"], "mutually exclusive") {
-			t.Error("both false should not trigger mutual exclusivity error")
-		}
-	}
-}
-
-// TestHandleRunProjectWorkflow_InteractiveAndPlanModeFieldsParsed verifies
-// the JSON body is parsed with the correct field names (interactive, plan_mode).
-func TestHandleRunProjectWorkflow_InteractiveAndPlanModeFieldsParsed(t *testing.T) {
-	// Use a string that would fail JSON if field names are wrong
-	body := `{"workflow":"test","interactive":true,"plan_mode":false}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/run",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-
-	// We can't inject an orchestrator mock, so we just verify the mutual exclusivity
-	// check passes (interactive=true, plan_mode=false is valid).
-	s := newTakeControlServer(t)
-	rr := httptest.NewRecorder()
-	s.handleRunProjectWorkflow(rr, req)
-
-	// Not 400 with "mutually exclusive"
-	if rr.Code == http.StatusBadRequest {
-		var respBody map[string]string
-		json.NewDecoder(rr.Body).Decode(&respBody)
-		if strings.Contains(respBody["error"], "mutually exclusive") {
-			t.Error("interactive=true, plan_mode=false should not fail mutual exclusivity check")
-		}
+			// Should not return 400 for "mutually exclusive"
+			if rr.Code == http.StatusBadRequest {
+				var respBody map[string]string
+				json.NewDecoder(rr.Body).Decode(&respBody)
+				if strings.Contains(respBody["error"], "mutually exclusive") {
+					t.Errorf("%s should not trigger mutual exclusivity error", tc.name)
+				}
+			}
+		})
 	}
 }

@@ -225,15 +225,6 @@ func TestHandleRateLimitRetry_CounterIncrements(t *testing.T) {
 	}
 }
 
-// TestEventAgentRateLimited_Constant verifies the event constant value.
-func TestEventAgentRateLimited_Constant(t *testing.T) {
-	t.Parallel()
-	const want = "agent.rate_limited"
-	if ws.EventAgentRateLimited != want {
-		t.Errorf("EventAgentRateLimited = %q, want %q", ws.EventAgentRateLimited, want)
-	}
-}
-
 // rlAssertString asserts a string field in event data.
 func rlAssertString(t *testing.T, data map[string]interface{}, key, want string) {
 	t.Helper()

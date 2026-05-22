@@ -153,45 +153,6 @@ func TestCodexReasoningEffort(t *testing.T) {
 	}
 }
 
-// TestModelMappingRoundTrip tests that model names can be used in workflow definitions
-// and correctly resolve to their provider-specific formats.
-func TestModelMappingRoundTrip(t *testing.T) {
-	t.Parallel()
-	// Each model should only be tested with its correct adapter
-	tests := []struct {
-		model   string
-		adapter interface{ MapModel(string) string }
-		name    string
-	}{
-		{"opus_4_6", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_6_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_7", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_7_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt54_mini_low", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
-		{"gemini_pro", &GeminiAdapter{}, "GeminiAdapter"},
-		{"gemini_flash", &GeminiAdapter{}, "GeminiAdapter"},
-		{"gemini_flash_lite", &GeminiAdapter{}, "GeminiAdapter"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name+"_"+tt.model, func(t *testing.T) {
-			result := tt.adapter.MapModel(tt.model)
-			if result == "" {
-				t.Errorf("%s.MapModel(%q) returned empty string", tt.name, tt.model)
-			}
-		})
-	}
-}
-
 // TestUnsupportedModelHandling tests how adapters handle unsupported or unknown models.
 func TestUnsupportedModelHandling(t *testing.T) {
 	t.Parallel()
@@ -268,39 +229,26 @@ func TestDefaultCLIForModel(t *testing.T) {
 	}
 }
 
-// TestAllSupportedModelsAreValid tests that all supported model aliases
-// are properly handled by their respective adapters.
-func TestAllSupportedModelsAreValid(t *testing.T) {
+// TestGeminiAdapterModelMapping tests that GeminiAdapter correctly maps model aliases.
+func TestGeminiAdapterModelMapping(t *testing.T) {
 	t.Parallel()
+	a := &GeminiAdapter{}
 	tests := []struct {
-		model   string
-		adapter interface{ MapModel(string) string }
-		name    string
+		input    string
+		expected string
 	}{
-		{"opus_4_6", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_6_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_7", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opus_4_7_1m", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"sonnet", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"haiku", &ClaudeAdapter{}, "ClaudeAdapter"},
-		{"opencode_minimax_m25_free", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_qwen36_plus_free", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt54", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"opencode_gpt54_mini_low", &OpencodeAdapter{}, "OpencodeAdapter"},
-		{"codex_gpt_normal", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt_high", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt54_normal", &CodexAdapter{}, "CodexAdapter"},
-		{"codex_gpt54_high", &CodexAdapter{}, "CodexAdapter"},
-		{"gemini_pro", &GeminiAdapter{}, "GeminiAdapter"},
-		{"gemini_flash", &GeminiAdapter{}, "GeminiAdapter"},
-		{"gemini_flash_lite", &GeminiAdapter{}, "GeminiAdapter"},
+		{"gemini_pro", "gemini-2.5-pro"},
+		{"gemini_flash", "gemini-2.5-flash"},
+		{"gemini_flash_lite", "gemini-2.5-flash-lite"},
+		{"gemini-2.5-pro", "gemini-2.5-pro"},
+		{"custom-model", "custom-model"},
+		{"unknown", "unknown"},
 	}
-
 	for _, tt := range tests {
-		t.Run(tt.name+"_"+tt.model, func(t *testing.T) {
-			result := tt.adapter.MapModel(tt.model)
-			if result == "" {
-				t.Errorf("%s.MapModel(%q) returned empty string", tt.name, tt.model)
+		t.Run(tt.input, func(t *testing.T) {
+			result := a.MapModel(tt.input)
+			if result != tt.expected {
+				t.Errorf("MapModel(%q) = %q, expected %q", tt.input, result, tt.expected)
 			}
 		})
 	}

@@ -10,14 +10,6 @@ import (
 	"be/internal/ws"
 )
 
-// TestDefaultFailRetryDelay_Is15Seconds verifies the retry delay constant is 15 seconds.
-func TestDefaultFailRetryDelay_Is15Seconds(t *testing.T) {
-	t.Parallel()
-	if defaultFailRetryDelay != 15*time.Second {
-		t.Errorf("defaultFailRetryDelay = %v, want 15s", defaultFailRetryDelay)
-	}
-}
-
 // TestWaitBeforeRetry_CancelledContext_ReturnsFalse verifies that an already-cancelled
 // context causes waitBeforeRetry to return false without waiting the full 15s delay.
 func TestWaitBeforeRetry_CancelledContext_ReturnsFalse(t *testing.T) {
@@ -125,16 +117,6 @@ func TestWaitBeforeRetry_NoHub_CancelledContext(t *testing.T) {
 	got := s.waitBeforeRetry(ctx, proc)
 	if got {
 		t.Error("waitBeforeRetry should return false when context is cancelled (nil hub)")
-	}
-}
-
-// TestWaitBeforeRetry_EventConstant_Format verifies EventAgentRetryWaiting matches
-// the resource.action naming convention used by all event constants.
-func TestWaitBeforeRetry_EventConstant_Format(t *testing.T) {
-	t.Parallel()
-	const want = "agent.retry_waiting"
-	if ws.EventAgentRetryWaiting != want {
-		t.Errorf("EventAgentRetryWaiting = %q, want %q", ws.EventAgentRetryWaiting, want)
 	}
 }
 

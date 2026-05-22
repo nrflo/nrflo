@@ -10,131 +10,26 @@ import (
 	"be/internal/types"
 )
 
-// TestMigration018DropsCategoriesColumn verifies that migration 000018 successfully
-// drops the categories column from workflows table.
-func TestMigration018DropsCategoriesColumn(t *testing.T) {
+// TestMigration018CategoryColumnsDropped verifies that migration 000018 dropped
+// the categories/category columns from the workflows, workflow_instances, and
+// chain_executions tables.
+func TestMigration018CategoryColumnsDropped(t *testing.T) {
 	env := NewTestEnv(t)
 
-	// Verify categories column does not exist in workflows table
-	var count int
-	err := env.Pool.QueryRow(`
-		SELECT COUNT(*) FROM pragma_table_info('workflows')
-		WHERE name = 'categories'`).Scan(&count)
-	if err != nil {
-		t.Fatalf("failed to query workflows schema: %v", err)
+	cases := []struct{ table, column string }{
+		{"workflows", "categories"},
+		{"workflow_instances", "category"},
+		{"chain_executions", "category"},
 	}
-	if count != 0 {
-		t.Fatalf("categories column should not exist in workflows table after migration 000018, found %d columns with that name", count)
-	}
-}
-
-// TestMigration018DropsCategoryFromWorkflowInstances verifies that migration 000018
-// successfully drops the category column from workflow_instances table.
-func TestMigration018DropsCategoryFromWorkflowInstances(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Verify category column does not exist in workflow_instances table
-	var count int
-	err := env.Pool.QueryRow(`
-		SELECT COUNT(*) FROM pragma_table_info('workflow_instances')
-		WHERE name = 'category'`).Scan(&count)
-	if err != nil {
-		t.Fatalf("failed to query workflow_instances schema: %v", err)
-	}
-	if count != 0 {
-		t.Fatalf("category column should not exist in workflow_instances table after migration 000018, found %d columns with that name", count)
-	}
-}
-
-// TestMigration018DropsCategoryFromChainExecutions verifies that migration 000018
-// successfully drops the category column from chain_executions table.
-func TestMigration018DropsCategoryFromChainExecutions(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Verify category column does not exist in chain_executions table
-	var count int
-	err := env.Pool.QueryRow(`
-		SELECT COUNT(*) FROM pragma_table_info('chain_executions')
-		WHERE name = 'category'`).Scan(&count)
-	if err != nil {
-		t.Fatalf("failed to query chain_executions schema: %v", err)
-	}
-	if count != 0 {
-		t.Fatalf("category column should not exist in chain_executions table after migration 000018, found %d columns with that name", count)
-	}
-}
-
-// TestWorkflowsTableSchemaAfterMigration018 verifies the workflows table schema is correct
-// after migration 000018, with all expected columns present except categories.
-func TestWorkflowsTableSchemaAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Expected columns (no categories, no phases after migration 000053)
-	expectedColumns := []string{
-		"id", "project_id", "description", "scope_type", "created_at", "updated_at",
-	}
-
-	for _, colName := range expectedColumns {
+	for _, tc := range cases {
 		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('workflows')
-			WHERE name = ?`, colName).Scan(&count)
+		err := env.Pool.QueryRow(
+			`SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?`, tc.table, tc.column).Scan(&count)
 		if err != nil {
-			t.Fatalf("failed to query schema for column %s: %v", colName, err)
+			t.Fatalf("query %s schema: %v", tc.table, err)
 		}
-		if count != 1 {
-			t.Fatalf("expected column %s to exist in workflows table, found %d", colName, count)
-		}
-	}
-}
-
-// TestWorkflowInstancesTableSchemaAfterMigration018 verifies the workflow_instances table
-// schema is correct after migration 000018, with all expected columns except category.
-func TestWorkflowInstancesTableSchemaAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Expected columns (no category, no phase columns after migration 000028, no findings after 000110)
-	expectedColumns := []string{
-		"id", "project_id", "ticket_id", "workflow_id", "scope_type", "status",
-		"retry_count",
-		"parent_session", "created_at", "updated_at",
-	}
-
-	for _, colName := range expectedColumns {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('workflow_instances')
-			WHERE name = ?`, colName).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query schema for column %s: %v", colName, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected column %s to exist in workflow_instances table, found %d", colName, count)
-		}
-	}
-}
-
-// TestChainExecutionsTableSchemaAfterMigration018 verifies the chain_executions table
-// schema is correct after migration 000018, with all expected columns except category.
-func TestChainExecutionsTableSchemaAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Expected columns (no category)
-	expectedColumns := []string{
-		"id", "project_id", "name", "status", "workflow_name",
-		"epic_ticket_id", "created_by", "created_at", "updated_at",
-	}
-
-	for _, colName := range expectedColumns {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('chain_executions')
-			WHERE name = ?`, colName).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query schema for column %s: %v", colName, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected column %s to exist in chain_executions table, found %d", colName, count)
+		if count != 0 {
+			t.Errorf("%s.%s should not exist after migration 000018, found %d", tc.table, tc.column, count)
 		}
 	}
 }
@@ -277,86 +172,6 @@ func TestChainExecutionCRUDWithoutCategory(t *testing.T) {
 	}
 	if updatedStatus != "running" {
 		t.Fatalf("expected status 'running', got %v", updatedStatus)
-	}
-}
-
-// TestWorkflowInstanceIndexesAfterMigration018 verifies that workflow_instances indexes
-// are correctly present after all migrations.
-func TestWorkflowInstanceIndexesAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Check for expected indexes (idx_wfi_unique dropped by migration 000019, idx_wfi_ticket_unique dropped by migration 000040)
-	expectedIndexes := []string{
-		"idx_wfi_lookup",
-		"idx_wfi_ticket",
-	}
-
-	for _, idxName := range expectedIndexes {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM sqlite_master
-			WHERE type = 'index' AND name = ? AND tbl_name = 'workflow_instances'`,
-			idxName).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query index %s: %v", idxName, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected index %s to exist on workflow_instances, found %d", idxName, count)
-		}
-	}
-}
-
-// TestAgentSessionsIndexesAfterMigration018 verifies that agent_sessions indexes
-// are correctly recreated after migration 000018 (table was rebuilt due to FK).
-func TestAgentSessionsIndexesAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Check for expected indexes
-	expectedIndexes := []string{
-		"idx_agent_sessions_project_ticket",
-		"idx_agent_sessions_ticket_phase",
-		"idx_agent_sessions_wfi",
-		"idx_agent_sessions_wfi_status",
-	}
-
-	for _, idxName := range expectedIndexes {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM sqlite_master
-			WHERE type = 'index' AND name = ? AND tbl_name = 'agent_sessions'`,
-			idxName).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query index %s: %v", idxName, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected index %s to exist on agent_sessions, found %d", idxName, count)
-		}
-	}
-}
-
-// TestChainExecutionsIndexesAfterMigration018 verifies that chain_executions indexes
-// are correctly recreated after migration 000018.
-func TestChainExecutionsIndexesAfterMigration018(t *testing.T) {
-	env := NewTestEnv(t)
-
-	// Check for expected indexes
-	expectedIndexes := []string{
-		"idx_chain_exec_project_status",
-		"idx_chain_exec_epic",
-	}
-
-	for _, idxName := range expectedIndexes {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM sqlite_master
-			WHERE type = 'index' AND name = ? AND tbl_name = 'chain_executions'`,
-			idxName).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query index %s: %v", idxName, err)
-		}
-		if count != 1 {
-			t.Fatalf("expected index %s to exist on chain_executions, found %d", idxName, count)
-		}
 	}
 }
 

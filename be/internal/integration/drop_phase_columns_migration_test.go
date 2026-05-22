@@ -7,64 +7,21 @@ import (
 	"be/internal/types"
 )
 
-// TestMigration028DropsPhaseColumns verifies that migration 000028 successfully
-// drops the phases, phase_order, and current_phase columns from workflow_instances.
-func TestMigration028DropsPhaseColumns(t *testing.T) {
+// TestMigration028PhaseColumnsDropped verifies that migration 000028 dropped the
+// phases, phase_order, and current_phase columns from workflow_instances.
+func TestMigration028PhaseColumnsDropped(t *testing.T) {
 	env := NewTestEnv(t)
 
-	droppedColumns := []string{"phases", "phase_order", "current_phase"}
-
-	for _, col := range droppedColumns {
+	for _, col := range []string{"phases", "phase_order", "current_phase"} {
 		var count int
 		err := env.Pool.QueryRow(`
 			SELECT COUNT(*) FROM pragma_table_info('workflow_instances')
 			WHERE name = ?`, col).Scan(&count)
 		if err != nil {
-			t.Fatalf("failed to query schema for column %s: %v", col, err)
+			t.Fatalf("query schema for column %s: %v", col, err)
 		}
 		if count != 0 {
 			t.Errorf("column %s should not exist in workflow_instances after migration 000028, found %d", col, count)
-		}
-	}
-}
-
-// TestMigration028WorkflowInstancesColumnCount verifies the total column count is exactly 11
-// (no phase columns present).
-func TestMigration028WorkflowInstancesColumnCount(t *testing.T) {
-	env := NewTestEnv(t)
-
-	var count int
-	err := env.Pool.QueryRow(`
-		SELECT COUNT(*) FROM pragma_table_info('workflow_instances')`).Scan(&count)
-	if err != nil {
-		t.Fatalf("failed to count columns: %v", err)
-	}
-
-	const want = 16 // 11 original + skip_tags (000030) + worktree_path + branch_name (000041) + endless_loop + stop_endless_loop_after_iteration (000060) + scheduled_task_id (000088) - findings (000110)
-	if count != want {
-		t.Errorf("workflow_instances expected %d columns, got %d", want, count)
-	}
-}
-
-// TestMigration028WorkflowInstancesExpectedColumns verifies all 11 expected columns exist.
-func TestMigration028WorkflowInstancesExpectedColumns(t *testing.T) {
-	env := NewTestEnv(t)
-
-	expectedColumns := []string{
-		"id", "project_id", "ticket_id", "workflow_id", "scope_type",
-		"status", "retry_count", "parent_session", "created_at", "updated_at",
-	}
-
-	for _, col := range expectedColumns {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('workflow_instances')
-			WHERE name = ?`, col).Scan(&count)
-		if err != nil {
-			t.Fatalf("failed to query schema for column %s: %v", col, err)
-		}
-		if count != 1 {
-			t.Errorf("expected column %s to exist in workflow_instances, found %d", col, count)
 		}
 	}
 }

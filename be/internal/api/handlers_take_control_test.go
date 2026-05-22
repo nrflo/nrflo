@@ -46,54 +46,68 @@ func withProject(path, projectID string) string {
 	return path + "?project=" + projectID
 }
 
-// TestHandleTakeControl_MissingProject verifies that omitting ?project= returns 400.
-func TestHandleTakeControl_MissingProject(t *testing.T) {
-	s := &Server{} // no orchestrator
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets/TKT-1/workflow/take-control",
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControl(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "X-Project")
+// guardCase describes one guard-ladder row for the workflow-control handlers.
+// server selects which Server fixture to invoke:
+//   - "": &Server{} (no orchestrator, no pool) — for the project/ID guards
+//   - "nilorch": &Server{orchestrator: nil} — same as "" but explicit
+//   - "real": newTakeControlServer(t) — for body-validation and lookup guards
+type guardCase struct {
+	name       string
+	server     string
+	withProj   bool // ticket handlers: append ?project=
+	setPath    bool // set r.PathValue("id")
+	body       string
+	wantStatus int
+	wantErr    string // substring expected in the "error" field ("" = skip check)
 }
 
-// TestHandleTakeControl_MissingTicketID verifies that a missing ticket ID returns 400.
-func TestHandleTakeControl_MissingTicketID(t *testing.T) {
-	s := &Server{} // orchestrator nil — check happens after projectID
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	// No path value "id" set → extractID returns ""
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets//workflow/take-control", "proj"),
-		strings.NewReader(body))
-	rr := httptest.NewRecorder()
-	s.handleTakeControl(rr, req)
+func runGuardCase(t *testing.T, tc guardCase, pathBase, pathID string,
+	handler func(s *Server) http.HandlerFunc) {
+	t.Helper()
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	var s *Server
+	switch tc.server {
+	case "real":
+		s = newTakeControlServer(t)
+	default:
+		s = &Server{}
 	}
-	assertErrorContains(t, rr, "ticket ID")
+
+	path := pathBase
+	if tc.withProj {
+		path = withProject(pathBase, "proj")
+	}
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(tc.body))
+	if tc.setPath {
+		req.SetPathValue("id", pathID)
+	}
+	rr := httptest.NewRecorder()
+	handler(s)(rr, req)
+
+	if rr.Code != tc.wantStatus {
+		t.Errorf("status = %d, want %d", rr.Code, tc.wantStatus)
+	}
+	if tc.wantErr != "" {
+		assertErrorContains(t, rr, tc.wantErr)
+	}
 }
 
-// TestHandleTakeControl_OrchestratorNil verifies 503 when orchestrator is not set.
-func TestHandleTakeControl_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/take-control", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControl(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+// TestHandleTakeControl_Guards exercises the take-control (ticket-scoped) guard ladder.
+func TestHandleTakeControl_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project", "", false, true, `{"workflow":"test","session_id":"sess-1"}`, http.StatusBadRequest, "X-Project"},
+		{"missing_ticket_id", "", true, false, `{"workflow":"test","session_id":"sess-1"}`, http.StatusBadRequest, "ticket ID"},
+		{"orchestrator_nil", "", true, true, `{"workflow":"test","session_id":"sess-1"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"missing_workflow", "real", true, true, `{"session_id":"sess-1"}`, http.StatusBadRequest, "workflow name is required"},
+		{"missing_session_id", "real", true, true, `{"workflow":"test"}`, http.StatusBadRequest, "session_id is required"},
 	}
-	assertErrorContains(t, rr, "orchestrator not available")
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/tickets/TKT-1/workflow/take-control", "TKT-1",
+				func(s *Server) http.HandlerFunc { return s.handleTakeControl })
+		})
+	}
 }
 
 // TestHandleTakeControl_InvalidBody verifies 400 for malformed JSON.
@@ -110,40 +124,6 @@ func TestHandleTakeControl_InvalidBody(t *testing.T) {
 		t.Errorf("status = %d, want 400", rr.Code)
 	}
 	assertErrorContains(t, rr, "invalid request body")
-}
-
-// TestHandleTakeControl_MissingWorkflow verifies 400 when workflow is not in body.
-func TestHandleTakeControl_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/take-control", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControl(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleTakeControl_MissingSessionID verifies 400 when session_id is omitted.
-func TestHandleTakeControl_MissingSessionID(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"test"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/take-control", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControl(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "session_id is required")
 }
 
 // TestHandleTakeControl_NoRunningOrchestration verifies 404 when no workflow is running.
@@ -163,71 +143,22 @@ func TestHandleTakeControl_NoRunningOrchestration(t *testing.T) {
 	}
 }
 
-// TestHandleExitInteractive_MissingProject verifies 400 for missing ?project=.
-func TestHandleExitInteractive_MissingProject(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets/TKT-1/workflow/exit-interactive",
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractive(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleExitInteractive_Guards exercises the exit-interactive (ticket-scoped) guard ladder.
+func TestHandleExitInteractive_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project", "", false, true, `{"workflow":"test","session_id":"sess-1"}`, http.StatusBadRequest, "X-Project"},
+		{"missing_ticket_id", "", true, false, `{"workflow":"test","session_id":"sess-1"}`, http.StatusBadRequest, "ticket ID"},
+		{"orchestrator_nil", "", true, true, `{"workflow":"test","session_id":"sess-1"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"missing_workflow", "real", true, true, `{"session_id":"sess-1"}`, http.StatusBadRequest, "workflow name is required"},
+		{"missing_session_id", "real", true, true, `{"workflow":"test"}`, http.StatusBadRequest, "session_id is required"},
 	}
-	assertErrorContains(t, rr, "X-Project")
-}
-
-// TestHandleExitInteractive_OrchestratorNil verifies 503 when orchestrator is nil.
-func TestHandleExitInteractive_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/exit-interactive", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractive(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/tickets/TKT-1/workflow/exit-interactive", "TKT-1",
+				func(s *Server) http.HandlerFunc { return s.handleExitInteractive })
+		})
 	}
-	assertErrorContains(t, rr, "orchestrator not available")
-}
-
-// TestHandleExitInteractive_MissingWorkflow verifies 400 when workflow is omitted.
-func TestHandleExitInteractive_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/exit-interactive", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractive(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleExitInteractive_MissingSessionID verifies 400 when session_id is omitted.
-func TestHandleExitInteractive_MissingSessionID(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"test"}`
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/exit-interactive", "proj"),
-		strings.NewReader(body))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractive(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "session_id is required")
 }
 
 // TestHandleExitInteractive_SessionNotFound verifies 400 when session is not found.
@@ -246,67 +177,21 @@ func TestHandleExitInteractive_SessionNotFound(t *testing.T) {
 	}
 }
 
-// TestHandleTakeControlProject_MissingProjectID verifies 400 when project ID is missing.
-func TestHandleTakeControlProject_MissingProjectID(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"test","session_id":"sess-1","instance_id":"inst-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/take-control",
-		strings.NewReader(body))
-	// no path value set → r.PathValue("id") returns ""
-	rr := httptest.NewRecorder()
-	s.handleTakeControlProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleTakeControlProject_Guards exercises the take-control (project-scoped) guard ladder.
+func TestHandleTakeControlProject_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project_id", "", false, false, `{"workflow":"test","session_id":"sess-1","instance_id":"inst-1"}`, http.StatusBadRequest, "project ID required"},
+		{"orchestrator_nil", "", false, true, `{"workflow":"test","session_id":"sess-1","instance_id":"inst-1"}`, http.StatusServiceUnavailable, ""},
+		{"missing_workflow", "real", false, true, `{"session_id":"sess-1","instance_id":"inst-1"}`, http.StatusBadRequest, "workflow name is required"},
+		{"missing_session_id", "real", false, true, `{"workflow":"test","instance_id":"inst-1"}`, http.StatusBadRequest, "session_id is required"},
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-// TestHandleTakeControlProject_OrchestratorNil verifies 503.
-func TestHandleTakeControlProject_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"test","session_id":"sess-1","instance_id":"inst-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/take-control",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControlProject(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/projects/proj-1/workflow/take-control", "proj-1",
+				func(s *Server) http.HandlerFunc { return s.handleTakeControlProject })
+		})
 	}
-}
-
-// TestHandleTakeControlProject_MissingWorkflow verifies 400 when workflow is missing.
-func TestHandleTakeControlProject_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"session_id":"sess-1","instance_id":"inst-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/take-control",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControlProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleTakeControlProject_MissingSessionID verifies 400 when session_id is missing.
-func TestHandleTakeControlProject_MissingSessionID(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"test","instance_id":"inst-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/take-control",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleTakeControlProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "session_id is required")
 }
 
 // TestHandleTakeControlProject_NoRunningOrchestration verifies 404 when
@@ -325,66 +210,21 @@ func TestHandleTakeControlProject_NoRunningOrchestration(t *testing.T) {
 	}
 }
 
-// TestHandleExitInteractiveProject_MissingProjectID verifies 400 for missing project ID.
-func TestHandleExitInteractiveProject_MissingProjectID(t *testing.T) {
-	s := &Server{}
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/exit-interactive",
-		strings.NewReader(body))
-	rr := httptest.NewRecorder()
-	s.handleExitInteractiveProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleExitInteractiveProject_Guards exercises the exit-interactive (project-scoped) guard ladder.
+func TestHandleExitInteractiveProject_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project_id", "", false, false, `{"workflow":"test","session_id":"sess-1"}`, http.StatusBadRequest, "project ID required"},
+		{"orchestrator_nil", "", false, true, `{"workflow":"test","session_id":"sess-1"}`, http.StatusServiceUnavailable, ""},
+		{"missing_workflow", "real", false, true, `{"session_id":"sess-1"}`, http.StatusBadRequest, "workflow name is required"},
+		{"missing_session_id", "real", false, true, `{"workflow":"test"}`, http.StatusBadRequest, "session_id is required"},
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-// TestHandleExitInteractiveProject_OrchestratorNil verifies 503.
-func TestHandleExitInteractiveProject_OrchestratorNil(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	body := `{"workflow":"test","session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/exit-interactive",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractiveProject(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/projects/proj-1/workflow/exit-interactive", "proj-1",
+				func(s *Server) http.HandlerFunc { return s.handleExitInteractiveProject })
+		})
 	}
-}
-
-// TestHandleExitInteractiveProject_MissingWorkflow verifies 400 for missing workflow.
-func TestHandleExitInteractiveProject_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"session_id":"sess-1"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/exit-interactive",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractiveProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-// TestHandleExitInteractiveProject_MissingSessionID verifies 400 for missing session_id.
-func TestHandleExitInteractiveProject_MissingSessionID(t *testing.T) {
-	s := newTakeControlServer(t)
-	body := `{"workflow":"test"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/exit-interactive",
-		strings.NewReader(body))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleExitInteractiveProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "session_id is required")
 }
 
 // TestHandleExitInteractiveProject_SessionNotFound verifies 400 for missing session.

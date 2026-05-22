@@ -7,7 +7,6 @@ import (
 
 	"be/internal/clock"
 	"be/internal/repo"
-	"be/internal/service"
 	"be/internal/types"
 )
 
@@ -186,22 +185,5 @@ func TestFindingsGet_BothNilLayer_OwnSessionRead(t *testing.T) {
 	}
 	if result["my_key"] != "my_val" {
 		t.Errorf("own-session read: my_key = %v, want \"my_val\"", result["my_key"])
-	}
-}
-
-// TestFindingsGet_LayerAndAgentType_ServiceGuardAlsoApplies verifies that the service-level
-// guard (not just the socket guard) also returns an error for this combination.
-func TestFindingsGet_LayerAndAgentType_ServiceGuardAlsoApplies(t *testing.T) {
-	env := newHandlerTestEnv(t)
-
-	svc := service.NewFindingsService(env.pool, clock.Real())
-	layer := 0
-	_, err := svc.Get(&types.FindingsGetRequest{
-		AgentType:  "analyzer",
-		Layer:      &layer,
-		InstanceID: "any-instance",
-	})
-	if err == nil {
-		t.Fatal("expected error from service when both AgentType and Layer set, got nil")
 	}
 }

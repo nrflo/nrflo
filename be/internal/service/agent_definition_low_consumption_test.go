@@ -1,40 +1,123 @@
 package service
 
 import (
+	"fmt"
 	"testing"
 
 	"be/internal/types"
 )
 
-// --- CreateAgentDef low_consumption_model ---
+// lcValidModels is the set of low_consumption_model values accepted by validation.
+var lcValidModels = []string{
+	"opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m", "sonnet", "haiku",
+	"opencode_minimax_m25_free", "opencode_qwen36_plus_free", "opencode_gpt54",
+	"codex_gpt_normal", "codex_gpt_high",
+	"codex_gpt54_normal", "codex_gpt54_high",
+}
 
-func TestCreateAgentDef_WithLowConsumptionModel(t *testing.T) {
+// lcInvalidModels is a set of values that must be rejected by validation.
+var lcInvalidModels = []string{
+	"invalid_model", "gpt-4", "claude-3", "lite-implementor",
+	"opus3", "sonnet2", "unknown",
+}
+
+// --- Validation: every valid model accepted, every invalid model rejected ---
+
+func TestCreateAgentDef_LowConsumptionModel_ValidModels(t *testing.T) {
+	t.Parallel()
+	for i, m := range lcValidModels {
+		t.Run(m, func(t *testing.T) {
+			_, svc, wfID := setupAgentDefTestEnv(t, nil)
+			def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+				ID:                  fmt.Sprintf("vm-%d", i),
+				Prompt:              "p",
+				LowConsumptionModel: m,
+			})
+			if err != nil {
+				t.Fatalf("CreateAgentDef(low_consumption_model=%q) error = %v, want nil", m, err)
+			}
+			if def.LowConsumptionModel != m {
+				t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, m)
+			}
+		})
+	}
+}
+
+func TestCreateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
+	t.Parallel()
+	for _, m := range lcInvalidModels {
+		t.Run(m, func(t *testing.T) {
+			_, svc, wfID := setupAgentDefTestEnv(t, nil)
+			_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+				ID:                  "inv-" + m,
+				Prompt:              "p",
+				LowConsumptionModel: m,
+			})
+			if err == nil {
+				t.Errorf("CreateAgentDef(low_consumption_model=%q) error = nil, want error", m)
+			}
+		})
+	}
+}
+
+func TestUpdateAgentDef_LowConsumptionModel_ValidModels(t *testing.T) {
 	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "agent-b",
-		Prompt:              "agent b",
-		LowConsumptionModel: "sonnet",
-	})
-	if err != nil {
-		t.Fatalf("CreateAgentDef with low_consumption_model: %v", err)
-	}
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
+	for i, m := range lcValidModels {
+		id := fmt.Sprintf("upd-vm-%d", i)
+		if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: id, Prompt: "p"}); err != nil {
+			t.Fatalf("create %s: %v", id, err)
+		}
+		t.Run(m, func(t *testing.T) {
+			lcm := m
+			if err := svc.UpdateAgentDef("proj1", wfID, id, &types.AgentDefUpdateRequest{
+				LowConsumptionModel: &lcm,
+			}); err != nil {
+				t.Fatalf("UpdateAgentDef(low_consumption_model=%q) error = %v, want nil", lcm, err)
+			}
+			def, err := svc.GetAgentDef("proj1", wfID, id)
+			if err != nil {
+				t.Fatalf("GetAgentDef: %v", err)
+			}
+			if def.LowConsumptionModel != lcm {
+				t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, lcm)
+			}
+		})
 	}
 }
+
+func TestUpdateAgentDef_LowConsumptionModel_InvalidModels(t *testing.T) {
+	t.Parallel()
+	_, svc, wfID := setupAgentDefTestEnv(t, nil)
+
+	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID: "upd-inv-lcm", Prompt: "test",
+	}); err != nil {
+		t.Fatalf("create base agent: %v", err)
+	}
+
+	for _, m := range lcInvalidModels {
+		t.Run(m, func(t *testing.T) {
+			lcm := m
+			if err := svc.UpdateAgentDef("proj1", wfID, "upd-inv-lcm", &types.AgentDefUpdateRequest{
+				LowConsumptionModel: &lcm,
+			}); err == nil {
+				t.Errorf("UpdateAgentDef(low_consumption_model=%q) = nil, want error", lcm)
+			}
+		})
+	}
+}
+
+// --- CRUD round-trips ---
 
 func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "main-agent",
-		Prompt:              "main",
-		LowConsumptionModel: "haiku",
-	})
-	if err != nil {
+	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID: "main-agent", Prompt: "main", LowConsumptionModel: "haiku",
+	}); err != nil {
 		t.Fatalf("create main-agent: %v", err)
 	}
 
@@ -51,20 +134,12 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "la-ref",
-		Prompt: "ref",
-	})
-	if err != nil {
+	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "la-ref", Prompt: "ref"}); err != nil {
 		t.Fatalf("create la-ref: %v", err)
 	}
-
-	_, err = svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "la-main",
-		Prompt:              "main",
-		LowConsumptionModel: "sonnet",
-	})
-	if err != nil {
+	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID: "la-main", Prompt: "main", LowConsumptionModel: "sonnet",
+	}); err != nil {
 		t.Fatalf("create la-main: %v", err)
 	}
 
@@ -75,7 +150,6 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 	if len(defs) != 2 {
 		t.Fatalf("expected 2 agent defs, got %d", len(defs))
 	}
-
 	// defs are ordered by id; la-main < la-ref
 	if defs[0].LowConsumptionModel != "sonnet" {
 		t.Errorf("ListAgentDefs[0].LowConsumptionModel = %q, want %q", defs[0].LowConsumptionModel, "sonnet")
@@ -85,41 +159,13 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 	}
 }
 
-func TestUpdateAgentDef_UpdatesLowConsumptionModel(t *testing.T) {
-	t.Parallel()
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "upd-main", Prompt: "main"})
-	if err != nil {
-		t.Fatalf("create upd-main: %v", err)
-	}
-
-	lcModel := "haiku"
-	if err := svc.UpdateAgentDef("proj1", wfID, "upd-main", &types.AgentDefUpdateRequest{
-		LowConsumptionModel: &lcModel,
-	}); err != nil {
-		t.Fatalf("UpdateAgentDef: %v", err)
-	}
-
-	def, err := svc.GetAgentDef("proj1", wfID, "upd-main")
-	if err != nil {
-		t.Fatalf("GetAgentDef after update: %v", err)
-	}
-	if def.LowConsumptionModel != "haiku" {
-		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "haiku")
-	}
-}
-
 func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
 	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "clr-main",
-		Prompt:              "main",
-		LowConsumptionModel: "sonnet",
-	})
-	if err != nil {
+	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID: "clr-main", Prompt: "main", LowConsumptionModel: "sonnet",
+	}); err != nil {
 		t.Fatalf("create clr-main: %v", err)
 	}
 
@@ -139,95 +185,12 @@ func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
 	}
 }
 
-// --- Validation: invalid model ---
-
-func TestCreateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
-	t.Parallel()
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "bad-model",
-		Prompt:              "bad",
-		LowConsumptionModel: "invalid_model",
-	})
-	if err == nil {
-		t.Fatal("expected error for invalid low_consumption_model, got nil")
-	}
-}
-
-func TestUpdateAgentDef_InvalidLowConsumptionModel(t *testing.T) {
-	t.Parallel()
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "upd-bad",
-		Prompt: "bad",
-	})
-	if err != nil {
-		t.Fatalf("create upd-bad: %v", err)
-	}
-
-	invalid := "not_a_model"
-	if err := svc.UpdateAgentDef("proj1", wfID, "upd-bad", &types.AgentDefUpdateRequest{
-		LowConsumptionModel: &invalid,
-	}); err == nil {
-		t.Fatal("expected error for invalid low_consumption_model update, got nil")
-	}
-}
-
-// --- Casing: value is lowercased on create and update ---
-
-func TestCreateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
-	t.Parallel()
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:                  "lc-lower-main",
-		Prompt:              "main",
-		LowConsumptionModel: "SONNET", // upper case
-	})
-	if err != nil {
-		t.Fatalf("CreateAgentDef with mixed-case low_consumption_model: %v", err)
-	}
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
-	}
-}
-
-func TestUpdateAgentDef_LowConsumptionModelLowercased(t *testing.T) {
-	t.Parallel()
-	_, svc, wfID := setupAgentDefTestEnv(t, nil)
-
-	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{ID: "case-main", Prompt: "main"})
-	if err != nil {
-		t.Fatalf("create case-main: %v", err)
-	}
-
-	mixed := "HAIKU"
-	if err := svc.UpdateAgentDef("proj1", wfID, "case-main", &types.AgentDefUpdateRequest{
-		LowConsumptionModel: &mixed,
-	}); err != nil {
-		t.Fatalf("UpdateAgentDef: %v", err)
-	}
-
-	def, err := svc.GetAgentDef("proj1", wfID, "case-main")
-	if err != nil {
-		t.Fatalf("GetAgentDef after update: %v", err)
-	}
-	if def.LowConsumptionModel != "haiku" {
-		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "haiku")
-	}
-}
-
-// --- Default: empty low_consumption_model ---
-
 func TestCreateAgentDef_DefaultEmptyLowConsumptionModel(t *testing.T) {
 	t.Parallel()
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID:     "no-lc",
-		Prompt: "no lc",
+		ID: "no-lc", Prompt: "no lc",
 	})
 	if err != nil {
 		t.Fatalf("CreateAgentDef: %v", err)

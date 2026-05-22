@@ -12,7 +12,7 @@ import (
 
 // TestSystemAgentDef_SeededRowAccessible verifies that the conflict-resolver row
 // seeded by migration 000039 is accessible via the service layer immediately after
-// DB creation, without any additional setup or manual seeding.
+// DB creation (both Get and List), with its seeded field values intact.
 func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_accessible.db")
@@ -45,26 +45,12 @@ func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 	if def.MaxFailRestarts != nil {
 		t.Errorf("seeded max_fail_restarts = %v, want nil", *def.MaxFailRestarts)
 	}
-}
 
-// TestSystemAgentDef_SeededRowInList verifies that the seeded conflict-resolver row
-// appears in the List response.
-func TestSystemAgentDef_SeededRowInList(t *testing.T) {
-	t.Parallel()
-	dbPath := filepath.Join(t.TempDir(), "seed_list.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
-
+	// The seeded row also appears in the List response.
 	defs, err := svc.List()
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-
 	found := false
 	for _, d := range defs {
 		if d.ID == "conflict-resolver" {

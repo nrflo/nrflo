@@ -11,32 +11,84 @@ import (
 	"be/internal/ws"
 )
 
-// TestRecordUserInputFallback_InsertsRowWithUserInputCategory verifies that
-// recordUserInputFallback writes a message to agent_messages with
-// category="user_input".
-func TestRecordUserInputFallback_InsertsRowWithUserInputCategory(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "RUI-FB-1", "fallback category test")
-	wfiID := env.initWorkflow(t, "RUI-FB-1")
-
-	sessionID := "sess-rui-fb-1"
-	insertRunningSession(t, env, wfiID, "RUI-FB-1", sessionID)
-
-	recordUserInputFallback(env.dbPath, clock.Real(), env.hub, sessionID, "typed hello")
-
-	msgRepo := repo.NewAgentMessageRepo(env.pool, clock.Real())
-	msgs, err := msgRepo.GetBySessionPaginatedFiltered(sessionID, "user_input", 10, 0)
-	if err != nil {
-		t.Fatalf("query messages: %v", err)
+// TestRecordUserInputFallback verifies all fallback paths for recordUserInputFallback:
+// inserts a user_input message, handles nil hub without panic, and handles orchestrator
+// with no active spawner or a nil spawner (between phases).
+func TestRecordUserInputFallback(t *testing.T) {
+	tests := []struct {
+		name       string
+		nilHub     bool
+		useOrch    bool // call via env.orch.RecordUserInput instead of recordUserInputFallback
+		nilSpawner bool // register a run with an empty spawners map
+		content    string
+	}{
+		{
+			name:    "inserts row with user_input category",
+			content: "typed hello",
+		},
+		{
+			name:    "nil hub does not panic, still inserts",
+			nilHub:  true,
+			content: "nil hub msg",
+		},
+		{
+			name:    "orchestrator fallback: no active run",
+			useOrch: true,
+			content: "orchestrator fallback text",
+		},
+		{
+			name:       "orchestrator fallback: nil spawner between phases",
+			useOrch:    true,
+			nilSpawner: true,
+			content:    "nil spawner fallback text",
+		},
 	}
-	if len(msgs) != 1 {
-		t.Fatalf("expected 1 user_input message, got %d", len(msgs))
-	}
-	if msgs[0].Content != "typed hello" {
-		t.Errorf("Content = %q, want %q", msgs[0].Content, "typed hello")
-	}
-	if msgs[0].Category != "user_input" {
-		t.Errorf("Category = %q, want user_input", msgs[0].Category)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env := newTestEnv(t)
+			env.createTicket(t, "RUI-TB", "table test")
+			wfiID := env.initWorkflow(t, "RUI-TB")
+
+			sessionID := "sess-rui-tb-" + tt.name
+			insertRunningSession(t, env, wfiID, "RUI-TB", sessionID)
+
+			if tt.nilSpawner {
+				env.orch.mu.Lock()
+				env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: make(map[string]*spawner.Spawner)}
+				env.orch.mu.Unlock()
+				t.Cleanup(func() {
+					env.orch.mu.Lock()
+					delete(env.orch.runs, wfiID)
+					env.orch.mu.Unlock()
+				})
+			}
+
+			if tt.useOrch {
+				env.orch.RecordUserInput(sessionID, tt.content)
+			} else {
+				var hub *ws.Hub
+				if !tt.nilHub {
+					hub = env.hub
+				}
+				recordUserInputFallback(env.dbPath, clock.Real(), hub, sessionID, tt.content)
+			}
+
+			msgRepo := repo.NewAgentMessageRepo(env.pool, clock.Real())
+			msgs, err := msgRepo.GetBySessionPaginatedFiltered(sessionID, "user_input", 10, 0)
+			if err != nil {
+				t.Fatalf("query messages: %v", err)
+			}
+			if len(msgs) != 1 {
+				t.Fatalf("expected 1 user_input message, got %d", len(msgs))
+			}
+			if msgs[0].Content != tt.content {
+				t.Errorf("Content = %q, want %q", msgs[0].Content, tt.content)
+			}
+			if msgs[0].Category != "user_input" {
+				t.Errorf("Category = %q, want user_input", msgs[0].Category)
+			}
+		})
 	}
 }
 
@@ -72,95 +124,5 @@ func TestRecordUserInputFallback_BroadcastsMessagesUpdated(t *testing.T) {
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("timeout: expected messages.updated broadcast from recordUserInputFallback")
-	}
-}
-
-// TestRecordUserInputFallback_NilHub verifies that recordUserInputFallback with
-// a nil hub still inserts the message and does not panic.
-func TestRecordUserInputFallback_NilHub(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "RUI-NILHUB-1", "nil hub test")
-	wfiID := env.initWorkflow(t, "RUI-NILHUB-1")
-
-	sessionID := "sess-rui-nilhub-1"
-	insertRunningSession(t, env, wfiID, "RUI-NILHUB-1", sessionID)
-
-	// Must not panic.
-	recordUserInputFallback(env.dbPath, clock.Real(), nil, sessionID, "nil hub msg")
-
-	msgRepo := repo.NewAgentMessageRepo(env.pool, clock.Real())
-	msgs, err := msgRepo.GetBySessionPaginatedFiltered(sessionID, "user_input", 10, 0)
-	if err != nil {
-		t.Fatalf("query messages: %v", err)
-	}
-	if len(msgs) != 1 {
-		t.Fatalf("expected 1 message, got %d", len(msgs))
-	}
-	if msgs[0].Content != "nil hub msg" {
-		t.Errorf("Content = %q, want %q", msgs[0].Content, "nil hub msg")
-	}
-}
-
-// TestOrchestrator_RecordUserInput_Fallback verifies that the orchestrator's
-// RecordUserInput falls back to direct DB insert when no active spawner owns
-// the session (e.g. user_interactive / resume-session flows).
-func TestOrchestrator_RecordUserInput_Fallback(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "RUI-ORCH-1", "orchestrator fallback test")
-	wfiID := env.initWorkflow(t, "RUI-ORCH-1")
-
-	sessionID := "sess-rui-orch-1"
-	insertRunningSession(t, env, wfiID, "RUI-ORCH-1", sessionID)
-
-	// No runs registered — orchestrator has no active spawner.
-	env.orch.RecordUserInput(sessionID, "orchestrator fallback text")
-
-	msgRepo := repo.NewAgentMessageRepo(env.pool, clock.Real())
-	msgs, err := msgRepo.GetBySessionPaginatedFiltered(sessionID, "user_input", 10, 0)
-	if err != nil {
-		t.Fatalf("query messages: %v", err)
-	}
-	if len(msgs) != 1 {
-		t.Fatalf("expected 1 user_input message, got %d", len(msgs))
-	}
-	if msgs[0].Content != "orchestrator fallback text" {
-		t.Errorf("Content = %q, want %q", msgs[0].Content, "orchestrator fallback text")
-	}
-}
-
-// TestOrchestrator_RecordUserInput_NilSpawnerFallback verifies that when an
-// active run has a nil spawner (between phases), RecordUserInput still falls
-// back to the direct DB path.
-func TestOrchestrator_RecordUserInput_NilSpawnerFallback(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "RUI-NILSP-1", "nil spawner fallback test")
-	wfiID := env.initWorkflow(t, "RUI-NILSP-1")
-
-	sessionID := "sess-rui-nilsp-1"
-	insertRunningSession(t, env, wfiID, "RUI-NILSP-1", sessionID)
-
-	// Register a run state with empty spawners map (between phases).
-	env.orch.mu.Lock()
-	env.orch.runs[wfiID] = &runState{cancel: func() {}, spawners: make(map[string]*spawner.Spawner)}
-	env.orch.mu.Unlock()
-	t.Cleanup(func() {
-		env.orch.mu.Lock()
-		delete(env.orch.runs, wfiID)
-		env.orch.mu.Unlock()
-	})
-
-	// With nil spawner the fallback path must insert into DB.
-	env.orch.RecordUserInput(sessionID, "nil spawner fallback text")
-
-	msgRepo := repo.NewAgentMessageRepo(env.pool, clock.Real())
-	msgs, err := msgRepo.GetBySessionPaginatedFiltered(sessionID, "user_input", 10, 0)
-	if err != nil {
-		t.Fatalf("query messages: %v", err)
-	}
-	if len(msgs) != 1 {
-		t.Fatalf("expected 1 user_input message via fallback, got %d", len(msgs))
-	}
-	if msgs[0].Content != "nil spawner fallback text" {
-		t.Errorf("Content = %q, want %q", msgs[0].Content, "nil spawner fallback text")
 	}
 }

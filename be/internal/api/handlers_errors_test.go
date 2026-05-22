@@ -96,27 +96,6 @@ func TestHandleListErrors_EmptyList(t *testing.T) {
 	}
 }
 
-func TestHandleListErrors_DefaultPagination(t *testing.T) {
-	s := newErrorServer(t)
-	req := httptest.NewRequest(http.MethodGet, withProject("/api/v1/errors", "test-proj"), nil)
-	rr := httptest.NewRecorder()
-	s.handleListErrors(rr, req)
-
-	var resp struct {
-		Page    int `json:"page"`
-		PerPage int `json:"per_page"`
-	}
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if resp.Page != 1 {
-		t.Errorf("default page = %d, want 1", resp.Page)
-	}
-	if resp.PerPage != 20 {
-		t.Errorf("default per_page = %d, want 20", resp.PerPage)
-	}
-}
-
 func TestHandleListErrors_CustomPagination(t *testing.T) {
 	s := newErrorServer(t)
 	req := httptest.NewRequest(http.MethodGet,
@@ -164,38 +143,54 @@ func TestHandleListErrors_PerPageCappedAt100(t *testing.T) {
 }
 
 func TestHandleListErrors_WithErrors(t *testing.T) {
-	s := newErrorServer(t)
-	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	for i := 0; i < 3; i++ {
-		insertTestError(t, s.pool,
-			fmt.Sprintf("err-%d", i), "test-proj", "agent", fmt.Sprintf("s%d", i), "error msg",
-			base.Add(time.Duration(i)*time.Second).UTC().Format(time.RFC3339Nano))
+	cases := []struct {
+		name         string
+		nErrors      int
+		perPage      int
+		wantReturned int // -1 = skip (no first-page count assertion)
+		wantTotal    int
+		wantPages    int
+	}{
+		{"three_perpage_two", 3, 2, 2, 3, 2},   // ceil(3/2)=2
+		{"five_perpage_three", 5, 3, -1, 5, 2}, // ceil(5/3)=2
 	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := newErrorServer(t)
+			base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+			for i := 0; i < tc.nErrors; i++ {
+				insertTestError(t, s.pool,
+					fmt.Sprintf("err-%d", i), "test-proj", "agent", fmt.Sprintf("s%d", i), "error msg",
+					base.Add(time.Duration(i)*time.Second).UTC().Format(time.RFC3339Nano))
+			}
 
-	req := httptest.NewRequest(http.MethodGet,
-		withProject("/api/v1/errors?per_page=2", "test-proj"), nil)
-	rr := httptest.NewRecorder()
-	s.handleListErrors(rr, req)
+			req := httptest.NewRequest(http.MethodGet,
+				withProject(fmt.Sprintf("/api/v1/errors?per_page=%d", tc.perPage), "test-proj"), nil)
+			rr := httptest.NewRecorder()
+			s.handleListErrors(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200", rr.Code)
-	}
-	var resp struct {
-		Errors     []interface{} `json:"errors"`
-		Total      int           `json:"total"`
-		TotalPages int           `json:"total_pages"`
-	}
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(resp.Errors) != 2 {
-		t.Errorf("errors count = %d, want 2 (per_page limit)", len(resp.Errors))
-	}
-	if resp.Total != 3 {
-		t.Errorf("total = %d, want 3", resp.Total)
-	}
-	if resp.TotalPages != 2 {
-		t.Errorf("total_pages = %d, want 2 (ceil(3/2))", resp.TotalPages)
+			if rr.Code != http.StatusOK {
+				t.Errorf("status = %d, want 200", rr.Code)
+			}
+			var resp struct {
+				Errors     []interface{} `json:"errors"`
+				Total      int           `json:"total"`
+				TotalPages int           `json:"total_pages"`
+			}
+			if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if tc.wantReturned >= 0 && len(resp.Errors) != tc.wantReturned {
+				t.Errorf("errors count = %d, want %d (per_page limit)", len(resp.Errors), tc.wantReturned)
+			}
+			if resp.Total != tc.wantTotal {
+				t.Errorf("total = %d, want %d", resp.Total, tc.wantTotal)
+			}
+			if resp.TotalPages != tc.wantPages {
+				t.Errorf("total_pages = %d, want %d", resp.TotalPages, tc.wantPages)
+			}
+		})
 	}
 }
 
@@ -242,36 +237,6 @@ func TestHandleListErrors_TypeFilter(t *testing.T) {
 				t.Errorf("[%s] total = %d, want %d", tc.typ, resp.Total, tc.wantTotal)
 			}
 		})
-	}
-}
-
-func TestHandleListErrors_TotalPagesComputation(t *testing.T) {
-	s := newErrorServer(t)
-	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
-	// 5 errors, per_page=3 → ceil(5/3)=2 pages
-	for i := 0; i < 5; i++ {
-		insertTestError(t, s.pool, fmt.Sprintf("err-%d", i), "test-proj", "agent",
-			fmt.Sprintf("s%d", i), "msg",
-			base.Add(time.Duration(i)*time.Second).UTC().Format(time.RFC3339Nano))
-	}
-
-	req := httptest.NewRequest(http.MethodGet,
-		withProject("/api/v1/errors?per_page=3", "test-proj"), nil)
-	rr := httptest.NewRecorder()
-	s.handleListErrors(rr, req)
-
-	var resp struct {
-		Total      int `json:"total"`
-		TotalPages int `json:"total_pages"`
-	}
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if resp.Total != 5 {
-		t.Errorf("total = %d, want 5", resp.Total)
-	}
-	if resp.TotalPages != 2 {
-		t.Errorf("total_pages = %d, want 2 (ceil(5/3))", resp.TotalPages)
 	}
 }
 

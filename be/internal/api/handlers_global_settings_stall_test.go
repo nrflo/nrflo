@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -32,83 +33,55 @@ func TestHandleGetGlobalSettings_StallTimeoutsNull(t *testing.T) {
 	}
 }
 
-// TestHandlePatchGlobalSettings_StallStartTimeout_Set verifies PATCH integer persists and GET reflects it.
-func TestHandlePatchGlobalSettings_StallStartTimeout_Set(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_start_timeout_sec":60}`))
-	rr := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", rr.Code)
+// TestHandlePatchGlobalSettings_StallTimeout_SetUpdate verifies PATCH of an integer
+// value (including 0/disabled) persists and is reflected by GET, for both stall
+// fields, including overwriting a previously set value.
+func TestHandlePatchGlobalSettings_StallTimeout_SetUpdate(t *testing.T) {
+	cases := []struct {
+		name  string
+		field string
+		// pre is an optional value PATCHed before the asserted value (overwrite case).
+		pre  int
+		hasP bool
+		val  int
+	}{
+		{"start_60", "stall_start_timeout_sec", 0, false, 60},
+		{"running_300", "stall_running_timeout_sec", 0, false, 300},
+		{"start_zero_disabled", "stall_start_timeout_sec", 0, false, 0},
+		{"running_zero_disabled", "stall_running_timeout_sec", 0, false, 0},
+		{"start_update_overwrites", "stall_start_timeout_sec", 60, true, 180},
 	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			s := newGlobalSettingsServer(t)
 
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-	resp := decodeSettingsResponse(t, getRR)
-	if v := resp["stall_start_timeout_sec"]; v != float64(60) {
-		t.Errorf("stall_start_timeout_sec = %v, want 60", v)
-	}
-}
+			if tc.hasP {
+				req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings",
+					strings.NewReader(fmt.Sprintf(`{%q:%d}`, tc.field, tc.pre)))
+				rr := httptest.NewRecorder()
+				s.handlePatchGlobalSettings(rr, req)
+				if rr.Code != http.StatusOK {
+					t.Fatalf("pre PATCH status = %d, want 200", rr.Code)
+				}
+			}
 
-// TestHandlePatchGlobalSettings_StallRunningTimeout_Set verifies PATCH integer persists and GET reflects it.
-func TestHandlePatchGlobalSettings_StallRunningTimeout_Set(t *testing.T) {
-	s := newGlobalSettingsServer(t)
+			req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings",
+				strings.NewReader(fmt.Sprintf(`{%q:%d}`, tc.field, tc.val)))
+			rr := httptest.NewRecorder()
+			s.handlePatchGlobalSettings(rr, req)
+			if rr.Code != http.StatusOK {
+				t.Fatalf("PATCH status = %d, want 200", rr.Code)
+			}
 
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_running_timeout_sec":300}`))
-	rr := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", rr.Code)
-	}
-
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-	resp := decodeSettingsResponse(t, getRR)
-	if v := resp["stall_running_timeout_sec"]; v != float64(300) {
-		t.Errorf("stall_running_timeout_sec = %v, want 300", v)
-	}
-}
-
-// TestHandlePatchGlobalSettings_StallStartTimeout_Zero verifies 0 (disabled) persists and GET returns 0.
-func TestHandlePatchGlobalSettings_StallStartTimeout_Zero(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_start_timeout_sec":0}`))
-	rr := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", rr.Code)
-	}
-
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-	resp := decodeSettingsResponse(t, getRR)
-	if v := resp["stall_start_timeout_sec"]; v != float64(0) {
-		t.Errorf("stall_start_timeout_sec = %v, want 0 (disabled)", v)
-	}
-}
-
-// TestHandlePatchGlobalSettings_StallRunningTimeout_Zero verifies 0 (disabled) persists and GET returns 0.
-func TestHandlePatchGlobalSettings_StallRunningTimeout_Zero(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_running_timeout_sec":0}`))
-	rr := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("PATCH status = %d, want 200", rr.Code)
-	}
-
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-	resp := decodeSettingsResponse(t, getRR)
-	if v := resp["stall_running_timeout_sec"]; v != float64(0) {
-		t.Errorf("stall_running_timeout_sec = %v, want 0 (disabled)", v)
+			getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
+			getRR := httptest.NewRecorder()
+			s.handleGetGlobalSettings(getRR, getReq)
+			resp := decodeSettingsResponse(t, getRR)
+			if v := resp[tc.field]; v != float64(tc.val) {
+				t.Errorf("%s = %v, want %d", tc.field, v, tc.val)
+			}
+		})
 	}
 }
 
@@ -251,34 +224,5 @@ func TestHandlePatchGlobalSettings_StallAndOtherFields(t *testing.T) {
 	}
 	if v := resp["stall_running_timeout_sec"]; v != float64(300) {
 		t.Errorf("stall_running_timeout_sec = %v, want 300", v)
-	}
-}
-
-// TestHandleGetGlobalSettings_StallTimeout_Update verifies sequential PATCH updates are reflected by GET.
-func TestHandleGetGlobalSettings_StallTimeout_Update(t *testing.T) {
-	s := newGlobalSettingsServer(t)
-
-	// First value.
-	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_start_timeout_sec":60}`))
-	rr1 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr1, req1)
-	if rr1.Code != http.StatusOK {
-		t.Fatalf("first PATCH status = %d, want 200", rr1.Code)
-	}
-
-	// Update to a different value.
-	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/settings", strings.NewReader(`{"stall_start_timeout_sec":180}`))
-	rr2 := httptest.NewRecorder()
-	s.handlePatchGlobalSettings(rr2, req2)
-	if rr2.Code != http.StatusOK {
-		t.Fatalf("second PATCH status = %d, want 200", rr2.Code)
-	}
-
-	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/settings", nil)
-	getRR := httptest.NewRecorder()
-	s.handleGetGlobalSettings(getRR, getReq)
-	resp := decodeSettingsResponse(t, getRR)
-	if v := resp["stall_start_timeout_sec"]; v != float64(180) {
-		t.Errorf("stall_start_timeout_sec = %v, want 180 (latest value)", v)
 	}
 }

@@ -123,54 +123,6 @@ func TestHandleStallRestart_RunningStall_EventType(t *testing.T) {
 	}
 }
 
-// TestStallRestart_FieldCarryover verifies stallRestartCount and timeout values
-// are carried over in relaunchForContinuation.
-func TestStallRestart_FieldCarryover(t *testing.T) {
-	t.Parallel()
-	oldProc := &processInfo{
-		sessionID:           "old-session",
-		stallRestartCount:   2,
-		stallStartTimeout:   90 * time.Second,
-		stallRunningTimeout: 300 * time.Second,
-		restartCount:        1,
-		restartThreshold:    25,
-		maxFailRestarts:     3,
-		failRestartCount:    1,
-	}
-	newProc := &processInfo{}
-
-	// Apply relaunchForContinuation field assignments (mirrors completion.go)
-	newProc.restartCount = oldProc.restartCount + 1
-	newProc.restartThreshold = oldProc.restartThreshold
-	newProc.maxFailRestarts = oldProc.maxFailRestarts
-	newProc.failRestartCount = oldProc.failRestartCount
-	newProc.stallRestartCount = oldProc.stallRestartCount
-	newProc.stallStartTimeout = oldProc.stallStartTimeout
-	newProc.stallRunningTimeout = oldProc.stallRunningTimeout
-
-	if newProc.stallRestartCount != 2 {
-		t.Errorf("stallRestartCount carried = %d, want 2", newProc.stallRestartCount)
-	}
-	if newProc.stallStartTimeout != 90*time.Second {
-		t.Errorf("stallStartTimeout carried = %v, want 90s", newProc.stallStartTimeout)
-	}
-	if newProc.stallRunningTimeout != 300*time.Second {
-		t.Errorf("stallRunningTimeout carried = %v, want 300s", newProc.stallRunningTimeout)
-	}
-	if newProc.restartCount != 2 {
-		t.Errorf("restartCount = %d, want 2 (incremented)", newProc.restartCount)
-	}
-}
-
-// TestEventAgentStallRestart_Constant verifies the event constant uses resource.action naming.
-func TestEventAgentStallRestart_Constant(t *testing.T) {
-	t.Parallel()
-	const want = "agent.stall_restart"
-	if ws.EventAgentStallRestart != want {
-		t.Errorf("EventAgentStallRestart = %q, want %q", ws.EventAgentStallRestart, want)
-	}
-}
-
 // stallAssertStringField asserts a string field in event.Data.
 func stallAssertStringField(t *testing.T, data map[string]interface{}, key, want string) {
 	t.Helper()

@@ -107,16 +107,6 @@ func TestStartBackend_ReturnsErrorForUnknownMode(t *testing.T) {
 	}
 }
 
-// TestEventAgentViewerAttached_Constant verifies the WS event constant uses the
-// resource.action naming convention expected by the web UI.
-func TestEventAgentViewerAttached_Constant(t *testing.T) {
-	t.Parallel()
-	const want = "agent.viewer_attached"
-	if ws.EventAgentViewerAttached != want {
-		t.Errorf("EventAgentViewerAttached = %q, want %q", ws.EventAgentViewerAttached, want)
-	}
-}
-
 // TestEventAgentViewerAttached_DistinctFromTakeControl verifies it is different
 // from the existing take-control event so UIs can distinguish them.
 func TestEventAgentViewerAttached_DistinctFromTakeControl(t *testing.T) {

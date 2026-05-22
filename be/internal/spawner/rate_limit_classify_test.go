@@ -245,17 +245,3 @@ func TestGeminiAdapter_ClassifyExit(t *testing.T) {
 		})
 	}
 }
-
-// TestRetryClass_Constants verifies the enum values.
-func TestRetryClass_Constants(t *testing.T) {
-	t.Parallel()
-	if RetryClassNone != 0 {
-		t.Errorf("RetryClassNone = %d, want 0", RetryClassNone)
-	}
-	if RetryClassRateLimit != 1 {
-		t.Errorf("RetryClassRateLimit = %d, want 1", RetryClassRateLimit)
-	}
-	if RetryClassError != 2 {
-		t.Errorf("RetryClassError = %d, want 2", RetryClassError)
-	}
-}

@@ -8,25 +8,6 @@ import (
 	"be/internal/types"
 )
 
-// TestMigration041WorktreeColumnsExist verifies migration 000041 added
-// worktree_path and branch_name columns to workflow_instances.
-func TestMigration041WorktreeColumnsExist(t *testing.T) {
-	env := NewTestEnv(t)
-
-	for _, col := range []string{"worktree_path", "branch_name"} {
-		var count int
-		err := env.Pool.QueryRow(`
-			SELECT COUNT(*) FROM pragma_table_info('workflow_instances')
-			WHERE name = ?`, col).Scan(&count)
-		if err != nil {
-			t.Fatalf("schema query for column %s: %v", col, err)
-		}
-		if count != 1 {
-			t.Errorf("column %s should exist in workflow_instances after migration 000041, found %d", col, count)
-		}
-	}
-}
-
 // TestBuildV4State_IncludesWorktreeFields verifies that worktree_path and branch_name
 // appear in the GetStatus response when set on the workflow instance.
 func TestBuildV4State_IncludesWorktreeFields(t *testing.T) {

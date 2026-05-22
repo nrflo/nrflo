@@ -127,65 +127,6 @@ func TestWaitForRateLimitRetry_DelayPassedToClock(t *testing.T) {
 	}
 }
 
-// TestRateLimitCarryover_FieldsPropagate verifies rateLimitRetryCount/TotalWait/config/adapter
-// carry through relaunchForContinuation (mirrors stall_restart_event_test.go carryover test).
-func TestRateLimitCarryover_FieldsPropagate(t *testing.T) {
-	t.Parallel()
-	adapter := &ClaudeAdapter{}
-	cfg := rateLimitConfig{
-		Enabled:        true,
-		InitialBackoff: 60 * time.Second,
-		MaxWait:        3600 * time.Second,
-	}
-	oldProc := &processInfo{
-		sessionID:           "old-sess",
-		rateLimitRetryCount: 3,
-		rateLimitTotalWait:  300 * time.Second,
-		rateLimitConfig:     cfg,
-		adapter:             adapter,
-		stallRestartCount:   1,
-		failRestartCount:    2,
-		restartCount:        4,
-		restartThreshold:    25,
-		maxFailRestarts:     5,
-	}
-
-	newProc := &processInfo{}
-	// Mirror relaunchForContinuation field assignments (completion.go:172-185).
-	newProc.restartCount = oldProc.restartCount + 1
-	newProc.restartThreshold = oldProc.restartThreshold
-	newProc.maxFailRestarts = oldProc.maxFailRestarts
-	newProc.failRestartCount = oldProc.failRestartCount
-	newProc.stallRestartCount = oldProc.stallRestartCount
-	newProc.rateLimitRetryCount = oldProc.rateLimitRetryCount
-	newProc.rateLimitTotalWait = oldProc.rateLimitTotalWait
-	newProc.rateLimitConfig = oldProc.rateLimitConfig
-	newProc.adapter = oldProc.adapter
-
-	if newProc.rateLimitRetryCount != 3 {
-		t.Errorf("rateLimitRetryCount = %d, want 3", newProc.rateLimitRetryCount)
-	}
-	if newProc.rateLimitTotalWait != 300*time.Second {
-		t.Errorf("rateLimitTotalWait = %v, want 300s", newProc.rateLimitTotalWait)
-	}
-	if !newProc.rateLimitConfig.Enabled {
-		t.Error("rateLimitConfig.Enabled not carried")
-	}
-	if newProc.rateLimitConfig.InitialBackoff != 60*time.Second {
-		t.Errorf("rateLimitConfig.InitialBackoff = %v, want 60s", newProc.rateLimitConfig.InitialBackoff)
-	}
-	if newProc.adapter != adapter {
-		t.Error("adapter pointer not carried")
-	}
-	// failRestartCount must not be incremented during rate-limit carryover.
-	if newProc.failRestartCount != 2 {
-		t.Errorf("failRestartCount = %d, want 2 (unchanged)", newProc.failRestartCount)
-	}
-	if newProc.restartCount != 5 {
-		t.Errorf("restartCount = %d, want 5 (incremented)", newProc.restartCount)
-	}
-}
-
 // immediateSpyClock is a Clock that records After(d) calls and fires them immediately.
 type immediateSpyClock struct {
 	onAfter func(d time.Duration)

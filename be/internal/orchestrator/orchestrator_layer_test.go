@@ -1,25 +1,11 @@
 package orchestrator
 
 import (
-	"sync"
 	"testing"
-	"time"
 
 	"be/internal/model"
 	"be/internal/service"
 )
-
-// policyCheck runs the same gate logic as runLoop's fan-in section.
-// Returns true if the layer passes with the given policy, passCount, failCount.
-func policyCheck(policyStr string, passCount, failCount int) bool {
-	denom := passCount + failCount
-	if denom == 0 {
-		return true // all-skipped
-	}
-	policy, _ := service.ParseLayerPolicy(policyStr)
-	required := policy.Required(denom)
-	return passCount >= required
-}
 
 // TestLayerGroupingAndSequencing tests that phases are correctly grouped by layer
 // and layers execute in ascending order.
@@ -97,134 +83,6 @@ func TestNonContiguousLayers(t *testing.T) {
 	}
 }
 
-// TestParallelAgentsConcurrentExecution is a conceptual test showing how parallel agents
-// would be spawned concurrently. This test cannot run actual spawner since it requires
-// real agent processes, but it validates the orchestrator's concurrent spawning pattern.
-func TestParallelAgentsConcurrentExecution(t *testing.T) {
-	// This test demonstrates the concurrent execution pattern without actual spawner.
-	// The real orchestrator spawns each agent in a goroutine and waits for all to finish.
-
-	// Simulate concurrent execution
-	var wg sync.WaitGroup
-	results := make(chan string, 3)
-
-	agents := []string{"agent-a", "agent-b", "agent-c"}
-
-	for _, agent := range agents {
-		wg.Add(1)
-		agent := agent
-		go func() {
-			defer wg.Done()
-			// Simulate work
-			time.Sleep(10 * time.Millisecond)
-			results <- agent
-		}()
-	}
-
-	// Wait for all agents to complete
-	wg.Wait()
-	close(results)
-
-	// Verify all agents ran
-	completed := make(map[string]bool)
-	for agent := range results {
-		completed[agent] = true
-	}
-
-	if len(completed) != 3 {
-		t.Errorf("expected 3 agents to complete, got %d", len(completed))
-	}
-
-	for _, agent := range agents {
-		if !completed[agent] {
-			t.Errorf("agent %s did not complete", agent)
-		}
-	}
-}
-
-// TestMixedOutcomesLayerPassCount tests that a layer with mixed outcomes
-// (some pass, some fail) still allows the workflow to proceed if pass_count >= 1.
-func TestMixedOutcomesLayerPassCount(t *testing.T) {
-	// This test validates the pass_count >= 1 logic conceptually.
-	// The actual orchestrator code in runLoop checks:
-	//   if passCount == 0 { markFailed(); return }
-
-	tests := []struct {
-		name       string
-		passCount  int
-		failCount  int
-		shouldPass bool
-	}{
-		{
-			name:       "1 pass, 1 fail - should proceed",
-			passCount:  1,
-			failCount:  1,
-			shouldPass: true,
-		},
-		{
-			name:       "2 pass, 1 fail - should proceed",
-			passCount:  2,
-			failCount:  1,
-			shouldPass: true,
-		},
-		{
-			name:       "0 pass, 2 fail - should stop",
-			passCount:  0,
-			failCount:  2,
-			shouldPass: false,
-		},
-		{
-			name:       "0 pass, 1 fail - should stop",
-			passCount:  0,
-			failCount:  1,
-			shouldPass: false,
-		},
-		{
-			name:       "3 pass, 0 fail - should proceed",
-			passCount:  3,
-			failCount:  0,
-			shouldPass: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Simulate orchestrator's layer aggregation check
-			shouldProceed := tt.passCount > 0
-
-			if shouldProceed != tt.shouldPass {
-				t.Errorf("expected shouldProceed=%v, got %v (passCount=%d, failCount=%d)",
-					tt.shouldPass, shouldProceed, tt.passCount, tt.failCount)
-			}
-		})
-	}
-}
-
-// TestAllFailLayerStopsWorkflow tests the logic for when all agents in a layer fail.
-func TestAllFailLayerStopsWorkflow(t *testing.T) {
-	// Simulate all-fail scenario by checking the logic
-	// In real orchestrator: if passCount == 0 { markFailed() }
-	passCount := 0
-	failCount := 2
-
-	// This is the orchestrator's decision logic
-	shouldStop := passCount == 0 && failCount > 0
-
-	if !shouldStop {
-		t.Error("expected workflow to stop when all agents fail")
-	}
-
-	// Test that at least one pass allows continuation
-	passCount = 1
-	failCount = 2
-
-	shouldStop = passCount == 0 && failCount > 0
-
-	if shouldStop {
-		t.Error("expected workflow to continue when at least one agent passes")
-	}
-}
-
 // TestSingleAgentLayer tests that a layer with a single agent works correctly.
 func TestSingleAgentLayer(t *testing.T) {
 	wf := &model.Workflow{ID: "single", ProjectID: "proj"}
@@ -272,65 +130,5 @@ func TestLayerOrderPreserved(t *testing.T) {
 		if group.phases[0].Agent != expectedAgents[i] {
 			t.Errorf("expected agent '%s' in layer %d, got '%s'", expectedAgents[i], i, group.phases[0].Agent)
 		}
-	}
-}
-
-// TestLayerPassPolicy_All_OneFails_Fails verifies that policy "all" fails when any agent fails.
-func TestLayerPassPolicy_All_OneFails_Fails(t *testing.T) {
-	// 2 agents, 1 passes, 1 fails — "all" requires both
-	if policyCheck("all", 1, 1) {
-		t.Error("expected policy 'all' to fail when 1/2 passed")
-	}
-	// 2 agents, both pass — should succeed
-	if !policyCheck("all", 2, 0) {
-		t.Error("expected policy 'all' to succeed when 2/2 passed")
-	}
-}
-
-// TestLayerPassPolicy_Quorum_BelowThreshold_Fails verifies quorum:2 fails when only 1 passes.
-func TestLayerPassPolicy_Quorum_BelowThreshold_Fails(t *testing.T) {
-	if policyCheck("quorum:2", 1, 2) {
-		t.Error("expected quorum:2 to fail when 1/3 passed")
-	}
-}
-
-// TestLayerPassPolicy_Quorum_AtThreshold_Passes verifies quorum:2 succeeds when exactly 2 pass.
-func TestLayerPassPolicy_Quorum_AtThreshold_Passes(t *testing.T) {
-	if !policyCheck("quorum:2", 2, 1) {
-		t.Error("expected quorum:2 to succeed when 2/3 passed")
-	}
-}
-
-// TestLayerPassPolicy_Percent_RoundsUp verifies percent:80 with 3 agents requires ceil(2.4)=3.
-func TestLayerPassPolicy_Percent_RoundsUp(t *testing.T) {
-	// ceil(3 * 80/100) = ceil(2.4) = 3
-	if policyCheck("percent:80", 2, 1) {
-		t.Error("expected percent:80 with 3 agents to require 3, but 2 passed")
-	}
-	if !policyCheck("percent:80", 3, 0) {
-		t.Error("expected percent:80 with 3 agents to pass when all 3 pass")
-	}
-}
-
-// TestLayerPassPolicy_AllSkipped_StillProceeds verifies that when all agents are skipped
-// (denom == 0) the layer proceeds regardless of policy.
-func TestLayerPassPolicy_AllSkipped_StillProceeds(t *testing.T) {
-	for _, policy := range []string{"any", "all", "quorum:3", "percent:100"} {
-		if !policyCheck(policy, 0, 0) {
-			t.Errorf("expected policy %q to proceed when all agents skipped (denom=0)", policy)
-		}
-	}
-}
-
-// TestLayerPassPolicy_Callback_StillCountsAsPass verifies that a callback agent
-// increments passCount (the orchestrator adds it to passCount before policy check).
-func TestLayerPassPolicy_Callback_StillCountsAsPass(t *testing.T) {
-	// With policy "all" and 2 agents: 1 callback (counts as pass) + 1 fail = 1/2 → fail
-	if policyCheck("all", 1, 1) {
-		t.Error("expected 'all' to fail: callback is 1 pass, other agent failed")
-	}
-	// With policy "any": 1 callback pass is enough
-	if !policyCheck("any", 1, 1) {
-		t.Error("expected 'any' to succeed when callback counts as 1 pass")
 	}
 }

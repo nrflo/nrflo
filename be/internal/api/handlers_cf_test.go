@@ -9,78 +9,22 @@ import (
 
 // ── handleContinueWorkflow (ticket-scoped) ────────────────────────────────────
 
-func TestHandleContinueWorkflow_MissingProject(t *testing.T) {
-	s := &Server{}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets/TKT-1/workflow/continue",
-		strings.NewReader(`{"workflow":"feature"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleContinueWorkflow_Guards exercises the continue (ticket-scoped) guard ladder.
+func TestHandleContinueWorkflow_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project", "", false, true, `{"workflow":"feature"}`, http.StatusBadRequest, "X-Project"},
+		{"missing_ticket_id", "", true, false, `{"workflow":"feature"}`, http.StatusBadRequest, "ticket ID"},
+		{"nil_orchestrator", "", true, true, `{"workflow":"feature"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"invalid_json", "real", true, true, "{bad json", http.StatusBadRequest, "invalid request body"},
+		{"missing_workflow", "real", true, true, `{"instructions":"do it"}`, http.StatusBadRequest, "workflow name is required"},
 	}
-	assertErrorContains(t, rr, "X-Project")
-}
-
-func TestHandleContinueWorkflow_MissingTicketID(t *testing.T) {
-	s := &Server{}
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets//workflow/continue", "proj"),
-		strings.NewReader(`{"workflow":"feature"}`))
-	// no path value "id" set → extractID returns ""
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/tickets/TKT-1/workflow/continue", "TKT-1",
+				func(s *Server) http.HandlerFunc { return s.handleContinueWorkflow })
+		})
 	}
-	assertErrorContains(t, rr, "ticket ID")
-}
-
-func TestHandleContinueWorkflow_NilOrchestrator(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/continue", "proj"),
-		strings.NewReader(`{"workflow":"feature"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflow(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
-	}
-	assertErrorContains(t, rr, "orchestrator not available")
-}
-
-func TestHandleContinueWorkflow_InvalidJSON(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/continue", "proj"),
-		strings.NewReader("{bad json"))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "invalid request body")
-}
-
-func TestHandleContinueWorkflow_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/continue", "proj"),
-		strings.NewReader(`{"instructions":"do it"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
 }
 
 func TestHandleContinueWorkflow_NoWaitingInstance(t *testing.T) {
@@ -100,63 +44,21 @@ func TestHandleContinueWorkflow_NoWaitingInstance(t *testing.T) {
 
 // ── handleFailWorkflow (ticket-scoped) ────────────────────────────────────────
 
-func TestHandleFailWorkflow_MissingProject(t *testing.T) {
-	s := &Server{}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/tickets/TKT-1/workflow/fail",
-		strings.NewReader(`{"workflow":"feature","reason":"bad"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleFailWorkflow_Guards exercises the fail (ticket-scoped) guard ladder.
+func TestHandleFailWorkflow_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project", "", false, true, `{"workflow":"feature","reason":"bad"}`, http.StatusBadRequest, "X-Project"},
+		{"nil_orchestrator", "", true, true, `{"workflow":"feature","reason":"bad"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"missing_workflow", "real", true, true, `{"reason":"bad"}`, http.StatusBadRequest, "workflow name is required"},
+		{"missing_reason", "real", true, true, `{"workflow":"feature"}`, http.StatusBadRequest, "reason is required"},
 	}
-	assertErrorContains(t, rr, "X-Project")
-}
-
-func TestHandleFailWorkflow_NilOrchestrator(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/fail", "proj"),
-		strings.NewReader(`{"workflow":"feature","reason":"bad"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflow(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/tickets/TKT-1/workflow/fail", "TKT-1",
+				func(s *Server) http.HandlerFunc { return s.handleFailWorkflow })
+		})
 	}
-	assertErrorContains(t, rr, "orchestrator not available")
-}
-
-func TestHandleFailWorkflow_MissingWorkflow(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/fail", "proj"),
-		strings.NewReader(`{"reason":"bad"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "workflow name is required")
-}
-
-func TestHandleFailWorkflow_MissingReason(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost,
-		withProject("/api/v1/tickets/TKT-1/workflow/fail", "proj"),
-		strings.NewReader(`{"workflow":"feature"}`))
-	req.SetPathValue("id", "TKT-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflow(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "reason is required")
 }
 
 func TestHandleFailWorkflow_NoActiveInstance(t *testing.T) {
@@ -176,60 +78,21 @@ func TestHandleFailWorkflow_NoActiveInstance(t *testing.T) {
 
 // ── handleContinueWorkflowProject (project-scoped) ───────────────────────────
 
-func TestHandleContinueWorkflowProject_MissingProjectID(t *testing.T) {
-	s := &Server{}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/continue",
-		strings.NewReader(`{"instance_id":"inst-1"}`))
-	// no path value "id" set
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleContinueWorkflowProject_Guards exercises the continue (project-scoped) guard ladder.
+func TestHandleContinueWorkflowProject_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project_id", "", false, false, `{"instance_id":"inst-1"}`, http.StatusBadRequest, "project ID required"},
+		{"nil_orchestrator", "", false, true, `{"instance_id":"inst-1"}`, http.StatusServiceUnavailable, "orchestrator not available"},
+		{"invalid_json", "real", false, true, "{bad json", http.StatusBadRequest, "invalid request body"},
+		{"missing_instance_id", "real", false, true, `{"instructions":"go"}`, http.StatusBadRequest, "instance_id is required"},
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-func TestHandleContinueWorkflowProject_NilOrchestrator(t *testing.T) {
-	s := &Server{orchestrator: nil}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/continue",
-		strings.NewReader(`{"instance_id":"inst-1"}`))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusServiceUnavailable {
-		t.Errorf("status = %d, want 503", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/projects/proj-1/workflow/continue", "proj-1",
+				func(s *Server) http.HandlerFunc { return s.handleContinueWorkflowProject })
+		})
 	}
-	assertErrorContains(t, rr, "orchestrator not available")
-}
-
-func TestHandleContinueWorkflowProject_InvalidJSON(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/continue",
-		strings.NewReader("{bad json"))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "invalid request body")
-}
-
-func TestHandleContinueWorkflowProject_MissingInstanceID(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/continue",
-		strings.NewReader(`{"instructions":"go"}`))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleContinueWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "instance_id is required")
 }
 
 func TestHandleContinueWorkflowProject_InstanceNotFound(t *testing.T) {
@@ -248,44 +111,18 @@ func TestHandleContinueWorkflowProject_InstanceNotFound(t *testing.T) {
 
 // ── handleFailWorkflowProject (project-scoped) ───────────────────────────────
 
-func TestHandleFailWorkflowProject_MissingProjectID(t *testing.T) {
-	s := &Server{}
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/fail",
-		strings.NewReader(`{"instance_id":"inst-1","reason":"bad"}`))
-	// no path value "id" set
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// TestHandleFailWorkflowProject_Guards exercises the fail (project-scoped) guard ladder.
+func TestHandleFailWorkflowProject_Guards(t *testing.T) {
+	cases := []guardCase{
+		{"missing_project_id", "", false, false, `{"instance_id":"inst-1","reason":"bad"}`, http.StatusBadRequest, "project ID required"},
+		{"missing_instance_id", "real", false, true, `{"reason":"bad"}`, http.StatusBadRequest, "instance_id is required"},
+		{"missing_reason", "real", false, true, `{"instance_id":"inst-1"}`, http.StatusBadRequest, "reason is required"},
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-func TestHandleFailWorkflowProject_MissingInstanceID(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/fail",
-		strings.NewReader(`{"reason":"bad"}`))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			runGuardCase(t, tc, "/api/v1/projects/proj-1/workflow/fail", "proj-1",
+				func(s *Server) http.HandlerFunc { return s.handleFailWorkflowProject })
+		})
 	}
-	assertErrorContains(t, rr, "instance_id is required")
-}
-
-func TestHandleFailWorkflowProject_MissingReason(t *testing.T) {
-	s := newTakeControlServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-1/workflow/fail",
-		strings.NewReader(`{"instance_id":"inst-1"}`))
-	req.SetPathValue("id", "proj-1")
-	rr := httptest.NewRecorder()
-	s.handleFailWorkflowProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "reason is required")
 }

@@ -40,47 +40,18 @@ func insertSecondWorkflow(t *testing.T, pool *db.Pool, projectID, workflowID str
 	}
 }
 
-// TestGetWorkflowDef_OmitsConsultantFromPhases verifies that a consultant agent
-// definition does not appear in the Phases slice returned by GetWorkflowDef.
-func TestGetWorkflowDef_OmitsConsultantFromPhases(t *testing.T) {
-	t.Parallel()
-	_, agentSvc, wfSvc, _, wfID := setupConsultantExecEnv(t)
-
-	// Create a real agent and a consultant on the same layer.
-	if _, err := agentSvc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "real-agent", Prompt: "do stuff", Layer: 0,
-	}); err != nil {
-		t.Fatalf("create real agent: %v", err)
-	}
-	if _, err := agentSvc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "cons-agent", Prompt: "advise", Layer: 0,
-		ExecutionMode: "api", Consultant: true,
-	}); err != nil {
-		t.Fatalf("create consultant agent: %v", err)
-	}
-
-	wf, err := wfSvc.GetWorkflowDef("proj1", wfID)
-	if err != nil {
-		t.Fatalf("GetWorkflowDef: %v", err)
-	}
-	if len(wf.Phases) != 1 {
-		t.Fatalf("Phases count = %d, want 1 (consultant excluded)", len(wf.Phases))
-	}
-	if wf.Phases[0].Agent != "real-agent" {
-		t.Errorf("Phases[0].Agent = %q, want real-agent", wf.Phases[0].Agent)
-	}
-}
-
-// TestListWorkflowDefs_OmitsConsultantFromPhases verifies that ListWorkflowDefs
-// also excludes consultants from each workflow's Phases.
-func TestListWorkflowDefs_OmitsConsultantFromPhases(t *testing.T) {
+// TestWorkflowDef_OmitsConsultantFromPhases verifies that a consultant agent
+// definition does not appear in the Phases slice returned by either GetWorkflowDef
+// or ListWorkflowDefs (both share the same read path), while a second consultant-free
+// workflow is unaffected.
+func TestWorkflowDef_OmitsConsultantFromPhases(t *testing.T) {
 	t.Parallel()
 	pool, agentSvc, wfSvc, _, wfID := setupConsultantExecEnv(t)
 
 	// Add a second workflow so we can confirm isolation.
 	insertSecondWorkflow(t, pool, "proj1", "wf2")
 
-	// wf1: one real + one consultant
+	// wf1: one real + one consultant on the same layer.
 	if _, err := agentSvc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID: "impl", Prompt: "implement", Layer: 0,
 	}); err != nil {
@@ -93,18 +64,30 @@ func TestListWorkflowDefs_OmitsConsultantFromPhases(t *testing.T) {
 		t.Fatalf("create advisor: %v", err)
 	}
 
-	// wf2: one real agent only
+	// wf2: one real agent only.
 	if _, err := agentSvc.CreateAgentDef("proj1", "wf2", &types.AgentDefCreateRequest{
 		ID: "worker", Prompt: "work", Layer: 0,
 	}); err != nil {
 		t.Fatalf("create worker: %v", err)
 	}
 
+	// GetWorkflowDef path.
+	wf, err := wfSvc.GetWorkflowDef("proj1", wfID)
+	if err != nil {
+		t.Fatalf("GetWorkflowDef: %v", err)
+	}
+	if len(wf.Phases) != 1 {
+		t.Fatalf("GetWorkflowDef Phases count = %d, want 1 (consultant excluded)", len(wf.Phases))
+	}
+	if wf.Phases[0].Agent != "impl" {
+		t.Errorf("GetWorkflowDef Phases[0].Agent = %q, want impl", wf.Phases[0].Agent)
+	}
+
+	// ListWorkflowDefs path.
 	defs, err := wfSvc.ListWorkflowDefs("proj1")
 	if err != nil {
 		t.Fatalf("ListWorkflowDefs: %v", err)
 	}
-
 	wf1, ok := defs[wfID]
 	if !ok {
 		t.Fatalf("%s not found in ListWorkflowDefs result", wfID)
@@ -115,7 +98,6 @@ func TestListWorkflowDefs_OmitsConsultantFromPhases(t *testing.T) {
 	if len(wf1.Phases) > 0 && wf1.Phases[0].Agent != "impl" {
 		t.Errorf("%s Phases[0] = %q, want impl", wfID, wf1.Phases[0].Agent)
 	}
-
 	wf2, ok := defs["wf2"]
 	if !ok {
 		t.Fatal("wf2 not found in ListWorkflowDefs result")

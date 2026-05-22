@@ -219,18 +219,6 @@ func TestPrintStatus_MultipleAgents_OneLineEach(t *testing.T) {
 	}
 }
 
-// TestTrxField_ProcessInfo verifies the processInfo trx field can be set and read.
-func TestTrxField_ProcessInfo(t *testing.T) {
-	proc := &processInfo{trx: "feedf00d"}
-	if proc.trx != "feedf00d" {
-		t.Errorf("processInfo.trx = %q, want feedf00d", proc.trx)
-	}
-	proc.trx = "00000000"
-	if proc.trx != "00000000" {
-		t.Errorf("processInfo.trx after update = %q, want 00000000", proc.trx)
-	}
-}
-
 // TestLogAgent_FormatPrefix_ModelParsed verifies formatPrefix extracts model from cli:model format.
 func TestLogAgent_FormatPrefix_ModelParsed(t *testing.T) {
 	buf := captureLog(t)

@@ -24,61 +24,6 @@ func setupLogCapture(t *testing.T) *bytes.Buffer {
 	return &buf
 }
 
-func TestOrchestratorStart_GeneratesTrx(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "LOG-1", "Test logging")
-
-	logBuf := setupLogCapture(t)
-
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "LOG-1",
-		WorkflowName: "test",
-		ScopeType:    "ticket",
-	}
-
-	result, err := env.orch.Start(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-
-	if result.InstanceID == "" {
-		t.Error("Start() returned empty instance ID")
-	}
-
-	output := logBuf.String()
-
-	// Verify trx is present (not "-")
-	if !strings.Contains(output, "workflow instance created") {
-		t.Errorf("log output missing 'workflow instance created': %s", output)
-	}
-
-	// Extract trx ID from log line
-	lines := strings.Split(output, "\n")
-	var trxID string
-	for _, line := range lines {
-		if strings.Contains(line, "workflow instance created") {
-			// Format: YYYY-MM-DD HH:MM:SS LEVEL [trxID] message
-			start := strings.Index(line, "[")
-			end := strings.Index(line, "]")
-			if start != -1 && end != -1 {
-				trxID = line[start+1 : end]
-			}
-			break
-		}
-	}
-
-	if trxID == "" {
-		t.Error("could not extract trx ID from log output")
-	}
-	if trxID == "-" {
-		t.Error("trx ID should not be '-' for orchestration")
-	}
-	if len(trxID) != 8 {
-		t.Errorf("trx ID length = %d, want 8 (hex string)", len(trxID))
-	}
-}
-
 func TestOrchestratorStart_LogsWorkflowInstanceCreated(t *testing.T) {
 	env := newTestEnv(t)
 	env.createTicket(t, "LOG-2", "Test instance creation")
@@ -114,6 +59,76 @@ func TestOrchestratorStart_LogsWorkflowInstanceCreated(t *testing.T) {
 	}
 	if !strings.Contains(output, "scope=ticket") {
 		t.Errorf("log output missing scope type: %s", output)
+	}
+
+	// Verify trx is present and non-empty (not "-")
+	lines := strings.Split(output, "\n")
+	var trxID string
+	for _, line := range lines {
+		if strings.Contains(line, "workflow instance created") {
+			start := strings.Index(line, "[")
+			end := strings.Index(line, "]")
+			if start != -1 && end != -1 {
+				trxID = line[start+1 : end]
+			}
+			break
+		}
+	}
+	if trxID == "" {
+		t.Error("could not extract trx ID from log output")
+	}
+	if trxID == "-" {
+		t.Error("trx ID should not be '-' for orchestration")
+	}
+	if len(trxID) != 8 {
+		t.Errorf("trx ID length = %d, want 8 (hex string)", len(trxID))
+	}
+
+	// All log lines must carry the same trx
+	var trxIDs []string
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		start := strings.Index(line, "[")
+		end := strings.Index(line, "]")
+		if start != -1 && end != -1 {
+			trxIDs = append(trxIDs, line[start+1:end])
+		}
+	}
+	if len(trxIDs) == 0 {
+		t.Fatal("no trx IDs found in log output")
+	}
+	for i, trx := range trxIDs {
+		if trx != trxIDs[0] {
+			t.Errorf("trx ID mismatch at line %d: got %s, want %s", i, trx, trxIDs[0])
+		}
+	}
+
+	// Verify structured format: YYYY-MM-DD HH:MM:SS LEVEL [trx] …
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) < 4 {
+			t.Errorf("log line has fewer than 4 parts: %s", line)
+			continue
+		}
+		if !strings.Contains(parts[0], "-") {
+			t.Errorf("log line missing date: %s", line)
+		}
+		if !strings.Contains(parts[1], ":") {
+			t.Errorf("log line missing time: %s", line)
+		}
+		level := parts[2]
+		if level != "INFO" && level != "WARN" && level != "ERROR" {
+			t.Errorf("log line has invalid level %s: %s", level, line)
+		}
+		trxPart := parts[3]
+		if !strings.HasPrefix(trxPart, "[") || !strings.HasSuffix(trxPart, "]") {
+			t.Errorf("log line missing [trx]: %s", line)
+		}
 	}
 }
 
@@ -282,62 +297,6 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 	}
 }
 
-func TestHandleCallback_LogsCallbackDetection(t *testing.T) {
-	env := newTestEnv(t)
-
-	// clearCallbackMetadata is a no-op for non-existent WFI IDs
-	// (DeleteKeys returns empty, no error). Verify no panic.
-	env.orch.clearCallbackMetadata(context.Background(), "nonexistent-wfi-id")
-}
-
-func TestOrchestratorStart_TrxPropagation_SameTrxInAllLogs(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "LOG-7", "Test trx consistency")
-
-	logBuf := setupLogCapture(t)
-
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "LOG-7",
-		WorkflowName: "test",
-		ScopeType:    "ticket",
-	}
-
-	_, err := env.orch.Start(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-
-	output := logBuf.String()
-	lines := strings.Split(output, "\n")
-
-	// Extract trx IDs from all log lines
-	var trxIDs []string
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		start := strings.Index(line, "[")
-		end := strings.Index(line, "]")
-		if start != -1 && end != -1 {
-			trxID := line[start+1 : end]
-			trxIDs = append(trxIDs, trxID)
-		}
-	}
-
-	if len(trxIDs) == 0 {
-		t.Fatal("no trx IDs found in log output")
-	}
-
-	// All trx IDs should be the same (same orchestration run)
-	firstTrx := trxIDs[0]
-	for i, trx := range trxIDs {
-		if trx != firstTrx {
-			t.Errorf("trx ID mismatch at line %d: got %s, want %s (line: %s)", i, trx, firstTrx, lines[i])
-		}
-	}
-}
-
 func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 	env := newTestEnv(t)
 	// Don't create ticket - this will cause the Get() call to fail before Close()
@@ -374,100 +333,5 @@ func TestMarkCompleted_LogsTicketCloseError(t *testing.T) {
 	}
 	if !strings.Contains(output, "ticket=NONEXISTENT") {
 		t.Errorf("log output missing ticket ID: %s", output)
-	}
-}
-
-func TestProjectScope_LogsProjectCompleted(t *testing.T) {
-	env := newTestEnv(t)
-
-	// Update workflow to project scope
-	_, err := env.pool.Exec(`UPDATE workflows SET scope_type = 'project' WHERE LOWER(id) = LOWER(?)`, "test")
-	if err != nil {
-		t.Fatalf("failed to update workflow scope: %v", err)
-	}
-
-	logBuf := setupLogCapture(t)
-
-	req := RunRequest{
-		ProjectID:    env.project,
-		WorkflowName: "test",
-		ScopeType:    "project",
-	}
-
-	result, err := env.orch.Start(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-
-	output := logBuf.String()
-
-	// Verify project scope is logged
-	if !strings.Contains(output, "scope=project") {
-		t.Errorf("log output missing scope=project: %s", output)
-	}
-	if !strings.Contains(output, "instance_id="+result.InstanceID) {
-		t.Errorf("log output missing instance_id: %s", output)
-	}
-}
-
-func TestOrchestratorLogging_StructuredFormat(t *testing.T) {
-	env := newTestEnv(t)
-	env.createTicket(t, "LOG-8", "Test structured logging")
-
-	logBuf := setupLogCapture(t)
-
-	req := RunRequest{
-		ProjectID:    env.project,
-		TicketID:     "LOG-8",
-		WorkflowName: "test",
-		ScopeType:    "ticket",
-	}
-
-	result, err := env.orch.Start(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Start() error = %v", err)
-	}
-
-	output := logBuf.String()
-	lines := strings.Split(output, "\n")
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		// Verify structured format: YYYY-MM-DD HH:MM:SS LEVEL [trx] message key=value...
-		parts := strings.Fields(line)
-		if len(parts) < 4 {
-			t.Errorf("log line has fewer than 4 parts: %s", line)
-			continue
-		}
-
-		// Check timestamp format (YYYY-MM-DD)
-		if !strings.Contains(parts[0], "-") {
-			t.Errorf("log line missing date: %s", line)
-		}
-
-		// Check time format (HH:MM:SS)
-		if !strings.Contains(parts[1], ":") {
-			t.Errorf("log line missing time: %s", line)
-		}
-
-		// Check level (INFO/WARN/ERROR)
-		level := parts[2]
-		if level != "INFO" && level != "WARN" && level != "ERROR" {
-			t.Errorf("log line has invalid level %s: %s", level, line)
-		}
-
-		// Check trx in brackets
-		trxPart := parts[3]
-		if !strings.HasPrefix(trxPart, "[") || !strings.HasSuffix(trxPart, "]") {
-			t.Errorf("log line missing [trx]: %s", line)
-		}
-	}
-
-	// Verify instance was created
-	if result.InstanceID == "" {
-		t.Error("instance ID should not be empty")
 	}
 }

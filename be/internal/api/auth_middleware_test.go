@@ -196,35 +196,36 @@ func TestRequireAdmin_AdminUser_Passes(t *testing.T) {
 
 // --- getUser / getUserID tests ---
 
-func TestGetUser_WithUserInContext(t *testing.T) {
-	u := &model.User{ID: "usr_abc", Email: "u@test.com", Role: model.UserRoleAdmin}
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req = req.WithContext(context.WithValue(req.Context(), userKey, u))
-	got := getUser(req)
-	if got == nil || got.ID != u.ID {
-		t.Errorf("getUser() = %v, want user with ID %q", got, u.ID)
+func TestUserContextHelpers(t *testing.T) {
+	cases := []struct {
+		name       string
+		user       *model.User // nil = no user in context
+		wantUserID string      // expected getUserID result; for present cases also the user ID
+	}{
+		{"user_present", &model.User{ID: "usr_abc", Email: "u@test.com", Role: model.UserRoleAdmin}, "usr_abc"},
+		{"user_present_id_only", &model.User{ID: "usr_xyz", Role: model.UserRoleAdmin}, "usr_xyz"},
+		{"no_user", nil, ""},
 	}
-}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tc.user != nil {
+				req = req.WithContext(context.WithValue(req.Context(), userKey, tc.user))
+			}
 
-func TestGetUser_NoUser_ReturnsNil(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if got := getUser(req); got != nil {
-		t.Errorf("getUser() = %v, want nil", got)
-	}
-}
+			gotUser := getUser(req)
+			if tc.user == nil {
+				if gotUser != nil {
+					t.Errorf("getUser() = %v, want nil", gotUser)
+				}
+			} else if gotUser == nil || gotUser.ID != tc.user.ID {
+				t.Errorf("getUser() = %v, want user with ID %q", gotUser, tc.user.ID)
+			}
 
-func TestGetUserID_ReturnsID_WhenUserPresent(t *testing.T) {
-	u := &model.User{ID: "usr_xyz", Role: model.UserRoleAdmin}
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req = req.WithContext(context.WithValue(req.Context(), userKey, u))
-	if got := getUserID(req); got != "usr_xyz" {
-		t.Errorf("getUserID() = %q, want %q", got, "usr_xyz")
-	}
-}
-
-func TestGetUserID_ReturnsEmpty_WhenNoUser(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	if got := getUserID(req); got != "" {
-		t.Errorf("getUserID() = %q, want empty", got)
+			if got := getUserID(req); got != tc.wantUserID {
+				t.Errorf("getUserID() = %q, want %q", got, tc.wantUserID)
+			}
+		})
 	}
 }

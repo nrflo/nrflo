@@ -2,25 +2,10 @@ package integration
 
 import "testing"
 
-// TestMigration057OldOpusModelsRemoved verifies that migration 000057 deletes
-// the two legacy unversioned opus rows (opus, opus_1m) from cli_models.
-func TestMigration057OldOpusModelsRemoved(t *testing.T) {
-	env := NewTestEnv(t)
-
-	for _, id := range []string{"opus", "opus_1m"} {
-		var count int
-		if err := env.Pool.QueryRow(
-			`SELECT COUNT(*) FROM cli_models WHERE id = ?`, id).Scan(&count); err != nil {
-			t.Fatalf("query cli_models for %q: %v", id, err)
-		}
-		if count != 0 {
-			t.Errorf("model %q should not exist after migration 000057, found %d row(s)", id, count)
-		}
-	}
-}
-
 // TestMigration057NewOpusModelsSeeded verifies that migration 000057 inserts
-// the four versioned Opus models with correct cli_type, mapped_model, context_length.
+// the four versioned Opus models with correct cli_type, display_name,
+// mapped_model, context_length, read_only, and enabled flags. (The removal of
+// the legacy opus/opus_1m rows is covered by TestMigration057MigratesAgentDefModelColumns.)
 func TestMigration057NewOpusModelsSeeded(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -106,63 +91,6 @@ func TestMigration057ClaudeCLIModelsExactSet(t *testing.T) {
 	for i, id := range ids {
 		if id != want[i] {
 			t.Errorf("claude cli_models[%d] = %q, want %q (full list: %v)", i, id, want[i], ids)
-		}
-	}
-}
-
-// TestMigration057NoAgentDefsReferenceOldOpus verifies no agent_definitions or
-// system_agent_definitions rows reference the removed opus/opus_1m IDs after
-// migration, either in the model or low_consumption_model columns.
-func TestMigration057NoAgentDefsReferenceOldOpus(t *testing.T) {
-	env := NewTestEnv(t)
-
-	queries := []struct {
-		name  string
-		query string
-	}{
-		{
-			name: "agent_definitions.model",
-			query: `SELECT COUNT(*) FROM agent_definitions
-				WHERE model IN ('opus', 'opus_1m')`,
-		},
-		{
-			name: "agent_definitions.low_consumption_model",
-			query: `SELECT COUNT(*) FROM agent_definitions
-				WHERE low_consumption_model IN ('opus', 'opus_1m')`,
-		},
-		{
-			name: "system_agent_definitions.model",
-			query: `SELECT COUNT(*) FROM system_agent_definitions
-				WHERE model IN ('opus', 'opus_1m')`,
-		},
-	}
-
-	for _, q := range queries {
-		t.Run(q.name, func(t *testing.T) {
-			var count int
-			if err := env.Pool.QueryRow(q.query).Scan(&count); err != nil {
-				t.Fatalf("%s: %v", q.name, err)
-			}
-			if count != 0 {
-				t.Errorf("%s: %d row(s) still reference removed opus/opus_1m, want 0", q.name, count)
-			}
-		})
-	}
-}
-
-// TestMigration057VersionedOpusEnabled verifies that the four versioned Opus
-// models are enabled (not disabled) by default after migration.
-func TestMigration057VersionedOpusEnabled(t *testing.T) {
-	env := NewTestEnv(t)
-
-	for _, id := range []string{"opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m"} {
-		var enabled int
-		if err := env.Pool.QueryRow(
-			`SELECT enabled FROM cli_models WHERE id = ?`, id).Scan(&enabled); err != nil {
-			t.Fatalf("SELECT enabled for %q: %v", id, err)
-		}
-		if enabled != 1 {
-			t.Errorf("model %q: enabled = %d, want 1", id, enabled)
 		}
 	}
 }

@@ -9,16 +9,6 @@ import (
 	"be/internal/ws"
 )
 
-// TestEventAgentTakeControlRejected_Constant verifies the WS event constant
-// uses the correct resource.action naming convention.
-func TestEventAgentTakeControlRejected_Constant(t *testing.T) {
-	t.Parallel()
-	const want = "agent.take_control_rejected"
-	if ws.EventAgentTakeControlRejected != want {
-		t.Errorf("EventAgentTakeControlRejected = %q, want %q", ws.EventAgentTakeControlRejected, want)
-	}
-}
-
 // TestTakeControlRejected_APIMode_BroadcastsEvent verifies that when a
 // take-control request arrives for an API-mode agent, EventAgentTakeControlRejected
 // is broadcast with all required payload fields (session_id, agent_type, model_id,

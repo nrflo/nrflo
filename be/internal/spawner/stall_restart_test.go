@@ -8,53 +8,6 @@ import (
 	"be/internal/clock"
 )
 
-// TestStall_Constants verifies the stall detection constants match the spec.
-func TestStall_Constants(t *testing.T) {
-	t.Parallel()
-	if defaultStallStartTimeout != 2*time.Minute {
-		t.Errorf("defaultStallStartTimeout = %v, want 2m", defaultStallStartTimeout)
-	}
-	if defaultStallRunningTimeout != 8*time.Minute {
-		t.Errorf("defaultStallRunningTimeout = %v, want 8m", defaultStallRunningTimeout)
-	}
-	if maxStallRestarts != 15 {
-		t.Errorf("maxStallRestarts = %d, want 15", maxStallRestarts)
-	}
-}
-
-// TestStall_Fields_ProcessInfo verifies processInfo has the expected stall fields.
-func TestStall_Fields_ProcessInfo(t *testing.T) {
-	t.Parallel()
-	proc := &processInfo{
-		stallStartTimeout:   30 * time.Second,
-		stallRunningTimeout: 5 * time.Minute,
-		stallRestartCount:   2,
-		hasReceivedMessage:  true,
-	}
-
-	if proc.stallStartTimeout != 30*time.Second {
-		t.Errorf("stallStartTimeout = %v, want 30s", proc.stallStartTimeout)
-	}
-	if proc.stallRunningTimeout != 5*time.Minute {
-		t.Errorf("stallRunningTimeout = %v, want 5m", proc.stallRunningTimeout)
-	}
-	if proc.stallRestartCount != 2 {
-		t.Errorf("stallRestartCount = %d, want 2", proc.stallRestartCount)
-	}
-	if !proc.hasReceivedMessage {
-		t.Error("hasReceivedMessage = false, want true")
-	}
-
-	// Zero values
-	proc2 := &processInfo{}
-	if proc2.stallRestartCount != 0 {
-		t.Errorf("default stallRestartCount = %d, want 0", proc2.stallRestartCount)
-	}
-	if proc2.hasReceivedMessage {
-		t.Error("default hasReceivedMessage = true, want false")
-	}
-}
-
 // TestCheckStall_LowContextSavingSkips verifies stall check is bypassed during low-context save.
 func TestCheckStall_LowContextSavingSkips(t *testing.T) {
 	t.Parallel()

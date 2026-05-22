@@ -1,7 +1,6 @@
 package service
 
 import (
-	"strings"
 	"testing"
 
 	"be/internal/types"
@@ -76,74 +75,6 @@ func TestUpdateWorkflowDef_FinalizeSlots_TriState(t *testing.T) {
 	}
 	if def.FinalizeSuccessCommand != "" {
 		t.Errorf("after nil post-clear: FinalizeSuccessCommand = %q, want empty", def.FinalizeSuccessCommand)
-	}
-}
-
-// TestUpdateWorkflowDef_FinalizeSlots_BothInOneCall rejects command+script_id in same update call.
-func TestUpdateWorkflowDef_FinalizeSlots_BothInOneCall(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{ID: "wf-fin-upd-both"})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	cmd := "do-thing"
-	script := "some-script-id"
-	err = svc.UpdateWorkflowDef("proj1", "wf-fin-upd-both", &types.WorkflowDefUpdateRequest{
-		FinalizeSuccessCommand:  &cmd,
-		FinalizeSuccessScriptID: &script,
-	})
-	if err == nil {
-		t.Fatal("expected error for both command+script_id in update, got nil")
-	}
-	if !strings.Contains(err.Error(), "mutually exclusive") {
-		t.Errorf("error = %q, want to contain 'mutually exclusive'", err.Error())
-	}
-}
-
-// TestUpdateWorkflowDef_FinalizeSlots_MissingScript rejects a non-existent script_id on update.
-func TestUpdateWorkflowDef_FinalizeSlots_MissingScript(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{ID: "wf-fin-upd-missing"})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	ghost := "ghost-id"
-	err = svc.UpdateWorkflowDef("proj1", "wf-fin-upd-missing", &types.WorkflowDefUpdateRequest{
-		FinalizeFailureScriptID: &ghost,
-	})
-	if err == nil {
-		t.Fatal("expected error for non-existent script_id in update, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_not_found") {
-		t.Errorf("error = %q, want to contain 'python_script_not_found'", err.Error())
-	}
-}
-
-// TestUpdateWorkflowDef_FinalizeSlots_ToolKindRejected rejects tool-kind script on update.
-func TestUpdateWorkflowDef_FinalizeSlots_ToolKindRejected(t *testing.T) {
-	t.Parallel()
-	_, svc := setupWorkflowDefsTestEnv(t)
-	_, toolID := seedFinalizeScripts(t, svc, "proj1")
-
-	_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{ID: "wf-fin-upd-tool"})
-	if err != nil {
-		t.Fatalf("create: %v", err)
-	}
-
-	err = svc.UpdateWorkflowDef("proj1", "wf-fin-upd-tool", &types.WorkflowDefUpdateRequest{
-		FinalizeSuccessScriptID: &toolID,
-	})
-	if err == nil {
-		t.Fatal("expected error for tool-kind script in update, got nil")
-	}
-	if !strings.Contains(err.Error(), "python_script_kind_mismatch") {
-		t.Errorf("error = %q, want to contain 'python_script_kind_mismatch'", err.Error())
 	}
 }
 

@@ -9,9 +9,9 @@ import (
 	"be/internal/ws"
 )
 
-// TestMarkCompleted_CloseTicketFalse_DoesNotCloseTicket verifies that
-// when CloseTicketOnComplete=false, the ticket is NOT closed after workflow completion.
-func TestMarkCompleted_CloseTicketFalse_DoesNotCloseTicket(t *testing.T) {
+// TestMarkCompleted_CloseTicketFalse verifies all behaviors when CloseTicketOnComplete=false:
+// ticket stays open, workflow instance is completed, orchestration.completed fires, ticket.updated does not fire.
+func TestMarkCompleted_CloseTicketFalse(t *testing.T) {
 	env := newTestEnv(t)
 
 	env.createTicket(t, "CTF-1", "No close on complete")
@@ -23,6 +23,8 @@ func TestMarkCompleted_CloseTicketFalse_DoesNotCloseTicket(t *testing.T) {
 		t.Fatalf("expected ticket status 'open', got %v", ticket.Status)
 	}
 
+	ch := env.subscribeWSClient(t, "ws-ctf1", "CTF-1")
+
 	env.orch.markCompleted(wfiID, RunRequest{
 		ProjectID:             env.project,
 		TicketID:              "CTF-1",
@@ -30,85 +32,20 @@ func TestMarkCompleted_CloseTicketFalse_DoesNotCloseTicket(t *testing.T) {
 		CloseTicketOnComplete: false,
 	})
 
-	// Ticket should remain open
+	// Ticket must remain open with no close_reason
 	ticket = env.getTicket(t, "CTF-1")
 	if ticket.Status != model.StatusOpen {
 		t.Fatalf("expected ticket status 'open' after markCompleted(false), got %v", ticket.Status)
 	}
-
-	// close_reason must not be set
 	if ticket.CloseReason.Valid {
 		t.Fatalf("expected close_reason to be unset, got %q", ticket.CloseReason.String)
 	}
-}
 
-// TestMarkCompleted_CloseTicketFalse_WorkflowInstanceCompleted verifies that
-// when CloseTicketOnComplete=false the workflow instance is still marked completed.
-func TestMarkCompleted_CloseTicketFalse_WorkflowInstanceCompleted(t *testing.T) {
-	env := newTestEnv(t)
-
-	env.createTicket(t, "CTF-2", "Instance completed regardless")
-	wfiID := env.initWorkflow(t, "CTF-2")
-
-	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:             env.project,
-		TicketID:              "CTF-2",
-		WorkflowName:          "test",
-		CloseTicketOnComplete: false,
-	})
-
+	// Workflow instance must be completed
 	wi := env.getWorkflowInstance(t, wfiID)
 	if wi.Status != model.WorkflowInstanceCompleted {
 		t.Fatalf("expected workflow status 'completed', got %v", wi.Status)
 	}
-}
-
-// TestMarkCompleted_CloseTicketFalse_BroadcastsOrchestrationCompleted verifies that
-// EventOrchestrationCompleted is still broadcast even when CloseTicketOnComplete=false.
-func TestMarkCompleted_CloseTicketFalse_BroadcastsOrchestrationCompleted(t *testing.T) {
-	env := newTestEnv(t)
-
-	env.createTicket(t, "CTF-3", "Orchestration event still fires")
-	wfiID := env.initWorkflow(t, "CTF-3")
-
-	ch := env.subscribeWSClient(t, "ws-ctf3", "CTF-3")
-
-	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:             env.project,
-		TicketID:              "CTF-3",
-		WorkflowName:          "test",
-		CloseTicketOnComplete: false,
-	})
-
-	// EventOrchestrationCompleted must fire unconditionally
-	event := expectEvent(t, ch, ws.EventOrchestrationCompleted, 2*time.Second)
-	if event.TicketID != "CTF-3" {
-		t.Fatalf("expected ticket_id 'CTF-3', got %v", event.TicketID)
-	}
-	if event.Data["instance_id"] != wfiID {
-		t.Fatalf("expected instance_id %q, got %v", wfiID, event.Data["instance_id"])
-	}
-}
-
-// TestMarkCompleted_CloseTicketFalse_DoesNotBroadcastTicketUpdated verifies that
-// EventTicketUpdated is NOT broadcast when CloseTicketOnComplete=false.
-//
-// Uses EventOrchestrationCompleted as a sentinel: it fires after the ticket-close
-// code path, so any ticket.updated would have arrived before it.
-func TestMarkCompleted_CloseTicketFalse_DoesNotBroadcastTicketUpdated(t *testing.T) {
-	env := newTestEnv(t)
-
-	env.createTicket(t, "CTF-4", "No ticket.updated event")
-	wfiID := env.initWorkflow(t, "CTF-4")
-
-	ch := env.subscribeWSClient(t, "ws-ctf4", "CTF-4")
-
-	env.orch.markCompleted(wfiID, RunRequest{
-		ProjectID:             env.project,
-		TicketID:              "CTF-4",
-		WorkflowName:          "test",
-		CloseTicketOnComplete: false,
-	})
 
 	// Drain until orchestration.completed (sentinel). ticket.updated would have
 	// been emitted before it if ticket closing had been attempted.
@@ -124,7 +61,13 @@ func TestMarkCompleted_CloseTicketFalse_DoesNotBroadcastTicketUpdated(t *testing
 				t.Fatalf("unexpected ticket.updated event when CloseTicketOnComplete=false")
 			}
 			if evt.Type == ws.EventOrchestrationCompleted {
-				return // sentinel reached, no ticket.updated seen — pass
+				if evt.TicketID != "CTF-1" {
+					t.Fatalf("expected ticket_id 'CTF-1', got %v", evt.TicketID)
+				}
+				if evt.Data["instance_id"] != wfiID {
+					t.Fatalf("expected instance_id %q, got %v", wfiID, evt.Data["instance_id"])
+				}
+				return // all assertions passed
 			}
 		case <-deadline:
 			t.Fatal("timeout waiting for orchestration.completed sentinel")

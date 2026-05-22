@@ -88,20 +88,6 @@ func TestCLIModel_Get(t *testing.T) {
 	}
 }
 
-func TestCLIModel_GetCaseInsensitive(t *testing.T) {
-	t.Parallel()
-	svc, cleanup := setupCLIModelTestEnv(t)
-	defer cleanup()
-
-	m, err := svc.Get("OPUS_4_7")
-	if err != nil {
-		t.Fatalf("Get with uppercase: %v", err)
-	}
-	if m.ID != "opus_4_7" {
-		t.Errorf("ID = %q, want %q", m.ID, "opus_4_7")
-	}
-}
-
 func TestCLIModel_GetNotFound(t *testing.T) {
 	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)

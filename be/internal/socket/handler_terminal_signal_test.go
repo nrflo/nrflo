@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"be/internal/clock"
 	"be/internal/types"
+	"be/internal/ws"
 )
 
 // fakeTerminalSignaler records RequestTerminalSignal calls for assertion.
@@ -72,17 +74,29 @@ func queryWFIID(t *testing.T, env *handlerTestEnv, ticketID string) string {
 }
 
 // TestAgentFail_DispatchesTerminalSignal verifies that agent.fail dispatches a
-// terminal signal with project, ticket, workflow, session, and result="fail".
+// terminal signal with project, ticket, workflow, session, and result="fail",
+// and broadcasts agent.completed with the correct payload fields.
 func TestAgentFail_DispatchesTerminalSignal(t *testing.T) {
 	env := newHandlerTestEnv(t)
 	env.createTicketAndWorkflow(t, "TS-FAIL-1")
 	wfiID := queryWFIID(t, env, "TS-FAIL-1")
 
 	sessionID := "sess-ts-fail-1"
-	insertAgentSession(t, env, "TS-FAIL-1", sessionID, wfiID)
+	_, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'analyzer', 'test-agent', 'claude-sonnet-4', 'running', datetime('now'), datetime('now'))
+	`, sessionID, env.project, "TS-FAIL-1", wfiID)
+	if err != nil {
+		t.Fatalf("failed to insert agent session: %v", err)
+	}
 
 	sig := &fakeTerminalSignaler{}
 	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
+
+	client, sendCh := ws.NewTestClient(env.hub, "test-client-fail")
+	env.hub.Register(client)
+	time.Sleep(50 * time.Millisecond)
+	env.hub.Subscribe(client, env.project, "TS-FAIL-1")
 
 	params := types.AgentRequest{InstanceID: wfiID, SessionID: sessionID}
 	paramsData, _ := json.Marshal(params)
@@ -93,6 +107,7 @@ func TestAgentFail_DispatchesTerminalSignal(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
 
+	// Verify signaler call.
 	if len(sig.calls) != 1 {
 		t.Fatalf("expected 1 signaler call, got %d", len(sig.calls))
 	}
@@ -112,20 +127,55 @@ func TestAgentFail_DispatchesTerminalSignal(t *testing.T) {
 	if got.result != "fail" {
 		t.Errorf("result = %q, want %q", got.result, "fail")
 	}
+
+	// Verify broadcast payload.
+	select {
+	case msg := <-sendCh:
+		var event ws.Event
+		if err := json.Unmarshal(msg, &event); err != nil {
+			t.Fatalf("failed to unmarshal event: %v", err)
+		}
+		if event.Type != ws.EventAgentCompleted {
+			t.Errorf("event type = %s, want %s", event.Type, ws.EventAgentCompleted)
+		}
+		if sid, ok := event.Data["session_id"].(string); !ok || sid == "" {
+			t.Errorf("session_id must be present in payload, got: %v", event.Data["session_id"])
+		}
+		if modelID, ok := event.Data["model_id"].(string); !ok || modelID != "claude-sonnet-4" {
+			t.Errorf("model_id = %v, want claude-sonnet-4", event.Data["model_id"])
+		}
+		if result, ok := event.Data["result"].(string); !ok || result != "fail" {
+			t.Errorf("result = %v, want fail", event.Data["result"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for agent.completed broadcast")
+	}
 }
 
 // TestAgentContinue_DispatchesTerminalSignal verifies that agent.continue dispatches
-// a terminal signal with result="continue".
+// a terminal signal with result="continue" and broadcasts agent.continued with the
+// correct payload fields.
 func TestAgentContinue_DispatchesTerminalSignal(t *testing.T) {
 	env := newHandlerTestEnv(t)
 	env.createTicketAndWorkflow(t, "TS-CONT-1")
 	wfiID := queryWFIID(t, env, "TS-CONT-1")
 
 	sessionID := "sess-ts-continue-1"
-	insertAgentSession(t, env, "TS-CONT-1", sessionID, wfiID)
+	_, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'analyzer', 'test-agent', 'gpt-5.3', 'running', datetime('now'), datetime('now'))
+	`, sessionID, env.project, "TS-CONT-1", wfiID)
+	if err != nil {
+		t.Fatalf("failed to insert agent session: %v", err)
+	}
 
 	sig := &fakeTerminalSignaler{}
 	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
+
+	client, sendCh := ws.NewTestClient(env.hub, "test-client-continue")
+	env.hub.Register(client)
+	time.Sleep(50 * time.Millisecond)
+	env.hub.Subscribe(client, env.project, "TS-CONT-1")
 
 	params := types.AgentRequest{InstanceID: wfiID, SessionID: sessionID}
 	paramsData, _ := json.Marshal(params)
@@ -136,6 +186,7 @@ func TestAgentContinue_DispatchesTerminalSignal(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
 
+	// Verify signaler call.
 	if len(sig.calls) != 1 {
 		t.Fatalf("expected 1 signaler call, got %d", len(sig.calls))
 	}
@@ -145,20 +196,52 @@ func TestAgentContinue_DispatchesTerminalSignal(t *testing.T) {
 	if got := sig.calls[0].sessionID; got != sessionID {
 		t.Errorf("sessionID = %q, want %q", got, sessionID)
 	}
+
+	// Verify broadcast payload.
+	select {
+	case msg := <-sendCh:
+		var event ws.Event
+		if err := json.Unmarshal(msg, &event); err != nil {
+			t.Fatalf("failed to unmarshal event: %v", err)
+		}
+		if event.Type != ws.EventAgentContinued {
+			t.Errorf("event type = %s, want %s", event.Type, ws.EventAgentContinued)
+		}
+		if sid, ok := event.Data["session_id"].(string); !ok || sid == "" {
+			t.Errorf("session_id must be present in payload, got: %v", event.Data["session_id"])
+		}
+		if modelID, ok := event.Data["model_id"].(string); !ok || modelID != "gpt-5.3" {
+			t.Errorf("model_id = %v, want gpt-5.3", event.Data["model_id"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for agent.continued broadcast")
+	}
 }
 
 // TestAgentCallback_DispatchesTerminalSignal verifies that agent.callback dispatches
-// a terminal signal with result="callback".
+// a terminal signal with result="callback" and broadcasts agent.completed with the
+// correct payload fields (model_id, result, level).
 func TestAgentCallback_DispatchesTerminalSignal(t *testing.T) {
 	env := newHandlerTestEnv(t)
 	env.createTicketAndWorkflow(t, "TS-CB-1")
 	wfiID := queryWFIID(t, env, "TS-CB-1")
 
 	sessionID := "sess-ts-callback-1"
-	insertAgentSession(t, env, "TS-CB-1", sessionID, wfiID)
+	_, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'analyzer', 'test-agent', 'claude-opus-4', 'running', datetime('now'), datetime('now'))
+	`, sessionID, env.project, "TS-CB-1", wfiID)
+	if err != nil {
+		t.Fatalf("failed to insert agent session: %v", err)
+	}
 
 	sig := &fakeTerminalSignaler{}
 	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
+
+	client, sendCh := ws.NewTestClient(env.hub, "test-client-callback")
+	env.hub.Register(client)
+	time.Sleep(50 * time.Millisecond)
+	env.hub.Subscribe(client, env.project, "TS-CB-1")
 
 	params := types.AgentCallbackRequest{
 		AgentRequest: types.AgentRequest{InstanceID: wfiID, SessionID: sessionID},
@@ -172,6 +255,7 @@ func TestAgentCallback_DispatchesTerminalSignal(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", resp.Error)
 	}
 
+	// Verify signaler call.
 	if len(sig.calls) != 1 {
 		t.Fatalf("expected 1 signaler call, got %d", len(sig.calls))
 	}
@@ -180,6 +264,29 @@ func TestAgentCallback_DispatchesTerminalSignal(t *testing.T) {
 	}
 	if got := sig.calls[0].sessionID; got != sessionID {
 		t.Errorf("sessionID = %q, want %q", got, sessionID)
+	}
+
+	// Verify broadcast payload.
+	select {
+	case msg := <-sendCh:
+		var event ws.Event
+		if err := json.Unmarshal(msg, &event); err != nil {
+			t.Fatalf("failed to unmarshal event: %v", err)
+		}
+		if event.Type != ws.EventAgentCompleted {
+			t.Errorf("event type = %s, want %s", event.Type, ws.EventAgentCompleted)
+		}
+		if modelID, ok := event.Data["model_id"].(string); !ok || modelID != "claude-opus-4" {
+			t.Errorf("model_id = %v, want claude-opus-4", event.Data["model_id"])
+		}
+		if result, ok := event.Data["result"].(string); !ok || result != "callback" {
+			t.Errorf("result = %v, want callback", event.Data["result"])
+		}
+		if level, ok := event.Data["level"].(float64); !ok || int(level) != 1 {
+			t.Errorf("level = %v, want 1", event.Data["level"])
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for agent.completed broadcast")
 	}
 }
 

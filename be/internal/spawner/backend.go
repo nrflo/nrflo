@@ -48,13 +48,14 @@ type ExecutionBackend interface {
 // For api mode, adapter is nil and the api* fields are populated.
 // For script mode, scriptCode/scriptID are populated and CLI/API fields are empty.
 type prepResult struct {
-	adapter    CLIAdapter
-	cliName    string
-	opts       SpawnOptions
-	promptFile string
-	suffixFile string // temp file for --append-system-prompt-file (Claude only); empty when unused
-	prompt     string
-	phase      string
+	adapter                  CLIAdapter
+	cliName                  string
+	opts                     SpawnOptions
+	promptFile               string
+	suffixFile               string // temp file for --append-system-prompt-file (Claude only); empty when unused
+	systemPromptOverrideFile string // temp file for --system-prompt-file (Claude only, OverrideSystemPrompt); empty when unused
+	prompt                   string
+	phase                    string
 
 	// Script-mode fields.
 	scriptCode string

@@ -128,3 +128,165 @@ func TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing
 		t.Errorf("CodexAdapter.BuildInteractiveCommand should not emit --append-system-prompt-file: %s", args)
 	}
 }
+
+// ── --system-prompt-file (SystemPromptOverrideFile) tests ─────────────────────
+
+// TestClaudeAdapter_BuildInteractiveCommand_BothFiles verifies that when both
+// SystemPromptOverrideFile and SystemPromptFile are set, Claude emits
+// --system-prompt-file followed by --append-system-prompt-file.
+func TestClaudeAdapter_BuildInteractiveCommand_BothFiles(t *testing.T) {
+	t.Parallel()
+	adapter := &ClaudeAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:                    "sonnet",
+		SessionID:                "sess-both",
+		WorkDir:                  "/tmp",
+		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
+		SystemPromptFile:         "/tmp/nrflo/suffix.md",
+	}
+
+	cmdArgs := adapter.BuildInteractiveCommand(opts).Args
+	argsStr := strings.Join(cmdArgs, " ")
+
+	// Find positions of the flags as elements
+	overridePos, appendPos := -1, -1
+	for i, a := range cmdArgs {
+		if a == "--system-prompt-file" {
+			overridePos = i
+		}
+		if a == "--append-system-prompt-file" {
+			appendPos = i
+		}
+	}
+	if overridePos == -1 {
+		t.Errorf("BuildInteractiveCommand missing --system-prompt-file: %s", argsStr)
+	}
+	if appendPos == -1 {
+		t.Errorf("BuildInteractiveCommand missing --append-system-prompt-file: %s", argsStr)
+	}
+	if !strings.Contains(argsStr, "/tmp/nrflo/override.md") {
+		t.Errorf("BuildInteractiveCommand args missing override path: %s", argsStr)
+	}
+	if !strings.Contains(argsStr, "/tmp/nrflo/suffix.md") {
+		t.Errorf("BuildInteractiveCommand args missing suffix path: %s", argsStr)
+	}
+	// Override must precede suffix
+	if overridePos >= 0 && appendPos >= 0 && overridePos >= appendPos {
+		t.Errorf("--system-prompt-file (pos=%d) should precede --append-system-prompt-file (pos=%d): %v", overridePos, appendPos, cmdArgs)
+	}
+}
+
+// TestClaudeAdapter_BuildInteractiveCommand_OverrideFileOnly verifies that
+// with SystemPromptOverrideFile set but SystemPromptFile empty, only
+// --system-prompt-file is emitted (no --append-system-prompt-file).
+func TestClaudeAdapter_BuildInteractiveCommand_OverrideFileOnly(t *testing.T) {
+	t.Parallel()
+	adapter := &ClaudeAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:                    "sonnet",
+		SessionID:                "sess-override-only",
+		WorkDir:                  "/tmp",
+		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
+	}
+
+	cmdArgs := adapter.BuildInteractiveCommand(opts).Args
+	foundOverride, foundAppend := false, false
+	for _, a := range cmdArgs {
+		if a == "--system-prompt-file" {
+			foundOverride = true
+		}
+		if a == "--append-system-prompt-file" {
+			foundAppend = true
+		}
+	}
+	if !foundOverride {
+		t.Errorf("BuildInteractiveCommand missing --system-prompt-file: %v", cmdArgs)
+	}
+	if foundAppend {
+		t.Errorf("BuildInteractiveCommand should not emit --append-system-prompt-file when SystemPromptFile is empty: %v", cmdArgs)
+	}
+}
+
+// TestClaudeAdapter_BuildInteractiveCommand_OverrideFileEmpty verifies that
+// with SystemPromptOverrideFile empty, --system-prompt-file is not emitted as a
+// standalone flag (--append-system-prompt-file still appears when SystemPromptFile set).
+func TestClaudeAdapter_BuildInteractiveCommand_OverrideFileEmpty(t *testing.T) {
+	t.Parallel()
+	adapter := &ClaudeAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:            "sonnet",
+		SessionID:        "sess-no-override",
+		WorkDir:          "/tmp",
+		SystemPromptFile: "/tmp/nrflo/suffix.md",
+	}
+
+	cmdArgs := adapter.BuildInteractiveCommand(opts).Args
+	for i, a := range cmdArgs {
+		if a == "--system-prompt-file" {
+			t.Errorf("BuildInteractiveCommand should not emit --system-prompt-file when override is empty, found at index %d; args: %v", i, cmdArgs)
+		}
+	}
+
+	argsStr := strings.Join(cmdArgs, " ")
+	if !strings.Contains(argsStr, "--append-system-prompt-file") {
+		t.Errorf("BuildInteractiveCommand should still emit --append-system-prompt-file: %s", argsStr)
+	}
+}
+
+// TestGeminiAdapter_BuildInteractiveCommand_IgnoresSystemPromptOverrideFile verifies
+// GeminiAdapter never emits --system-prompt-file even when SystemPromptOverrideFile is set.
+func TestGeminiAdapter_BuildInteractiveCommand_IgnoresSystemPromptOverrideFile(t *testing.T) {
+	t.Parallel()
+	adapter := &GeminiAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:                    "gemini_pro",
+		SessionID:                "sess-gemini",
+		WorkDir:                  "/tmp",
+		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
+		SystemPromptFile:         "/tmp/nrflo/suffix.md",
+	}
+
+	cmdArgs := adapter.BuildInteractiveCommand(opts).Args
+	for i, a := range cmdArgs {
+		if a == "--system-prompt-file" {
+			t.Errorf("GeminiAdapter should not emit --system-prompt-file, found at index %d; args: %v", i, cmdArgs)
+		}
+		if a == "--append-system-prompt-file" {
+			t.Errorf("GeminiAdapter should not emit --append-system-prompt-file, found at index %d; args: %v", i, cmdArgs)
+		}
+	}
+}
+
+// TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile verifies that opencode and codex
+// adapters never emit --system-prompt-file even when SystemPromptOverrideFile is set.
+func TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile(t *testing.T) {
+	t.Parallel()
+	overrideOpts := InteractiveSpawnOptions{
+		WorkDir:                  "/tmp",
+		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
+		SystemPromptFile:         "/tmp/nrflo/suffix.md",
+	}
+	adapters := []struct {
+		name    string
+		adapter CLIAdapter
+		model   string
+	}{
+		{"opencode", &OpencodeAdapter{}, "opencode_minimax_m25_free"},
+		{"codex", &CodexAdapter{}, "codex_gpt_high"},
+	}
+	for _, tt := range adapters {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := overrideOpts
+			opts.Model = tt.model
+			for i, a := range tt.adapter.BuildInteractiveCommand(opts).Args {
+				if a == "--system-prompt-file" {
+					t.Errorf("%s should not emit --system-prompt-file at index %d", tt.name, i)
+				}
+			}
+		})
+	}
+}

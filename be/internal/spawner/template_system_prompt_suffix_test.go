@@ -84,7 +84,7 @@ func TestLoadTemplate_SuffixReturnedFromLoadTemplate(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Main body only")
 
 	sp := env.newSpawner()
-	body, suffix, err := sp.loadTemplate("analyzer", ticketID, env.project,
+	body, suffix, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
 		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
@@ -111,7 +111,7 @@ func TestLoadTemplate_SuffixNotInBody(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Only the real body here")
 
 	sp := env.newSpawner()
-	body, suffix, err := sp.loadTemplate("analyzer", ticketID, env.project,
+	body, suffix, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
 		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)

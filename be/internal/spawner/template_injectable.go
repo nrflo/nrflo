@@ -10,6 +10,16 @@ import (
 
 var injectablePlaceholderRe = regexp.MustCompile(`\$\{[^}]+\}`)
 
+// systemPromptOverrideFor returns the expanded system-prompt injectable when the model
+// has CLIType=="claude" and OverrideSystemPrompt enabled; returns "" otherwise.
+func (s *Spawner) systemPromptOverrideFor(model string, vars map[string]string) string {
+	cfg, ok := s.config.ModelConfigs[model]
+	if !ok || cfg.CLIType != "claude" || !cfg.OverrideSystemPrompt {
+		return ""
+	}
+	return s.expandInjectable("system-prompt", vars)
+}
+
 // expandInjectable loads an injectable template from default_templates and expands vars.
 // Returns "" with a warning log if the template is not found.
 func (s *Spawner) expandInjectable(id string, vars map[string]string) string {

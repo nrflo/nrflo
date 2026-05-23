@@ -123,18 +123,19 @@ type InteractivePrepOptions struct {
 // wrapping bug that panics on multi-KB pasted bodies (`tui/src/wrapping.rs:52`,
 // integer underflow), so we pass the prompt as an argv positional instead.
 type InteractiveSpawnOptions struct {
-	SessionID        string
-	Model            string
-	ReasoningEffort  string // passed as --effort (Claude) or --variant (Opencode)
-	WorkDir          string
-	Env              []string
-	SystemPromptFile string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
-	SettingsJSON     string // Claude: --settings JSON; others: ignored
-	CodexHome        string // CODEX_HOME dir path; Codex only — ignored by other adapters
-	GeminiHome       string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
-	Prompt           string // initial user prompt; Codex passes this as argv positional, others ignore
-	Port             int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
-	ResumeSessionID  string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
+	SessionID                string
+	Model                    string
+	ReasoningEffort          string // passed as --effort (Claude) or --variant (Opencode)
+	WorkDir                  string
+	Env                      []string
+	SystemPromptFile         string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
+	SystemPromptOverrideFile string // path to override file; Claude: --system-prompt-file (OverrideSystemPrompt); others: ignored
+	SettingsJSON             string // Claude: --settings JSON; others: ignored
+	CodexHome                string // CODEX_HOME dir path; Codex only — ignored by other adapters
+	GeminiHome               string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
+	Prompt                   string // initial user prompt; Codex passes this as argv positional, others ignore
+	Port                     int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
+	ResumeSessionID          string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -181,16 +182,17 @@ type PostStarter interface {
 
 // SpawnOptions contains parameters for building a spawn command
 type SpawnOptions struct {
-	Model            string
-	SessionID        string
-	PromptFile       string // Path to system prompt file
-	Prompt           string // Full prompt content (for CLIs without file support)
-	WorkDir          string
-	Env              []string
-	MappedModel      string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
-	ReasoningEffort  string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
-	SettingsJSON     string // Claude --settings JSON (ignored by non-Claude adapters)
-	SystemPromptFile string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
+	Model                    string
+	SessionID                string
+	PromptFile               string // Path to system prompt file
+	Prompt                   string // Full prompt content (for CLIs without file support)
+	WorkDir                  string
+	Env                      []string
+	MappedModel              string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
+	ReasoningEffort          string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
+	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
+	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
+	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only, OverrideSystemPrompt)
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.

@@ -36,7 +36,7 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	if def := s.loadAgentDefinition(agentType, projectID, workflowName); def != nil {
 		currentLayer = def.Layer
 	}
-	body, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil, currentLayer)
+	body, _, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil, currentLayer)
 	return body, err
 }
 
@@ -205,10 +205,11 @@ func (s *Spawner) resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID 
 
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
-// Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable
-// intended for --append-system-prompt-file; callers that don't use it can ignore it.
+// Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
+// system-prompt-suffix injectable for --append-system-prompt-file; systemPromptOverride
+// is non-empty only when the model has CLIType=="claude" and OverrideSystemPrompt set.
 // currentLayer is the agent's layer number (0 for system agents and L0 interactive starts).
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, error) {
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars, currentLayer)
 }
 
@@ -216,11 +217,13 @@ func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, ch
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
 // extraVars is optional — when set, expanded after standard ${VAR} substitution.
 // currentLayer is the agent's layer number; used to resolve #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS}.
-// Returns (body, suffix, error). The suffix is the rendered system-prompt-suffix injectable.
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, error) {
+// Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
+// system-prompt-suffix injectable; systemPromptOverride is non-empty only when the model
+// has CLIType=="claude" and OverrideSystemPrompt set.
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	template := promptContent
@@ -262,6 +265,9 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 
 	// Render the system-prompt-suffix injectable using the same vars
 	suffix := s.expandInjectable("system-prompt-suffix", stdVars)
+
+	// Compute system-prompt override (non-empty only for claude models with the toggle enabled)
+	systemPromptOverride := s.systemPromptOverrideFor(model, stdVars)
 
 	// Expand ticket context variables (skip DB fetch for project scope)
 	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {
@@ -322,5 +328,5 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		logger.Warn(context.Background(), "project findings expansion failed", "error", err)
 	}
 
-	return template, suffix, nil
+	return template, suffix, systemPromptOverride, nil
 }

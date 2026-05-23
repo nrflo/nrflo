@@ -137,10 +137,11 @@ func (o *Orchestrator) loadModelConfigs(pool *db.Pool) (map[string]spawner.Model
 	configs := make(map[string]spawner.ModelConfig, len(models))
 	for _, m := range models {
 		configs[m.ID] = spawner.ModelConfig{
-			CLIType:         m.CLIType,
-			MappedModel:     m.MappedModel,
-			ReasoningEffort: m.ReasoningEffort,
-			ContextLength:   m.ContextLength,
+			CLIType:              m.CLIType,
+			MappedModel:          m.MappedModel,
+			ReasoningEffort:      m.ReasoningEffort,
+			ContextLength:        m.ContextLength,
+			OverrideSystemPrompt: m.OverrideSystemPrompt,
 		}
 	}
 	return configs, nil

@@ -80,10 +80,11 @@ const (
 // ModelConfig holds DB-sourced model configuration for the spawner.
 // Zero values mean "not configured" — adapters fall back to their hardcoded methods.
 type ModelConfig struct {
-	CLIType         string // "claude", "opencode", "codex"
-	MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
-	ReasoningEffort string // "", "high", "medium"
-	ContextLength   int    // 200000, 1000000
+	CLIType              string // "claude", "opencode", "codex"
+	MappedModel          string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
+	ReasoningEffort      string // "", "high", "medium"
+	ContextLength        int    // 200000, 1000000
+	OverrideSystemPrompt bool   // when true and CLIType=="claude", emit --system-prompt-file from system-prompt injectable
 }
 
 // Config holds the spawner configuration
@@ -1028,7 +1029,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	if agentDef != nil {
 		agentLayer = agentDef.Layer
 	}
-	prompt, suffix, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars, agentLayer)
+	prompt, suffix, systemPromptOverride, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars, agentLayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}
@@ -1268,6 +1269,25 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
+	// For Claude with OverrideSystemPrompt, write the system-prompt injectable to a
+	// temp file for --system-prompt-file (overrides the default system prompt).
+	var systemPromptOverrideFilePath string
+	if systemPromptOverride != "" && adapter.SupportsSystemPromptFile() {
+		of, ofErr := os.CreateTemp("/tmp/nrflo", "system-prompt-*.md")
+		if ofErr != nil {
+			logger.Warn(context.Background(), "failed to create system-prompt override temp file", "error", ofErr)
+		} else {
+			if _, ofErr = of.WriteString(systemPromptOverride); ofErr != nil {
+				of.Close()
+				os.Remove(of.Name())
+				logger.Warn(context.Background(), "failed to write system-prompt override temp file", "error", ofErr)
+			} else {
+				of.Close()
+				systemPromptOverrideFilePath = of.Name()
+			}
+		}
+	}
+
 	// DB-sourced mapped model + reasoning effort
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
@@ -1289,15 +1309,16 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	opts := SpawnOptions{
-		Model:            model,
-		SessionID:        sessionID,
-		PromptFile:       promptFile.Name(),
-		Prompt:           promptBody,
-		WorkDir:          workDir,
-		MappedModel:      mappedModel,
-		ReasoningEffort:  reasoningEffort,
-		SettingsJSON:     s.config.ClaudeSettingsJSON,
-		SystemPromptFile: suffixFilePath,
+		Model:                    model,
+		SessionID:                sessionID,
+		PromptFile:               promptFile.Name(),
+		Prompt:                   promptBody,
+		WorkDir:                  workDir,
+		MappedModel:              mappedModel,
+		ReasoningEffort:          reasoningEffort,
+		SettingsJSON:             s.config.ClaudeSettingsJSON,
+		SystemPromptFile:         suffixFilePath,
+		SystemPromptOverrideFile: systemPromptOverrideFilePath,
 		Env: append(append(filterEnv(os.Environ(), "CLAUDECODE"),
 			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
@@ -1315,6 +1336,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	prep.opts = opts
 	prep.promptFile = promptFile.Name()
 	prep.suffixFile = suffixFilePath
+	prep.systemPromptOverrideFile = systemPromptOverrideFilePath
 	proc.env = opts.Env
 	return proc, prep, nil
 }

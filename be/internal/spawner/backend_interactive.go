@@ -76,17 +76,18 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 
 	opts := InteractiveSpawnOptions{
-		SessionID:        sessionID,
-		Model:            model,
-		ReasoningEffort:  prep.opts.ReasoningEffort,
-		WorkDir:          workDir,
-		Env:              env,
-		SystemPromptFile: prep.suffixFile, // non-empty for Claude (written by prepareSpawn)
-		SettingsJSON:     settingsJSON,
-		CodexHome:        extras.CodexHome,
-		GeminiHome:       extras.GeminiHome,
-		Prompt:           prep.prompt, // Codex pre-loads via argv; other adapters ignore
-		Port:             extras.Port, // embedded server port (opencode only; 0 for others)
+		SessionID:                sessionID,
+		Model:                    model,
+		ReasoningEffort:          prep.opts.ReasoningEffort,
+		WorkDir:                  workDir,
+		Env:                      env,
+		SystemPromptFile:         prep.suffixFile,               // non-empty for Claude (written by prepareSpawn)
+		SystemPromptOverrideFile: prep.systemPromptOverrideFile, // non-empty for Claude with OverrideSystemPrompt
+		SettingsJSON:             settingsJSON,
+		CodexHome:                extras.CodexHome,
+		GeminiHome:               extras.GeminiHome,
+		Prompt:                   prep.prompt, // Codex pre-loads via argv; other adapters ignore
+		Port:                     extras.Port, // embedded server port (opencode only; 0 for others)
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -123,6 +124,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	if err != nil {
 		if prep.suffixFile != "" {
 			os.Remove(prep.suffixFile)
+		}
+		if prep.systemPromptOverrideFile != "" {
+			os.Remove(prep.systemPromptOverrideFile)
 		}
 		prepCleanup()
 		return fmt.Errorf("cli_interactive: pty create: %w", err)
@@ -170,6 +174,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	doneCh := proc.doneCh
 	promptPath := prep.promptFile
 	suffixPath := prep.suffixFile
+	overridePath := prep.systemPromptOverrideFile
 	go func() {
 		<-sess.Done()
 		// Signal failure via waitErr if exit was non-zero — handleCompletion reads it.
@@ -180,6 +185,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		os.Remove(promptPath)
 		if suffixPath != "" {
 			os.Remove(suffixPath)
+		}
+		if overridePath != "" {
+			os.Remove(overridePath)
 		}
 		postCleanup()
 		prepCleanup()

@@ -155,6 +155,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	claudeSettingsJSON string,
 ) ([]string, error) {
 	var prompt string
+	var interactiveSystemPromptOverrideFile string
 
 	if req.PlanMode {
 		// Plan mode: build a planning prompt with ticket context
@@ -199,24 +200,45 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			},
 		})
 
-		tmpl, _, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil, 0)
+		tmpl, _, systemPromptOverride, err := sp.LoadTemplate(l0Agent, req.TicketID, req.ProjectID, "", sessionID, req.WorkflowName, modelID, l0Agent, wi.ID, nil, 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load L0 template: %w", err)
 		}
 
 		prompt = "You are in an interactive session. The user will guide the work directly.\n" +
 			"When the user is done, they will exit the session.\n\n" + tmpl
+
+		// Write system-prompt override to a temp file when the model has OverrideSystemPrompt set.
+		if systemPromptOverride != "" {
+			of, ofErr := os.CreateTemp("", "nrf-interactive-system-prompt-*.md")
+			if ofErr != nil {
+				return nil, fmt.Errorf("failed to create system-prompt override file: %w", ofErr)
+			}
+			if _, ofErr = of.WriteString(systemPromptOverride); ofErr != nil {
+				of.Close()
+				os.Remove(of.Name())
+				return nil, fmt.Errorf("failed to write system-prompt override file: %w", ofErr)
+			}
+			of.Close()
+			interactiveSystemPromptOverrideFile = of.Name()
+		}
 	}
 
 	// Write prompt to a temp file so Claude can read it as initial context.
 	// We don't use -p (--print) because that makes Claude non-interactive.
 	promptFile, err := os.CreateTemp("", "nrf-interactive-*.md")
 	if err != nil {
+		if interactiveSystemPromptOverrideFile != "" {
+			os.Remove(interactiveSystemPromptOverrideFile)
+		}
 		return nil, fmt.Errorf("failed to create prompt file: %w", err)
 	}
 	if _, err := promptFile.WriteString(prompt); err != nil {
 		promptFile.Close()
 		os.Remove(promptFile.Name())
+		if interactiveSystemPromptOverrideFile != "" {
+			os.Remove(interactiveSystemPromptOverrideFile)
+		}
 		return nil, fmt.Errorf("failed to write prompt file: %w", err)
 	}
 	promptFile.Close()
@@ -234,8 +256,11 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	args := []string{
 		"--session-id", sessionID,
 		"--model", ptyModel,
-		"--append-system-prompt-file", promptFile.Name(),
 	}
+	if interactiveSystemPromptOverrideFile != "" {
+		args = append(args, "--system-prompt-file", interactiveSystemPromptOverrideFile)
+	}
+	args = append(args, "--append-system-prompt-file", promptFile.Name())
 	if req.PlanMode {
 		// Plan mode: --permission-mode plan handles permissions on its own.
 		// Do NOT use --dangerously-skip-permissions — it overrides plan mode.

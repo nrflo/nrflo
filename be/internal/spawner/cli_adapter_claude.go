@@ -53,6 +53,9 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)
 	}
+	if opts.SystemPromptOverrideFile != "" {
+		args = append(args, "--system-prompt-file", opts.SystemPromptOverrideFile)
+	}
 	if opts.SystemPromptFile != "" {
 		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
 	}

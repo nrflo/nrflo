@@ -12,9 +12,9 @@ import (
 	"be/internal/spawner/apirun/provider"
 )
 
-// consultProviderFunc is a test seam so unit tests can inject a mock provider
-// without needing a real Anthropic API key.
-var consultProviderFunc func(ctx context.Context, pool *db.Pool, projectID string, clk clock.Clock) provider.Provider = buildAPIProvider
+// consultBuildAPIProvider is a test seam so unit tests can inject a mock factory
+// without needing real provider credentials.
+var consultBuildAPIProvider func(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) (provider.Provider, error) = buildAPIProvider
 
 // Consult synchronously spawns a named consultant agent under the caller's
 // workflow instance and returns its answer. It is the orchestrator-level
@@ -69,6 +69,7 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 
 	// Build model configs and claude safety settings (read once; mid-consult changes have no effect).
 	modelConfigs, _ := o.loadModelConfigs(pool)
+	apiModelConfigs, _ := o.loadAPIModelConfigs(pool)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
@@ -76,6 +77,7 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 
 	projectEnv := loadProjectEnv(ctx, pool, projectID, o.clock)
 
+	consultPool := pool
 	cfg := spawner.Config{
 		DataPath:           o.dataPath,
 		ProjectRoot:        projectRoot,
@@ -85,8 +87,11 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 		APIMode:            true,
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
+		APIModelConfigs:    apiModelConfigs,
 		ErrorSvc:           o.errorSvc,
-		Provider:           consultProviderFunc(ctx, pool, projectID, o.clock),
+		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
+			return consultBuildAPIProvider(ctx, consultPool, o.clock, providerName, projectID)
+		},
 		AgentSvc:           newAPIAgentSvc(pool, o.clock, o.wsHub),
 		FindingsSvc:        service.NewFindingsService(pool, o.clock),
 		ProjectFindingsSvc: service.NewProjectFindingsService(pool, o.clock),

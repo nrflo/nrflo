@@ -24,6 +24,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
+	"be/internal/spawner/apirun/provider"
 	"be/internal/types"
 	"be/internal/venv"
 	"be/internal/ws"
@@ -363,6 +364,13 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		return nil, err
 	}
 
+	// Load API model configs from DB (once at workflow start)
+	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+
 	// Read claude safety hook config (once at workflow start)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(req.ProjectID, "claude_safety_hook"); raw != "" {
@@ -439,7 +447,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
-		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, claudeSettingsJSON)
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
 		if err != nil {
 			cancel()
 			o.mu.Lock()
@@ -451,7 +459,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	status := "started"
 	sessionID := ""
@@ -801,6 +809,12 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return err
 	}
 
+	// Load API model configs from DB (once at workflow retry)
+	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
+	if err != nil {
+		return err
+	}
+
 	// Read claude safety hook config (once at workflow retry)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
@@ -860,7 +874,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	return nil
 }
@@ -1315,6 +1329,7 @@ func (o *Orchestrator) runLoop(
 	globalStallStartTimeout *int,
 	globalStallRunningTimeout *int,
 	modelConfigs map[string]spawner.ModelConfig,
+	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 	pushAfterMerge bool,
 	projectEnv []string,
@@ -1344,10 +1359,6 @@ func (o *Orchestrator) runLoop(
 	}
 	defer pool.Close()
 
-	// Build API-mode wiring once per workflow run. Provider is nil if no
-	// anthropic key is configured — api-mode agents would then fail at
-	// prepareSpawn with a clear error (CLI agents are unaffected).
-	apiProvider := buildAPIProvider(ctx, pool, req.ProjectID, o.clock)
 	apiAgentSvc := newAPIAgentSvc(pool, o.clock, o.wsHub)
 	findingsSvc := service.NewFindingsService(pool, o.clock)
 	projectFindingsSvc := service.NewProjectFindingsService(pool, o.clock)
@@ -1436,23 +1447,26 @@ func (o *Orchestrator) runLoop(
 		GlobalStallRunningTimeout: globalStallRunningTimeout,
 		ClaudeSettingsJSON:        claudeSettingsJSON,
 		ModelConfigs:              modelConfigs,
+		APIModelConfigs:           apiModelConfigs,
 		ErrorSvc:                  o.errorSvc,
-		Provider:                  apiProvider,
-		AgentSvc:                  apiAgentSvc,
-		FindingsSvc:               findingsSvc,
-		ProjectFindingsSvc:        projectFindingsSvc,
-		AgentSvcReal:              agentSvcReal,
-		WorkflowSvc:               workflowSvcReal,
-		ToolDefRepo:               toolDefRepo,
-		APIMode:                   runAPIMode,
-		PTYManager:                o.PTYManager,
-		DispatchRepo:              dispatchRepo,
-		ProjectEnv:                projectEnv,
-		SDKDir:                    o.sdkDir,
-		PythonPath:                pythonPath,
-		PythonScriptRepo:          repo.NewPythonScriptRepo(pool, o.clock),
-		ArtifactSvc:               artifactSvcRun,
-		WorkflowControl:           apiWorkflowControl{o: o, pool: pool},
+		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
+			return buildAPIProvider(ctx, pool, o.clock, providerName, projectID)
+		},
+		AgentSvc:           apiAgentSvc,
+		FindingsSvc:        findingsSvc,
+		ProjectFindingsSvc: projectFindingsSvc,
+		AgentSvcReal:       agentSvcReal,
+		WorkflowSvc:        workflowSvcReal,
+		ToolDefRepo:        toolDefRepo,
+		APIMode:            runAPIMode,
+		PTYManager:         o.PTYManager,
+		DispatchRepo:       dispatchRepo,
+		ProjectEnv:         projectEnv,
+		SDKDir:             o.sdkDir,
+		PythonPath:         pythonPath,
+		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
+		ArtifactSvc:        artifactSvcRun,
+		WorkflowControl:    apiWorkflowControl{o: o, pool: pool},
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.

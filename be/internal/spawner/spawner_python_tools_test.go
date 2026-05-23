@@ -10,6 +10,8 @@ import (
 	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/spawner/apirun/provider"
+	"be/internal/spawner/apirun/provider/mock"
 )
 
 // TestLoadProjectPythonTools_NilRepo verifies that a nil PythonScriptRepo returns
@@ -146,6 +148,13 @@ func TestPrepareSpawn_PythonBuiltinCollision_ReturnsError(t *testing.T) {
 		Clock:            clock.Real(),
 		APIMode:          true,
 		PythonScriptRepo: scriptRepo,
+		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
+			return mock.New(), nil
+		},
+		APIModelConfigs: map[string]APIModelConfig{
+			"sonnet":   {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+			"opus_4_7": {Provider: "anthropic", MappedModel: "claude-opus-4-7", ContextLength: 200000},
+		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {
 				Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}},

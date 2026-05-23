@@ -8,9 +8,11 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/service"
+	"be/internal/spawner"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/provider/anthropic"
+	"be/internal/spawner/apirun/provider/openai"
 	"be/internal/ws"
 )
 
@@ -55,17 +57,50 @@ func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
 	return v, ok, nil
 }
 
-// buildAPIProvider resolves the project's Anthropic credentials and constructs a
-// provider.Provider for API-mode agents. Returns nil if no credential is configured —
-// the spawner will fail any api-mode spawn at prepareSpawn time with a clear error.
-func buildAPIProvider(ctx context.Context, pool *db.Pool, projectID string, clk clock.Clock) provider.Provider {
+// buildAPIProvider resolves credentials and constructs a provider.Provider for the
+// given providerName ("anthropic" or "openai"). Returns an error if credentials are
+// missing or the provider name is unknown — the spawner fails the spawn fast on error.
+func buildAPIProvider(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) (provider.Provider, error) {
 	envRepo := newProjectEnvAdapter(pool, clk, projectID)
-	creds, err := anthropic.ResolveAPIKey(ctx, envRepo, projectID)
-	if err != nil {
-		return nil
+	switch providerName {
+	case "anthropic":
+		creds, err := anthropic.ResolveAPIKey(ctx, envRepo, projectID)
+		if err != nil {
+			return nil, err
+		}
+		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName, "method", string(creds.Method))
+		return anthropic.New(creds), nil
+	case "openai":
+		creds, err := openai.Resolve(ctx, envRepo, projectID)
+		if err != nil {
+			return nil, err
+		}
+		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName)
+		return openai.New(creds), nil
+	default:
+		return nil, fmt.Errorf("unknown provider %q", providerName)
 	}
-	logger.Info(ctx, "api provider configured", "project_id", projectID, "method", string(creds.Method))
-	return anthropic.New(creds)
+}
+
+// loadAPIModelConfigs loads enabled API model configs from the database and
+// builds a map keyed by row id, suitable for spawner.Config.APIModelConfigs.
+// Called once at workflow start.
+func (o *Orchestrator) loadAPIModelConfigs(pool *db.Pool) (map[string]spawner.APIModelConfig, error) {
+	apiModelSvc := service.NewAPIModelService(pool, o.clock)
+	models, err := apiModelSvc.ListEnabled()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load API model configs: %w", err)
+	}
+	configs := make(map[string]spawner.APIModelConfig, len(models))
+	for _, m := range models {
+		configs[m.ID] = spawner.APIModelConfig{
+			Provider:        m.Provider,
+			MappedModel:     m.MappedModel,
+			ContextLength:   m.ContextLength,
+			ReasoningEffort: m.ReasoningEffort,
+		}
+	}
+	return configs, nil
 }
 
 // apiAgentSvc adapts service.AgentService into apirun.AgentSvc, broadcasting

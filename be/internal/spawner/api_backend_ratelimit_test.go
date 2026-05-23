@@ -49,7 +49,6 @@ func TestAPIBackend_RateLimitRetry_SetsStatusContinue(t *testing.T) {
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	s := New(Config{
 		Clock:    clk,
-		Provider: &immediateRateLimitProvider{},
 		AgentSvc: &noopAgentSvc{},
 		// No Pool: all DB operations become no-ops.
 	})
@@ -78,6 +77,7 @@ func TestAPIBackend_RateLimitRetry_SetsStatusContinue(t *testing.T) {
 		apiMaxIterations: 1,
 		apiMaxContext:    1000,
 		apiDeadline:      time.Now().Add(5 * time.Second),
+		apiProvider:      &immediateRateLimitProvider{},
 	}
 
 	if err := b.Start(context.Background(), proc, prep); err != nil {
@@ -109,7 +109,6 @@ func TestAPIBackend_RateLimitRetry_DisabledConfig(t *testing.T) {
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	s := New(Config{
 		Clock:    clk,
-		Provider: &immediateRateLimitProvider{},
 		AgentSvc: &noopAgentSvc{},
 	})
 	b := newAPIBackend(s)
@@ -136,6 +135,7 @@ func TestAPIBackend_RateLimitRetry_DisabledConfig(t *testing.T) {
 		apiMaxIterations: 1,
 		apiMaxContext:    1000,
 		apiDeadline:      time.Now().Add(5 * time.Second),
+		apiProvider:      &immediateRateLimitProvider{},
 	}
 
 	if err := b.Start(context.Background(), proc, prep); err != nil {

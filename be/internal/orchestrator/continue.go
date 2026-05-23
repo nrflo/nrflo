@@ -159,6 +159,11 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		return err
 	}
 
+	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
+	if err != nil {
+		return err
+	}
+
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
@@ -220,7 +225,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 
 	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf,
 		resumeIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent,
-		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON,
+		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON,
 		pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	return nil

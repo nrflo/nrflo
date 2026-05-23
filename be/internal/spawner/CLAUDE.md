@@ -21,6 +21,8 @@ The `CLIAdapter` interface is defined at `cli_adapter.go:11`. Implementations: `
 
 `Config.ModelConfigs` (`map[string]ModelConfig`) holds DB-sourced model configuration used before falling back to hardcoded adapter methods. Helpers: `cliForModel(model)` checks `ModelConfigs[model].CLIType`; `maxContextForModel(model)` checks `ModelConfigs[model].ContextLength`. `SpawnOptions.MappedModel`/`ReasoningEffort` carry DB overrides; adapters skip their own lookup when these are set.
 
+For `api` agents the model comes from `Config.APIModelConfigs` (keyed by `api_models` row id): `prepareSpawn` looks it up (error if absent — no CLI fall-through), calls `Config.BuildAPIProvider(ctx, providerName, projectID)` per-spawn fail-fast, and threads `ReasoningEffort` into `apirun.Config` → `provider.Request`.
+
 ## Execution Backends
 
 `ExecutionBackend` interface is at `backend.go:21`. `startBackend` selects based on `prep.executionMode`:

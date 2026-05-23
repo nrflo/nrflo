@@ -35,6 +35,7 @@ type Config struct {
 	MaxTokens        int
 	MaxContext       int
 	Deadline         time.Time
+	ReasoningEffort  string
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner
@@ -102,6 +103,7 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 			ToolChoice:       "auto",
 			CacheBreakpoints: r.cfg.CacheBreakpoints,
 			Model:            r.cfg.Model,
+			ReasoningEffort:  r.cfg.ReasoningEffort,
 		}
 		resp, err := r.cfg.Provider.Run(ctx, req, sink)
 		sink.close()

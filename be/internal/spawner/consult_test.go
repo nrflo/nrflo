@@ -66,12 +66,17 @@ func buildConsultSpawner(t *testing.T, env *consultTestEnv, prov provider.Provid
 	t.Helper()
 	clk := clock.Real()
 	return New(Config{
-		DataPath:           env.dbPath,
-		Pool:               env.pool,
-		Clock:              clk,
-		WSHub:              ws.NewHub(clk),
-		APIMode:            true,
-		Provider:           prov,
+		DataPath: env.dbPath,
+		Pool:     env.pool,
+		Clock:    clk,
+		WSHub:    ws.NewHub(clk),
+		APIMode:  true,
+		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
+			return prov, nil
+		},
+		APIModelConfigs: map[string]APIModelConfig{
+			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		},
 		AgentSvc:           &noopAgentSvc{},
 		FindingsSvc:        service.NewFindingsService(env.pool, clk),
 		ProjectFindingsSvc: service.NewProjectFindingsService(env.pool, clk),
@@ -259,7 +264,12 @@ func TestConsultRecursionGuard_ConsultExcludedForConsultantAgent(t *testing.T) {
 		Clock:    clk,
 		WSHub:    ws.NewHub(clk),
 		APIMode:  true,
-		Provider: mock.New(),
+		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
+			return mock.New(), nil
+		},
+		APIModelConfigs: map[string]APIModelConfig{
+			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
 			"feature": {

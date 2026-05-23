@@ -148,22 +148,25 @@ func TestProjectEnvAdapter_IgnoresProjectIDArg(t *testing.T) {
 	}
 }
 
-// TestBuildAPIProvider_ReturnNilWhenNoKey verifies buildAPIProvider returns nil when no
-// Anthropic API key is resolvable from either per-project env or server env.
-func TestBuildAPIProvider_ReturnNilWhenNoKey(t *testing.T) {
+// TestBuildAPIProvider_Anthropic_NoKey_ReturnsError verifies buildAPIProvider returns
+// an error when no Anthropic API key is resolvable from either per-project env or server env.
+func TestBuildAPIProvider_Anthropic_NoKey_ReturnsError(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	env := newTestEnv(t)
 
-	got := buildAPIProvider(context.Background(), env.pool, env.project, clock.Real())
+	got, err := buildAPIProvider(context.Background(), env.pool, clock.Real(), "anthropic", env.project)
+	if err == nil {
+		t.Error("buildAPIProvider = nil error, want error when no Anthropic key is configured")
+	}
 	if got != nil {
-		t.Error("buildAPIProvider = non-nil, want nil when no key is configured")
+		t.Error("buildAPIProvider = non-nil provider, want nil on error")
 	}
 }
 
-// TestBuildAPIProvider_ReturnsProviderFromProjectEnv verifies that ANTHROPIC_API_KEY set as
-// a per-project env var results in a non-nil provider, with no DB credential row required.
-func TestBuildAPIProvider_ReturnsProviderFromProjectEnv(t *testing.T) {
+// TestBuildAPIProvider_Anthropic_ReturnsProviderFromProjectEnv verifies that ANTHROPIC_API_KEY
+// set as a per-project env var results in a non-nil provider.
+func TestBuildAPIProvider_Anthropic_ReturnsProviderFromProjectEnv(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
 	env := newTestEnv(t)
@@ -174,8 +177,61 @@ func TestBuildAPIProvider_ReturnsProviderFromProjectEnv(t *testing.T) {
 		t.Fatalf("Upsert ANTHROPIC_API_KEY: %v", err)
 	}
 
-	got := buildAPIProvider(context.Background(), env.pool, env.project, clk)
+	got, err := buildAPIProvider(context.Background(), env.pool, clk, "anthropic", env.project)
+	if err != nil {
+		t.Fatalf("buildAPIProvider error: %v", err)
+	}
 	if got == nil {
 		t.Error("buildAPIProvider = nil, want non-nil provider when ANTHROPIC_API_KEY is in project env")
+	}
+}
+
+// TestBuildAPIProvider_OpenAI_NoKey_ReturnsError verifies that missing OPENAI_API_KEY returns error.
+func TestBuildAPIProvider_OpenAI_NoKey_ReturnsError(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "")
+	env := newTestEnv(t)
+
+	got, err := buildAPIProvider(context.Background(), env.pool, clock.Real(), "openai", env.project)
+	if err == nil {
+		t.Error("buildAPIProvider = nil error, want error when no OpenAI key is configured")
+	}
+	if got != nil {
+		t.Error("buildAPIProvider = non-nil provider, want nil on error")
+	}
+}
+
+// TestBuildAPIProvider_OpenAI_ReturnsProviderFromProjectEnv verifies OPENAI_API_KEY in
+// per-project env resolves to a non-nil OpenAI provider.
+func TestBuildAPIProvider_OpenAI_ReturnsProviderFromProjectEnv(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "")
+	env := newTestEnv(t)
+
+	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	r := repo.NewProjectEnvVarRepo(env.pool, clk)
+	if _, err := r.Upsert(env.project, "OPENAI_API_KEY", "sk-openai-test-key"); err != nil {
+		t.Fatalf("Upsert OPENAI_API_KEY: %v", err)
+	}
+
+	got, err := buildAPIProvider(context.Background(), env.pool, clk, "openai", env.project)
+	if err != nil {
+		t.Fatalf("buildAPIProvider error: %v", err)
+	}
+	if got == nil {
+		t.Error("buildAPIProvider = nil, want non-nil provider when OPENAI_API_KEY is in project env")
+	}
+}
+
+// TestBuildAPIProvider_UnknownProvider_ReturnsError verifies that an unknown provider name
+// returns an immediate error without touching credentials.
+func TestBuildAPIProvider_UnknownProvider_ReturnsError(t *testing.T) {
+	t.Parallel()
+	env := newTestEnv(t)
+
+	got, err := buildAPIProvider(context.Background(), env.pool, clock.Real(), "unknown-llm", env.project)
+	if err == nil {
+		t.Error("buildAPIProvider = nil error, want error for unknown provider")
+	}
+	if got != nil {
+		t.Error("buildAPIProvider = non-nil provider, want nil for unknown provider")
 	}
 }

@@ -29,27 +29,26 @@ func TestAPIBackend_Identification(t *testing.T) {
 	}
 }
 
-// TestAPIBackend_Start_RejectsMissingProvider returns an error when the
-// spawner has no Provider configured.
+// TestAPIBackend_Start_RejectsMissingProvider returns an error when
+// prep.apiProvider is nil (provider not resolved for this spawn).
 func TestAPIBackend_Start_RejectsMissingProvider(t *testing.T) {
 	t.Parallel()
-	s := New(Config{Clock: clock.NewTest(time.Now()), Provider: nil})
+	s := New(Config{Clock: clock.NewTest(time.Now())})
 	b := newAPIBackend(s)
+	// prepResult.apiProvider is nil by default — Start must reject this.
 	err := b.Start(context.Background(), &processInfo{doneCh: make(chan struct{})}, &prepResult{})
 	if err == nil {
-		t.Fatalf("Start with nil Provider returned nil error")
+		t.Fatalf("Start with nil apiProvider returned nil error")
 	}
 }
 
 // TestAPIBackend_Start_RejectsMissingAgentSvc verifies missing AgentSvc fails fast.
 func TestAPIBackend_Start_RejectsMissingAgentSvc(t *testing.T) {
 	t.Parallel()
-	s := New(Config{
-		Clock:    clock.NewTest(time.Now()),
-		Provider: mock.New(),
-	})
+	s := New(Config{Clock: clock.NewTest(time.Now())})
 	b := newAPIBackend(s)
-	err := b.Start(context.Background(), &processInfo{doneCh: make(chan struct{})}, &prepResult{})
+	// provider is set in prep but AgentSvc is nil on the spawner.
+	err := b.Start(context.Background(), &processInfo{doneCh: make(chan struct{})}, &prepResult{apiProvider: mock.New()})
 	if err == nil {
 		t.Fatalf("Start with nil AgentSvc returned nil error")
 	}
@@ -194,7 +193,6 @@ func TestAPIBackend_FullLoop_RunsAndKills(t *testing.T) {
 	prov := &blockingMockProvider{started: make(chan struct{})}
 	s := New(Config{
 		Clock:    clk,
-		Provider: prov,
 		AgentSvc: &noopAgentSvc{},
 	})
 	b := newAPIBackend(s)
@@ -217,6 +215,7 @@ func TestAPIBackend_FullLoop_RunsAndKills(t *testing.T) {
 		apiMaxIterations: 1,
 		apiMaxContext:    1000,
 		apiDeadline:      time.Now().Add(5 * time.Second),
+		apiProvider:      prov,
 	}
 
 	if err := b.Start(context.Background(), proc, prep); err != nil {

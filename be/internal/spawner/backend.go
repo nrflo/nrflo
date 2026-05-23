@@ -63,17 +63,19 @@ type prepResult struct {
 	pythonPath string // resolved venv python; empty → fall back to "python3" on PATH
 
 	// API-mode fields. executionMode is "cli" (default), "api", or "script".
-	executionMode    string
-	apiSystem        string
-	apiInitialPrompt string
-	apiTools         []provider.ToolSpec
-	apiHandlers      apirun.Registry
-	apiToolEnv       apirun.ToolEnv
-	apiMaxIterations int
-	apiMaxTokens     int
-	apiDeadline      time.Time
-	apiModelID       string // mapped model name, e.g. "claude-haiku-4-5-20251001"
-	apiMaxContext    int
+	executionMode      string
+	apiSystem          string
+	apiInitialPrompt   string
+	apiTools           []provider.ToolSpec
+	apiHandlers        apirun.Registry
+	apiToolEnv         apirun.ToolEnv
+	apiMaxIterations   int
+	apiMaxTokens       int
+	apiDeadline        time.Time
+	apiModelID         string // mapped model name, e.g. "claude-haiku-4-5-20251001"
+	apiMaxContext      int
+	apiProvider        provider.Provider // resolved per-spawn from APIModelConfigs + BuildAPIProvider
+	apiReasoningEffort string            // from api_models row
 }
 
 // apiBackend executes an agent in-process via the apirun.Runner. There is no
@@ -81,7 +83,6 @@ type prepResult struct {
 // cancels the goroutine's context.
 type apiBackend struct {
 	s        *Spawner
-	provider provider.Provider
 	agentSvc apirun.AgentSvc
 
 	mu     sync.Mutex
@@ -91,7 +92,6 @@ type apiBackend struct {
 func newAPIBackend(s *Spawner) *apiBackend {
 	return &apiBackend{
 		s:        s,
-		provider: s.config.Provider,
 		agentSvc: s.config.AgentSvc,
 	}
 }
@@ -111,8 +111,8 @@ func (b *apiBackend) NaturalExitGrace() time.Duration { return 0 }
 // registers the session stop before closing proc.doneCh, so monitorAll can
 // skip handleCompletion (proc.cmd is nil for api agents).
 func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepResult) error {
-	if b.provider == nil {
-		return fmt.Errorf("api backend: spawner.Config.Provider is nil")
+	if prep.apiProvider == nil {
+		return fmt.Errorf("api backend: provider not resolved for model %q", prep.apiModelID)
 	}
 	if b.agentSvc == nil {
 		return fmt.Errorf("api backend: spawner.Config.AgentSvc is nil")
@@ -120,7 +120,7 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 
 	// Build a synthetic spawn command for forensics/UI display.
 	proc.spawnCommand = fmt.Sprintf("api:%s model=%s max_iter=%d max_tokens=%d",
-		b.provider.Name(), prep.apiModelID, prep.apiMaxIterations, prep.apiMaxTokens)
+		prep.apiProvider.Name(), prep.apiModelID, prep.apiMaxIterations, prep.apiMaxTokens)
 
 	runCtx, cancel := context.WithCancel(ctx)
 	b.mu.Lock()
@@ -131,20 +131,21 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 	procState := &procStateAdapter{proc: proc}
 
 	runner := apirun.NewRunner(apirun.Config{
-		Provider:      b.provider,
-		Sink:          sink,
-		AgentSvc:      b.agentSvc,
-		ErrorSvc:      apirunErrorAdapter(b.s.config.ErrorSvc),
-		System:        prep.apiSystem,
-		InitialPrompt: prep.apiInitialPrompt,
-		Tools:         prep.apiTools,
-		Handlers:      prep.apiHandlers,
-		Env:           prep.apiToolEnv,
-		Model:         prep.apiModelID,
-		MaxIterations: prep.apiMaxIterations,
-		MaxTokens:     prep.apiMaxTokens,
-		MaxContext:    prep.apiMaxContext,
-		Deadline:      prep.apiDeadline,
+		Provider:        prep.apiProvider,
+		Sink:            sink,
+		AgentSvc:        b.agentSvc,
+		ErrorSvc:        apirunErrorAdapter(b.s.config.ErrorSvc),
+		System:          prep.apiSystem,
+		InitialPrompt:   prep.apiInitialPrompt,
+		Tools:           prep.apiTools,
+		Handlers:        prep.apiHandlers,
+		Env:             prep.apiToolEnv,
+		Model:           prep.apiModelID,
+		MaxIterations:   prep.apiMaxIterations,
+		MaxTokens:       prep.apiMaxTokens,
+		MaxContext:      prep.apiMaxContext,
+		Deadline:        prep.apiDeadline,
+		ReasoningEffort: prep.apiReasoningEffort,
 	})
 
 	doneCh := proc.doneCh

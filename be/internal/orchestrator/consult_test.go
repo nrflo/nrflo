@@ -206,11 +206,11 @@ func TestConsult_HappyPath(t *testing.T) {
 	callerSID, _ := seedConsultDefs(t, env, "hp-ticket-001")
 
 	// Inject mock provider via the test seam.
-	orig := consultProviderFunc
-	consultProviderFunc = func(_ context.Context, _ *db.Pool, _ string, _ clock.Clock) provider.Provider {
-		return mock.New(consultMockScripts("the answer")...)
+	orig := consultBuildAPIProvider
+	consultBuildAPIProvider = func(_ context.Context, _ *db.Pool, _ clock.Clock, _, _ string) (provider.Provider, error) {
+		return mock.New(consultMockScripts("the answer")...), nil
 	}
-	t.Cleanup(func() { consultProviderFunc = orig })
+	t.Cleanup(func() { consultBuildAPIProvider = orig })
 
 	answer, err := env.orch.Consult(context.Background(), callerSID, "test-consultant", "how?")
 	if err != nil {

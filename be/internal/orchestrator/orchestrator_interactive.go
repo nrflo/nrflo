@@ -17,6 +17,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
+	"be/internal/spawner/apirun/provider"
 )
 
 // interactivePreStep holds state for the interactive/plan pre-step that runs
@@ -39,6 +40,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	agents map[string]spawner.AgentConfig,
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
+	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
@@ -97,7 +99,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Build PTY command args
-	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, claudeSettingsJSON)
+	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build interactive PTY args: %w", err)
 	}
@@ -110,13 +112,18 @@ func (o *Orchestrator) setupInteractivePreStep(
 	// Create a temp spawner just for the interactive wait mechanism.
 	// Manifest fields are not needed here (CLI-only, no API spawn).
 	wfiID := wi.ID
+	interactivePool := pool
 	sp := spawner.New(spawner.Config{
-		Workflows:    workflows,
-		Agents:       agents,
-		DataPath:     o.dataPath,
-		WSHub:        o.wsHub,
-		Clock:        o.clock,
-		ModelConfigs: modelConfigs,
+		Workflows:       workflows,
+		Agents:          agents,
+		DataPath:        o.dataPath,
+		WSHub:           o.wsHub,
+		Clock:           o.clock,
+		ModelConfigs:    modelConfigs,
+		APIModelConfigs: apiModelConfigs,
+		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
+			return buildAPIProvider(ctx, interactivePool, o.clock, providerName, projectID)
+		},
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {
@@ -152,6 +159,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 	pool *db.Pool,
 	_ string,
 	modelConfigs map[string]spawner.ModelConfig,
+	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 ) ([]string, error) {
 	var prompt string
@@ -176,14 +184,19 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		// Template-only spawner for prompt expansion. Manifest fields not needed (CLI-only).
 		// Callbacks wired for uniformity; this spawner never registers sessions.
 		tmplWfiID := wi.ID
+		tmplPool := pool
 		sp := spawner.New(spawner.Config{
-			Workflows:    workflows,
-			Agents:       agents,
-			DataPath:     o.dataPath,
-			WSHub:        o.wsHub,
-			Pool:         pool,
-			Clock:        o.clock,
-			ModelConfigs: modelConfigs,
+			Workflows:       workflows,
+			Agents:          agents,
+			DataPath:        o.dataPath,
+			WSHub:           o.wsHub,
+			Pool:            pool,
+			Clock:           o.clock,
+			ModelConfigs:    modelConfigs,
+			APIModelConfigs: apiModelConfigs,
+			BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
+				return buildAPIProvider(ctx, tmplPool, o.clock, providerName, projectID)
+			},
 			OnSessionRegister: func(sid string, s *spawner.Spawner) {
 				o.mu.Lock()
 				if rs, ok := o.runs[tmplWfiID]; ok {

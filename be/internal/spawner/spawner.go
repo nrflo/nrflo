@@ -25,7 +25,6 @@ import (
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
-	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/spawner/apirun/tools_builtin"
 	"be/internal/spawner/apirun/tools_http"
 	"be/internal/spawner/apirun/tools_python"
@@ -87,6 +86,15 @@ type ModelConfig struct {
 	OverrideSystemPrompt bool   // when true and CLIType=="claude", emit --system-prompt-file from system-prompt injectable
 }
 
+// APIModelConfig holds DB-sourced configuration for an API-mode model row.
+// Sourced from the api_models table, keyed by row id.
+type APIModelConfig struct {
+	Provider        string // "anthropic", "openai"
+	MappedModel     string // actual provider model ID, e.g. "claude-opus-4-7"
+	ContextLength   int    // max input context window in tokens
+	ReasoningEffort string // "", "low", "medium", "high", "xhigh"
+}
+
 // Config holds the spawner configuration
 type Config struct {
 	Workflows   map[string]WorkflowDef
@@ -123,9 +131,14 @@ type Config struct {
 	ModelConfigs map[string]ModelConfig
 	// ErrorSvc records agent errors (optional, nil-safe).
 	ErrorSvc ErrorRecorder
-	// Provider is the provider abstraction used by API-mode agents
-	// (execution_mode='api'). Required when any agent definition selects api mode.
-	Provider provider.Provider
+	// BuildAPIProvider constructs a provider.Provider for API-mode agents.
+	// Called once per spawn with the provider name (e.g. "anthropic", "openai")
+	// and project ID. Required when any agent definition selects api mode.
+	BuildAPIProvider func(ctx context.Context, providerName, projectID string) (provider.Provider, error)
+	// APIModelConfigs maps api_models row id to DB-sourced configuration.
+	// Used in the api branch of prepareSpawn to look up provider, mapped model,
+	// context length, and reasoning effort. nil map is safe (lookup returns zero value).
+	APIModelConfigs map[string]APIModelConfig
 	// AgentSvc persists context_left for API-mode agents (mirrors what the
 	// CLI hook does for CLI agents).
 	AgentSvc apirun.AgentSvc
@@ -1109,20 +1122,24 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	if executionMode == "api" {
-		// Resolve the API key up-front so spawn fails fast on misconfiguration
-		// (matches the CLI failure mode of a missing binary).
-		var envRepo anthropic.ProjectEnvVarRepo
-		if s.config.Pool != nil {
-			envRepo = newSpawnerEnvRepo(s.config.Pool, s.config.Clock, req.ProjectID)
-		}
-		if _, keyErr := anthropic.ResolveAPIKey(context.Background(), envRepo, req.ProjectID); keyErr != nil {
-			return nil, nil, fmt.Errorf("api mode: %w", keyErr)
+		// Look up api_models row for this model. Fail fast if not configured.
+		am, ok := s.config.APIModelConfigs[model]
+		if !ok {
+			return nil, nil, fmt.Errorf("api mode: model %q not found in api_models", model)
 		}
 
-		// Resolve mapped model name for the provider call.
+		// Build the provider for this spawn. Fail fast on missing credentials.
+		apiProv, provErr := s.config.BuildAPIProvider(ctx, am.Provider, req.ProjectID)
+		if provErr != nil {
+			return nil, nil, fmt.Errorf("api mode: %w", provErr)
+		}
+		prep.apiProvider = apiProv
+		prep.apiReasoningEffort = am.ReasoningEffort
+
+		// Resolve mapped model name from the api_models row.
 		apiModelID := model
-		if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.MappedModel != "" {
-			apiModelID = cfg.MappedModel
+		if am.MappedModel != "" {
+			apiModelID = am.MappedModel
 		}
 
 		maxIter := defaultAPIMaxIterations
@@ -1142,11 +1159,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 				maxTokens = *agentCfg.APIMaxTokens
 			}
 		}
-		maxCtx := s.maxContextForModel(modelName)
-		if s.config.Provider != nil {
-			if pmc := s.config.Provider.MaxContext(apiModelID); pmc > 0 {
-				maxCtx = pmc
-			}
+		maxCtx := am.ContextLength
+		if pmc := apiProv.MaxContext(apiModelID); pmc > 0 {
+			maxCtx = pmc
 		}
 		proc.maxContext = maxCtx
 

@@ -43,6 +43,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags(t *testing.
 		env.pool,
 		"",
 		modelConfigs,
+		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {
@@ -100,6 +101,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse(t *testing.T) 
 		env.pool,
 		"",
 		modelConfigs,
+		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {
@@ -151,6 +153,7 @@ func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
 		env.pool,
 		"",
 		modelConfigs,
+		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {

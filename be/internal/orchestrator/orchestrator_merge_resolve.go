@@ -31,7 +31,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
 	// git/bash tools registered for apirun, so only the CLI variant is used here.
-	svc := service.NewSystemAgentDefinitionService(pool, o.clock)
+	svc := service.NewSystemAgentDefinitionService(pool, o.clock, service.NewAPIModelService(pool, o.clock))
 	sysDef, err := svc.Get("conflict-resolver")
 	if err != nil {
 		return fmt.Errorf("no conflict-resolver configured: %w", err)

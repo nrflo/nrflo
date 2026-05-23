@@ -28,7 +28,7 @@ func setupAgentDefWithToolScript(t *testing.T) (*AgentDefinitionService, string,
 
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), scriptRepo)
 	return svc, wfID, toolScriptID
 }
 
@@ -109,7 +109,7 @@ func TestUpdateAgentDef_PythonScriptID_ToolKindScriptRejected(t *testing.T) {
 
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, scriptRepo)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), scriptRepo)
 
 	// Create a script-mode agent pointing at the agent-kind script.
 	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{

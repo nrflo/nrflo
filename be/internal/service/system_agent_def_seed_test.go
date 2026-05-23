@@ -22,7 +22,7 @@ func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
 
 	def, err := svc.Get("conflict-resolver")
 	if err != nil {
@@ -114,7 +114,7 @@ func TestSystemAgentDef_SeededConflictResolverPromptVars(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
 
 	def, err := svc.Get("conflict-resolver")
 	if err != nil {

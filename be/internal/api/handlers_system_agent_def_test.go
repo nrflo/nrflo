@@ -296,8 +296,10 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 
 func TestHandleUpdateSystemAgentDef_NotFound(t *testing.T) {
 	s := newSystemAgentServer(t)
+	// Use prompt (not model) so the handler skips the pre-SELECT for execution_mode
+	// and reaches the UPDATE, which yields "not found" when 0 rows are affected.
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/no-such",
-		strings.NewReader(`{"model":"opus_4_7"}`))
+		strings.NewReader(`{"prompt":"test"}`))
 	req.SetPathValue("id", "no-such")
 	rr := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(rr, req)

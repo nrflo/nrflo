@@ -14,7 +14,7 @@ func setupLiveSettingEnv(t *testing.T) (*AgentDefinitionService, *GlobalSettings
 	t.Helper()
 	pool, _, wfID := setupAgentDefTestEnv(t, nil)
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
 	settingsSvc := NewGlobalSettingsService(pool, clock.Real())
 	return svc, settingsSvc, wfID
 }

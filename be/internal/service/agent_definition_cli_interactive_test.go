@@ -88,7 +88,7 @@ func TestCreateAgentDef_CLIInteractive_DBLookupUsedModel(t *testing.T) {
 	t.Parallel()
 	pool, _, wfID := setupAgentDefTestEnv(t, nil)
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "agent-cli-int-db",

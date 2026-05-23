@@ -37,6 +37,7 @@ Write operations on configuration resources require admin role:
 - `GET /api/v1/audit-log`
 - `POST|PATCH|DELETE /api/v1/system-agents/{...}`
 - `POST|PATCH|DELETE /api/v1/cli-models/{...}`
+- `POST|PATCH|DELETE /api/v1/api-models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
 - `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}` (project-scoped)

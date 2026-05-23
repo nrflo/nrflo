@@ -21,7 +21,7 @@ func setupSysAgentDefTestEnv(t *testing.T) (*SystemAgentDefinitionService, func(
 	if err != nil {
 		t.Fatalf("failed to open pool: %v", err)
 	}
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
 	return svc, func() { pool.Close() }
 }
 
@@ -345,8 +345,10 @@ func TestSystemAgentDef_Update_NotFound(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
-	newModel := "opus_4_7"
-	err := svc.Update("no-such-agent", &types.SystemAgentDefUpdateRequest{Model: &newModel})
+	// Use Prompt (not Model) so the code skips the pre-SELECT for execution_mode
+	// and reaches the UPDATE, which returns "not found" when 0 rows are affected.
+	newPrompt := "test prompt"
+	err := svc.Update("no-such-agent", &types.SystemAgentDefUpdateRequest{Prompt: &newPrompt})
 	if err == nil {
 		t.Fatal("expected not-found error, got nil")
 	}

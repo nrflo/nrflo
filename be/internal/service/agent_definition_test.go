@@ -41,7 +41,7 @@ func setupAgentDefTestEnv(t *testing.T, groups []string) (*db.Pool, *AgentDefini
 	}
 
 	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, nil)
+	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
 	return pool, svc, "wf1"
 }
 

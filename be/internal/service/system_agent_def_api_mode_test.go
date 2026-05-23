@@ -20,7 +20,7 @@ func TestSystemAgentDef_ListForAPI_ExcludesAPIMode(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
 
 	defs, err := svc.ListForAPI(false)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestSystemAgentDef_ListForAPI_IncludesAPIMode(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real())
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
 
 	defs, err := svc.ListForAPI(true)
 	if err != nil {

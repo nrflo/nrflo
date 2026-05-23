@@ -23,12 +23,13 @@ type AgentDefinitionService struct {
 	clock            clock.Clock
 	pool             *db.Pool
 	cliModelSvc      *CLIModelService
+	apiModelSvc      *APIModelService
 	pythonScriptRepo *repo.PythonScriptRepo
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, pythonScriptRepo *repo.PythonScriptRepo) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, pythonScriptRepo: pythonScriptRepo}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, apiModelSvc *APIModelService, pythonScriptRepo *repo.PythonScriptRepo) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, apiModelSvc: apiModelSvc, pythonScriptRepo: pythonScriptRepo}
 }
 
 // validateScriptMode enforces coupling rules for execution_mode="script":
@@ -135,15 +136,25 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
-	// Validate low_consumption_model against cli_models DB table
 	lcModel := strings.ToLower(req.LowConsumptionModel)
-	if lcModel != "" {
-		valid, err := s.cliModelSvc.IsValidModel(lcModel)
-		if err != nil {
-			return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
-		}
-		if !valid {
-			return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+	if lcModel != "" && executionMode != "script" {
+		switch executionMode {
+		case "api":
+			valid, err := s.apiModelSvc.IsValidModel(lcModel)
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
+			}
+			if !valid {
+				return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+			}
+		default:
+			valid, err := s.cliModelSvc.IsValidModel(lcModel)
+			if err != nil {
+				return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
+			}
+			if !valid {
+				return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+			}
 		}
 	}
 
@@ -172,6 +183,18 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	} else if modelName == "" {
 		modelName = "sonnet"
 	}
+
+	// Validate model against api_models for api execution mode
+	if executionMode == "api" {
+		valid, err := s.apiModelSvc.IsValidModel(modelName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate model: %w", err)
+		}
+		if !valid {
+			return nil, fmt.Errorf("invalid model: %q", modelName)
+		}
+	}
+
 	timeout := req.Timeout
 	if timeout == 0 {
 		timeout = 20
@@ -361,7 +384,38 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	updates := []string{}
 	args := []interface{}{}
 
+	// effectiveMode resolves the execution mode that will apply after the update.
+	// Loaded lazily from DB when req.ExecutionMode is not set.
+	var loadedMode string
+	effectiveMode := func() (string, error) {
+		if req.ExecutionMode != nil {
+			return *req.ExecutionMode, nil
+		}
+		if loadedMode != "" {
+			return loadedMode, nil
+		}
+		if err := s.pool.QueryRow(
+			"SELECT execution_mode FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+			projectID, workflowID, id).Scan(&loadedMode); err != nil {
+			return "", fmt.Errorf("failed to load agent definition: %w", err)
+		}
+		return loadedMode, nil
+	}
+
 	if req.Model != nil {
+		mode, err := effectiveMode()
+		if err != nil {
+			return err
+		}
+		if mode == "api" {
+			valid, vErr := s.apiModelSvc.IsValidModel(*req.Model)
+			if vErr != nil {
+				return fmt.Errorf("failed to validate model: %w", vErr)
+			}
+			if !valid {
+				return fmt.Errorf("invalid model: %q", *req.Model)
+			}
+		}
 		updates = append(updates, "model = ?")
 		args = append(args, *req.Model)
 	}
@@ -432,12 +486,29 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.LowConsumptionModel != nil {
 		lcModel := strings.ToLower(*req.LowConsumptionModel)
 		if lcModel != "" {
-			valid, err := s.cliModelSvc.IsValidModel(lcModel)
+			mode, err := effectiveMode()
 			if err != nil {
-				return fmt.Errorf("failed to validate low_consumption_model: %w", err)
+				return err
 			}
-			if !valid {
-				return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+			switch mode {
+			case "api":
+				valid, vErr := s.apiModelSvc.IsValidModel(lcModel)
+				if vErr != nil {
+					return fmt.Errorf("failed to validate low_consumption_model: %w", vErr)
+				}
+				if !valid {
+					return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+				}
+			case "script":
+				// skip validation for script mode
+			default:
+				valid, vErr := s.cliModelSvc.IsValidModel(lcModel)
+				if vErr != nil {
+					return fmt.Errorf("failed to validate low_consumption_model: %w", vErr)
+				}
+				if !valid {
+					return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+				}
 			}
 		}
 		updates = append(updates, "low_consumption_model = ?")

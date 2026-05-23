@@ -14,13 +14,14 @@ import (
 
 // SystemAgentDefinitionService handles system agent definition business logic
 type SystemAgentDefinitionService struct {
-	clock clock.Clock
-	pool  *db.Pool
+	clock       clock.Clock
+	pool        *db.Pool
+	apiModelSvc *APIModelService
 }
 
 // NewSystemAgentDefinitionService creates a new system agent definition service
-func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock) *SystemAgentDefinitionService {
-	return &SystemAgentDefinitionService{pool: pool, clock: clk}
+func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock, apiModelSvc *APIModelService) *SystemAgentDefinitionService {
+	return &SystemAgentDefinitionService{pool: pool, clock: clk, apiModelSvc: apiModelSvc}
 }
 
 func validateExecutionMode(mode string) error {
@@ -50,6 +51,16 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		executionMode = "cli_interactive"
 	} else if err := validateExecutionMode(executionMode); err != nil {
 		return nil, err
+	}
+
+	if executionMode == "api" && s.apiModelSvc != nil {
+		valid, err := s.apiModelSvc.IsValidModel(modelName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate model: %w", err)
+		}
+		if !valid {
+			return nil, fmt.Errorf("invalid model: %q", modelName)
+		}
 	}
 
 	role := req.Role
@@ -227,6 +238,28 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		args = append(args, *req.ExecutionMode)
 	}
 	if req.Model != nil {
+		if s.apiModelSvc != nil {
+			// Determine effective execution_mode to branch validation
+			var currentMode string
+			if req.ExecutionMode != nil {
+				currentMode = *req.ExecutionMode
+			} else {
+				if scanErr := s.pool.QueryRow(
+					"SELECT execution_mode FROM system_agent_definitions WHERE LOWER(id) = LOWER(?)",
+					id).Scan(&currentMode); scanErr != nil {
+					return fmt.Errorf("failed to load system agent definition: %w", scanErr)
+				}
+			}
+			if currentMode == "api" {
+				valid, vErr := s.apiModelSvc.IsValidModel(*req.Model)
+				if vErr != nil {
+					return fmt.Errorf("failed to validate model: %w", vErr)
+				}
+				if !valid {
+					return fmt.Errorf("invalid model: %q", *req.Model)
+				}
+			}
+		}
 		updates = append(updates, "model = ?")
 		args = append(args, *req.Model)
 	}

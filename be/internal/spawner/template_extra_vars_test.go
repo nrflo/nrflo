@@ -41,7 +41,7 @@ func createAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt string) {
 // Deletes any existing row first (e.g. from migration seed data).
 func createSystemAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt string) {
 	t.Helper()
-	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real())
+	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewAPIModelService(env.pool, clock.Real()))
 	// Remove seeded row if present so Create doesn't fail on duplicate.
 	_ = svc.Delete(agentID)
 	_, err := svc.Create(&types.SystemAgentDefCreateRequest{

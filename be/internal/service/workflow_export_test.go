@@ -46,7 +46,7 @@ func setupExportImportEnv(t *testing.T) *exportTestEnv {
 	wfSvc := NewWorkflowService(pool, clk)
 	cliModelSvc := NewCLIModelService(pool, clk)
 	scriptRepo := repo.NewPythonScriptRepo(pool, clk)
-	agentSvc := NewAgentDefinitionService(pool, clk, cliModelSvc, scriptRepo)
+	agentSvc := NewAgentDefinitionService(pool, clk, cliModelSvc, NewAPIModelService(pool, clk), scriptRepo)
 	lpSvc := NewWorkflowLayerPolicyService(pool, clk)
 	notifySvc := NewNotificationService(pool, clk, nil, nil, wfSvc)
 	pythonScriptSvc := NewPythonScriptService(pool, clk)

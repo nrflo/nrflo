@@ -30,6 +30,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `system_agent_definition.go` | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
 | `cli_model.go` | CLI model CRUD; `validateReasoningEffort` enforces allowed values (`xhigh` only for claude-opus-4-7); readonly rows only accept `reasoning_effort` updates |
+| `api_model.go` | API model CRUD (provider: anthropic/openai); `validateAPIReasoningEffort` enforces `xhigh` only on Anthropic Opus 4.7; readonly rows only accept `reasoning_effort` updates; `IsValidModel` used by `agent_definition.go` and `system_agent_definition.go` for api-mode validation |
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking + TestSend + ListDeliveries |
@@ -59,7 +60,7 @@ Key types in `workflow_types.go`:
 
 Most service constructors take `(pool *db.Pool, clk clock.Clock)`. Pass `clock.Real()` in production; `clock.NewTest(fixedTime)` in tests.
 
-**Exception:** `NewAgentDefinitionService(pool, clk, cliModelSvc)` additionally requires a `*CLIModelService` for validating `low_consumption_model`.
+**Exception:** `NewAgentDefinitionService(pool, clk, cliModelSvc, apiModelSvc, pythonScriptRepo)` additionally requires a `*CLIModelService` (validates `low_consumption_model` for cli_interactive) and `*APIModelService` (validates model and `low_consumption_model` for api mode). `NewSystemAgentDefinitionService(pool, clk, apiModelSvc)` also requires `*APIModelService` for api-mode model validation.
 
 ## Common Tasks
 

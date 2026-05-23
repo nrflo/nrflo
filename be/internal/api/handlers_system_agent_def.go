@@ -13,7 +13,7 @@ import (
 // Single-row endpoints (Get/PATCH/DELETE) intentionally still resolve api-mode rows
 // so existing IDs remain reachable regardless of server mode.
 func (s *Server) handleListSystemAgentDefs(w http.ResponseWriter, r *http.Request) {
-	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
+	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock, service.NewAPIModelService(s.pool, s.clock))
 
 	settingsSvc := service.NewGlobalSettingsService(s.pool, s.clock)
 	apiModeVal, _ := settingsSvc.Get("api_mode_enabled")
@@ -39,7 +39,7 @@ func (s *Server) handleCreateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
+	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock, service.NewAPIModelService(s.pool, s.clock))
 
 	def, err := svc.Create(&req)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *Server) handleCreateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleGetSystemAgentDef(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
+	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock, service.NewAPIModelService(s.pool, s.clock))
 
 	def, err := svc.Get(id)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Server) handleUpdateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
+	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock, service.NewAPIModelService(s.pool, s.clock))
 
 	if err := svc.Update(id, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -123,7 +123,7 @@ func (s *Server) handleUpdateSystemAgentDef(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleDeleteSystemAgentDef(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
-	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock)
+	svc := service.NewSystemAgentDefinitionService(s.pool, s.clock, service.NewAPIModelService(s.pool, s.clock))
 
 	if err := svc.Delete(id); err != nil {
 		if strings.Contains(err.Error(), "not found") {

@@ -19,7 +19,7 @@ func setupConsultantExecEnv(t *testing.T) (pool *db.Pool, agentSvc *AgentDefinit
 	pool, _, wfID = setupAgentDefTestEnv(t, nil)
 	clk := clock.Real()
 	cliModelSvc := NewCLIModelService(pool, clk)
-	agentSvc = NewAgentDefinitionService(pool, clk, cliModelSvc, nil)
+	agentSvc = NewAgentDefinitionService(pool, clk, cliModelSvc, NewAPIModelService(pool, clk), nil)
 	wfSvc = NewWorkflowService(pool, clk)
 	polSvc = NewWorkflowLayerPolicyService(pool, clk)
 	settingsSvc := NewGlobalSettingsService(pool, clk)

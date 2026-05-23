@@ -36,6 +36,25 @@ type CLIModelUpdateRequest struct {
 	OverrideSystemPrompt *bool   `json:"override_system_prompt,omitempty"`
 }
 
+// APIModelCreateRequest is the request for creating an API model
+type APIModelCreateRequest struct {
+	ID              string `json:"id"`
+	Provider        string `json:"provider"`
+	DisplayName     string `json:"display_name"`
+	MappedModel     string `json:"mapped_model"`
+	ReasoningEffort string `json:"reasoning_effort"`
+	ContextLength   int    `json:"context_length"`
+}
+
+// APIModelUpdateRequest is the request for updating an API model
+type APIModelUpdateRequest struct {
+	DisplayName     *string `json:"display_name,omitempty"`
+	MappedModel     *string `json:"mapped_model,omitempty"`
+	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	ContextLength   *int    `json:"context_length,omitempty"`
+	Enabled         *bool   `json:"enabled,omitempty"`
+}
+
 // InputArtifactRef references a staged upload to attach to a workflow run.
 type InputArtifactRef struct {
 	UploadID string `json:"upload_id"`

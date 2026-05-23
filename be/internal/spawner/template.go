@@ -74,7 +74,7 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 	}
 
 	// Fallback to system agent definition
-	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock)
+	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewAPIModelService(pool, s.config.Clock))
 	sysDef, sysErr := svc.Get(agentType)
 	if sysErr == nil {
 		if sysDef.Prompt == "" {

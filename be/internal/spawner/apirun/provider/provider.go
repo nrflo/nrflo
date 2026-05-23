@@ -25,6 +25,9 @@ type Request struct {
 	ToolChoice       string // "auto" for v1
 	CacheBreakpoints []CacheBreakpoint
 	Model            string
+	// ReasoningEffort is an optional hint for reasoning models ("low", "medium",
+	// "high"). Providers without reasoning support (Anthropic) ignore this field.
+	ReasoningEffort string
 }
 
 // Message is a single role-tagged entry in the conversation history.

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
+	openai "github.com/openai/openai-go"
 )
 
 // RetryClass categorises whether a provider error is retriable and by which mechanism.
@@ -41,6 +42,20 @@ func classifyProviderError(ctx context.Context, err error) (status, message stri
 			return "FAIL", fmt.Sprintf("provider_error: %s", apiErr.Error()), RetryClassError
 		default:
 			return "FAIL", fmt.Sprintf("provider_error: %s", apiErr.Error()), RetryClassError
+		}
+	}
+
+	var oaiErr *openai.Error
+	if errors.As(err, &oaiErr) {
+		switch {
+		case oaiErr.StatusCode == 429:
+			return "RATE_LIMITED", fmt.Sprintf("rate_limit: %s", oaiErr.Error()), RetryClassRateLimit
+		case oaiErr.StatusCode == 401 || oaiErr.StatusCode == 403:
+			return "FAIL", fmt.Sprintf("auth_error: %s", oaiErr.Error()), RetryClassError
+		case oaiErr.StatusCode >= 500 && oaiErr.StatusCode < 600:
+			return "FAIL", fmt.Sprintf("provider_error: %s", oaiErr.Error()), RetryClassError
+		default:
+			return "FAIL", fmt.Sprintf("provider_error: %s", oaiErr.Error()), RetryClassError
 		}
 	}
 

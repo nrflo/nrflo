@@ -2,7 +2,7 @@
 
 > **Note:** Only reachable when the `api_mode_enabled` global setting is `true`. When the setting is off, `prepareSpawn` returns `api_mode_disabled` before constructing a Runner.
 
-In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic streaming impl + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler), `tools_python/` (python_scripts kind=tool handler).
+In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic and OpenAI streaming impls + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler), `tools_python/` (python_scripts kind=tool handler).
 
 ## Tool Dispatch Flow
 
@@ -52,7 +52,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Provider Error Classification
 
-`errors.go:classifyProviderError` returns `(status, message, RetryClass)`. Detection uses typed SDK errors only — no string matching. `sdk.Error.Type() == ErrorTypeRateLimitError | ErrorTypeOverloadedError`, or `StatusCode ∈ {429, 529}` → `RATE_LIMITED` + `RetryClassRateLimit`. 401/403 → `FAIL` + `RetryClassError` (auth_error). 5xx → `FAIL` + `RetryClassError`. `json.SyntaxError`/`UnmarshalTypeError` → `FAIL` + `RetryClassError`. Other → `FAIL` + `RetryClassNone`. `ctx.Err()` takes priority → `CANCELLED`. On `RetryClassRateLimit` the runner skips `ErrorSvc.RecordError` and sets `RATE_LIMITED`; the api_backend goroutine then performs the rate-limit retry dance (see spawner [Rate-Limit Restart](../CLAUDE.md#rate-limit-restart)) gated on `rateLimitConfig.Enabled && rateLimitTotalWait < MaxWait`.
+`errors.go:classifyProviderError` returns `(status, message, RetryClass)`. Detection uses typed SDK errors — no string matching. `ctx.Err()` takes priority → `CANCELLED`. Anthropic `*sdk.Error`: type-based detection first (`ErrorTypeRateLimitError | ErrorTypeOverloadedError` or `StatusCode ∈ {429, 529}` → `RATE_LIMITED`), 401/403 → `FAIL auth_error`, 5xx → `FAIL provider_error`. OpenAI `*openai.Error` (alias for `apierror.Error`): 429 → `RATE_LIMITED`, 401/403 → `FAIL auth_error`, 5xx → `FAIL provider_error`. `json.SyntaxError`/`UnmarshalTypeError` → `FAIL provider_protocol_error`. Other → `FAIL` + `RetryClassNone`. On `RetryClassRateLimit` the runner skips `ErrorSvc.RecordError` and sets `RATE_LIMITED`; the api_backend goroutine then performs the rate-limit retry dance (see spawner [Rate-Limit Restart](../CLAUDE.md#rate-limit-restart)) gated on `rateLimitConfig.Enabled && rateLimitTotalWait < MaxWait`.
 
 ## Low-Context Behavior
 

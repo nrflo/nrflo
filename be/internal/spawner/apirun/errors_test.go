@@ -10,7 +10,20 @@ import (
 	"testing"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
+	openai "github.com/openai/openai-go"
 )
+
+// makeOpenAIErr constructs an *openai.Error (alias for apierror.Error) with
+// the given HTTP status code.
+func makeOpenAIErr(statusCode int) *openai.Error {
+	req, _ := http.NewRequest("POST", "https://api.openai.com/v1/responses", nil)
+	resp := &http.Response{StatusCode: statusCode}
+	return &openai.Error{
+		StatusCode: statusCode,
+		Request:    req,
+		Response:   resp,
+	}
+}
 
 // makeSDKErr constructs a *sdk.Error with the given HTTP status code. When
 // errType is non-empty, the error type field is populated via JSON unmarshal
@@ -139,6 +152,42 @@ func TestClassifyProviderError(t *testing.T) {
 			wantStatus:    "CANCELLED",
 			wantClass:     RetryClassNone,
 			wantMsgSubstr: "cancelled",
+		},
+		// OpenAI 429 → rate limit.
+		{
+			name:          "openai_429",
+			ctx:           context.Background(),
+			err:           makeOpenAIErr(429),
+			wantStatus:    "RATE_LIMITED",
+			wantClass:     RetryClassRateLimit,
+			wantMsgSubstr: "rate_limit",
+		},
+		// OpenAI 500 → provider error.
+		{
+			name:          "openai_500",
+			ctx:           context.Background(),
+			err:           makeOpenAIErr(500),
+			wantStatus:    "FAIL",
+			wantClass:     RetryClassError,
+			wantMsgSubstr: "provider_error",
+		},
+		// OpenAI 401 → auth error.
+		{
+			name:          "openai_401",
+			ctx:           context.Background(),
+			err:           makeOpenAIErr(401),
+			wantStatus:    "FAIL",
+			wantClass:     RetryClassError,
+			wantMsgSubstr: "auth_error",
+		},
+		// OpenAI 403 → auth error.
+		{
+			name:          "openai_403",
+			ctx:           context.Background(),
+			err:           makeOpenAIErr(403),
+			wantStatus:    "FAIL",
+			wantClass:     RetryClassError,
+			wantMsgSubstr: "auth_error",
 		},
 	}
 

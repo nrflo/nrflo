@@ -31,7 +31,7 @@ func matchAnyCaseInsensitive(text string, patterns []string) (string, bool) {
 
 // CLIAdapter defines the interface for different CLI backends
 type CLIAdapter interface {
-	// Name returns the CLI identifier (e.g., "claude", "opencode")
+	// Name returns the CLI identifier (e.g., "claude", "codex")
 	Name() string
 
 	// MapModel converts a short model name to the CLI's expected format
@@ -72,19 +72,16 @@ type CLIAdapter interface {
 
 	// BumpsOnPTYBytes returns true when receiving PTY bytes should bump
 	// lastMessageTime / hasReceivedMessage for stall detection purposes.
-	// Claude (hooks), Opencode (SSE), and Gemini (JSONL tailer) return false
-	// because a structured activity channel drives the heartbeat. Codex returns
-	// true: codex 0.133 exposes no structured channel under PTY (no hooks, no
-	// rollout JSONL), so its TUI redraws are the only liveness signal.
+	// Claude returns false because a structured hook channel drives the
+	// heartbeat. Codex returns true: codex 0.133 exposes no structured channel
+	// under PTY, so its TUI redraws are the only liveness signal.
 	BumpsOnPTYBytes() bool
 
 	// NaturalExitGrace is how long the terminal-signal handler should
 	// wait for the CLI process to exit on its own before sending SIGTERM
 	// when the agent reported `nrflo agent finished`. Adapters whose CLI
-	// writes critical telemetry at end-of-turn (opencode flushes its
-	// `step-finish` part with token usage *after* the agent's last tool
-	// call returns) return a non-zero value here so the wrap-up has time
-	// to land. Default 0 = no wait (kill immediately).
+	// needs wrap-up time to finish writing end-of-turn state return a non-zero
+	// value here. Default 0 = no wait (kill immediately).
 	NaturalExitGrace() time.Duration
 
 	// ClassifyExit inspects recent stdout/stderr text and the exit code to
@@ -102,9 +99,7 @@ type CLIAdapter interface {
 // forwards into InteractiveSpawnOptions. Fields are zero for adapters with no
 // extras.
 type InteractiveExtras struct {
-	CodexHome  string // per-session CODEX_HOME dir (codex only)
-	GeminiHome string // per-session GEMINI_HOME dir (gemini only)
-	Port       int    // embedded HTTP server port (opencode only; 0 = not used)
+	CodexHome string // per-session CODEX_HOME dir (codex only)
 }
 
 // InteractivePrepOptions carries the per-spawn context the adapter needs for
@@ -125,17 +120,15 @@ type InteractivePrepOptions struct {
 type InteractiveSpawnOptions struct {
 	SessionID                string
 	Model                    string
-	ReasoningEffort          string // passed as --effort (Claude) or --variant (Opencode)
+	ReasoningEffort          string // passed as --effort (Claude)
 	WorkDir                  string
 	Env                      []string
 	SystemPromptFile         string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
 	SystemPromptOverrideFile string // path to override file; Claude: --system-prompt-file (OverrideSystemPrompt); others: ignored
 	SettingsJSON             string // Claude: --settings JSON; others: ignored
 	CodexHome                string // CODEX_HOME dir path; Codex only — ignored by other adapters
-	GeminiHome               string // GEMINI_HOME dir path; Gemini only — ignored by other adapters
 	Prompt                   string // initial user prompt; Codex passes this as argv positional, others ignore
-	Port                     int    // embedded HTTP server port (opencode only; 0 = not used by other adapters)
-	ResumeSessionID          string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand; Opencode: ignored
+	ResumeSessionID          string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -164,10 +157,8 @@ type Sink interface {
 type PostStartOptions struct {
 	SessionID  string
 	WorkDir    string
-	Port       int       // opencode embedded HTTP event server port (0 for other adapters)
 	CodexHome  string    // codex per-session CODEX_HOME dir ("" for other adapters)
-	GeminiHome string    // gemini per-session GEMINI_HOME dir ("" for other adapters)
-	StartedAt  time.Time // wall-clock right before launch; opencode uses it to disambiguate our session from prior history
+	StartedAt  time.Time // wall-clock right before launch
 	MaxContext int       // max context window tokens; 0 falls back to ComputeContextLeftPct default (200k)
 	Sink       Sink
 }
@@ -175,7 +166,7 @@ type PostStartOptions struct {
 // PostStarter is an optional sub-interface for CLIAdapter implementations that
 // need to run additional setup after the PTY session starts. Asserted at the call
 // site via interface assertion in cliInteractiveBackend.Start — NOT added to
-// CLIAdapter itself — so adapters that don't need it (claude, opencode) are unaffected.
+// CLIAdapter itself — so adapters that don't need it are unaffected.
 type PostStarter interface {
 	PostStart(ctx context.Context, opts PostStartOptions) (cleanup func(), err error)
 }
@@ -196,16 +187,10 @@ type SpawnOptions struct {
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.
-// opencode_* → opencode, codex_gpt* → codex, everything else → claude.
+// codex_gpt* → codex, everything else → claude.
 func DefaultCLIForModel(model string) string {
-	if strings.HasPrefix(model, "opencode_") {
-		return "opencode"
-	}
 	if strings.HasPrefix(model, "codex_gpt") {
 		return "codex"
-	}
-	if strings.HasPrefix(model, "gemini_") {
-		return "gemini"
 	}
 	return "claude"
 }
@@ -215,12 +200,8 @@ func GetCLIAdapter(name string) (CLIAdapter, error) {
 	switch name {
 	case "claude":
 		return &ClaudeAdapter{}, nil
-	case "opencode":
-		return &OpencodeAdapter{}, nil
 	case "codex":
 		return &CodexAdapter{}, nil
-	case "gemini":
-		return &GeminiAdapter{}, nil
 	default:
 		return nil, fmt.Errorf("unknown CLI: %s", name)
 	}

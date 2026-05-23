@@ -85,9 +85,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		SystemPromptOverrideFile: prep.systemPromptOverrideFile, // non-empty for Claude with OverrideSystemPrompt
 		SettingsJSON:             settingsJSON,
 		CodexHome:                extras.CodexHome,
-		GeminiHome:               extras.GeminiHome,
 		Prompt:                   prep.prompt, // Codex pre-loads via argv; other adapters ignore
-		Port:                     extras.Port, // embedded server port (opencode only; 0 for others)
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)
@@ -111,15 +109,13 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	proc.spawnCommand = spawnCommand
 
 	// Register the command with the PTY manager then create the session.
-	// Capture wall-clock just before launch — opencode poller uses this to
-	// disambiguate our session_id from prior history entries.
+	// Capture wall-clock just before launch for adapter-owned post-start work.
 	spawnStartedAt := time.Now()
 	b.ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])
 	// Use cmd.Env (not the bare `env`): BuildInteractiveCommand is where adapters
-	// inject their per-session env (codex CODEX_HOME, gemini HOME/GEMINI_HOME,
-	// TERM). cmd.Env is opts.Env plus those additions; passing the bare `env`
-	// here silently dropped them, so codex never saw CODEX_HOME and read trust
-	// from ~/.codex instead of the per-session profile.
+	// inject their per-session env (codex CODEX_HOME, TERM). cmd.Env is
+	// opts.Env plus those additions; passing the bare `env` here silently drops
+	// them.
 	sess, err := b.ptyMgr.Create(sessionID, workDir, cmd.Env)
 	if err != nil {
 		if prep.suffixFile != "" {
@@ -133,7 +129,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 	proc.pid = sess.Pid()
 
-	// Optional post-spawn setup (e.g., codex JSONL tailer, opencode SQLite tail).
+	// Optional post-spawn setup (e.g., codex JSONL tailer).
 	// Interface-asserted so adapters that don't need it are unaffected.
 	postCleanup := func() {}
 	if starter, ok := b.adapter.(PostStarter); ok {
@@ -141,9 +137,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		cu, startErr := starter.PostStart(ctx, PostStartOptions{
 			SessionID:  proc.sessionID,
 			WorkDir:    workDir,
-			Port:       extras.Port,
 			CodexHome:  extras.CodexHome,
-			GeminiHome: extras.GeminiHome,
 			StartedAt:  spawnStartedAt,
 			MaxContext: b.s.maxContextForModel(prep.opts.Model),
 			Sink:       sink,
@@ -167,7 +161,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	// Ferry PTY output (drop bytes). Auto-answer terminal capability queries
 	// only for adapters that need them (codex).
 	// BumpsOnPTYBytes gates lastMessageTime / hasReceivedMessage updates so
-	// stall detection is reachable for hook/SSE/JSONL-driven adapters.
+	// stall detection is reachable for hook-driven adapters.
 	go ferryPTYOutput(b.s, proc, sess, b.adapter.NeedsTerminalQueryReplies(), b.adapter.BumpsOnPTYBytes())
 
 	// Wait goroutine: close doneCh when PTY session exits, clean up temp files.

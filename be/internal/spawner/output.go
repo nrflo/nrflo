@@ -29,8 +29,7 @@ func (s *Spawner) monitorOutput(proc *processInfo, stdout io.ReadCloser) {
 	}
 }
 
-// processOutput processes a line of output from the agent and tracks stats
-// Handles both Claude CLI and opencode JSON formats
+// processOutput processes a line of output from the agent and tracks stats.
 func (s *Spawner) processOutput(proc *processInfo, line string) {
 	// For backends that don't emit structured JSON, track each line as plain text.
 	if proc.backend != nil && !proc.backend.ParsesStructuredOutput() {
@@ -140,18 +139,6 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 			}
 		}
 
-	// === Opencode format (and Claude tool_result, which shares the type) ===
-	// Decoding lives in dispatchOpencodeEvent so the cli_interactive HTTP-poll
-	// path (cli_adapter_opencode_poll.go) reuses the same handler logic.
-	case "text", "tool_use", "tool_result":
-		dispatchOpencodeEvent(eventType, data, &spawnerProcHandler{s: s, proc: proc})
-
-	case "step_finish":
-		// Step completion from opencode
-
-	case "finish":
-		// Session finish from opencode
-
 	// === Codex CLI format ===
 	case "thread.started":
 		if threadID, ok := data["thread_id"].(string); ok && threadID != "" {
@@ -210,7 +197,7 @@ func (s *Spawner) processOutput(proc *processInfo, line string) {
 	}
 }
 
-// handleTextMessage processes text output from either Claude or opencode
+// handleTextMessage processes plain text output.
 func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	// Track full message content
 	s.TrackMessage(proc, text, "text")
@@ -230,7 +217,7 @@ func ToolCategory(toolName string) string {
 	}
 }
 
-// handleToolUse processes tool usage from either Claude or opencode
+// handleToolUse processes tool usage from structured output.
 func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[string]interface{}) {
 	toolDetail := FormatToolDetail(toolName, input)
 	category := ToolCategory(toolName)

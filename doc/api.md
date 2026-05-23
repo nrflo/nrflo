@@ -4,17 +4,21 @@ For shared concepts (template variables, findings patterns, lifecycle,
 workflow config, resilience, examples), see the **Common** tab.
 
 This file covers what is specific to the `api` execution mode: the in-process
-Anthropic runner, enabling it, supported models, tool registry, multimodal
-tool results, and behavioral notes.
+provider runner, enabling it, model/provider selection, credentials, tool
+registry, multimodal tool results, and behavioral notes.
 
 ---
 
 ## What It Is
 
-API mode runs agents as an in-process tool-use loop using the Anthropic SDK
-rather than spawning a CLI process. Each agent turn calls the Anthropic
-Messages API, dispatches tool invocations to registered handlers, and loops
-until `end_turn` or a terminal signal.
+API mode runs agents as an in-process tool-use loop rather than spawning a
+CLI process. The concrete provider (Anthropic or OpenAI) is selected
+**per-agent** from the agent's `api_models` row — the `model` field on the
+agent definition is an `api_models.id`; the spawner looks up the row, reads
+its `provider` column, and calls `BuildAPIProvider(provider, projectID)` at
+spawn time. Each agent turn calls the provider's streaming API, dispatches
+tool invocations to registered handlers, and loops until `end_turn` or a
+terminal signal.
 
 ---
 
@@ -26,21 +30,58 @@ agent returns an error immediately.
 
 ---
 
-## Supported Models
+## Model and Provider Selection
 
-API mode supports Anthropic models only:
+The `model` field on an agent definition must be the `id` of a row in the
+`api_models` table. The row's `provider` column selects the backend:
 
-| `model` value | Resolved to |
-|---------------|-------------|
-| `opus_4_6` | `claude-opus-4-6` (200k) |
-| `opus_4_6_1m` | `claude-opus-4-6` (1M) |
-| `opus_4_7` | `claude-opus-4-7` (200k) |
-| `opus_4_7_1m` | `claude-opus-4-7` (1M) |
-| `sonnet` | Claude Sonnet |
-| `haiku` | Claude Haiku |
+| `provider` | Backend |
+|------------|---------|
+| `anthropic` | Anthropic Messages API (streaming) |
+| `openai` | OpenAI Responses API (streaming) |
 
-Non-Anthropic model values (codex prefixes) are invalid for
-api-mode agents and will cause spawn to fail.
+**Seeded Anthropic rows** (read-only):
+
+| id | mapped_model | context |
+|----|--------------|---------|
+| `opus_4_7` | `claude-opus-4-7` | 200k |
+| `opus_4_7_1m` | `claude-opus-4-7` | 1M |
+| `opus_4_6` | `claude-opus-4-6` | 200k |
+| `opus_4_6_1m` | `claude-opus-4-6` | 1M |
+| `sonnet` | `claude-sonnet-4-6` | 200k |
+| `haiku` | `claude-haiku-4-5` | 200k |
+
+**Seeded OpenAI rows** (read-only):
+
+| id | mapped_model | reasoning_effort |
+|----|--------------|-----------------|
+| `gpt54_high` | `gpt-5.4` | high |
+| `gpt54_medium` | `gpt-5.4` | medium |
+| `gpt54_low` | `gpt-5.4` | low |
+| `gpt53_codex_high` | `gpt-5.3-codex` | high |
+| `gpt53_codex_medium` | `gpt-5.3-codex` | medium |
+| `gpt53_codex_low` | `gpt-5.3-codex` | low |
+
+The `reasoning_effort` column is threaded into the OpenAI Responses request
+(`be/internal/spawner/apirun/provider/openai/translate.go:28`). Custom rows
+can be added via **Settings → Administration → API Models**.
+
+---
+
+## Credentials
+
+Credentials are resolved per-provider at spawn time:
+
+- **Anthropic**: API key or OAuth bearer token (auto-detected from token
+  shape — `sk-ant-oat01-` prefix → OAuth bearer, otherwise API key).
+  Resolution order: per-project env `ANTHROPIC_API_KEY` →
+  `ANTHROPIC_OAUTH_TOKEN` → server-process env (same order). Resolved by
+  `be/internal/spawner/apirun/provider/anthropic/credentials.go`.
+
+- **OpenAI**: API key only (no OAuth). Resolution order: per-project env
+  `OPENAI_API_KEY` → per-project `CODEX_API_KEY` → server-process env
+  `OPENAI_API_KEY` → server-process `CODEX_API_KEY`. Resolved by
+  `be/internal/spawner/apirun/provider/openai/credentials.go`.
 
 ---
 

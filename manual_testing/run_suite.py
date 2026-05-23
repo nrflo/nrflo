@@ -50,6 +50,10 @@ PROVIDERS: list[tuple[str, str]] = [
     # _launch logs honestly. The runner SKIPs the whole folder when no
     # Anthropic OAuth token is reachable (see lib/credentials.py).
     ("api", "claude"),
+    # `openai_api` exercises execution_mode='api' against the OpenAI
+    # Responses endpoint; binary is unused. SKIPs when neither
+    # OPENAI_API_KEY nor CODEX_API_KEY is set.
+    ("openai_api", "python3"),
 ]
 
 
@@ -277,11 +281,11 @@ def write_capabilities(
 
 
 def _sid_sort_key(sid: str) -> tuple[int, int]:
-    """Sort s* before P*; numeric within each prefix."""
+    """Sort s* before P* before A* before O*; numeric within each prefix."""
     if not sid:
         return (9, 9999)
-    prefix = sid[0]
-    rank = 0 if prefix.lower() == "s" else 1
+    prefix = sid[0].lower()
+    rank = {"s": 0, "p": 1, "a": 2, "o": 3}.get(prefix, 4)
     try:
         n = int(sid[1:])
     except ValueError:
@@ -298,14 +302,15 @@ def _load_suite_descriptions() -> dict[str, str]:
     except OSError:
         return out
     for line in text.splitlines():
-        if not line.startswith("| s") and not line.startswith("| P"):
+        if not (line.startswith("| s") or line.startswith("| P")
+                or line.startswith("| A") or line.startswith("| O")):
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
         if len(parts) < 2:
             continue
         sid = parts[0]
         desc = parts[1]
-        if sid.startswith(("s", "P")) and any(c.isdigit() for c in sid):
+        if sid.startswith(("s", "P", "A", "O")) and any(c.isdigit() for c in sid):
             out[sid] = desc
     return out
 

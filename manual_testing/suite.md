@@ -97,15 +97,28 @@ SKIPs cleanly when no token is reachable.
 | A12 | api_mode_enabled runtime toggle: off → spawn rejected; on → spawn passes |
 | A13 | api-mode rate-limit detection: mock 429 → agent.rate_limited WS + DB cols |
 
+## OpenAI api-mode scenarios (O-prefix)
+
+Run under `execution_mode='api'` against a real OpenAI Responses endpoint.
+Authenticated via `OPENAI_API_KEY` (then `CODEX_API_KEY`), env only — no
+Keychain. The whole folder SKIPs cleanly when neither key is set.
+
+Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
+
+| ID  | Description |
+|-----|-------------|
+| O01 | gpt54_high api_models row has reasoning_effort='high'; agent completes with result=pass |
+
 ## Folder applicability
 
-| Folder      | Members |
-|-------------|---------|
-| `engine/`   | every s-id except s05, s35 (33 scenarios, run under `claude`; s01 is a merged L0 happy-path covering the small findings/logs/skip/env-var/categories/history surfaces, s07 covers both prompt-template placeholders) |
-| `claude/`   | s05, s35 |
-| `codex/`    | s05, s35 |
-| `python/`   | P01..P20 |
-| `api/`      | A01..A13 |
+| Folder        | Members |
+|---------------|---------|
+| `engine/`     | every s-id except s05, s35 (33 scenarios, run under `claude`; s01 is a merged L0 happy-path covering the small findings/logs/skip/env-var/categories/history surfaces, s07 covers both prompt-template placeholders) |
+| `claude/`     | s05, s35 |
+| `codex/`      | s05, s35 |
+| `python/`     | P01..P20 |
+| `api/`        | A01..A13 |
+| `openai_api/` | A01, A02, A03, A06 (provider-agnostic, reused) + O01 |
 
 `s05` and `s35` are the only scenarios with provider-specific
 implementations:

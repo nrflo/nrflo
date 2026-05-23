@@ -1,10 +1,16 @@
-"""Probe an Anthropic OAuth bearer token from the macOS Keychain.
+"""Credential probes for api-mode manual-test runners.
 
-Used by the api-mode manual-test runner to seed the server's
-`ANTHROPIC_OAUTH_TOKEN` env var (resolved by
-`be/internal/spawner/apirun/provider/anthropic/credentials.go:71`).
-SKIP-able: returns `(None, reason)` on any failure so the runner can
-skip all scenarios cleanly rather than hard-error."""
+`probe_oauth_token()` — Anthropic OAuth bearer token.
+  Injects `ANTHROPIC_OAUTH_TOKEN` into the server env; resolved by
+  `be/internal/spawner/apirun/provider/anthropic/credentials.go:71`.
+
+`probe_openai_key()` — OpenAI API key.
+  Injects `OPENAI_API_KEY` into the server env; resolved by
+  `be/internal/spawner/apirun/provider/openai/credentials.go:46`.
+
+Both return `(value, reason)` on success or `(None, skip-reason)` when
+no usable credential is reachable, so the runner can skip the whole
+folder cleanly rather than hard-error."""
 
 from __future__ import annotations
 
@@ -69,3 +75,20 @@ def probe_oauth_token() -> tuple[str | None, str]:
     if not tok.startswith("sk-ant-oat01-"):
         return None, "Keychain token does not look like an OAuth token"
     return tok, "ok (keychain)"
+
+
+def probe_openai_key() -> tuple[str | None, str]:
+    """Return `(key, reason)`. `key` is `None` when no usable key is
+    reachable; `reason` is then a one-line SKIP message.
+
+    Resolution order (env only — no macOS Keychain):
+      1. `OPENAI_API_KEY` env var.
+      2. `CODEX_API_KEY` env var.
+    """
+    key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if key:
+        return key, "ok (env OPENAI_API_KEY)"
+    key = os.environ.get("CODEX_API_KEY", "").strip()
+    if key:
+        return key, "ok (env CODEX_API_KEY)"
+    return None, "neither OPENAI_API_KEY nor CODEX_API_KEY is set"

@@ -69,6 +69,7 @@ def run_all(
     only: list[str] | None = None,
     timeout: float | None = None,
     results_path: str | None = None,
+    api_credentials: str = "anthropic",
 ) -> int:
     """Run `scenarios` for one provider on one fresh server.
 
@@ -92,19 +93,29 @@ def run_all(
     label = f"{provider}/{mode}"
     extra_env: dict[str, str] = {}
     if mode == "api":
-        # api-mode runs in-process — no CLI binary needed. Source the
-        # Anthropic OAuth token from the macOS Keychain (or env) and
-        # SKIP the whole folder cleanly when none is reachable, just
-        # like the CLI providers SKIP when their binary is missing.
-        from .credentials import probe_oauth_token
-        tok, reason = probe_oauth_token()
-        if not tok:
-            print(f"[{_ts()}] [{label}] SKIPPED — {reason}")
-            if results_path:
-                _write_results(results_path, [], skipped_reason=reason)
-            return 0
-        extra_env["ANTHROPIC_OAUTH_TOKEN"] = tok
-        _say(label, f"resolved Anthropic OAuth token ({reason})")
+        # api-mode runs in-process — no CLI binary needed. Source credentials
+        # for the chosen provider family and SKIP the whole folder cleanly when
+        # none is reachable, just like CLI providers SKIP when binary is missing.
+        if api_credentials == "openai":
+            from .credentials import probe_openai_key
+            key, reason = probe_openai_key()
+            if not key:
+                print(f"[{_ts()}] [{label}] SKIPPED — {reason}")
+                if results_path:
+                    _write_results(results_path, [], skipped_reason=reason)
+                return 0
+            extra_env["OPENAI_API_KEY"] = key
+            _say(label, f"resolved OpenAI API key ({reason})")
+        else:
+            from .credentials import probe_oauth_token
+            tok, reason = probe_oauth_token()
+            if not tok:
+                print(f"[{_ts()}] [{label}] SKIPPED — {reason}")
+                if results_path:
+                    _write_results(results_path, [], skipped_reason=reason)
+                return 0
+            extra_env["ANTHROPIC_OAUTH_TOKEN"] = tok
+            _say(label, f"resolved Anthropic OAuth token ({reason})")
     else:
         bin_path = shutil.which(binary)
         if not bin_path:

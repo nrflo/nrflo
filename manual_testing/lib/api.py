@@ -607,6 +607,11 @@ class NrfloClient:
             project=project_id,
         )
 
+    # ---- api models ---------------------------------------------------
+
+    def get_api_model(self, model_id: str) -> dict:
+        return self._request("GET", f"/api/v1/api-models/{model_id}")
+
     # ---- findings history ---------------------------------------------
 
     def findings_history(

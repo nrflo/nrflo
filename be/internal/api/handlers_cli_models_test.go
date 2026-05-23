@@ -225,7 +225,7 @@ func TestHandleUpdateCLIModel_ReadOnly_LockedFields_Rejected(t *testing.T) {
 		{name: "enabled_true", body: `{"enabled":true}`},
 	}
 
-	const wantMsg = "only reasoning_effort can be updated on built-in models"
+	const wantMsg = "only reasoning_effort and override_system_prompt can be updated on built-in models"
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := newCLIModelsServer(t)

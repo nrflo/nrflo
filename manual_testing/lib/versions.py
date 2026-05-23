@@ -1,7 +1,6 @@
 """Version-probing helpers for the suite runner.
 
-Each CLI is probed with `<binary> --version`. Gemini's CLI may not
-implement `--version`; we fall back to "unknown" on any error."""
+Each CLI is probed with `<binary> --version`; we fall back to "unknown" on any error."""
 
 from __future__ import annotations
 

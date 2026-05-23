@@ -39,7 +39,7 @@ API mode supports Anthropic models only:
 | `sonnet` | Claude Sonnet |
 | `haiku` | Claude Haiku |
 
-Non-Anthropic model values (opencode/codex/gemini prefixes) are invalid for
+Non-Anthropic model values (codex prefixes) are invalid for
 api-mode agents and will cause spawn to fail.
 
 ---

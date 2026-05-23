@@ -44,8 +44,6 @@ PROVIDERS: list[tuple[str, str]] = [
     ("engine", "claude"),
     ("claude", "claude"),
     ("codex", "codex"),
-    ("gemini", "gemini"),
-    ("opencode", "opencode"),
     ("python", "python3"),
     # `api` exercises execution_mode='api' in-process; no binary
     # required, but we pass 'claude' so the existing PATH probe in
@@ -149,8 +147,6 @@ def main() -> int:
         "nrflo": ver_mod.read_nrflo_version(REPO_ROOT),
         "claude": ver_mod.probe("claude"),
         "codex": ver_mod.probe("codex"),
-        "gemini": ver_mod.probe("gemini"),
-        "opencode": ver_mod.probe("opencode"),
         "python": ver_mod.probe("python3"),
     }
 
@@ -235,7 +231,7 @@ def write_capabilities(
     lines.append("| Component | Version |")
     lines.append("|-----------|---------|")
     lines.append(f"| nrflo     | `{versions.get('nrflo','unknown')}` |")
-    for prov in ["claude", "codex", "gemini", "opencode", "python"]:
+    for prov in ["claude", "codex", "python"]:
         lines.append(f"| {prov:8}  | `{versions.get(prov,'unknown')}` |")
     lines.append("")
     lines.append("## Scenario results")

@@ -56,7 +56,6 @@ configure them. These tools are not bundled or redistributed with NRFLO:
 
 - **Claude CLI** by Anthropic
 - **Codex CLI / ChatGPT CLI** by OpenAI
-- **Opencode**
 
 Users must install and authenticate these tools separately according to
 their respective terms of service.

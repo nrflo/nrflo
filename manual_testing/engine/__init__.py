@@ -4,7 +4,7 @@ Provider-agnostic scenarios that exercise the orchestrator, REST, WS,
 spawner, DB, chains, retries, stall detection, plan mode, etc. Run under
 the `claude` binary by default — see `engine/test.py`.
 
-Genuinely provider-specific scenarios (`s05`, `s27`, `s35`) live in the
+Genuinely provider-specific scenarios (`s05`, `s35`) live in the
 per-provider folders.
 """
 

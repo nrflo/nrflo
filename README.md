@@ -17,13 +17,13 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
 - **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
-- **Mixed-agent compatible** — run workflows across Claude Code, Opencode, Codex, and Gemini without changing the workflow model
-- **Uses your existing CLI subscriptions. No API billing required.** NRFLO drives Claude Code, Opencode, Codex, and Gemini as PTY-attached interactive sessions you can take over live in the browser, reusing each tool's local login (Claude Pro / Max, ChatGPT, Opencode provider plan, Gemini). For Anthropic users, an optional in-process **API mode** is available as an admin-toggled runtime setting, with OAuth bearer support to bill against a Claude subscription rather than API keys.
+- **Mixed-agent compatible** — run workflows across Claude Code and Codex without changing the workflow model
+- **Uses your existing CLI subscriptions. No API billing required.** NRFLO drives Claude Code and Codex as PTY-attached interactive sessions you can take over live in the browser, reusing each tool's local login (Claude Pro / Max, ChatGPT). For Anthropic users, an optional in-process **API mode** is available as an admin-toggled runtime setting, with OAuth bearer support to bill against a Claude subscription rather than API keys.
 
 ## Core capabilities
 
 ### Orchestration
-- Vendor-agnostic orchestration across Claude Code, Opencode, Codex, and Gemini
+- Vendor-agnostic orchestration across Claude Code and Codex
 - Layered execution with same-layer parallelism and sequential layer progression
 - Ticket-scoped and project-scoped workflows
 - Dependency-aware sequential ticket chains
@@ -46,7 +46,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 ### Human control and recovery
 - Browser takeover of live runs (kill-and-resume, or live viewer-attach)
 - Interactive start, plan mode, and resume flows
-- PTY-backed sessions for Claude, Codex, Opencode, and Gemini with live keystroke capture
+- PTY-backed sessions for Claude and Codex with live keystroke capture
 - Idle/nudge loop that prompts unresponsive interactive agents before failing them
 - Low-context continuation, stall restart, manual restart, and retry from the failed layer
 

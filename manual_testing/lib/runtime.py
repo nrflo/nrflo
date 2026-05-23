@@ -33,7 +33,7 @@ MODE = "cli_interactive"
 class Ctx:
     server: server_mod.RunningServer
     client: api_mod.NrfloClient
-    provider: str           # claude | codex | gemini | opencode | python
+    provider: str           # claude | codex | python
     model: str              # cli_models row id (e.g. "haiku")
     binary: str             # PATH binary name
     mode: str = "cli_interactive"   # "cli_interactive" for CLI; "script" for python

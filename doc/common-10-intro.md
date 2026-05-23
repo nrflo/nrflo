@@ -56,7 +56,7 @@ placeholders in agent prompts are stripped to empty string at runtime.
 
 The `system-prompt-suffix` injectable is delivered separately from the
 prepended blocks. For Claude agents it is passed via `--append-system-prompt-file`,
-appending it to Claude's system prompt. For codex/opencode agents it is
+appending it to Claude's system prompt. For codex agents it is
 prepended to the prompt body. The suffix template contains the completion
 contract (`nrflo agent finished` / `nrflo agent fail` / `nrflo agent continue`
 for context exhaustion) and is always active.

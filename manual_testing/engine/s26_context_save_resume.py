@@ -8,7 +8,7 @@ Tests:
     `codex exec resume <thread_id>`. The resumed turn runs the save prompt,
     writes the `to_resume` finding, calls `nrflo agent continue`, and
     `relaunchForContinuation` spawns a new main-agent session whose
-    findings include the carried-over `to_resume`. Opencode/api fall back
+    findings include the carried-over `to_resume`. api falls back
     through `shouldUseAgentSave` to the system-agent saver path.
 
   - With threshold=100 the workflow does not converge: every relaunch

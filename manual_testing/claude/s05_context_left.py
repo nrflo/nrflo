@@ -5,11 +5,10 @@ Tests:
     populating agent_sessions.context_left.
   - claude: PreToolUse/PostToolUse hooks via `agent.context_update`.
   - codex: rollout JSONL tailer (`cli_adapter_codex_jsonl_tail.go`).
-  - opencode: SQLite tailer (`cli_adapter_opencode_sqlite_tail.go`).
 
 Why the prompt asks for substantial output:
   - A trivial `nrflo agent finished`-only prompt consumes essentially
-    no input/output tokens, and some adapters (notably opencode) only
+    no input/output tokens, and some adapters only
     flush their per-turn token bookkeeping at end-of-turn via async
     DB writes. Under parallel load that flush can be dropped entirely
     for zero-work turns, leaving context_left=NULL even though the

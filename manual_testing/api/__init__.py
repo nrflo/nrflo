@@ -5,7 +5,7 @@ Anthropic endpoint authenticated by the OAuth bearer token resolved from
 the macOS Keychain by `lib/credentials.py`. The whole folder SKIPs
 cleanly when no token is reachable.
 
-The cli_interactive providers (claude/, codex/, gemini/, opencode/) have
+The cli_interactive providers (claude/, codex/) have
 no equivalent of the apirun-specific code paths exercised here:
 api_mode_enabled gating, in-process builtin tool dispatch, terminal-signal
 mapping, forced agent-save on low-context, and the auth-error result_reason.

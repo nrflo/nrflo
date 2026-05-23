@@ -3,8 +3,7 @@
 
 Runs the provider-agnostic scenarios (orchestrator, REST, WS, spawner,
 DB, chains, etc.) under the `claude` binary. Per-provider differences
-live in the per-provider folders (`claude/`, `codex/`, `gemini/`,
-`opencode/`).
+live in the per-provider folders (`claude/`, `codex/`).
 
 LAUNCH MANUALLY ONLY. Spawns a real `claude` process against real
 Anthropic credentials. Scenarios run sequentially by default.

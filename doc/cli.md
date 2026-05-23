@@ -14,9 +14,7 @@ interactive telemetry.
 | CLI | Adapter | Model Format | Context Tracking |
 |-----|---------|--------------|-----------------|
 | `claude` | `ClaudeAdapter` | Versioned IDs (`opus_4_7`, `sonnet`) | `--settings` hooks |
-| `opencode` | `OpencodeAdapter` | `provider/model` (auto-mapped) | SQLite tail |
 | `codex` | `CodexAdapter` | Model aliases with reasoning levels | app-server JSON-RPC (token usage) |
-| `gemini` | `GeminiAdapter` | `gemini_pro\|flash\|flash_lite` | JSONL tail |
 
 ---
 
@@ -33,15 +31,6 @@ interactive telemetry.
 | `sonnet` | Claude Sonnet |
 | `haiku` | Claude Haiku |
 
-### Opencode (`opencode` CLI)
-
-| `model` value | Maps to |
-|---------------|---------|
-| `opencode_minimax_m25_free` | `opencode/minimax-m2.5-free` |
-| `opencode_qwen36_plus_free` | `opencode/qwen3.6-plus-free` |
-| `opencode_gpt54` | `openai/gpt-5.4` (variant `high`) |
-| `opencode_gpt54_mini_low` | `openai/gpt-5.4-mini` (variant `low`) |
-
 ### Codex (`codex` CLI)
 
 | `model` value | Maps to |
@@ -51,14 +40,6 @@ interactive telemetry.
 | `codex_gpt54_normal` | `gpt-5.4` (effort "medium") |
 | `codex_gpt54_high` | `gpt-5.4` (effort "high") |
 | `codex_gpt54_mini_low` | `gpt-5.4-mini` (effort "low") |
-
-### Gemini (`gemini` CLI)
-
-| `model` value | Maps to |
-|---------------|---------|
-| `gemini_pro` | `gemini-2.5-pro` |
-| `gemini_flash` | `gemini-2.5-flash` |
-| `gemini_flash_lite` | `gemini-2.5-flash-lite` |
 
 ---
 
@@ -84,7 +65,7 @@ behavior for `cli_interactive` agents:
 | `<adapter>_limit_patterns` | adapter defaults | Extra comma-separated rate-limit patterns |
 | `<adapter>_error_patterns` | adapter defaults | Extra comma-separated error patterns |
 
-Replace `<adapter>` with `claude`, `opencode`, `codex`, or `gemini`.
+Replace `<adapter>` with `claude` or `codex`.
 
 When an agent exits non-zero and its output matches a rate-limit pattern, the
 spawner broadcasts `agent.rate_limited`, waits with exponential backoff
@@ -101,8 +82,7 @@ via the Unix socket, populating the agent's message timeline and keeping
 context-usage tracking accurate.
 
 This is transparent — no agent prompt changes or explicit calls are needed.
-Opencode, Codex, and Gemini agents use adapter-specific context tracking
-(SQLite/JSONL tails) instead.
+Codex agents use adapter-specific context tracking (JSON-RPC token usage) instead.
 
 ---
 

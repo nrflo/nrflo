@@ -37,8 +37,8 @@ then stop immediately.
 # "OK, done." This prompt is deliberately written as a contract — the
 # model is told the test is asserting on the callback row and given a
 # brief context-setting step to keep it engaged. Empirically this is
-# the smallest L1 prompt that all three providers follow reliably under
-# parallel=5 load (claude haiku, codex gpt-mini, opencode gpt54-mini).
+# the smallest L1 prompt that both providers follow reliably under
+# parallel=5 load (claude haiku, codex gpt-mini).
 L1_PROMPT = """\
 You are the L1 verifier agent in a layered integration test. The L0
 agent produced a single finding called `greet` and you must send the

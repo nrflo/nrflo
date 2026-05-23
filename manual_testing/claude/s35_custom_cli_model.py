@@ -5,8 +5,8 @@ Tests:
     inserts the row. An agent_def using that ID must resolve through
     `spawner.cliForModel` to the claude binary and complete normally.
   - claude only — the scenario asserts the resolution path for one
-    provider; codex/gemini/opencode share the same code (validated by
-    their seed cli_models rows already exercised by every other scenario).
+    provider; codex shares the same code (validated by
+    its seed cli_models rows already exercised by every other scenario).
 """
 
 from __future__ import annotations

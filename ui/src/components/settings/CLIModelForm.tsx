@@ -2,6 +2,7 @@ import { X, Check, AlertTriangle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { Toggle } from '@/components/ui/Toggle'
 
 export interface CLIModelFormData {
   id: string
@@ -9,6 +10,7 @@ export interface CLIModelFormData {
   display_name: string
   mapped_model: string
   reasoning_effort: string
+  override_system_prompt: boolean
   context_length: string
 }
 
@@ -18,6 +20,7 @@ export const emptyCLIModelForm: CLIModelFormData = {
   display_name: '',
   mapped_model: '',
   reasoning_effort: '',
+  override_system_prompt: false,
   context_length: '200000',
 }
 
@@ -166,6 +169,20 @@ export function CLIModelForm({
           />
         </div>
       </div>
+      {formData.cli_type === 'claude' && (
+        <div>
+          <Toggle
+            checked={formData.override_system_prompt}
+            onChange={(val) => setFormData({ ...formData, override_system_prompt: val })}
+            label="Override system prompt"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Replaces Claude Code's default system prompt with the <code>system-prompt</code>{' '}
+            injectable (edit it under Settings → Default Templates). The completion-contract suffix
+            is still appended.
+          </p>
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}

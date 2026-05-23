@@ -10,6 +10,7 @@ function makeFormData(overrides: Partial<CLIModelFormData> = {}): CLIModelFormDa
     display_name: 'Opus 4.7',
     mapped_model: 'claude-opus-4-7',
     reasoning_effort: '',
+    override_system_prompt: false,
     context_length: '200000',
     ...overrides,
   }
@@ -270,5 +271,56 @@ describe('CLIModelForm — read_only (built-in) mode', () => {
     )
     expect(screen.queryByText(/Built-in model — only reasoning effort/i)).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Opus 4.7')).not.toBeDisabled()
+  })
+})
+
+describe('CLIModelForm — Override system prompt toggle', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('renders the toggle and helper text for claude models', () => {
+    renderForm({ cli_type: 'claude' })
+    expect(screen.getByText('Override system prompt')).toBeInTheDocument()
+    expect(screen.getByRole('switch')).toBeInTheDocument()
+    // helper text points at the system-prompt injectable under Default Templates
+    expect(screen.getByText('system-prompt')).toBeInTheDocument()
+    expect(screen.getByText(/Default Templates/)).toBeInTheDocument()
+  })
+
+  it.each(['codex', 'opencode', 'gemini'])('hides the toggle for %s models', (cliType) => {
+    renderForm({ cli_type: cliType })
+    expect(screen.queryByText('Override system prompt')).not.toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+  })
+
+  it('reflects the current override_system_prompt value', () => {
+    renderForm({ cli_type: 'claude', override_system_prompt: true })
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('toggling on calls setFormData with override_system_prompt=true', async () => {
+    const user = userEvent.setup()
+    const { setFormData, formData } = renderForm({ cli_type: 'claude', override_system_prompt: false })
+    await user.click(screen.getByRole('switch'))
+    expect(setFormData).toHaveBeenCalledWith({ ...formData, override_system_prompt: true })
+  })
+
+  it('stays enabled and settable on a read-only built-in claude model', async () => {
+    const user = userEvent.setup()
+    const setFormData = vi.fn()
+    const formData = makeFormData({ cli_type: 'claude', override_system_prompt: false })
+    render(
+      <CLIModelForm
+        formData={formData}
+        setFormData={setFormData}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+        mutation={{ isPending: false, isError: false, error: null }}
+        readOnly
+      />
+    )
+    const sw = screen.getByRole('switch')
+    expect(sw).not.toBeDisabled()
+    await user.click(sw)
+    expect(setFormData).toHaveBeenCalledWith({ ...formData, override_system_prompt: true })
   })
 })

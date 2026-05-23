@@ -36,6 +36,7 @@ function modelToFormData(m: CLIModel): CLIModelFormData {
     display_name: m.display_name,
     mapped_model: m.mapped_model,
     reasoning_effort: m.reasoning_effort || '',
+    override_system_prompt: m.override_system_prompt,
     context_length: String(m.context_length),
   }
 }
@@ -122,6 +123,7 @@ export function ProviderModelsList({ provider }: Props) {
       display_name: formData.display_name.trim(),
       mapped_model: formData.mapped_model.trim(),
       reasoning_effort: formData.reasoning_effort.trim() || undefined,
+      override_system_prompt: formData.override_system_prompt,
       context_length: isNaN(contextLength) ? undefined : contextLength,
     })
   }
@@ -133,7 +135,10 @@ export function ProviderModelsList({ provider }: Props) {
     if (editingModel?.read_only) {
       updateMutation.mutate({
         id: editingId,
-        data: { reasoning_effort: formData.reasoning_effort.trim() || '' },
+        data: {
+          reasoning_effort: formData.reasoning_effort.trim() || '',
+          override_system_prompt: formData.override_system_prompt,
+        },
       })
       return
     }
@@ -144,6 +149,7 @@ export function ProviderModelsList({ provider }: Props) {
         display_name: formData.display_name.trim(),
         mapped_model: formData.mapped_model.trim(),
         reasoning_effort: formData.reasoning_effort.trim() || undefined,
+        override_system_prompt: formData.override_system_prompt,
         context_length: isNaN(contextLength) ? undefined : contextLength,
       },
     })

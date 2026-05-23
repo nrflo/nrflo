@@ -14,6 +14,7 @@ function makeCLIModel(overrides: Partial<CLIModel> = {}): CLIModel {
     display_name: 'Sonnet',
     mapped_model: 'claude-sonnet-4-20250514',
     reasoning_effort: '',
+    override_system_prompt: false,
     context_length: 200000,
     read_only: true,
     enabled: true,

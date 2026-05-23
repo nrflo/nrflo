@@ -44,6 +44,7 @@ vi.mock('./CLIModelForm', () => ({
     display_name: '',
     mapped_model: '',
     reasoning_effort: '',
+    override_system_prompt: false,
     context_length: '200000',
   },
 }))
@@ -58,6 +59,7 @@ function makeModel(overrides: Partial<CLIModel> = {}): CLIModel {
     display_name: 'Sonnet 4.6',
     mapped_model: 'claude-sonnet-4-6',
     reasoning_effort: '',
+    override_system_prompt: false,
     context_length: 200000,
     read_only: false,
     enabled: true,
@@ -228,6 +230,51 @@ describe('ProviderModelsList', () => {
 
     await waitFor(() => {
       expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('my-model', { enabled: false })
+    })
+  })
+
+  it('saving a read-only built-in claude model sends override_system_prompt alongside reasoning_effort', async () => {
+    vi.mocked(useCLIModels).mockReturnValue({
+      data: [makeModel({ id: 'opus_4_7', read_only: true, override_system_prompt: true })],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useCLIModels>)
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderList('claude')
+    const row = screen.getByText('opus_4_7').closest('.border')!
+    const rowBtns = within(row as HTMLElement).getAllByRole('button')
+    // read_only row: [Check, Edit] — edit opens the form
+    await userEvent.click(rowBtns[1])
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', {
+        reasoning_effort: '',
+        override_system_prompt: true,
+      })
+    })
+  })
+
+  it('saving an editable claude model includes override_system_prompt in the full payload', async () => {
+    vi.mocked(useCLIModels).mockReturnValue({
+      data: [makeModel({ id: 'my-model', read_only: false, override_system_prompt: true })],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useCLIModels>)
+    vi.mocked(cliModelsApi.updateCLIModel).mockResolvedValue({ status: 'ok' })
+
+    renderList('claude')
+    const row = screen.getByText('my-model').closest('.border')!
+    const rowBtns = within(row as HTMLElement).getAllByRole('button')
+    await userEvent.click(rowBtns[1]) // edit
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => {
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith(
+        'my-model',
+        expect.objectContaining({ override_system_prompt: true })
+      )
     })
   })
 })

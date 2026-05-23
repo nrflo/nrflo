@@ -16,7 +16,7 @@ from api import (
     A03_agent_continue,
     A06_findings_tool,
 )
-from openai_api import O01_reasoning_effort
+from openai_api import O01_reasoning_effort, O02_rate_limit
 
 
 ALL_SCENARIOS = [
@@ -25,4 +25,5 @@ ALL_SCENARIOS = [
     A03_agent_continue.run,
     A06_findings_tool.run,
     O01_reasoning_effort.run,
+    O02_rate_limit.run,
 ]

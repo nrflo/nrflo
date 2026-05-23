@@ -108,6 +108,7 @@ Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
 | ID  | Description |
 |-----|-------------|
 | O01 | gpt54_high api_models row has reasoning_effort='high'; agent completes with result=pass |
+| O02 | openai api-mode rate-limit detection: mock 429 → agent.rate_limited WS + DB cols |
 
 ## Folder applicability
 
@@ -118,7 +119,7 @@ Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
 | `codex/`      | s05, s35 |
 | `python/`     | P01..P20 |
 | `api/`        | A01..A13 |
-| `openai_api/` | A01, A02, A03, A06 (provider-agnostic, reused) + O01 |
+| `openai_api/` | A01, A02, A03, A06 (provider-agnostic, reused) + O01, O02 |
 
 `s05` and `s35` are the only scenarios with provider-specific
 implementations:

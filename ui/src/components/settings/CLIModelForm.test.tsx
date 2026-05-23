@@ -106,36 +106,10 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     expect(tooltip).toHaveTextContent(/only supported on Opus 4\.7/i)
   })
 
-  it('opencode cli_type: xhigh option is NOT rendered; other five are', async () => {
-    renderForm({ cli_type: 'opencode', mapped_model: 'anthropic/claude-sonnet-4' })
-    const { panel } = await openAndGetPanel()
-    const panelUtils = within(panel)
-
-    expect(panelUtils.getByText('Default')).toBeInTheDocument()
-    expect(panelUtils.getByText('Low')).toBeInTheDocument()
-    expect(panelUtils.getByText('Medium')).toBeInTheDocument()
-    expect(panelUtils.getByText('High')).toBeInTheDocument()
-    expect(panelUtils.getByText('Max')).toBeInTheDocument()
-    expect(panelUtils.queryByText('Extra High (Opus 4.7 only)')).not.toBeInTheDocument()
-  })
-
   it('codex cli_type: xhigh option is NOT rendered', async () => {
     renderForm({ cli_type: 'codex', mapped_model: 'gpt-5' })
     const { panel } = await openAndGetPanel()
     expect(within(panel).queryByText('Extra High (Opus 4.7 only)')).not.toBeInTheDocument()
-  })
-
-  it('gemini cli_type: xhigh option is NOT rendered; other five are', async () => {
-    renderForm({ cli_type: 'gemini', mapped_model: 'gemini-2.0-flash-lite' })
-    const { panel } = await openAndGetPanel()
-    const panelUtils = within(panel)
-
-    expect(panelUtils.getByText('Default')).toBeInTheDocument()
-    expect(panelUtils.getByText('Low')).toBeInTheDocument()
-    expect(panelUtils.getByText('Medium')).toBeInTheDocument()
-    expect(panelUtils.getByText('High')).toBeInTheDocument()
-    expect(panelUtils.getByText('Max')).toBeInTheDocument()
-    expect(panelUtils.queryByText('Extra High (Opus 4.7 only)')).not.toBeInTheDocument()
   })
 
   it('selecting High calls setFormData with reasoning_effort="high"', async () => {
@@ -164,30 +138,6 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
 
     await user.click(within(panel).getByText('Extra High (Opus 4.7 only)'))
     expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'xhigh' })
-  })
-})
-
-describe('CLIModelForm — CLI Type dropdown (isCreate)', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  it('lists Gemini as a selectable cli_type option', async () => {
-    const user = userEvent.setup()
-    const setFormData = vi.fn()
-    render(
-      <CLIModelForm
-        formData={makeFormData({ cli_type: 'claude' })}
-        setFormData={setFormData}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        mutation={{ isPending: false, isError: false, error: null }}
-        isCreate
-      />
-    )
-    const cliTypeLabel = screen.getByText('CLI Type')
-    const cliTypeWrapper = cliTypeLabel.parentElement!.querySelector('.relative') as HTMLElement
-    await user.click(cliTypeWrapper.querySelector('button')!)
-    const panel = await within(cliTypeWrapper).findByText('Gemini')
-    expect(panel).toBeInTheDocument()
   })
 })
 
@@ -286,7 +236,7 @@ describe('CLIModelForm — Override system prompt toggle', () => {
     expect(screen.getByText(/Default Templates/)).toBeInTheDocument()
   })
 
-  it.each(['codex', 'opencode', 'gemini'])('hides the toggle for %s models', (cliType) => {
+  it.each(['codex'])('hides the toggle for %s models', (cliType) => {
     renderForm({ cli_type: cliType })
     expect(screen.queryByText('Override system prompt')).not.toBeInTheDocument()
     expect(screen.queryByRole('switch')).not.toBeInTheDocument()

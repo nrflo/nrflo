@@ -139,7 +139,7 @@ describe('AgentLogDetail — Context tab', () => {
     expect(screen.getByText('Do not delete files.')).toBeInTheDocument()
   })
 
-  it('hides system prompt suffix section when system_prompt is empty (Codex/Opencode case)', async () => {
+  it('hides system prompt suffix section when system_prompt is empty (Codex case)', async () => {
     vi.mocked(agentsApi.fetchSessionPrompt).mockResolvedValue({
       prompt: '# Task instructions',
       system_prompt: '',

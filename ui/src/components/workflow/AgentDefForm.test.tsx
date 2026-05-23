@@ -21,11 +21,6 @@ vi.mock('@/hooks/useCLIModels', () => ({
       { value: 'codex_gpt54_high', label: 'Codex: GPT-54 (High)' },
       { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
     ]},
-    { label: 'OpenCode', options: [
-      { value: 'opencode_gpt54', label: 'OpenCode: GPT 5.4' },
-      { value: 'opencode_minimax_m25_free', label: 'OpenCode: Minimax M2.5 Free' },
-      { value: 'opencode_qwen36_plus_free', label: 'OpenCode: Qwen 3.6 Plus Free' },
-    ]},
   ],
   useCLIModels: () => ({ data: [] }),
 }))
@@ -97,7 +92,7 @@ describe('AgentDefForm', () => {
       // Each option is rendered as a div with the label text inside the dropdown menu
       const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
       const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
-      expect(optionDivs).toHaveLength(11)
+      expect(optionDivs).toHaveLength(8)
     })
 
     it('contains all model options', async () => {
@@ -108,7 +103,7 @@ describe('AgentDefForm', () => {
 
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)', 'OpenCode: GPT 5.4', 'OpenCode: Minimax M2.5 Free', 'OpenCode: Qwen 3.6 Plus Free'])
+      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)'])
     })
 
     it('defaults to sonnet', () => {
@@ -136,14 +131,14 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'OpenCode: GPT 5.4')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Codex: GPT (High)')
 
       const submitButton = screen.getByRole('button', { name: /create/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'opencode_gpt54',
+          model: 'codex_gpt_high',
         })
       )
     })
@@ -376,15 +371,6 @@ describe('AgentDefForm', () => {
       expect(getModelDropdownButton().textContent).toContain('Claude: Haiku')
     })
 
-    it('opencode_gpt54 option exists and is selectable', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      await selectDropdownOption(user, getModelDropdownButton(), 'OpenCode: GPT 5.4')
-
-      expect(getModelDropdownButton().textContent).toContain('OpenCode: GPT 5.4')
-    })
-
     it('no extra model options exist', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
@@ -395,8 +381,8 @@ describe('AgentDefForm', () => {
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
-      expect(optionTexts).toHaveLength(11)
-      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)', 'OpenCode: GPT 5.4', 'OpenCode: Minimax M2.5 Free', 'OpenCode: Qwen 3.6 Plus Free'])
+      expect(optionTexts).toHaveLength(8)
+      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)'])
     })
   })
 
@@ -549,7 +535,6 @@ describe('AgentDefForm', () => {
     it.each([
       ['claude', 'sonnet'],
       ['codex', 'codex_gpt_high'],
-      ['opencode', 'opencode_gpt54'],
     ])('shows same execution mode options for %s (%s)', async (_, model) => {
       const user = userEvent.setup()
       renderForm({ isCreate: false, initial: { model, prompt: 'test' } })

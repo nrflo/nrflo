@@ -91,29 +91,29 @@ describe('SettingsPage — CLI Models tab', () => {
     expect(screen.getByTestId('providers-section')).toHaveAttribute('data-provider', 'claude')
   })
 
-  it('deep-link ?tab=cli-models&sub=gemini passes gemini to ProvidersSection', () => {
-    renderPage('?tab=cli-models&sub=gemini')
-    expect(screen.getByTestId('providers-section')).toHaveAttribute('data-provider', 'gemini')
+  it('deep-link ?tab=cli-models&sub=codex passes codex to ProvidersSection', () => {
+    renderPage('?tab=cli-models&sub=codex')
+    expect(screen.getByTestId('providers-section')).toHaveAttribute('data-provider', 'codex')
   })
 
-  it('provider sub-tab strip renders Claude/OpenCode/Codex/Gemini in order', () => {
+  it('provider sub-tab strip renders Claude/Codex in order', () => {
     renderPage('?tab=cli-models')
-    const providerBtns = ['Claude', 'OpenCode', 'Codex', 'Gemini']
+    const providerBtns = ['Claude', 'Codex']
     const buttons = screen
       .getAllByRole('button')
       .filter((b) => providerBtns.includes(b.textContent ?? ''))
-    expect(buttons.map((b) => b.textContent)).toEqual(['Claude', 'OpenCode', 'Codex', 'Gemini'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Claude', 'Codex'])
   })
 
   it('clicking a provider sub-tab updates the active provider', async () => {
     renderPage('?tab=cli-models')
-    await userEvent.click(screen.getByRole('button', { name: 'Gemini' }))
-    expect(screen.getByTestId('providers-section')).toHaveAttribute('data-provider', 'gemini')
+    await userEvent.click(screen.getByRole('button', { name: 'Codex' }))
+    expect(screen.getByTestId('providers-section')).toHaveAttribute('data-provider', 'codex')
   })
 
   it('provider sub-tab strip only appears on cli-models tab', () => {
     renderPage('?tab=logs')
-    expect(screen.queryByRole('button', { name: 'OpenCode' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Codex' })).not.toBeInTheDocument()
   })
 
   it('administration sub=audit → cli-models → administration falls back to users', async () => {

@@ -69,7 +69,7 @@ function makeModel(overrides: Partial<CLIModel> = {}): CLIModel {
   }
 }
 
-function renderList(provider: 'claude' | 'opencode' | 'codex' | 'gemini' = 'claude') {
+function renderList(provider: 'claude' | 'codex' = 'claude') {
   return render(
     <QueryClientProvider client={createTestQueryClient()}>
       <ProviderModelsList provider={provider} />
@@ -96,7 +96,7 @@ describe('ProviderModelsList', () => {
     vi.mocked(useCLIModels).mockReturnValue({
       data: [
         makeModel({ id: 'claude-model', cli_type: 'claude' }),
-        makeModel({ id: 'gemini-model', cli_type: 'gemini' }),
+        makeModel({ id: 'codex-model', cli_type: 'codex' }),
       ],
       isLoading: false,
       error: null,
@@ -104,19 +104,7 @@ describe('ProviderModelsList', () => {
 
     renderList('claude')
     expect(screen.getByText('claude-model')).toBeInTheDocument()
-    expect(screen.queryByText('gemini-model')).not.toBeInTheDocument()
-  })
-
-  it('gemini badge uses amber color classes', () => {
-    vi.mocked(useCLIModels).mockReturnValue({
-      data: [makeModel({ id: 'gemini-flash', cli_type: 'gemini' })],
-      isLoading: false,
-      error: null,
-    } as ReturnType<typeof useCLIModels>)
-
-    renderList('gemini')
-    const badge = screen.getByText('gemini')
-    expect(badge.className).toMatch(/amber/)
+    expect(screen.queryByText('codex-model')).not.toBeInTheDocument()
   })
 
   it('claude badge uses blue color classes', () => {

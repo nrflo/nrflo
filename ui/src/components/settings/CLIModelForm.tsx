@@ -26,9 +26,7 @@ export const emptyCLIModelForm: CLIModelFormData = {
 
 const CLI_TYPE_OPTIONS = [
   { value: 'claude', label: 'Claude' },
-  { value: 'opencode', label: 'OpenCode' },
   { value: 'codex', label: 'Codex' },
-  { value: 'gemini', label: 'Gemini' },
 ]
 
 const REASONING_EFFORT_OPTIONS = [
@@ -83,12 +81,6 @@ export function CLIModelForm({
         <div className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           Codex agents run in read-only sandboxed environments
-        </div>
-      )}
-      {formData.cli_type === 'opencode' && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm text-amber-600 dark:text-amber-400">
-          <AlertTriangle className="h-4 w-4 shrink-0" />
-          OpenCode support is experimental
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
@@ -150,7 +142,7 @@ export function CLIModelForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Reasoning Effort</label>
-          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for opencode/codex, xhigh disabled with tooltip for non-Opus-4.7 claude, setFormData on select. */}
+          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for codex, xhigh disabled with tooltip for non-Opus-4.7 claude, setFormData on select. */}
           <Dropdown
             value={formData.reasoning_effort}
             onChange={(val) => setFormData({ ...formData, reasoning_effort: val })}

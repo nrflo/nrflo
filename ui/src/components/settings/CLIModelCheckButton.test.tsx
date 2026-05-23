@@ -78,7 +78,7 @@ describe('CLIModelCheckButton', () => {
       })
     )
 
-    render(<CLIModelCheckButton modelId="opencode-model" />)
+    render(<CLIModelCheckButton modelId="test-model" />)
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button'))

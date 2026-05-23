@@ -12,7 +12,7 @@ import type { InputArtifactRef } from '@/types/artifact'
 import type { StartMode } from './ProjectWorkflowComponents'
 
 function isClaudeModel(model: string): boolean {
-  return !model.startsWith('opencode_') && !model.startsWith('codex_gpt_')
+  return !model.startsWith('codex_gpt_')
 }
 
 export function RunWorkflowForm({

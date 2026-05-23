@@ -77,7 +77,7 @@ describe('RunWorkflowForm — interactive/plan mode', () => {
     })
 
     it('hides Start Interactive checkbox when L0 agent is non-Claude', async () => {
-      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'opencode_minimax_m25_free' })])
+      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt_high' })])
 
       await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
       await waitFor(() =>

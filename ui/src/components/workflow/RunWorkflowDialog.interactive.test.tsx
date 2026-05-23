@@ -88,7 +88,7 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
 
     it('hides Start Interactive checkbox when L0 agent is non-Claude', async () => {
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([
-        makeAgentDef({ model: 'opencode_minimax_m25_free' }),
+        makeAgentDef({ model: 'codex_gpt_high' }),
       ])
       renderDialog()
 

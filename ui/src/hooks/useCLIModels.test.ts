@@ -86,8 +86,8 @@ describe('useModelOptions', () => {
 
   it('sorts groups and options within groups alphabetically', async () => {
     vi.mocked(cliModelsApi.listCLIModels).mockResolvedValue([
-      makeCLIModel({ id: 'oc1', cli_type: 'opencode', display_name: 'Z-model' }),
-      makeCLIModel({ id: 'oc2', cli_type: 'opencode', display_name: 'A-model' }),
+      makeCLIModel({ id: 'cx1', cli_type: 'codex', display_name: 'Z-model' }),
+      makeCLIModel({ id: 'cx2', cli_type: 'codex', display_name: 'A-model' }),
       makeCLIModel({ id: 'c1', cli_type: 'claude', display_name: 'Opus' }),
     ])
     const { result } = renderHook(() => useModelOptions(), {
@@ -95,8 +95,8 @@ describe('useModelOptions', () => {
     })
     await waitFor(() => expect(result.current).toHaveLength(2))
     expect(result.current[0].label).toBe('Claude')
-    expect(result.current[1].label).toBe('OpenCode')
-    expect(result.current[1].options[0].label).toBe('OpenCode: A-model')
-    expect(result.current[1].options[1].label).toBe('OpenCode: Z-model')
+    expect(result.current[1].label).toBe('Codex')
+    expect(result.current[1].options[0].label).toBe('Codex: A-model')
+    expect(result.current[1].options[1].label).toBe('Codex: Z-model')
   })
 })

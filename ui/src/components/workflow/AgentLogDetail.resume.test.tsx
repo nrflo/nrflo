@@ -118,20 +118,6 @@ describe('AgentLogDetail — resume session button', () => {
       expect(screen.getByRole('button', { name: /Resume/i })).toBeInTheDocument()
     })
 
-    it('hides Resume button for non-Claude (opencode) session', () => {
-      const onResumeSession = vi.fn()
-      renderDetail(
-        {
-          phaseName: 'implementation',
-          historyEntry: makeHistoryEntry({ result: 'pass', model_id: 'opencode:openai/gpt-4' }),
-          session: makeSession({ status: 'completed', model_id: 'opencode:openai/gpt-4' }),
-        },
-        { onResumeSession },
-      )
-
-      expect(screen.queryByRole('button', { name: /Resume/i })).not.toBeInTheDocument()
-    })
-
     it('hides Resume button for codex session', () => {
       const onResumeSession = vi.fn()
       renderDetail(

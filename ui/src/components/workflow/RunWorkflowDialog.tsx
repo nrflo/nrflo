@@ -20,7 +20,7 @@ import type { InputArtifactRef } from '@/types/artifact'
 type StartMode = 'normal' | 'interactive' | 'plan'
 
 function isClaudeModel(model: string): boolean {
-  return !model.startsWith('opencode_') && !model.startsWith('codex_gpt_')
+  return !model.startsWith('codex_gpt_')
 }
 
 interface RunWorkflowDialogProps {

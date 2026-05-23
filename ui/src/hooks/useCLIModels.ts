@@ -4,9 +4,7 @@ import type { DropdownOptionGroup } from '@/components/ui/Dropdown'
 
 const CLI_TYPE_LABELS: Record<string, string> = {
   claude: 'Claude',
-  opencode: 'OpenCode',
   codex: 'Codex',
-  gemini: 'Gemini',
 }
 
 export const cliModelKeys = {

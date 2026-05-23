@@ -12,8 +12,8 @@ vi.mock('@/hooks/useCLIModels', () => ({
     { label: 'Claude', options: [
       { value: 'sonnet', label: 'Claude: Sonnet' },
     ]},
-    { label: 'OpenCode', options: [
-      { value: 'opencode_gpt54', label: 'OpenCode: GPT 5.4' },
+    { label: 'Codex', options: [
+      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
     ]},
   ],
   useCLIModels: () => ({ data: [] }),
@@ -64,18 +64,18 @@ describe('AgentDefForm — execution_mode default', () => {
     expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
   })
 
-  describe('with initial opencode model — no auto-coercion to cli', () => {
+  describe('with initial codex model — no auto-coercion to cli', () => {
     it('execution mode button still shows CLI Interactive (PTY)', () => {
-      renderForm({ isCreate: false, initial: { model: 'opencode_gpt54' } })
+      renderForm({ isCreate: false, initial: { model: 'codex_gpt_high' } })
       expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
     })
 
-    it('submitting with opencode model sends execution_mode: cli_interactive', async () => {
+    it('submitting with codex model sends execution_mode: cli_interactive', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({
         isCreate: false,
-        initial: { model: 'opencode_gpt54', prompt: 'Existing prompt' },
+        initial: { model: 'codex_gpt_high', prompt: 'Existing prompt' },
         onSubmit,
       })
 
@@ -83,7 +83,7 @@ describe('AgentDefForm — execution_mode default', () => {
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'opencode_gpt54',
+          model: 'codex_gpt_high',
           execution_mode: 'cli_interactive',
         })
       )

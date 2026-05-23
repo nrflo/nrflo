@@ -41,12 +41,10 @@ const ADMIN_SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))
 
 const PROVIDER_SUB_TABS: { id: ProviderName; label: string }[] = [
   { id: 'claude', label: 'Claude' },
-  { id: 'opencode', label: 'OpenCode' },
   { id: 'codex', label: 'Codex' },
-  { id: 'gemini', label: 'Gemini' },
 ]
 
-const PROVIDER_IDS = new Set<string>(['claude', 'opencode', 'codex', 'gemini'])
+const PROVIDER_IDS = new Set<string>(['claude', 'codex'])
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 

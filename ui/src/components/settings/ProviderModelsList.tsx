@@ -22,9 +22,7 @@ import type { ProviderName } from '@/api/providers'
 function cliTypeBadgeColor(cliType: string): string {
   switch (cliType) {
     case 'claude': return 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-    case 'opencode': return 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
     case 'codex': return 'bg-green-500/15 text-green-600 dark:text-green-400'
-    case 'gemini': return 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
     default: return 'bg-muted text-muted-foreground'
   }
 }

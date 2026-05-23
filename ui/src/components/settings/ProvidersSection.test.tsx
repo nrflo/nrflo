@@ -11,8 +11,8 @@ vi.mock('./ProviderModelsList', () => ({
 
 describe('ProvidersSection', () => {
   it('passes activeProvider to ProviderModelsList', () => {
-    renderWithQuery(<ProvidersSection activeProvider="gemini" />)
+    renderWithQuery(<ProvidersSection activeProvider="codex" />)
     const list = screen.getByTestId('provider-models-list')
-    expect(list).toHaveAttribute('data-provider', 'gemini')
+    expect(list).toHaveAttribute('data-provider', 'codex')
   })
 })

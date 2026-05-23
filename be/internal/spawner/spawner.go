@@ -1181,11 +1181,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			specs = filtered
 		}
 
-		if suffix != "" {
-			prep.apiSystem = strings.TrimSpace(defaultAPISystemPrompt + "\n\n" + suffix)
-		} else {
-			prep.apiSystem = defaultAPISystemPrompt
-		}
+		// The system-prompt-suffix is a CLI completion contract ("run `nrflo
+		// agent finished` via the Bash tool") that is meaningless in api mode:
+		// there is no Bash tool here. Completion is signaled by the
+		// agent_finished/agent_fail builtin tools (or implicit PASS on end_turn).
+		prep.apiSystem = defaultAPISystemPrompt
 		prep.apiInitialPrompt = prompt
 		prep.apiTools = specs
 		prep.apiHandlers = handlers

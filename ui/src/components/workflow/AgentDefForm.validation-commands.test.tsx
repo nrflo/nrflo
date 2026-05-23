@@ -17,6 +17,8 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+
 vi.mock('@/components/workflow/PythonScriptPickerField', () => ({
   PythonScriptPickerField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <select aria-label="Python Script" value={value} onChange={(e) => onChange(e.target.value)}>

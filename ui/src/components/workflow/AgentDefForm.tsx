@@ -8,6 +8,7 @@ import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
 import { useModelOptions } from '@/hooks/useCLIModels'
+import { useAPIModelOptions } from '@/hooks/useAPIModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
@@ -48,6 +49,8 @@ export function AgentDefForm({
   const [consultant, setConsultant] = useState(initial?.consultant ?? false)
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
+  const apiModelOptions = useAPIModelOptions()
+  const activeModelOptions = executionMode === 'api' ? apiModelOptions : modelOptions
   const apiModeEnabled = useAPIModeEnabled()
   const handleExecutionModeChange = (v: string) => {
     const next = v as ExecutionMode
@@ -114,7 +117,7 @@ export function AgentDefForm({
         {executionMode !== 'script' && (
           <div className="flex-1">
             <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-            <Dropdown value={model} onChange={setModel} options={modelOptions} />
+            <Dropdown value={model} onChange={setModel} options={activeModelOptions} />
           </div>
         )}
         <div className="w-32">
@@ -163,7 +166,7 @@ export function AgentDefForm({
       {executionMode !== 'script' && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">Low consumption model</label>
-          <Dropdown value={lowConsumptionModel} onChange={setLowConsumptionModel} options={[{ label: '', options: [{ value: '', label: '(none)' }] }, ...modelOptions]} placeholder="(none)" />
+          <Dropdown value={lowConsumptionModel} onChange={setLowConsumptionModel} options={[{ label: '', options: [{ value: '', label: '(none)' }] }, ...activeModelOptions]} placeholder="(none)" />
           <p className="text-xs text-muted-foreground mt-1">Model to use when low consumption mode is enabled</p>
         </div>
       )}

@@ -18,6 +18,8 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+
 function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
   return {
     id: 'test-agent',

@@ -25,6 +25,8 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+
 // Mock MarkdownEditor to avoid CodeMirror dependencies
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: any) => (

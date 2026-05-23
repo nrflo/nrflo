@@ -21,6 +21,10 @@ vi.mock('@/api/defaultTemplates', () => ({
   listDefaultTemplates: vi.fn().mockResolvedValue([]),
 }))
 
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+vi.mock('@/hooks/useCLIModels', () => ({ useModelOptions: () => [], useCLIModels: () => ({ data: [] }) }))
+vi.mock('@/hooks/useGlobalSettings', () => ({ useAPIModeEnabled: () => true }))
+
 function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = {}) {
   const defaultProps = { isCreate: true, onSubmit: vi.fn(), onCancel: vi.fn(), ...props }
   return renderWithQuery(<AgentDefForm {...defaultProps} />)

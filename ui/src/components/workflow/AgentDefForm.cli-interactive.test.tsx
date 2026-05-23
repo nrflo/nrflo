@@ -14,6 +14,8 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [{ id: 'sonnet', cli_type: 'claude', enabled: true, display_name: 'Sonnet' }] }),
 }))
 
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: {
     value: string; onChange: (v: string) => void; placeholder?: string

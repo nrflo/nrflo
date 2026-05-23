@@ -38,7 +38,6 @@ func TestCLIInteractiveBackend_SupportsResume_MirrorsAdapter(t *testing.T) {
 		want    bool
 	}{
 		{"claude", &ClaudeAdapter{}, true},
-		{"opencode", &OpencodeAdapter{}, false},
 		{"codex", &CodexAdapter{}, true},
 	}
 	for _, tc := range cases {

@@ -314,7 +314,7 @@ func (s *Spawner) formatPrefix(proc *processInfo) string {
 // It is a package-level function so socket handlers can reuse the same formatting
 // for hook-sourced tool events without duplicating logic.
 func FormatToolDetail(toolName string, input map[string]interface{}) string {
-	// Normalize tool name to title case (opencode sends lowercase, Claude sends capitalized)
+	// Normalize tool name to title case.
 	if len(toolName) > 0 {
 		toolName = strings.ToUpper(toolName[:1]) + toolName[1:]
 	}
@@ -327,7 +327,6 @@ func FormatToolDetail(toolName string, input map[string]interface{}) string {
 
 	switch toolName {
 	case "Skill":
-		// Claude uses "skill", opencode uses "name"
 		skillName, _ := input["skill"].(string)
 		if skillName == "" {
 			skillName, _ = input["name"].(string)
@@ -347,7 +346,6 @@ func FormatToolDetail(toolName string, input map[string]interface{}) string {
 		}
 
 	case "Read":
-		// Try both snake_case (Claude) and camelCase (opencode)
 		path, _ := input["file_path"].(string)
 		if path == "" {
 			path, _ = input["filePath"].(string)

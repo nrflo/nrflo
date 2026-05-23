@@ -13,10 +13,8 @@ import (
 )
 
 var validCLITypes = map[string]bool{
-	"claude":   true,
-	"opencode": true,
-	"codex":    true,
-	"gemini":   true,
+	"claude": true,
+	"codex":  true,
 }
 
 var validReasoningEfforts = map[string]bool{
@@ -137,7 +135,7 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 		return nil, fmt.Errorf("mapped_model is required")
 	}
 	if !validCLITypes[req.CLIType] {
-		return nil, fmt.Errorf("invalid cli_type: must be one of claude, opencode, codex, gemini")
+		return nil, fmt.Errorf("invalid cli_type: must be one of claude, codex")
 	}
 	if err := validateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
 		return nil, err

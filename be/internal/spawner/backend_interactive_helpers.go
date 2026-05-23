@@ -126,14 +126,13 @@ func mergeInteractiveSettings(safetyJSON, hooksJSON string) string {
 // deliverPrompt depends on it regardless of adapter type.
 //
 // Heartbeat (lastMessageTime / hasReceivedMessage bump) is opt-in via
-// bumpOnPTYBytes. Adapters whose hooks or SSE bus or JSONL tailer already
-// drive BumpLastMessage (Claude via PreToolUse/PostToolUse/Stop, Opencode via
-// message.part.updated / session.idle, Codex via the rollout JSONL tailer)
+// bumpOnPTYBytes. Adapters whose hooks already drive BumpLastMessage
+// (Claude via PreToolUse/PostToolUse/Stop, Codex via the rollout JSONL tailer)
 // pass false so the running-stall timer can accumulate while the TUI redraws.
 //
 // Terminal capability queries (DSR, DA, kitty keyboard, OSC color) are
 // auto-answered when respondToQueries is true (codex's TUI bails during init
-// otherwise). Adapters that don't probe (claude, opencode) pass false to skip
+// otherwise). Adapters that don't probe (claude) pass false to skip
 // the scan entirely. See respondToTerminalQueries.
 func ferryPTYOutput(s *Spawner, proc *processInfo, sess ptySessionIface, respondToQueries bool, bumpOnPTYBytes bool) {
 	buf := make([]byte, 4096)
@@ -264,8 +263,8 @@ func respondToTerminalQueries(chunk []byte) []byte {
 //  1. Primary: wait up to sessionStartTimeout for SessionStart hook (the
 //     canonical "TUI fully bootstrapped" signal from Claude). On arrival,
 //     write immediately — no extra wait needed.
-//  2. Fallback: if SessionStart never arrives (older Claude builds, codex,
-//     opencode), wait for firstByteCh (PTY first paint) then enforce a
+//  2. Fallback: if SessionStart never arrives (older Claude builds, codex),
+//     wait for firstByteCh (PTY first paint) then enforce a
 //     bootstrap floor of bootstrapFloor relative to spawn — gives the TUI
 //     enough time to set up raw mode after the first paint.
 //
@@ -333,8 +332,8 @@ func waitForReady(s *Spawner, proc *processInfo, start time.Time, sessionStartCh
 		return
 	}
 	// Quiescence gate (PTY byte stream idle ≥ quietWindow). When the
-	// adapter has no precise readiness hook (opencode), the TUI is still
-	// painting its splash at first-byte time and won't interpret a
+	// adapter has no precise readiness hook, the TUI is still painting its
+	// splash at first-byte time and won't interpret a
 	// submitted prompt yet. Waiting for the byte stream to fall silent
 	// is a universal "TUI ready for input" signal: once no new chunks
 	// arrive for quietWindow continuously, the TUI has finished its

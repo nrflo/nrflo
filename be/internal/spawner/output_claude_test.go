@@ -264,11 +264,17 @@ func TestProcessOutput_Claude_ToolResult_MatchingID_GeneratesTaskResult(t *testi
 		},
 	})
 
-	// Tool result arrives with matching tool_use_id
+	// Tool result arrives wrapped in a user event (Claude format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_tr001",
-		"content":     "Tests passed",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_tr001",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)
@@ -309,8 +315,15 @@ func TestProcessOutput_Claude_ToolResult_MatchingID_RemovesPendingTask(t *testin
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_tr002",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_tr002",
+				},
+			},
+		},
 	})
 
 	proc.messagesMutex.Lock()

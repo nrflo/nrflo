@@ -228,10 +228,17 @@ func TestHandleClaudeToolResult_LongDescription_StillTruncated(t *testing.T) {
 		},
 	})
 
-	// Correlate with tool_result
+	// Correlate with tool_result (user event format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_tasktrunc",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_tasktrunc",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)

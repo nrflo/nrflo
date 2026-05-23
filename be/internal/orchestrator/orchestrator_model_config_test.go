@@ -30,16 +30,10 @@ func TestCLINameFromModelConfigs_UsesDBCLIType(t *testing.T) {
 			want:    "codex",
 		},
 		{
-			name:    "DB claude type overrides opencode-prefix default",
-			model:   "opencode_minimax_m25_free",
-			configs: map[string]spawner.ModelConfig{"opencode_minimax_m25_free": {CLIType: "claude"}},
-			want:    "claude",
-		},
-		{
-			name:    "DB opencode type for custom model",
+			name:    "DB codex type for custom model",
 			model:   "my-custom-model",
-			configs: map[string]spawner.ModelConfig{"my-custom-model": {CLIType: "opencode"}},
-			want:    "opencode",
+			configs: map[string]spawner.ModelConfig{"my-custom-model": {CLIType: "codex"}},
+			want:    "codex",
 		},
 	}
 
@@ -67,15 +61,9 @@ func TestCLINameFromModelConfigs_FallsBackToDefault(t *testing.T) {
 			want:    "claude",
 		},
 		{
-			name:    "empty configs falls back for opencode model",
-			model:   "opencode_minimax_m25_free",
-			configs: map[string]spawner.ModelConfig{},
-			want:    "opencode",
-		},
-		{
 			name:    "model not in configs map falls back",
 			model:   "codex_gpt_high",
-			configs: map[string]spawner.ModelConfig{"other": {CLIType: "opencode"}},
+			configs: map[string]spawner.ModelConfig{"other": {CLIType: "claude"}},
 			want:    "codex",
 		},
 		{
@@ -120,9 +108,6 @@ func TestLoadModelConfigs_ContainsSeedModels(t *testing.T) {
 		"opus_4_7_1m":               "claude",
 		"sonnet":                    "claude",
 		"haiku":                     "claude",
-		"opencode_minimax_m25_free": "opencode",
-		"opencode_qwen36_plus_free": "opencode",
-		"opencode_gpt54":            "opencode",
 		"codex_gpt_normal":          "codex",
 		"codex_gpt_high":            "codex",
 		"codex_gpt54_normal":        "codex",
@@ -178,9 +163,9 @@ func TestLoadModelConfigs_CustomModelIncluded(t *testing.T) {
 	cliModelSvc := service.NewCLIModelService(env.pool, env.orch.clock)
 	_, err := cliModelSvc.Create(types.CLIModelCreateRequest{
 		ID:          "my-custom-gpt",
-		CLIType:     "opencode",
+		CLIType:     "codex",
 		DisplayName: "My Custom GPT",
-		MappedModel: "openai/custom-gpt",
+		MappedModel: "gpt-custom",
 	})
 	if err != nil {
 		t.Fatalf("CLIModelService.Create: %v", err)
@@ -195,10 +180,10 @@ func TestLoadModelConfigs_CustomModelIncluded(t *testing.T) {
 	if !ok {
 		t.Fatal("loadModelConfigs() missing custom model 'my-custom-gpt'")
 	}
-	if mc.CLIType != "opencode" {
-		t.Errorf("custom model CLIType = %q, want %q", mc.CLIType, "opencode")
+	if mc.CLIType != "codex" {
+		t.Errorf("custom model CLIType = %q, want %q", mc.CLIType, "codex")
 	}
-	if mc.MappedModel != "openai/custom-gpt" {
-		t.Errorf("custom model MappedModel = %q, want %q", mc.MappedModel, "openai/custom-gpt")
+	if mc.MappedModel != "gpt-custom" {
+		t.Errorf("custom model MappedModel = %q, want %q", mc.MappedModel, "gpt-custom")
 	}
 }

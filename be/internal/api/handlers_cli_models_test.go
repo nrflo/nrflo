@@ -81,19 +81,6 @@ func TestHandleCreateCLIModel_XhighOnOpus47_Succeeds(t *testing.T) {
 	}
 }
 
-func TestHandleCreateCLIModel_XhighOnOpencode_Succeeds(t *testing.T) {
-	s := newCLIModelsServer(t)
-	// For non-claude cli_types, xhigh must not hit the opus-4.7 gate.
-	body := `{"id":"my-opencode","cli_type":"opencode","display_name":"OC","mapped_model":"openai/gpt-5.4","reasoning_effort":"xhigh"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models", strings.NewReader(body))
-	rr := httptest.NewRecorder()
-	s.handleCreateCLIModel(rr, req)
-
-	if rr.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want 201; body: %s", rr.Code, rr.Body.String())
-	}
-}
-
 // --- Update: reasoning_effort validation ---
 
 func TestHandleUpdateCLIModel_InvalidReasoningEffort(t *testing.T) {

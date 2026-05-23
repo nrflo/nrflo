@@ -484,18 +484,6 @@ func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
 	}
 }
 
-func TestShouldUseAgentSave_OpencodeForcesAgent(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
-	proc := &processInfo{
-		modelID: "opencode:openai/gpt-5.4",
-		backend: fakeBackend{name: "cli_interactive", supportsResume: false},
-	}
-	if !s.shouldUseAgentSave(proc) {
-		t.Error("opencode must force agent save (SupportsResume=false)")
-	}
-}
-
 func TestShouldUseAgentSave_UnknownAdapterFallsThrough(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})

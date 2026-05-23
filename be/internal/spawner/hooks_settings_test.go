@@ -24,7 +24,6 @@ func TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON(t *testing.T) {
 func TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{
-		"opencode:opencode_qwen36_plus_free",
 		"codex:codex_gpt_high",
 	} {
 		proc := &processInfo{modelID: modelID}
@@ -174,7 +173,6 @@ func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
 func TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{
-		"opencode:opencode_qwen36_plus_free",
 		"codex:codex_gpt_high",
 	} {
 		proc := &processInfo{modelID: modelID}

@@ -172,9 +172,15 @@ func TestProcessOutput_Claude_ToolResult_MatchingAgent_GeneratesAgentResult(t *t
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_agent_tr001",
-		"content":     "Tests passed",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_agent_tr001",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)
@@ -251,8 +257,15 @@ func TestProcessOutput_Claude_AgentResult_Formats(t *testing.T) {
 			})
 
 			processJSON(s, proc, map[string]interface{}{
-				"type":        "tool_result",
-				"tool_use_id": "toolu_agentfmt_" + tt.name,
+				"type": "user",
+				"message": map[string]interface{}{
+					"content": []interface{}{
+						map[string]interface{}{
+							"type":        "tool_result",
+							"tool_use_id": "toolu_agentfmt_" + tt.name,
+						},
+					},
+				},
 			})
 
 			entries := pendingEntries(proc)
@@ -294,8 +307,15 @@ func TestProcessOutput_Claude_AgentResult_LongDetail_Truncated(t *testing.T) {
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_agent_trunc",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_agent_trunc",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)
@@ -331,10 +351,17 @@ func TestProcessOutput_Claude_TaskInfo_EmptyToolName_DefaultsToTaskResult(t *tes
 	}
 	proc.messagesMutex.Unlock()
 
-	// Trigger result
+	// Trigger result (user event format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_compat001",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_compat001",
+				},
+			},
+		},
 	})
 
 	msgs := pendingMessages(proc)
@@ -399,16 +426,30 @@ func TestProcessOutput_Claude_MixedTaskAndAgent_CorrectPrefixes(t *testing.T) {
 		t.Fatalf("expected 2 pending tasks, got %d", taskCount)
 	}
 
-	// Resolve Task tool_use
+	// Resolve Task tool_use (user event format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_task_mixed",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_task_mixed",
+				},
+			},
+		},
 	})
 
-	// Resolve Agent tool_use
+	// Resolve Agent tool_use (user event format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_agent_mixed",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_agent_mixed",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)

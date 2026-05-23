@@ -148,11 +148,3 @@ func TestBumpsOnPTYBytes_Claude(t *testing.T) {
 	}
 }
 
-// TestBumpsOnPTYBytes_Opencode verifies OpencodeAdapter returns false — SSE
-// events (message.part.updated / session.idle) drive BumpLastMessage.
-func TestBumpsOnPTYBytes_Opencode(t *testing.T) {
-	t.Parallel()
-	if (&OpencodeAdapter{}).BumpsOnPTYBytes() {
-		t.Error("OpencodeAdapter.BumpsOnPTYBytes() = true, want false (SSE events drive heartbeat)")
-	}
-}

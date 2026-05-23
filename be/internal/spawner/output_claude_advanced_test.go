@@ -28,13 +28,20 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesTask(t *testing.T)
 		},
 	})
 
-	// tool_use_id nested inside content array (alternative format)
+	// tool_use_id nested inside content array of a user event (Claude format)
 	processJSON(s, proc, map[string]interface{}{
-		"type": "tool_result",
-		"content": []interface{}{
-			map[string]interface{}{
-				"tool_use_id": "toolu_nested",
-				"type":        "tool_result",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "tool_result",
+					"content": []interface{}{
+						map[string]interface{}{
+							"tool_use_id": "toolu_nested",
+							"type":        "tool_result",
+						},
+					},
+				},
 			},
 		},
 	})
@@ -121,13 +128,20 @@ func TestProcessOutput_Claude_ToolResult_NestedContent_MatchesAgent(t *testing.T
 		},
 	})
 
-	// tool_use_id nested inside content array (alternative format)
+	// tool_use_id nested inside content array of a user event (Claude format)
 	processJSON(s, proc, map[string]interface{}{
-		"type": "tool_result",
-		"content": []interface{}{
-			map[string]interface{}{
-				"tool_use_id": "toolu_agent_nested",
-				"type":        "tool_result",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type": "tool_result",
+					"content": []interface{}{
+						map[string]interface{}{
+							"tool_use_id": "toolu_agent_nested",
+							"type":        "tool_result",
+						},
+					},
+				},
 			},
 		},
 	})
@@ -253,10 +267,17 @@ func TestProcessOutput_Claude_MultipleInFlightTasks(t *testing.T) {
 		t.Fatalf("expected 3 pending tasks, got %d", taskCount)
 	}
 
-	// Resolve the middle task only
+	// Resolve the middle task only (user event format)
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_b",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_b",
+				},
+			},
+		},
 	})
 
 	proc.messagesMutex.Lock()
@@ -354,8 +375,15 @@ func TestProcessOutput_Claude_TaskResult_Formats(t *testing.T) {
 			})
 
 			processJSON(s, proc, map[string]interface{}{
-				"type":        "tool_result",
-				"tool_use_id": "toolu_fmt_" + tt.name,
+				"type": "user",
+				"message": map[string]interface{}{
+					"content": []interface{}{
+						map[string]interface{}{
+							"type":        "tool_result",
+							"tool_use_id": "toolu_fmt_" + tt.name,
+						},
+					},
+				},
 			})
 
 			entries := pendingEntries(proc)
@@ -397,8 +425,15 @@ func TestProcessOutput_Claude_TaskResult_LongDetail_Truncated(t *testing.T) {
 	})
 
 	processJSON(s, proc, map[string]interface{}{
-		"type":        "tool_result",
-		"tool_use_id": "toolu_trunc",
+		"type": "user",
+		"message": map[string]interface{}{
+			"content": []interface{}{
+				map[string]interface{}{
+					"type":        "tool_result",
+					"tool_use_id": "toolu_trunc",
+				},
+			},
+		},
 	})
 
 	entries := pendingEntries(proc)

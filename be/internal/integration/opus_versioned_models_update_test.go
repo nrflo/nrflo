@@ -182,7 +182,7 @@ func TestMigration057MigratesAgentDefModelColumns(t *testing.T) {
 
 // TestMigration057NoOpWithoutLegacyRows verifies that migration 000057 is a
 // no-op for agent definitions that don't reference the legacy opus/opus_1m
-// IDs — sonnet, haiku, codex_gpt_*, opencode_* rows are left untouched.
+// IDs — sonnet, haiku, and codex_gpt_* rows are left untouched.
 func TestMigration057NoOpWithoutLegacyRows(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "migrate057_noop.db")
 	sqlDB, err := sql.Open("sqlite", dbPath)

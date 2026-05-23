@@ -119,8 +119,8 @@ func TestUpdateWorkflowDef_ObserverProviderModel(t *testing.T) {
 	}
 
 	if err := svc.UpdateWorkflowDef("proj1", "wf-upd-pm", &types.WorkflowDefUpdateRequest{
-		ObserverProvider: strPtr("gemini"),
-		ObserverModel:    strPtr("flash"),
+		ObserverProvider: strPtr("codex"),
+		ObserverModel:    strPtr("codex_gpt_high"),
 	}); err != nil {
 		t.Fatalf("UpdateWorkflowDef: %v", err)
 	}
@@ -129,11 +129,11 @@ func TestUpdateWorkflowDef_ObserverProviderModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetWorkflowDef: %v", err)
 	}
-	if wf.ObserverProvider == nil || *wf.ObserverProvider != "gemini" {
-		t.Errorf("ObserverProvider = %v, want gemini", wf.ObserverProvider)
+	if wf.ObserverProvider == nil || *wf.ObserverProvider != "codex" {
+		t.Errorf("ObserverProvider = %v, want codex", wf.ObserverProvider)
 	}
-	if wf.ObserverModel == nil || *wf.ObserverModel != "flash" {
-		t.Errorf("ObserverModel = %v, want flash", wf.ObserverModel)
+	if wf.ObserverModel == nil || *wf.ObserverModel != "codex_gpt_high" {
+		t.Errorf("ObserverModel = %v, want codex_gpt_high", wf.ObserverModel)
 	}
 }
 

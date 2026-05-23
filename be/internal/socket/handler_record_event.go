@@ -35,7 +35,6 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		return MakeErrorResponse(req.ID, NewInvalidParamsError("invalid event JSON: "+err.Error()))
 	}
 
-	normalizeGeminiHookEvent(event)
 	hookEventName, _ := event["hook_event_name"].(string)
 
 	switch hookEventName {
@@ -95,9 +94,8 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
 	case "Stop":
-		// Per-turn boundary (Gemini maps AfterAgent → Stop). Recorded only as
-		// an acknowledgement — no message row. Completion is signaled by
-		// `agent finished/fail/continue`, not by this event.
+		// Per-turn boundary. Acknowledged but not recorded — completion is
+		// signaled by `agent finished/fail/continue`, not by this event.
 		return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 	case "SessionEnd":
 		// Predictable per-session noise — ignored.

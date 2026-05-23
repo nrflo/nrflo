@@ -80,7 +80,7 @@ const (
 // ModelConfig holds DB-sourced model configuration for the spawner.
 // Zero values mean "not configured" — adapters fall back to their hardcoded methods.
 type ModelConfig struct {
-	CLIType              string // "claude", "opencode", "codex"
+	CLIType              string // "claude", "codex"
 	MappedModel          string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
 	ReasoningEffort      string // "", "high", "medium"
 	ContextLength        int    // 200000, 1000000
@@ -208,7 +208,7 @@ type processInfo struct {
 	// sessionStartCh is closed (idempotently) when Claude's SessionStart hook
 	// fires — the canonical readiness signal. firstByteCh is closed on the
 	// first non-empty PTY read — used only as a fallback when SessionStart
-	// does not arrive (older Claude builds, codex/opencode without hooks).
+	// does not arrive (older Claude builds, or codex which has no hooks).
 	// deliverPrompt prefers sessionStartCh; firstByteCh + a quiescence gate
 	// only kick in if SessionStart never appears within ~3s.
 	sessionStartCh   chan struct{}
@@ -1220,7 +1220,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 	// CLI mode: write prompt to temp file and assemble SpawnOptions.
 
-	// For adapters without system-prompt-file support (Codex, Opencode), prepend
+	// For adapters without system-prompt-file support (Codex), prepend
 	// the suffix directly into the prompt body so it is delivered via the prompt file.
 	promptBody := prompt
 	if suffix != "" && !adapter.SupportsSystemPromptFile() {
@@ -1594,12 +1594,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.sessionID != sig.SessionID {
 					continue
 				}
-				// Some backends (opencode batch) write their final telemetry —
-				// token usage, step-finish part — only AFTER the agent's last
-				// tool call returns and the model emits its closing chunk. Give
-				// the process a brief window to exit on its own before SIGTERM
-				// so that telemetry lands on disk. If the process is already
-				// done or exits early, the wait returns immediately.
+				// Some backends write their final telemetry — token usage,
+				// step-finish part — only AFTER the agent's last tool call
+				// returns and the model emits its closing chunk. Give the
+				// process a brief window to exit on its own before SIGTERM so
+				// that telemetry lands on disk. If the process is already done
+				// or exits early, the wait returns immediately.
 				if grace := proc.backend.NaturalExitGrace(); grace > 0 {
 					select {
 					case <-proc.doneCh:

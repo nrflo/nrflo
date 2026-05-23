@@ -6,9 +6,8 @@ import (
 	"os"
 )
 
-// Shared helpers for the file-tailing context trackers (currently the gemini
-// JSONL tailer). They translate raw tailer output into Sink calls and handle
-// byte-offset incremental reads.
+// Shared helpers for file-tailing context trackers. They translate raw tailer
+// output into Sink calls and handle byte-offset incremental reads.
 
 // emitAgentText records an agent_message body as a "text" agent_messages row
 // and broadcasts the update. Empty bodies are dropped.

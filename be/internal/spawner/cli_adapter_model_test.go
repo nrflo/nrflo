@@ -4,40 +4,6 @@ import (
 	"testing"
 )
 
-// TestOpencodeAdapterModelMapping tests that OpencodeAdapter correctly maps model aliases.
-func TestOpencodeAdapterModelMapping(t *testing.T) {
-	t.Parallel()
-	adapter := &OpencodeAdapter{}
-
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		// New predefined opencode models
-		{"opencode_minimax_m25_free", "opencode/minimax-m2.5-free"},
-		{"opencode_qwen36_plus_free", "opencode/qwen3.6-plus-free"},
-		{"opencode_gpt54", "openai/gpt-5.4"},
-		{"opencode_gpt54_mini_low", "openai/gpt-5.4-mini"},
-
-		// Already provider/model format (pass-through)
-		{"anthropic/claude-opus-4-5", "anthropic/claude-opus-4-5"},
-		{"openai/gpt-5.3-codex", "openai/gpt-5.3-codex"},
-		{"custom/my-model", "custom/my-model"},
-
-		// Unknown model (should default to anthropic provider)
-		{"unknown-model", "anthropic/unknown-model"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := adapter.MapModel(tt.input)
-			if result != tt.expected {
-				t.Errorf("MapModel(%q) = %q, expected %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 // TestCodexAdapterModelMapping tests that CodexAdapter correctly maps model aliases.
 func TestCodexAdapterModelMapping(t *testing.T) {
 	t.Parallel()
@@ -98,35 +64,6 @@ func TestClaudeAdapterModelMapping(t *testing.T) {
 	}
 }
 
-// TestOpencodeReasoningEffort tests that OpencodeAdapter returns correct reasoning effort variants.
-func TestOpencodeReasoningEffort(t *testing.T) {
-	t.Parallel()
-	adapter := &OpencodeAdapter{}
-
-	tests := []struct {
-		model    string
-		expected string
-	}{
-		{"opencode_gpt54", "high"},
-		{"opencode_gpt54_mini_low", "low"},
-		{"opencode_minimax_m25_free", ""},
-		{"opencode_qwen36_plus_free", ""},
-		{"opus_4_7", ""},
-		{"sonnet", ""},
-		{"haiku", ""},
-		{"unknown", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.model, func(t *testing.T) {
-			result := adapter.GetReasoningEffort(tt.model)
-			if result != tt.expected {
-				t.Errorf("GetReasoningEffort(%q) = %q, expected %q", tt.model, result, tt.expected)
-			}
-		})
-	}
-}
-
 // TestCodexReasoningEffort tests that CodexAdapter returns correct reasoning effort levels.
 func TestCodexReasoningEffort(t *testing.T) {
 	t.Parallel()
@@ -162,12 +99,6 @@ func TestUnsupportedModelHandling(t *testing.T) {
 		model          string
 		expectNonEmpty bool
 	}{
-		{
-			name:           "OpencodeAdapter with unknown model defaults to anthropic",
-			adapter:        &OpencodeAdapter{},
-			model:          "unknown-xyz",
-			expectNonEmpty: true,
-		},
 		{
 			name:           "CodexAdapter with unknown model passes through",
 			adapter:        &CodexAdapter{},
@@ -205,17 +136,10 @@ func TestDefaultCLIForModel(t *testing.T) {
 		{"opus_4_7_1m", "claude"},
 		{"sonnet", "claude"},
 		{"haiku", "claude"},
-		{"opencode_minimax_m25_free", "opencode"},
-		{"opencode_qwen36_plus_free", "opencode"},
-		{"opencode_gpt54", "opencode"},
-		{"opencode_gpt54_mini_low", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt_high", "codex"},
 		{"codex_gpt54_normal", "codex"},
 		{"codex_gpt54_high", "codex"},
-		{"gemini_pro", "gemini"},
-		{"gemini_flash", "gemini"},
-		{"gemini_flash_lite", "gemini"},
 		{"unknown", "claude"},
 	}
 
@@ -229,27 +153,3 @@ func TestDefaultCLIForModel(t *testing.T) {
 	}
 }
 
-// TestGeminiAdapterModelMapping tests that GeminiAdapter correctly maps model aliases.
-func TestGeminiAdapterModelMapping(t *testing.T) {
-	t.Parallel()
-	a := &GeminiAdapter{}
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"gemini_pro", "gemini-2.5-pro"},
-		{"gemini_flash", "gemini-2.5-flash"},
-		{"gemini_flash_lite", "gemini-2.5-flash-lite"},
-		{"gemini-2.5-pro", "gemini-2.5-pro"},
-		{"custom-model", "custom-model"},
-		{"unknown", "unknown"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := a.MapModel(tt.input)
-			if result != tt.expected {
-				t.Errorf("MapModel(%q) = %q, expected %q", tt.input, result, tt.expected)
-			}
-		})
-	}
-}

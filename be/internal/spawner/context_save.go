@@ -61,8 +61,8 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 // The running backend is the source of truth: agent-based save is used whenever
 // the backend can't resume the live session in place. `contextSaveViaResume`
 // needs `--resume <session>`, which only the Claude PTY backend offers — api,
-// script, opencode, and codex/app-server all return SupportsResume()=false and
-// must use the agent-save path (it reads `agent_messages` rather than resuming).
+// script, and codex/app-server all return SupportsResume()=false and must use
+// the agent-save path (it reads `agent_messages` rather than resuming).
 // The agent path works for every backend; the previous default for
 // non-resumable backends was silent carryover loss.
 //

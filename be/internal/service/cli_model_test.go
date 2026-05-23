@@ -40,8 +40,8 @@ func TestCLIModel_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(models) != 18 {
-		t.Fatalf("List len = %d, want 18", len(models))
+	if len(models) != 11 {
+		t.Fatalf("List len = %d, want 11", len(models))
 	}
 
 	// Verify ORDER BY id ascending — first and last entries.
@@ -259,9 +259,9 @@ func TestCLIModel_CreateContextLengthDefault(t *testing.T) {
 
 	m, err := svc.Create(types.CLIModelCreateRequest{
 		ID:          "default-ctx",
-		CLIType:     "opencode",
+		CLIType:     "codex",
 		DisplayName: "Default Context",
-		MappedModel: "openai/gpt-4",
+		MappedModel: "gpt-4",
 		// ContextLength = 0 → should default to 200000
 	})
 	if err != nil {
@@ -418,7 +418,6 @@ func TestCLIModel_CreateReasoningEffort(t *testing.T) {
 		{name: "max effort claude sonnet", cliType: "claude", mappedModel: "claude-sonnet-4-5", effort: "max"},
 		{name: "xhigh effort claude opus 4.7", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "xhigh"},
 		{name: "xhigh effort claude opus 4.7 1M", cliType: "claude", mappedModel: "claude-opus-4-7[1m]", effort: "xhigh"},
-		{name: "xhigh effort opencode ok", cliType: "opencode", mappedModel: "openai/gpt-5.4", effort: "xhigh"},
 		{name: "xhigh effort codex ok", cliType: "codex", mappedModel: "gpt-5.3-codex", effort: "xhigh"},
 
 		{name: "nonsense rejected", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "nonsense", wantErr: "must be one of low, medium, high, xhigh, max"},

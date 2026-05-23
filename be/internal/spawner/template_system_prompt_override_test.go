@@ -91,9 +91,7 @@ func TestLoadTemplate_SystemPromptOverride_NonClaudeCLIType(t *testing.T) {
 		model   string
 		modelID string
 	}{
-		{"opencode", "opencode", "opencode_minimax_m25_free", "opencode:opencode_minimax_m25_free"},
 		{"codex", "codex", "codex_gpt_high", "codex:codex_gpt_high"},
-		{"gemini", "gemini", "gemini_pro", "gemini:gemini_pro"},
 	}
 
 	for _, tt := range tests {
@@ -221,12 +219,6 @@ func TestSystemPromptOverrideFor_GatesOnCLITypeAndToggle(t *testing.T) {
 		{
 			name:         "claude+override=false → empty",
 			configs:      map[string]ModelConfig{"m": {CLIType: "claude", OverrideSystemPrompt: false}},
-			model:        "m",
-			wantNonEmpty: false,
-		},
-		{
-			name:         "opencode+override=true → empty",
-			configs:      map[string]ModelConfig{"m": {CLIType: "opencode", OverrideSystemPrompt: true}},
 			model:        "m",
 			wantNonEmpty: false,
 		},

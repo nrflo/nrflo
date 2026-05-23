@@ -45,7 +45,7 @@ func TestDispatchAppServer_FullTurnFixture(t *testing.T) {
 	if len(notifs) == 0 {
 		t.Fatal("no notifications loaded from fixture")
 	}
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	var sawTurnStarted, sawTurnCompleted bool
 	for _, n := range notifs {
 		sig := dispatchAppServerEvent("sess-1", n, sink, 200000)
@@ -112,7 +112,7 @@ func TestDispatchAppServer_CommandFormatting(t *testing.T) {
 }
 
 func TestDispatchAppServer_RateLimitTyped(t *testing.T) {
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	// Routine usage update: rateLimitReachedType null → NOT rate-limited.
 	clean := rpcEnvelope{Method: "account/rateLimits/updated", Params: json.RawMessage(`{"rateLimits":{"rateLimitReachedType":null,"primary":{"usedPercent":2}}}`)}
 	if dispatchAppServerEvent("s", clean, sink, 200000).rateLimited {
@@ -126,7 +126,7 @@ func TestDispatchAppServer_RateLimitTyped(t *testing.T) {
 }
 
 func TestDispatchAppServer_ErrorClassification(t *testing.T) {
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	limit := rpcEnvelope{Method: "error", Params: json.RawMessage(`{"error":{"message":"Rate limit exceeded, try later"}}`)}
 	sig := dispatchAppServerEvent("s", limit, sink, 200000)
 	if !sig.rateLimited {
@@ -140,7 +140,7 @@ func TestDispatchAppServer_ErrorClassification(t *testing.T) {
 }
 
 func TestDispatchAppServer_DeltaHeartbeatOnly(t *testing.T) {
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	d := rpcEnvelope{Method: "item/agentMessage/delta", Params: json.RawMessage(`{"itemId":"m1","delta":"hi"}`)}
 	dispatchAppServerEvent("s", d, sink, 200000)
 	if len(sink.recordedMsgs) != 0 {
@@ -152,7 +152,7 @@ func TestDispatchAppServer_DeltaHeartbeatOnly(t *testing.T) {
 }
 
 func TestDispatchAppServer_TokenUsageContextLeft(t *testing.T) {
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	// Multi-turn: total is cumulative (27279), last is current context (9115).
 	// context_left must derive from `last`, not the cumulative `total`.
 	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":27279},"last":{"inputTokens":9115},"modelContextWindow":258400}}`)}
@@ -167,7 +167,7 @@ func TestDispatchAppServer_TokenUsageContextLeft(t *testing.T) {
 }
 
 func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
-	sink := &opencodeTestSink{}
+	sink := &testSink{}
 	// No `last` block → fall back to total (single-turn, where they coincide).
 	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":9091},"modelContextWindow":258400}}`)}
 	dispatchAppServerEvent("s", n, sink, 200000)

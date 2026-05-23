@@ -171,7 +171,7 @@ func TestEventAgentViewerAttached_Broadcast(t *testing.T) {
 // cliInteractiveBackend.SupportsTakeControl() returns true for all adapters.
 func TestCLIInteractiveBackend_SupportsTakeControl_AlwaysTrue(t *testing.T) {
 	t.Parallel()
-	for _, adapter := range []CLIAdapter{&ClaudeAdapter{}, &OpencodeAdapter{}, &CodexAdapter{}} {
+	for _, adapter := range []CLIAdapter{&ClaudeAdapter{}, &CodexAdapter{}} {
 		b := newCLIInteractiveBackend(adapter, nil, nil)
 		if !b.SupportsTakeControl() {
 			t.Errorf("cliInteractiveBackend(%T).SupportsTakeControl() = false, want true", adapter)
@@ -179,13 +179,3 @@ func TestCLIInteractiveBackend_SupportsTakeControl_AlwaysTrue(t *testing.T) {
 	}
 }
 
-// TestStartBackend_RejectsOpencodeInteractive documents a production bug:
-// startBackend should reject opencode+cli_interactive with a clear error
-// ("does not support PTY interactive mode"), but the guard was removed during
-// the "cli" execution_mode migration (see spawner.go startBackend). The
-// rejection already happens at the service layer (agent_definition.go
-// validateCLIInteractiveMode) and was also removed there. Both guards need
-// to be restored. This test is skipped until the guards are reinstated.
-func TestStartBackend_RejectsOpencodeInteractive(t *testing.T) {
-	t.Skip("production bug: opencode+cli_interactive guard removed from startBackend; see spawner.go startBackend and agent_definition.go validateCLIInteractiveMode")
-}

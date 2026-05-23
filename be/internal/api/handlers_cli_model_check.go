@@ -139,14 +139,6 @@ func buildModelCheckCommand(cliType, mappedModel, reasoningEffort string) (*exec
 			args = append(args, "-c", fmt.Sprintf(`model_reasoning_effort="%s"`, reasoningEffort))
 		}
 		return exec.Command("codex", args...), true
-	case "opencode":
-		args := []string{
-			"run",
-			"--format", "json",
-			"--model", mappedModel,
-			"Reply with exactly: NRFLO_CHECK_OK",
-		}
-		return exec.Command("opencode", args...), false
 	default:
 		return nil, false
 	}

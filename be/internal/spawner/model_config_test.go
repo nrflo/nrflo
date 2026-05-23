@@ -20,9 +20,9 @@ func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
 			name:  "returns DB CLIType for known model",
 			model: "my-custom-model",
 			configs: map[string]ModelConfig{
-				"my-custom-model": {CLIType: "opencode"},
+				"my-custom-model": {CLIType: "codex"},
 			},
-			want: "opencode",
+			want: "codex",
 		},
 		{
 			name:  "DB codex type overrides claude default",
@@ -33,10 +33,10 @@ func TestCLIForModel_DBConfigTakesPriority(t *testing.T) {
 			want: "codex",
 		},
 		{
-			name:  "DB claude type for opencode-prefixed model overrides default",
-			model: "opencode_minimax_m25_free",
+			name:  "DB claude type for codex-prefixed model overrides default",
+			model: "codex_gpt_high",
 			configs: map[string]ModelConfig{
-				"opencode_minimax_m25_free": {CLIType: "claude"},
+				"codex_gpt_high": {CLIType: "claude"},
 			},
 			want: "claude",
 		},
@@ -65,9 +65,6 @@ func TestCLIForModel_FallbackWhenNilMap(t *testing.T) {
 		{"opus_4_7", "claude"},
 		{"opus_4_7_1m", "claude"},
 		{"sonnet", "claude"},
-		{"opencode_minimax_m25_free", "opencode"},
-		{"opencode_qwen36_plus_free", "opencode"},
-		{"opencode_gpt54", "opencode"},
 		{"codex_gpt_normal", "codex"},
 		{"codex_gpt54_high", "codex"},
 	}
@@ -102,7 +99,7 @@ func TestCLIForModel_FallbackWhenModelNotInMap(t *testing.T) {
 	// Map populated but this specific model is absent
 	s := &Spawner{config: Config{
 		ModelConfigs: map[string]ModelConfig{
-			"other-model": {CLIType: "opencode"},
+			"other-model": {CLIType: "codex"},
 		},
 	}}
 
@@ -194,7 +191,6 @@ func TestMaxContextForModel_HardcodedFallback(t *testing.T) {
 		{"opus_4_6", 200000},
 		{"sonnet", 200000},
 		{"haiku", 200000},
-		{"opencode_minimax_m25_free", 200000},
 		{"codex_gpt_high", 200000},
 		{"unknown-model", 200000},
 	}

@@ -32,10 +32,10 @@ type ExecutionBackend interface {
 	ParsesStructuredOutput() bool
 	// NaturalExitGrace is how long the terminal-signal handler should wait
 	// for the process to exit on its own before sending SIGTERM. Backends
-	// whose CLI writes critical telemetry (token usage, final assistant
-	// message) at end-of-turn — opencode batch in particular — return a
-	// small non-zero value so the post-tool-call wrap-up has time to land
-	// on disk before nrflo forces a kill. Default 0 = kill immediately.
+	// that write critical telemetry (token usage, final assistant message)
+	// at end-of-turn return a small non-zero value so the post-tool-call
+	// wrap-up has time to land on disk before nrflo forces a kill.
+	// Default 0 = kill immediately.
 	NaturalExitGrace() time.Duration
 	Start(ctx context.Context, proc *processInfo, prep *prepResult) error
 	Kill(ctx context.Context, proc *processInfo, sig syscall.Signal) error

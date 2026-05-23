@@ -115,8 +115,8 @@ func TestValidateResumeSession(t *testing.T) {
 			errContains: "no model_id",
 		},
 		{
-			name:        "opencode model_id",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "opencode:gpt-4o", Valid: true}, Status: model.AgentSessionCompleted},
+			name:        "codex model_id (no resume support)",
+			session:     &model.AgentSession{ModelID: sql.NullString{String: "codex:codex_gpt_high", Valid: true}, Status: model.AgentSessionCompleted},
 			wantErr:     true,
 			errContains: "does not support resume",
 		},
@@ -238,7 +238,7 @@ func TestHandleResumeSession_WrongProject(t *testing.T) {
 
 func TestHandleResumeSession_NonClaudeSession(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-nc-rs", "proj-rs-nc", model.AgentSessionCompleted, "opencode:gpt-4o")
+	insertResumeTestSession(t, dbPath, "sess-nc-rs", "proj-rs-nc", model.AgentSessionCompleted, "codex:codex_gpt_high")
 
 	req := httptest.NewRequest(http.MethodPost,
 		withProject("/api/v1/tickets/TKT-1/workflow/resume-session", "proj-rs-nc"),
@@ -354,7 +354,7 @@ func TestHandleResumeSessionProject_SessionNotFound(t *testing.T) {
 
 func TestHandleResumeSessionProject_NonClaudeSession(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-nc-rsp", "proj-rsp-nc", model.AgentSessionCompleted, "opencode:gpt-4o")
+	insertResumeTestSession(t, dbPath, "sess-nc-rsp", "proj-rsp-nc", model.AgentSessionCompleted, "codex:codex_gpt_high")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp-nc/workflow/resume-session",
 		strings.NewReader(`{"session_id":"sess-nc-rsp"}`))

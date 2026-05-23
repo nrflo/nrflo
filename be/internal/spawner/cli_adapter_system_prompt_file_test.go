@@ -82,34 +82,6 @@ func TestClaudeAdapter_SupportsSystemPromptFile(t *testing.T) {
 	}
 }
 
-// TestOpencodeAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile verifies
-// OpencodeAdapter never emits --append-system-prompt-file even when set.
-func TestOpencodeAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing.T) {
-	t.Parallel()
-	adapter := &OpencodeAdapter{}
-
-	opts := InteractiveSpawnOptions{
-		Model:            "opencode_minimax_m25_free",
-		WorkDir:          "/tmp",
-		SystemPromptFile: "/tmp/nrflo/foo.md",
-	}
-
-	args := strings.Join(adapter.BuildInteractiveCommand(opts).Args, " ")
-
-	if strings.Contains(args, "--append-system-prompt-file") {
-		t.Errorf("OpencodeAdapter.BuildInteractiveCommand should not emit --append-system-prompt-file: %s", args)
-	}
-}
-
-// TestOpencodeAdapter_SupportsSystemPromptFile verifies capability is false.
-func TestOpencodeAdapter_SupportsSystemPromptFile(t *testing.T) {
-	t.Parallel()
-	adapter := &OpencodeAdapter{}
-	if adapter.SupportsSystemPromptFile() {
-		t.Error("OpencodeAdapter.SupportsSystemPromptFile() should return false")
-	}
-}
-
 // TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile verifies
 // CodexAdapter never emits --append-system-prompt-file even when set.
 func TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing.T) {
@@ -236,33 +208,8 @@ func TestClaudeAdapter_BuildInteractiveCommand_OverrideFileEmpty(t *testing.T) {
 	}
 }
 
-// TestGeminiAdapter_BuildInteractiveCommand_IgnoresSystemPromptOverrideFile verifies
-// GeminiAdapter never emits --system-prompt-file even when SystemPromptOverrideFile is set.
-func TestGeminiAdapter_BuildInteractiveCommand_IgnoresSystemPromptOverrideFile(t *testing.T) {
-	t.Parallel()
-	adapter := &GeminiAdapter{}
-
-	opts := InteractiveSpawnOptions{
-		Model:                    "gemini_pro",
-		SessionID:                "sess-gemini",
-		WorkDir:                  "/tmp",
-		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
-		SystemPromptFile:         "/tmp/nrflo/suffix.md",
-	}
-
-	cmdArgs := adapter.BuildInteractiveCommand(opts).Args
-	for i, a := range cmdArgs {
-		if a == "--system-prompt-file" {
-			t.Errorf("GeminiAdapter should not emit --system-prompt-file, found at index %d; args: %v", i, cmdArgs)
-		}
-		if a == "--append-system-prompt-file" {
-			t.Errorf("GeminiAdapter should not emit --append-system-prompt-file, found at index %d; args: %v", i, cmdArgs)
-		}
-	}
-}
-
-// TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile verifies that opencode and codex
-// adapters never emit --system-prompt-file even when SystemPromptOverrideFile is set.
+// TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile verifies that codex
+// never emits --system-prompt-file even when SystemPromptOverrideFile is set.
 func TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile(t *testing.T) {
 	t.Parallel()
 	overrideOpts := InteractiveSpawnOptions{
@@ -275,7 +222,6 @@ func TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile(t *testing.T) {
 		adapter CLIAdapter
 		model   string
 	}{
-		{"opencode", &OpencodeAdapter{}, "opencode_minimax_m25_free"},
 		{"codex", &CodexAdapter{}, "codex_gpt_high"},
 	}
 	for _, tt := range adapters {

@@ -294,8 +294,8 @@ func TestScriptBackend_Start_StdoutTrackedAsText(t *testing.T) {
 		t.Fatalf("doneCh not closed within 5s")
 	}
 
-	// Poll briefly for monitorOutput goroutine to drain remaining output.
-	deadline := time.Now().Add(2 * time.Second)
+	// Poll for monitorOutput to drain. doneCh only signals process exit; the drain goroutine can be starved under parallel-test load, so allow 5s (matching the doneCh timeout above).
+	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
 		proc.messagesMutex.Lock()
 		n := len(proc.pendingMessages)

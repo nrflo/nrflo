@@ -14,11 +14,11 @@ Remove it right away.
 
 CLAUDE.md is auto-loaded into every agent's context window. It is documentation, not changelog. Keep it small.
 
-**Present-state only.** Document the code as it is now, as if it had always been this way. No migration narrative ("T1 introduced", "originally we…"), no transition timelines (T1/T2/T3/T4), no future-cleanup checklists ("flip X to false when upstream ships fix"), no deprecated/legacy sections. When code is removed, remove the doc paragraph in the same commit.
+**Present-state only.** Document the code as it is now. No migration narrative, transition timelines, future-cleanup checklists, or deprecated/legacy sections. When code is removed, remove the doc paragraph in the same commit.
 
-**Prefer deletion over expansion.** When a change requires a doc update, look first for content that became stale or redundant in the same area and remove it. If a section can be replaced by a one-line pointer to source code, do that.
+**Prefer deletion over expansion.** When updating docs, first cut stale or redundant content; replace a section with a one-line source pointer where possible.
 
-**One canonical location per concept.** Cross-reference, don't duplicate. If the same paragraph would appear in two CLAUDE.md files, keep the deepest (most-package-specific) copy and link from the others.
+**One canonical location per concept.** Cross-reference, don't duplicate. When a paragraph would appear in two CLAUDE.md files, keep the deepest copy and link from the others.
 
 **Hard caps (bytes; enforced by reviewer):**
 
@@ -28,8 +28,6 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 | be/CLAUDE.md, ui/CLAUDE.md | 12 KB |
 | Package CLAUDE.md (spawner, db, api, orchestrator, …) | 12 KB (spawner exception: 15 KB) |
 | Sub-package / leaf CLAUDE.md | 6 KB |
-
-If a file would exceed its cap, cut content first. Only split as a last resort.
 
 **Banned content:**
 - ASCII-art box diagrams (┌─┐, ├──, pipes-and-dashes). Bullet lists or short tables instead.
@@ -53,7 +51,7 @@ Workflow runtime state lives in `workflow_instances` and `agent_sessions`; phase
 
 ### 5. Keep Source Files Under 300 Lines
 
-Split files that grow beyond 300 lines into logical sub-files; this applies to code and documentation.
+Split files over 300 lines into sub-files (code and docs); source files (`.go`/`.ts`/`.tsx`) are enforced in CI via `make filesize` against the shrink-only `filesize.baseline` ratchet — see [be/CLAUDE.md](be/CLAUDE.md) for the procedure.
 
 ### 6. Polymorphism lives in the implementation, not the call site
 

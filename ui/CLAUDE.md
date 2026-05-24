@@ -36,6 +36,8 @@ WebSocket-based; no REST polling. Single socket per tab: `WebSocketProvider` in 
 
 Keep source files under 300 lines. Split files exceeding 300 lines into logical sub-files before committing (TypeScript/TSX source).
 
+Enforced repo-wide by `make filesize` (CI); see [be/CLAUDE.md](../be/CLAUDE.md) for the `filesize.baseline` ratchet and split procedure.
+
 ## UI Component Standards
 
 All UI elements must use the shared components from `src/components/ui/`. Do not use raw HTML elements (`<select>`, `<input>`, `<button>`, `<textarea>`) directly.

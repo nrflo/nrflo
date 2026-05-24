@@ -132,23 +132,26 @@ def run_all(
     srv = server_mod.start_server(cli_label=f"{provider}-{mode}", extra_env=extra_env)
     _say(label, f"server ready in {time.monotonic() - boot_start:.2f}s "
                 f"at {srv.base_url} (NRFLO_HOME={srv.home})")
-    client = api_mod.NrfloClient(srv.base_url)
-    client.login()
-    _say(label, "logged in as admin")
-    client.default_execution_mode = mode
-    if mode == "api":
-        client.set_global_setting("api_mode_enabled", True)
-        _say(label, "flipped api_mode_enabled=true")
-    base_ctx = Ctx(
-        server=srv, client=client,
-        provider=provider, model=model, binary=binary, mode=mode,
-    )
 
     total = len(scenarios)
     collected: list[TimedResult] = []
     fatal: str | None = None
     suite_start = time.monotonic()
+    # Everything that touches the server lives inside this try so the finally always
+    # stops it — a login/config failure must never leak the booted nrflo_server.
     try:
+        client = api_mod.NrfloClient(srv.base_url)
+        client.login()
+        _say(label, "logged in as admin")
+        client.default_execution_mode = mode
+        if mode == "api":
+            client.set_global_setting("api_mode_enabled", True)
+            _say(label, "flipped api_mode_enabled=true")
+        base_ctx = Ctx(
+            server=srv, client=client,
+            provider=provider, model=model, binary=binary, mode=mode,
+        )
+
         if parallel == 1:
             for i, fn in enumerate(scenarios, start=1):
                 collected.append(_run_one(fn, base_ctx,

@@ -38,12 +38,13 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		return fmt.Errorf("workflow is not in waiting status (current: %s)", wi.Status)
 	}
 
-	o.mu.Lock()
-	if _, ok := o.runs[wi.ID]; ok {
-		o.mu.Unlock()
-		return fmt.Errorf("workflow is already running")
+	// A just-paused instance can still hold its o.runs slot until the runLoop
+	// goroutine's deferred cleanup runs after broadcasting EventWorkflowPaused. Wait for
+	// the teardown to finish so a resume racing the pause broadcast doesn't see the
+	// instance as "already running".
+	if err := o.waitForRunToSettle(ctx, wi.ID); err != nil {
+		return err
 	}
-	o.mu.Unlock()
 
 	projectRepo := repo.NewProjectRepo(database, o.clock)
 	project, err := projectRepo.Get(projectID)

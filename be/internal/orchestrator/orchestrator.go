@@ -672,13 +672,14 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return fmt.Errorf("workflow is not in failed status (current: %s)", wi.Status)
 	}
 
-	// Check not already running
-	o.mu.Lock()
-	if _, ok := o.runs[wi.ID]; ok {
-		o.mu.Unlock()
-		return fmt.Errorf("workflow is already running")
+	// A just-failed instance can still hold its o.runs slot: the runLoop goroutine
+	// publishes the failed status (DB + WS) before its deferred cleanup releases the
+	// slot, and that cleanup trails behind an up-to-hookTimeout finalize hook. Wait for
+	// the teardown to finish so a retry racing the failure broadcast doesn't see the
+	// instance as "already running".
+	if err := o.waitForRunToSettle(ctx, wi.ID); err != nil {
+		return err
 	}
-	o.mu.Unlock()
 
 	// Look up the failed session to get its phase
 	asRepo := repo.NewAgentSessionRepo(database, o.clock)
@@ -1282,6 +1283,46 @@ func (o *Orchestrator) IsInstanceRunning(instanceID string) bool {
 	_, running := o.runs[instanceID]
 	o.mu.Unlock()
 	return running
+}
+
+// runSettleTimeout bounds how long retry/continue wait for an in-flight runLoop
+// goroutine to release its o.runs slot before concluding the run is genuinely active.
+// It must exceed hookTimeout, since markFailed runs the failure finalize slot before the
+// goroutine exits and releases the slot.
+const runSettleTimeout = hookTimeout + 5*time.Second
+
+// waitForRunToSettle blocks until any in-flight runLoop goroutine for wfiID has finished
+// tearing down and released its o.runs slot, returning nil once the slot is free.
+//
+// markFailed / markCompleted / maybePauseAfterLayer publish the terminal-or-waiting
+// status (DB row + WS broadcast) from inside the runLoop goroutine, but the goroutine
+// only deletes its o.runs entry in a deferred cleanup that runs afterwards — delayed by
+// an up-to-hookTimeout finalize hook on the failure path. A caller that reacts to the
+// published status (retry-failed on "failed", continue on "waiting") can therefore still
+// observe the slot as occupied. Such callers have already confirmed the instance is no
+// longer active, so they wait the teardown out here instead of racing it.
+//
+// The run's done channel is closed strictly after its o.runs entry is deleted (see the
+// runLoop deferred cleanup), so once done fires the slot is guaranteed free. A registered
+// run with no done channel cannot be waited on and is treated as genuinely active.
+func (o *Orchestrator) waitForRunToSettle(ctx context.Context, wfiID string) error {
+	o.mu.Lock()
+	rs, ok := o.runs[wfiID]
+	o.mu.Unlock()
+	if !ok {
+		return nil
+	}
+	if rs.done == nil {
+		return fmt.Errorf("workflow is already running")
+	}
+	select {
+	case <-rs.done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(runSettleTimeout):
+		return fmt.Errorf("workflow is already running")
+	}
 }
 
 // StopAll cancels all running orchestrations and waits for them to exit (for server shutdown).

@@ -22,7 +22,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -65,6 +67,43 @@ def _say(msg: str) -> None:
     print(f"[{_ts()}] [suite] {msg}", flush=True)
 
 
+class _Terminated(Exception):
+    """Raised by the SIGTERM handler so the wait loop's finally can clean up."""
+
+
+def _raise_terminated(_signum, _frame):
+    raise _Terminated()
+
+
+def _shutdown(procs: list, *, graceful_s: float = 8.0) -> None:
+    """Terminate any still-running provider subprocess and its whole process group.
+
+    Each provider subprocess is launched in its own session (start_new_session), so
+    its nrflo_server (and any agents) share its process group. We first SIGINT the
+    group so test.py's KeyboardInterrupt handler runs its finally — calling srv.stop()
+    for a clean server shutdown — then SIGKILL the group if it outlives the grace
+    period. Without this, a SIGTERM/abort of the suite would orphan the servers.
+    """
+    alive = [rec for rec in procs if rec[2].poll() is None]
+    if not alive:
+        return
+    for provider, _binary, p, _json, _log in alive:
+        _say(f"terminating {provider} (pid {p.pid}) …")
+        try:
+            os.killpg(os.getpgid(p.pid), signal.SIGINT)
+        except (ProcessLookupError, OSError):
+            pass
+    deadline = time.monotonic() + graceful_s
+    for _provider, _binary, p, _json, _log in alive:
+        try:
+            p.wait(timeout=max(0.0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+            except (ProcessLookupError, OSError):
+                p.kill()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -103,34 +142,50 @@ def main() -> int:
             f"--results={results_json}",
         ]
         _say(f"launch {provider}: {' '.join(cmd)}")
-        p = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT)
+        # Own session/process group so _shutdown can kill the whole tree
+        # (test.py + its nrflo_server + agents) as a unit on interrupt/abort.
+        p = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT,
+                             start_new_session=True)
         return (provider, binary, p, results_json, log_path)
 
     suite_start = time.monotonic()
     procs: list[tuple[str, str, subprocess.Popen, Path, Path]] = []
     exit_codes: dict[str, int] = {}
 
-    if args.sequential:
-        # One provider at a time. Mostly useful when an interactive
-        # debugger is attached or when an external rate-limit forces
-        # serialization.
-        for provider, binary in selected:
-            rec = _launch(provider, binary)
-            procs.append(rec)
-            rc = rec[2].wait()
-            exit_codes[provider] = rc
-            _say(f"{provider} exit={rc} ({rec[4]})")
-    else:
-        # Default: launch every provider concurrently. Each subprocess
-        # spawns its own nrflo_server with an isolated NRFLO_HOME +
-        # NRFLO_SOCKET (see lib/server.py.start_server), so the servers
-        # don't share DB rows, agent sockets, or HTTP ports.
-        for provider, binary in selected:
-            procs.append(_launch(provider, binary))
-        for provider, _binary, p, _json, log_path in procs:
-            rc = p.wait()
-            exit_codes[provider] = rc
-            _say(f"{provider} exit={rc} ({log_path})")
+    # Translate SIGTERM into an exception so the finally below tears the provider
+    # subprocesses (and their nrflo_servers) down instead of leaking them. SIGINT
+    # (Ctrl-C) already surfaces as KeyboardInterrupt.
+    signal.signal(signal.SIGTERM, _raise_terminated)
+    try:
+        if args.sequential:
+            # One provider at a time. Mostly useful when an interactive
+            # debugger is attached or when an external rate-limit forces
+            # serialization.
+            for provider, binary in selected:
+                rec = _launch(provider, binary)
+                procs.append(rec)
+                rc = rec[2].wait()
+                exit_codes[provider] = rc
+                _say(f"{provider} exit={rc} ({rec[4]})")
+        else:
+            # Default: launch every provider concurrently. Each subprocess
+            # spawns its own nrflo_server with an isolated NRFLO_HOME +
+            # NRFLO_SOCKET (see lib/server.py.start_server), so the servers
+            # don't share DB rows, agent sockets, or HTTP ports.
+            for provider, binary in selected:
+                procs.append(_launch(provider, binary))
+            for provider, _binary, p, _json, log_path in procs:
+                rc = p.wait()
+                exit_codes[provider] = rc
+                _say(f"{provider} exit={rc} ({log_path})")
+    except (KeyboardInterrupt, _Terminated) as exc:
+        _say(f"interrupted ({type(exc).__name__}) — shutting down provider subprocesses")
+        _shutdown(procs)
+        raise SystemExit(2)
+    finally:
+        # Belt-and-suspenders: on a clean run nothing is still alive, but kill any
+        # straggler so no nrflo_server is orphaned.
+        _shutdown(procs, graceful_s=2.0)
 
     suite_wall = time.monotonic() - suite_start
     _say(f"all providers finished in {suite_wall:.2f}s")

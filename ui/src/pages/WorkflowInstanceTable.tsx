@@ -40,6 +40,7 @@ export function WorkflowInstanceTable({
             <TableHead className="w-24">Instance</TableHead>
             <TableHead className="w-16">Status</TableHead>
             <TableHead className="w-24">Duration</TableHead>
+            <TableHead>Created At</TableHead>
             <TableHead>Completed At</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
@@ -68,6 +69,9 @@ export function WorkflowInstanceTable({
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {state?.total_duration_sec ? formatDurationSec(state.total_duration_sec) : '-'}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {state?.initialized_at ? formatDateTime(state.initialized_at) : '-'}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {state?.completed_at ? formatDateTime(state.completed_at) : '-'}

@@ -131,6 +131,7 @@ export interface WorkflowState {
   branch_name?: string
   current_phase?: string
   status?: string
+  initialized_at?: string
   completed_at?: string
   total_duration_sec?: number
   total_tokens_used?: number

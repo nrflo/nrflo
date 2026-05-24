@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { WorkflowInstanceTable } from './WorkflowInstanceTable'
+import { formatDateTime } from '@/lib/utils'
 import type { WorkflowState } from '@/types/workflow'
 
 const PAGE_SIZE = 10
@@ -55,6 +56,7 @@ describe('WorkflowInstanceTable', () => {
     expect(screen.getByText('Instance')).toBeInTheDocument()
     expect(screen.getByText('Status')).toBeInTheDocument()
     expect(screen.getByText('Duration')).toBeInTheDocument()
+    expect(screen.getByText('Created At')).toBeInTheDocument()
     expect(screen.getByText('Completed At')).toBeInTheDocument()
   })
 
@@ -73,8 +75,8 @@ describe('WorkflowInstanceTable', () => {
     expect(screen.getByText('bugfix')).toBeInTheDocument()
   })
 
-  it('shows dash for missing duration and completed_at', () => {
-    const state = makeState({ total_duration_sec: undefined, completed_at: undefined })
+  it('shows dash for missing duration, created_at and completed_at', () => {
+    const state = makeState({ total_duration_sec: undefined, initialized_at: undefined, completed_at: undefined })
     render(
       <WorkflowInstanceTable
         instanceIds={[INST_ID]}
@@ -86,9 +88,33 @@ describe('WorkflowInstanceTable', () => {
     )
     const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
     const cells = row.querySelectorAll(':scope > td')
-    // Duration cell (index 3) and Completed At cell (index 4) should show dash
-    expect(cells[3].textContent).toBe('-')
-    expect(cells[4].textContent).toBe('-')
+    // Columns: Workflow(0) Instance(1) Status(2) Duration(3) Created At(4) Completed At(5)
+    expect(cells[3].textContent).toBe('-') // Duration
+    expect(cells[4].textContent).toBe('-') // Created At
+    expect(cells[5].textContent).toBe('-') // Completed At
+  })
+
+  it('renders formatted Created At and Completed At in their own columns', () => {
+    const state = makeState({
+      initialized_at: '2026-01-01T05:00:00Z',
+      completed_at: '2026-02-02T06:00:00Z',
+    })
+    render(
+      <WorkflowInstanceTable
+        instanceIds={[INST_ID]}
+        instances={{ [INST_ID]: state }}
+        selectedId=""
+        onSelect={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    )
+    const row = screen.getByText(SHORT_ID).closest('[data-testid="instance-row"]')!
+    const cells = row.querySelectorAll(':scope > td')
+    // Created At (index 4) and Completed At (index 5) each render formatDateTime output, not a dash
+    expect(cells[4].textContent).toBe(formatDateTime('2026-01-01T05:00:00Z'))
+    expect(cells[5].textContent).toBe(formatDateTime('2026-02-02T06:00:00Z'))
+    expect(cells[4].textContent).not.toBe('-')
+    expect(cells[5].textContent).not.toBe('-')
   })
 
   it('shows fail badge for failed status', () => {

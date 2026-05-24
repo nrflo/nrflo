@@ -233,7 +233,7 @@ ui/src/pages/DetailsTabContent.test.tsx	314
 ui/src/pages/GitStatusTabContent.test.tsx	417
 ui/src/pages/HierarchyTabContent.test.tsx	589
 ui/src/pages/ProjectWorkflowsPage.test.tsx	1452
-ui/src/pages/ProjectWorkflowsPage.tsx	535
+ui/src/pages/ProjectWorkflowsPage.tsx	533
 ui/src/pages/PythonScriptsPage.test.tsx	329
 ui/src/pages/SettingsPage.test.tsx	383
 ui/src/pages/TicketDetailPage.epic.test.tsx	408
@@ -250,4 +250,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	389
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	477
+ui/src/types/workflow.ts	478

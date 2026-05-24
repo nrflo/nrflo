@@ -116,12 +116,10 @@ export function ProjectWorkflowsPage() {
     : activeTab === 'failed' ? failedInstances
     : completedInstances
   const instanceIds = Object.keys(tabInstances)
-  if (activeTab === 'completed') {
-    instanceIds.sort((a, b) => {
-      const aTime = tabInstances[a]?.completed_at ?? ''
-      const bTime = tabInstances[b]?.completed_at ?? ''
-      return bTime.localeCompare(aTime)
-    })
+  // Completed sorts by completion time, Failed by creation time — both newest-first.
+  const sortKey = activeTab === 'completed' ? 'completed_at' : activeTab === 'failed' ? 'initialized_at' : null
+  if (sortKey) {
+    instanceIds.sort((a, b) => (tabInstances[b]?.[sortKey] ?? '').localeCompare(tabInstances[a]?.[sortKey] ?? ''))
   }
   const hasWorkflow = instanceIds.length > 0
   const hasMultipleWorkflows = instanceIds.length > 1

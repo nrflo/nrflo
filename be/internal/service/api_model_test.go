@@ -295,4 +295,3 @@ func TestAPIModel_CreateIDNormalized(t *testing.T) {
 		t.Errorf("ID = %q, want %q (lowercased)", m.ID, "myapimodel")
 	}
 }
-

@@ -28,7 +28,7 @@ func TestTranslateRequest_BasicShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("translateRequest: %v", err)
 	}
-	if string(params.Model) != "gpt-4o" {
+	if params.Model != "gpt-4o" {
 		t.Errorf("Model = %q, want %q", params.Model, "gpt-4o")
 	}
 	if params.MaxOutputTokens.Value != 256 {

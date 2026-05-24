@@ -16,7 +16,7 @@
 # Format: "<path><TAB><line count>", sorted by path.
 #
 be/cmd/binaries_test.go	766
-be/internal/api/handlers_api_models_test.go	363
+be/internal/api/handlers_api_models_test.go	364
 be/internal/api/handlers_chains.go	388
 be/internal/api/handlers_cli_models_test.go	304
 be/internal/api/handlers_default_template_type_test.go	333

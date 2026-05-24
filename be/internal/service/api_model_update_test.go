@@ -237,4 +237,3 @@ func TestAPIModel_DeleteNotFound(t *testing.T) {
 		t.Errorf("error = %q, want to contain not found", err.Error())
 	}
 }
-

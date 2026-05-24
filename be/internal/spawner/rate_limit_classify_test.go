@@ -181,4 +181,3 @@ func TestCodexAdapter_ClassifyExit(t *testing.T) {
 		})
 	}
 }
-

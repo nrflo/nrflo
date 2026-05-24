@@ -86,9 +86,10 @@ func TestHandleListAPIModels(t *testing.T) {
 	// Verify mix of providers
 	var anthropicCount, openaiCount int
 	for _, m := range models {
-		if m.Provider == "anthropic" {
+		switch m.Provider {
+		case "anthropic":
 			anthropicCount++
-		} else if m.Provider == "openai" {
+		case "openai":
 			openaiCount++
 		}
 	}

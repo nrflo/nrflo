@@ -178,4 +178,3 @@ func TestCLIInteractiveBackend_SupportsTakeControl_AlwaysTrue(t *testing.T) {
 		}
 	}
 }
-

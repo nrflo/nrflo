@@ -23,7 +23,7 @@ func validateAPIReasoningEffort(provider, mappedModel, effort string) error {
 	if !validReasoningEfforts[effort] {
 		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
 	}
-	if effort == "xhigh" && !(provider == "anthropic" && strings.HasPrefix(mappedModel, "claude-opus-4-7")) {
+	if effort == "xhigh" && (provider != "anthropic" || !strings.HasPrefix(mappedModel, "claude-opus-4-7")) {
 		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Anthropic Opus 4.7 models")
 	}
 	return nil

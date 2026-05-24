@@ -15,7 +15,7 @@ import (
 // translateRequest converts a provider-neutral Request into the Responses API params.
 func translateRequest(req provider.Request) (responses.ResponseNewParams, error) {
 	params := responses.ResponseNewParams{
-		Model:           shared.ResponsesModel(req.Model),
+		Model:           req.Model,
 		MaxOutputTokens: param.NewOpt(int64(req.MaxTokens)),
 		Store:           param.NewOpt(false),
 		ToolChoice:      responses.ResponseNewParamsToolChoiceUnion{OfToolChoiceMode: param.NewOpt(responses.ToolChoiceOptionsAuto)},

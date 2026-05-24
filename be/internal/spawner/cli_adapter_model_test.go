@@ -152,4 +152,3 @@ func TestDefaultCLIForModel(t *testing.T) {
 		})
 	}
 }
-

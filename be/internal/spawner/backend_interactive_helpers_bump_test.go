@@ -147,4 +147,3 @@ func TestBumpsOnPTYBytes_Claude(t *testing.T) {
 		t.Error("ClaudeAdapter.BumpsOnPTYBytes() = true, want false (hooks drive heartbeat)")
 	}
 }
-

@@ -4,7 +4,7 @@
        install clean test test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
        embed-assets docker-build docker-buildx docker-login \
-       lint lint-fix lint-pkg deadcode cleanup
+       lint lint-fix lint-pkg deadcode filesize filesize-update cleanup
 
 # --- Configurable variables ---
 PREFIX     ?= /usr/local
@@ -222,8 +222,16 @@ deadcode: embed-assets $(DEADCODE)
 	fi; \
 	echo "deadcode: no new unreachable funcs"
 
-## cleanup: Full cleanup gate — golangci-lint + dead-code check
-cleanup: lint deadcode
+## filesize: Fail on tracked .go/.ts/.tsx files over 300 lines vs filesize.baseline
+filesize:
+	@scripts/filesize.sh check
+
+## filesize-update: Re-snapshot filesize.baseline (accept the current oversized files)
+filesize-update:
+	@scripts/filesize.sh update
+
+## cleanup: Full cleanup gate — golangci-lint + dead-code + file-size check
+cleanup: lint deadcode filesize
 
 # --- Housekeeping ---
 

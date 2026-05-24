@@ -1,0 +1,252 @@
+package spawner
+
+import (
+	"time"
+)
+
+// RequestRestart sends a restart signal for the given session ID.
+// Non-blocking: if a restart is already pending, this is a no-op.
+func (s *Spawner) RequestRestart(sessionID string) {
+	select {
+	case s.restartCh <- sessionID:
+	default:
+	}
+}
+
+// RequestTakeControl sends a take-control signal for the given session ID and
+// registers a readiness channel that closes once monitorAll has finished
+// killing the agent and flipped the session to user_interactive (or rejected
+// the take-control request, or attached as a viewer for cli_interactive).
+// Callers can wait for readiness via WaitForTakeControlReady. Non-blocking on
+// the channel send: if a take-control is already pending, the existing
+// readiness entry is reused.
+func (s *Spawner) RequestTakeControl(sessionID string) {
+	s.takeControlReadiesMu.Lock()
+	if _, exists := s.takeControlReadies[sessionID]; !exists {
+		s.takeControlReadies[sessionID] = make(chan struct{})
+	}
+	s.takeControlReadiesMu.Unlock()
+
+	select {
+	case s.takeControlCh <- sessionID:
+	default:
+	}
+}
+
+// WaitForTakeControlReady blocks until the take-control flow for the given
+// session ID has completed its synchronous setup (kill + status flip to
+// user_interactive, or reject, or viewer-attach), or until the timeout
+// elapses. Returns true if the ready signal fired, false on timeout or when
+// no readiness was registered for this session.
+func (s *Spawner) WaitForTakeControlReady(sessionID string, timeout time.Duration) bool {
+	s.takeControlReadiesMu.Lock()
+	ch, ok := s.takeControlReadies[sessionID]
+	s.takeControlReadiesMu.Unlock()
+	if !ok {
+		return false
+	}
+	select {
+	case <-ch:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+// signalTakeControlReady closes the readiness channel for the given session
+// (idempotent) and removes it from the map. Called by monitorAll once the
+// take-control flow has reached a state where a PTY connection can succeed.
+func (s *Spawner) signalTakeControlReady(sessionID string) {
+	s.takeControlReadiesMu.Lock()
+	ch, ok := s.takeControlReadies[sessionID]
+	if ok {
+		delete(s.takeControlReadies, sessionID)
+	}
+	s.takeControlReadiesMu.Unlock()
+	if ok {
+		close(ch)
+	}
+}
+
+// RequestTerminalSignal kills the matching agent so monitorAll exits the
+// natural-exit wait and handleCompletion reads the DB result already written
+// by the socket handler. Routes the signal to the specific monitorAll
+// goroutine that owns this sessionID, so concurrent monitorAlls cannot
+// steal each other's signals. No-op if the session is not registered
+// (already finished or never started). Non-blocking on the channel send.
+func (s *Spawner) RequestTerminalSignal(sessionID, result string) {
+	s.terminalSignalsMu.Lock()
+	ch, ok := s.terminalSignals[sessionID]
+	s.terminalSignalsMu.Unlock()
+	if !ok {
+		return
+	}
+	select {
+	case ch <- terminalSignal{SessionID: sessionID, Result: result}:
+	default:
+	}
+}
+
+// registerTerminalSignal binds sessionID to ch in the registry so
+// RequestTerminalSignal(sessionID, ...) routes to ch. Used by monitorAll
+// at start and on continuation-relaunch to track new session IDs.
+func (s *Spawner) registerTerminalSignal(sessionID string, ch chan terminalSignal) {
+	s.terminalSignalsMu.Lock()
+	s.terminalSignals[sessionID] = ch
+	s.terminalSignalsMu.Unlock()
+	// Fire callback outside the mutex to avoid lock-order inversion
+	// (callback acquires orchestrator's mu; terminalSignalsMu must not be held).
+	if s.config.OnSessionRegister != nil {
+		s.config.OnSessionRegister(sessionID, s)
+	}
+}
+
+// unregisterTerminalSignal removes sessionID from the registry. Subsequent
+// RequestTerminalSignal calls for this sessionID become no-ops.
+func (s *Spawner) unregisterTerminalSignal(sessionID string) {
+	s.terminalSignalsMu.Lock()
+	delete(s.terminalSignals, sessionID)
+	s.terminalSignalsMu.Unlock()
+	if s.config.OnSessionUnregister != nil {
+		s.config.OnSessionUnregister(sessionID)
+	}
+}
+
+// BumpLastMessage sends a non-blocking signal to monitorAll to update
+// lastMessageTime and hasReceivedMessage for the matching proc. Used by the
+// socket handler to reset stall detection when hook events arrive for
+// interactive CLI agents. Silently dropped when channel is full.
+func (s *Spawner) BumpLastMessage(sessionID string) {
+	select {
+	case s.bumpMessageCh <- sessionID:
+	default:
+	}
+}
+
+// SetLastMessage updates proc.lastMessage for the matching session so the
+// status log line ("agent status ... last_msg=...") shows the most recent
+// agent output. Interactive CLI mode otherwise leaves lastMessage empty
+// because the PTY ferry drops bytes — hook events / SSE events feed content
+// here directly. Also bumps lastMessageTime + hasReceivedMessage (same as
+// BumpLastMessage) so stall/idle detection treats this as activity.
+// No-op when the session is unknown or content is empty.
+func (s *Spawner) SetLastMessage(sessionID, content string) {
+	if content == "" {
+		return
+	}
+	proc := s.lookupSessionProc(sessionID)
+	if proc == nil {
+		return
+	}
+	proc.messagesMutex.Lock()
+	proc.lastMessage = content
+	proc.lastMessageTime = s.config.Clock.Now()
+	proc.hasReceivedMessage = true
+	proc.messagesMutex.Unlock()
+}
+
+// MarkSessionReady closes the matching proc's sessionStartCh — the canonical
+// TUI-ready signal from Claude's SessionStart hook. Idempotent. Called by the
+// socket handler when SessionStart arrives.
+func (s *Spawner) MarkSessionReady(sessionID string) {
+	proc := s.lookupSessionProc(sessionID)
+	if proc == nil || proc.sessionStartCh == nil {
+		return
+	}
+	proc.sessionStartOnce.Do(func() {
+		s.logAgent(proc, "ready signal: SessionStart hook")
+		close(proc.sessionStartCh)
+	})
+}
+
+// CompleteInteractive signals that the interactive session has ended,
+// unblocking the spawner's monitorAll wait.
+func (s *Spawner) CompleteInteractive(sessionID string) {
+	s.mu.Lock()
+	ch, ok := s.interactiveWaits[sessionID]
+	if ok {
+		delete(s.interactiveWaits, sessionID)
+	}
+	s.mu.Unlock()
+	if ok {
+		select {
+		case <-ch:
+			// already closed
+		default:
+			close(ch)
+		}
+		// Note: OnSessionUnregister is NOT fired here. The orchestrator holds
+		// o.mu when it calls this method (iterating rs.spawners), so firing the
+		// callback would deadlock. Pre-step spawners remain in rs.spawners as
+		// harmless orphans until the runState is GC'd; take-control spawners are
+		// cleaned up by unregisterTerminalSignal when monitorAll unblocks.
+	}
+}
+
+// KillInteractive signals that the interactive session should be treated as a failure,
+// unblocking the spawner's monitorAll wait and marking the session as FAIL.
+func (s *Spawner) KillInteractive(sessionID string) {
+	s.mu.Lock()
+	s.killedInteractive[sessionID] = struct{}{}
+	ch, ok := s.interactiveWaits[sessionID]
+	if ok {
+		delete(s.interactiveWaits, sessionID)
+	}
+	s.mu.Unlock()
+	if ok {
+		select {
+		case <-ch:
+			// already closed
+		default:
+			close(ch)
+		}
+	}
+}
+
+// RegisterInteractiveWait creates and returns a channel that blocks until
+// CompleteInteractive is called for the given session ID. Used by the
+// orchestrator to wait on interactive/plan PTY sessions before entering
+// the layer execution loop. Fires OnSessionRegister so the orchestrator's
+// sessionID→*Spawner index includes this spawner for the duration of the wait.
+func (s *Spawner) RegisterInteractiveWait(sessionID string) <-chan struct{} {
+	ch := make(chan struct{})
+	s.mu.Lock()
+	s.interactiveWaits[sessionID] = ch
+	s.mu.Unlock()
+	// Fire outside the mutex (same discipline as registerTerminalSignal) to
+	// avoid lock-order inversion with the orchestrator's mu.
+	if s.config.OnSessionRegister != nil {
+		s.config.OnSessionRegister(sessionID, s)
+	}
+	return ch
+}
+
+// Close is a no-op retained for API compatibility (e.g. orchestrator defer).
+func (s *Spawner) Close() {}
+
+// registerSessionProc tracks a live proc by sessionID so RecordUserInput can
+// route user keystrokes through the normal TrackMessage pipeline.
+func (s *Spawner) registerSessionProc(sessionID string, proc *processInfo) {
+	s.sessionProcsMu.Lock()
+	s.sessionProcs[sessionID] = proc
+	s.sessionProcsMu.Unlock()
+}
+
+// lookupSessionProc returns the live proc for sessionID, or nil if unknown.
+func (s *Spawner) lookupSessionProc(sessionID string) *processInfo {
+	s.sessionProcsMu.Lock()
+	defer s.sessionProcsMu.Unlock()
+	return s.sessionProcs[sessionID]
+}
+
+// unregisterSessionProcs removes completed procs from the session proc map.
+func (s *Spawner) unregisterSessionProcs(procs []*processInfo) {
+	if len(procs) == 0 {
+		return
+	}
+	s.sessionProcsMu.Lock()
+	for _, proc := range procs {
+		delete(s.sessionProcs, proc.sessionID)
+	}
+	s.sessionProcsMu.Unlock()
+}

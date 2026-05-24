@@ -1,0 +1,206 @@
+package spawner
+
+import (
+	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+
+	"be/internal/db"
+	"be/internal/logger"
+	"be/internal/model"
+	"be/internal/ws"
+)
+
+// pool returns the shared connection pool, or nil if not configured.
+func (s *Spawner) pool() *db.Pool {
+	if s.config.Pool != nil {
+		return s.config.Pool
+	}
+	return nil
+}
+
+// broadcast sends a WebSocket event via the in-process hub
+func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
+	if s.config.WSHub == nil {
+		logger.Warn(context.Background(), "broadcast skipped: no WebSocket hub configured")
+		return
+	}
+	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
+	s.config.WSHub.Broadcast(event)
+}
+
+// logAgent logs an INFO-level agent message with the agent's trx and prefix.
+func (s *Spawner) logAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Info(ctx, s.formatPrefix(proc)+" "+msg)
+}
+
+// warnAgent logs a WARN-level agent message with the agent's trx and prefix.
+func (s *Spawner) warnAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Warn(ctx, s.formatPrefix(proc)+" "+msg)
+}
+
+// errorAgent logs an ERROR-level agent message with the agent's trx and prefix.
+func (s *Spawner) errorAgent(proc *processInfo, msg string) {
+	ctx := logger.WithTrx(context.Background(), proc.trx)
+	logger.Error(ctx, s.formatPrefix(proc)+" "+msg)
+}
+
+// waitBeforeRetry waits for defaultFailRetryDelay before retrying a failed/timed-out agent.
+// Returns true if the wait completed, false if the context was cancelled (should not retry).
+// Broadcasts an agent.retry_waiting event before sleeping.
+func (s *Spawner) waitBeforeRetry(ctx context.Context, proc *processInfo) bool {
+	s.broadcast(ws.EventAgentRetryWaiting, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+		"agent_type":         proc.agentType,
+		"session_id":         proc.sessionID,
+		"model_id":           proc.modelID,
+		"delay_seconds":      int(defaultFailRetryDelay.Seconds()),
+		"fail_restart_count": proc.failRestartCount,
+		"max_fail_restarts":  proc.maxFailRestarts,
+	})
+	logger.Info(ctx, "waiting before fail-restart", "delay", defaultFailRetryDelay, "model", proc.modelID)
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(defaultFailRetryDelay):
+		return true
+	}
+}
+
+// startBackend selects an ExecutionBackend based purely on prep.executionMode:
+//   - "api"            → apiBackend (in-process Anthropic runner)
+//   - "script"         → scriptBackend (Python exec.Cmd)
+//   - "cli_interactive" → cliInteractiveBackend (PTY)
+//
+// System agents (conflict-resolver, context-saver) flow through the same
+// selector — their execution_mode is sourced from system_agent_definitions.execution_mode.
+func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
+	var backend ExecutionBackend
+	switch prep.executionMode {
+	case "api":
+		backend = newAPIBackend(s)
+	case "script":
+		backend = newScriptBackend(s)
+	case "cli_interactive":
+		// codex 0.133 exposes no usable structured channel under PTY (no hooks,
+		// no rollout JSONL), so codex agents are driven via `codex app-server`
+		// JSON-RPC instead of the PTY/TUI. All other CLIs use the PTY backend.
+		if prep.cliName == "codex" {
+			backend = newCodexAppServerBackend(s)
+		} else {
+			backend = newCLIInteractiveBackend(prep.adapter, s, wrapPtyManager(s.config.PTYManager))
+		}
+	default:
+		return fmt.Errorf("unknown execution_mode %q for agent %q", prep.executionMode, proc.agentType)
+	}
+	proc.backend = backend
+
+	var effectiveMode string
+	switch prep.executionMode {
+	case "api":
+		effectiveMode = "api"
+	case "script":
+		effectiveMode = "script"
+	default:
+		effectiveMode = "cli_interactive"
+	}
+
+	// Register sessionProc BEFORE backend.Start so a fast SessionStart hook
+	// (or any other socket lookup keyed by sessionID) can find the proc the
+	// moment Claude posts back, not after we've returned from Start.
+	s.registerSessionProc(proc.sessionID, proc)
+
+	if err := backend.Start(context.Background(), proc, prep); err != nil {
+		s.unregisterSessionProcs([]*processInfo{proc})
+		return err
+	}
+
+	pid := proc.pid
+	if proc.cmd != nil && proc.cmd.Process != nil {
+		pid = proc.cmd.Process.Pid
+	}
+	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
+		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, effectiveMode, 0, proc.restartThreshold)
+	return nil
+}
+
+// filterEnv returns a copy of env with the named variable removed.
+func filterEnv(env []string, name string) []string {
+	prefix := name + "="
+	out := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// MintSpawnToken returns a 32-byte random hex token used as the spawned
+// agent's HTTP API bearer credential. Persisted in agent_sessions.spawn_token
+// and exposed to the agent process via NRFLO_AGENT_TOKEN.
+func MintSpawnToken() string {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		// crypto/rand failure is essentially impossible on supported platforms;
+		// fall back to a UUID so we never panic. Token uniqueness is the only
+		// invariant — uniqueness via UUIDv4 is sufficient.
+		return strings.ReplaceAll(uuid.New().String(), "-", "") +
+			strings.ReplaceAll(uuid.New().String(), "-", "")
+	}
+	return hex.EncodeToString(buf)
+}
+
+func (s *Spawner) maxContextForModel(model string) int {
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.ContextLength > 0 {
+		return cfg.ContextLength
+	}
+	if model == "opus_4_6_1m" || model == "opus_4_7_1m" {
+		return 1000000
+	}
+	return 200000
+}
+
+// cliForModel returns the CLI name for a model, checking DB config first.
+func (s *Spawner) cliForModel(model string) string {
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.CLIType != "" {
+		return cfg.CLIType
+	}
+	return DefaultCLIForModel(model)
+}
+
+// loadAPIHTTPToolDefs returns HTTP tool definitions in scope for an api-mode
+// agent. Scope rules: project_id IS NULL or matches projectID, AND workflow_id
+// IS NULL or matches workflowName. The repo's ListByProject already applies
+// the project filter; this helper additionally filters by workflow scope.
+func (s *Spawner) loadAPIHTTPToolDefs(projectID, workflowName string) ([]*model.ToolDefinition, error) {
+	if s.config.ToolDefRepo == nil {
+		return nil, nil
+	}
+	all, err := s.config.ToolDefRepo.ListByProject(projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.ToolDefinition, 0, len(all))
+	for _, def := range all {
+		if def.WorkflowID == nil || *def.WorkflowID == "" || strings.EqualFold(*def.WorkflowID, workflowName) {
+			out = append(out, def)
+		}
+	}
+	return out, nil
+}
+
+func parseModelID(modelID string) (cli, model string) {
+	if modelID == "" || !strings.Contains(modelID, ":") {
+		return "claude", modelID
+	}
+	parts := strings.SplitN(modelID, ":", 2)
+	return parts[0], parts[1]
+}

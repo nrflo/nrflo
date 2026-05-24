@@ -7,7 +7,7 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 - Phases grouped by `layer` integer; layers execute in ascending order, sequentially.
 - All agents within a layer run concurrently (one goroutine per `spawner.Spawn()` call).
 - Layer completes when all agents finish; pass policy evaluated via `denom = passCount + failCount` (skipped excluded).
-- All-skipped (`denom == 0`) → layer passes regardless of policy; entry point: `orchestrator.go` `runLoop()`.
+- All-skipped (`denom == 0`) → layer passes regardless of policy; entry point: `orchestrator_loop.go` `runLoop()`.
 
 ## Layer Aggregation
 
@@ -33,15 +33,15 @@ Records to `errors` table via `errorSvc` (`spawner.ErrorRecorder`). Recorded for
 
 ## Connection Pool
 
-One shared `*db.Pool` per workflow run, passed to all spawners via `spawner.Config.Pool` (`orchestrator.go`).
+One shared `*db.Pool` per workflow run, passed to all spawners via `spawner.Config.Pool` (`orchestrator_loop.go`).
 
 ## Model Config Loading
 
-Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to all spawners as `ModelConfigs` (`orchestrator.go`).
+Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to all spawners as `ModelConfigs` (`orchestrator_lifecycle.go`).
 
 ## Safety Hook Threading
 
-`claude_safety_hook` project config → `BuildSafetySettingsJSON()` → `claudeSettingsJSON`, threaded through all spawn paths. Read once at start; mid-workflow changes have no effect (`orchestrator.go`).
+`claude_safety_hook` project config → `BuildSafetySettingsJSON()` → `claudeSettingsJSON`, threaded through all spawn paths. Read once at start; mid-workflow changes have no effect (`orchestrator_start.go`).
 
 ## Callback Flow
 

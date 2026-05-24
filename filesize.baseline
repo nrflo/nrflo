@@ -80,10 +80,10 @@ be/internal/model/ticket_test.go	333
 be/internal/notify/notify_test.go	342
 be/internal/orchestrator/chain_runner.go	385
 be/internal/orchestrator/chain_runner_logging_test.go	352
-be/internal/orchestrator/orchestrator.go	2262
 be/internal/orchestrator/orchestrator_interactive.go	340
 be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
+be/internal/orchestrator/orchestrator_loop.go	683
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -162,7 +162,8 @@ be/internal/spawner/output_claude_events_test.go	313
 be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	329
 be/internal/spawner/safety_hook_test.go	316
-be/internal/spawner/spawner.go	2027
+be/internal/spawner/spawner_monitor.go	399
+be/internal/spawner/spawner_prepare.go	441
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	332
 be/internal/spawner/template_extra_vars_test.go	318

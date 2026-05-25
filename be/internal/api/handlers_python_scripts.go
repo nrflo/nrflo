@@ -90,7 +90,7 @@ func (s *Server) handleGetPythonScript(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.PathValue("id")
+	id := r.PathValue("scriptId")
 
 	svc := service.NewPythonScriptService(s.pool, s.clock)
 	script, err := svc.Get(projectID, id)
@@ -114,7 +114,7 @@ func (s *Server) handleUpdatePythonScript(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	id := r.PathValue("id")
+	id := r.PathValue("scriptId")
 
 	var req types.PythonScriptUpdateRequest
 	if err := readJSON(r, &req); err != nil {
@@ -147,7 +147,7 @@ func (s *Server) handleDeletePythonScript(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	id := r.PathValue("id")
+	id := r.PathValue("scriptId")
 
 	svc := service.NewPythonScriptService(s.pool, s.clock)
 	if err := svc.Delete(projectID, id); err != nil {

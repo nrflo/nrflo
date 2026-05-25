@@ -737,13 +737,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)
-	admin("POST /api/v1/python-scripts", s.handleCreatePythonScript)
+	projectAdmin("POST /api/v1/python-scripts", s.handleCreatePythonScript)
 	protected("POST /api/v1/python-scripts/validate", s.handleValidatePythonScript)
 	protected("GET /api/v1/python-scripts/browse", s.handleBrowsePythonScriptDir)
 	protected("GET /api/v1/python-scripts/read-file", s.handleReadPythonScriptFile)
-	protected("GET /api/v1/python-scripts/{id}", s.handleGetPythonScript)
-	admin("PATCH /api/v1/python-scripts/{id}", s.handleUpdatePythonScript)
-	admin("DELETE /api/v1/python-scripts/{id}", s.handleDeletePythonScript)
+	protected("GET /api/v1/python-scripts/{scriptId}", s.handleGetPythonScript)
+	projectAdmin("PATCH /api/v1/python-scripts/{scriptId}", s.handleUpdatePythonScript)
+	projectAdmin("DELETE /api/v1/python-scripts/{scriptId}", s.handleDeletePythonScript)
 
 	// Default templates (global) — writes are admin-only
 	protected("GET /api/v1/default-templates", s.handleListDefaultTemplates)

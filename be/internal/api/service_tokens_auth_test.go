@@ -121,6 +121,48 @@ func TestRequireProjectAdmin_ServiceToken_NonMatchingPathID_Returns403(t *testin
 	}
 }
 
+// Header/query-scoped routes (e.g. python-scripts writes) carry the project in
+// the request, not the {id} path param. requireProjectAdmin must resolve scope
+// via getProjectID so a matching service token passes.
+func TestRequireProjectAdmin_ServiceToken_QueryScope_Passes(t *testing.T) {
+	s := newServerWithAuth(t)
+	_, plain := seedServiceToken(t, s, "proj-svc-hdr", "ci")
+
+	called := false
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(sentinelHandler(&called)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/python-scripts?project=proj-svc-hdr", nil)
+	req.Header.Set("Authorization", "Bearer "+plain)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if !called {
+		t.Fatal("expected next handler to be called for matching project scope")
+	}
+}
+
+// A token for project B must not act on project A even when the auth-validated
+// X-Project header says B: the project resolved by getProjectID (here the
+// ?project= query) is what's authorized, closing the header/query divergence.
+func TestRequireProjectAdmin_ServiceToken_QueryProjectMismatch_Returns403(t *testing.T) {
+	s := newServerWithAuth(t)
+	_, plain := seedServiceToken(t, s, "proj-svc-hdr-b", "ci")
+
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/python-scripts?project=proj-svc-hdr-a", nil)
+	req.Header.Set("Authorization", "Bearer "+plain)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestServiceTokenService_LookupByPlaintext_RoundTrip(t *testing.T) {
 	s := newServerWithAuth(t)
 	_, plain := seedServiceToken(t, s, "proj-svc-lookup", "ci")

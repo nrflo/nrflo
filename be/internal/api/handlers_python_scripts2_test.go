@@ -13,7 +13,7 @@ import (
 func TestHandleGetPythonScript_NotFound(t *testing.T) {
 	s, projectID := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/ps-missing?project="+projectID, nil)
-	req.SetPathValue("id", "ps-missing")
+	req.SetPathValue("scriptId", "ps-missing")
 	rr := httptest.NewRecorder()
 	s.handleGetPythonScript(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -24,7 +24,7 @@ func TestHandleGetPythonScript_NotFound(t *testing.T) {
 func TestHandleGetPythonScript_MissingProject(t *testing.T) {
 	s, _ := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/ps-x", nil)
-	req.SetPathValue("id", "ps-x")
+	req.SetPathValue("scriptId", "ps-x")
 	rr := httptest.NewRecorder()
 	s.handleGetPythonScript(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -42,7 +42,7 @@ func TestHandleGetPythonScript_CrossProject(t *testing.T) {
 	created := createPythonScript(t, s, "proj-other", "Other Script", "x=1")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, nil)
-	req.SetPathValue("id", created.ID)
+	req.SetPathValue("scriptId", created.ID)
 	rr := httptest.NewRecorder()
 	s.handleGetPythonScript(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -55,7 +55,7 @@ func TestHandleGetPythonScript_Found(t *testing.T) {
 	created := createPythonScript(t, s, projectID, "Found Script", "y=2")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, nil)
-	req.SetPathValue("id", created.ID)
+	req.SetPathValue("scriptId", created.ID)
 	rr := httptest.NewRecorder()
 	s.handleGetPythonScript(rr, req)
 
@@ -76,7 +76,7 @@ func TestHandleGetPythonScript_Found(t *testing.T) {
 func TestHandleUpdatePythonScript_NotFound(t *testing.T) {
 	s, projectID := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/ps-missing?project="+projectID, strings.NewReader(`{"name":"X"}`))
-	req.SetPathValue("id", "ps-missing")
+	req.SetPathValue("scriptId", "ps-missing")
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -89,7 +89,7 @@ func TestHandleUpdatePythonScript_EmptyName(t *testing.T) {
 	created := createPythonScript(t, s, projectID, "Script", "x=1")
 
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, strings.NewReader(`{"name":""}`))
-	req.SetPathValue("id", created.ID)
+	req.SetPathValue("scriptId", created.ID)
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -102,7 +102,7 @@ func TestHandleUpdatePythonScript_Valid(t *testing.T) {
 	created := createPythonScript(t, s, projectID, "Old Name", "x=1")
 
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, strings.NewReader(`{"name":"New Name"}`))
-	req.SetPathValue("id", created.ID)
+	req.SetPathValue("scriptId", created.ID)
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusOK {
@@ -113,7 +113,7 @@ func TestHandleUpdatePythonScript_Valid(t *testing.T) {
 func TestHandleUpdatePythonScript_InvalidJSON(t *testing.T) {
 	s, projectID := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/ps-x?project="+projectID, strings.NewReader("bad"))
-	req.SetPathValue("id", "ps-x")
+	req.SetPathValue("scriptId", "ps-x")
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -126,7 +126,7 @@ func TestHandleUpdatePythonScript_InvalidJSON(t *testing.T) {
 func TestHandleDeletePythonScript_NotFound(t *testing.T) {
 	s, projectID := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/python-scripts/ps-missing?project="+projectID, nil)
-	req.SetPathValue("id", "ps-missing")
+	req.SetPathValue("scriptId", "ps-missing")
 	rr := httptest.NewRecorder()
 	s.handleDeletePythonScript(rr, req)
 	if rr.Code != http.StatusNotFound {
@@ -139,7 +139,7 @@ func TestHandleDeletePythonScript_Valid(t *testing.T) {
 	created := createPythonScript(t, s, projectID, "ToDelete", "x=1")
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, nil)
-	req.SetPathValue("id", created.ID)
+	req.SetPathValue("scriptId", created.ID)
 	rr := httptest.NewRecorder()
 	s.handleDeletePythonScript(rr, req)
 	if rr.Code != http.StatusOK {
@@ -147,7 +147,7 @@ func TestHandleDeletePythonScript_Valid(t *testing.T) {
 	}
 
 	req2 := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/"+created.ID+"?project="+projectID, nil)
-	req2.SetPathValue("id", created.ID)
+	req2.SetPathValue("scriptId", created.ID)
 	rr2 := httptest.NewRecorder()
 	s.handleGetPythonScript(rr2, req2)
 	if rr2.Code != http.StatusNotFound {
@@ -158,7 +158,7 @@ func TestHandleDeletePythonScript_Valid(t *testing.T) {
 func TestHandleDeletePythonScript_MissingProject(t *testing.T) {
 	s, _ := newPythonScriptServer(t)
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/python-scripts/ps-x", nil)
-	req.SetPathValue("id", "ps-x")
+	req.SetPathValue("scriptId", "ps-x")
 	rr := httptest.NewRecorder()
 	s.handleDeletePythonScript(rr, req)
 	if rr.Code != http.StatusBadRequest {

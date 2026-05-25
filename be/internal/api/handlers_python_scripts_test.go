@@ -209,7 +209,7 @@ func TestHandleUpdatePythonScript_InvalidFilePath(t *testing.T) {
 
 	body := `{"file_path":"relative/script.py"}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(body))
-	req.SetPathValue("id", script.ID)
+	req.SetPathValue("scriptId", script.ID)
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusBadRequest {
@@ -229,7 +229,7 @@ func TestHandleUpdatePythonScript_ValidFilePath(t *testing.T) {
 	}
 	body := `{"file_path":"` + pyFile + `"}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(body))
-	req.SetPathValue("id", script.ID)
+	req.SetPathValue("scriptId", script.ID)
 	rr := httptest.NewRecorder()
 	s.handleUpdatePythonScript(rr, req)
 	if rr.Code != http.StatusOK {
@@ -255,7 +255,7 @@ func TestHandleUpdatePythonScript_ClearFilePath(t *testing.T) {
 
 	updateBody := `{"file_path":""}`
 	updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, strings.NewReader(updateBody))
-	updateReq.SetPathValue("id", script.ID)
+	updateReq.SetPathValue("scriptId", script.ID)
 	updateRR := httptest.NewRecorder()
 	s.handleUpdatePythonScript(updateRR, updateReq)
 	if updateRR.Code != http.StatusOK {
@@ -263,7 +263,7 @@ func TestHandleUpdatePythonScript_ClearFilePath(t *testing.T) {
 	}
 
 	getReq := httptest.NewRequest(http.MethodGet, "/api/v1/python-scripts/"+script.ID+"?project="+projectID, nil)
-	getReq.SetPathValue("id", script.ID)
+	getReq.SetPathValue("scriptId", script.ID)
 	getRR := httptest.NewRecorder()
 	s.handleGetPythonScript(getRR, getReq)
 	if getRR.Code != http.StatusOK {

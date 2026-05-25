@@ -141,9 +141,12 @@ func (s *Server) requireAdmin(next http.Handler) http.Handler {
 
 // requireProjectAdmin allows either an admin user OR a service principal whose
 // project_id matches the route's project context. Project context is resolved
-// from the {id} path parameter when present, otherwise from the X-Project
-// header. Non-admin human users always get 403. Used for project-scoped
-// administrative endpoints (env-vars writes, scheduled tasks, python scripts).
+// from the {id} path parameter when present (path-scoped routes such as
+// env-vars and project settings), otherwise from getProjectID (the X-Project
+// header or ?project= query) — the same resolver the handler uses, so the
+// authorized project and the acted-upon project can never diverge. Non-admin
+// human users always get 403. Used for project-scoped administrative endpoints
+// (env-vars/project-settings writes, artifact delete, python scripts).
 func (s *Server) requireProjectAdmin(next http.Handler) http.Handler {
 	return s.requireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if u := getUser(r); u != nil && u.Role == model.UserRoleAdmin {
@@ -153,7 +156,7 @@ func (s *Server) requireProjectAdmin(next http.Handler) http.Handler {
 		if sp := getServicePrincipal(r); sp != nil {
 			scope := r.PathValue("id")
 			if scope == "" {
-				scope = r.Header.Get("X-Project")
+				scope = getProjectID(r)
 			}
 			if scope != "" && strings.EqualFold(scope, sp.ProjectID) {
 				next.ServeHTTP(w, r.WithContext(r.Context()))

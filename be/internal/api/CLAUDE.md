@@ -25,13 +25,13 @@ Per-route auth is applied at registration time via three helpers in `registerRou
 
 `requireAuth` also accepts `Authorization: Bearer <agent_token>` (the spawned-agent path). The token is looked up via `AgentSessionRepo.GetByToken`, which only returns rows with `status IN ('running','user_interactive')`. On match, the session is stashed under `agentSessionKey` (helper: `getAgentSession(r)`). When `X-Project` is present it must equal the session's `project_id` (case-insensitive) — otherwise 403. The user context is **not** populated for bearer requests, so `requireAdmin` always 403s them.
 
-`requireAuth` additionally accepts long-lived **service tokens** minted via Settings → Administration → Service Tokens (`service_tokens` table, sha256-hashed at rest). Lookup is `ServiceTokenService.LookupByPlaintext`; on match the principal is stashed under `servicePrincipalKey` (helper: `getServicePrincipal(r)`) and `last_used_at` is touched in a background goroutine. Like agent tokens, an X-Project mismatch is 403. Service principals satisfy `requireProjectAdmin` (admin-or-principal-with-matching-project — used for project-scoped admin writes such as env-vars PUT/DELETE) but not the global `requireAdmin`.
+`requireAuth` additionally accepts long-lived **service tokens** minted via Settings → Administration → Service Tokens (`service_tokens` table, sha256-hashed at rest). Lookup is `ServiceTokenService.LookupByPlaintext`; on match the principal is stashed under `servicePrincipalKey` (helper: `getServicePrincipal(r)`) and `last_used_at` is touched in a background goroutine. Like agent tokens, an X-Project mismatch is 403. Service principals satisfy `requireProjectAdmin` (admin-or-principal-with-matching-project — used for project-scoped admin writes such as env-vars PUT/DELETE and python-script create/update/delete) but not the global `requireAdmin`.
 
 `requireAdmin` wraps `requireAuth` and additionally 403s when `user.Role != admin`. Helpers `getUser(r)` / `getUserID(r)` retrieve the stashed user from context; both defined in `auth_middleware.go`.
 
 ### Admin-gated Routes
 
-Write operations on configuration resources require admin role:
+Write operations on global configuration resources require admin role (`admin`):
 - `POST /api/v1/projects`, `DELETE /api/v1/projects/{id}`
 - `GET|POST|PATCH|DELETE /api/v1/users/{...}` (all user management)
 - `GET /api/v1/audit-log`
@@ -40,10 +40,14 @@ Write operations on configuration resources require admin role:
 - `POST|PATCH|DELETE /api/v1/api-models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
-- `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}` (project-scoped)
-- `POST|PATCH|DELETE /api/v1/python-scripts/{...}` (project-scoped)
 - `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only; registered always, gated at request time by `api_mode_enabled` setting — returns 400 `api_mode_disabled` when off)
 - `PATCH /api/v1/settings`
+
+Project-scoped writes use `projectAdmin` (admin user **or** a service token whose project matches the resolved project — for path-scoped routes via `{id}`, otherwise via `getProjectID` = X-Project header / `?project=` query):
+- `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}`
+- `PUT /api/v1/projects/{id}/settings/{cleanup,artifact-storage,observer}`
+- `DELETE /api/v1/artifacts/{aid}`
+- `POST|PATCH|DELETE /api/v1/python-scripts/{scriptId}` (scope from request, not the path; `{scriptId}` is the script ID)
 
 All reads on those resources are `protected` (requireAuth only). All other routes are `protected`.
 

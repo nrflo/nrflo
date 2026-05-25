@@ -39,6 +39,8 @@ type RunRequest struct {
 	Force                   bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
 	EndlessLoop             bool                     `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
 	ScheduledTaskID         string                   `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
+	ExternalID              string                   `json:"external_id,omitempty"`       // Caller-supplied external reference ID
+	ExternalContext         string                   `json:"external_context,omitempty"`  // Caller-supplied external context blob
 	SeedFindings            map[string]string        `json:"seed_findings,omitempty"`     // Pre-seed findings rows at scope=workflow_instance on run start
 	InputArtifacts          []types.InputArtifactRef `json:"input_artifacts,omitempty"`   // Staged uploads to attach at launch time
 	ChainDepth              int                      `json:"-"`                           // next_workflow_on_success recursion depth (not persisted)

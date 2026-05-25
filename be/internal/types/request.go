@@ -45,6 +45,8 @@ type ProjectCreateRequest struct {
 type WorkflowInitRequest struct {
 	Workflow        string            `json:"workflow,omitempty"`
 	ScheduledTaskID string            `json:"scheduled_task_id,omitempty"`
+	ExternalID      string            `json:"external_id,omitempty"`
+	ExternalContext string            `json:"external_context,omitempty"`
 	SeedFindings    map[string]string `json:"seed_findings,omitempty"`
 }
 
@@ -248,6 +250,8 @@ type ProjectWorkflowRunRequest struct {
 	PlanMode        bool               `json:"plan_mode,omitempty"`
 	EndlessLoop     bool               `json:"endless_loop,omitempty"`
 	ScheduledTaskID string             `json:"scheduled_task_id,omitempty"`
+	ExternalID      string             `json:"external_id,omitempty"`
+	ExternalContext string             `json:"external_context,omitempty"`
 	SeedFindings    map[string]string  `json:"seed_findings,omitempty"`
 	InputArtifacts  []InputArtifactRef `json:"input_artifacts,omitempty"`
 }

@@ -89,6 +89,8 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	wi.TicketID = ticketID
 	wi.ScopeType = "ticket"
 	wi.ScheduledTaskID = req.ScheduledTaskID
+	wi.ExternalID = req.ExternalID
+	wi.ExternalContext = req.ExternalContext
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
@@ -117,6 +119,8 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	wi.ScopeType = "project"
 	wi.EndlessLoop = req.EndlessLoop
 	wi.ScheduledTaskID = req.ScheduledTaskID
+	wi.ExternalID = req.ExternalID
+	wi.ExternalContext = req.ExternalContext
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err

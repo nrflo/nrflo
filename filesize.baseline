@@ -22,10 +22,10 @@ be/internal/api/handlers_cli_models_test.go	304
 be/internal/api/handlers_default_template_type_test.go	333
 be/internal/api/handlers_git_test.go	670
 be/internal/api/handlers_observer_test.go	314
-be/internal/api/handlers_orchestrate.go	611
+be/internal/api/handlers_orchestrate.go	615
 be/internal/api/handlers_project_env_vars_test.go	317
 be/internal/api/handlers_project_findings_upsert_delete_test.go	315
-be/internal/api/handlers_project_workflow.go	722
+be/internal/api/handlers_project_workflow.go	724
 be/internal/api/handlers_projects_test.go	336
 be/internal/api/handlers_pty.go	314
 be/internal/api/handlers_pty_test.go	384
@@ -100,7 +100,6 @@ be/internal/repo/schedule_run_test.go	366
 be/internal/repo/scheduled_task_test.go	400
 be/internal/repo/ticket_blocked.go	325
 be/internal/repo/ticket_search_test.go	362
-be/internal/repo/workflow_instance.go	343
 be/internal/repo/workflow_instance_cleanup_test.go	319
 be/internal/scheduler/scheduler_dispatch_test.go	337
 be/internal/service/agent.go	655
@@ -126,7 +125,7 @@ be/internal/service/scheduled_task_test.go	466
 be/internal/service/system_agent_definition.go	368
 be/internal/service/system_agent_definition_test.go	423
 be/internal/service/ticket.go	383
-be/internal/service/workflow.go	473
+be/internal/service/workflow.go	477
 be/internal/service/workflow_chain.go	373
 be/internal/service/workflow_chain_run_test.go	344
 be/internal/service/workflow_chain_test.go	349

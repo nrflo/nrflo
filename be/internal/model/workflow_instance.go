@@ -43,6 +43,8 @@ type WorkflowInstance struct {
 	EndlessLoop                   bool                   `json:"endless_loop"`
 	StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
 	ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
+	ExternalID                    string                 `json:"external_id,omitempty"`
+	ExternalContext               string                 `json:"external_context,omitempty"`
 	CreatedAt                     time.Time              `json:"created_at"`
 	UpdatedAt                     time.Time              `json:"updated_at"`
 }
@@ -122,6 +124,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		EndlessLoop                   bool                   `json:"endless_loop"`
 		StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
 		ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
+		ExternalID                    string                 `json:"external_id,omitempty"`
+		ExternalContext               string                 `json:"external_context,omitempty"`
 		CreatedAt                     time.Time              `json:"created_at"`
 		UpdatedAt                     time.Time              `json:"updated_at"`
 	}{
@@ -139,6 +143,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
 		ScheduledTaskID:               wi.ScheduledTaskID,
+		ExternalID:                    wi.ExternalID,
+		ExternalContext:               wi.ExternalContext,
 		CreatedAt:                     wi.CreatedAt,
 		UpdatedAt:                     wi.UpdatedAt,
 	})

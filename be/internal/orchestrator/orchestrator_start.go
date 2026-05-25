@@ -125,12 +125,16 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			Instructions:    req.Instructions,
 			EndlessLoop:     req.EndlessLoop,
 			ScheduledTaskID: req.ScheduledTaskID,
+			ExternalID:      req.ExternalID,
+			ExternalContext: req.ExternalContext,
 			SeedFindings:    req.SeedFindings,
 		})
 	} else {
 		wi, err = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{
 			Workflow:        req.WorkflowName,
 			ScheduledTaskID: req.ScheduledTaskID,
+			ExternalID:      req.ExternalID,
+			ExternalContext: req.ExternalContext,
 			SeedFindings:    req.SeedFindings,
 		})
 	}

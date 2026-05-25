@@ -76,5 +76,26 @@ class TestOutcomeAccessors(unittest.TestCase):
         c.close()
 
 
+class TestExternalRefAccessors(unittest.TestCase):
+    """external_id, external_context read from the cached context dict."""
+
+    def test_external_refs_with_cached_context(self):
+        c = _make_client()
+        c._ctx_cache = {
+            "external_id": "jira-123",
+            "external_context": '{"source":"jira","key":"PROJ-42"}',
+        }
+        self.assertEqual(c.external_id(), "jira-123")
+        self.assertEqual(c.external_context(), '{"source":"jira","key":"PROJ-42"}')
+        c.close()
+
+    def test_external_refs_default_empty_string_when_key_absent(self):
+        c = _make_client()
+        c._ctx_cache = {}
+        self.assertEqual(c.external_id(), "")
+        self.assertEqual(c.external_context(), "")
+        c.close()
+
+
 if __name__ == "__main__":
     unittest.main()

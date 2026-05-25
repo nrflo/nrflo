@@ -121,12 +121,15 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
+	extID, extCtx := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
+	tmplVars := mergeExtraVars(req.ExtraVars, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
+
 	// Load agent template
 	agentLayer := 0
 	if agentDef != nil {
 		agentLayer = agentDef.Layer
 	}
-	prompt, suffix, systemPromptOverride, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, req.ExtraVars, agentLayer)
+	prompt, suffix, systemPromptOverride, err := s.loadTemplate(req.AgentType, req.TicketID, req.ProjectID, req.ParentSession, sessionID, req.WorkflowName, modelID, phase, req.WorkflowInstanceID, tmplVars, agentLayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load template: %w", err)
 	}
@@ -418,17 +421,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		SettingsJSON:             s.config.ClaudeSettingsJSON,
 		SystemPromptFile:         suffixFilePath,
 		SystemPromptOverrideFile: systemPromptOverrideFilePath,
-		Env: append(append(filterEnv(os.Environ(), "CLAUDECODE"),
-			fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
-			fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
-			fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),
-			fmt.Sprintf("NRFLO_AGENT_TOKEN=%s", spawnToken),
-			fmt.Sprintf("NRF_TRX=%s", logger.TrxFromContext(ctx)),
-			"NRF_SPAWNED=1",
-			fmt.Sprintf("NRF_CONTEXT_THRESHOLD=%d", 100-effectiveThreshold),
-			fmt.Sprintf("NRF_MAX_CONTEXT=%d", s.maxContextForModel(model)),
-			fmt.Sprintf("NRF_ARTIFACTS_DIR=%s", cliStageDir),
-		), s.config.ProjectEnv...),
+		Env: s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
 	}
 
 	prep.adapter = adapter

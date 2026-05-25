@@ -36,7 +36,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
 | `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
-| `script.context` | Return 17-key auto-injectable dict for script-mode session (incl. `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`). Params: `{session_id}` |
+| `script.context` | Return 19-key auto-injectable dict for script-mode session (incl. `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`, `external_id`, `external_context`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |
 | `artifact.list` | List artifacts for the session's workflow instance. Params: `{session_id}` |
 | `artifact.get` | Materialize artifact to stage dir and return abs path. Params: `{session_id, name}` |

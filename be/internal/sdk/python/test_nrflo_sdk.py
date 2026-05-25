@@ -113,7 +113,8 @@ class TestClientStructure(unittest.TestCase):
         for method in ("context", "user_instructions", "callback_info",
                        "previous_data", "skip", "log", "notification", "close",
                        "workflow_result", "workflow_status",
-                       "workflow_final_result", "failure_reason"):
+                       "workflow_final_result", "failure_reason",
+                       "external_id", "external_context"):
             self.assertTrue(callable(getattr(c, method, None)),
                             f"Client.{method} missing or not callable")
         c.close()

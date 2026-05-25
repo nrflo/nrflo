@@ -145,5 +145,7 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		"workflow_result":       deriveWorkflowResult(wfi.Status),
 		"workflow_final_result": service.ExtractWorkflowFinalResultByInstanceID(h.pool, wfi.ID, h.clk),
 		"failure_reason":        failureReason,
+		"external_id":           wfi.ExternalID,
+		"external_context":      wfi.ExternalContext,
 	})
 }

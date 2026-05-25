@@ -38,7 +38,7 @@ c = nrflo_sdk.client()
 | `c.agent` | `finished()`, `fail(reason="")`, `continue_()`, `callback(level)`, `chain_next_ticket(ticket_id)`, `consult(consultant, question) -> str` |
 | `c.workflow` | `continue_(instructions="", instance_id=None)`, `fail(reason, instance_id=None)` — continue/fail a workflow instance (defaults to current `_iid`) |
 | `c.artifacts` | `add(name, content, content_type=None)`, `list()`, `get(name)` |
-| `c.context(refresh=False)` | Cached call to the `script.context` socket method (17-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
+| `c.context(refresh=False)` | Cached call to the `script.context` socket method (19-key dict — see [be/internal/socket/CLAUDE.md](../../socket/CLAUDE.md)) |
 | `c.seed_findings()` | Convenience: `c.context()["seed_findings"]` — caller-supplied `RunRequest.SeedFindings` keys (workflow_instance scope, excluding `user_instructions` and underscore-prefixed orchestrator-internal keys) |
 | `c.user_instructions()` | Convenience: `c.context()["user_instructions"]` |
 | `c.callback_info()` | Convenience: `c.context()["callback"]` (or `None`) |
@@ -47,6 +47,8 @@ c = nrflo_sdk.client()
 | `c.workflow_status()` | Convenience: `c.context()["workflow_status"]` — raw instance status string |
 | `c.workflow_final_result()` | Convenience: `c.context()["workflow_final_result"]` — session finding summary |
 | `c.failure_reason()` | Convenience: `c.context()["failure_reason"]` — reason from `_failure_reason` finding |
+| `c.external_id()` | Convenience: `c.context()["external_id"]` — `external_id` from the workflow instance ("" if unset) |
+| `c.external_context()` | Convenience: `c.context()["external_context"]` — `external_context` from the workflow instance ("" if unset) |
 | `c.skip(tag)` | Forwards to the `workflow.skip` socket method |
 | `c.log(type, message, payload=None)` | Insert a message row via `agent.log`; no project required. `type` defaults to `"text"` — accepted values: `text`, `tool`, `subagent`, `skill`, `user_input`, `error`, `result`. `payload` is an optional Python value serialised to JSON. Output appears in the Logs UI Messages tab and server log. |
 | `c.notification()` | Cached `_Notification` parsed from `NRFLO_NOTIFY_PAYLOAD_JSON`. Raises `NrfloError` if env var is missing or empty. No socket call. |

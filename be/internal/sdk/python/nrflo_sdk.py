@@ -399,6 +399,12 @@ class Client:
     def failure_reason(self) -> str:
         return self.context().get("failure_reason", "")
 
+    def external_id(self) -> str:
+        return self.context().get("external_id", "")
+
+    def external_context(self) -> str:
+        return self.context().get("external_context", "")
+
     def skip(self, tag: str):
         _check(self._conn.send({
             "id": str(uuid.uuid4()), "method": "workflow.skip",

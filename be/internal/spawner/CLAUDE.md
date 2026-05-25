@@ -120,7 +120,7 @@ Full variable list (`${AGENT}`, `${TICKET_ID}`, `${MODEL}`, `#{FINDINGS:...}`, `
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found). Both use the same `EnsureStageDir`/`Materialize` helpers as NRF_ARTIFACTS_DIR injection.
 
-`SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars, before conditional DB fetches.
+`SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars, before conditional DB fetches. `${EXTERNAL_ID}` and `${EXTERNAL_CONTEXT}` are automatically injected from the workflow instance (empty string when unset).
 
 ## Per-project Venv
 
@@ -138,6 +138,8 @@ The orchestrator calls `venvMgr.Ensure(ctx, projectID, projectRoot)` once per wo
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold % |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens |
 | `NRF_ARTIFACTS_DIR` | Absolute path to the pre-materialized artifact stage dir (`$NRFLO_HOME/projects/{projectID}/artifacts/{wfiID}/`) |
+| `NRF_EXTERNAL_ID` | `external_id` from the workflow instance ("" if unset) |
+| `NRF_EXTERNAL_CONTEXT` | `external_context` from the workflow instance ("" if unset) |
 | *(per-project vars)* | `Config.ProjectEnv` entries appended last (last-wins) |
 
 Run `make test-pkg PKG=spawner`.

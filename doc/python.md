@@ -146,7 +146,7 @@ c.findings.get("setup-analyzer", "files_to_modify")
 
 | Method | Description |
 |--------|-------------|
-| `c.context(refresh=False)` | Return 17-key dict (cached; pass `refresh=True` to refetch) |
+| `c.context(refresh=False)` | Return 19-key dict (cached; pass `refresh=True` to refetch) |
 | `c.user_instructions()` | Return user-supplied instructions string ("" if none) |
 | `c.callback_info()` | Return callback dict or `None` |
 | `c.previous_data()` | Return `to_resume` string from a prior session ("" if none) |
@@ -155,6 +155,8 @@ c.findings.get("setup-analyzer", "files_to_modify")
 | `c.workflow_status()` | Return raw workflow instance status string |
 | `c.workflow_final_result()` | Return the run's final-result summary ("" if none) |
 | `c.failure_reason()` | Return the recorded failure reason ("" if none) |
+| `c.external_id()` | Return the workflow instance `external_id` ("" if unset) |
+| `c.external_context()` | Return the workflow instance `external_context` ("" if unset) |
 | `c.skip(tag)` | Add a skip tag to the workflow instance |
 | `c.log(type, message, payload=None)` | Insert a message row visible in the Logs UI Messages tab |
 
@@ -182,6 +184,8 @@ c.findings.get("setup-analyzer", "files_to_modify")
 | `workflow_result` | `"pass"`, `"fail"`, or `""` (derived from status) |
 | `workflow_final_result` | Final-result summary ("" if none) |
 | `failure_reason` | Recorded failure reason ("" if none) |
+| `external_id` | Workflow instance `external_id` ("" if unset) |
+| `external_context` | Workflow instance `external_context` ("" if unset) |
 
 ---
 

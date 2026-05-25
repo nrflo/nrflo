@@ -98,7 +98,7 @@ func (s *Server) handleUpdateCLIModel(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.Contains(err.Error(), "invalid reasoning_effort") ||
 			strings.Contains(err.Error(), "only supported on Opus 4.7") ||
-			strings.Contains(err.Error(), "only reasoning_effort and override_system_prompt can be updated on built-in models") {
+			strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}

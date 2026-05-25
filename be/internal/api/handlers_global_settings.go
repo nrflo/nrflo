@@ -55,6 +55,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	claudeSysPromptOverrideVal, err := svc.Get("claude_system_prompt_override_enabled")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	observerEnabled, err := svc.GetExperimentalObserverEnabled()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -77,15 +83,16 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := map[string]interface{}{
-		"low_consumption_mode":          val == "true",
-		"context_save_via_agent":        contextSaveViaAgentVal == "true",
-		"simplified_agents_graph":       simplifiedAgentsGraphVal == "true",
-		"experimental":                  experimentalVal == "true",
-		"api_mode_enabled":              apiModeVal == "true",
-		"experimental_observer_enabled": observerEnabled,
-		"observer_system_context":       observerSysCtx,
-		"observer_provider":             observerProvider,
-		"observer_model":                observerModel,
+		"low_consumption_mode":                  val == "true",
+		"context_save_via_agent":                contextSaveViaAgentVal == "true",
+		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
+		"experimental":                          experimentalVal == "true",
+		"api_mode_enabled":                      apiModeVal == "true",
+		"claude_system_prompt_override_enabled": claudeSysPromptOverrideVal == "true",
+		"experimental_observer_enabled":         observerEnabled,
+		"observer_system_context":               observerSysCtx,
+		"observer_provider":                     observerProvider,
+		"observer_model":                        observerModel,
 	}
 	for _, ms := range menuSettings {
 		v, err := boolWithDefault(svc, ms.key, ms.def)
@@ -117,17 +124,18 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 // PATCH /api/v1/settings
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		LowConsumptionMode          *bool           `json:"low_consumption_mode"`
-		ContextSaveViaAgent         *bool           `json:"context_save_via_agent"`
-		SimplifiedAgentsGraph       *bool           `json:"simplified_agents_graph"`
-		Experimental                *bool           `json:"experimental"`
-		APIModeEnabled              *bool           `json:"api_mode_enabled"`
-		StallStartTimeoutSec        json.RawMessage `json:"stall_start_timeout_sec"`
-		StallRunningTimeoutSec      json.RawMessage `json:"stall_running_timeout_sec"`
-		ExperimentalObserverEnabled *bool           `json:"experimental_observer_enabled"`
-		ObserverSystemContext       *string         `json:"observer_system_context"`
-		ObserverProvider            *string         `json:"observer_provider"`
-		ObserverModel               *string         `json:"observer_model"`
+		LowConsumptionMode                *bool           `json:"low_consumption_mode"`
+		ContextSaveViaAgent               *bool           `json:"context_save_via_agent"`
+		SimplifiedAgentsGraph             *bool           `json:"simplified_agents_graph"`
+		Experimental                      *bool           `json:"experimental"`
+		APIModeEnabled                    *bool           `json:"api_mode_enabled"`
+		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
+		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
+		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
+		ExperimentalObserverEnabled       *bool           `json:"experimental_observer_enabled"`
+		ObserverSystemContext             *string         `json:"observer_system_context"`
+		ObserverProvider                  *string         `json:"observer_provider"`
+		ObserverModel                     *string         `json:"observer_model"`
 		menuPatchFields
 	}
 	if err := readJSON(r, &req); err != nil {
@@ -187,6 +195,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("api_mode_enabled", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.ClaudeSystemPromptOverrideEnabled != nil {
+		val := "false"
+		if *req.ClaudeSystemPromptOverrideEnabled {
+			val = "true"
+		}
+		if err := svc.Set("claude_system_prompt_override_enabled", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

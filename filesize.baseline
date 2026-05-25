@@ -115,7 +115,7 @@ be/internal/service/chain_order_test.go	413
 be/internal/service/chain_preview_test.go	343
 be/internal/service/chain_remove_test.go	425
 be/internal/service/chain_test.go	723
-be/internal/service/cli_model.go	392
+be/internal/service/cli_model.go	375
 be/internal/service/cli_model_test.go	629
 be/internal/service/daily_stats_test.go	604
 be/internal/service/default_template_type_test.go	362
@@ -187,7 +187,6 @@ ui/src/components/git/DiffViewer.test.tsx	347
 ui/src/components/interactive/InteractiveSessionsTray.test.tsx	309
 ui/src/components/layout/DailyStats.test.tsx	506
 ui/src/components/layout/Sidebar.test.tsx	687
-ui/src/components/settings/GlobalSettingsSection.test.tsx	307
 ui/src/components/settings/ProjectForm.test.tsx	305
 ui/src/components/tickets/TicketCard.test.tsx	310
 ui/src/components/ui/TicketSearchDropdown.test.tsx	326

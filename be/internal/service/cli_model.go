@@ -52,7 +52,7 @@ func NewCLIModelService(pool *db.Pool, clk clock.Clock) *CLIModelService {
 // List retrieves all CLI models ordered by id
 func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, override_system_prompt, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		ORDER BY id`)
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 // ListEnabled retrieves only enabled CLI models ordered by id
 func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, override_system_prompt, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE enabled = 1
 		ORDER BY id`)
@@ -97,15 +97,15 @@ func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
 // Get retrieves a single CLI model by id (case-insensitive)
 func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 	var createdAt, updatedAt string
-	var readOnly, enabled, overrideSysPrompt int
+	var readOnly, enabled int
 	m := &model.CLIModel{}
 
 	err := s.pool.QueryRow(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, override_system_prompt, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled, &overrideSysPrompt,
+		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -117,7 +117,6 @@ func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 
 	m.ReadOnly = readOnly == 1
 	m.Enabled = enabled == 1
-	m.OverrideSystemPrompt = overrideSysPrompt == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return m, nil
@@ -149,15 +148,10 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	id := strings.ToLower(req.ID)
 
-	overrideSysPromptInt := 0
-	if req.OverrideSystemPrompt {
-		overrideSysPromptInt = 1
-	}
-
 	_, err := s.pool.Exec(`
-		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, override_system_prompt, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
-		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, contextLength, overrideSysPromptInt, now, now,
+		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, contextLength, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -168,17 +162,16 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 
 	ts, _ := time.Parse(time.RFC3339Nano, now)
 	return &model.CLIModel{
-		ID:                   id,
-		CLIType:              req.CLIType,
-		DisplayName:          req.DisplayName,
-		MappedModel:          req.MappedModel,
-		ReasoningEffort:      req.ReasoningEffort,
-		ContextLength:        contextLength,
-		ReadOnly:             false,
-		Enabled:              true,
-		OverrideSystemPrompt: req.OverrideSystemPrompt,
-		CreatedAt:            ts,
-		UpdatedAt:            ts,
+		ID:              id,
+		CLIType:         req.CLIType,
+		DisplayName:     req.DisplayName,
+		MappedModel:     req.MappedModel,
+		ReasoningEffort: req.ReasoningEffort,
+		ContextLength:   contextLength,
+		ReadOnly:        false,
+		Enabled:         true,
+		CreatedAt:       ts,
+		UpdatedAt:       ts,
 	}, nil
 }
 
@@ -191,7 +184,7 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 
 	if current.ReadOnly {
 		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil {
-			return nil, fmt.Errorf("only reasoning_effort and override_system_prompt can be updated on built-in models")
+			return nil, fmt.Errorf("only reasoning_effort can be updated on built-in models")
 		}
 	}
 
@@ -241,15 +234,6 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 		updates = append(updates, "enabled = ?")
 		args = append(args, enabledInt)
 	}
-	if req.OverrideSystemPrompt != nil {
-		v := 0
-		if *req.OverrideSystemPrompt {
-			v = 1
-		}
-		updates = append(updates, "override_system_prompt = ?")
-		args = append(args, v)
-	}
-
 	if len(updates) == 0 {
 		return s.Get(id)
 	}
@@ -372,11 +356,11 @@ func (s *CLIModelService) ModelInUseCheck(id string) error {
 func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
 	m := &model.CLIModel{}
 	var createdAt, updatedAt string
-	var readOnly, enabled, overrideSysPrompt int
+	var readOnly, enabled int
 
 	err := rows.Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled, &overrideSysPrompt,
+		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err != nil {
@@ -385,7 +369,6 @@ func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
 
 	m.ReadOnly = readOnly == 1
 	m.Enabled = enabled == 1
-	m.OverrideSystemPrompt = overrideSysPrompt == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	return m, nil

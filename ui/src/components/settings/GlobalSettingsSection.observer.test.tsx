@@ -22,6 +22,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
     api_mode_enabled: false,
+    claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
     context_save_via_agent: false,
     simplified_agents_graph: false,
@@ -50,8 +51,8 @@ describe('GlobalSettingsSection — observer settings', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental_observer_enabled: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    // api_mode[0], low_consumption[1], context_save[2], simplified_graph[3], experimental[4], observer_mode[5]
-    expect(toggles[5]).toHaveAttribute('aria-checked', 'false')
+    // api_mode[0], system_prompt_override[1], low_consumption[2], context_save[3], simplified_graph[4], experimental[5], observer_mode[6]
+    expect(toggles[6]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Observer mode')).toBeInTheDocument()
   })
 
@@ -69,7 +70,7 @@ describe('GlobalSettingsSection — observer settings', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[5])
+    await user.click(toggles[6])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental_observer_enabled: true })
@@ -83,7 +84,7 @@ describe('GlobalSettingsSection — observer settings', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[5])
+    await user.click(toggles[6])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental_observer_enabled: false })

@@ -44,7 +44,6 @@ vi.mock('./CLIModelForm', () => ({
     display_name: '',
     mapped_model: '',
     reasoning_effort: '',
-    override_system_prompt: false,
     context_length: '200000',
   },
 }))
@@ -59,7 +58,6 @@ function makeModel(overrides: Partial<CLIModel> = {}): CLIModel {
     display_name: 'Sonnet 4.6',
     mapped_model: 'claude-sonnet-4-6',
     reasoning_effort: '',
-    override_system_prompt: false,
     context_length: 200000,
     read_only: false,
     enabled: true,
@@ -221,9 +219,9 @@ describe('ProviderModelsList', () => {
     })
   })
 
-  it('saving a read-only built-in claude model sends override_system_prompt alongside reasoning_effort', async () => {
+  it('saving a read-only built-in claude model sends only reasoning_effort', async () => {
     vi.mocked(useCLIModels).mockReturnValue({
-      data: [makeModel({ id: 'opus_4_7', read_only: true, override_system_prompt: true })],
+      data: [makeModel({ id: 'opus_4_7', read_only: true })],
       isLoading: false,
       error: null,
     } as ReturnType<typeof useCLIModels>)
@@ -237,16 +235,15 @@ describe('ProviderModelsList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', {
-        reasoning_effort: '',
-        override_system_prompt: true,
-      })
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', { reasoning_effort: '' })
     })
+    const payload = vi.mocked(cliModelsApi.updateCLIModel).mock.calls[0][1]
+    expect(payload).not.toHaveProperty('override_system_prompt')
   })
 
-  it('saving an editable claude model includes override_system_prompt in the full payload', async () => {
+  it('saving an editable claude model sends the full payload without override_system_prompt', async () => {
     vi.mocked(useCLIModels).mockReturnValue({
-      data: [makeModel({ id: 'my-model', read_only: false, override_system_prompt: true })],
+      data: [makeModel({ id: 'my-model', read_only: false })],
       isLoading: false,
       error: null,
     } as ReturnType<typeof useCLIModels>)
@@ -261,8 +258,14 @@ describe('ProviderModelsList', () => {
     await waitFor(() => {
       expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith(
         'my-model',
-        expect.objectContaining({ override_system_prompt: true })
+        expect.objectContaining({
+          display_name: 'Sonnet 4.6',
+          mapped_model: 'claude-sonnet-4-6',
+          context_length: 200000,
+        })
       )
     })
+    const payload = vi.mocked(cliModelsApi.updateCLIModel).mock.calls[0][1]
+    expect(payload).not.toHaveProperty('override_system_prompt')
   })
 })

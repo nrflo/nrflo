@@ -45,6 +45,7 @@ var globalSettingsBoolFields = []string{
 	"simplified_agents_graph",
 	"experimental",
 	"api_mode_enabled",
+	"claude_system_prompt_override_enabled",
 }
 
 // TestGlobalSettings_BoolFields exercises the shared bool-field code path for

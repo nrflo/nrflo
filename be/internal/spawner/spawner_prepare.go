@@ -368,7 +368,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
-	// For Claude with OverrideSystemPrompt, write the system-prompt injectable to a
+	// For Claude with the system-prompt override on, write the system-prompt injectable to a
 	// temp file for --system-prompt-file (overrides the default system prompt).
 	var systemPromptOverrideFilePath string
 	if systemPromptOverride != "" && adapter.SupportsSystemPromptFile() {

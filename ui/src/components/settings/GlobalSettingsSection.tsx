@@ -33,6 +33,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const systemPromptOverrideMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ claude_system_prompt_override_enabled: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const toggleMutation = useMutation({
     mutationFn: (val: boolean) => updateGlobalSettings({ low_consumption_mode: val }),
     onSuccess: () => {
@@ -119,6 +126,22 @@ export function GlobalSettingsSection() {
                 checked={settings.api_mode_enabled}
                 onChange={(val) => apiModeMutation.mutate(val)}
                 disabled={apiModeMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Override Claude system prompt</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Replaces the default Claude Code system prompt with the system-prompt injectable
+                  (edit it under Settings → Default Templates); the completion-contract suffix is
+                  still appended
+                </p>
+              </div>
+              <Toggle
+                checked={settings.claude_system_prompt_override_enabled}
+                onChange={(val) => systemPromptOverrideMutation.mutate(val)}
+                disabled={systemPromptOverrideMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

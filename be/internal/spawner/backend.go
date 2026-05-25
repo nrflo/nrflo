@@ -53,7 +53,7 @@ type prepResult struct {
 	opts                     SpawnOptions
 	promptFile               string
 	suffixFile               string // temp file for --append-system-prompt-file (Claude only); empty when unused
-	systemPromptOverrideFile string // temp file for --system-prompt-file (Claude only, OverrideSystemPrompt); empty when unused
+	systemPromptOverrideFile string // temp file for --system-prompt-file (Claude only, when the global system-prompt override is on); empty when unused
 	prompt                   string
 	phase                    string
 

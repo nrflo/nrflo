@@ -221,7 +221,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 		prompt = "You are in an interactive session. The user will guide the work directly.\n" +
 			"When the user is done, they will exit the session.\n\n" + tmpl
 
-		// Write system-prompt override to a temp file when the model has OverrideSystemPrompt set.
+		// Write system-prompt override to a temp file when the model is Claude and the override setting is on.
 		if systemPromptOverride != "" {
 			of, ofErr := os.CreateTemp("", "nrf-interactive-system-prompt-*.md")
 			if ofErr != nil {

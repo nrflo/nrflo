@@ -8,15 +8,20 @@ import (
 	"be/internal/spawner"
 )
 
-// TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags verifies that when
-// modelConfigs contains a claude model with OverrideSystemPrompt=true, buildInteractivePtyArgs
-// in interactive (non-plan) mode emits both --system-prompt-file and --append-system-prompt-file.
-func TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags(t *testing.T) {
+// TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags verifies that when
+// the global claude_system_prompt_override_enabled setting is on and the L0 model is a
+// claude model, buildInteractivePtyArgs in interactive (non-plan) mode emits both
+// --system-prompt-file and --append-system-prompt-file.
+func TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
 	env.createTicket(t, "TKT-PTA-OVR", "buildInteractivePtyArgs override test")
 	wfiID := env.initWorkflow(t, "TKT-PTA-OVR")
 	wi := env.getWorkflowInstance(t, wfiID)
+
+	if err := env.pool.SetConfig("claude_system_prompt_override_enabled", "true"); err != nil {
+		t.Fatalf("SetConfig: %v", err)
+	}
 
 	svcWf := service.SpawnerWorkflowDef{
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
@@ -25,7 +30,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags(t *testing.
 		"analyzer": {Model: "opus_4_7"},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", OverrideSystemPrompt: true, MappedModel: "claude-opus-4-7"},
+		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{
@@ -52,7 +57,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags(t *testing.
 
 	argsStr := strings.Join(args, " ")
 	if !strings.Contains(argsStr, "--system-prompt-file") {
-		t.Errorf("args should contain --system-prompt-file when OverrideSystemPrompt=true; got: %v", args)
+		t.Errorf("args should contain --system-prompt-file when the override setting is on; got: %v", args)
 	}
 	if !strings.Contains(argsStr, "--append-system-prompt-file") {
 		t.Errorf("args should contain --append-system-prompt-file; got: %v", args)
@@ -66,15 +71,19 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_EmitsBothFlags(t *testing.
 	}
 }
 
-// TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse verifies that when
-// OverrideSystemPrompt=false, --system-prompt-file is NOT emitted but
-// --append-system-prompt-file is still present.
-func TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse(t *testing.T) {
+// TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse verifies that when
+// the global claude_system_prompt_override_enabled setting is off (stored false),
+// --system-prompt-file is NOT emitted but --append-system-prompt-file is still present.
+func TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
 	env.createTicket(t, "TKT-PTA-NOV", "buildInteractivePtyArgs no-override test")
 	wfiID := env.initWorkflow(t, "TKT-PTA-NOV")
 	wi := env.getWorkflowInstance(t, wfiID)
+
+	if err := env.pool.SetConfig("claude_system_prompt_override_enabled", "false"); err != nil {
+		t.Fatalf("SetConfig: %v", err)
+	}
 
 	svcWf := service.SpawnerWorkflowDef{
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
@@ -83,7 +92,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse(t *testing.T) 
 		"analyzer": {Model: "opus_4_7"},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", OverrideSystemPrompt: false, MappedModel: "claude-opus-4-7"},
+		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{
@@ -114,7 +123,7 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse(t *testing.T) 
 	parts := args
 	for i, p := range parts {
 		if p == "--system-prompt-file" {
-			t.Errorf("args[%d]=%q: --system-prompt-file should not be emitted when OverrideSystemPrompt=false; args: %v", i, p, args)
+			t.Errorf("args[%d]=%q: --system-prompt-file should not be emitted when the override setting is off; args: %v", i, p, args)
 		}
 	}
 	if !strings.Contains(argsStr, "--append-system-prompt-file") {
@@ -123,7 +132,8 @@ func TestBuildInteractivePtyArgs_OverrideSystemPrompt_ToggleFalse(t *testing.T) 
 }
 
 // TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile verifies that in plan mode,
-// --system-prompt-file is never emitted (plan mode skips template loading entirely).
+// --system-prompt-file is never emitted (plan mode skips template loading entirely),
+// even with the global claude_system_prompt_override_enabled setting on.
 func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
@@ -131,11 +141,15 @@ func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
 	wfiID := env.initWorkflow(t, "TKT-PTA-PM")
 	wi := env.getWorkflowInstance(t, wfiID)
 
+	if err := env.pool.SetConfig("claude_system_prompt_override_enabled", "true"); err != nil {
+		t.Fatalf("SetConfig: %v", err)
+	}
+
 	svcWf := service.SpawnerWorkflowDef{
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", OverrideSystemPrompt: true, MappedModel: "claude-opus-4-7"},
+		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{

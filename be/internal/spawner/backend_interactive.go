@@ -82,7 +82,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		WorkDir:                  workDir,
 		Env:                      env,
 		SystemPromptFile:         prep.suffixFile,               // non-empty for Claude (written by prepareSpawn)
-		SystemPromptOverrideFile: prep.systemPromptOverrideFile, // non-empty for Claude with OverrideSystemPrompt
+		SystemPromptOverrideFile: prep.systemPromptOverrideFile, // non-empty for Claude when the system-prompt override is on
 		SettingsJSON:             settingsJSON,
 		CodexHome:                extras.CodexHome,
 		Prompt:                   prep.prompt, // Codex pre-loads via argv; other adapters ignore

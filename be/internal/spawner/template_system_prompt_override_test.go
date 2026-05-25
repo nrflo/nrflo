@@ -7,25 +7,48 @@ import (
 	"github.com/google/uuid"
 )
 
+// The former per-model toggle was replaced by the global
+// claude_system_prompt_override_enabled setting (seeded false by migration
+// 000130, the override body re-seeded by migration 000129). systemPromptOverrideFor
+// now gates on CLIType=="claude" AND a fresh spawn-time read of that global key.
+
+// setSysPromptOverride flips the global claude_system_prompt_override_enabled key
+// on the test pool. Passing on=false explicitly stores "false" (distinct from unset).
+func setSysPromptOverride(t *testing.T, env *spawnerTestEnv, on bool) {
+	t.Helper()
+	val := "false"
+	if on {
+		val = "true"
+	}
+	if err := env.pool.SetConfig("claude_system_prompt_override_enabled", val); err != nil {
+		t.Fatalf("SetConfig(claude_system_prompt_override_enabled): %v", err)
+	}
+}
+
+// claudeOverrideSpawner builds a template-only Spawner backed by env.pool with the
+// given ModelConfigs map.
+func claudeOverrideSpawner(env *spawnerTestEnv, configs map[string]ModelConfig) *Spawner {
+	return &Spawner{
+		config: Config{
+			DataPath:     env.dbPath,
+			Pool:         env.pool,
+			ModelConfigs: configs,
+		},
+	}
+}
+
 // TestLoadTemplate_SystemPromptOverride_ClaudeWithToggle verifies that the 3rd return
-// value of loadTemplate is non-empty when the model has CLIType="claude" and
-// OverrideSystemPrompt=true (seeded by migration 000126 injectable "system-prompt").
+// value of loadTemplate is non-empty when the model has CLIType="claude" and the
+// global claude_system_prompt_override_enabled setting is on.
 func TestLoadTemplate_SystemPromptOverride_ClaudeWithToggle(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
 	ticketID := "SPO-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
 	createAgentDef(t, env, "analyzer", "Test body")
+	setSysPromptOverride(t, env, true)
 
-	sp := &Spawner{
-		config: Config{
-			DataPath: env.dbPath,
-			Pool:     env.pool,
-			ModelConfigs: map[string]ModelConfig{
-				"sonnet": {CLIType: "claude", OverrideSystemPrompt: true},
-			},
-		},
-	}
+	sp := claudeOverrideSpawner(env, map[string]ModelConfig{"sonnet": {CLIType: "claude"}})
 
 	body, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
 		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
@@ -36,200 +59,153 @@ func TestLoadTemplate_SystemPromptOverride_ClaudeWithToggle(t *testing.T) {
 		t.Error("body should not be empty")
 	}
 	if override == "" {
-		t.Error("systemPromptOverride should be non-empty for CLIType=claude with OverrideSystemPrompt=true")
+		t.Error("systemPromptOverride should be non-empty for claude with the global toggle on")
 	}
-	// Suffix must still be present and correct regardless of override setting
+	// Suffix must still be present and correct regardless of override setting.
 	if suffix == "" || !strings.Contains(suffix, "Completion Contract") {
 		t.Errorf("suffix should contain 'Completion Contract', got: %q", suffix)
 	}
 }
 
-// TestLoadTemplate_SystemPromptOverride_ClaudeToggleFalse verifies that the 3rd return
-// value is empty when CLIType="claude" but OverrideSystemPrompt=false.
-func TestLoadTemplate_SystemPromptOverride_ClaudeToggleFalse(t *testing.T) {
+// TestLoadTemplate_SystemPromptOverride_Gating table-tests every gating combination
+// of the global key × CLIType × ModelConfigs presence at the loadTemplate boundary.
+// The suffix (system-prompt-suffix injectable) must always be present.
+func TestLoadTemplate_SystemPromptOverride_Gating(t *testing.T) {
 	t.Parallel()
-	env := newSpawnerTestEnv(t)
-	ticketID := "SPO-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Test body")
 
-	sp := &Spawner{
-		config: Config{
-			DataPath: env.dbPath,
-			Pool:     env.pool,
-			ModelConfigs: map[string]ModelConfig{
-				"sonnet": {CLIType: "claude", OverrideSystemPrompt: false},
-			},
+	tests := []struct {
+		name         string
+		keyState     string // "true", "false", or "" (unset)
+		configs      map[string]ModelConfig
+		modelID      string
+		wantNonEmpty bool
+	}{
+		{
+			name:         "claude+key=true → non-empty",
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
+			modelID:      "claude:sonnet",
+			wantNonEmpty: true,
+		},
+		{
+			name:         "claude+key=false → empty",
+			keyState:     "false",
+			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
+			modelID:      "claude:sonnet",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "claude+key unset → empty",
+			keyState:     "",
+			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
+			modelID:      "claude:sonnet",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "codex+key=true → empty (non-claude)",
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"codex_gpt_high": {CLIType: "codex"}},
+			modelID:      "codex:codex_gpt_high",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "model absent from configs → empty",
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"other-model": {CLIType: "claude"}},
+			modelID:      "claude:sonnet",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "nil configs → empty",
+			keyState:     "true",
+			configs:      nil,
+			modelID:      "claude:sonnet",
+			wantNonEmpty: false,
 		},
 	}
 
-	_, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
-	if err != nil {
-		t.Fatalf("loadTemplate failed: %v", err)
-	}
-	if override != "" {
-		t.Errorf("systemPromptOverride should be empty when OverrideSystemPrompt=false, got: %q", override)
-	}
-	if suffix == "" || !strings.Contains(suffix, "Completion Contract") {
-		t.Errorf("suffix should still contain 'Completion Contract', got: %q", suffix)
-	}
-}
-
-// TestLoadTemplate_SystemPromptOverride_NonClaudeCLIType verifies that the 3rd return
-// value is empty when the model has a non-claude CLIType, even if OverrideSystemPrompt=true.
-func TestLoadTemplate_SystemPromptOverride_NonClaudeCLIType(t *testing.T) {
-	t.Parallel()
-	env := newSpawnerTestEnv(t)
-	ticketID := "SPO-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Test body")
-
-	tests := []struct {
-		name    string
-		cliType string
-		model   string
-		modelID string
-	}{
-		{"codex", "codex", "codex_gpt_high", "codex:codex_gpt_high"},
-	}
-
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			sp := &Spawner{
-				config: Config{
-					DataPath: env.dbPath,
-					Pool:     env.pool,
-					ModelConfigs: map[string]ModelConfig{
-						tt.model: {CLIType: tt.cliType, OverrideSystemPrompt: true},
-					},
-				},
+			t.Parallel()
+			env := newSpawnerTestEnv(t)
+			ticketID := "SPO-" + uuid.New().String()[:6]
+			env.initWorkflow(t, ticketID)
+			createAgentDef(t, env, "analyzer", "Test body")
+			if tt.keyState != "" {
+				setSysPromptOverride(t, env, tt.keyState == "true")
 			}
 
+			sp := claudeOverrideSpawner(env, tt.configs)
 			_, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
 				"p", "c", "test", tt.modelID, "", "", nil, 0)
 			if err != nil {
 				t.Fatalf("loadTemplate failed: %v", err)
 			}
-			if override != "" {
-				t.Errorf("systemPromptOverride should be empty for CLIType=%q, got: %q", tt.cliType, override)
+			if tt.wantNonEmpty && override == "" {
+				t.Errorf("systemPromptOverride = empty, want non-empty")
 			}
+			if !tt.wantNonEmpty && override != "" {
+				t.Errorf("systemPromptOverride = %q, want empty", override)
+			}
+			// The suffix is independent of the override toggle.
 			if suffix == "" || !strings.Contains(suffix, "Completion Contract") {
-				t.Errorf("suffix should still be present, got: %q", suffix)
+				t.Errorf("suffix should contain 'Completion Contract', got: %q", suffix)
 			}
 		})
 	}
 }
 
-// TestLoadTemplate_SystemPromptOverride_ModelAbsentFromConfigs verifies that the 3rd
-// return value is empty when the model is not present in ModelConfigs at all.
-func TestLoadTemplate_SystemPromptOverride_ModelAbsentFromConfigs(t *testing.T) {
+// TestSystemPromptOverrideFor_GatesOnGlobalKeyAndCLIType exercises the helper directly
+// for the same gating matrix (no template body / workflow needed).
+func TestSystemPromptOverrideFor_GatesOnGlobalKeyAndCLIType(t *testing.T) {
 	t.Parallel()
-	env := newSpawnerTestEnv(t)
-	ticketID := "SPO-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Test body")
-
-	sp := &Spawner{
-		config: Config{
-			DataPath: env.dbPath,
-			Pool:     env.pool,
-			ModelConfigs: map[string]ModelConfig{
-				"other-model": {CLIType: "claude", OverrideSystemPrompt: true},
-			},
-		},
-	}
-
-	// "sonnet" is absent from ModelConfigs
-	_, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
-	if err != nil {
-		t.Fatalf("loadTemplate failed: %v", err)
-	}
-	if override != "" {
-		t.Errorf("systemPromptOverride should be empty when model absent from ModelConfigs, got: %q", override)
-	}
-	if suffix == "" || !strings.Contains(suffix, "Completion Contract") {
-		t.Errorf("suffix should still be present, got: %q", suffix)
-	}
-}
-
-// TestLoadTemplate_SystemPromptOverride_NilModelConfigs verifies that the 3rd return
-// value is empty when ModelConfigs is nil (no DB-sourced config).
-func TestLoadTemplate_SystemPromptOverride_NilModelConfigs(t *testing.T) {
-	t.Parallel()
-	env := newSpawnerTestEnv(t)
-	ticketID := "SPO-" + uuid.New().String()[:6]
-	env.initWorkflow(t, ticketID)
-	createAgentDef(t, env, "analyzer", "Test body")
-
-	sp := env.newSpawner() // no ModelConfigs set
-
-	_, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
-	if err != nil {
-		t.Fatalf("loadTemplate failed: %v", err)
-	}
-	if override != "" {
-		t.Errorf("systemPromptOverride should be empty with nil ModelConfigs, got: %q", override)
-	}
-	if suffix == "" || !strings.Contains(suffix, "Completion Contract") {
-		t.Errorf("suffix should still be present, got: %q", suffix)
-	}
-}
-
-// TestSystemPromptOverrideFor_ClaudeWithToggle tests the helper directly for gating logic.
-func TestSystemPromptOverrideFor_ClaudeWithToggle(t *testing.T) {
-	t.Parallel()
-	env := newSpawnerTestEnv(t)
-
-	sp := &Spawner{
-		config: Config{
-			DataPath: env.dbPath,
-			Pool:     env.pool,
-			ModelConfigs: map[string]ModelConfig{
-				"opus_4_7": {CLIType: "claude", OverrideSystemPrompt: true},
-			},
-		},
-	}
-
-	got := sp.systemPromptOverrideFor("opus_4_7", nil)
-	if got == "" {
-		t.Error("systemPromptOverrideFor should return non-empty for claude+OverrideSystemPrompt=true")
-	}
-}
-
-// TestSystemPromptOverrideFor_GatesOnCLITypeAndToggle table-tests all gating combinations.
-func TestSystemPromptOverrideFor_GatesOnCLITypeAndToggle(t *testing.T) {
-	t.Parallel()
-	env := newSpawnerTestEnv(t)
 
 	tests := []struct {
 		name         string
+		keyState     string // "true", "false", or "" (unset)
 		configs      map[string]ModelConfig
 		model        string
 		wantNonEmpty bool
 	}{
 		{
-			name:         "claude+override=true → non-empty",
-			configs:      map[string]ModelConfig{"m": {CLIType: "claude", OverrideSystemPrompt: true}},
-			model:        "m",
+			name:         "claude+key=true → non-empty",
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
+			model:        "opus_4_7",
 			wantNonEmpty: true,
 		},
 		{
-			name:         "claude+override=false → empty",
-			configs:      map[string]ModelConfig{"m": {CLIType: "claude", OverrideSystemPrompt: false}},
+			name:         "claude+key=false → empty",
+			keyState:     "false",
+			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
+			model:        "opus_4_7",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "claude+key unset → empty",
+			keyState:     "",
+			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
+			model:        "opus_4_7",
+			wantNonEmpty: false,
+		},
+		{
+			name:         "codex+key=true → empty",
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"m": {CLIType: "codex"}},
 			model:        "m",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "model absent → empty",
-			configs:      map[string]ModelConfig{"other": {CLIType: "claude", OverrideSystemPrompt: true}},
+			keyState:     "true",
+			configs:      map[string]ModelConfig{"other": {CLIType: "claude"}},
 			model:        "m",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "nil configs → empty",
+			keyState:     "true",
 			configs:      nil,
 			model:        "m",
 			wantNonEmpty: false,
@@ -237,14 +213,14 @@ func TestSystemPromptOverrideFor_GatesOnCLITypeAndToggle(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			sp := &Spawner{
-				config: Config{
-					DataPath:     env.dbPath,
-					Pool:         env.pool,
-					ModelConfigs: tt.configs,
-				},
+			t.Parallel()
+			env := newSpawnerTestEnv(t)
+			if tt.keyState != "" {
+				setSysPromptOverride(t, env, tt.keyState == "true")
 			}
+			sp := claudeOverrideSpawner(env, tt.configs)
 			got := sp.systemPromptOverrideFor(tt.model, nil)
 			if tt.wantNonEmpty && got == "" {
 				t.Errorf("systemPromptOverrideFor(%q) = empty, want non-empty", tt.model)
@@ -253,5 +229,19 @@ func TestSystemPromptOverrideFor_GatesOnCLITypeAndToggle(t *testing.T) {
 				t.Errorf("systemPromptOverrideFor(%q) = %q, want empty", tt.model, got)
 			}
 		})
+	}
+}
+
+// TestSystemPromptOverrideFor_NilPool guards the nil-pool branch: a Spawner with a
+// claude model config but no pool returns "" rather than panicking.
+func TestSystemPromptOverrideFor_NilPool(t *testing.T) {
+	t.Parallel()
+	sp := &Spawner{
+		config: Config{
+			ModelConfigs: map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
+		},
+	}
+	if got := sp.systemPromptOverrideFor("sonnet", nil); got != "" {
+		t.Errorf("systemPromptOverrideFor with nil pool = %q, want empty", got)
 	}
 }

@@ -14,6 +14,7 @@ vi.mock('@/api/settings', async (importOriginal) => {
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
     api_mode_enabled: false,
+    claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
     context_save_via_agent: false,
     simplified_agents_graph: false,
@@ -30,15 +31,15 @@ describe('GlobalSettingsSection', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    // toggles[0]=api_mode, toggles[1]=low_consumption
-    expect(toggles[1]).toHaveAttribute('aria-checked', 'false')
+    // toggles[0]=api_mode, [1]=system_prompt_override, [2]=low_consumption
+    expect(toggles[2]).toHaveAttribute('aria-checked', 'false')
   })
 
   it('renders toggle reflecting server state (true)', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[1]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[2]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('shows loading state while fetching', () => {
@@ -70,8 +71,8 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    // toggles[1] = low_consumption (toggles[0] = api_mode)
-    await user.click(toggles[1])
+    // toggles[2] = low_consumption ([0]=api_mode, [1]=system_prompt_override)
+    await user.click(toggles[2])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: true })
@@ -85,7 +86,7 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[1])
+    await user.click(toggles[2])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: false })
@@ -216,92 +217,4 @@ describe('GlobalSettingsSection', () => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ stall_running_timeout_sec: 600 })
     })
   })
-
-  it('renders API mode toggle reflecting server state (false)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: false }))
-    renderWithQuery(<GlobalSettingsSection />)
-    const toggles = await screen.findAllByRole('switch')
-    expect(toggles[0]).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByText('Enable API mode')).toBeInTheDocument()
-  })
-
-  it('renders API mode toggle reflecting server state (true)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: true }))
-    renderWithQuery(<GlobalSettingsSection />)
-    const toggles = await screen.findAllByRole('switch')
-    expect(toggles[0]).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('clicking API mode toggle (false→true) calls updateGlobalSettings({ api_mode_enabled: true })', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: false }))
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[0])
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_mode_enabled: true })
-    })
-  })
-
-  it('clicking API mode toggle (true→false) calls updateGlobalSettings({ api_mode_enabled: false })', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_mode_enabled: true }))
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[0])
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_mode_enabled: false })
-    })
-  })
-
-  it('renders Experimental features toggle reflecting server state (false)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: false }))
-    renderWithQuery(<GlobalSettingsSection />)
-    const toggles = await screen.findAllByRole('switch')
-    // toggles[0]=api_mode, [1]=low_consumption, [2]=context_save, [3]=simplified_graph, [4]=experimental
-    expect(toggles[4]).toHaveAttribute('aria-checked', 'false')
-    expect(screen.getByText('Experimental features')).toBeInTheDocument()
-  })
-
-  it('renders Experimental features toggle reflecting server state (true)', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: true }))
-    renderWithQuery(<GlobalSettingsSection />)
-    const toggles = await screen.findAllByRole('switch')
-    expect(toggles[4]).toHaveAttribute('aria-checked', 'true')
-  })
-
-  it('clicking Experimental toggle calls updateGlobalSettings({ experimental: true })', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: false }))
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[4])
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: true })
-    })
-  })
-
-  it('clicking Experimental toggle when true sends false', async () => {
-    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: true }))
-    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
-    renderWithQuery(<GlobalSettingsSection />)
-
-    const user = userEvent.setup()
-    const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[4])
-
-    await waitFor(() => {
-      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: false })
-    })
-  })
-
 })

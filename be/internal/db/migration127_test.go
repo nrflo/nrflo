@@ -61,29 +61,6 @@ func TestMigration127_CheckConstraintRejectsRemovedTypes(t *testing.T) {
 	}
 }
 
-// TestMigration127_OverrideSystemPromptColumnPreserved verifies the table
-// rebuild in migration 127 did not drop the override_system_prompt column
-// that was added by migration 126.
-func TestMigration127_OverrideSystemPromptColumnPreserved(t *testing.T) {
-	pool, err := newMigratedTestPool(t)
-	if err != nil {
-		t.Fatalf("newMigratedTestPool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	cols := tableColumns(t, pool, "cli_models")
-	col, ok := cols["override_system_prompt"]
-	if !ok {
-		t.Fatal("override_system_prompt column missing from cli_models after migration 127")
-	}
-	if col.colType != "INTEGER" {
-		t.Errorf("override_system_prompt colType = %q, want INTEGER", col.colType)
-	}
-	if col.notNull != 1 {
-		t.Errorf("override_system_prompt notNull = %d, want 1", col.notNull)
-	}
-}
-
 // TestMigration127_AllColumnsPresent verifies the full column set is intact
 // after the table rebuild.
 func TestMigration127_AllColumnsPresent(t *testing.T) {
@@ -97,7 +74,7 @@ func TestMigration127_AllColumnsPresent(t *testing.T) {
 	required := []string{
 		"id", "cli_type", "display_name", "mapped_model",
 		"reasoning_effort", "context_length", "read_only",
-		"created_at", "updated_at", "enabled", "override_system_prompt",
+		"created_at", "updated_at", "enabled",
 	}
 	for _, name := range required {
 		if _, ok := cols[name]; !ok {

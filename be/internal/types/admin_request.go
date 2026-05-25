@@ -17,23 +17,21 @@ type DefaultTemplateUpdateRequest struct {
 
 // CLIModelCreateRequest is the request for creating a CLI model
 type CLIModelCreateRequest struct {
-	ID                   string `json:"id"`
-	CLIType              string `json:"cli_type"`
-	DisplayName          string `json:"display_name"`
-	MappedModel          string `json:"mapped_model"`
-	ReasoningEffort      string `json:"reasoning_effort"`
-	ContextLength        int    `json:"context_length"`
-	OverrideSystemPrompt bool   `json:"override_system_prompt"`
+	ID              string `json:"id"`
+	CLIType         string `json:"cli_type"`
+	DisplayName     string `json:"display_name"`
+	MappedModel     string `json:"mapped_model"`
+	ReasoningEffort string `json:"reasoning_effort"`
+	ContextLength   int    `json:"context_length"`
 }
 
 // CLIModelUpdateRequest is the request for updating a CLI model
 type CLIModelUpdateRequest struct {
-	DisplayName          *string `json:"display_name,omitempty"`
-	MappedModel          *string `json:"mapped_model,omitempty"`
-	ReasoningEffort      *string `json:"reasoning_effort,omitempty"`
-	ContextLength        *int    `json:"context_length,omitempty"`
-	Enabled              *bool   `json:"enabled,omitempty"`
-	OverrideSystemPrompt *bool   `json:"override_system_prompt,omitempty"`
+	DisplayName     *string `json:"display_name,omitempty"`
+	MappedModel     *string `json:"mapped_model,omitempty"`
+	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	ContextLength   *int    `json:"context_length,omitempty"`
+	Enabled         *bool   `json:"enabled,omitempty"`
 }
 
 // APIModelCreateRequest is the request for creating an API model

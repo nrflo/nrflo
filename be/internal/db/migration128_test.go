@@ -121,7 +121,9 @@ func TestMigration128_SeededRowsAllEnabled(t *testing.T) {
 }
 
 // TestMigration128_NoOverrideSystemPromptColumn verifies api_models does NOT
-// have an override_system_prompt column (unlike cli_models).
+// have an override_system_prompt column. The per-model toggle was never an
+// api_models concept; the system-prompt override is now the global
+// claude_system_prompt_override_enabled setting.
 func TestMigration128_NoOverrideSystemPromptColumn(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {

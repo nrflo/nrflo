@@ -11,7 +11,7 @@ import (
 // every locked field individually on built-in (read_only=1) rows, plus the
 // happy-path reasoning_effort updates and a regression check for user-owned rows.
 
-const readonlyUpdateErr = "only reasoning_effort and override_system_prompt can be updated on built-in models"
+const readonlyUpdateErr = "only reasoning_effort can be updated on built-in models"
 
 // --- Happy path: reasoning_effort IS editable on read_only rows ---
 

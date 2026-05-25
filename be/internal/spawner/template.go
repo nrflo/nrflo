@@ -207,7 +207,7 @@ func (s *Spawner) resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID 
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
 // Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
 // system-prompt-suffix injectable for --append-system-prompt-file; systemPromptOverride
-// is non-empty only when the model has CLIType=="claude" and OverrideSystemPrompt set.
+// is non-empty only when the model has CLIType=="claude" and claude_system_prompt_override_enabled is on.
 // currentLayer is the agent's layer number (0 for system agents and L0 interactive starts).
 func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars, currentLayer)
@@ -219,7 +219,7 @@ func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, ch
 // currentLayer is the agent's layer number; used to resolve #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS}.
 // Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
 // system-prompt-suffix injectable; systemPromptOverride is non-empty only when the model
-// has CLIType=="claude" and OverrideSystemPrompt set.
+// has CLIType=="claude" and the global claude_system_prompt_override_enabled setting is on.
 func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {

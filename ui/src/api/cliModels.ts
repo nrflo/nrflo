@@ -6,7 +6,6 @@ export interface CLIModel {
   display_name: string
   mapped_model: string
   reasoning_effort: string
-  override_system_prompt: boolean
   context_length: number
   read_only: boolean
   enabled: boolean
@@ -20,7 +19,6 @@ export interface CreateCLIModelRequest {
   display_name: string
   mapped_model: string
   reasoning_effort?: string
-  override_system_prompt?: boolean
   context_length?: number
 }
 
@@ -28,7 +26,6 @@ export interface UpdateCLIModelRequest {
   display_name?: string
   mapped_model?: string
   reasoning_effort?: string
-  override_system_prompt?: boolean
   context_length?: number
   enabled?: boolean
 }

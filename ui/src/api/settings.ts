@@ -2,6 +2,7 @@ import { apiGet, apiPatch } from './client'
 
 export interface GlobalSettings {
   api_mode_enabled: boolean
+  claude_system_prompt_override_enabled: boolean
   low_consumption_mode: boolean
   context_save_via_agent: boolean
   simplified_agents_graph: boolean

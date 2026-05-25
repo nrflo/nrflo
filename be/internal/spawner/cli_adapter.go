@@ -124,7 +124,7 @@ type InteractiveSpawnOptions struct {
 	WorkDir                  string
 	Env                      []string
 	SystemPromptFile         string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
-	SystemPromptOverrideFile string // path to override file; Claude: --system-prompt-file (OverrideSystemPrompt); others: ignored
+	SystemPromptOverrideFile string // path to override file; Claude: --system-prompt-file (system-prompt override); others: ignored
 	SettingsJSON             string // Claude: --settings JSON; others: ignored
 	CodexHome                string // CODEX_HOME dir path; Codex only — ignored by other adapters
 	Prompt                   string // initial user prompt; Codex passes this as argv positional, others ignore
@@ -183,7 +183,7 @@ type SpawnOptions struct {
 	ReasoningEffort          string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
 	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
 	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
-	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only, OverrideSystemPrompt)
+	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only)
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.

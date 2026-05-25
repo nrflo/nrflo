@@ -64,11 +64,10 @@ const (
 // ModelConfig holds DB-sourced model configuration for the spawner.
 // Zero values mean "not configured" — adapters fall back to their hardcoded methods.
 type ModelConfig struct {
-	CLIType              string // "claude", "codex"
-	MappedModel          string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
-	ReasoningEffort      string // "", "high", "medium"
-	ContextLength        int    // 200000, 1000000
-	OverrideSystemPrompt bool   // when true and CLIType=="claude", emit --system-prompt-file from system-prompt injectable
+	CLIType         string // "claude", "codex"
+	MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
+	ReasoningEffort string // "", "high", "medium"
+	ContextLength   int    // 200000, 1000000
 }
 
 // APIModelConfig holds DB-sourced configuration for an API-mode model row.

@@ -1,56 +1,9 @@
 package db
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
-
-// TestMigration126_OverrideSystemPromptColumnSchema verifies migration 000126 adds the
-// override_system_prompt INTEGER NOT NULL DEFAULT 0 column to cli_models.
-func TestMigration126_OverrideSystemPromptColumnSchema(t *testing.T) {
-	pool, err := newMigratedTestPool(t)
-	if err != nil {
-		t.Fatalf("newMigratedTestPool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	cols := tableColumns(t, pool, "cli_models")
-	col, ok := cols["override_system_prompt"]
-	if !ok {
-		t.Fatal("override_system_prompt column missing from cli_models; migration 000126 may not have run")
-	}
-	if col.colType != "INTEGER" {
-		t.Errorf("override_system_prompt colType = %q, want INTEGER", col.colType)
-	}
-	if col.notNull != 1 {
-		t.Errorf("override_system_prompt notNull = %d, want 1", col.notNull)
-	}
-	dflt := fmt.Sprintf("%v", col.dflt)
-	if dflt != "0" {
-		t.Errorf("override_system_prompt default = %q, want \"0\"", dflt)
-	}
-}
-
-// TestMigration126_ExistingRowsDefaultToZero verifies that seeded cli_models rows
-// all have override_system_prompt = 0 after the migration.
-func TestMigration126_ExistingRowsDefaultToZero(t *testing.T) {
-	pool, err := newMigratedTestPool(t)
-	if err != nil {
-		t.Fatalf("newMigratedTestPool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	var count int
-	if err := pool.QueryRow(
-		`SELECT COUNT(*) FROM cli_models WHERE override_system_prompt != 0`,
-	).Scan(&count); err != nil {
-		t.Fatalf("SELECT COUNT: %v", err)
-	}
-	if count != 0 {
-		t.Errorf("found %d cli_models rows with override_system_prompt != 0, want 0", count)
-	}
-}
 
 // TestMigration126_SystemPromptTemplateSeeded verifies the 'system-prompt' injectable
 // default_template row is seeded with correct values.

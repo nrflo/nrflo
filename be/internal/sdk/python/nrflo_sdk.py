@@ -345,6 +345,16 @@ class _Workflow:
             "project": self._proj, "trx": self._trx, "params": params,
         }))
 
+    def skip(self, tag: str, instance_id: str = None):
+        """Add a skip tag to the workflow instance. The tag must be one of the
+        workflow's defined groups; agents in a later layer carrying that tag are
+        skipped (per-agent). Takes effect for layers not yet spawned."""
+        params = {"session_id": self._sid, "instance_id": instance_id or self._iid, "tag": tag}
+        _check(self._conn.send({
+            "id": str(uuid.uuid4()), "method": "workflow.skip",
+            "project": self._proj, "trx": self._trx, "params": params,
+        }))
+
 
 class Client:
     """nrflo script-mode client. Obtain via nrflo_sdk.client()."""

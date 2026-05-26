@@ -109,7 +109,7 @@ func TestPython_SchemaValidationFails(t *testing.T) {
 
 	schema := `{"type":"object","properties":{"q":{"type":"string"}},"required":["q"]}`
 	row := pythonRow("schema-tool", `import json,sys; print(json.dumps({"ok":True}))`, schema, 5)
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{}`))
@@ -153,7 +153,7 @@ func TestPython_Success_StdinStdoutRoundTrip(t *testing.T) {
 
 	code := `import json,sys; d=json.loads(sys.stdin.read()); print(json.dumps({"echo": d["q"]}))`
 	row := pythonRow("echo-tool", code, "", 10)
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{"q":"hi"}`))
@@ -197,7 +197,7 @@ func TestPython_NonZeroExit_StderrSurfaces(t *testing.T) {
 
 	code := `import sys; print("boom", file=sys.stderr); sys.exit(2)`
 	row := pythonRow("fail-tool", code, "", 10)
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{}`))
@@ -229,7 +229,7 @@ func TestPython_Timeout(t *testing.T) {
 
 	code := `import time; time.sleep(5)`
 	row := pythonRow("sleep-tool", code, "", 1)
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{}`))
@@ -273,7 +273,7 @@ func TestPython_Truncates16KB(t *testing.T) {
 
 	code := `import sys; sys.stdout.write("a"*20480); sys.stdout.flush()`
 	row := pythonRow("big-tool", code, "", 10)
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{}`))
@@ -313,7 +313,7 @@ func TestPython_FilePathPreferredOverCode(t *testing.T) {
 		ToolDescription: "test",
 		TimeoutSec:      10,
 	}
-	h := New(row, "", nil)
+	h := New(row, "", "", nil)
 	env := testEnv(t, clk, dispatchRepo, projectID, hub)
 
 	out, isErr, err := h.Invoke(context.Background(), env, json.RawMessage(`{}`))

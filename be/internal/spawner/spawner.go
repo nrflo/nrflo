@@ -74,7 +74,7 @@ func (s *Spawner) loadProjectPythonTools(projectID, _ string) ([]apirun.ToolHand
 	}
 	handlers := make([]apirun.ToolHandler, 0, len(rows))
 	for _, row := range rows {
-		handlers = append(handlers, tools_python.New(row, s.config.PythonPath, s.config.ProjectEnv))
+		handlers = append(handlers, tools_python.New(row, s.config.PythonPath, s.config.SDKDir, s.config.ProjectEnv))
 	}
 	return handlers, nil
 }

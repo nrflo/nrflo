@@ -34,6 +34,7 @@ const (
 type PythonToolHandler struct {
 	row        *model.PythonScript
 	pythonPath string
+	sdkDir     string
 	projectEnv []string
 	schemaOnce sync.Once
 	schema     *jsonschema.Schema
@@ -41,14 +42,16 @@ type PythonToolHandler struct {
 }
 
 // New creates a PythonToolHandler. pythonPath defaults to "python3" when empty,
-// mirroring resolvePythonBin in spawner/backend_script.go.
-func New(row *model.PythonScript, pythonPath string, projectEnv []string) *PythonToolHandler {
+// mirroring resolvePythonBin in spawner/backend_script.go. sdkDir is exported as
+// NRFLO_SDK_DIR so tool scripts can import the python SDK (skipped when empty).
+func New(row *model.PythonScript, pythonPath, sdkDir string, projectEnv []string) *PythonToolHandler {
 	if pythonPath == "" {
 		pythonPath = "python3"
 	}
 	return &PythonToolHandler{
 		row:        row,
 		pythonPath: pythonPath,
+		sdkDir:     sdkDir,
 		projectEnv: projectEnv,
 	}
 }
@@ -187,15 +190,28 @@ func (h *PythonToolHandler) resolveScript() ([]byte, error) {
 	return []byte(h.row.Code), nil
 }
 
-// buildEnv assembles the child process environment. nrflo-controlled vars come
-// first; projectEnv trails so project-supplied values win on key collision.
+// buildEnv assembles the child process environment, mirroring
+// spawner.prepareScriptSpawn: the server env (minus CLAUDECODE) is inherited so
+// the python SDK can be imported (NRFLO_SDK_DIR) and the agent socket resolved
+// (NRFLO_SOCKET / NRFLO_HOME / HOME). nrflo-controlled identity vars override any
+// inherited collisions; projectEnv trails so project-supplied values win.
 func (h *PythonToolHandler) buildEnv(ctx context.Context, env apirun.ToolEnv) []string {
-	e := []string{
-		"NRFLO_PROJECT=" + env.ProjectID,
-		"NRF_SESSION_ID=" + env.SessionID,
-		"NRF_WORKFLOW_INSTANCE_ID=" + env.WorkflowInstanceID,
-		"NRF_TRX=" + logger.TrxFromContext(ctx),
+	base := os.Environ()
+	e := make([]string, 0, len(base)+8)
+	for _, kv := range base {
+		if !strings.HasPrefix(kv, "CLAUDECODE=") {
+			e = append(e, kv)
+		}
+	}
+	e = append(e,
+		"NRFLO_PROJECT="+env.ProjectID,
+		"NRF_SESSION_ID="+env.SessionID,
+		"NRF_WORKFLOW_INSTANCE_ID="+env.WorkflowInstanceID,
+		"NRF_TRX="+logger.TrxFromContext(ctx),
 		"NRF_SPAWNED=1",
+	)
+	if h.sdkDir != "" {
+		e = append(e, "NRFLO_SDK_DIR="+h.sdkDir)
 	}
 	return append(e, h.projectEnv...)
 }

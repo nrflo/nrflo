@@ -86,6 +86,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		SettingsJSON:             settingsJSON,
 		CodexHome:                extras.CodexHome,
 		Prompt:                   prep.prompt, // Codex pre-loads via argv; other adapters ignore
+		NativeToolsCSV:           prep.opts.NativeToolsCSV,
+		MCPConfigJSON:            prep.opts.MCPConfigJSON,
+		AllowedToolsCSV:          prep.opts.AllowedToolsCSV,
 	}
 
 	cmd := b.adapter.BuildInteractiveCommand(opts)

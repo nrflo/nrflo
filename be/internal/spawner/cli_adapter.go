@@ -129,6 +129,9 @@ type InteractiveSpawnOptions struct {
 	CodexHome                string // CODEX_HOME dir path; Codex only — ignored by other adapters
 	Prompt                   string // initial user prompt; Codex passes this as argv positional, others ignore
 	ResumeSessionID          string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand
+	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools
+	MCPConfigJSON            string // Claude only / ignored by non-Claude adapters: JSON passed to --mcp-config (always paired with --strict-mcp-config)
+	AllowedToolsCSV          string // Claude only / ignored by non-Claude adapters: comma-separated tool patterns for --allowedTools
 }
 
 // Sink is a spawner-internal interface the SSE event consumer uses to report
@@ -184,6 +187,9 @@ type SpawnOptions struct {
 	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
 	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
 	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only)
+	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools
+	MCPConfigJSON            string // Claude only / ignored by non-Claude adapters: JSON passed to --mcp-config (always paired with --strict-mcp-config)
+	AllowedToolsCSV          string // Claude only / ignored by non-Claude adapters: comma-separated tool patterns for --allowedTools
 }
 
 // DefaultCLIForModel returns the appropriate CLI name for a model.

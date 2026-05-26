@@ -59,6 +59,15 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.SystemPromptFile != "" {
 		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
 	}
+	if opts.NativeToolsCSV != "" {
+		args = append(args, "--tools", opts.NativeToolsCSV)
+	}
+	if opts.MCPConfigJSON != "" {
+		args = append(args, "--mcp-config", opts.MCPConfigJSON, "--strict-mcp-config")
+	}
+	if opts.AllowedToolsCSV != "" {
+		args = append(args, "--allowedTools", opts.AllowedToolsCSV)
+	}
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir
 	cmd.Env = opts.Env

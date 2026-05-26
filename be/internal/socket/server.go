@@ -84,36 +84,6 @@ type Server struct {
 	running  bool
 }
 
-// WorkflowOrchestrator enables observer agents to trigger and retry workflows via the socket.
-// Nil-safe; pass nil in tests.
-type WorkflowOrchestrator interface {
-	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (instanceID string, err error)
-	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
-	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error
-	ContinueWorkflow(ctx context.Context, projectID, instanceID, instructions string) error
-	FailWorkflow(ctx context.Context, projectID, instanceID, reason string) error
-	Consult(ctx context.Context, callerSessionID, consultantID, question string) (string, error)
-}
-
-// TerminalSignaler dispatches a best-effort kill signal to an active spawner
-// after the socket handler has already written the agent result to the DB.
-// The Handler nil-guards before calling — pass nil in tests.
-type TerminalSignaler interface {
-	RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error
-	// BumpLastMessage resets stall-detection state for the matching proc so
-	// hook-driven activity (PreToolUse/PostToolUse) does not trigger a stall restart.
-	BumpLastMessage(projectID, ticketID, workflow, sessionID string) error
-	// SetLastMessage updates the running proc's in-memory lastMessage so the
-	// periodic "agent status" log line surfaces hook/SSE-delivered content for
-	// interactive CLI agents (whose PTY output is otherwise dropped). Empty
-	// content or unknown session is a no-op.
-	SetLastMessage(projectID, ticketID, workflow, sessionID, content string) error
-	// SignalSessionReady marks the matching proc as TUI-ready, unblocking the
-	// PTY prompt-delivery wait. Best-effort and idempotent — repeated calls,
-	// or calls for unknown sessions, are no-ops.
-	SignalSessionReady(sessionID string) error
-}
-
 // NewServerWithListener creates a socket server with a pre-bound listener from BindListener.
 // dataPath (optional last arg) is the database file path used to construct the ArtifactService.
 func NewServerWithListener(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSignaler, listener net.Listener, socketPath string, dataPath ...string) *Server {
@@ -286,6 +256,7 @@ type Handler struct {
 	wsHub              *ws.Hub
 	signaler           TerminalSignaler     // optional; nil-safe
 	workflowRunner     WorkflowOrchestrator // optional; nil-safe
+	toolDispatcher     ToolDispatcher       // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
 }
@@ -311,4 +282,9 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 // SetWorkflowRunner wires an optional orchestrator for observer trigger/retry methods.
 func (s *Server) SetWorkflowRunner(r WorkflowOrchestrator) {
 	s.handler.workflowRunner = r
+}
+
+// SetToolDispatcher wires the MCP tool dispatcher for api-via-cli sessions.
+func (s *Server) SetToolDispatcher(d ToolDispatcher) {
+	s.handler.toolDispatcher = d
 }

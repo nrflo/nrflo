@@ -83,7 +83,7 @@ be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_interactive.go	340
 be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	683
+be/internal/orchestrator/orchestrator_loop.go	664
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -133,11 +133,10 @@ be/internal/service/workflow_defs_next_on_success_test.go	373
 be/internal/service/workflow_derive_test.go	548
 be/internal/service/workflow_response.go	408
 be/internal/service/worktree_test.go	495
-be/internal/socket/handler.go	577
+be/internal/socket/handler.go	446
 be/internal/socket/handler_record_event_test.go	386
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	340
-be/internal/socket/server.go	314
 be/internal/spawner/apirun/provider/anthropic/translate_test.go	400
 be/internal/spawner/apirun/runner_test.go	475
 be/internal/spawner/apirun/runner_tools_test.go	416
@@ -162,7 +161,7 @@ be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	329
 be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
-be/internal/spawner/spawner_prepare.go	441
+be/internal/spawner/spawner_prepare.go	434
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	332
 be/internal/spawner/template_extra_vars_test.go	318

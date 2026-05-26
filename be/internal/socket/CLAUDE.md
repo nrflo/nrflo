@@ -40,6 +40,8 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |
 | `artifact.list` | List artifacts for the session's workflow instance. Params: `{session_id}` |
 | `artifact.get` | Materialize artifact to stage dir and return abs path. Params: `{session_id, name}` |
+| `tools.list` | MCP tool list for an api-via-cli session's in-process registry; returns the tools array (`name`/`description`/`inputSchema`). Params: `{session_id, instance_id}`. Requires a `ToolDispatcher` wired via `Server.SetToolDispatcher()` (nil → internal error) |
+| `tools.call` | Dispatch a tool call to the session registry; returns `{output, is_error}` (terminal signals fire `RequestTerminalSignal` server-side). Params: `{session_id, instance_id, name, input}` |
 | `observer.workflow.show` | Get workflow definition. Params: `{session_id, project_id?, workflow_id?}` |
 | `observer.workflow.runs` | List workflow instances for the attached workflow. Params: `{session_id, project_id?, workflow_id?}` |
 | `observer.workflow.findings` | Get findings for the attached workflow instance. Params: `{session_id, instance_id?}` |
@@ -82,7 +84,7 @@ All socket handlers route WS broadcasts through `service.BroadcastFromCtx(hub, e
 
 After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.continue`, and `agent.callback` dispatch a best-effort terminal signal through an injected `TerminalSignaler`:
 
-- Interface: `RequestTerminalSignal`, `BumpLastMessage`, `SetLastMessage`, `SignalSessionReady` (defined in `server.go`).
+- Interface: `RequestTerminalSignal`, `BumpLastMessage`, `SetLastMessage`, `SignalSessionReady` (defined in `server_interfaces.go`).
 - Wiring: production `cli/serve.go` passes `httpServer.GetOrchestrator()` as signaler; `nil` in tests.
 - Nil-safe; order: DB write → WS broadcast → terminal signal (best-effort, error logged at INFO).
 - `BumpLastMessage`: updates `lastMessageTime`/`hasReceivedMessage` to prevent false-positive stall detection.
@@ -92,8 +94,11 @@ After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.cont
 
 | File | Purpose |
 |------|---------|
-| `server.go` | Socket listener, connection handling, `TerminalSignaler` and `WorkflowOrchestrator` interfaces |
+| `server.go` | Socket listener, connection handling, `Handler` struct, dispatcher setters (`SetWorkflowRunner`/`SetToolDispatcher`) |
+| `server_interfaces.go` | `WorkflowOrchestrator`, `ToolDispatcher`, `TerminalSignaler` interfaces (json/primitives only; keeps socket free of apirun imports) |
 | `handler.go` | Request routing and method dispatch |
+| `handler_findings.go` | `findings.*` handlers (add/add-bulk/get/append/append-bulk/delete) |
+| `handler_tools.go` | `tools.list`/`tools.call` handlers — proxy to the wired `ToolDispatcher` |
 | `handler_record_event.go` | `agent.record_event`: PreToolUse → DB insert + WS broadcast; Stop → no-op boundary ack |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_script_context.go` | `script.context` handler |

@@ -55,6 +55,11 @@ type ToolEnv struct {
 	TicketID           string
 	WorkflowName       string
 	WorkflowInstanceID string
+	// ExternalID / ExternalContext mirror the workflow instance's external refs
+	// (empty when unset). Threaded into kind=tool subprocess env as
+	// NRF_EXTERNAL_ID / NRF_EXTERNAL_CONTEXT, matching spawner.prepareScriptSpawn.
+	ExternalID      string
+	ExternalContext string
 	Findings           *service.FindingsService
 	ProjectFindings    *service.ProjectFindingsService
 	Agent              *service.AgentService

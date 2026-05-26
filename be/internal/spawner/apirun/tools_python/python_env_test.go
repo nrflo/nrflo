@@ -30,7 +30,13 @@ func TestPython_BuildEnvMirrorsScriptSpawn(t *testing.T) {
 	t.Setenv("MYVAR", "fromserver")
 
 	h := New(pythonRow("t", "", "", 0), "", "/sdk/path", []string{"MYVAR=fromproj"})
-	env := apirun.ToolEnv{ProjectID: "proj-1", SessionID: "sess-1", WorkflowInstanceID: "wfi-1"}
+	env := apirun.ToolEnv{
+		ProjectID:          "proj-1",
+		SessionID:          "sess-1",
+		WorkflowInstanceID: "wfi-1",
+		ExternalID:         "jira-123",
+		ExternalContext:    `{"source":"jira"}`,
+	}
 
 	m := envMap(h.buildEnv(context.Background(), env))
 
@@ -55,6 +61,12 @@ func TestPython_BuildEnvMirrorsScriptSpawn(t *testing.T) {
 	if m["NRF_SPAWNED"] != "1" {
 		t.Errorf("NRF_SPAWNED = %q, want 1", m["NRF_SPAWNED"])
 	}
+	if m["NRF_EXTERNAL_ID"] != "jira-123" {
+		t.Errorf("NRF_EXTERNAL_ID = %q, want jira-123", m["NRF_EXTERNAL_ID"])
+	}
+	if m["NRF_EXTERNAL_CONTEXT"] != `{"source":"jira"}` {
+		t.Errorf("NRF_EXTERNAL_CONTEXT = %q, want json source jira", m["NRF_EXTERNAL_CONTEXT"])
+	}
 	if m["MYVAR"] != "fromproj" {
 		t.Errorf("MYVAR = %q, want projectEnv last-wins fromproj", m["MYVAR"])
 	}
@@ -65,5 +77,12 @@ func TestPython_BuildEnvNoSDKDirWhenEmpty(t *testing.T) {
 	m := envMap(h.buildEnv(context.Background(), apirun.ToolEnv{ProjectID: "p"}))
 	if _, ok := m["NRFLO_SDK_DIR"]; ok {
 		t.Error("NRFLO_SDK_DIR should be absent when sdkDir is empty")
+	}
+	// External refs are present-but-empty when unset, matching prepareScriptSpawn.
+	if v, ok := m["NRF_EXTERNAL_ID"]; !ok || v != "" {
+		t.Errorf("NRF_EXTERNAL_ID = %q (present=%v), want present-but-empty", v, ok)
+	}
+	if v, ok := m["NRF_EXTERNAL_CONTEXT"]; !ok || v != "" {
+		t.Errorf("NRF_EXTERNAL_CONTEXT = %q (present=%v), want present-but-empty", v, ok)
 	}
 }

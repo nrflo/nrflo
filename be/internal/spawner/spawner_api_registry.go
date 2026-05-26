@@ -52,6 +52,7 @@ func (s *Spawner) buildAPIRegistry(
 		specs = filtered
 	}
 
+	extID, extCtx := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
 	toolEnv := apirun.ToolEnv{
 		Pool:               s.config.Pool,
 		WSHub:              s.config.WSHub,
@@ -64,6 +65,8 @@ func (s *Spawner) buildAPIRegistry(
 		TicketID:           req.TicketID,
 		WorkflowName:       req.WorkflowName,
 		WorkflowInstanceID: wfiID,
+		ExternalID:         extID,
+		ExternalContext:    extCtx,
 		Findings:           s.config.FindingsSvc,
 		ProjectFindings:    s.config.ProjectFindingsSvc,
 		Agent:              s.config.AgentSvcReal,

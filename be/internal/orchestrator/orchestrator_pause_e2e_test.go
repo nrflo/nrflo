@@ -48,7 +48,7 @@ func TestPauseAfterLayer_E2E_SkippedLayers(t *testing.T) {
 	wfiID := result.InstanceID
 
 	// Set skip_tags on the newly created WFI.
-	// The goroutine does several DB reads before shouldSkipLayer, so this wins the race.
+	// The goroutine does several DB reads before applyLayerSkips, so this wins the race.
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.pool, clock.Real())
 	if err := wfiRepo.UpdateSkipTags(wfiID, `["e2e-skip"]`); err != nil {
 		t.Fatalf("UpdateSkipTags: %v", err)

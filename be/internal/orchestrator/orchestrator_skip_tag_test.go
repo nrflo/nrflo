@@ -67,77 +67,70 @@ func TestBuildAgentTags(t *testing.T) {
 	}
 }
 
-// TestShouldSkipLayer verifies the skip logic across all key scenarios.
-func TestShouldSkipLayer(t *testing.T) {
+// TestPartitionLayerSkips verifies per-agent skip partitioning across key scenarios,
+// including partial skip (one of two same-layer agents skipped, the other runnable).
+func TestPartitionLayerSkips(t *testing.T) {
 	tests := []struct {
-		name      string
-		skipTags  []string
-		agentTags map[string]string
-		phases    []service.SpawnerPhaseDef
-		wantSkip  bool
-		wantTag   string
+		name         string
+		skipTags     []string
+		agentTags    map[string]string
+		phases       []service.SpawnerPhaseDef
+		wantSkipped  []string
+		wantRunnable []string
 	}{
 		{
-			name:      "no skip_tags - never skip",
-			skipTags:  []string{},
-			agentTags: map[string]string{"fe-impl": "fe"},
-			phases:    []service.SpawnerPhaseDef{{Agent: "fe-impl", Layer: 1}},
-			wantSkip:  false,
-			wantTag:   "",
+			name:         "no skip_tags - all runnable",
+			skipTags:     []string{},
+			agentTags:    map[string]string{"fe-impl": "fe"},
+			phases:       []service.SpawnerPhaseDef{{Agent: "fe-impl", Layer: 1}},
+			wantSkipped:  nil,
+			wantRunnable: []string{"fe-impl"},
 		},
 		{
-			name:      "matching tag returns true with tag name",
+			name:         "matching tag skips the agent",
+			skipTags:     []string{"fe"},
+			agentTags:    map[string]string{"fe-impl": "fe"},
+			phases:       []service.SpawnerPhaseDef{{Agent: "fe-impl", Layer: 1}},
+			wantSkipped:  []string{"fe-impl"},
+			wantRunnable: nil,
+		},
+		{
+			name:         "non-matching tag - runnable",
+			skipTags:     []string{"fe"},
+			agentTags:    map[string]string{"be-impl": "be"},
+			phases:       []service.SpawnerPhaseDef{{Agent: "be-impl", Layer: 1}},
+			wantSkipped:  nil,
+			wantRunnable: []string{"be-impl"},
+		},
+		{
+			name:         "untagged agent never skipped",
+			skipTags:     []string{"fe"},
+			agentTags:    map[string]string{},
+			phases:       []service.SpawnerPhaseDef{{Agent: "untagged-agent", Layer: 1}},
+			wantSkipped:  nil,
+			wantRunnable: []string{"untagged-agent"},
+		},
+		{
+			name:      "partial skip - one of two same-layer agents skipped",
 			skipTags:  []string{"fe"},
-			agentTags: map[string]string{"fe-impl": "fe"},
-			phases:    []service.SpawnerPhaseDef{{Agent: "fe-impl", Layer: 1}},
-			wantSkip:  true,
-			wantTag:   "fe",
-		},
-		{
-			name:      "non-matching tag - no skip",
-			skipTags:  []string{"fe"},
-			agentTags: map[string]string{"be-impl": "be"},
-			phases:    []service.SpawnerPhaseDef{{Agent: "be-impl", Layer: 1}},
-			wantSkip:  false,
-			wantTag:   "",
-		},
-		{
-			name:      "empty agent tag never matched",
-			skipTags:  []string{"fe"},
-			agentTags: map[string]string{}, // agent not in map → treated as no tag
-			phases:    []service.SpawnerPhaseDef{{Agent: "untagged-agent", Layer: 1}},
-			wantSkip:  false,
-			wantTag:   "",
-		},
-		{
-			name:      "multiple skip_tags matches any",
-			skipTags:  []string{"be", "fe"},
-			agentTags: map[string]string{"be-impl": "be"},
-			phases:    []service.SpawnerPhaseDef{{Agent: "be-impl", Layer: 1}},
-			wantSkip:  true,
-			wantTag:   "be",
-		},
-		{
-			name:     "one matching agent in multi-agent layer skips entire layer",
-			skipTags: []string{"fe"},
-			agentTags: map[string]string{
-				"fe-impl": "fe",
-				"be-impl": "be",
-			},
+			agentTags: map[string]string{"fe-impl": "fe", "be-impl": "be"},
 			phases: []service.SpawnerPhaseDef{
 				{Agent: "fe-impl", Layer: 2},
 				{Agent: "be-impl", Layer: 2},
 			},
-			wantSkip: true,
-			wantTag:  "fe",
+			wantSkipped:  []string{"fe-impl"},
+			wantRunnable: []string{"be-impl"},
 		},
 		{
-			name:      "agent not in agentTags map treated as untagged",
-			skipTags:  []string{"fe"},
-			agentTags: map[string]string{},
-			phases:    []service.SpawnerPhaseDef{{Agent: "mystery-agent", Layer: 0}},
-			wantSkip:  false,
-			wantTag:   "",
+			name:      "all agents skipped - whole layer",
+			skipTags:  []string{"fe", "be"},
+			agentTags: map[string]string{"fe-impl": "fe", "be-impl": "be"},
+			phases: []service.SpawnerPhaseDef{
+				{Agent: "fe-impl", Layer: 2},
+				{Agent: "be-impl", Layer: 2},
+			},
+			wantSkipped:  []string{"fe-impl", "be-impl"},
+			wantRunnable: nil,
 		},
 	}
 
@@ -155,15 +148,38 @@ func TestShouldSkipLayer(t *testing.T) {
 				}
 			}
 
-			gotSkip, gotTag := env.orch.shouldSkipLayer(context.Background(), wfiID, tt.phases, tt.agentTags)
-			if gotSkip != tt.wantSkip {
-				t.Errorf("shouldSkipLayer() skip = %v, want %v", gotSkip, tt.wantSkip)
-			}
-			if gotTag != tt.wantTag {
-				t.Errorf("shouldSkipLayer() tag = %q, want %q", gotTag, tt.wantTag)
+			skipped, runnable, tagOf := env.orch.partitionLayerSkips(context.Background(), wfiID, tt.phases, tt.agentTags)
+			assertAgents(t, "skipped", skipped, tt.wantSkipped)
+			assertAgents(t, "runnable", runnable, tt.wantRunnable)
+			for _, name := range tt.wantSkipped {
+				if tagOf[name] == "" {
+					t.Errorf("tagOf[%q] empty, want a matched tag", name)
+				}
 			}
 		})
 	}
+}
+
+// assertAgents checks that a phase slice contains exactly the expected agent names, in order.
+func assertAgents(t *testing.T, label string, got []service.SpawnerPhaseDef, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Errorf("%s len = %d, want %d (got %v)", label, len(got), len(want), agentNamesOf(got))
+		return
+	}
+	for i, w := range want {
+		if got[i].Agent != w {
+			t.Errorf("%s[%d] = %q, want %q", label, i, got[i].Agent, w)
+		}
+	}
+}
+
+func agentNamesOf(phases []service.SpawnerPhaseDef) []string {
+	names := make([]string, len(phases))
+	for i, p := range phases {
+		names[i] = p.Agent
+	}
+	return names
 }
 
 // TestCreateSkippedSessions verifies that skipped sessions are created in the DB

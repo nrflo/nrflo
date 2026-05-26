@@ -298,32 +298,11 @@ func (o *Orchestrator) runLoop(
 
 		// === Forward iteration ===
 		lg := layerGroups[layerIdx]
-		runnableAgents := lg.phases
 
-		// Check if layer should be skipped based on workflow instance skip_tags
-		if shouldSkip, matchingTag := o.shouldSkipLayer(ctx, wfiID, runnableAgents, agentTags); shouldSkip {
-			agentNames := make([]string, len(runnableAgents))
-			for i, p := range runnableAgents {
-				agentNames[i] = p.Agent
-			}
-			logger.Info(ctx, "layer skipped due to tag", "layer", lg.layer, "tag", matchingTag, "agents", agentNames)
-
-			o.createSkippedSessions(ctx, wfiID, req, runnableAgents, pool)
-
-			for _, phase := range runnableAgents {
-				o.wsHub.Broadcast(ws.NewEvent(ws.EventAgentCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-					"agent_id":   phase.Agent,
-					"agent_type": phase.Agent,
-					"result":     "skipped",
-				}))
-			}
-			o.wsHub.Broadcast(ws.NewEvent(ws.EventLayerSkipped, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-				"instance_id": wfiID,
-				"layer":       lg.layer,
-				"skip_tag":    matchingTag,
-				"agents":      agentNames,
-			}))
-
+		// Per-agent skip on skip_tags: skipped agents get skipped sessions + events;
+		// the runnable subset still spawns. Whole-layer skip advances past the layer.
+		runnableAgents, wholeLayerSkipped := o.applyLayerSkips(ctx, wfiID, req, lg.phases, agentTags, pool)
+		if wholeLayerSkipped {
 			if o.maybePauseAfterLayer(ctx, wfiID, req, layerIdx, layerGroups, layerPause, pool, projectRoot) {
 				worktreeHandled = true
 				return

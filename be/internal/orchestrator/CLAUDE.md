@@ -59,14 +59,13 @@ Cap: `maxCallbacks = 10` cumulative agent spawns across all callback plan steps 
 
 ## Layer-Skip Logic
 
-Before spawning agents for each layer, the orchestrator checks `skip_tags`:
+Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each layer, `applyLayerSkips()` (`orchestrator_skip.go`) partitions the layer's phases against the instance's `skip_tags` (reloaded from DB each layer, since agents may add tags concurrently via `c.skip(tag)`):
 
-1. `shouldSkipLayer()` reloads skip_tags from DB each layer (agents may add tags concurrently)
-2. Creates `agent_sessions` with `status=skipped`, `result=skipped` for each agent
-3. Broadcasts `EventAgentCompleted` (result=skipped) per agent and `EventLayerSkipped` per layer
-4. Skipped layers count as passed for layer aggregation
+1. Each agent whose `agent_definitions.tag` is in `skip_tags` gets an `agent_sessions` row with `status=skipped`, `result=skipped`, plus a per-agent `EventAgentCompleted` (result=skipped) broadcast.
+2. The remaining (runnable) agents still spawn; the skipped subset is excluded from `results`, so `denom = pass+fail` already excludes them in layer aggregation.
+3. Only when **every** agent in the layer matches a skip tag does `applyLayerSkips` return `wholeLayerSkipped=true` — `EventLayerSkipped` is broadcast and the loop advances past the layer (counts as passed).
 
-Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `shouldSkipLayer()`, `createSkippedSessions()`.
+Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `partitionLayerSkips()`, `applyLayerSkips()`, `createSkippedSessions()`.
 
 ## Consult
 

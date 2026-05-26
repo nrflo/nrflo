@@ -12,9 +12,6 @@ import (
 
 	"be/internal/logger"
 	"be/internal/repo"
-	"be/internal/spawner/apirun"
-	"be/internal/spawner/apirun/tools_builtin"
-	"be/internal/spawner/apirun/tools_http"
 )
 
 // prepareSpawn does all CLI-agnostic prep work: session/agent IDs, agent-def
@@ -215,6 +212,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, fmt.Errorf("api mode: model %q not found in api_models", model)
 		}
 
+		// api-via-cli hybrid: route Anthropic api-models through the Claude CLI.
+		if s.config.APIViaCLI && am.Provider == "anthropic" {
+			return s.prepareAPIViaCLISpawn(ctx, req, wfiID, agentID, sessionID, spawnToken, effectiveThreshold, extID, extCtx, prompt, am, agentDef, proc, prep)
+		}
+
 		// Build the provider for this spawn. Fail fast on missing credentials.
 		apiProv, provErr := s.config.BuildAPIProvider(ctx, am.Provider, req.ProjectID)
 		if provErr != nil {
@@ -252,66 +254,16 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		proc.maxContext = maxCtx
 
-		// Resolve per-agent tool registry from the CSV. Empty CSV ⇒ text-only.
-		toolsCSV := ""
-		if agentDef != nil {
-			toolsCSV = agentDef.Tools
-		} else if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
-			toolsCSV = agentCfg.Tools
-		}
-		httpDefs, defsErr := s.loadAPIHTTPToolDefs(req.ProjectID, req.WorkflowName)
-		if defsErr != nil {
-			return nil, nil, fmt.Errorf("api mode: load tool defs: %w", defsErr)
-		}
-
-		// Load python tool handlers for this project.
-		pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
-
-		specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), pythonHandlers, httpDefs, tools_http.New(nil))
+		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc)
 		if regErr != nil {
-			return nil, nil, fmt.Errorf("api mode: %w", regErr)
+			return nil, nil, regErr
 		}
 
-		// Recursion guard: consultant agents may not call consult themselves.
-		if agentDef != nil && agentDef.Consultant {
-			delete(handlers, "consult")
-			filtered := specs[:0]
-			for _, spec := range specs {
-				if spec.Name != "consult" {
-					filtered = append(filtered, spec)
-				}
-			}
-			specs = filtered
-		}
-
-		// The system-prompt-suffix is a CLI completion contract ("run `nrflo
-		// agent finished` via the Bash tool") that is meaningless in api mode:
-		// there is no Bash tool here. Completion is signaled by the
-		// agent_finished/agent_fail builtin tools (or implicit PASS on end_turn).
 		prep.apiSystem = defaultAPISystemPrompt
 		prep.apiInitialPrompt = prompt
 		prep.apiTools = specs
 		prep.apiHandlers = handlers
-		prep.apiToolEnv = apirun.ToolEnv{
-			Pool:               s.config.Pool,
-			WSHub:              s.config.WSHub,
-			Clock:              s.config.Clock,
-			DispatchRepo:       s.config.DispatchRepo,
-			SessionID:          proc.sessionID,
-			AgentID:            proc.agentID,
-			AgentType:          req.AgentType,
-			ProjectID:          req.ProjectID,
-			TicketID:           req.TicketID,
-			WorkflowName:       req.WorkflowName,
-			WorkflowInstanceID: wfiID,
-			Findings:           s.config.FindingsSvc,
-			ProjectFindings:    s.config.ProjectFindingsSvc,
-			Agent:              s.config.AgentSvcReal,
-			Workflow:           s.config.WorkflowSvc,
-			ArtifactSvc:        s.config.ArtifactSvc,
-			WorkflowControl:    s.config.WorkflowControl,
-			Consultant:         s,
-		}
+		prep.apiToolEnv = toolEnv
 		prep.apiMaxIterations = maxIter
 		prep.apiMaxTokens = maxTokens
 		prep.apiDeadline = proc.startTime.Add(proc.timeout)

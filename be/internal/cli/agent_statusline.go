@@ -1,6 +1,6 @@
 // Package cli implements the agent statusLine command.
-// Note: api-mode (apirun) Claude sessions never invoke statusLine — this path
-// is only exercised by CLI-mode (claude --settings statusLine) agents.
+// Exercised by CLI-mode agents and api-via-cli hybrid sessions
+// (both use claude --settings statusLine).
 package cli
 
 import (

@@ -15,13 +15,11 @@ The `CLIAdapter` interface is defined at `cli_adapter.go:11`. Implementations: `
 
 **claude model mapping:** `opus_4_6` → `claude-opus-4-6` (200k), `opus_4_6_1m` → `claude-opus-4-6[1m]` (1M), `opus_4_7` → `claude-opus-4-7` (200k), `opus_4_7_1m` → `claude-opus-4-7[1m]` (1M), `sonnet`/`haiku` passed as-is. Reasoning effort: `--effort <level>` when `cli_models.reasoning_effort` is non-empty. When the global `claude_system_prompt_override_enabled` setting is on, Claude spawns also emit `--system-prompt-file` (sourced from the `system-prompt` injectable) before `--append-system-prompt-file`.
 
-**codex model mapping:** `codex_gpt_normal`/`codex_gpt_high` → `gpt-5.3-codex` (effort "high"), `codex_gpt54_normal` → `gpt-5.4` (effort "medium"), `codex_gpt54_high` → `gpt-5.4` (effort "high"), `codex_gpt54_mini_low` → `gpt-5.4-mini` (effort "low").
-
 ## Model Resolution
 
 `Config.ModelConfigs` (`map[string]ModelConfig`) holds DB-sourced model configuration used before falling back to hardcoded adapter methods. Helpers: `cliForModel(model)` checks `ModelConfigs[model].CLIType`; `maxContextForModel(model)` checks `ModelConfigs[model].ContextLength`. `SpawnOptions.MappedModel`/`ReasoningEffort` carry DB overrides; adapters skip their own lookup when these are set.
 
-For `api` agents the model comes from `Config.APIModelConfigs` (keyed by `api_models` row id): `prepareSpawn` looks it up (error if absent — no CLI fall-through), calls `Config.BuildAPIProvider(ctx, providerName, projectID)` per-spawn fail-fast, and threads `ReasoningEffort` into `apirun.Config` → `provider.Request`.
+For `api` agents, model + provider come from `Config.APIModelConfigs`; see [apirun/CLAUDE.md](apirun/CLAUDE.md).
 
 ## Execution Backends
 
@@ -32,6 +30,10 @@ For `api` agents the model comes from `Config.APIModelConfigs` (keyed by `api_mo
 - **`script`** — executes a stored Python script; no prompt template, no context tracking.
 
 Selection precedence in `startBackend`: `api` → `script` → `cli_interactive` (codex → app-server, else PTY).
+
+### api-via-cli hybrid
+
+When `Config.APIViaCLI==true` and the `api_models` provider is `"anthropic"`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) transforms the api spawn into a `cli_interactive` Claude session: builds the tool registry via `buildAPIRegistry`, substitutes `read_document` with `ReadDocumentPathHandler` (returns path instead of inline bytes), writes `defaultAPISystemPrompt` to `--system-prompt-file`, delivers the prompt via PTY stdin, and serves all tools over the MCP bridge (`nrflo agent mcp` via `--mcp-config`/`--strict-mcp-config`). `proc.apiViaCLI=true` forces agent-based context save (resume path is avoided). OpenAI api-models fall through to the unchanged in-process runner.
 
 ### Codex app-server backend
 
@@ -94,7 +96,7 @@ Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`Ge
 | `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated rate-limit patterns |
 | `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated error patterns |
 
-Claude defaults: limit — "You've hit your limit", "You've hit your org's monthly usage limit", "Your usage allocation has been disabled by your admin"; error — "API Error:", "cannot be launched inside another Claude Code session", "Not logged in". Codex defaults: limit — "Rate limit exceeded", "429 Too Many Requests", "quota exceeded", "insufficient_quota", "You've hit your usage limit".
+Default patterns are defined in each adapter's `ClassifyExit` method.
 
 ## Stall Detection
 

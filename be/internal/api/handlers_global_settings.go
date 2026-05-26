@@ -61,6 +61,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	apiViaCLIEnabled, err := svc.GetAPIViaCLIEnabled()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	observerEnabled, err := svc.GetExperimentalObserverEnabled()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -89,6 +95,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"experimental":                          experimentalVal == "true",
 		"api_mode_enabled":                      apiModeVal == "true",
 		"claude_system_prompt_override_enabled": claudeSysPromptOverrideVal == "true",
+		"api_via_cli_enabled":                   apiViaCLIEnabled,
 		"experimental_observer_enabled":         observerEnabled,
 		"observer_system_context":               observerSysCtx,
 		"observer_provider":                     observerProvider,
@@ -132,6 +139,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
 		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
+		APIViaCLIEnabled                  *bool           `json:"api_via_cli_enabled"`
 		ExperimentalObserverEnabled       *bool           `json:"experimental_observer_enabled"`
 		ObserverSystemContext             *string         `json:"observer_system_context"`
 		ObserverProvider                  *string         `json:"observer_provider"`
@@ -216,6 +224,13 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 	if err := applyOptionalIntSetting(svc, req.StallRunningTimeoutSec, "stall_running_timeout_sec", w); err != nil {
 		return
+	}
+
+	if req.APIViaCLIEnabled != nil {
+		if err := svc.SetAPIViaCLIEnabled(*req.APIViaCLIEnabled); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	if req.ExperimentalObserverEnabled != nil {

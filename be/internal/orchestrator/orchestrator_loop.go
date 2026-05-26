@@ -138,6 +138,7 @@ func (o *Orchestrator) runLoop(
 	apiModeSettingsSvc := service.NewGlobalSettingsService(pool, o.clock)
 	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
 	runAPIMode := apiModeSettingVal == "true"
+	runAPIViaCLI, _ := apiModeSettingsSvc.GetAPIViaCLIEnabled()
 
 	// Build shared spawner config used by all phases in this run.
 	// OnSessionRegister/Unregister are set per-spawn in spawnPhases.
@@ -167,6 +168,7 @@ func (o *Orchestrator) runLoop(
 		WorkflowSvc:        workflowSvcReal,
 		ToolDefRepo:        toolDefRepo,
 		APIMode:            runAPIMode,
+		APIViaCLI:          runAPIViaCLI,
 		PTYManager:         o.PTYManager,
 		DispatchRepo:       dispatchRepo,
 		ProjectEnv:         projectEnv,

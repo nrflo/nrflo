@@ -73,6 +73,37 @@ func TestGlobalSettings_Set_Upsert(t *testing.T) {
 	}
 }
 
+func TestAPIViaCLIEnabled_DefaultFalse(t *testing.T) {
+	t.Parallel()
+	svc := setupGlobalSettingsTestEnv(t)
+
+	enabled, err := svc.GetAPIViaCLIEnabled()
+	if err != nil {
+		t.Fatalf("GetAPIViaCLIEnabled: %v", err)
+	}
+	if enabled {
+		t.Error("api_via_cli_enabled = true by default, want false")
+	}
+}
+
+func TestAPIViaCLIEnabled_SetAndGet(t *testing.T) {
+	t.Parallel()
+	svc := setupGlobalSettingsTestEnv(t)
+
+	for _, want := range []bool{true, false, true} {
+		if err := svc.SetAPIViaCLIEnabled(want); err != nil {
+			t.Fatalf("SetAPIViaCLIEnabled(%v): %v", want, err)
+		}
+		got, err := svc.GetAPIViaCLIEnabled()
+		if err != nil {
+			t.Fatalf("GetAPIViaCLIEnabled: %v", err)
+		}
+		if got != want {
+			t.Errorf("api_via_cli_enabled = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestGlobalSettings_MultipleKeys_Independent(t *testing.T) {
 	t.Parallel()
 	svc := setupGlobalSettingsTestEnv(t)

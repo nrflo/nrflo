@@ -22,6 +22,8 @@ const (
 	observerModelKey         = "observer_model"
 )
 
+const apiViaCLIEnabledKey = "api_via_cli_enabled"
+
 // GlobalSettingsService provides access to global config key-value store.
 type GlobalSettingsService struct {
 	pool  *db.Pool
@@ -172,6 +174,24 @@ func (s *GlobalSettingsService) SetSessionRetentionLimit(projectID string, n int
 		return fmt.Errorf("session_retention_limit must be >= 10")
 	}
 	return s.pool.SetProjectConfig(projectID, "session_retention_limit", strconv.Itoa(n))
+}
+
+// GetAPIViaCLIEnabled returns whether API-via-CLI routing is enabled globally.
+func (s *GlobalSettingsService) GetAPIViaCLIEnabled() (bool, error) {
+	val, err := s.pool.GetConfig(apiViaCLIEnabledKey)
+	if err != nil {
+		return false, err
+	}
+	return val == "true", nil
+}
+
+// SetAPIViaCLIEnabled persists the API-via-CLI enabled flag globally.
+func (s *GlobalSettingsService) SetAPIViaCLIEnabled(enabled bool) error {
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	return s.pool.SetConfig(apiViaCLIEnabledKey, val)
 }
 
 // GetExperimentalObserverEnabled returns whether the observer feature is enabled globally.

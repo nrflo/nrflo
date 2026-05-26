@@ -68,6 +68,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const apiViaCLIMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ api_via_cli_enabled: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const stallMutation = useMutation({
     mutationFn: (data: Partial<{ stall_start_timeout_sec: number | null; stall_running_timeout_sec: number | null }>) =>
       updateGlobalSettings(data),
@@ -207,6 +214,20 @@ export function GlobalSettingsSection() {
                 checked={settings.experimental ?? false}
                 onChange={(val) => experimentalMutation.mutate(val)}
                 disabled={experimentalMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Route API agents via Claude CLI</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  When enabled, agents with execution_mode=api are launched via the Claude CLI instead of the direct Anthropic API
+                </p>
+              </div>
+              <Toggle
+                checked={settings.api_via_cli_enabled ?? false}
+                onChange={(val) => apiViaCLIMutation.mutate(val)}
+                disabled={apiViaCLIMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

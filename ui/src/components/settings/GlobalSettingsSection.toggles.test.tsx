@@ -14,6 +14,7 @@ vi.mock('@/api/settings', async (importOriginal) => {
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
     api_mode_enabled: false,
+    api_via_cli_enabled: false,
     claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
     context_save_via_agent: false,
@@ -26,7 +27,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
 }
 
 // Toggle DOM order: [0]=api_mode, [1]=system_prompt_override, [2]=low_consumption,
-// [3]=context_save, [4]=simplified_graph, [5]=experimental.
+// [3]=context_save, [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer.
 describe('GlobalSettingsSection boolean toggles', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -113,6 +114,49 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: false })
+    })
+  })
+
+  it('renders api_via_cli_enabled toggle reflecting server state (false)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: false }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[6]).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Route API agents via Claude CLI')).toBeInTheDocument()
+  })
+
+  it('renders api_via_cli_enabled toggle reflecting server state (true)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: true }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[6]).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('clicking api_via_cli_enabled toggle (false→true) calls updateGlobalSettings({ api_via_cli_enabled: true })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: false }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[6])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_via_cli_enabled: true })
+    })
+  })
+
+  it('clicking api_via_cli_enabled toggle (true→false) calls updateGlobalSettings({ api_via_cli_enabled: false })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: true }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[6])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_via_cli_enabled: false })
     })
   })
 

@@ -140,6 +140,8 @@ type Config struct {
 	// agent with execution_mode='api' before making any provider call. Injected by the
 	// orchestrator from the api_mode_enabled global setting at spawn time.
 	APIMode bool
+	// APIViaCLI routes Claude API calls through the CLI instead of direct HTTP. Injected from api_via_cli_enabled global setting.
+	APIViaCLI bool
 	// PTYManager manages PTY sessions for cli_interactive agents.
 	PTYManager *ptyPkg.Manager
 	// IdleAfterMessageTimeoutSec: idle window after last message before nudge (default 240s, 0 = use default).

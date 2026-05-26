@@ -48,6 +48,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	// Conflict resolution is CLI-only; manifest tools are not used here.
 	apiModeSettingsSvc := service.NewGlobalSettingsService(pool, o.clock)
 	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
+	apiViaCLI, _ := apiModeSettingsSvc.GetAPIViaCLIEnabled()
 
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
 	sp := spawner.New(spawner.Config{
@@ -68,6 +69,7 @@ func (o *Orchestrator) attemptConflictResolution(
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
 		APIMode:            apiModeSettingVal == "true",
+		APIViaCLI:          apiViaCLI,
 		PTYManager:         o.PTYManager,
 		DispatchRepo:       dispatchRepo,
 		ProjectEnv:         projectEnv,

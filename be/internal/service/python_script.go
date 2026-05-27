@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"
-
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/id"
@@ -55,12 +53,7 @@ func validateFilePath(path string) error {
 
 // compileInputSchema validates that s is a valid JSON Schema via Draft2020 and returns an error if not.
 func compileInputSchema(s string) error {
-	compiler := jsonschema.NewCompiler()
-	compiler.Draft = jsonschema.Draft2020
-	if err := compiler.AddResource("schema://compile", strings.NewReader(s)); err != nil {
-		return fmt.Errorf("invalid input_schema: %w", err)
-	}
-	if _, err := compiler.Compile("schema://compile"); err != nil {
+	if _, err := compileJSONSchema(s); err != nil {
 		return fmt.Errorf("invalid input_schema: %w", err)
 	}
 	return nil

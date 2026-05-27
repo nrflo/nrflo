@@ -5,6 +5,24 @@ agent's prompt. They are expanded after variable substitution.
 
 ---
 
+## Validated Findings (`emit_findings`)
+
+A workflow definition can register **finding schemas** under Settings: each is a
+`key` plus a JSON Schema (Draft 2020) the value must satisfy, plus an example of
+a valid value.
+
+The `emit_findings` tool (all modes) / `c.findings.emit(key, value)` (Python
+SDK) validates a value against the schema registered for `key`, then stores it
+as a session finding. If the value does not match — or the key has no schema —
+the call is **rejected, nothing is stored**, and the error returns the
+validation message plus the example so you can correct the value and call again.
+
+Use it when a downstream agent or hook expects a specific shape (e.g. an array
+of `{file, severity}` objects). For free-form findings with no schema, keep
+using `findings_add`.
+
+---
+
 ## Agent Findings (`#{FINDINGS:...}`)
 
 Pull prior agent findings into prompts.

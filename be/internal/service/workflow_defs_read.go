@@ -6,7 +6,21 @@ import (
 	"fmt"
 
 	"be/internal/model"
+	"be/internal/types"
 )
+
+// parseFindingSchemas parses the finding_schemas JSON column into a slice,
+// always returning a non-nil slice.
+func parseFindingSchemas(s string) []types.FindingSchema {
+	defs := []types.FindingSchema{}
+	if s != "" {
+		_ = json.Unmarshal([]byte(s), &defs)
+	}
+	if defs == nil {
+		defs = []types.FindingSchema{}
+	}
+	return defs
+}
 
 // GetWorkflowDef gets a single workflow definition from the database
 func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*WorkflowDef, error) {
@@ -16,14 +30,15 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	var closeTicketOnComplete bool
 	var observerContext string
 	var observerProvider, observerModel sql.NullString
+	var findingSchemasStr string
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model
+		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess,
 		&finalizeSuccessCommand, &finalizeSuccessScriptID, &finalizeFailureCommand, &finalizeFailureScriptID,
 		&pauseEventCommand, &pauseEventScriptID,
-		&observerContext, &observerProvider, &observerModel)
+		&observerContext, &observerProvider, &observerModel, &findingSchemasStr)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -53,6 +68,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	if observerModel.Valid && observerModel.String != "" {
 		wf.ObserverModel = &observerModel.String
 	}
+	wf.FindingSchemas = parseFindingSchemas(findingSchemasStr)
 	var groups []string
 	if groupsStr != "" {
 		_ = json.Unmarshal([]byte(groupsStr), &groups)
@@ -67,7 +83,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model
+		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -83,6 +99,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		closeTicketOnComplete                                        bool
 		observerContext                                              string
 		observerProvider, observerModel                              sql.NullString
+		findingSchemasStr                                            string
 	}
 	var metas []wfMeta
 	for rows.Next() {
@@ -90,7 +107,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess,
 			&m.finalizeSuccessCommand, &m.finalizeSuccessScriptID, &m.finalizeFailureCommand, &m.finalizeFailureScriptID,
 			&m.pauseEventCommand, &m.pauseEventScriptID,
-			&m.observerContext, &m.observerProvider, &m.observerModel); err != nil {
+			&m.observerContext, &m.observerProvider, &m.observerModel, &m.findingSchemasStr); err != nil {
 			return nil, err
 		}
 		if IsReservedWorkflowName(m.id) {
@@ -128,6 +145,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		if m.observerModel.Valid && m.observerModel.String != "" {
 			wf.ObserverModel = &m.observerModel.String
 		}
+		wf.FindingSchemas = parseFindingSchemas(m.findingSchemasStr)
 		var groups []string
 		if m.groupsStr != "" {
 			_ = json.Unmarshal([]byte(m.groupsStr), &groups)

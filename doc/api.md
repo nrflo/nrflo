@@ -106,6 +106,7 @@ time. Empty = no tools; `*` = all tools in scope.
 | `agent_continue` | Signal context exhaustion |
 | `agent_callback` | Trigger callback to re-run earlier layers |
 | `findings_add` | Add/update own findings |
+| `emit_findings` | Validate a finding against the workflow's configured schema for the key, then store it (rejects with the required-structure example on mismatch). Input: `{key, value}` |
 | `findings_get` | Read own or cross-agent findings |
 | `findings_append` | Append to own findings |
 | `findings_delete` | Delete own findings |
@@ -126,6 +127,8 @@ time. Empty = no tools; `*` = all tools in scope.
 as an image or document content block so the model can read it natively (OCR
 scanned PDFs, photos). PDF → document block; PNG/JPEG → image block. Capped
 at 32 MiB.
+
+**`emit_findings`** validates a finding before storing it. Each workflow definition may register finding schemas (`key` + JSON Schema Draft 2020 + a known-good example) under Settings. The tool looks up the schema for `key`, validates the supplied `value`, and on success stores it as a session finding. On a schema mismatch — or when the key has no schema — the call is rejected (nothing is stored) and the error result includes the validation message plus the example, so the agent can correct the value and call again. Use `findings_add` for free-form findings that have no schema.
 
 **`consult`** synchronously spawns a named consultant agent (agent definition with `consultant=true` and `execution_mode=api`) under the same workflow instance. The caller's recent message transcript and the question are passed as `${CALLER_TRANSCRIPT}` and `${CONSULT_QUESTION}` template variables. The consultant must write a `_consult_answer` finding (string) and then call `agent_finished`. The answer is returned inline to the calling agent; the `_consult` phase is hidden from the read model. Consultant agents cannot call `consult` themselves (recursion guard). WebSocket events: `consult.started`, `consult.answered`, `consult.failed`.
 

@@ -243,4 +243,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	389
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	478
+ui/src/types/workflow.ts	491

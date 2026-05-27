@@ -120,6 +120,7 @@ for `NRFLO_SOCKET` override details).
 |--------|-------------|
 | `c.findings.add(key, value)` | Set a finding |
 | `c.findings.add_bulk({key: value, ...})` | Set multiple findings |
+| `c.findings.emit(key, value)` | Validate `value` against the workflow's configured schema for `key`, then set it; raises `NrfloError` with the expected-structure example on mismatch |
 | `c.findings.get(key=None)` | Get own findings (all or by key) |
 | `c.findings.append(key, value)` | Append to a finding (creates array) |
 | `c.findings.append_bulk({...})` | Append multiple |

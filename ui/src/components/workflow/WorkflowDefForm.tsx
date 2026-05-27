@@ -4,14 +4,19 @@ import { X } from 'lucide-react'
 import { listWorkflowDefs } from '@/api/workflows'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { Toggle } from '@/components/ui/Toggle'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { FinalizeSection, type FinalizeState } from '@/components/workflow/WorkflowDefForm.finalize-slot'
 import { PauseSection, type PauseState } from '@/components/workflow/WorkflowDefForm.pause-slot'
+import { ObserverSection, type ObserverState } from '@/components/workflow/WorkflowDefForm.observer-slot'
+import {
+  FindingSchemasSection,
+  findingSchemasToRows,
+  parseFindingSchemaRows,
+  type FindingSchemaRow,
+} from '@/components/workflow/WorkflowDefForm.finding-schemas-slot'
 import { useProjectStore } from '@/stores/projectStore'
-import { useCLIModels } from '@/hooks/useCLIModels'
-import type { ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
+import type { FindingSchema, ScopeType, WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from '@/types/workflow'
 
 const TAG_PATTERN = /^[a-zA-Z0-9-]+$/
 
@@ -32,6 +37,7 @@ interface WorkflowDefFormProps {
     finalize_failure_script_id?: string
     pause_event_command?: string
     pause_event_script_id?: string
+    finding_schemas?: FindingSchema[]
   }
   isCreate: boolean
   onSubmit: (data: WorkflowDefCreateRequest | WorkflowDefUpdateRequest) => void
@@ -46,9 +52,13 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
   const [nextWorkflowOnSuccess, setNextWorkflowOnSuccess] = useState(initial?.next_workflow_on_success || '')
-  const [observerContext, setObserverContext] = useState(initial?.observer_context || '')
-  const [observerProvider, setObserverProvider] = useState(initial?.observer_provider || '')
-  const [observerModel, setObserverModel] = useState(initial?.observer_model || '')
+  const [observer, setObserver] = useState<ObserverState>({
+    context: initial?.observer_context || '',
+    provider: initial?.observer_provider || '',
+    model: initial?.observer_model || '',
+  })
+  const [findingSchemas, setFindingSchemas] = useState<FindingSchemaRow[]>(findingSchemasToRows(initial?.finding_schemas))
+  const [schemaError, setSchemaError] = useState<string | null>(null)
   const [finalize, setFinalize] = useState<FinalizeState>({
     successMode: initial?.finalize_success_command ? 'command' : initial?.finalize_success_script_id ? 'script' : '',
     successCommand: initial?.finalize_success_command || '',
@@ -64,7 +74,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   })
 
   const project = useProjectStore((s) => s.currentProject)
-  const { data: models = [] } = useCLIModels()
 
   const { data: workflowDefs } = useQuery({
     queryKey: ['workflows', 'defs', project],
@@ -77,16 +86,6 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       .filter(([id, def]) => def.scope_type === 'project' && id !== initial?.id)
       .map(([id, def]) => ({ value: id, label: id + (def.description ? ` — ${def.description}` : '') }))
   }, [workflowDefs, initial?.id])
-
-  const providerOptions = useMemo(() => {
-    const types = Array.from(new Set(models.filter(m => m.enabled).map(m => m.cli_type)))
-    return [{ value: '', label: 'Inherit project default' }, ...types.map(t => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }))]
-  }, [models])
-
-  const modelOptions = useMemo(() => {
-    const filtered = models.filter(m => m.enabled && (!observerProvider || m.cli_type === observerProvider))
-    return [{ value: '', label: 'Inherit project default' }, ...filtered.map(m => ({ value: m.id, label: m.display_name }))]
-  }, [models, observerProvider])
 
   const addGroup = (raw: string) => {
     const tag = raw.trim().toLowerCase()
@@ -104,15 +103,22 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const { schemas, error } = parseFindingSchemaRows(findingSchemas)
+    if (error) {
+      setSchemaError(error)
+      return
+    }
+    setSchemaError(null)
     const shared = {
       description: description.trim() || undefined,
       scope_type: scopeType,
       groups,
       close_ticket_on_complete: closeTicketOnComplete,
       next_workflow_on_success: nextWorkflowOnSuccess || undefined,
-      observer_context: observerContext.trim() || undefined,
-      observer_provider: observerProvider || null,
-      observer_model: observerModel || null,
+      observer_context: observer.context.trim() || undefined,
+      observer_provider: observer.provider || null,
+      observer_model: observer.model || null,
+      finding_schemas: schemas,
       finalize_success_command: finalize.successMode === 'command' ? finalize.successCommand || undefined : undefined,
       finalize_success_script_id: finalize.successMode === 'script' ? finalize.successScriptId || undefined : undefined,
       finalize_failure_command: finalize.failureMode === 'command' ? finalize.failureCommand || undefined : undefined,
@@ -256,41 +262,12 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         </p>
       </div>
 
-      <div className="border-t border-border pt-3 space-y-3">
-        <div className="text-xs font-medium text-muted-foreground">Observer overrides</div>
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Observer context
-          </label>
-          <Textarea
-            value={observerContext}
-            onChange={(e) => setObserverContext(e.target.value)}
-            rows={2}
-            placeholder="Optional observer context for this workflow (overrides project setting)"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Provider</label>
-            <Dropdown
-              value={observerProvider}
-              onChange={(v) => { setObserverProvider(v); setObserverModel('') }}
-              options={providerOptions}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-            <Dropdown
-              value={observerModel}
-              onChange={setObserverModel}
-              options={modelOptions}
-            />
-          </div>
-        </div>
-      </div>
+      <ObserverSection state={observer} onChange={(patch) => setObserver((prev) => ({ ...prev, ...patch }))} />
 
       <FinalizeSection state={finalize} onChange={(patch) => setFinalize((prev) => ({ ...prev, ...patch }))} />
       <PauseSection state={pause} onChange={(patch) => setPause((prev) => ({ ...prev, ...patch }))} />
+      <FindingSchemasSection rows={findingSchemas} onChange={setFindingSchemas} />
+      {schemaError && <p className="text-xs text-destructive">{schemaError}</p>}
     </form>
   )
 }

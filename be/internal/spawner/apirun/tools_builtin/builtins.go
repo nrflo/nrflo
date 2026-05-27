@@ -19,6 +19,7 @@ func Builtins() map[string]apirun.ToolHandler {
 		"findings_append_bulk": findingsAppendBulkHandler{},
 		"findings_get":         findingsGetHandler{},
 		"findings_delete":      findingsDeleteHandler{},
+		"emit_findings":        emitFindingsHandler{},
 
 		"project_findings_add":         projectFindingsAddHandler{},
 		"project_findings_add_bulk":    projectFindingsAddBulkHandler{},

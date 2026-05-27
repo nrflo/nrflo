@@ -112,6 +112,15 @@ class _Findings:
     def add_bulk(self, kv: dict):
         self._call("add-bulk", {"key_values": kv})
 
+    def emit(self, key: str, value):
+        """Validate value against the workflow's configured schema for key, then
+        store it. value may be a JSON-serialisable object (list/dict) or a JSON
+        string. Raises NrfloError with the expected-structure example if the
+        value does not match the schema (or the key has no schema)."""
+        if isinstance(value, str):
+            value = json.loads(value)
+        self._call("emit", {"key": key, "value": value})
+
     def get(self, agent_type: str = None, *, key: str = None, keys: list = None, layer: int = None) -> dict:
         if agent_type is not None and layer is not None:
             raise ValueError("agent_type and layer are mutually exclusive")

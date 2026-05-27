@@ -1,5 +1,7 @@
 package types
 
+import "encoding/json"
+
 // TicketCreateRequest is the request for creating a ticket
 type TicketCreateRequest struct {
 	ID          string `json:"id,omitempty"`
@@ -118,6 +120,25 @@ type FindingsDeleteRequest struct {
 	InstanceID string   `json:"instance_id,omitempty"`
 }
 
+// FindingSchema is a workflow-scoped validation contract for a finding key.
+// Schema is a JSON Schema (Draft 2020) the emitted value must satisfy; Example
+// is a known-good value echoed back to the agent when validation fails.
+type FindingSchema struct {
+	Key     string          `json:"key"`
+	Schema  json.RawMessage `json:"schema"`
+	Example json.RawMessage `json:"example"`
+}
+
+// FindingsEmitRequest is the request for emitting a schema-validated finding.
+// Value is the raw JSON to validate against the key's workflow-scoped schema
+// and, on success, store as a session finding.
+type FindingsEmitRequest struct {
+	Key        string          `json:"key"`
+	Value      json.RawMessage `json:"value"`
+	SessionID  string          `json:"session_id,omitempty"`
+	InstanceID string          `json:"instance_id,omitempty"`
+}
+
 // ProjectFindingsAddRequest is the request for adding a project finding
 type ProjectFindingsAddRequest struct {
 	Key   string `json:"key"`
@@ -195,39 +216,41 @@ type AgentCallbackRequest struct {
 
 // WorkflowDefCreateRequest is the request for creating a workflow definition
 type WorkflowDefCreateRequest struct {
-	ID                      string   `json:"id"`
-	Description             string   `json:"description,omitempty"`
-	ScopeType               string   `json:"scope_type,omitempty"` // "ticket" (default) or "project"
-	Groups                  []string `json:"groups,omitempty"`
-	CloseTicketOnComplete   *bool    `json:"close_ticket_on_complete,omitempty"`
-	NextWorkflowOnSuccess   string   `json:"next_workflow_on_success,omitempty"`
-	FinalizeSuccessCommand  string   `json:"finalize_success_command,omitempty"`
-	FinalizeSuccessScriptID string   `json:"finalize_success_script_id,omitempty"`
-	FinalizeFailureCommand  string   `json:"finalize_failure_command,omitempty"`
-	FinalizeFailureScriptID string   `json:"finalize_failure_script_id,omitempty"`
-	PauseEventCommand       string   `json:"pause_event_command,omitempty"`
-	PauseEventScriptID      string   `json:"pause_event_script_id,omitempty"`
-	ObserverContext         string   `json:"observer_context,omitempty"`
-	ObserverProvider        *string  `json:"observer_provider,omitempty"`
-	ObserverModel           *string  `json:"observer_model,omitempty"`
+	ID                      string          `json:"id"`
+	Description             string          `json:"description,omitempty"`
+	ScopeType               string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
+	Groups                  []string        `json:"groups,omitempty"`
+	CloseTicketOnComplete   *bool           `json:"close_ticket_on_complete,omitempty"`
+	NextWorkflowOnSuccess   string          `json:"next_workflow_on_success,omitempty"`
+	FinalizeSuccessCommand  string          `json:"finalize_success_command,omitempty"`
+	FinalizeSuccessScriptID string          `json:"finalize_success_script_id,omitempty"`
+	FinalizeFailureCommand  string          `json:"finalize_failure_command,omitempty"`
+	FinalizeFailureScriptID string          `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand       string          `json:"pause_event_command,omitempty"`
+	PauseEventScriptID      string          `json:"pause_event_script_id,omitempty"`
+	ObserverContext         string          `json:"observer_context,omitempty"`
+	ObserverProvider        *string         `json:"observer_provider,omitempty"`
+	ObserverModel           *string         `json:"observer_model,omitempty"`
+	FindingSchemas          []FindingSchema `json:"finding_schemas,omitempty"`
 }
 
 // WorkflowDefUpdateRequest is the request for updating a workflow definition
 type WorkflowDefUpdateRequest struct {
-	Description             *string   `json:"description,omitempty"`
-	ScopeType               *string   `json:"scope_type,omitempty"`
-	Groups                  *[]string `json:"groups,omitempty"`
-	CloseTicketOnComplete   *bool     `json:"close_ticket_on_complete,omitempty"`
-	NextWorkflowOnSuccess   *string   `json:"next_workflow_on_success,omitempty"`
-	FinalizeSuccessCommand  *string   `json:"finalize_success_command,omitempty"`
-	FinalizeSuccessScriptID *string   `json:"finalize_success_script_id,omitempty"`
-	FinalizeFailureCommand  *string   `json:"finalize_failure_command,omitempty"`
-	FinalizeFailureScriptID *string   `json:"finalize_failure_script_id,omitempty"`
-	PauseEventCommand       *string   `json:"pause_event_command,omitempty"`
-	PauseEventScriptID      *string   `json:"pause_event_script_id,omitempty"`
-	ObserverContext         *string   `json:"observer_context,omitempty"`
-	ObserverProvider        *string   `json:"observer_provider,omitempty"`
-	ObserverModel           *string   `json:"observer_model,omitempty"`
+	Description             *string          `json:"description,omitempty"`
+	ScopeType               *string          `json:"scope_type,omitempty"`
+	Groups                  *[]string        `json:"groups,omitempty"`
+	CloseTicketOnComplete   *bool            `json:"close_ticket_on_complete,omitempty"`
+	NextWorkflowOnSuccess   *string          `json:"next_workflow_on_success,omitempty"`
+	FinalizeSuccessCommand  *string          `json:"finalize_success_command,omitempty"`
+	FinalizeSuccessScriptID *string          `json:"finalize_success_script_id,omitempty"`
+	FinalizeFailureCommand  *string          `json:"finalize_failure_command,omitempty"`
+	FinalizeFailureScriptID *string          `json:"finalize_failure_script_id,omitempty"`
+	PauseEventCommand       *string          `json:"pause_event_command,omitempty"`
+	PauseEventScriptID      *string          `json:"pause_event_script_id,omitempty"`
+	ObserverContext         *string          `json:"observer_context,omitempty"`
+	ObserverProvider        *string          `json:"observer_provider,omitempty"`
+	ObserverModel           *string          `json:"observer_model,omitempty"`
+	FindingSchemas          *[]FindingSchema `json:"finding_schemas,omitempty"`
 }
 
 // ContinueWorkflowRequest is the request for continuing a paused workflow instance.

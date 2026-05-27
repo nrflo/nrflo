@@ -52,6 +52,7 @@ you can read it with your native file tools.
 |------|-------|
 | `findings_add` | `{key, value}` |
 | `findings_add_bulk` | `{key_values: {k: v, …}}` |
+| `emit_findings` | `{key, value}` — validate `value` against the workflow's configured schema for `key` before storing; rejected (with the required-structure example) on mismatch or unknown key |
 | `findings_append` | `{key, value}` (creates an array if needed) |
 | `findings_append_bulk` | `{key_values: {…}}` |
 | `findings_get` | `{}` (own) · `{key}` · `{keys: [...]}` · `{agent_type}` (cross-agent read) · `{layer}` (every agent at a layer) |

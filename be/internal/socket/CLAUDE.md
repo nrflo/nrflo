@@ -11,6 +11,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | Method | Purpose |
 |--------|---------|
 | `findings.add` | Add a single finding |
+| `findings.emit` | Validate `{key, value}` against the workflow's configured finding schema for the key, then store it; rejects (validation error with the expected-structure example) on mismatch or unknown key |
 | `findings.add-bulk` | Add multiple findings at once |
 | `findings.get` | Get findings; `layer` int returns `{agent_type: findings\|null}` map (mutually exclusive with `agent_type`) |
 | `findings.append` | Append to an existing finding value |

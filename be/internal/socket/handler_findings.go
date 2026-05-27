@@ -115,6 +115,27 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 			"count":  len(params.KeyValues),
 		})
 
+	case "emit":
+		var params types.FindingsEmitRequest
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		bctx, err := h.findingsSvc.Emit(&params)
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {
+				return MakeErrorResponse(req.ID, NewNotFoundError(err.Error()))
+			}
+			// Schema mismatch / unknown key: surface the message (with the
+			// expected-structure example) to the caller as a validation error.
+			return MakeErrorResponse(req.ID, NewValidationError(err.Error()))
+		}
+		service.BroadcastFromCtx(h.wsHub, ws.EventFindingsUpdated, bctx, map[string]interface{}{
+			"agent_type": bctx.AgentType,
+			"key":        params.Key,
+			"action":     "emit",
+		})
+		return MakeResponse(req.ID, map[string]string{"status": "emitted"})
+
 	case "delete":
 		var params types.FindingsDeleteRequest
 		if err := json.Unmarshal(req.Params, &params); err != nil {

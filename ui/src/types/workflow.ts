@@ -284,6 +284,15 @@ export interface LayerPoliciesResponse {
 }
 
 /** WorkflowDef as returned by the list endpoint (no id/project_id/timestamps) */
+/** Workflow-scoped validation contract for a finding key. `schema` is a JSON
+ *  Schema (Draft 2020); `example` is a known-good value shown to agents on a
+ *  validation failure. */
+export interface FindingSchema {
+  key: string
+  schema: unknown
+  example: unknown
+}
+
 export interface WorkflowDefSummary {
   description: string
   scope_type?: ScopeType
@@ -299,6 +308,7 @@ export interface WorkflowDefSummary {
   finalize_failure_script_id?: string
   pause_event_command?: string
   pause_event_script_id?: string
+  finding_schemas?: FindingSchema[]
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
 }
@@ -321,6 +331,7 @@ export interface WorkflowDef {
   finalize_failure_script_id?: string
   pause_event_command?: string
   pause_event_script_id?: string
+  finding_schemas?: FindingSchema[]
   phases: PhaseDef[]
   layer_policies?: Record<number, LayerPassPolicy>
   created_at: string
@@ -343,6 +354,7 @@ export interface WorkflowDefCreateRequest {
   finalize_failure_script_id?: string
   pause_event_command?: string
   pause_event_script_id?: string
+  finding_schemas?: FindingSchema[]
 }
 
 export interface WorkflowDefUpdateRequest {
@@ -360,6 +372,7 @@ export interface WorkflowDefUpdateRequest {
   finalize_failure_script_id?: string
   pause_event_command?: string
   pause_event_script_id?: string
+  finding_schemas?: FindingSchema[]
 }
 
 export interface ContinueWorkflowRequest {

@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -24,8 +25,18 @@ type Workflow struct {
 	ObserverContext         string         `json:"-"` // workflow-level override for observer system context
 	ObserverProvider        sql.NullString `json:"-"` // workflow-level override for observer provider
 	ObserverModel           sql.NullString `json:"-"` // workflow-level override for observer model
+	FindingSchemas          string         `json:"-"` // JSON array of {key, schema, example} finding contracts
 	CreatedAt               time.Time      `json:"created_at"`
 	UpdatedAt               time.Time      `json:"updated_at"`
+}
+
+// GetFindingSchemas returns the finding_schemas column as a raw JSON array,
+// defaulting to "[]" when empty.
+func (w *Workflow) GetFindingSchemas() json.RawMessage {
+	if strings.TrimSpace(w.FindingSchemas) == "" {
+		return json.RawMessage("[]")
+	}
+	return json.RawMessage(w.FindingSchemas)
 }
 
 // GetGroups returns the parsed groups as a string slice
@@ -59,21 +70,22 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&struct {
-		ID                      string    `json:"id"`
-		ProjectID               string    `json:"project_id"`
-		Description             string    `json:"description"`
-		ScopeType               string    `json:"scope_type"`
-		CloseTicketOnComplete   bool      `json:"close_ticket_on_complete"`
-		Groups                  []string  `json:"groups"`
-		NextWorkflowOnSuccess   string    `json:"next_workflow_on_success"`
-		FinalizeSuccessCommand  string    `json:"finalize_success_command"`
-		FinalizeSuccessScriptID string    `json:"finalize_success_script_id"`
-		FinalizeFailureCommand  string    `json:"finalize_failure_command"`
-		FinalizeFailureScriptID string    `json:"finalize_failure_script_id"`
-		PauseEventCommand       string    `json:"pause_event_command"`
-		PauseEventScriptID      string    `json:"pause_event_script_id"`
-		CreatedAt               time.Time `json:"created_at"`
-		UpdatedAt               time.Time `json:"updated_at"`
+		ID                      string          `json:"id"`
+		ProjectID               string          `json:"project_id"`
+		Description             string          `json:"description"`
+		ScopeType               string          `json:"scope_type"`
+		CloseTicketOnComplete   bool            `json:"close_ticket_on_complete"`
+		Groups                  []string        `json:"groups"`
+		NextWorkflowOnSuccess   string          `json:"next_workflow_on_success"`
+		FinalizeSuccessCommand  string          `json:"finalize_success_command"`
+		FinalizeSuccessScriptID string          `json:"finalize_success_script_id"`
+		FinalizeFailureCommand  string          `json:"finalize_failure_command"`
+		FinalizeFailureScriptID string          `json:"finalize_failure_script_id"`
+		PauseEventCommand       string          `json:"pause_event_command"`
+		PauseEventScriptID      string          `json:"pause_event_script_id"`
+		FindingSchemas          json.RawMessage `json:"finding_schemas"`
+		CreatedAt               time.Time       `json:"created_at"`
+		UpdatedAt               time.Time       `json:"updated_at"`
 	}{
 		ID:                      w.ID,
 		ProjectID:               w.ProjectID,
@@ -88,6 +100,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		FinalizeFailureScriptID: w.FinalizeFailureScriptID,
 		PauseEventCommand:       w.PauseEventCommand,
 		PauseEventScriptID:      w.PauseEventScriptID,
+		FindingSchemas:          w.GetFindingSchemas(),
 		CreatedAt:               w.CreatedAt,
 		UpdatedAt:               w.UpdatedAt,
 	})
@@ -98,21 +111,22 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 // survive a marshal→unmarshal round-trip (e.g. workflow export/import).
 func (w *Workflow) UnmarshalJSON(data []byte) error {
 	var raw struct {
-		ID                      string    `json:"id"`
-		ProjectID               string    `json:"project_id"`
-		Description             string    `json:"description"`
-		ScopeType               string    `json:"scope_type"`
-		CloseTicketOnComplete   bool      `json:"close_ticket_on_complete"`
-		Groups                  []string  `json:"groups"`
-		NextWorkflowOnSuccess   string    `json:"next_workflow_on_success"`
-		FinalizeSuccessCommand  string    `json:"finalize_success_command"`
-		FinalizeSuccessScriptID string    `json:"finalize_success_script_id"`
-		FinalizeFailureCommand  string    `json:"finalize_failure_command"`
-		FinalizeFailureScriptID string    `json:"finalize_failure_script_id"`
-		PauseEventCommand       string    `json:"pause_event_command"`
-		PauseEventScriptID      string    `json:"pause_event_script_id"`
-		CreatedAt               time.Time `json:"created_at"`
-		UpdatedAt               time.Time `json:"updated_at"`
+		ID                      string          `json:"id"`
+		ProjectID               string          `json:"project_id"`
+		Description             string          `json:"description"`
+		ScopeType               string          `json:"scope_type"`
+		CloseTicketOnComplete   bool            `json:"close_ticket_on_complete"`
+		Groups                  []string        `json:"groups"`
+		NextWorkflowOnSuccess   string          `json:"next_workflow_on_success"`
+		FinalizeSuccessCommand  string          `json:"finalize_success_command"`
+		FinalizeSuccessScriptID string          `json:"finalize_success_script_id"`
+		FinalizeFailureCommand  string          `json:"finalize_failure_command"`
+		FinalizeFailureScriptID string          `json:"finalize_failure_script_id"`
+		PauseEventCommand       string          `json:"pause_event_command"`
+		PauseEventScriptID      string          `json:"pause_event_script_id"`
+		FindingSchemas          json.RawMessage `json:"finding_schemas"`
+		CreatedAt               time.Time       `json:"created_at"`
+		UpdatedAt               time.Time       `json:"updated_at"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -130,6 +144,9 @@ func (w *Workflow) UnmarshalJSON(data []byte) error {
 	w.FinalizeFailureScriptID = raw.FinalizeFailureScriptID
 	w.PauseEventCommand = raw.PauseEventCommand
 	w.PauseEventScriptID = raw.PauseEventScriptID
+	if len(raw.FindingSchemas) > 0 {
+		w.FindingSchemas = string(raw.FindingSchemas)
+	}
 	w.CreatedAt = raw.CreatedAt
 	w.UpdatedAt = raw.UpdatedAt
 	return nil

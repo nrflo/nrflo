@@ -87,7 +87,7 @@ class TestClientStructure(unittest.TestCase):
 
     def test_findings_has_expected_methods(self):
         c = self._make_client()
-        for method in ("add", "add_bulk", "get", "append", "append_bulk", "delete"):
+        for method in ("add", "add_bulk", "get", "append", "append_bulk", "delete", "emit"):
             self.assertTrue(callable(getattr(c.findings, method, None)),
                             f"findings.{method} missing or not callable")
         c.close()
@@ -199,6 +199,51 @@ class TestFindingsGetValidation(unittest.TestCase):
             self.fail(f"ValueError raised but agent_type is None: {e}")
         finally:
             c.close()
+
+
+class TestFindingsEmit(unittest.TestCase):
+    """Client-side behaviour of _Findings.emit() — no running server needed."""
+
+    _SOCK = "/tmp/nrflo-sdk-unit-test-no-server.sock"
+
+    def _make_client(self):
+        return nrflo_sdk.client(
+            sock_path=self._SOCK,
+            session_id="s",
+            instance_id="i",
+            project="p",
+            trx="t",
+        )
+
+    def test_emit_parses_json_string_value(self):
+        """A JSON string value is parsed to a structure before sending."""
+        c = self._make_client()
+        captured = {}
+        with unittest.mock.patch.object(c.findings, "_call",
+                                        side_effect=lambda action, extra: captured.update(action=action, extra=extra)):
+            c.findings.emit("security_issues", '[{"file":"a.go"}]')
+        self.assertEqual(captured["action"], "emit")
+        self.assertEqual(captured["extra"]["key"], "security_issues")
+        self.assertEqual(captured["extra"]["value"], [{"file": "a.go"}])
+        c.close()
+
+    def test_emit_passes_structured_value_through(self):
+        """A list/dict value is forwarded unchanged."""
+        c = self._make_client()
+        captured = {}
+        value = [{"file": "a.go", "severity": "high"}]
+        with unittest.mock.patch.object(c.findings, "_call",
+                                        side_effect=lambda action, extra: captured.update(extra=extra)):
+            c.findings.emit("security_issues", value)
+        self.assertEqual(captured["extra"]["value"], value)
+        c.close()
+
+    def test_emit_invalid_json_string_raises(self):
+        """An unparseable JSON string raises before any socket call."""
+        c = self._make_client()
+        with self.assertRaises(ValueError):
+            c.findings.emit("k", "{not json")
+        c.close()
 
 
 class TestClientLog(unittest.TestCase):

@@ -59,6 +59,14 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		return nil, err
 	}
 
+	if err := ValidateFindingSchemas(req.FindingSchemas); err != nil {
+		return nil, err
+	}
+	findingSchemasJSON := []byte("[]")
+	if len(req.FindingSchemas) > 0 {
+		findingSchemasJSON, _ = json.Marshal(req.FindingSchemas)
+	}
+
 	closeTicketOnComplete := true
 	if req.CloseTicketOnComplete != nil {
 		closeTicketOnComplete = *req.CloseTicketOnComplete
@@ -79,6 +87,7 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		PauseEventCommand:       req.PauseEventCommand,
 		PauseEventScriptID:      req.PauseEventScriptID,
 		Groups:                  string(groupsJSON),
+		FindingSchemas:          string(findingSchemasJSON),
 		CreatedAt:               s.clock.Now().UTC(),
 		UpdatedAt:               s.clock.Now().UTC(),
 	}
@@ -92,12 +101,12 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	}
 
 	_, err := s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess,
 		wf.FinalizeSuccessCommand, wf.FinalizeSuccessScriptID, wf.FinalizeFailureCommand, wf.FinalizeFailureScriptID,
 		wf.PauseEventCommand, wf.PauseEventScriptID,
-		req.ObserverContext, observerProvider, observerModel, now, now)
+		req.ObserverContext, observerProvider, observerModel, wf.FindingSchemas, now, now)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "PRIMARY KEY") {
 			return nil, fmt.Errorf("workflow '%s' already exists", req.ID)
@@ -207,6 +216,18 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 	if req.PauseEventScriptID != nil {
 		updates = append(updates, "pause_event_script_id = ?")
 		args = append(args, *req.PauseEventScriptID)
+	}
+
+	if req.FindingSchemas != nil {
+		if err := ValidateFindingSchemas(*req.FindingSchemas); err != nil {
+			return err
+		}
+		schemasJSON := []byte("[]")
+		if len(*req.FindingSchemas) > 0 {
+			schemasJSON, _ = json.Marshal(*req.FindingSchemas)
+		}
+		updates = append(updates, "finding_schemas = ?")
+		args = append(args, string(schemasJSON))
 	}
 
 	if req.ObserverContext != nil {

@@ -5,21 +5,20 @@ import (
 	"testing"
 )
 
-// Migration 000058 re-baselines the six readonly agent default templates;
-// migration 000059 then rewrites the seeded CLI name nrflow → nrflo inside
-// those same readonly rows. These tests verify the post-000059 state.
+// 000058 re-baselines the six readonly agent templates; 000059 rewrites nrflow
+// → nrflo in them; 000137 rewrites ticket-creator to the MCP ticket tools.
+// These tests verify the final state.
 
-// expectedAgentLen holds the canonical byte length of each readonly agent
-// template after the nrflow → nrflo rewrite in migration 000059. The test
-// allows a +/- 2 byte tolerance to absorb trailing-newline / line-ending
-// differences introduced by SQL literal formatting.
+// expectedAgentLen pins each readonly agent template's byte length in the
+// fully-migrated DB (±2 tolerance for line-ending differences). ticket-creator
+// reflects its 000137 MCP-tools rewrite.
 var expectedAgentLen = map[string]int{
 	"setup-analyzer": 707,
 	"test-writer":    1425,
 	"implementor":    1249,
 	"qa-verifier":    1895,
 	"doc-updater":    1716,
-	"ticket-creator": 1759,
+	"ticket-creator": 1544,
 }
 
 // expectedInjectableLen pins the byte lengths of injectable rows that MUST
@@ -193,9 +192,8 @@ func TestMigration058_InjectablesUntouched(t *testing.T) {
 	}
 }
 
-// TestMigration058_UpdatedAtBumped verifies the six readonly agent rows have
-// updated_at set to the migration 000059 timestamp 2026-04-19T00:00:00Z
-// (000059 rewrites the same rows after 000058 seeded them).
+// TestMigration058_UpdatedAtBumped verifies the readonly agent rows carry the
+// 000059 timestamp; ticket-creator carries its later 000137 rewrite timestamp.
 func TestMigration058_UpdatedAtBumped(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -203,8 +201,11 @@ func TestMigration058_UpdatedAtBumped(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	const want = "2026-04-19T00:00:00Z"
 	for id := range expectedAgentLen {
+		want := "2026-04-19T00:00:00Z"
+		if id == "ticket-creator" {
+			want = "2026-05-27T00:00:00Z" // 000137 MCP-tools rewrite
+		}
 		t.Run(id, func(t *testing.T) {
 			var updatedAt string
 			err := pool.QueryRow(

@@ -196,6 +196,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		ProjectFindingsSvc: s.config.ProjectFindingsSvc,
 		AgentSvcReal:       s.config.AgentSvcReal,
 		WorkflowSvc:        s.config.WorkflowSvc,
+		TicketSvc:          s.config.TicketSvc,
 		PTYManager:         s.config.PTYManager,
 		ProjectEnv:         s.config.ProjectEnv,
 	})

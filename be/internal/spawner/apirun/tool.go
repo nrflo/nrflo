@@ -71,6 +71,7 @@ type ToolEnv struct {
 	ProjectFindings    *service.ProjectFindingsService
 	Agent              *service.AgentService
 	Workflow           *service.WorkflowService
+	Ticket             *service.TicketService
 	ArtifactSvc        *service.ArtifactService
 	// DispatchRepo is required for tools that record dispatch rows (tools_python).
 	// Nil-safe: handlers skip Insert when nil.

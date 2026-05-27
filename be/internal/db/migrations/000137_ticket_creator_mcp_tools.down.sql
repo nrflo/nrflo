@@ -1,0 +1,2 @@
+-- No-op: this migration only refreshes the ticket-creator default template
+-- content (a forward-only data fix). There is nothing to revert.

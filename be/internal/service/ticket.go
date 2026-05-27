@@ -126,10 +126,13 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 	if req.Description != "" {
 		ticket.Description = sql.NullString{String: req.Description, Valid: true}
 	}
+	if req.ParentTicketID != "" {
+		ticket.ParentTicketID = sql.NullString{String: strings.ToLower(req.ParentTicketID), Valid: true}
+	}
 
 	_, err = s.pool.Exec(`
-		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, created_at, updated_at, created_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO tickets (id, project_id, title, description, status, priority, issue_type, parent_ticket_id, created_at, updated_at, created_by)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(ticket.ID),
 		strings.ToLower(ticket.ProjectID),
 		ticket.Title,
@@ -137,6 +140,7 @@ func (s *TicketService) Create(projectID string, req *types.TicketCreateRequest)
 		ticket.Status,
 		ticket.Priority,
 		ticket.IssueType,
+		ticket.ParentTicketID,
 		now,
 		now,
 		ticket.CreatedBy,

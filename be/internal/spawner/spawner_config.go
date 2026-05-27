@@ -78,14 +78,15 @@ type Config struct {
 	// AgentSvc persists context_left for API-mode agents (mirrors what the
 	// CLI hook does for CLI agents).
 	AgentSvc apirun.AgentSvc
-	// FindingsSvc, ProjectFindingsSvc, AgentSvcReal, WorkflowSvc are used by
-	// API-mode tool builtins (findings_*, project_findings_*, agent_*,
-	// workflow_skip). They mirror the services the socket handler uses for
-	// CLI agents so WS event parity is automatic.
+	// FindingsSvc, ProjectFindingsSvc, AgentSvcReal, WorkflowSvc, TicketSvc are
+	// used by API-mode tool builtins (findings_*, project_findings_*, agent_*,
+	// workflow_skip, ticket_*). They mirror the services the socket handler uses
+	// for CLI agents so WS event parity is automatic.
 	FindingsSvc        *service.FindingsService
 	ProjectFindingsSvc *service.ProjectFindingsService
 	AgentSvcReal       *service.AgentService
 	WorkflowSvc        *service.WorkflowService
+	TicketSvc          *service.TicketService
 	// APIMode enables execution_mode='api' agents. When false, prepareSpawn rejects any
 	// agent with execution_mode='api' before making any provider call. Injected by the
 	// orchestrator from the api_mode_enabled global setting at spawn time.

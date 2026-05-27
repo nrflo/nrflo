@@ -82,6 +82,7 @@ func (s *Spawner) buildAPIRegistry(
 		ProjectFindings:    s.config.ProjectFindingsSvc,
 		Agent:              s.config.AgentSvcReal,
 		Workflow:           s.config.WorkflowSvc,
+		Ticket:             s.config.TicketSvc,
 		ArtifactSvc:        s.config.ArtifactSvc,
 		WorkflowControl:    s.config.WorkflowControl,
 		Consultant:         s,

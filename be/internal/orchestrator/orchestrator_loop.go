@@ -72,6 +72,7 @@ func (o *Orchestrator) runLoop(
 	projectFindingsSvc := service.NewProjectFindingsService(pool, o.clock)
 	agentSvcReal := service.NewAgentService(pool, o.clock)
 	workflowSvcReal := service.NewWorkflowService(pool, o.clock)
+	ticketSvc := service.NewTicketService(pool, o.clock)
 	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
 	artifactSvcRun := service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath)
 
@@ -165,6 +166,7 @@ func (o *Orchestrator) runLoop(
 		ProjectFindingsSvc: projectFindingsSvc,
 		AgentSvcReal:       agentSvcReal,
 		WorkflowSvc:        workflowSvcReal,
+		TicketSvc:          ticketSvc,
 		APIMode:            runAPIMode,
 		APIViaCLI:          runAPIViaCLI,
 		PTYManager:         o.PTYManager,

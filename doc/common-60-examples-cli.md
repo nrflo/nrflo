@@ -53,11 +53,15 @@ If blocked, call the `agent_fail` tool with a `reason`.
 
 ## Ticket & Dependency Management
 
-Tickets and dependencies are managed through the **web UI** and the REST API
-(`/api/v1/tickets`, `/api/v1/dependencies`) — not by in-workflow agents. A
-workflow that needs to read or mutate tickets from an agent can expose a
-project-scoped python tool (Settings → Python Scripts, `kind=tool`) that calls
-the REST API with a service token. There is no ticket CLI.
+A project-scoped agent (e.g. a ticket-creator) creates tickets with the
+`ticket_create` and `ticket_add_dependency` tools — see
+[Ticket tools](common-30-lifecycle-cli.md#ticket-tools). `ticket_create` returns
+the new ticket's `ticket_id`; pass it to `ticket_add_dependency` to wire a
+blocking dependency. Both act on the agent's own project. Tickets are also
+managed through the **web UI** and the REST API
+(`/api/v1/tickets`, `/api/v1/dependencies`); reading or mutating other ticket
+fields from an agent still uses a project-scoped python tool (Settings → Python
+Scripts, `kind=tool`) over that REST API.
 
 ---
 

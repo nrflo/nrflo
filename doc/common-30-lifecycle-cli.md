@@ -44,6 +44,21 @@ you can read it with your native file tools.
 
 ---
 
+## Ticket tools
+
+For project-scoped agents that plan and create work (e.g. a ticket-creator).
+Both act on the agent's own project.
+
+| Tool | Input | Purpose |
+|------|-------|---------|
+| `ticket_create` | `{title, description?, type?, priority?, parent_id?}` | Create a ticket; returns `{ticket_id, title}`. `type` ∈ `bug\|feature\|task\|epic` (default `task`); `priority` 1–4 (default 2) |
+| `ticket_add_dependency` | `{ticket_id, depends_on_id}` | `ticket_id` is blocked by `depends_on_id` (the blocker must complete first); both must already exist |
+
+Capture the `ticket_id` returned by `ticket_create` and pass it to
+`ticket_add_dependency` to build the dependency graph.
+
+---
+
 ## Findings tools
 
 ### Agent-level (own session)

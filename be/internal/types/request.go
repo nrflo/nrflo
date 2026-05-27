@@ -4,11 +4,12 @@ import "encoding/json"
 
 // TicketCreateRequest is the request for creating a ticket
 type TicketCreateRequest struct {
-	ID          string `json:"id,omitempty"`
-	Title       string `json:"title"`
-	Description string `json:"description,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Priority    int    `json:"priority,omitempty"`
+	ID             string `json:"id,omitempty"`
+	Title          string `json:"title"`
+	Description    string `json:"description,omitempty"`
+	Type           string `json:"type,omitempty"`
+	Priority       int    `json:"priority,omitempty"`
+	ParentTicketID string `json:"parent_ticket_id,omitempty"`
 }
 
 // TicketUpdateRequest is the request for updating a ticket

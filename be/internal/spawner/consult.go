@@ -93,6 +93,7 @@ func (s *Spawner) Consult(ctx context.Context, callerSessionID, consultantID, qu
 		ProjectFindingsSvc: s.config.ProjectFindingsSvc,
 		AgentSvcReal:       s.config.AgentSvcReal,
 		WorkflowSvc:        s.config.WorkflowSvc,
+		TicketSvc:          s.config.TicketSvc,
 		DispatchRepo:       s.config.DispatchRepo,
 		ArtifactSvc:        s.config.ArtifactSvc,
 		PTYManager:         s.config.PTYManager,

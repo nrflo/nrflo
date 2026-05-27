@@ -78,6 +78,7 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 	projectFindingsSvc := service.NewProjectFindingsService(pool, clk)
 	agentSvc := service.NewAgentService(pool, clk)
 	workflowSvc := service.NewWorkflowService(pool, clk)
+	ticketSvc := service.NewTicketService(pool, clk)
 	artifactSvc := service.NewArtifactService(pool, clk, hub, filepath.Join(home, "nrflo.data"))
 
 	env := apirun.ToolEnv{
@@ -94,6 +95,7 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 		ProjectFindings:    projectFindingsSvc,
 		Agent:              agentSvc,
 		Workflow:           workflowSvc,
+		Ticket:             ticketSvc,
 		ArtifactSvc:        artifactSvc,
 	}
 	return &builtinTestEnv{pool: pool, hub: hub, env: env, clk: clk}

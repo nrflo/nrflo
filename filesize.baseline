@@ -79,7 +79,7 @@ be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_interactive.go	340
 be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	662
+be/internal/orchestrator/orchestrator_loop.go	664
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -120,7 +120,7 @@ be/internal/service/scheduled_task_chain_test.go	381
 be/internal/service/scheduled_task_test.go	466
 be/internal/service/system_agent_definition.go	368
 be/internal/service/system_agent_definition_test.go	423
-be/internal/service/ticket.go	383
+be/internal/service/ticket.go	387
 be/internal/service/workflow.go	477
 be/internal/service/workflow_chain.go	373
 be/internal/service/workflow_chain_run_test.go	344

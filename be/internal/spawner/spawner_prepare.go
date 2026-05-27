@@ -254,7 +254,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		proc.maxContext = maxCtx
 
-		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "")
+		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "", false)
 		if regErr != nil {
 			return nil, nil, regErr
 		}

@@ -37,31 +37,17 @@ func newRoutesMux(t *testing.T, apiMode bool) *http.ServeMux {
 	return mux
 }
 
-// TestAPIRoutes_ToolDefinitions_DisabledInCLIMode verifies that GET /api/v1/tool-definitions
-// returns 400 api_mode_disabled when setting is not enabled.
-func TestAPIRoutes_ToolDefinitions_DisabledInCLIMode(t *testing.T) {
-	mux := newRoutesMux(t, false)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/tool-definitions", nil)
-	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("GET /api/v1/tool-definitions (api mode off) status = %d, want 400", rr.Code)
-	}
-}
-
-// TestAPIRoutes_ToolDefinitions_EnabledInAPIMode verifies that GET /api/v1/tool-definitions
-// is not blocked by the middleware when api_mode_enabled=true.
-func TestAPIRoutes_ToolDefinitions_EnabledInAPIMode(t *testing.T) {
+// TestAPIRoutes_ToolDefinitions_RouteGone verifies that GET /api/v1/tool-definitions
+// returns 404 — the route was removed when the HTTP tools feature was deleted.
+func TestAPIRoutes_ToolDefinitions_RouteGone(t *testing.T) {
 	mux := newRoutesMux(t, true)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/tool-definitions", nil)
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
-	if rr.Code == http.StatusBadRequest {
-		t.Errorf("GET /api/v1/tool-definitions (api mode on) returned 400; middleware should pass")
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("GET /api/v1/tool-definitions status = %d, want 404", rr.Code)
 	}
 }
 

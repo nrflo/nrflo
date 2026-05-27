@@ -203,14 +203,6 @@ func TestMigration114_ToolDispatchesCleanup(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 	seedProject114(t, pool, "p-td")
 
-	// Seed a tool_definition so we can reference it by name.
-	if _, err := pool.Exec(
-		`INSERT INTO tool_definitions (id, name, description, input_schema, endpoint, created_at, updated_at)
-		 VALUES ('td-1', 'my_custom_tool', '', '{}', 'http://x/tool', datetime('now'), datetime('now'))`,
-	); err != nil {
-		t.Fatalf("insert tool_definition: %v", err)
-	}
-
 	ins := func(id, toolName string) {
 		t.Helper()
 		if _, err := pool.Exec(
@@ -223,14 +215,13 @@ func TestMigration114_ToolDispatchesCleanup(t *testing.T) {
 	}
 
 	ins("d-builtin", "findings_add")    // builtin — keep
-	ins("d-tooldef", "my_custom_tool")  // in tool_definitions — keep
 	ins("d-orphan", "legacy_dead_tool") // orphan — delete
 
-	// Execute the same cleanup DELETE from migration 114.
+	// The tool_definitions allowlist was removed with the HTTP tools feature
+	// (migration 134); cleanup now keeps only the builtin allowlist.
 	if _, err := pool.Exec(`
 		DELETE FROM tool_dispatches
-		WHERE tool_name NOT IN (SELECT name FROM tool_definitions)
-		  AND tool_name NOT IN (
+		WHERE tool_name NOT IN (
 		      'findings_add', 'findings_add_bulk', 'findings_append', 'findings_append_bulk',
 		      'findings_get', 'findings_delete',
 		      'project_findings_add', 'project_findings_add_bulk', 'project_findings_append',
@@ -246,8 +237,8 @@ func TestMigration114_ToolDispatchesCleanup(t *testing.T) {
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM tool_dispatches WHERE project_id='p-td'`).Scan(&remaining); err != nil {
 		t.Fatalf("count: %v", err)
 	}
-	if remaining != 2 {
-		t.Errorf("tool_dispatches count = %d after cleanup, want 2 (builtin + tool_def)", remaining)
+	if remaining != 1 {
+		t.Errorf("tool_dispatches count = %d after cleanup, want 1 (builtin)", remaining)
 	}
 
 	var orphanCount int

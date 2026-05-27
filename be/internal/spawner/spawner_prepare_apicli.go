@@ -35,8 +35,9 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	// Set maxContext from the api_models row.
 	proc.maxContext = am.ContextLength
 
-	// Build tool registry (same as normal api branch).
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "")
+	// Build tool registry: honor the tools field but force the lifecycle
+	// baseline — api-via-cli completes over the socket like a CLI agent.
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "", true)
 	if regErr != nil {
 		return nil, nil, regErr
 	}

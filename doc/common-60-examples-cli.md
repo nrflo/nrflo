@@ -56,8 +56,8 @@ If blocked, call the `agent_fail` tool with a `reason`.
 Tickets and dependencies are managed through the **web UI** and the REST API
 (`/api/v1/tickets`, `/api/v1/dependencies`) — not by in-workflow agents. A
 workflow that needs to read or mutate tickets from an agent can expose a
-project-scoped HTTP tool (Settings → Tools) that calls the REST API with a
-service token. There is no ticket CLI.
+project-scoped python tool (Settings → Python Scripts, `kind=tool`) that calls
+the REST API with a service token. There is no ticket CLI.
 
 ---
 

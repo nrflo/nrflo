@@ -57,7 +57,7 @@ func New(row *model.PythonScript, pythonPath, sdkDir string, projectEnv []string
 }
 
 // Spec returns the ToolSpec for this handler. Empty InputSchema falls back to
-// the permissive default, mirroring tools_http/http.go:46-49.
+// the permissive default (a free-form object).
 func (h *PythonToolHandler) Spec() provider.ToolSpec {
 	schema := json.RawMessage(h.row.InputSchema)
 	if len(schema) == 0 {

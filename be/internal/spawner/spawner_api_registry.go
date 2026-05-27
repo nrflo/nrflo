@@ -9,15 +9,19 @@ import (
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/tools_builtin"
-	"be/internal/spawner/apirun/tools_http"
 )
 
 // buildAPIRegistry resolves the per-agent tool registry from the tools CSV,
-// loads HTTP and python tool definitions, resolves the registry, and assembles
-// the ToolEnv. Called by the in-process api branch, the api-via-cli hybrid, and
-// the cli_interactive Claude path (which passes toolsCSVOverride="*" to expose
-// the full nrflo tool set as mcp__nrflo__* tools). When toolsCSVOverride is
-// empty, the agent definition's tools field is used.
+// loads python tool definitions, resolves the registry, and assembles the
+// ToolEnv. Called by the in-process api branch, the api-via-cli hybrid, and the
+// cli_interactive Claude/codex path. When toolsCSVOverride is empty, the agent
+// definition's tools field is used.
+//
+// forceLifecycleBaseline merges in the agent_* lifecycle tools regardless of
+// the CSV; socket-completion backends (cli_interactive/codex/api-via-cli) set
+// it so a restrictive CSV can never strip an agent's ability to signal
+// completion. Pure in-process api agents leave it false (they auto-PASS on
+// end_turn and may be intentionally text-only).
 func (s *Spawner) buildAPIRegistry(
 	ctx context.Context,
 	req SpawnRequest,
@@ -25,6 +29,7 @@ func (s *Spawner) buildAPIRegistry(
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
 	toolsCSVOverride string,
+	forceLifecycleBaseline bool,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
 	toolsCSV := toolsCSVOverride
 	if toolsCSV == "" {
@@ -35,16 +40,15 @@ func (s *Spawner) buildAPIRegistry(
 		}
 	}
 
-	httpDefs, defsErr := s.loadAPIHTTPToolDefs(req.ProjectID, req.WorkflowName)
-	if defsErr != nil {
-		return nil, nil, apirun.ToolEnv{}, fmt.Errorf("api mode: load tool defs: %w", defsErr)
-	}
-
 	pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
 
-	specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), pythonHandlers, httpDefs, tools_http.New(nil))
+	specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), pythonHandlers)
 	if regErr != nil {
 		return nil, nil, apirun.ToolEnv{}, fmt.Errorf("api mode: %w", regErr)
+	}
+
+	if forceLifecycleBaseline {
+		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.LifecycleToolNames())
 	}
 
 	// Recursion guard: consultant agents may not call consult themselves.

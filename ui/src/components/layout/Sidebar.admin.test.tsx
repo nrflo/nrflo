@@ -12,7 +12,6 @@ vi.mock('@/hooks/useTickets', () => ({
   useProjectWorkflow: () => mockUseProjectWorkflow(),
 }))
 
-const mockUseAPIModeEnabled = vi.fn().mockReturnValue(false)
 const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
 const mockUseMenuVisibility = vi.fn().mockReturnValue({
   newTicket: true, importSpec: true, git: true, chainExecutions: true,
@@ -20,7 +19,6 @@ const mockUseMenuVisibility = vi.fn().mockReturnValue({
   documentation: true, errors: true, agentSessions: true,
 })
 vi.mock('@/hooks/useGlobalSettings', () => ({
-  useAPIModeEnabled: () => mockUseAPIModeEnabled(),
   useExperimentalEnabled: () => mockUseExperimentalEnabled(),
   useExperimentalObserverEnabled: () => false,
   useMenuVisibility: () => mockUseMenuVisibility(),
@@ -51,7 +49,6 @@ describe('Sidebar - Admin Role', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseAPIModeEnabled.mockReturnValue(false)
     mockUseMenuVisibility.mockReturnValue({
       newTicket: true, importSpec: true, git: true, chainExecutions: true,
       schedules: true, workflowChains: true, pythonScripts: true,
@@ -84,7 +81,6 @@ describe('Sidebar - Viewer Role', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(false)
-    mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseMenuVisibility.mockReturnValue({
       newTicket: true, importSpec: true, git: true, chainExecutions: true,
       schedules: true, workflowChains: true, pythonScripts: true,
@@ -118,11 +114,6 @@ describe('Sidebar - Viewer Role', () => {
   it('hides Audit Log nav item', () => {
     renderSidebar()
     expect(screen.queryByRole('link', { name: 'Audit Log' })).not.toBeInTheDocument()
-  })
-
-  it('hides Tool Definitions even with apiModeEnabled=true for non-admins', () => {
-    renderSidebar()
-    expect(screen.queryByRole('link', { name: 'Tool Definitions' })).not.toBeInTheDocument()
   })
 
   it('still shows non-gated nav items', () => {

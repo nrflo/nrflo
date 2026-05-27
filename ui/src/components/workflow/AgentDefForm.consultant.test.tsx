@@ -39,8 +39,8 @@ function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = 
 }
 
 function getConsultantToggle() {
-  // Toggle renders role="switch"; the only switch in this form is Consultant
-  return screen.getByRole('switch')
+  // The tools picker adds its own switches, so scope by the Consultant label.
+  return screen.getByRole('switch', { name: 'Consultant' })
 }
 
 describe('AgentDefForm — consultant toggle', () => {

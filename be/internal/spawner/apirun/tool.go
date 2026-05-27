@@ -72,7 +72,7 @@ type ToolEnv struct {
 	Agent              *service.AgentService
 	Workflow           *service.WorkflowService
 	ArtifactSvc        *service.ArtifactService
-	// DispatchRepo is required for tools that record dispatch rows (tools_http, tools_python).
+	// DispatchRepo is required for tools that record dispatch rows (tools_python).
 	// Nil-safe: handlers skip Insert when nil.
 	DispatchRepo *repo.DispatchRepo
 	// WorkflowControl allows workflow_continue/workflow_fail builtins to act on the workflow.

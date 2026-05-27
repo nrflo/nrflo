@@ -660,6 +660,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/workflows/{wid}/agents/{id}", s.handleGetAgentDef)
 	protected("PATCH /api/v1/workflows/{wid}/agents/{id}", s.handleUpdateAgentDef)
 	protected("DELETE /api/v1/workflows/{wid}/agents/{id}", s.handleDeleteAgentDef)
+	protected("GET /api/v1/available-tools", s.handleListAvailableTools)
 
 	// System agent definitions (global) — writes are admin-only
 	protected("GET /api/v1/system-agents", s.handleListSystemAgentDefs)
@@ -783,23 +784,6 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("DELETE /api/v1/chains/{id}", s.handleDeleteChain)
 	protected("POST /api/v1/chains/{id}/append", s.handleAppendToChain)
 	protected("POST /api/v1/chains/{id}/remove-items", s.handleRemoveFromChain)
-
-	apiModeOnly := func(h http.HandlerFunc) http.Handler {
-		return s.apiModeOnly(h)
-	}
-	apiModeProtected := func(pat string, h http.HandlerFunc) {
-		mux.Handle(pat, s.requireAuth(s.apiModeOnly(h)))
-	}
-	apiModeAdmin := func(pat string, h http.HandlerFunc) {
-		mux.Handle(pat, s.requireAdmin(apiModeOnly(h)))
-	}
-
-	// Tool definitions (global; api-mode only) — writes are admin-only
-	apiModeProtected("GET /api/v1/tool-definitions", s.handleListToolDefinitions)
-	apiModeAdmin("POST /api/v1/tool-definitions", s.handleCreateToolDefinition)
-	apiModeProtected("GET /api/v1/tool-definitions/{id}", s.handleGetToolDefinition)
-	apiModeAdmin("PUT /api/v1/tool-definitions/{id}", s.handleUpdateToolDefinition)
-	apiModeAdmin("DELETE /api/v1/tool-definitions/{id}", s.handleDeleteToolDefinition)
 
 	// Spec import (project-scoped via X-Project header)
 	protected("POST /api/v1/import/spec", s.handleStartSpecImport)

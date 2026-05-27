@@ -24,7 +24,6 @@ import { LogsPage } from '@/pages/LogsPage'
 import { SchedulesPage } from '@/pages/SchedulesPage'
 import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
 import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
-import { ToolDefinitionsPage } from '@/pages/ToolDefinitionsPage'
 import { PythonScriptsPage } from '@/pages/PythonScriptsPage'
 import { ImportSpecPage } from '@/pages/ImportSpecPage'
 import { LoginPage } from '@/pages/auth/LoginPage'
@@ -33,7 +32,7 @@ import { ForbiddenPage } from '@/pages/ForbiddenPage'
 import { useProjectStore } from '@/stores/projectStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useConnectionsStore } from '@/stores/connectionsStore'
-import { useAPIModeEnabled, useExperimentalEnabled } from '@/hooks/useGlobalSettings'
+import { useExperimentalEnabled } from '@/hooks/useGlobalSettings'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,7 +44,6 @@ const queryClient = new QueryClient({
 })
 
 function AppRoutes() {
-  const apiModeEnabled = useAPIModeEnabled()
   const experimentalEnabled = useExperimentalEnabled()
   return (
     <BrowserRouter>
@@ -72,7 +70,6 @@ function AppRoutes() {
               <Route path="errors" element={<ErrorsPage />} />
               <Route path="logs" element={<LogsPage />} />
               {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}
-              {apiModeEnabled && <Route path="tool-definitions" element={<ToolDefinitionsPage />} />}
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path="project-settings" element={<RequireAdmin><ProjectSettingsPage /></RequireAdmin>} />

@@ -28,7 +28,6 @@ function setProjectWorkflowActive(active: boolean) {
   })
 }
 
-const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
 const mockUseExperimentalEnabled = vi.fn().mockReturnValue(false)
 // TODO(test-writer): add tests asserting menu visibility gates, e.g. menu.documentation=false hides the Documentation NavItem while other items remain
 const mockUseMenuVisibility = vi.fn().mockReturnValue({
@@ -44,7 +43,6 @@ const mockUseMenuVisibility = vi.fn().mockReturnValue({
   agentSessions: true,
 })
 vi.mock('@/hooks/useGlobalSettings', () => ({
-  useAPIModeEnabled: () => mockUseAPIModeEnabled(),
   useExperimentalEnabled: () => mockUseExperimentalEnabled(),
   useExperimentalObserverEnabled: () => false,
   useMenuVisibility: () => mockUseMenuVisibility(),
@@ -93,7 +91,6 @@ describe('Sidebar - Spinner Visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     setProjectWorkflowActive(false)
@@ -450,7 +447,6 @@ describe('Sidebar - Project Workflow Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
@@ -526,7 +522,6 @@ describe('Sidebar - Chain Execution Spinner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseAPIModeEnabled.mockReturnValue(true)
     mockUseExperimentalEnabled.mockReturnValue(false)
     mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
@@ -620,7 +615,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
   })
 })
 
-describe('Sidebar - API Mode Gating', () => {
+describe('Sidebar - Admin Nav Rendering', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
@@ -631,20 +626,7 @@ describe('Sidebar - API Mode Gating', () => {
     mockUseChainList.mockReturnValue({ data: [] })
   })
 
-  it('hides Tool Definitions when apiModeEnabled=false', () => {
-    mockUseAPIModeEnabled.mockReturnValue(false)
-    renderSidebar()
-    expect(screen.queryByText('Tool Definitions')).not.toBeInTheDocument()
-  })
-
-  it('shows Tool Definitions when apiModeEnabled=true', () => {
-    mockUseAPIModeEnabled.mockReturnValue(true)
-    renderSidebar()
-    expect(screen.getByText('Tool Definitions')).toBeInTheDocument()
-  })
-
-  it('other nav items always render regardless of apiModeEnabled', () => {
-    mockUseAPIModeEnabled.mockReturnValue(false)
+  it('renders core nav items', () => {
     renderSidebar()
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /documentation/i })).toBeInTheDocument()
@@ -656,7 +638,6 @@ describe('Sidebar - Experimental Gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseIsAdmin.mockReturnValue(true)
-    mockUseAPIModeEnabled.mockReturnValue(false)
     mockUseMenuVisibility.mockReturnValue({ newTicket: true, importSpec: true, git: true, chainExecutions: true, schedules: true, workflowChains: true, pythonScripts: true, documentation: true, errors: true, agentSessions: true })
     mockUseStatus.mockReturnValue({ data: createMockStatus() })
     setProjectWorkflowActive(false)

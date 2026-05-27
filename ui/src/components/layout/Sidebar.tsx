@@ -13,7 +13,6 @@ import {
   Link2,
   BookOpen,
   AlertTriangle,
-  Wrench,
   CalendarClock,
   ScrollText,
   ListOrdered,
@@ -26,7 +25,7 @@ import { useStatus } from '@/hooks/useTickets'
 import { useChainList } from '@/hooks/useChains'
 import { useRunningAgents } from '@/hooks/useRunningAgents'
 import { useProjectStore } from '@/stores/projectStore'
-import { useAPIModeEnabled, useExperimentalEnabled, useExperimentalObserverEnabled, useMenuVisibility } from '@/hooks/useGlobalSettings'
+import { useExperimentalEnabled, useExperimentalObserverEnabled, useMenuVisibility } from '@/hooks/useGlobalSettings'
 import { useIsAdmin } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
@@ -66,7 +65,6 @@ export function Sidebar() {
   const { data: status } = useStatus()
   const currentProject = useProjectStore((s) => s.currentProject)
   const projects = useProjectStore((s) => s.projects)
-  const apiModeEnabled = useAPIModeEnabled()
   const experimentalEnabled = useExperimentalEnabled()
   const observerEnabled = useExperimentalObserverEnabled()
   const isAdmin = useIsAdmin()
@@ -214,16 +212,6 @@ export function Sidebar() {
               <div className="px-3 py-1">
                 <LaunchObserverButton payload={{ scope: 'global' }} variant="outline" size="sm" />
               </div>
-            )}
-            {apiModeEnabled && (
-              <>
-                <NavItem
-                  to="/tool-definitions"
-                  icon={<Wrench className="h-4 w-4" />}
-                  label="Tool Definitions"
-                  active={isActive('/tool-definitions')}
-                />
-              </>
             )}
           </>
         )}

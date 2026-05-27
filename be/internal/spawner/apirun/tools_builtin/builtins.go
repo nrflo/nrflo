@@ -50,3 +50,17 @@ func Builtins() map[string]apirun.ToolHandler {
 		"consult": consultHandler{},
 	}
 }
+
+// LifecycleToolNames returns the builtin tools an agent must always be able to
+// call to drive its own completion (the agent_* group). Socket-completion
+// backends (cli_interactive, codex, api-via-cli) hang without them, so the
+// spawner force-merges these into the registry regardless of the tools CSV.
+func LifecycleToolNames() []string {
+	return []string{
+		"agent_finished",
+		"agent_fail",
+		"agent_continue",
+		"agent_callback",
+		"agent_context_update",
+	}
+}

@@ -3,8 +3,6 @@ package apirun
 import (
 	"strings"
 	"testing"
-
-	"be/internal/model"
 )
 
 // newPythonStubs builds a slice of stubHandler ToolHandlers for use as python handlers.
@@ -20,7 +18,7 @@ func newPythonStubs(names ...string) []ToolHandler {
 // tool handler resolves correctly when the builtins map is empty.
 func TestResolveRegistry_PythonTool_ResolvesWithEmptyBuiltins(t *testing.T) {
 	handlers := newPythonStubs("lookup_customer")
-	_, reg, err := ResolveRegistry("lookup_customer", map[string]ToolHandler{}, handlers, nil, httpFactoryStub)
+	_, reg, err := ResolveRegistry("lookup_customer", map[string]ToolHandler{}, handlers)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -32,25 +30,11 @@ func TestResolveRegistry_PythonTool_ResolvesWithEmptyBuiltins(t *testing.T) {
 	}
 }
 
-// TestResolveRegistry_PythonHTTPCollision verifies that an HTTP tool with the same
-// name as a python tool returns "collides with python tool".
-func TestResolveRegistry_PythonHTTPCollision(t *testing.T) {
-	handlers := newPythonStubs("lookup_sku")
-	httpDefs := []*model.ToolDefinition{{Name: "lookup_sku"}}
-	_, _, err := ResolveRegistry("lookup_sku", defaultBuiltins(), handlers, httpDefs, httpFactoryStub)
-	if err == nil {
-		t.Fatalf("expected collision error, got nil")
-	}
-	if !strings.Contains(err.Error(), "collides with python tool") {
-		t.Errorf("error = %q, want substring 'collides with python tool'", err.Error())
-	}
-}
-
 // TestResolveRegistry_BuiltinPythonCollision verifies that a python tool with the
 // same name as a builtin returns "collides with builtin".
 func TestResolveRegistry_BuiltinPythonCollision(t *testing.T) {
 	handlers := newPythonStubs("findings_add")
-	_, _, err := ResolveRegistry("findings_add", defaultBuiltins(), handlers, nil, httpFactoryStub)
+	_, _, err := ResolveRegistry("findings_add", defaultBuiltins(), handlers)
 	if err == nil {
 		t.Fatalf("expected collision error, got nil")
 	}
@@ -63,7 +47,7 @@ func TestResolveRegistry_BuiltinPythonCollision(t *testing.T) {
 // works against python tool names, including partial matches.
 func TestResolveRegistry_PythonPrefixGlob(t *testing.T) {
 	handlers := newPythonStubs("git_commit", "git_push", "search_db")
-	_, reg, err := ResolveRegistry("git_*", map[string]ToolHandler{}, handlers, nil, httpFactoryStub)
+	_, reg, err := ResolveRegistry("git_*", map[string]ToolHandler{}, handlers)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}
@@ -85,7 +69,7 @@ func TestResolveRegistry_PythonPrefixGlob(t *testing.T) {
 // together with builtins when both are present.
 func TestResolveRegistry_PythonStarMatchesAll(t *testing.T) {
 	handlers := newPythonStubs("custom_tool")
-	_, reg, err := ResolveRegistry("*", defaultBuiltins(), handlers, nil, httpFactoryStub)
+	_, reg, err := ResolveRegistry("*", defaultBuiltins(), handlers)
 	if err != nil {
 		t.Fatalf("ResolveRegistry: %v", err)
 	}

@@ -93,9 +93,13 @@ Credentials are resolved per-provider at spawn time:
 
 ## Tool Registry
 
-An api-mode agent's available tools are determined by the `tools` field on the
-agent definition — a comma-separated list of tool name globs resolved at spawn
-time. Empty = no tools; `*` = all tools in scope.
+An agent's available tools are determined by the `tools` field on the agent
+definition — a comma-separated list of tool-name patterns (`*` = all, `prefix*`
+= prefix match, or an exact name) resolved at spawn time. For CLI agents
+(`cli_interactive` and api-via-cli) the `agent_*` lifecycle tools are always
+granted regardless of the CSV, and an empty field means "all tools" (backward
+compatible). For in-process `api` agents an empty field means no tools
+(text-only).
 
 **Builtin tools** (always available when matched by glob):
 
@@ -132,10 +136,6 @@ at 32 MiB.
 
 **`consult`** synchronously spawns a named consultant agent (agent definition with `consultant=true` and `execution_mode=api`) under the same workflow instance. The caller's recent message transcript and the question are passed as `${CALLER_TRANSCRIPT}` and `${CONSULT_QUESTION}` template variables. The consultant must write a `_consult_answer` finding (string) and then call `agent_finished`. The answer is returned inline to the calling agent; the `_consult` phase is hidden from the read model. Consultant agents cannot call `consult` themselves (recursion guard). WebSocket events: `consult.started`, `consult.answered`, `consult.failed`.
 
-**HTTP tool definitions** — custom tools whose invocations are forwarded via
-HTTP POST to a configured endpoint. Defined per-project and scoped by project
-and optional workflow. Auth methods: none, `bearer_env`, `bearer_secret_ref`.
-
 **Python tools** — `python_scripts` rows with `kind=tool`. Each invocation
 writes the script to a temp file and execs `pythonPath` with JSON input on
 stdin. Input is validated against the script's declared JSON Schema (Draft 2020)
@@ -146,7 +146,6 @@ the file-path picker on the Python Tool form.
 ### Tool Name Collision Rules
 
 - Python tool name collides with a builtin → spawn fails
-- HTTP tool name collides with a builtin or python tool → spawn fails
 - Glob produces no matches → spawn fails with `no tools matched`
 
 ---

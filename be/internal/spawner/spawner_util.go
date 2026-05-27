@@ -12,7 +12,6 @@ import (
 
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/model"
 	"be/internal/ws"
 )
 
@@ -174,27 +173,6 @@ func (s *Spawner) cliForModel(model string) string {
 		return cfg.CLIType
 	}
 	return DefaultCLIForModel(model)
-}
-
-// loadAPIHTTPToolDefs returns HTTP tool definitions in scope for an api-mode
-// agent. Scope rules: project_id IS NULL or matches projectID, AND workflow_id
-// IS NULL or matches workflowName. The repo's ListByProject already applies
-// the project filter; this helper additionally filters by workflow scope.
-func (s *Spawner) loadAPIHTTPToolDefs(projectID, workflowName string) ([]*model.ToolDefinition, error) {
-	if s.config.ToolDefRepo == nil {
-		return nil, nil
-	}
-	all, err := s.config.ToolDefRepo.ListByProject(projectID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]*model.ToolDefinition, 0, len(all))
-	for _, def := range all {
-		if def.WorkflowID == nil || *def.WorkflowID == "" || strings.EqualFold(*def.WorkflowID, workflowName) {
-			out = append(out, def)
-		}
-	}
-	return out, nil
 }
 
 func parseModelID(modelID string) (cli, model string) {

@@ -6,6 +6,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
+import { AgentDefToolsField } from './AgentDefToolsField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
 import { useModelOptions } from '@/hooks/useCLIModels'
 import { useAPIModelOptions } from '@/hooks/useAPIModels'
@@ -170,8 +171,11 @@ export function AgentDefForm({
           <p className="text-xs text-muted-foreground mt-1">Model to use when low consumption mode is enabled</p>
         </div>
       )}
+      {executionMode !== 'script' && (
+        <AgentDefToolsField value={tools} onChange={setTools} executionMode={executionMode} />
+      )}
       {executionMode === 'api' && (
-        <AgentDefAPIModeFields tools={tools} setTools={setTools} apiMaxIterations={apiMaxIterations} setApiMaxIterations={setApiMaxIterations} apiMaxTokens={apiMaxTokens} setApiMaxTokens={setApiMaxTokens} />
+        <AgentDefAPIModeFields apiMaxIterations={apiMaxIterations} setApiMaxIterations={setApiMaxIterations} apiMaxTokens={apiMaxTokens} setApiMaxTokens={setApiMaxTokens} />
       )}
       {executionMode === 'script' && (
         <div>

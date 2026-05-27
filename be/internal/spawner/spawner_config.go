@@ -86,8 +86,6 @@ type Config struct {
 	ProjectFindingsSvc *service.ProjectFindingsService
 	AgentSvcReal       *service.AgentService
 	WorkflowSvc        *service.WorkflowService
-	// ToolDefRepo lists HTTP tool definitions for API-mode registry resolution.
-	ToolDefRepo *repo.ToolDefinitionRepo
 	// APIMode enables execution_mode='api' agents. When false, prepareSpawn rejects any
 	// agent with execution_mode='api' before making any provider call. Injected by the
 	// orchestrator from the api_mode_enabled global setting at spawn time.

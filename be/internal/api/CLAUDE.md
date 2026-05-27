@@ -40,7 +40,6 @@ Write operations on global configuration resources require admin role (`admin`):
 - `POST|PATCH|DELETE /api/v1/api-models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
-- `POST|PUT|DELETE /api/v1/tool-definitions/{...}` (api-mode only; registered always, gated at request time by `api_mode_enabled` setting — returns 400 `api_mode_disabled` when off)
 - `PATCH /api/v1/settings`
 
 Project-scoped writes use `projectAdmin` (admin user **or** a service token whose project matches the resolved project — for path-scoped routes via `{id}`, otherwise via `getProjectID` = X-Project header / `?project=` query):

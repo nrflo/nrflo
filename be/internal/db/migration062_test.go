@@ -1,7 +1,6 @@
 package db
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -147,76 +146,6 @@ func TestMigration062_ExecutionModeCheck(t *testing.T) {
 	}
 }
 
-// TestMigration062_ToolDefinitionsTable verifies CRUD on the new tool_definitions table.
-func TestMigration062_ToolDefinitionsTable(t *testing.T) {
-	pool, err := newMigratedTestPool(t)
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	if _, err := pool.Exec(`INSERT INTO tool_definitions (id, name, description, input_schema, endpoint, created_at, updated_at)
-		VALUES ('t1', 'echo', 'Echoes input', '{"type":"object"}', 'http://x/echo', datetime('now'), datetime('now'))`); err != nil {
-		t.Fatalf("insert tool: %v", err)
-	}
-	var authMethod string
-	var timeoutSec int
-	if err := pool.QueryRow(`SELECT auth_method, timeout_sec FROM tool_definitions WHERE id = 't1'`).Scan(&authMethod, &timeoutSec); err != nil {
-		t.Fatalf("scan: %v", err)
-	}
-	if authMethod != "none" {
-		t.Errorf("auth_method default = %q, want none", authMethod)
-	}
-	if timeoutSec != 30 {
-		t.Errorf("timeout_sec default = %d, want 30", timeoutSec)
-	}
-
-	// UNIQUE on name
-	_, err = pool.Exec(`INSERT INTO tool_definitions (id, name, description, input_schema, endpoint, created_at, updated_at)
-		VALUES ('t2', 'echo', '', '{}', 'http://x', datetime('now'), datetime('now'))`)
-	if err == nil {
-		t.Error("expected UNIQUE constraint error on duplicate name")
-	} else if !strings.Contains(err.Error(), "UNIQUE") {
-		t.Errorf("error = %v, want UNIQUE constraint", err)
-	}
-
-	// auth_method CHECK
-	_, err = pool.Exec(`INSERT INTO tool_definitions (id, name, description, input_schema, endpoint, auth_method, created_at, updated_at)
-		VALUES ('t3', 'other', '', '{}', 'http://x', 'oauth', datetime('now'), datetime('now'))`)
-	if err == nil {
-		t.Error("expected CHECK error on unknown auth_method")
-	}
-}
-
-// TestMigration062_Indexes verifies the expected indexes were created.
-func TestMigration062_Indexes(t *testing.T) {
-	pool, err := newMigratedTestPool(t)
-	if err != nil {
-		t.Fatalf("NewPoolPath: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-
-	want := map[string]bool{
-		"idx_tool_definitions_project":  false,
-		"idx_tool_definitions_workflow": false,
-	}
-	rows, err := pool.Query(`SELECT name FROM sqlite_master WHERE type='index'`)
-	if err != nil {
-		t.Fatalf("query indexes: %v", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			t.Fatalf("scan: %v", err)
-		}
-		if _, ok := want[name]; ok {
-			want[name] = true
-		}
-	}
-	for n, ok := range want {
-		if !ok {
-			t.Errorf("index %s not created by migration 062", n)
-		}
-	}
-}
+// Note: the tool_definitions table and its indexes added by migration 062 were
+// removed by migration 134 (HTTP tools feature deleted), so they are no longer
+// asserted here.

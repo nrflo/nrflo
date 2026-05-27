@@ -4,42 +4,30 @@ import (
 	"fmt"
 	"strings"
 
-	"be/internal/model"
 	"be/internal/spawner/apirun/provider"
 )
 
-// HTTPHandlerFactory builds an HTTP-backed ToolHandler from a tool definition.
-// Defined as a function value so the registry can stay free of an import cycle
-// with the tools_http subpackage.
-type HTTPHandlerFactory func(def *model.ToolDefinition) ToolHandler
-
-// ResolveRegistry returns the tool specs and handler map an api-mode agent
-// should be spawned with. toolsCSV is the comma-separated patterns from the
-// agent definition (`*`, `prefix.*`, or exact tool name). Empty CSV is a
-// text-only agent — returns empty registry without error. Non-empty CSV that
-// matches nothing is a config error.
+// ResolveRegistry returns the tool specs and handler map an agent should be
+// spawned with. toolsCSV is the comma-separated patterns from the agent
+// definition (`*`, `prefix*`, or exact tool name). Empty CSV is a text-only
+// agent — returns empty registry without error. Non-empty CSV that matches
+// nothing is a config error.
 //
-// httpDefs is the set of in-scope HTTP tool definitions for the agent's
-// project + workflow (the caller is expected to have filtered by scope before
-// calling).
-//
-// pythonHandlers is the set of python_scripts kind=tool handlers for the project.
-// Composed after builtins and before HTTP defs.
+// pythonHandlers is the set of python_scripts kind=tool handlers for the
+// project, composed after builtins.
 func ResolveRegistry(
 	toolsCSV string,
 	builtins map[string]ToolHandler,
 	pythonHandlers []ToolHandler,
-	httpDefs []*model.ToolDefinition,
-	httpFactory HTTPHandlerFactory,
 ) ([]provider.ToolSpec, Registry, error) {
 	patterns := splitPatterns(toolsCSV)
 	if len(patterns) == 0 {
 		return nil, Registry{}, nil
 	}
 
-	// Build available pool: builtins → python tools → HTTP defs.
-	// Collision detection ensures names are unique across all three sources.
-	available := make(map[string]ToolHandler, len(builtins)+len(pythonHandlers)+len(httpDefs))
+	// Build available pool: builtins → python tools.
+	// Collision detection ensures names are unique across both sources.
+	available := make(map[string]ToolHandler, len(builtins)+len(pythonHandlers))
 	for name, h := range builtins {
 		available[name] = h
 	}
@@ -54,20 +42,6 @@ func ResolveRegistry(
 			return nil, nil, fmt.Errorf("tool name %q collides with builtin", spec.Name)
 		}
 		available[spec.Name] = h
-	}
-
-	// HTTP tool defs: collide with builtins or python tools → error.
-	for _, def := range httpDefs {
-		if def == nil || def.Name == "" {
-			continue
-		}
-		if _, exists := available[def.Name]; exists {
-			if _, isBuiltin := builtins[def.Name]; isBuiltin {
-				return nil, nil, fmt.Errorf("tool name %q collides with builtin", def.Name)
-			}
-			return nil, nil, fmt.Errorf("tool name %q collides with python tool", def.Name)
-		}
-		available[def.Name] = httpFactory(def)
 	}
 
 	out := Registry{}
@@ -129,4 +103,28 @@ func matchAvailable(pattern string, pool map[string]ToolHandler) map[string]Tool
 		}
 	}
 	return matched
+}
+
+// MergeBaseline ensures every name in baseline is present in the registry,
+// pulling missing handlers from builtins. Socket-completion spawns
+// (cli_interactive/codex/api-via-cli) use it so a restrictive tools CSV can
+// never strip the lifecycle tools an agent needs to signal completion.
+// Idempotent: names already present (and names absent from builtins) are left
+// untouched.
+func MergeBaseline(specs []provider.ToolSpec, handlers Registry, builtins map[string]ToolHandler, baseline []string) ([]provider.ToolSpec, Registry) {
+	if handlers == nil {
+		handlers = Registry{}
+	}
+	for _, name := range baseline {
+		if _, ok := handlers[name]; ok {
+			continue
+		}
+		h, ok := builtins[name]
+		if !ok {
+			continue
+		}
+		handlers[name] = h
+		specs = append(specs, h.Spec())
+	}
+	return specs, handlers
 }

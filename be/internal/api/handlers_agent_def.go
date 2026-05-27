@@ -5,11 +5,19 @@ import (
 	"net/http"
 	"strings"
 
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
+
+// agentDefResponse carries the saved agent definition plus any non-blocking
+// warnings (e.g. tools-CSV patterns that match no known tool).
+type agentDefResponse struct {
+	*model.AgentDefinition
+	Warnings []string `json:"warnings,omitempty"`
+}
 
 // handleListAgentDefs returns all agent definitions for a workflow
 func (s *Server) handleListAgentDefs(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +97,8 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 		s.wsHub.Broadcast(event)
 	}
 
-	writeJSON(w, http.StatusCreated, def)
+	warnings := toolsCSVWarnings(req.Tools, s.availableAgentTools(projectID))
+	writeJSON(w, http.StatusCreated, agentDefResponse{AgentDefinition: def, Warnings: warnings})
 }
 
 // handleGetAgentDef returns a single agent definition
@@ -162,7 +171,13 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 		s.wsHub.Broadcast(event)
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+	resp := map[string]any{"status": "updated"}
+	if req.Tools != nil {
+		if warnings := toolsCSVWarnings(*req.Tools, s.availableAgentTools(projectID)); len(warnings) > 0 {
+			resp["warnings"] = warnings
+		}
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // handleDeleteAgentDef deletes an agent definition

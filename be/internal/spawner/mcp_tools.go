@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"be/internal/model"
 	"be/internal/spawner/apirun"
@@ -51,10 +52,12 @@ func substituteReadDocumentPath(specs []provider.ToolSpec, handlers apirun.Regis
 
 // attachNrfloToolRegistry builds the nrflo tool registry for a cli_interactive
 // spawn and attaches it to proc so the MCP bridge can serve tools/list +
-// tools/call. The full tool set ("*") is always exposed so every agent can
-// signal findings/lifecycle regardless of its tools field. read_document is
-// swapped to the path-returning variant (the CLI agent reads files natively).
-// Used for both Claude (which gets --mcp-config) and codex (config.toml).
+// tools/call. The agent definition's tools field is honored (empty → "*", the
+// full set, for backward compatibility); the agent_* lifecycle baseline is
+// force-merged so a restrictive tools CSV can never strip an agent's ability to
+// signal findings/lifecycle. read_document is swapped to the path-returning
+// variant (the CLI agent reads files natively). Used for both Claude (which
+// gets --mcp-config) and codex (config.toml).
 func (s *Spawner) attachNrfloToolRegistry(
 	ctx context.Context,
 	req SpawnRequest,
@@ -62,7 +65,11 @@ func (s *Spawner) attachNrfloToolRegistry(
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
 ) error {
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "*")
+	toolsCSV := "*"
+	if agentDef != nil && strings.TrimSpace(agentDef.Tools) != "" {
+		toolsCSV = agentDef.Tools
+	}
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, toolsCSV, true)
 	if regErr != nil {
 		return regErr
 	}

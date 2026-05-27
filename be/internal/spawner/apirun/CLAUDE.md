@@ -2,7 +2,7 @@
 
 > **Note:** Only reachable when the `api_mode_enabled` global setting is `true`. When the setting is off, `prepareSpawn` returns `api_mode_disabled` before constructing a Runner.
 
-In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry), `secret_resolver.go` (secret deref), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic and OpenAI streaming impls + mock), `tools_builtin/` (builtin handlers), `tools_http/` (HTTP tool handler), `tools_python/` (python_scripts kind=tool handler).
+In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry + MergeBaseline), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic and OpenAI streaming impls + mock), `tools_builtin/` (builtin handlers), `tools_python/` (python_scripts kind=tool handler).
 
 ## Tool Dispatch Flow
 
@@ -34,23 +34,21 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. `provider/anthropic/translate.go:translateMediaBlock` maps each `MediaBlock` to the SDK `ToolResultBlockParamContentUnion` (`OfImage` base64 / `OfDocument` base64 PDF). Image media types: jpeg/png/gif/webp; document: application/pdf only.
 
-## HTTP Tool Handler
-
-`tools_http.New(client)` returns a factory bound to a shared `http.Client`. Handlers POST `{"tool":<name>,"input":<input>,"context":{...}}` to `def.Endpoint` with timeout (`def.TimeoutSec`, default 30s), auth per `def.AuthMethod` (none/bearer_env/bearer_secret_ref), 5xx retry once, 16 KB body cap. Every Invoke (success and HTTP error) inserts a `tool_dispatches` row via `env.DispatchRepo` and broadcasts `ws.EventToolDispatched`; nil-safe when those fields are unset.
-
 ## Python Tool Handler
 
 `tools_python.New(row, pythonPath, sdkDir, projectEnv)` returns a handler for a `python_scripts` row with `kind=tool`. Each Invoke compiles the JSON schema once (Draft 2020), validates input, writes the script to a temp `.py` (`FilePath` preferred over `Code` when absolute and `.py`), and execs `pythonPath` with input on stdin. Env mirrors `prepareScriptSpawn`: inherits the server env (`os.Environ()` minus `CLAUDECODE`, so the SDK socket resolves via `NRFLO_SOCKET`/`NRFLO_HOME`/`HOME`), then sets `NRFLO_PROJECT`/`NRF_SESSION_ID`/`NRF_WORKFLOW_INSTANCE_ID`/`NRF_TRX`/`NRF_SPAWNED=1`/`NRF_EXTERNAL_ID`/`NRF_EXTERNAL_CONTEXT` (external refs present-but-empty when unset) and `NRFLO_SDK_DIR` (so tool scripts can `import nrflo_sdk`; skipped when `sdkDir` empty), then `projectEnv` (last-wins). Timeout from `row.TimeoutSec` (default 30s); non-zero exit surfaces stderr; stdout capped at 16 KB. Schema/timeout/exit failures return `isError=true` with no Go error. Each Invoke inserts a `tool_dispatches` row and broadcasts `ws.EventToolDispatched`.
 
 ## Per-Agent Registry Resolution
 
-`ResolveRegistry(toolsCSV, builtins, pythonHandlers, httpDefs, httpFactory)` composes builtins → python tools → HTTP defs. Glob matching: `""` = empty registry; `"*"` = all; `"findings.*"` = prefix glob. No match → spawn fails with `no tools matched`. Name collision → spawn fails with `collides with` error. Python collides with builtin: error. HTTP collides with builtin or python: error. HTTP scope: `project_id IS NULL OR == agent.project_id` AND `workflow_id IS NULL OR == agent.workflow_name`.
+`ResolveRegistry(toolsCSV, builtins, pythonHandlers)` composes builtins → python tools. Glob matching: `""` = empty registry; `"*"` = all; `"findings_*"` = prefix glob (note underscore — `findings.*` matches nothing). No match → spawn fails with `no tools matched`. Name collision (python vs builtin) → spawn fails with `collides with builtin`.
+
+`MergeBaseline(specs, handlers, builtins, names)` force-adds missing baseline tools (the `agent_*` lifecycle set, `tools_builtin.LifecycleToolNames()`). Socket-completion spawns (cli_interactive/codex/api-via-cli) pass `forceLifecycleBaseline=true` to `buildAPIRegistry` so a restrictive tools CSV can never strip an agent's ability to signal completion; pure in-process api agents leave it off (they auto-PASS on `end_turn`).
 
 ## Wiring
 
 The concrete provider is selected per-agent from the agent's `api_models` row (`provider` column); credentials are resolved per-provider — Anthropic uses OAuth/API-key (`provider/anthropic/credentials.go`), OpenAI uses API-key only (`provider/openai/credentials.go`).
 
-`prepareSpawn` (api branch) calls `loadAPIHTTPToolDefs` + `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
+`prepareSpawn` (api branch) calls `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
 
 ## Provider Error Classification
 

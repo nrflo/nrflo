@@ -97,7 +97,6 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 		ProjectFindingsSvc: service.NewProjectFindingsService(pool, o.clock),
 		AgentSvcReal:       service.NewAgentService(pool, o.clock),
 		WorkflowSvc:        service.NewWorkflowService(pool, o.clock),
-		ToolDefRepo:        repo.NewToolDefinitionRepo(pool, o.clock),
 		DispatchRepo:       repo.NewDispatchRepo(pool, o.clock),
 		ArtifactSvc:        service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath),
 		PTYManager:         o.PTYManager,

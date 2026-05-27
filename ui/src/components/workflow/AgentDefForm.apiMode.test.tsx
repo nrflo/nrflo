@@ -45,6 +45,9 @@ function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = 
   )
 }
 
+// The tools picker itself is covered by AgentDefToolsField.test.tsx; here we
+// only assert it is mounted ("All tools (*)" toggle) and that API-only fields
+// (max iterations/tokens) appear for api mode.
 describe('AgentDefForm — execution mode', () => {
   describe('default CLI Interactive mode', () => {
     it('defaults to CLI Interactive mode', () => {
@@ -52,72 +55,57 @@ describe('AgentDefForm — execution mode', () => {
       expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
     })
 
-    it('does not show API fields in cli mode', () => {
+    it('shows the tools picker but not API-only fields in cli mode', () => {
       renderForm()
-      expect(screen.queryByPlaceholderText(/findings_add/i)).not.toBeInTheDocument()
+      expect(screen.getByText('All tools (*)')).toBeInTheDocument()
       expect(screen.queryByPlaceholderText('50')).not.toBeInTheDocument()
     })
 
     it('uses initial execution_mode when provided', () => {
       renderForm({ isCreate: false, initial: { execution_mode: 'api', tools: 'findings_add' } })
       expect(getExecutionModeButton().textContent).toContain('API')
-      expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('50')).toBeInTheDocument()
     })
   })
 
   describe('switching to API mode', () => {
-    it('shows tools input and max iterations after switching to api', async () => {
+    it('shows API max fields after switching to api', async () => {
       const user = userEvent.setup()
       renderForm()
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
 
-      expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
       expect(screen.getByPlaceholderText('50')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('16384')).toBeInTheDocument()
     })
 
-    it('shows tools-empty warning immediately when switching to api with empty tools', async () => {
+    it('keeps the tools picker visible across cli and api', async () => {
+      const user = userEvent.setup()
+      renderForm()
+
+      expect(screen.getByText('All tools (*)')).toBeInTheDocument()
+      await user.click(getExecutionModeButton())
+      await user.click(screen.getByText('API (in-process Anthropic runner)'))
+      expect(screen.getByText('All tools (*)')).toBeInTheDocument()
+    })
+
+    it('hides API max fields when switching back to cli', async () => {
       const user = userEvent.setup()
       renderForm()
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
-
-      expect(screen.getByText(/Tools must be non-empty/i)).toBeInTheDocument()
-    })
-
-    it('hides tools-empty warning when tools is filled in', async () => {
-      const user = userEvent.setup()
-      renderForm()
-
-      await user.click(getExecutionModeButton())
-      await user.click(screen.getByText('API (in-process Anthropic runner)'))
-
-      const toolsInput = screen.getByPlaceholderText(/findings_add/i)
-      await user.type(toolsInput, '*')
-
-      expect(screen.queryByText(/Tools must be non-empty/i)).not.toBeInTheDocument()
-    })
-
-    it('hides API fields when switching back to cli', async () => {
-      const user = userEvent.setup()
-      renderForm()
-
-      await user.click(getExecutionModeButton())
-      await user.click(screen.getByText('API (in-process Anthropic runner)'))
-
-      expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('50')).toBeInTheDocument()
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('CLI Interactive (PTY)'))
-
-      expect(screen.queryByPlaceholderText(/findings_add/i)).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('50')).not.toBeInTheDocument()
     })
   })
 
   describe('form submission with API mode', () => {
-    it('includes execution_mode=api and tools in payload', async () => {
+    it('includes execution_mode=api in payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({ onSubmit })
@@ -128,16 +116,10 @@ describe('AgentDefForm — execution mode', () => {
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
 
-      const toolsInput = screen.getByPlaceholderText(/findings_add/i)
-      await user.type(toolsInput, 'findings_add,agent_fail')
-
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          execution_mode: 'api',
-          tools: 'findings_add,agent_fail',
-        })
+        expect.objectContaining({ execution_mode: 'api' })
       )
     })
 
@@ -151,17 +133,12 @@ describe('AgentDefForm — execution mode', () => {
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
-
-      await user.type(screen.getByPlaceholderText(/findings_add/i), '*')
       await user.type(screen.getByPlaceholderText('50'), '25')
 
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          execution_mode: 'api',
-          api_max_iterations: 25,
-        })
+        expect.objectContaining({ execution_mode: 'api', api_max_iterations: 25 })
       )
     })
 
@@ -175,17 +152,12 @@ describe('AgentDefForm — execution mode', () => {
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
-
-      await user.type(screen.getByPlaceholderText(/findings_add/i), '*')
       await user.type(screen.getByPlaceholderText('16384'), '32768')
 
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          execution_mode: 'api',
-          api_max_tokens: 32768,
-        })
+        expect.objectContaining({ execution_mode: 'api', api_max_tokens: 32768 })
       )
     })
 
@@ -199,7 +171,6 @@ describe('AgentDefForm — execution mode', () => {
 
       await user.click(getExecutionModeButton())
       await user.click(screen.getByText('API (in-process Anthropic runner)'))
-      await user.type(screen.getByPlaceholderText(/findings_add/i), '*')
 
       await user.click(screen.getByRole('button', { name: /create/i }))
 
@@ -237,9 +208,7 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
   it('hides API option from Execution Mode dropdown', async () => {
     const user = userEvent.setup()
     renderForm()
-    // Execution Mode dropdown is always visible (controls cli/api/script)
     expect(screen.getByText('Execution Mode')).toBeInTheDocument()
-    // Open dropdown — API option must not appear; Script option must be available
     await user.click(getExecutionModeButton())
     expect(screen.queryByText('API (in-process Anthropic runner)')).not.toBeInTheDocument()
     expect(screen.getByText('Script (Python)')).toBeInTheDocument()
@@ -259,10 +228,9 @@ describe('AgentDefForm — apiModeEnabled=false gate', () => {
     )
   })
 
-  it('shows AgentDefAPIModeFields for orphan api def even without API option in dropdown', () => {
+  it('shows API max fields for an orphan api def even without the API option', () => {
     renderForm({ isCreate: false, initial: { execution_mode: 'api', tools: 'findings_add' } })
-    // Dropdown always visible; API option absent but existing api-mode def fields still rendered
     expect(screen.getByText('Execution Mode')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/findings_add/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('50')).toBeInTheDocument()
   })
 })

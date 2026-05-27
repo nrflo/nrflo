@@ -53,6 +53,26 @@ func TestEmitFindings_InvalidReturnsExample(t *testing.T) {
 	}
 }
 
+func TestEmitFindings_ObjectValuePersists(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	// Object-typed schema (not an array): the tool's input schema no longer
+	// constrains value to arrays, so the registered schema is the sole contract.
+	mustExec(t, env.pool, `UPDATE workflows SET finding_schemas=? WHERE id=? AND project_id=?`,
+		`[{"key":"owner_match","schema":{"type":"object","properties":{"result":{"type":"string","enum":["match","mismatch"]}},"required":["result"]},"example":{"result":"match"}}]`,
+		testWorkflow, testProjectID)
+
+	out, isErr, err := invoke(t, env.env, "emit_findings", `{"key":"owner_match","value":{"result":"match"}}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Fatalf("isErr=true, output=%q", out)
+	}
+	if !strings.Contains(env.readSessionFindings(t), "match") {
+		t.Errorf("object finding not stored: %s", env.readSessionFindings(t))
+	}
+}
+
 func TestEmitFindings_UnknownKey(t *testing.T) {
 	env := newBuiltinTestEnv(t)
 	setEmitSchema(t, env)

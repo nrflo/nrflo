@@ -20,12 +20,12 @@ type emitFindingsHandler struct{}
 func (emitFindingsHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "emit_findings",
-		Description: "Validate and store a finding against the workflow's configured schema for the given key. The value must be a JSON array matching the key's schema. On a validation failure (or an unknown key) the call is rejected and the error result includes the required-structure example — fix the value and call again.",
+		Description: "Validate and store a finding against the workflow's configured schema for the given key. The value must match the key's configured schema (object, array, or scalar). On a validation failure (or an unknown key) the call is rejected and the error result includes the required-structure example — fix the value and call again.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
 "key":{"type":"string","description":"Finding key (must have a schema configured for this workflow)"},
-"value":{"type":"array","description":"Finding value as a JSON array; validated against the key's configured schema"}
+"value":{"description":"Finding value (object, array, or scalar); validated against the key's configured schema"}
 },
 "required":["key","value"],
 "additionalProperties":false

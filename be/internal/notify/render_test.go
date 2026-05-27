@@ -191,6 +191,16 @@ func TestRender_SummaryEmptyWhenMissing(t *testing.T) {
 	}
 }
 
+func TestRender_TelegramSummaryNotTruncated(t *testing.T) {
+	long := strings.Repeat("a", 5000)
+	data := map[string]interface{}{"workflow_final_result": long}
+	got := Render(model.ChannelKindTelegram, "${summary}", data)
+	want := "> " + long
+	if got != want {
+		t.Errorf("telegram summary truncated: got rune-len=%d, want %d (no truncation)", len([]rune(got)), len([]rune(want)))
+	}
+}
+
 func TestRender_TelegramSummaryEscapesContent(t *testing.T) {
 	data := map[string]interface{}{"workflow_final_result": "a.b_c"}
 	got := Render(model.ChannelKindTelegram, "${summary}", data)

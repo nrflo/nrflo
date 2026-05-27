@@ -30,7 +30,14 @@ func Render(kind model.ChannelKind, template string, data map[string]interface{}
 		linkFn = telegramLink
 	}
 
-	vars := buildVars(data, escape, linkFn)
+	// Telegram never truncates the summary; the transport splits an oversized
+	// body into multiple messages. Other kinds cap it at defaultSummaryLimit.
+	summaryLimit := defaultSummaryLimit
+	if isTelegram {
+		summaryLimit = 0
+	}
+
+	vars := buildVars(data, escape, linkFn, summaryLimit)
 	pairs := make([]string, 0, len(vars)*2)
 	for k, v := range vars {
 		pairs = append(pairs, "${"+k+"}", v)
@@ -39,7 +46,11 @@ func Render(kind model.ChannelKind, template string, data map[string]interface{}
 	return placeholderRe.ReplaceAllString(result, "")
 }
 
-func buildVars(data map[string]interface{}, escape func(string) string, linkFn func(text, url string) string) map[string]string {
+// defaultSummaryLimit caps the rendered summary block (in runes) for channel
+// kinds that send a single fixed-size message. 0 means no limit.
+const defaultSummaryLimit = 1500
+
+func buildVars(data map[string]interface{}, escape func(string) string, linkFn func(text, url string) string, summaryLimit int) map[string]string {
 	vars := map[string]string{
 		"event_type":   escape(strVal(data, "event_type")),
 		"ticket_id":    escape(strVal(data, "ticket_id")),
@@ -53,7 +64,7 @@ func buildVars(data map[string]interface{}, escape func(string) string, linkFn f
 		"link":         buildLink(data, linkFn, escape),
 	}
 	if s := strVal(data, "workflow_final_result"); s != "" {
-		vars["summary"] = renderSummaryBlock(s, escape)
+		vars["summary"] = renderSummaryBlock(s, escape, summaryLimit)
 	} else {
 		vars["summary"] = ""
 	}
@@ -77,9 +88,12 @@ func strVal(data map[string]interface{}, key string) string {
 	return s
 }
 
-func renderSummaryBlock(summary string, escape func(string) string) string {
-	truncated := truncateRunes(summary, 1500)
-	escaped := escape(truncated)
+func renderSummaryBlock(summary string, escape func(string) string, limit int) string {
+	text := summary
+	if limit > 0 {
+		text = truncateRunes(summary, limit)
+	}
+	escaped := escape(text)
 	lines := strings.Split(escaped, "\n")
 	var b strings.Builder
 	for i, line := range lines {

@@ -26,9 +26,20 @@ func (t *telegramTransport) Send(n *Notification) error {
 		return fmt.Errorf("telegram: chat_id not configured")
 	}
 
+	// Telegram caps a message at telegramMaxLen; longer bodies are sent as
+	// multiple sequential messages rather than truncated.
+	for _, chunk := range splitTelegram(n.Body) {
+		if err := t.sendOne(botToken, chatID, chunk); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *telegramTransport) sendOne(botToken, chatID, text string) error {
 	payload, err := json.Marshal(map[string]string{
 		"chat_id":    chatID,
-		"text":       n.Body,
+		"text":       text,
 		"parse_mode": "MarkdownV2",
 	})
 	if err != nil {

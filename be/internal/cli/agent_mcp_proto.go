@@ -45,8 +45,11 @@ func makeMCPResult(id, result interface{}) *mcpResponse {
 }
 
 // dispatchMCP handles a single JSON-RPC 2.0 request and returns a response.
-// Returns nil for notifications (no response expected).
-func dispatchMCP(req mcpRequest, sessionID, instanceID string, caller mcpSocketCaller) *mcpResponse {
+// Returns nil for notifications (no response expected). When observer is true,
+// tools are the static observer set dispatched directly to observer.* socket
+// methods (observer agents run outside the orchestrator, so tools.call cannot
+// reach them).
+func dispatchMCP(req mcpRequest, sessionID, instanceID string, observer bool, caller mcpSocketCaller) *mcpResponse {
 	switch req.Method {
 	case "initialize":
 		return makeMCPResult(req.ID, map[string]interface{}{
@@ -59,6 +62,9 @@ func dispatchMCP(req mcpRequest, sessionID, instanceID string, caller mcpSocketC
 		return nil // notification — no reply
 
 	case "tools/list":
+		if observer {
+			return makeMCPResult(req.ID, map[string]interface{}{"tools": observerToolSpecs()})
+		}
 		params := map[string]interface{}{
 			"session_id":  sessionID,
 			"instance_id": instanceID,
@@ -93,6 +99,9 @@ func dispatchMCP(req mcpRequest, sessionID, instanceID string, caller mcpSocketC
 		if input == nil {
 			input = json.RawMessage("{}")
 		}
+		if observer {
+			return dispatchObserverCall(req.ID, sessionID, callReq.Name, input, caller)
+		}
 		params := map[string]interface{}{
 			"session_id":  sessionID,
 			"instance_id": instanceID,
@@ -120,4 +129,36 @@ func dispatchMCP(req mcpRequest, sessionID, instanceID string, caller mcpSocketC
 	default:
 		return makeMCPError(req.ID, -32601, fmt.Sprintf("method not found: %s", req.Method))
 	}
+}
+
+// dispatchObserverCall maps an observer tool to its observer.* socket method,
+// injecting session_id and flattening the tool input into the request params.
+// The raw socket result (or error text) is returned as the tool's text content.
+func dispatchObserverCall(id interface{}, sessionID, toolName string, input json.RawMessage, caller mcpSocketCaller) *mcpResponse {
+	method, ok := observerSocketMethod(toolName)
+	if !ok {
+		return makeMCPError(id, -32602, "unknown observer tool: "+toolName)
+	}
+	params := map[string]interface{}{"session_id": sessionID}
+	var in map[string]interface{}
+	if len(input) > 0 {
+		if err := json.Unmarshal(input, &in); err != nil {
+			return makeMCPError(id, -32602, fmt.Sprintf("invalid input: %v", err))
+		}
+		for k, v := range in {
+			params[k] = v
+		}
+	}
+	raw, err := caller.Call(method, params)
+	if err != nil {
+		// Surface socket/authorization errors to the model as an error result.
+		return makeMCPResult(id, map[string]interface{}{
+			"content": []map[string]interface{}{{"type": "text", "text": err.Error()}},
+			"isError": true,
+		})
+	}
+	return makeMCPResult(id, map[string]interface{}{
+		"content": []map[string]interface{}{{"type": "text", "text": string(raw)}},
+		"isError": false,
+	})
 }

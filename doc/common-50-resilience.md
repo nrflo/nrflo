@@ -15,7 +15,7 @@ system automatically saves progress and relaunches with a fresh context window.
 1. System detects context usage exceeds threshold (default: 75% used, 25% remaining)
 2. Kills the running agent and resumes the session with instructions to save
    progress to the `to_resume` finding
-3. Agent calls `nrflo agent continue` after saving (`c.agent.continue_()` in Python SDK)
+3. Agent calls the `agent_continue` tool after saving (`c.agent.continue_()` in Python SDK)
 4. System launches a fresh agent with `${PREVIOUS_DATA}` populated from `to_resume`
 
 ### Configuration

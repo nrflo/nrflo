@@ -1,4 +1,4 @@
-# Examples, Ticket CLI, and Spec Import
+# Examples & Spec Import
 
 ---
 
@@ -24,8 +24,8 @@ Analyze the ticket and codebase. Store your findings:
 - `files_to_modify` — JSON array of file paths
 - `implementation_plan` — Step-by-step plan
 
-When done, save your findings and exit cleanly (exit 0 = pass):
-nrflo findings add summary:'...' files_to_modify:'[...]' implementation_plan:'...'
+When done, save your findings (the `findings_add` tool, once per key) and exit
+cleanly (exit 0 = pass): keys `summary`, `files_to_modify`, `implementation_plan`.
 ```
 
 ### Example 2: Implementor with Findings Injection and Callbacks
@@ -43,47 +43,21 @@ Implement changes for ticket ${TICKET_ID} in the ${WORKFLOW} workflow.
 
 Implement the changes described in the analysis. Follow the test specifications.
 
-When done, save your findings and exit cleanly (exit 0 = pass):
-nrflo findings add be_changes_summary:'...' be_files_changed:'[...]'
+When done, save your findings with the `findings_add` tool (keys
+`be_changes_summary`, `be_files_changed`) and exit cleanly (exit 0 = pass).
 
-If blocked, fail with a reason:
-nrflo agent fail --reason "..."
+If blocked, call the `agent_fail` tool with a `reason`.
 ```
 
 ---
 
-## Ticket Management CLI
+## Ticket & Dependency Management
 
-Use the `nrflo tickets` CLI — **never use `curl` or direct HTTP API calls**.
-Requires `NRFLO_PROJECT` env var (already set in spawned sessions).
-
-```bash
-# List tickets
-nrflo tickets list
-nrflo tickets list --status open --type task --parent EPIC-1
-
-# Get a ticket
-nrflo tickets get TICKET-1
-
-# Create a ticket
-nrflo tickets create --title "My task" [--id MY-ID] [--description "..."] \
-  [--type task|bug|epic|story] [--priority 1-4] [--parent PARENT-ID]
-
-# Update ticket fields (only specified flags are changed)
-nrflo tickets update TICKET-1 --title "New title"
-nrflo tickets update TICKET-1 --parent EPIC-1       # set parent
-nrflo tickets update TICKET-1 --parent ""           # clear parent
-nrflo tickets update TICKET-1 --priority 2 --type bug
-
-# Close / reopen
-nrflo tickets close TICKET-1 [--reason "Done"]
-nrflo tickets reopen TICKET-1
-
-# Dependency management
-nrflo deps list TICKET-1
-nrflo deps add TICKET-1 BLOCKER-1      # TICKET-1 is blocked by BLOCKER-1
-nrflo deps remove TICKET-1 BLOCKER-1
-```
+Tickets and dependencies are managed through the **web UI** and the REST API
+(`/api/v1/tickets`, `/api/v1/dependencies`) — not by in-workflow agents. A
+workflow that needs to read or mutate tickets from an agent can expose a
+project-scoped HTTP tool (Settings → Tools) that calls the REST API with a
+service token. There is no ticket CLI.
 
 ---
 

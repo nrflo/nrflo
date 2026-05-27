@@ -162,6 +162,19 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 		},
 	}
 
+	// Serve the observer.* socket methods as MCP tools. The bridge detects
+	// NRF_OBSERVER=1 (set in env above) and dispatches directly to the observer
+	// socket methods. Claude consumes --mcp-config; codex observers (non-default)
+	// would need a config.toml table and are not wired here.
+	if adapter.Name() == "claude" {
+		if cfg, cfgErr := buildNrfloMCPConfig(); cfgErr == nil {
+			prep.opts.MCPConfigJSON = cfg
+			prep.opts.AllowedToolsCSV = "mcp__nrflo__*"
+		} else {
+			logger.Warn(ctx, "observer: build mcp config failed", "error", cfgErr)
+		}
+	}
+
 	if err := s.startBackend(proc, prep); err != nil {
 		os.Remove(promptFile.Name())
 		return fmt.Errorf("spawn_observer: start backend: %w", err)

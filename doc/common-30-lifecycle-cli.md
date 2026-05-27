@@ -1,136 +1,67 @@
-# Agent Lifecycle Commands
+# Agent Lifecycle & Findings Tools
 
-Spawned agents report results via CLI. **Exiting with code 0 is an implicit
-pass** — `agent finished` is the explicit equivalent. Only call `agent fail`
-when the task cannot be completed. Context is provided automatically by the
-system.
+Spawned agents report results via **MCP tools** served by nrflo. The tools appear
+in your tool list, namespaced by your CLI — `mcp__nrflo__<tool>` (Claude) or
+`nrflo/<tool>` (codex). Call them by their base name (e.g. `agent_finished`).
 
-> **Note:** Script-mode agents (`execution_mode=script`) interact with
-> lifecycle via the Python SDK instead of these CLI commands. See
-> [python.md](python.md) for the SDK equivalents.
+**Exiting with code 0 is an implicit pass** — the `agent_finished` tool is the
+explicit equivalent. Only call `agent_fail` when the task cannot be completed.
+Context is provided automatically by the system.
 
-```bash
-# Mark agent as successfully finished (proceed to next phase)
-nrflo agent finished
+> **Note:** Script-mode agents (`execution_mode=script`) interact with lifecycle
+> via the Python SDK instead of these tools. See [python.md](python.md).
 
-# Mark agent as failed
-nrflo agent fail [--reason <text>]
+## Lifecycle tools
 
-# Signal context exhaustion — triggers relaunch with fresh context
-nrflo agent continue
+| Tool | Input | When to use |
+|------|-------|-------------|
+| `agent_finished` | — | Task completed successfully; orchestrator advances to the next phase |
+| `agent_fail` | `{reason?}` | Task cannot be completed; `reason` is optional but recommended |
+| `agent_continue` | — | Context window exhausted; save progress to the `to_resume` finding first. Triggers a fresh relaunch — not a success signal |
+| `agent_callback` | `{level}` \| `{target_agent}` \| `{chain}` | Issue found requiring a re-run; supply exactly one of `level` (whole layer N), `target_agent` (single agent), or `chain` (list of named agents) |
+| `workflow_skip` | `{tag}` | Skip a workflow group in subsequent layers; `tag` must be in the workflow's `groups` |
+| `chain_next_instructions` | `{instructions}` | Pass instructions to the next chain step; call before `agent_finished` |
+| `chain_next_ticket` | `{ticket_id}` | Set the ticket ID for the next ticket-scope chain step; call before `agent_finished` |
+| `consult` | `{consultant, question}` | Synchronous expert consult; blocks until the consultant (an api-mode consultant defined in the same workflow) answers and returns the answer as the tool result |
 
-# Callback to re-run earlier layers — exactly one flag required
-nrflo agent callback --level <N>            # whole layer N
-nrflo agent callback --agent <agent-id>     # single agent
-nrflo agent callback --chain <a,b,...>      # sequential named agents
-
-# Skip a workflow group tag
-nrflo skip <tag>
-
-# Workflow chain handoff — set data for the next step before finishing
-nrflo agent chain-next-instructions --instructions "<text>"
-nrflo agent chain-next-ticket --ticket-id "<id>"
-
-# Consult an api-mode consultant agent — blocks until answer is returned
-nrflo agent consult --consultant <id> --question "<text>"
-nrflo agent consult --consultant <id> --question -   # read question from stdin
-nrflo agent consult --consultant <id> --question "<text>" --json  # emit {"answer":...}
-```
-
-| Command | When to use |
-|---------|------------|
-| `finished` | Task completed successfully; orchestrator advances to next phase |
-| `fail` | Task cannot be completed; `--reason` is optional but recommended |
-| `continue` | Context window exhausted; save progress to `to_resume` first |
-| `callback` | Issue found requiring re-run; supply exactly one of `--level`, `--agent`, `--chain` |
-| `skip <tag>` | Skip a workflow group in subsequent layers; tag must be in workflow's `groups` |
-| `chain-next-instructions` | Pass instructions to the next chain step; call before `finished` |
-| `chain-next-ticket` | Set the ticket ID for the next ticket-scope chain step; call before `finished` |
-| `consult --consultant <id> --question <q>` | Synchronous expert consult; blocks until the consultant answers; prints answer to stdout. Requires `NRF_SESSION_ID`; consultant must be an api-mode consultant defined in the same workflow. |
-
-**Completion semantics:** Exit 0 or `agent finished` = pass. Non-zero exit or
-`agent fail` = fail. `agent continue` triggers a fresh relaunch for
-context-exhausted agents — it is not a success signal.
+**Completion semantics:** Exit 0 or `agent_finished` = pass. Non-zero exit or
+`agent_fail` = fail. `agent_continue` triggers a fresh relaunch for
+context-exhausted agents.
 
 ---
 
-## Artifact CLI
+## Artifact tools
 
-Agents can upload, list, and retrieve artifacts at runtime. `$NRF_ARTIFACTS_DIR`
-points to the pre-materialized stage directory for input artifacts.
+`$NRF_ARTIFACTS_DIR` points to the pre-materialized stage directory for input
+artifacts. The `read_document` tool returns an input artifact's absolute path so
+you can read it with your native file tools.
 
-```bash
-# Upload a file as a named artifact (max 32 MiB)
-nrflo agent artifact add <file-path> <NAME>
-
-# List all artifacts for this workflow instance
-nrflo agent artifact list
-
-# Get the local abs path of a materialized artifact (cat-pipe friendly)
-nrflo agent artifact get <NAME>
-cat $(nrflo agent artifact get report.csv)
-```
-
-All commands read `NRF_SESSION_ID` and `NRF_WORKFLOW_INSTANCE_ID` from the
-environment (set automatically by the spawner).
+| Tool | Input | Purpose |
+|------|-------|---------|
+| `artifact_add` | `{file/name}` | Upload a file as a named artifact (max 32 MiB) |
+| `artifact_list` | — | List all artifacts for this workflow instance |
+| `artifact_get` | `{name}` | Materialize an artifact and return its local absolute path |
 
 ---
 
-## Findings CLI
+## Findings tools
 
-### Agent-Level Findings
+### Agent-level (own session)
 
-```bash
-# Add single finding (own session)
-nrflo findings add <key> <value>
+| Tool | Input |
+|------|-------|
+| `findings_add` | `{key, value}` |
+| `findings_add_bulk` | `{key_values: {k: v, …}}` |
+| `findings_append` | `{key, value}` (creates an array if needed) |
+| `findings_append_bulk` | `{key_values: {…}}` |
+| `findings_get` | `{}` (own) · `{key}` · `{keys: [...]}` · `{agent_type}` (cross-agent read) · `{layer}` (every agent at a layer) |
+| `findings_delete` | `{keys: [...]}` |
 
-# Add multiple findings (batch syntax)
-nrflo findings add key1:val1 key2:val2
+### Project-level
 
-# Append to existing finding (creates array if needed)
-nrflo findings append <key> <value>
-nrflo findings append key1:val1 key2:val2
+Same shapes with the `project_findings_` prefix: `project_findings_add`,
+`project_findings_add_bulk`, `project_findings_append`,
+`project_findings_append_bulk`, `project_findings_get`, `project_findings_delete`.
 
-# Get own findings
-nrflo findings get                      # all own findings
-nrflo findings get <key>               # single key (positional)
-nrflo findings get -k key1 -k key2    # multiple keys
-
-# Get another agent's findings (cross-agent read)
-nrflo findings get <agent-type>             # all findings for agent
-nrflo findings get <agent-type> <key>      # single key
-nrflo findings get <agent-type> -k key1    # multiple keys
-nrflo findings get --layer 1               # all findings for every agent at layer 1
-
-# Delete findings
-nrflo findings delete <key1> [key2...]
-```
-
-### Project-Level Findings
-
-```bash
-# Add
-nrflo findings project-add <key> <value>
-nrflo findings project-add key1:val1 key2:val2
-
-# Get
-nrflo findings project-get                    # all project findings
-nrflo findings project-get <key>              # single key
-nrflo findings project-get -k key1 -k key2    # multiple keys
-
-# Append
-nrflo findings project-append <key> <value>
-nrflo findings project-append key1:val1 key2:val2
-
-# Delete
-nrflo findings project-delete <key1> [key2...]
-```
-
-### Batch Syntax
-
-Both `add` and `append` support `key:value` pairs. The first colon separates
-the key from the value:
-
-```bash
-nrflo findings add summary:'Fixed the auth bug' files_changed:'["auth.go"]'
-```
+Cross-agent and cross-layer reads use `agent_type` / `layer` on `findings_get`;
+project findings are visible to every agent in the project.

@@ -58,7 +58,7 @@ The `system-prompt-suffix` injectable is delivered separately from the
 prepended blocks. For Claude agents it is passed via `--append-system-prompt-file`,
 appending it to Claude's system prompt. For codex agents it is
 prepended to the prompt body. The suffix template contains the completion
-contract (`nrflo agent finished` / `nrflo agent fail` / `nrflo agent continue`
+contract (the `agent_finished` / `agent_fail` / `agent_continue` tools, the last
 for context exhaustion) and is always active.
 
 The `finish-reminder` injectable is a second readonly template that can be

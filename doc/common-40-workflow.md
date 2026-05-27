@@ -7,9 +7,8 @@
 Any agent can write a `workflow_final_result` finding to surface a
 human-readable result summary after workflow completion.
 
-```bash
-nrflo findings add workflow_final_result:"Implementation complete: added auth middleware"
-```
+Call the `findings_add` tool with key `workflow_final_result` and the summary as
+the value.
 
 - Appears as a top-level field in the workflow state API response
 - Displayed in the UI above the agent flow tree after workflow completion
@@ -81,8 +80,8 @@ Set via `PUT /api/v1/workflows/{id}/layer-policies/{layer}` (admin only).
 ### Workflow Groups (Skip Tags)
 
 Workflows define `groups` (e.g., `["be", "fe", "docs"]`). Agents are assigned
-a `tag` from the workflow's groups. During execution, an agent can call
-`nrflo skip <tag>` to add that tag to the instance's skip list; the
+a `tag` from the workflow's groups. During execution, an agent can call the
+`workflow_skip` tool (`{tag}`) to add that tag to the instance's skip list; the
 orchestrator checks skip tags before each layer.
 
 ### Scope Types
@@ -118,15 +117,12 @@ earlier layers. Exactly one flag must be supplied:
 
 ### How to Trigger
 
-```bash
-# 1. Save callback instructions
-nrflo findings add callback_instructions:"Fix the auth bug in middleware/auth.go"
-
-# 2. Trigger with the desired mode
-nrflo agent callback --level 2
-nrflo agent callback --agent implementor
-nrflo agent callback --chain implementor,test-writer
-```
+1. Save callback instructions: call `findings_add` with key
+   `callback_instructions` and the instruction text as the value.
+2. Trigger with the `agent_callback` tool, supplying exactly one of:
+   - `{level: 2}` — re-run whole layer 2
+   - `{target_agent: "implementor"}` — single agent
+   - `{chain: ["implementor", "test-writer"]}` — sequential named agents
 
 After the callback plan completes, `${CALLBACK_INSTRUCTIONS}` is cleared.
 

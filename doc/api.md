@@ -31,7 +31,7 @@ agent returns an error immediately.
 **api-via-cli hybrid** (`api_via_cli_enabled`): when on, Anthropic api-models
 (`provider=anthropic`) are routed through the Claude CLI billed on your
 subscription instead of direct HTTP calls. The tool registry is identical;
-tools are served over the MCP bridge (`nrflo agent mcp`). OpenAI api-models
+tools are served over the MCP bridge (`nrflo_server agent mcp`). OpenAI api-models
 are unaffected and continue to use the in-process runner.
 
 ---

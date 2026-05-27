@@ -38,6 +38,7 @@ Used by Claude PTY agents spawned with --mcp-config pointing to this command.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		sessionID := GetSessionID()
 		instanceID := GetWorkflowInstanceID()
+		observer := os.Getenv("NRF_OBSERVER") == "1"
 		caller := &clientSocketCaller{c: GetClient()}
 
 		scanner := bufio.NewScanner(os.Stdin)
@@ -66,7 +67,7 @@ Used by Claude PTY agents spawned with --mcp-config pointing to this command.`,
 				}
 				continue
 			}
-			resp := dispatchMCP(req, sessionID, instanceID, caller)
+			resp := dispatchMCP(req, sessionID, instanceID, observer, caller)
 			if resp == nil {
 				continue // notification — no reply
 			}

@@ -1,14 +1,14 @@
 # Claude Code Instructions for nrflo Backend
 
-Go backend for nrflo. Two binaries: `nrflo_server` (server) and `nrflo` (CLI). The server provides HTTP API + WebSocket for the web UI, plus a Unix socket for agent communication. The CLI binary exposes agent commands (`agent fail/continue/callback`), findings commands (`findings add/append/get/delete`), and ticket/deps management.
+Go backend for nrflo. Single binary: `nrflo_server`. It provides the HTTP API + WebSocket for the web UI, a Unix socket for agent communication, and hosts the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). Agents themselves drive nrflo (findings, lifecycle, artifacts, …) via MCP tools served by the `agent mcp` bridge — there is no separate `nrflo` CLI.
 
 ## Project Structure
 
-Entry points: `be/cmd/nrflo/main.go` (CLI) and `be/cmd/server/main.go` (server).
+Entry point: `be/cmd/server/main.go` (calls `cli.RegisterServerCommands()`).
 
 Top-level packages under `be/internal/`:
 
-- `cli/` — Cobra commands: serve, agent, findings, tickets, deps, skip, chain
+- `cli/` — Cobra commands: serve + the agent infra subcommands (mcp, record-event, statusline, context-update)
 - `spawner/` — Agent spawner, execution backends (cli_interactive/api/script), low-context save, template engine
 - `proc/` — Host process probing (no circular deps)
 - `scheduler/` — Cron-driven scheduled task runner
@@ -62,11 +62,10 @@ All build targets are in the **root** `Makefile` (not `be/`):
 
 ```bash
 cd ~/projects/2026/nrflo
-make build                # Build both binaries (CLI + server, includes UI)
-make build-cli            # Build CLI binary (nrflo)
+make build                # Build the server binary (includes UI)
 make build-server         # Build server binary with embedded UI
 make build-server-only    # Go-only rebuild (skip UI build)
-make build-release        # Optimized release build (both binaries)
+make build-release        # Optimized release build (server binary)
 make install              # Install to PREFIX (default /usr/local)
 make help                 # Show all targets
 ```

@@ -31,12 +31,13 @@ func TestExpandInjectable_SystemPromptSuffix(t *testing.T) {
 		t.Errorf("system-prompt-suffix body missing 'Completion Contract' header; got: %q", body)
 	}
 
-	// Must contain success and failure instructions
-	if !strings.Contains(body, "nrflo agent finished") {
-		t.Errorf("system-prompt-suffix body missing 'nrflo agent finished'; got: %q", body)
+	// Must reference the nrflo MCP completion tools (migration 000132 replaced
+	// the removed `nrflo` CLI commands).
+	if !strings.Contains(body, "agent_finished") {
+		t.Errorf("system-prompt-suffix body missing 'agent_finished' tool; got: %q", body)
 	}
-	if !strings.Contains(body, "nrflo agent fail") {
-		t.Errorf("system-prompt-suffix body missing 'nrflo agent fail'; got: %q", body)
+	if !strings.Contains(body, "agent_fail") {
+		t.Errorf("system-prompt-suffix body missing 'agent_fail' tool; got: %q", body)
 	}
 
 	// Must contain the no-env-diagnostics rule (migration 000089)

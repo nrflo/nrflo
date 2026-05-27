@@ -22,16 +22,15 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-def _resolve_binaries() -> tuple[Path, Path]:
-    """Return (nrflo_server, nrflo) absolute paths or die with a clear message."""
+def _resolve_binary() -> Path:
+    """Return the nrflo_server absolute path or die with a clear message."""
     server = shutil.which("nrflo_server")
-    cli = shutil.which("nrflo")
-    if not server or not cli:
+    if not server:
         sys.exit(
-            "manual_testing: nrflo_server or nrflo not on PATH. "
+            "manual_testing: nrflo_server not on PATH. "
             "Run `make install` (or add ./be to PATH) first."
         )
-    return Path(server), Path(cli)
+    return Path(server)
 
 
 @dataclass
@@ -41,7 +40,6 @@ class RunningServer:
     base_url: str               # http://127.0.0.1:<port>
     proc: subprocess.Popen      # the live server process
     log_path: Path              # captured stdout+stderr
-    nrflo_cli: Path             # path to the agent CLI binary
     socket_path: Path           # NRFLO_SOCKET — short /tmp path, see start_server
 
     def stop(self, *, keep_dir: bool = True) -> None:
@@ -78,7 +76,7 @@ def start_server(
     standard NRFLO_* vars are set. Used by the api-mode runner to inject
     `ANTHROPIC_OAUTH_TOKEN` so the server resolves it via
     `apirun/provider/anthropic.ResolveAPIKey` step 4 (server env)."""
-    server_bin, cli_bin = _resolve_binaries()
+    server_bin = _resolve_binary()
 
     home = Path(tempfile.mkdtemp(prefix=f"nrflo-manual-{cli_label}-"))
     port = _free_port()
@@ -106,8 +104,9 @@ def start_server(
     env = os.environ.copy()
     env["NRFLO_HOME"] = str(home)
     env["NRFLO_SOCKET"] = str(socket_path)
-    # Make sure the spawned-agent processes can find the nrflo CLI.
-    env["PATH"] = f"{cli_bin.parent}{os.pathsep}{env.get('PATH', '')}"
+    # Put the server binary's dir on PATH so anything resolving `nrflo_server`
+    # by name finds this build (the spawner uses the absolute path for hooks/MCP).
+    env["PATH"] = f"{server_bin.parent}{os.pathsep}{env.get('PATH', '')}"
     if extra_env:
         env.update(extra_env)
 
@@ -149,7 +148,6 @@ def start_server(
         base_url=base_url,
         proc=proc,
         log_path=log_path,
-        nrflo_cli=cli_bin,
         socket_path=socket_path,
     )
 

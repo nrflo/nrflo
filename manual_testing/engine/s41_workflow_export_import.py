@@ -31,7 +31,7 @@ PROMPT = """\
 You are an integration-test agent. Run the listed command via the Bash
 tool, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

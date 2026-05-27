@@ -1,7 +1,7 @@
 """S02 — Agent fail.
 
 Tests:
-  - `nrflo agent fail --reason "..."` marks the session failed.
+  - the `agent_fail` tool (reason "...") marks the session failed.
   - An `errors` row of type 'agent' is recorded for the project.
 
 Expected PASS result:
@@ -24,9 +24,9 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Run the command via the Bash tool, then stop immediately.
+nothing else. Perform the listed step, then stop immediately.
 
-1. Run: `nrflo agent fail --reason "intentional"`
+1. Run: the `agent_fail` tool (reason "intentional")
 """
 
 

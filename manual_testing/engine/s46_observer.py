@@ -28,7 +28,7 @@ from lib.runtime import (
 
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
-PROMPT = "nrflo agent finished"
+PROMPT = "Call the agent_finished tool immediately to complete. Do nothing else."
 
 
 def _socket_call(ctx: Ctx, method: str, params: dict) -> tuple[object, object]:

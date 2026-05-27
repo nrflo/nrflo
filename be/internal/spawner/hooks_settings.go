@@ -2,14 +2,20 @@ package spawner
 
 import (
 	"encoding/json"
+	"os"
 )
 
-// resolvedNrfloPath returns the literal "nrflo" so spawned agents resolve the
-// CLI binary via PATH. Using os.Executable() here was wrong: this code runs
-// inside nrflo_server, so the absolute path pointed at nrflo_server (which has
-// no `agent` subcommand) and broke every PreToolUse hook.
+// resolvedNrfloPath returns the absolute path to the running nrflo_server binary,
+// which hosts the agent infrastructure subcommands (record-event, statusline,
+// context-update, mcp). Hooks and the MCP bridge are spawned as short-lived
+// `nrflo_server agent <cmd>` processes that connect back over the Unix socket.
+// Using the absolute executable path (not a bare name) means it resolves even
+// when nrflo_server is not on the spawned agent's PATH (e.g. the Docker image).
 func resolvedNrfloPath() string {
-	return "nrflo"
+	if exe, err := os.Executable(); err == nil {
+		return exe
+	}
+	return "nrflo_server"
 }
 
 // BuildInteractiveSettingsJSON returns a Claude --settings JSON string that

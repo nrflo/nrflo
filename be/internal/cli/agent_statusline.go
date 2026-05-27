@@ -105,7 +105,3 @@ var agentStatuslineCmd = &cobra.Command{
 		return nil
 	},
 }
-
-func init() {
-	agentCmd.AddCommand(agentStatuslineCmd)
-}

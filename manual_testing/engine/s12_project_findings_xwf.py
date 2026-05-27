@@ -26,20 +26,20 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 WRITER_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings project-add favorite_color blue`
-2. Run: `nrflo agent finished`
+1. Run: the `project_findings_add` tool (key=favorite_color, value=blue)
+2. Run: the `agent_finished` tool
 """
 
 READER_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add observed_color #{PROJECT_FINDINGS:favorite_color}`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=observed_color, value=#{PROJECT_FINDINGS:favorite_color})
+2. Run: the `agent_finished` tool
 """
 
 

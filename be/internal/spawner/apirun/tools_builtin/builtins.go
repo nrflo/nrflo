@@ -37,6 +37,9 @@ func Builtins() map[string]apirun.ToolHandler {
 		"workflow_continue": workflowContinueHandler{},
 		"workflow_fail":     workflowFailHandler{},
 
+		"chain_next_instructions": chainNextInstructionsHandler{},
+		"chain_next_ticket":       chainNextTicketHandler{},
+
 		"artifact_add":  artifactAddHandler{},
 		"artifact_list": artifactListHandler{},
 		"artifact_get":  artifactGetHandler{},

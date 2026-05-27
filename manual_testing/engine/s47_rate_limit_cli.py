@@ -43,7 +43,7 @@ from lib.ws_client import WSClient
 PROMPT = """\
 You are an integration-test agent. Run the listed command and stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

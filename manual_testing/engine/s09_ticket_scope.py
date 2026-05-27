@@ -1,7 +1,7 @@
 """S09 — Ticket-scope happy path with auto-close.
 
 Tests:
-  - A ticket-scope workflow whose only agent runs `nrflo agent finished`.
+  - A ticket-scope workflow whose only agent runs the `agent_finished` tool.
   - When workflow.close_ticket_on_complete=true, the ticket auto-closes
     after successful completion.
 
@@ -25,9 +25,9 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed command, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

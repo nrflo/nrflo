@@ -61,7 +61,7 @@ func (b *codexAppServerBackend) Start(ctx context.Context, proc *processInfo, pr
 	if err != nil {
 		return fmt.Errorf("codex app-server: mkdir profile: %w", err)
 	}
-	if err := writeCodexProfileForSession(profileDir, proc.workDir); err != nil {
+	if err := writeCodexSessionProfile(profileDir, proc); err != nil {
 		_ = os.RemoveAll(profileDir)
 		return fmt.Errorf("codex app-server: write profile: %w", err)
 	}

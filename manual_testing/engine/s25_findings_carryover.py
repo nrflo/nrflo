@@ -2,11 +2,11 @@
 
 Tests:
   - Agent #1 writes a finding (`carry_key=carry_val`), then calls
-    `nrflo agent fail`. With `max_fail_restarts=1` the spawner auto-
+    the `agent_fail` tool. With `max_fail_restarts=1` the spawner auto-
     respawns via `relaunchForContinuation`, which calls
     `copyFindingsForContinuation` to merge old findings into the new
     session row non-destructively (new keys win on conflict).
-  - Agent #2 just calls `nrflo agent finished` without writing any
+  - Agent #2 just calls the `agent_finished` tool without writing any
     finding of its own, so the merged value is observable on the new
     session row.
 
@@ -43,17 +43,17 @@ PROMPT = """\
 You are an integration-test agent. Behavior depends on whether the
 finding `carry_key` is already set on YOUR session.
 
-First, run: `nrflo findings get carry_key`
+First, run: the `findings_get` tool (key=carry_key)
 
 - If the output is empty or shows "no finding", this is the FIRST
   attempt. Run, in order:
-    1. `nrflo findings add carry_key carry_val`
-    2. `nrflo agent fail --reason "trigger fail-restart"`
+    1. the `findings_add` tool (key=carry_key, value=carry_val)
+    2. the `agent_fail` tool (reason "trigger fail-restart")
   Then stop.
 
 - If the output is `carry_val`, this is the RELAUNCHED attempt. Run:
-    1. `nrflo agent finished`
-  Then stop. Do NOT call `nrflo findings add` — we want to observe the
+    1. the `agent_finished` tool
+  Then stop. Do NOT call the `findings_add` tool — we want to observe the
   carried-over value untouched.
 """
 

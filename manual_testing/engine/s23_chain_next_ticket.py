@@ -2,7 +2,7 @@
 
 Tests:
   - A 2-step chain where step 1 is ticket-scope with require_ticket_handoff.
-  - Step 0's agent calls `nrflo agent chain-next-ticket --ticket-id <id>`
+  - Step 0's agent calls the `chain_next_ticket` tool (ticket_id <id>)
     to nominate the ticket; the chain runner must materialise step 1
     against that ticket.
 
@@ -26,18 +26,18 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 A_PROMPT_TMPL = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo agent chain-next-ticket --ticket-id {ticket_id}`
-2. Run: `nrflo agent finished`
+1. Run: the `chain_next_ticket` tool (ticket_id {ticket_id})
+2. Run: the `agent_finished` tool
 """
 
 B_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed command, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

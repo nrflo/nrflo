@@ -4,7 +4,7 @@ Tests:
   - The Python SDK's `c.agent.chain_next_ticket(ticket_id)` method
     forwards to the `agent.chain_next_ticket` socket method
     (`be/internal/socket/handler.go`), same code path the CLI's
-    `nrflo agent chain-next-ticket` uses.
+    the `chain_next_ticket` tool uses.
   - A two-step chain (step 0 project-scope → step 1 ticket-scope with
     `require_ticket_handoff=true`) runs step 1 against the ticket the
     SDK call nominated.

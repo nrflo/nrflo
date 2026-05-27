@@ -52,7 +52,7 @@ func (c *Client) IsServerRunning() bool {
 
 // ServerNotRunningError returns the error message when server is not running
 func ServerNotRunningError() error {
-	return fmt.Errorf("nrflo server is not running. If you are a spawned agent: DO NOT start the server - call 'nrflo agent fail <ticket> <agent> --reason=\"server not running\"' and exit")
+	return fmt.Errorf("nrflo server is not running. If you are a spawned agent: DO NOT start the server - call the agent_fail tool with a reason and exit")
 }
 
 // Execute sends a request and returns the response

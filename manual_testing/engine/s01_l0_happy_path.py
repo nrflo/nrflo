@@ -10,7 +10,7 @@ Coverage checklist (each gets its own labeled sub-assertion):
     (findings.add own-session, final-value semantics)
   - project_findings.team == 'alpha'                       (project-add)
   - agent_messages for session has category='tool'          (Bash → tool row)
-  - workflow_instances.skip_tags contains 'flaky-step'      (nrflo skip)
+  - workflow_instances.skip_tags contains 'flaky-step'      (workflow_skip tool)
   - REST workflow_final_result == 'all green' on workflow state
   - session.prompt contains the unique marker we passed as instructions
   - session.findings.color == 'red'                          (project env var)
@@ -38,17 +38,17 @@ SKIP_TAG = "flaky-step"
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add greeting hello-1`
-2. Run: `nrflo findings add greeting hello-2`
-3. Run: `nrflo findings project-add team alpha`
-4. Run: `nrflo findings add color "$MY_TEST_VAR"`
-5. Run: `nrflo findings add workflow_final_result "all green"`
-6. Run: `nrflo skip flaky-step`
+1. Run: the `findings_add` tool (key=greeting, value=hello-1)
+2. Run: the `findings_add` tool (key=greeting, value=hello-2)
+3. Run: the `project_findings_add` tool (key=team, value=alpha)
+4. Read the value of the `MY_TEST_VAR` environment variable (use the Bash tool, e.g. `printf %s "$MY_TEST_VAR"`), then call the `findings_add` tool (key=color, value=<that value>)
+5. Run: the `findings_add` tool (key=workflow_final_result, value="all green")
+6. Run: the `workflow_skip` tool (tag=flaky-step)
 7. Run: `echo hello-from-bash`
-8. Run: `nrflo agent finished`
+8. Run: the `agent_finished` tool
 """
 
 NAME = "S01 L0 happy-path"

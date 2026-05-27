@@ -22,20 +22,20 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 PROMPT_A = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add from_a alpha`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=from_a, value=alpha)
+2. Run: the `agent_finished` tool
 """
 
 PROMPT_B = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add from_b beta`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=from_b, value=beta)
+2. Run: the `agent_finished` tool
 """
 
 

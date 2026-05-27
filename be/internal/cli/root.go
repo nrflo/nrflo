@@ -21,13 +21,13 @@ var ProjectID string
 var ProjectRoot string
 
 var rootCmd = &cobra.Command{
-	Use:   "nrflo",
-	Short: "nrflo - Multi-workflow agent orchestration",
-	Long: `nrflo is the agent CLI for nrflo orchestration system.
+	Use:   "nrflo_server",
+	Short: "nrflo - Multi-workflow agent orchestration server",
+	Long: `nrflo_server is the nrflo orchestration server.
 
-Agent commands (used by spawned agents):
-  nrflo agent fail/continue <ticket> <agent-type> -w <workflow>
-  nrflo findings add/append/get/delete ...`,
+It serves the HTTP API + WebSocket for the web UI and a Unix socket for agent
+communication, and hosts the agent infrastructure subcommands (the MCP tool
+bridge and Claude hook/statusline forwarders) the spawner invokes.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if envProject := os.Getenv("NRFLO_PROJECT"); envProject != "" {
 			ProjectID = envProject

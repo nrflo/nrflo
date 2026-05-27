@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -58,6 +59,50 @@ func writeCodexProfileForSession(dir, workDir string) error {
 		_ = os.WriteFile(filepath.Join(dir, "auth.json"), authBytes, 0o600)
 	}
 	return nil
+}
+
+// writeCodexSessionProfile writes the per-session CODEX_HOME profile and, when a
+// tool registry was attached to proc (prepareSpawn cli tail), appends the
+// [mcp_servers.nrflo] table so codex serves the nrflo agent tools over MCP. The
+// bridge env is embedded because codex does not forward parent env to MCP
+// subprocesses.
+func writeCodexSessionProfile(dir string, proc *processInfo) error {
+	if err := writeCodexProfileForSession(dir, proc.workDir); err != nil {
+		return err
+	}
+	if len(proc.apiTools) == 0 {
+		return nil
+	}
+	return appendCodexMCPServer(dir, resolvedNrfloPath(),
+		nrfloBridgeEnv(proc.sessionID, proc.workflowInstanceID, proc.projectID))
+}
+
+// appendCodexMCPServer appends an [mcp_servers.nrflo] table (plus an env table)
+// to the per-session CODEX_HOME/config.toml so codex serves the nrflo agent
+// tools to the model over MCP (codex calls the bridge as `serverPath agent mcp`).
+// Codex does not forward parent process env to MCP server subprocesses, so the
+// session env the bridge needs (NRF_SESSION_ID, socket path, …) is embedded here.
+func appendCodexMCPServer(dir, serverPath string, env map[string]string) error {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("\n[mcp_servers.nrflo]\ncommand = %q\nargs = [\"agent\", \"mcp\"]\n", serverPath))
+	if len(env) > 0 {
+		b.WriteString("\n[mcp_servers.nrflo.env]\n")
+		keys := make([]string, 0, len(env))
+		for k := range env {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			b.WriteString(fmt.Sprintf("%s = %q\n", k, env[k]))
+		}
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "config.toml"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(b.String())
+	return err
 }
 
 // stripTOMLTables removes every table block whose header line begins with any

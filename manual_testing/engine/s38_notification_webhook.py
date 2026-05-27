@@ -28,7 +28,7 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 PROMPT = """\
 You are an integration-test agent. Run the listed command and stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

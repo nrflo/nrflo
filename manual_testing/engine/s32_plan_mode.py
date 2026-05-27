@@ -28,7 +28,7 @@ DETECT_TIMEOUT_S = 30.0
 
 
 PROMPT = """\
-You are an integration-test agent. Run `nrflo agent finished` and stop.
+You are an integration-test agent. Run the `agent_finished` tool and stop.
 """
 
 

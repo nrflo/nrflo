@@ -2,7 +2,7 @@
 
 Tests:
   - Agent definition with max_fail_restarts=2 must auto-respawn after
-    the agent calls `nrflo agent fail`, up to 2 additional times.
+    the agent calls the `agent_fail` tool, up to 2 additional times.
   - Each spawn is a fresh agent_sessions row on the same wfi, with
     restart_count incrementing.
 
@@ -26,9 +26,9 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Run the command via the Bash tool, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent fail --reason "restart-me"`
+1. Run: the `agent_fail` tool (reason "restart-me")
 """
 
 

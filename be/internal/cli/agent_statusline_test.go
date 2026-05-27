@@ -273,10 +273,11 @@ func TestAgentStatuslinePctBoundaries(t *testing.T) {
 	}
 }
 
-// TestAgentStatuslineRegisteredUnderAgent verifies the command is reachable via agentCmd.
+// TestAgentStatuslineRegisteredUnderAgent verifies the command is reachable via
+// the server-side agent infrastructure parent.
 func TestAgentStatuslineRegisteredUnderAgent(t *testing.T) {
-	subcmds := getCommandNames(agentCmd)
+	subcmds := getCommandNames(agentInfraCmd)
 	if !contains(subcmds, "statusline") {
-		t.Errorf("agentCmd missing 'statusline' subcommand. Got: %v", subcmds)
+		t.Errorf("agentInfraCmd missing 'statusline' subcommand. Got: %v", subcmds)
 	}
 }

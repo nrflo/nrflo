@@ -7,7 +7,7 @@ Tests:
   - codex: rollout JSONL tailer (`cli_adapter_codex_jsonl_tail.go`).
 
 Why the prompt asks for substantial output:
-  - A trivial `nrflo agent finished`-only prompt consumes essentially
+  - A trivial the `agent_finished` tool-only prompt consumes essentially
     no input/output tokens, and some adapters only
     flush their per-turn token bookkeeping at end-of-turn via async
     DB writes. Under parallel load that flush can be dropped entirely
@@ -43,7 +43,7 @@ in order, then stop.
    key-value store. Each line should be ~10-15 words. Output as plain
    text — no files. Keep total under ~150 words so reasoning-heavy
    providers finish quickly.
-2. Use the Bash tool to run: `nrflo agent finished`
+2. Call the `agent_finished` tool
 """
 
 

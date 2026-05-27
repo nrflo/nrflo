@@ -77,7 +77,3 @@ Used by Claude PTY agents spawned with --mcp-config pointing to this command.`,
 		return scanner.Err()
 	},
 }
-
-func init() {
-	agentCmd.AddCommand(agentMCPCmd)
-}

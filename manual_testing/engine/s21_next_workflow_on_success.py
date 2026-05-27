@@ -27,18 +27,18 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 A_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add workflow_final_result "forwarded value"`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=workflow_final_result, value="forwarded value")
+2. Run: the `agent_finished` tool
 """
 
 B_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed command, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

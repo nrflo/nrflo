@@ -20,16 +20,16 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 GOOD_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed command, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 BAD_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Run the command via the Bash tool, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent fail --reason "intentional s14"`
+1. Run: the `agent_fail` tool (reason "intentional s14")
 """
 
 

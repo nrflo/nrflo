@@ -2,14 +2,12 @@ package spawner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
-	"be/internal/spawner/apirun/tools_builtin"
 )
 
 // prepareAPIViaCLISpawn transforms an api-mode spawn into a cli_interactive spawn
@@ -38,23 +36,14 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	proc.maxContext = am.ContextLength
 
 	// Build tool registry (same as normal api branch).
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "")
 	if regErr != nil {
 		return nil, nil, regErr
 	}
 
 	// Substitute read_document with the path-returning variant: Claude has native
 	// Read so it can access materialized artifacts by path directly.
-	pathHandler := tools_builtin.ReadDocumentPathHandler{}
-	if _, ok := handlers["read_document"]; ok {
-		handlers["read_document"] = pathHandler
-		for i, spec := range specs {
-			if spec.Name == "read_document" {
-				specs[i] = pathHandler.Spec()
-				break
-			}
-		}
-	}
+	substituteReadDocumentPath(specs, handlers)
 
 	proc.apiViaCLI = true
 	proc.nudgeMax = 0
@@ -116,14 +105,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	promptFile := pf.Name()
 
 	// Build MCP config JSON pointing at the nrflo agent mcp bridge.
-	mcpConfig, mcpErr := json.Marshal(map[string]interface{}{
-		"mcpServers": map[string]interface{}{
-			"nrflo": map[string]interface{}{
-				"command": resolvedNrfloPath(),
-				"args":    []string{"agent", "mcp"},
-			},
-		},
-	})
+	mcpConfig, mcpErr := buildNrfloMCPConfig()
 	if mcpErr != nil {
 		os.Remove(systemPromptOverrideFile)
 		os.Remove(promptFile)
@@ -138,7 +120,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		WorkDir:                  s.config.ProjectRoot,
 		SettingsJSON:             s.config.ClaudeSettingsJSON,
 		SystemPromptOverrideFile: systemPromptOverrideFile,
-		MCPConfigJSON:            string(mcpConfig),
+		MCPConfigJSON:            mcpConfig,
 		NativeToolsCSV:           "Read",
 		AllowedToolsCSV:          "mcp__nrflo__* Read",
 		Env:                      s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),

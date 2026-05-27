@@ -32,11 +32,11 @@ WAIT_EVENT_S = 30.0
 
 
 PROMPT = """\
-You are an integration-test agent. Use the Bash tool to run the listed
+You are an integration-test agent. Perform the listed
 commands in order, then stop.
 
 1. Run: `sleep 120`
-2. Run: `nrflo agent finished`
+2. Run: the `agent_finished` tool
 """
 
 

@@ -254,7 +254,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		proc.maxContext = maxCtx
 
-		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc)
+		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "")
 		if regErr != nil {
 			return nil, nil, regErr
 		}
@@ -287,6 +287,24 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// body for parity with the API backend; overwrite now that promptBody
 	// is final.
 	prep.prompt = promptBody
+
+	// Serve the nrflo agent commands as MCP tools (via the nrflo agent mcp
+	// bridge) instead of the nrflo CLI. Built before temp files so an error
+	// returns without leaking them. Claude consumes --mcp-config/--allowedTools
+	// (set here); codex consumes the registry via a config.toml [mcp_servers]
+	// table written by the codex app-server backend from proc.apiTools.
+	var mcpConfigJSON, allowedToolsCSV string
+	switch adapter.Name() {
+	case "claude":
+		var mcpErr error
+		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(ctx, req, wfiID, agentDef, proc); mcpErr != nil {
+			return nil, nil, mcpErr
+		}
+	case "codex":
+		if regErr := s.attachNrfloToolRegistry(ctx, req, wfiID, agentDef, proc); regErr != nil {
+			return nil, nil, regErr
+		}
+	}
 
 	filePrefix := req.TicketID
 	if req.IsProjectScope() {
@@ -373,6 +391,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		SettingsJSON:             s.config.ClaudeSettingsJSON,
 		SystemPromptFile:         suffixFilePath,
 		SystemPromptOverrideFile: systemPromptOverrideFilePath,
+		MCPConfigJSON:            mcpConfigJSON,
+		AllowedToolsCSV:          allowedToolsCSV,
 		Env: s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
 	}
 

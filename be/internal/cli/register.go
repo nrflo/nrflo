@@ -8,23 +8,8 @@ func RegisterServerCommands() {
 	rootCmd.RunE = serveCmd.RunE
 	rootCmd.Flags().AddFlagSet(serveCmd.Flags())
 	rootCmd.AddCommand(serveCmd)
-}
-
-// RegisterCLICommands adds client-facing commands to the root command.
-func RegisterCLICommands() {
-	rootCmd.Use = "nrflo"
-	rootCmd.Short = "CLI tool for nrflo server"
-	rootCmd.AddCommand(agentCmd)
-	rootCmd.AddCommand(findingsCmd)
-	rootCmd.AddCommand(ticketsCmd)
-	rootCmd.AddCommand(depsCmd)
-	rootCmd.AddCommand(skipCmd)
-	rootCmd.AddCommand(observerCmd)
-
-	// Register ticketsCmd persistent flags (moved from tickets.go init).
-	// Guard against double-registration which would cause a panic.
-	if ticketsCmd.PersistentFlags().Lookup("server") == nil {
-		ticketsCmd.PersistentFlags().StringVar(&ticketsServer, "server", "", "API server URL (default: NRFLO_API_URL or http://localhost:6587)")
-		ticketsCmd.PersistentFlags().BoolVar(&ticketsJSON, "json", false, "Output as JSON")
-	}
+	// Agent infrastructure subcommands (MCP bridge + Claude hook/statusline
+	// forwarders) the spawner invokes as short-lived `nrflo_server agent <cmd>`
+	// processes that connect back to the running server over the Unix socket.
+	rootCmd.AddCommand(agentInfraCmd)
 }

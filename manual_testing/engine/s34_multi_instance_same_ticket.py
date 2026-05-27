@@ -22,10 +22,10 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 
 PROMPT = """\
-You are an integration-test agent. Use the Bash tool to run the listed
+You are an integration-test agent. Perform the listed
 command, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

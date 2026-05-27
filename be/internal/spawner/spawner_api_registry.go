@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"be/internal/model"
+	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/tools_builtin"
@@ -13,19 +14,25 @@ import (
 
 // buildAPIRegistry resolves the per-agent tool registry from the tools CSV,
 // loads HTTP and python tool definitions, resolves the registry, and assembles
-// the ToolEnv. Called by both the in-process api branch and the api-via-cli hybrid.
+// the ToolEnv. Called by the in-process api branch, the api-via-cli hybrid, and
+// the cli_interactive Claude path (which passes toolsCSVOverride="*" to expose
+// the full nrflo tool set as mcp__nrflo__* tools). When toolsCSVOverride is
+// empty, the agent definition's tools field is used.
 func (s *Spawner) buildAPIRegistry(
 	ctx context.Context,
 	req SpawnRequest,
 	wfiID string,
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
+	toolsCSVOverride string,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
-	toolsCSV := ""
-	if agentDef != nil {
-		toolsCSV = agentDef.Tools
-	} else if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
-		toolsCSV = agentCfg.Tools
+	toolsCSV := toolsCSVOverride
+	if toolsCSV == "" {
+		if agentDef != nil {
+			toolsCSV = agentDef.Tools
+		} else if agentCfg, ok := s.config.Agents[req.AgentType]; ok {
+			toolsCSV = agentCfg.Tools
+		}
 	}
 
 	httpDefs, defsErr := s.loadAPIHTTPToolDefs(req.ProjectID, req.WorkflowName)
@@ -74,6 +81,7 @@ func (s *Spawner) buildAPIRegistry(
 		ArtifactSvc:        s.config.ArtifactSvc,
 		WorkflowControl:    s.config.WorkflowControl,
 		Consultant:         s,
+		ChainRun:           service.NewWorkflowChainRunService(s.config.Pool, s.config.Clock),
 	}
 
 	return specs, handlers, toolEnv, nil

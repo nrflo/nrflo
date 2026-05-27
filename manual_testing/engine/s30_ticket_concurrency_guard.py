@@ -29,11 +29,11 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 # Long enough that we have time to fire the 2nd + 3rd POSTs while 1st runs.
 PROMPT = """\
-You are an integration-test agent. Use the Bash tool to run the listed
+You are an integration-test agent. Perform the listed
 commands in order, then stop.
 
 1. Run: `sleep 30`
-2. Run: `nrflo agent finished`
+2. Run: the `agent_finished` tool
 """
 
 

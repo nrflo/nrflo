@@ -1,5 +1,5 @@
-.PHONY: all build build-cli build-server build-server-only build-ui \
-       build-release build-release-cli build-release-server \
+.PHONY: all build build-server build-server-only build-ui \
+       build-release build-release-server \
        build-server-notray build-release-server-notray \
        install clean test test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
@@ -41,12 +41,8 @@ $(EMBED_DOC_DIR)/%.md: doc/%.md
 $(EMBED_GITKEEP):
 	@mkdir -p $(STATIC_DIR) && touch $@
 
-## build: Build both binaries (dev, includes UI)
-build: build-cli build-server
-
-## build-cli: Build CLI binary only (no CGO, no tray)
-build-cli: embed-assets
-	cd $(BE_DIR) && CGO_ENABLED=0 $(GO) build -o nrflo ./cmd/nrflo
+## build: Build the server binary (dev, includes UI)
+build: build-server
 
 ## build-ui: Build UI and copy dist to embed directory
 build-ui:
@@ -65,13 +61,8 @@ build-server-only: embed-assets
 
 # --- Release builds ---
 
-## build-release: Optimized release build (both binaries, includes UI)
-build-release: build-release-cli build-release-server
-
-## build-release-cli: Release build CLI only (pure Go, no CGO)
-build-release-cli: embed-assets
-	cd $(BE_DIR) && CGO_ENABLED=$(CGO_CLI) GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		$(GO) build -ldflags="$(LDFLAGS)" -o nrflo ./cmd/nrflo
+## build-release: Optimized release build (server binary, includes UI)
+build-release: build-release-server
 
 ## build-release-server: Release build server only (CGO for systray)
 build-release-server: build-ui
@@ -89,10 +80,9 @@ build-release-server-notray: build-ui
 
 # --- Install ---
 
-## install: Install both binaries to PREFIX (default /usr/local)
+## install: Install the server binary to PREFIX (default /usr/local)
 install: build-release
 	install -d $(DESTDIR)$(BINDIR)
-	install -m 755 $(BE_DIR)/nrflo $(DESTDIR)$(BINDIR)/nrflo
 	install -m 755 $(BE_DIR)/nrflo_server $(DESTDIR)$(BINDIR)/nrflo_server
 
 # --- Test ---
@@ -211,7 +201,7 @@ lint-pkg: embed-assets $(GOLANGCI)
 
 ## deadcode: Report unreachable funcs; fails on NEW dead code vs deadcode.baseline
 deadcode: embed-assets $(DEADCODE)
-	@cd $(BE_DIR) && $(CURDIR)/$(DEADCODE) -f '{{range .Funcs}}{{println $$.Path .Name}}{{end}}' ./cmd/server ./cmd/nrflo 2>/dev/null | sort -u > /tmp/nrflo-deadcode-now.txt
+	@cd $(BE_DIR) && $(CURDIR)/$(DEADCODE) -f '{{range .Funcs}}{{println $$.Path .Name}}{{end}}' ./cmd/server 2>/dev/null | sort -u > /tmp/nrflo-deadcode-now.txt
 	@grep -v '^#' $(BE_DIR)/deadcode.baseline | sort -u > /tmp/nrflo-deadcode-base.txt
 	@new=$$(comm -23 /tmp/nrflo-deadcode-now.txt /tmp/nrflo-deadcode-base.txt); \
 	if [ -n "$$new" ]; then \
@@ -241,7 +231,7 @@ tidy:
 
 ## clean: Remove build artifacts
 clean:
-	rm -f $(BE_DIR)/nrflo $(BE_DIR)/nrflo_server
+	rm -f $(BE_DIR)/nrflo_server
 	rm -rf $(STATIC_DIR)
 	rm -rf $(EMBED_DOC_DIR)
 	mkdir -p $(STATIC_DIR) && touch $(STATIC_DIR)/.gitkeep

@@ -30,10 +30,12 @@ STALL_TIMEOUT_SEC = 15
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the single combined command
-below as one Bash invocation. Do NOT split it into two tool calls.
+nothing else, in order:
 
-1. Run: `sleep 30 && nrflo agent finished`
+1. Run `sleep 30` as a single Bash tool invocation (one call, blocking).
+2. Only after it returns, call the `agent_finished` tool.
+
+Do not produce any other output during the sleep.
 """
 
 

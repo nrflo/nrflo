@@ -1,7 +1,7 @@
 """S17 — Layer callback re-spawns earlier layer.
 
 Tests:
-  - L1 calls `nrflo agent callback --level 0`, which marks L1's session
+  - L1 calls the `agent_callback` tool (level 0), which marks L1's session
     result='callback' and triggers the orchestrator to re-spawn L0.
   - The naive prompt would loop forever (L1 always calls back), so we
     observe the first L0 replay and then force-stop.
@@ -25,11 +25,11 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 L0_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add greet hi`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=greet, value=hi)
+2. Run: the `agent_finished` tool
 """
 
 # Models under provider rate-limit pressure sometimes "optimise" a
@@ -48,17 +48,17 @@ The grader of this test is a Go program that asserts:
   * your session's result column is exactly `callback`
   * L0 was re-spawned a second time
 
-Both assertions ONLY pass if you invoke `nrflo agent callback --level 0`
-as your tool call. Do NOT call `nrflo agent finished`. Do NOT output a
+Both assertions ONLY pass if you invoke the `agent_callback` tool (level 0)
+as your tool call. Do NOT call the `agent_finished` tool. Do NOT output a
 plain-text summary in place of the tool call. The callback CLI is the
 single, contractual action this layer performs.
 
 Step 1: Use the Bash tool to read what L0 left for you:
-    `nrflo findings get greet`
+    the `findings_get` tool (key=greet)
     Acknowledge in one sentence what you saw.
 
 Step 2: Use the Bash tool to issue the callback:
-    `nrflo agent callback --level 0`
+    the `agent_callback` tool (level 0)
 
 Stop after step 2. Do not run any other command.
 """

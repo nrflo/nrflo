@@ -41,6 +41,13 @@ type ConsultantSpawner interface {
 	Consult(ctx context.Context, callerSessionID, consultantID, question string) (string, error)
 }
 
+// ChainRunController lets agents set the next step's instructions/ticket in a
+// workflow chain run. Nil-safe; guard with env.ChainRun == nil before calling.
+type ChainRunController interface {
+	SetNextStepInstructions(instanceID, instructions string) error
+	SetNextStepTicket(instanceID, ticketID string) error
+}
+
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
 // It carries the in-process services and identifiers handlers need to
 // mirror the CLI socket flow without going over the network.
@@ -74,6 +81,9 @@ type ToolEnv struct {
 	// Consultant allows the consult builtin to spawn a named consultant inline.
 	// Nil when not wired (e.g. tests, or when agent is itself a consultant).
 	Consultant ConsultantSpawner
+	// ChainRun lets the chain_next_* builtins set the next chain step's
+	// instructions/ticket. Nil outside chain runs / in tests.
+	ChainRun ChainRunController
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

@@ -26,17 +26,17 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 L0_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo findings add handoff_value 42`
-2. Run: `nrflo findings add prior_key prior_value_99`
-3. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=handoff_value, value=42)
+2. Run: the `findings_add` tool (key=prior_key, value=prior_value_99)
+3. Run: the `agent_finished` tool
 """
 
 L1_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
 The previous layer wrote: #{FINDINGS:l0:handoff_value}
@@ -44,8 +44,8 @@ The previous layer wrote: #{FINDINGS:l0:handoff_value}
 Prior layer findings follow:
 #{PRIOR_LAYER_FINDINGS}
 
-1. Run: `nrflo findings add observed #{FINDINGS:l0:handoff_value}`
-2. Run: `nrflo agent finished`
+1. Run: the `findings_add` tool (key=observed, value=#{FINDINGS:l0:handoff_value})
+2. Run: the `agent_finished` tool
 """
 
 NAME = "S07 template expansion"

@@ -3,7 +3,7 @@
 Tests:
   - Create a chain definition with two project-scope steps (WF_A → WF_B).
   - Start a chain run; step A's agent calls
-    `nrflo agent chain-next-instructions` to set step B's instructions.
+    the `chain_next_instructions` tool to set step B's instructions.
   - Chain run reaches `completed`; both steps reach `completed`;
     step B's rendered prompt contains the handoff text.
 
@@ -29,18 +29,18 @@ HANDOFF = "hello from step 0"
 
 A_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed commands in order,
+nothing else. Perform the listed steps in order,
 then stop immediately.
 
-1. Run: `nrflo agent chain-next-instructions --instructions "hello from step 0"`
-2. Run: `nrflo agent finished`
+1. Run: the `chain_next_instructions` tool (instructions "hello from step 0")
+2. Run: the `agent_finished` tool
 """
 
 B_PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Use the Bash tool to run the listed command, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent finished`
+1. Run: the `agent_finished` tool
 """
 
 

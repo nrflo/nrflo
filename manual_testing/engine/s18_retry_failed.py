@@ -1,7 +1,7 @@
 """S18 — Manual retry-failed re-spawns the failed agent.
 
 Tests:
-  - Run a workflow whose only agent calls `nrflo agent fail`.
+  - Run a workflow whose only agent calls the `agent_fail` tool.
   - POST /api/v1/projects/{id}/workflow/retry-failed with the failed
     session_id; the orchestrator must spawn a fresh agent_session on
     the same workflow_instance.
@@ -27,9 +27,9 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 
 PROMPT = """\
 You are an integration-test agent. Do EXACTLY what is listed below and
-nothing else. Run the command via the Bash tool, then stop.
+nothing else. Perform the listed step, then stop.
 
-1. Run: `nrflo agent fail --reason "first try"`
+1. Run: the `agent_fail` tool (reason "first try")
 """
 
 

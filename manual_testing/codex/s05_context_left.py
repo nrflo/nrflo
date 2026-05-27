@@ -42,7 +42,7 @@ in order, then stop.
    key-value store. Each line should be ~10-15 words. Output as plain
    text — no files. Keep total under ~150 words so reasoning-heavy
    providers finish quickly.
-2. Use the Bash tool to run: `nrflo agent finished`
+2. Call the `agent_finished` tool
 """
 
 

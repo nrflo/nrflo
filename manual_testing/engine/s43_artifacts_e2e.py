@@ -10,7 +10,7 @@ be/internal/cli/artifacts.go):
      under `$NRF_ARTIFACTS_DIR` before the agent starts.
   3. The agent reads the staged file (asserting NRF_ARTIFACTS_DIR is
      populated), writes a derived output, and calls
-     `nrflo agent artifact add` to register it.
+     the `artifact_add` tool to register it.
   4. GET /api/v1/workflow-instances/{iid}/artifacts lists both rows
      with the right source labels.
 
@@ -37,12 +37,12 @@ MODELS_BY_PROVIDER: dict[str, str] = {}
 PROMPT = """\
 You are an integration-test agent. The current workflow instance has an
 input artifact staged under $NRF_ARTIFACTS_DIR. Run each command below
-via the Bash tool, in order, then stop.
+in order, then stop.
 
-1. Run: `nrflo findings add input_payload "$(cat "$NRF_ARTIFACTS_DIR/hello.txt")"`
+1. Run: the `findings_add` tool (key=input_payload, value="$(cat "$NRF_ARTIFACTS_DIR/hello.txt")")
 2. Run: `printf 'produced-by-agent' > /tmp/s43-out.txt`
-3. Run: `nrflo agent artifact add /tmp/s43-out.txt out.txt`
-4. Run: `nrflo agent finished`
+3. Run: the `artifact_add` tool (file /tmp/s43-out.txt, name out.txt)
+4. Run: the `agent_finished` tool
 """
 
 

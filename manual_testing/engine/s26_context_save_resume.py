@@ -6,7 +6,7 @@ Tests:
     `initiateContextSave`, which for claude+codex takes the resume-based
     path (`contextSaveViaResume`): `claude --resume <id>` or
     `codex exec resume <thread_id>`. The resumed turn runs the save prompt,
-    writes the `to_resume` finding, calls `nrflo agent continue`, and
+    writes the `to_resume` finding, calls the `agent_continue` tool, and
     `relaunchForContinuation` spawns a new main-agent session whose
     findings include the carried-over `to_resume`. api falls back
     through `shouldUseAgentSave` to the system-agent saver path.
@@ -47,21 +47,21 @@ PROMPT = """\
 You are an integration-test agent. Behavior depends on whether the
 finding `to_resume` is already set on YOUR session.
 
-First, run: `nrflo findings get to_resume`
+First, run: the `findings_get` tool (key=to_resume)
 
 - If the output shows a non-empty value, this is the RELAUNCHED attempt
   (after a low-context save). Run, in order:
-    1. `nrflo agent finished`
+    1. the `agent_finished` tool
   Then stop.
 
 - If the output is empty or shows "no finding", this is the FIRST
   attempt. Run these commands in order, each as its own turn — do NOT
   combine them — then stop:
-    1. `nrflo findings add step1 done`
-    2. `nrflo findings add step2 done`
-    3. `nrflo findings add step3 done`
-    4. `nrflo findings add step4 done`
-    5. `nrflo agent finished`
+    1. the `findings_add` tool (key=step1, value=done)
+    2. the `findings_add` tool (key=step2, value=done)
+    3. the `findings_add` tool (key=step3, value=done)
+    4. the `findings_add` tool (key=step4, value=done)
+    5. the `agent_finished` tool
 """
 
 

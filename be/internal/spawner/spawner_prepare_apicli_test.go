@@ -135,8 +135,8 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 	if !ok {
 		t.Fatal("mcpServers.nrflo missing from MCPConfigJSON")
 	}
-	if srv.Command != "nrflo" {
-		t.Errorf("mcpServers.nrflo.command = %q, want nrflo", srv.Command)
+	if want := resolvedNrfloPath(); srv.Command != want {
+		t.Errorf("mcpServers.nrflo.command = %q, want %q (resolved nrflo_server path)", srv.Command, want)
 	}
 	if len(srv.Args) != 2 || srv.Args[0] != "agent" || srv.Args[1] != "mcp" {
 		t.Errorf("mcpServers.nrflo.args = %v, want [agent mcp]", srv.Args)

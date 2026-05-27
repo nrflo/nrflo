@@ -71,14 +71,14 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 Rules every change must respect.
 
 - **Server-only**: `nrflo_server` is the only user-facing command; all management goes through the web UI.
-- **Two binaries**: `nrflo_server` (server) and `nrflo` (agent + ticket/deps CLI).
+- **Single binary**: `nrflo_server` — the server, plus the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). There is no separate `nrflo` CLI.
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
-- **Project scope from env**: every CLI/API call resolves the project from `NRFLO_PROJECT` (or the `X-Project` header for HTTP).
+- **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or the `X-Project` header for HTTP).
 - **Service layer**: business logic stays in `be/internal/service/`.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
 - **Spawned agents authenticate via per-session bearer token in `NRFLO_AGENT_TOKEN`**: see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
-- **Agent CLI is a small subset** — see [doc/cli.md](doc/cli.md).
+- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` for Claude, `nrflo/*` for codex) — findings, lifecycle (finished/fail/continue/callback), artifacts, skip, chain, consult — served by the `nrflo_server agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
 - **API mode is a runtime admin toggle** (`api_mode_enabled` global setting); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Feature Index
@@ -118,7 +118,7 @@ Rules every change must respect.
 - **Service tokens (long-lived project-scoped bearer tokens for external callers)** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
-- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `nrflo agent artifact add|list|get`, api-mode builtins, Python SDK `c.artifacts`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
+- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, the `artifact_add`/`artifact_list`/`artifact_get` MCP tools, Python SDK `c.artifacts`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)

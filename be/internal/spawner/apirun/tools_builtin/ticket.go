@@ -24,6 +24,7 @@ func (ticketCreateHandler) Spec() provider.ToolSpec {
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
+"id":{"type":"string","description":"explicit ticket id (e.g. an external/Jira id); auto-generated when omitted"},
 "title":{"type":"string","description":"short, actionable title"},
 "description":{"type":"string","description":"full description (markdown ok)"},
 "type":{"type":"string","enum":["bug","feature","task","epic"],"description":"defaults to task"},
@@ -38,6 +39,7 @@ func (ticketCreateHandler) Spec() provider.ToolSpec {
 
 func (ticketCreateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
+		ID          string `json:"id"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
 		Type        string `json:"type"`
@@ -54,6 +56,7 @@ func (ticketCreateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input
 		return missingService("ticket")
 	}
 	ticket, err := env.Ticket.Create(env.ProjectID, &types.TicketCreateRequest{
+		ID:             args.ID,
 		Title:          args.Title,
 		Description:    args.Description,
 		Type:           args.Type,

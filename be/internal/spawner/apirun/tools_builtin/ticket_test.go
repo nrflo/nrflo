@@ -67,6 +67,23 @@ func TestTicketCreate_Defaults(t *testing.T) {
 	}
 }
 
+func TestTicketCreate_ExplicitID(t *testing.T) {
+	e := newBuiltinTestEnv(t)
+	// service.Create lowercases the id; pass a lowercase id so the round-trip is exact.
+	id := createTicket(t, e, `{"id":"proj-123","title":"From Jira"}`)
+	if id != "proj-123" {
+		t.Errorf("returned ticket_id = %q, want proj-123", id)
+	}
+	var title string
+	if err := e.pool.QueryRow(`SELECT title FROM tickets WHERE id=?`,
+		id).Scan(&title); err != nil {
+		t.Fatalf("read ticket with explicit id: %v", err)
+	}
+	if title != "From Jira" {
+		t.Errorf("title = %q, want From Jira", title)
+	}
+}
+
 func TestTicketCreate_WithParent(t *testing.T) {
 	e := newBuiltinTestEnv(t)
 	parent := createTicket(t, e, `{"title":"Epic","type":"epic"}`)

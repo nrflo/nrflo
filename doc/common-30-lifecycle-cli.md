@@ -51,7 +51,7 @@ Both act on the agent's own project.
 
 | Tool | Input | Purpose |
 |------|-------|---------|
-| `ticket_create` | `{title, description?, type?, priority?, parent_id?}` | Create a ticket; returns `{ticket_id, title}`. `type` ∈ `bug\|feature\|task\|epic` (default `task`); `priority` 1–4 (default 2) |
+| `ticket_create` | `{title, description?, type?, priority?, parent_id?, id?}` | Create a ticket; returns `{ticket_id, title}`. `type` ∈ `bug\|feature\|task\|epic` (default `task`); `priority` 1–4 (default 2); `id` sets an explicit id (e.g. an external/Jira id), auto-generated when omitted |
 | `ticket_add_dependency` | `{ticket_id, depends_on_id}` | `ticket_id` is blocked by `depends_on_id` (the blocker must complete first); both must already exist |
 
 Capture the `ticket_id` returned by `ticket_create` and pass it to

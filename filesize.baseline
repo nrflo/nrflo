@@ -142,7 +142,6 @@ be/internal/spawner/apirun/tools_python/python_test.go	339
 be/internal/spawner/backend_interactive_helpers.go	368
 be/internal/spawner/backend_script_test.go	336
 be/internal/spawner/callback_instructions_test.go	384
-be/internal/spawner/codex_appserver_backend.go	330
 be/internal/spawner/completion.go	313
 be/internal/spawner/completion_test.go	473
 be/internal/spawner/context_save_test.go	494

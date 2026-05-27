@@ -215,56 +215,19 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 		case <-idleCh:
 			if proc.nudgeCount < proc.nudgeMax {
 				b.nudge(runCtx, logCtx, proc, req, client, threadID, effort)
-			} else if !proc.lastNudgeAt.IsZero() && b.s.config.Clock.Now().Sub(proc.lastNudgeAt) > b.idleWindow(proc) {
-				// Cap exhausted + another idle window → auto-fail. This calls
-				// RequestTerminalSignal which routes back through Kill → ctx
-				// cancel → handleCompletion reads the fail result.
+				// The nudge issued a turn/start; a turn is now active. Mark it so
+				// before turnStarted lands, so the next iteration arms no idle timer
+				// (avoids a second nudge while the nudge turn is spinning up).
+				turnActive = true
+			} else if !proc.lastNudgeAt.IsZero() && b.s.config.Clock.Now().Sub(proc.lastNudgeAt) > b.betweenTurnsDelay(proc) {
+				// Cap exhausted and the agent completed yet another turn without
+				// finishing → auto-fail. This calls RequestTerminalSignal which
+				// routes back through Kill → ctx cancel → handleCompletion reads
+				// the fail result.
 				b.s.handleNudgeAutoFail(logCtx, proc, req)
 			}
 		}
 	}
-}
-
-// armIdleTimer returns a channel that fires when the agent has been idle past
-// its window. Only armed when a turn is NOT active (the agent is between turns
-// and may have stopped without calling `nrflo agent finished`); during an
-// active turn, stall detection in monitorAll covers silence.
-func (b *codexAppServerBackend) armIdleTimer(proc *processInfo, turnActive bool) <-chan time.Time {
-	if turnActive || proc.nudgeMax == 0 {
-		return nil
-	}
-	window := b.idleWindow(proc)
-	if window <= 0 {
-		return nil
-	}
-	proc.messagesMutex.Lock()
-	last := proc.lastMessageTime
-	proc.messagesMutex.Unlock()
-	remaining := window - b.s.config.Clock.Now().Sub(last)
-	if remaining < 0 {
-		remaining = 0
-	}
-	return b.s.config.Clock.After(remaining)
-}
-
-func (b *codexAppServerBackend) idleWindow(proc *processInfo) time.Duration {
-	proc.messagesMutex.Lock()
-	hasMsg := proc.hasReceivedMessage
-	proc.messagesMutex.Unlock()
-	if hasMsg {
-		return proc.idleAfterMessageTimeout
-	}
-	return proc.idleStartTimeout
-}
-
-// nudge re-issues a turn carrying the finish-reminder injectable, then records
-// the nudge via the shared helper.
-func (b *codexAppServerBackend) nudge(runCtx, logCtx context.Context, proc *processInfo, req SpawnRequest, client *appServerClient, threadID, effort string) {
-	body := b.s.nudgeBody(proc)
-	if _, err := client.call(runCtx, "turn/start", turnStartParams(threadID, body, effort, "")); err != nil {
-		logger.Warn(logCtx, "codex app-server: nudge turn/start error", "session_id", proc.sessionID, "error", err)
-	}
-	b.s.recordNudgeSent(logCtx, proc, req)
 }
 
 // handleRateLimit mirrors apiBackend.Start's rate-limit dance: broadcast,

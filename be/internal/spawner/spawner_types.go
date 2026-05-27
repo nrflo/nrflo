@@ -49,6 +49,11 @@ const (
 	defaultIdleAfterMessageTimeout = 4 * time.Minute
 	defaultIdleStartTimeout        = 2 * time.Minute
 	defaultNudgeMax                = 5
+	// codexBetweenTurnsNudgeDelay caps how long the codex app-server backend waits
+	// after a turn completes without a finish call before nudging. A completed codex
+	// turn with no `agent_finished` is an unambiguous stop (codex never self-continues),
+	// so there is no reason to sit out the full idle window the way a PTY agent does.
+	codexBetweenTurnsNudgeDelay = 10 * time.Second
 
 	defaultAPIMaxIterations = 50
 	defaultAPIMaxTokens     = 16384

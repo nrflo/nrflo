@@ -2,54 +2,145 @@ package notify
 
 import "strings"
 
-// telegramMaxLen is Telegram's per-message limit, counted in UTF-16 code units.
-const telegramMaxLen = 4096
+const (
+	// telegramMaxLen is Telegram's per-message hard API limit, counted in
+	// UTF-16 code units. A sendMessage above this is rejected outright.
+	telegramMaxLen = 4096
+
+	// telegramChunkTarget is the soft per-message target. It sits below the
+	// mobile-client "Show more" cutoff so every chunk renders fully expanded
+	// instead of collapsing behind a tap-to-expand link.
+	telegramChunkTarget = 3000
+)
 
 // splitTelegram breaks a rendered MarkdownV2 body into chunks that each fit
-// within telegramMaxLen UTF-16 code units. It prefers line boundaries so
-// blockquotes and bold/link entities (which never span a newline in our
-// templates) stay intact; an individual line longer than the limit is
-// hard-split on rune boundaries without breaking a backslash escape pair.
+// within telegramChunkTarget (soft) and never exceed telegramMaxLen (hard).
+// It splits at paragraph boundaries (blank lines, including blockquote-prefixed
+// "> " lines) first, then falls back to line boundaries inside any paragraph
+// that's still too big, then hard-splits an oversized line on rune boundaries
+// without breaking a MarkdownV2 backslash escape pair.
+//
+// Blank-line atoms that land on a chunk boundary are dropped — the seam between
+// two messages already separates the paragraphs visually.
 func splitTelegram(body string) []string {
-	if utf16Len(body) <= telegramMaxLen {
+	if utf16Len(body) <= telegramChunkTarget {
 		return []string{body}
 	}
 
-	// Pre-split any oversized line so every segment fits on its own.
-	var segs []string
-	for _, line := range strings.Split(body, "\n") {
-		if utf16Len(line) <= telegramMaxLen {
-			segs = append(segs, line)
-		} else {
-			segs = append(segs, hardSplitLine(line, telegramMaxLen)...)
-		}
-	}
+	paras := splitParagraphs(body)
 
-	// Greedily pack segments, rejoining with the newline they were split on.
 	var chunks []string
 	var cur strings.Builder
 	curLen := 0
-	for _, seg := range segs {
-		segLen := utf16Len(seg)
-		add := segLen
+	const sep = "\n\n"
+	sepLen := 2
+
+	flush := func() {
 		if cur.Len() > 0 {
-			add++ // the rejoining newline
-		}
-		if curLen+add > telegramMaxLen && cur.Len() > 0 {
 			chunks = append(chunks, cur.String())
 			cur.Reset()
 			curLen = 0
+		}
+	}
+
+	for _, p := range paras {
+		pLen := utf16Len(p)
+		if pLen > telegramChunkTarget {
+			// Paragraph alone exceeds the target — flush current and line-pack
+			// this paragraph into its own chunk(s).
+			flush()
+			chunks = append(chunks, linePackParagraph(p)...)
+			continue
+		}
+		add := pLen
+		if cur.Len() > 0 {
+			add += sepLen
+		}
+		if curLen+add > telegramChunkTarget && cur.Len() > 0 {
+			flush()
+			add = pLen
+		}
+		if cur.Len() > 0 {
+			cur.WriteString(sep)
+			curLen += sepLen
+		}
+		cur.WriteString(p)
+		curLen += pLen
+	}
+	flush()
+	return chunks
+}
+
+// splitParagraphs groups consecutive non-blank lines into paragraphs. A blank
+// line (empty, "> ", or ">") is a separator and is dropped. Each returned
+// paragraph is the lines joined with "\n".
+func splitParagraphs(body string) []string {
+	var out []string
+	var cur []string
+	for _, line := range strings.Split(body, "\n") {
+		if isBlankLine(line) {
+			if len(cur) > 0 {
+				out = append(out, strings.Join(cur, "\n"))
+				cur = nil
+			}
+			continue
+		}
+		cur = append(cur, line)
+	}
+	if len(cur) > 0 {
+		out = append(out, strings.Join(cur, "\n"))
+	}
+	return out
+}
+
+// isBlankLine reports whether a line is empty or a bare blockquote marker —
+// the patterns that act as paragraph separators in our rendered bodies.
+func isBlankLine(s string) bool {
+	t := strings.TrimRight(s, " \t")
+	return t == "" || t == ">"
+}
+
+// linePackParagraph packs the lines of a single paragraph into chunks that
+// fit within telegramChunkTarget (soft) and never exceed telegramMaxLen
+// (hard). A line longer than telegramMaxLen is hard-split on rune boundaries.
+func linePackParagraph(p string) []string {
+	var atoms []string
+	for _, line := range strings.Split(p, "\n") {
+		if utf16Len(line) <= telegramMaxLen {
+			atoms = append(atoms, line)
+		} else {
+			atoms = append(atoms, hardSplitLine(line, telegramMaxLen)...)
+		}
+	}
+
+	var chunks []string
+	var cur strings.Builder
+	curLen := 0
+	flush := func() {
+		if cur.Len() > 0 {
+			chunks = append(chunks, cur.String())
+			cur.Reset()
+			curLen = 0
+		}
+	}
+	for _, a := range atoms {
+		aLen := utf16Len(a)
+		add := aLen
+		if cur.Len() > 0 {
+			add++ // rejoining newline
+		}
+		if curLen+add > telegramChunkTarget && cur.Len() > 0 {
+			flush()
+			add = aLen
 		}
 		if cur.Len() > 0 {
 			cur.WriteByte('\n')
 			curLen++
 		}
-		cur.WriteString(seg)
-		curLen += segLen
+		cur.WriteString(a)
+		curLen += aLen
 	}
-	if cur.Len() > 0 {
-		chunks = append(chunks, cur.String())
-	}
+	flush()
 	return chunks
 }
 

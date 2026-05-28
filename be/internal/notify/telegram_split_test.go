@@ -18,7 +18,7 @@ func TestSplitTelegram_ShortBodySingleChunk(t *testing.T) {
 }
 
 func TestSplitTelegram_SplitsOnLineBoundaries(t *testing.T) {
-	// 5 lines of 1000 runes each (+newlines) = ~5004 > 4096, must split.
+	// 5 lines of 1000 runes each (+newlines) = 5004 > chunkTarget, must split.
 	line := strings.Repeat("a", 1000)
 	lines := make([]string, 5)
 	for i := range lines {
@@ -38,6 +38,56 @@ func TestSplitTelegram_SplitsOnLineBoundaries(t *testing.T) {
 	// Concatenating chunks with the newline they were split on reconstructs body.
 	if strings.Join(chunks, "\n") != body {
 		t.Errorf("reconstructed body differs from original")
+	}
+}
+
+func TestSplitTelegram_ChunksStayUnderSoftTarget(t *testing.T) {
+	// 5 lines of 1000 runes each, no oversized atoms — packer should keep
+	// every chunk at or under the soft chunk target.
+	line := strings.Repeat("a", 1000)
+	body := strings.Repeat(line+"\n", 4) + line
+	chunks := splitTelegram(body)
+	if len(chunks) < 2 {
+		t.Fatalf("expected multiple chunks, got %d", len(chunks))
+	}
+	for i, c := range chunks {
+		if utf16Len(c) > telegramChunkTarget {
+			t.Errorf("chunk %d len %d exceeds soft target %d", i, utf16Len(c), telegramChunkTarget)
+		}
+	}
+}
+
+func TestSplitTelegram_PrefersParagraphBoundaries(t *testing.T) {
+	// Three paragraphs of ~1100 runes each, separated by blank "> " lines —
+	// the rendered shape for a multi-paragraph summary block. Packer should
+	// flush between paragraphs and drop the blank-line seam.
+	p1 := strings.Repeat("> a\n", 400)
+	p2 := strings.Repeat("> b\n", 400)
+	p3 := strings.Repeat("> c\n", 400)
+	body := strings.TrimRight(p1, "\n") + "\n> \n" + strings.TrimRight(p2, "\n") + "\n> \n" + strings.TrimRight(p3, "\n")
+
+	chunks := splitTelegram(body)
+	if len(chunks) < 2 {
+		t.Fatalf("expected multiple chunks, got %d", len(chunks))
+	}
+	for i, c := range chunks {
+		if utf16Len(c) > telegramChunkTarget {
+			t.Errorf("chunk %d len %d exceeds soft target", i, utf16Len(c))
+		}
+		// Blank-line seams must not appear at the start/end of any chunk.
+		if strings.HasPrefix(c, "> \n") || strings.HasPrefix(c, "\n") {
+			t.Errorf("chunk %d starts with blank seam: %q", i, c[:min(20, len(c))])
+		}
+		if strings.HasSuffix(c, "\n> ") || strings.HasSuffix(c, "\n") {
+			t.Errorf("chunk %d ends with blank seam: %q", i, c[max(0, len(c)-20):])
+		}
+	}
+	// Each paragraph's content must still appear in some chunk (no loss).
+	joined := strings.Join(chunks, "\n")
+	for _, marker := range []string{"> a", "> b", "> c"} {
+		if !strings.Contains(joined, marker) {
+			t.Errorf("paragraph marker %q missing from chunks", marker)
+		}
 	}
 }
 

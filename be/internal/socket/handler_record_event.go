@@ -131,34 +131,6 @@ func asString(v interface{}) string {
 	}
 }
 
-// extractToolResultBody pulls a human-readable string out of the PostToolUse
-// payload. Claude ships `tool_response` (object on current builds, string on
-// older builds) and sometimes `tool_result`. For object form, prefer stdout,
-// then fall back to other common content fields, then to compact JSON.
-func extractToolResultBody(event map[string]interface{}) string {
-	for _, key := range []string{"tool_response", "tool_result"} {
-		switch v := event[key].(type) {
-		case string:
-			if v != "" {
-				return v
-			}
-		case map[string]interface{}:
-			for _, k := range []string{"stdout", "output", "content", "response", "text", "result"} {
-				if s, ok := v[k].(string); ok && s != "" {
-					return s
-				}
-			}
-			if errStr, ok := v["stderr"].(string); ok && errStr != "" {
-				return "stderr: " + errStr
-			}
-			if b, err := json.Marshal(v); err == nil {
-				return string(b)
-			}
-		}
-	}
-	return ""
-}
-
 // recordPostToolFailure inserts a "[Tool failed] <error>" row when a tool
 // invocation errored. PostToolUse only fires on success per Claude docs, so
 // we'd otherwise miss tool failures entirely.
@@ -261,6 +233,17 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 	return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 }
 
-func (h *Handler) recordPostToolUse(_ context.Context, req Request, _ string, _ map[string]interface{}) Response {
-	return MakeResponse(req.ID, map[string]string{"status": "ignored"})
+// recordPostToolUse inserts a "[tool] → output" result row so the agent log
+// shows what each tool returned (matching api-mode). PostToolUse fires only on
+// success per Claude docs; a tool that returns its own error content inline
+// (e.g. an MCP isError result) still surfaces here as the captured body.
+func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
+	toolName, _ := event["tool_name"].(string)
+	body := extractToolResultBody(event)
+	if body == "" {
+		// Tool returned nothing renderable — ack without inserting an empty row.
+		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
+	}
+	content := spawner.FormatToolResult(toolName, body, false)
+	return h.recordSimpleEvent(ctx, req, sessionID, content, "tool")
 }

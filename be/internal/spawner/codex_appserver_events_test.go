@@ -175,3 +175,38 @@ func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
 		t.Errorf("single-turn fallback context_left = %v, want ~96", sink.contextUpdates)
 	}
 }
+
+// TestDispatchAppServer_McpToolCall_InvokeAndResult verifies a codex mcpToolCall
+// item (the nrflo MCP tools) is rendered as an invoke row plus a result row,
+// with the name normalized to mcp__<server>__<tool> (matches the Claude-hook
+// rendering). Shape is per `codex app-server generate-json-schema` (v0.133).
+func TestDispatchAppServer_McpToolCall_InvokeAndResult(t *testing.T) {
+	sink := &testSink{}
+	params := json.RawMessage(`{"item":{"type":"mcpToolCall","id":"i1","server":"nrflo","tool":"emit_findings","status":"completed","arguments":{"key":"summary"},"result":{"content":[{"type":"text","text":"ok: 1 finding"}]}}}`)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000)
+
+	if len(sink.recordedMsgs) != 2 {
+		t.Fatalf("expected 2 rows (invoke + result), got %d: %+v", len(sink.recordedMsgs), sink.recordedMsgs)
+	}
+	if inv := sink.recordedMsgs[0]; inv.category != "tool" || inv.content != `[Mcp__nrflo__emit_findings] {"key":"summary"}` {
+		t.Errorf("invoke row = %+v", inv)
+	}
+	if res := sink.recordedMsgs[1]; res.category != "tool" || res.content != "[Mcp__nrflo__emit_findings] → ok: 1 finding" {
+		t.Errorf("result row = %+v", res)
+	}
+}
+
+// TestDispatchAppServer_McpToolCall_Error verifies a failed mcpToolCall renders
+// the invoke row plus an error-category result row.
+func TestDispatchAppServer_McpToolCall_Error(t *testing.T) {
+	sink := &testSink{}
+	params := json.RawMessage(`{"item":{"type":"mcpToolCall","id":"i2","server":"nrflo","tool":"emit_findings","status":"failed","arguments":{"key":"x"},"error":{"message":"schema mismatch"}}}`)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000)
+
+	if len(sink.recordedMsgs) != 2 {
+		t.Fatalf("expected 2 rows (invoke + error), got %d: %+v", len(sink.recordedMsgs), sink.recordedMsgs)
+	}
+	if errRow := sink.recordedMsgs[1]; errRow.category != "error" || errRow.content != "Mcp__nrflo__emit_findings: schema mismatch" {
+		t.Errorf("error row = %+v", errRow)
+	}
+}

@@ -136,42 +136,8 @@ func TestRecordEvent_PreToolUse_InsertsMsgAndBroadcasts(t *testing.T) {
 	}
 }
 
-// TestRecordEvent_PostToolUse_NoOpNoMessages verifies PostToolUse is a no-op:
-// no agent_messages row is inserted, no BumpLastMessage is called, and the
-// response returns status="ignored" so the hook subprocess exits 0.
-func TestRecordEvent_PostToolUse_NoOpNoMessages(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	env.createTicketAndWorkflow(t, "RE-POST-NOOP")
-	wfiID := queryWFIID(t, env, "RE-POST-NOOP")
-	sessionID := "sess-re-post-noop"
-	insertAgentSession(t, env, "RE-POST-NOOP", sessionID, wfiID)
-
-	sig := &bumpRecordSignaler{}
-	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
-	req := buildRecordEventReq(t, "req-re-post-noop", sessionID, map[string]interface{}{
-		"hook_event_name": "PostToolUse",
-		"tool_name":       "Read",
-		"tool_response":   "file content here",
-	})
-
-	resp := h.Handle(req)
-	if resp.Error != nil {
-		t.Fatalf("expected no error, got: %v", resp.Error)
-	}
-	var result map[string]string
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("unmarshal result: %v", err)
-	}
-	if result["status"] != "ignored" {
-		t.Errorf("status = %q, want %q", result["status"], "ignored")
-	}
-	if n := countAgentMessages(t, env, sessionID); n != 0 {
-		t.Errorf("agent_messages count = %d, want 0 (PostToolUse is a no-op)", n)
-	}
-	if len(sig.bumps) != 0 {
-		t.Errorf("BumpLastMessage call count = %d, want 0 (PostToolUse must not bump stall detection)", len(sig.bumps))
-	}
-}
+// PostToolUse behavior (result rows + MCP content extraction) is covered in
+// handler_record_event_posttool_test.go.
 
 // TestRecordEvent_PreToolUse_UsageFieldIgnored verifies that a PreToolUse event
 // containing a usage block still records the tool message successfully.

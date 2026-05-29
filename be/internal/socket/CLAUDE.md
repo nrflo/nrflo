@@ -31,7 +31,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.chain_next_instructions` | Set instructions for the next pending chain step |
 | `agent.chain_next_ticket` | Set ticket ID for the next pending ticket-scope chain step |
 | `agent.consult` | Synchronously spawn an api-mode consultant under the caller workflow instance and return its answer. Params: `{session_id, consultant, question}`. Requires `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()` (nil → internal error). |
-| `agent.record_event` | Record Claude hook event; PreToolUse inserts message row + WS broadcast; PostToolUse no-op; Stop is a no-op boundary ack |
+| `agent.record_event` | Record Claude hook event; PreToolUse (invoke) + PostToolUse (`[tool] → output` result) insert message rows + WS broadcast; Stop is a no-op boundary ack |
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
@@ -100,7 +100,8 @@ After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.cont
 | `handler.go` | Request routing and method dispatch |
 | `handler_findings.go` | `findings.*` handlers (add/add-bulk/get/append/append-bulk/delete) |
 | `handler_tools.go` | `tools.list`/`tools.call` handlers — proxy to the wired `ToolDispatcher` |
-| `handler_record_event.go` | `agent.record_event`: PreToolUse → DB insert + WS broadcast; Stop → no-op boundary ack |
+| `handler_record_event.go` | `agent.record_event`: PreToolUse (invoke) + PostToolUse (result) → DB insert + WS broadcast; Stop → no-op boundary ack |
+| `handler_record_event_parse.go` | `tool_response`/`tool_result` body extraction (incl. MCP content arrays) |
 | `protocol.go` | JSON-RPC protocol types (Request, Response, Error) |
 | `handler_script_context.go` | `script.context` handler |
 | `handler_agent_log.go` | `agent.log` handler |

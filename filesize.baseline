@@ -130,7 +130,7 @@ be/internal/service/workflow_derive_test.go	548
 be/internal/service/workflow_response.go	408
 be/internal/service/worktree_test.go	495
 be/internal/socket/handler.go	446
-be/internal/socket/handler_record_event_test.go	386
+be/internal/socket/handler_record_event_test.go	352
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	340
 be/internal/spawner/apirun/provider/anthropic/translate_test.go	400
@@ -147,7 +147,7 @@ be/internal/spawner/completion_test.go	473
 be/internal/spawner/context_save_test.go	494
 be/internal/spawner/fail_restart_test.go	308
 be/internal/spawner/finalize_phase_callback_test.go	461
-be/internal/spawner/output.go	504
+be/internal/spawner/output.go	374
 be/internal/spawner/output_claude_advanced_test.go	453
 be/internal/spawner/output_claude_agent_test.go	492
 be/internal/spawner/output_claude_events_test.go	313

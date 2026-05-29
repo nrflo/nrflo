@@ -3,6 +3,7 @@ package spawner
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // appServerSignal is the control hint dispatchAppServerEvent returns to the run
@@ -61,11 +62,32 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 
 // appServerItem is the union of item fields we consume across item types.
 type appServerItem struct {
-	Type             string `json:"type"`
-	Text             string `json:"text"`             // agentMessage
-	Command          string `json:"command"`          // commandExecution
-	AggregatedOutput string `json:"aggregatedOutput"` // commandExecution
-	ExitCode         *int   `json:"exitCode"`         // commandExecution
+	Type             string             `json:"type"`
+	Text             string             `json:"text"`             // agentMessage
+	Command          string             `json:"command"`          // commandExecution
+	AggregatedOutput string             `json:"aggregatedOutput"` // commandExecution
+	ExitCode         *int               `json:"exitCode"`         // commandExecution
+	Server           string             `json:"server"`           // mcpToolCall
+	Tool             string             `json:"tool"`             // mcpToolCall
+	Arguments        json.RawMessage    `json:"arguments"`        // mcpToolCall
+	Result           *mcpToolCallResult `json:"result"`           // mcpToolCall
+	Error            *mcpToolCallError  `json:"error"`            // mcpToolCall
+	Query            string             `json:"query"`            // webSearch
+}
+
+// mcpToolCallResult mirrors the codex app-server McpToolCallResult shape
+// (`codex app-server generate-json-schema`): an array of content blocks plus
+// optional structured content.
+type mcpToolCallResult struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	StructuredContent json.RawMessage `json:"structuredContent"`
+}
+
+type mcpToolCallError struct {
+	Message string `json:"message"`
 }
 
 func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink) {
@@ -81,10 +103,57 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink) 
 		emitAgentText(sessionID, p.Item.Text, sink)
 	case "commandExecution":
 		emitMessage(sessionID, formatAppServerCommand(p.Item), "tool", sink)
+	case "mcpToolCall":
+		emitMcpToolCall(sessionID, p.Item, sink)
+	case "webSearch":
+		emitMessage(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", sink)
 	default:
 		// reasoning, userMessage, fileChange summaries, etc. — heartbeat only.
 		sink.BumpLastMessage(sessionID)
 	}
+}
+
+// emitMcpToolCall renders a codex mcpToolCall item (e.g. an nrflo MCP tool) as
+// an invoke row plus a result row, matching the Claude-hook + api-mode shape.
+// The name is normalized to "mcp__<server>__<tool>" so the same nrflo tool reads
+// identically across providers. item/completed carries both the arguments and
+// the result/error, so both rows come from this one event.
+func emitMcpToolCall(sessionID string, it appServerItem, sink Sink) {
+	name := "mcp__" + it.Server + "__" + it.Tool
+	var args map[string]interface{}
+	if len(it.Arguments) > 0 {
+		_ = json.Unmarshal(it.Arguments, &args)
+	}
+	emitMessage(sessionID, FormatToolDetail(name, args), ToolCategory(name), sink)
+
+	if it.Error != nil && it.Error.Message != "" {
+		emitMessage(sessionID, FormatToolResult(name, it.Error.Message, true), "error", sink)
+		return
+	}
+	if body := mcpResultText(it.Result); body != "" {
+		emitMessage(sessionID, FormatToolResult(name, body, false), "tool", sink)
+	}
+}
+
+// mcpResultText pulls human-readable text from an MCP tool result: joined text
+// content blocks, else the structured-content JSON.
+func mcpResultText(r *mcpToolCallResult) string {
+	if r == nil {
+		return ""
+	}
+	var parts []string
+	for _, c := range r.Content {
+		if c.Text != "" {
+			parts = append(parts, c.Text)
+		}
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, "\n")
+	}
+	if len(r.StructuredContent) > 0 && string(r.StructuredContent) != "null" {
+		return string(r.StructuredContent)
+	}
+	return ""
 }
 
 // formatAppServerCommand renders a commandExecution item as a tool row:

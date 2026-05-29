@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
@@ -205,18 +204,6 @@ func (s *Spawner) handleTextMessage(proc *processInfo, text string) {
 	s.logAgent(proc, text)
 }
 
-// ToolCategory returns the message category for a tool invocation.
-func ToolCategory(toolName string) string {
-	switch toolName {
-	case "Task", "Agent":
-		return "subagent"
-	case "Skill":
-		return "skill"
-	default:
-		return "tool"
-	}
-}
-
 // handleToolUse processes tool usage from structured output.
 func (s *Spawner) handleToolUse(proc *processInfo, toolName string, input map[string]interface{}) {
 	toolDetail := FormatToolDetail(toolName, input)
@@ -308,123 +295,6 @@ func (s *Spawner) formatPrefix(proc *processInfo) string {
 		model = "default"
 	}
 	return fmt.Sprintf("[%s:%s]", proc.agentType, model)
-}
-
-// FormatToolDetail extracts relevant details from tool input based on tool type.
-// It is a package-level function so socket handlers can reuse the same formatting
-// for hook-sourced tool events without duplicating logic.
-func FormatToolDetail(toolName string, input map[string]interface{}) string {
-	// Normalize tool name to title case.
-	if len(toolName) > 0 {
-		toolName = strings.ToUpper(toolName[:1]) + toolName[1:]
-	}
-
-	if input == nil {
-		return "[" + toolName + "]"
-	}
-
-	var detail string
-
-	switch toolName {
-	case "Skill":
-		skillName, _ := input["skill"].(string)
-		if skillName == "" {
-			skillName, _ = input["name"].(string)
-		}
-		skillArgs, _ := input["args"].(string)
-		if skillName != "" {
-			detail = "skill:" + skillName
-			if skillArgs != "" {
-				detail += " " + skillArgs
-			}
-		}
-
-	case "Bash":
-		cmd, _ := input["command"].(string)
-		if cmd != "" {
-			detail = cmd
-		}
-
-	case "Read":
-		path, _ := input["file_path"].(string)
-		if path == "" {
-			path, _ = input["filePath"].(string)
-		}
-		if path != "" {
-			detail = path
-		}
-
-	case "Write":
-		path, _ := input["file_path"].(string)
-		if path == "" {
-			path, _ = input["filePath"].(string)
-		}
-		if path != "" {
-			detail = path
-		}
-
-	case "Edit":
-		path, _ := input["file_path"].(string)
-		if path == "" {
-			path, _ = input["filePath"].(string)
-		}
-		if path != "" {
-			detail = path
-		}
-
-	case "Glob":
-		pattern, _ := input["pattern"].(string)
-		path, _ := input["path"].(string)
-		if pattern != "" {
-			detail = pattern
-			if path != "" {
-				detail = path + "/" + pattern
-			}
-		}
-
-	case "Grep":
-		pattern, _ := input["pattern"].(string)
-		path, _ := input["path"].(string)
-		if pattern != "" {
-			detail = pattern
-			if path != "" {
-				detail += " in " + path
-			}
-		}
-
-	case "Task", "Agent":
-		desc, _ := input["description"].(string)
-		agentType, _ := input["subagent_type"].(string)
-		if desc != "" {
-			detail = desc
-			if agentType != "" {
-				detail = agentType + ": " + desc
-			}
-		}
-
-	case "WebFetch":
-		url, _ := input["url"].(string)
-		if url != "" {
-			detail = url
-		}
-
-	case "WebSearch":
-		query, _ := input["query"].(string)
-		if query != "" {
-			detail = query
-		}
-
-	case "TodoWrite", "TaskCreate", "TaskUpdate", "TaskList":
-		// Just show tool name for task management tools
-		return "[" + toolName + "]"
-	}
-
-	// Format output: [ToolName] detail
-	if detail == "" {
-		return "[" + toolName + "]"
-	}
-
-	return "[" + toolName + "] " + detail
 }
 
 // RecordUserInput records a user-typed line for the given session through the

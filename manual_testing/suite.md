@@ -91,7 +91,7 @@ SKIPs cleanly when no token is reachable.
 | A06 | findings_add + findings_get builtin tool dispatch persists rows |
 | A07 | project_findings_add persists across workflows in same project |
 | A08 | low-context forces agent-save branch (never `--resume`) + carryover |
-| A09 | hung HTTP tool trips stall_running_timeout_sec in api-mode |
+| A09 | hung python tool trips stall_running_timeout_sec in api-mode |
 | A10 | bogus per-project OAuth token → result_reason=api_error + auth_error row |
 | A11 | api-mode invokes a `kind='tool'` python_scripts row; tool_dispatches row written |
 | A12 | api_mode_enabled runtime toggle: off → spawn rejected; on → spawn passes |
@@ -129,11 +129,13 @@ implementations:
   via the app-server backend). All providers assert context_left is populated.
 - `s35` registers a different `cli_type` + model id + timeout per provider.
 
-Stall detection (`s16`) runs only in engine. It was previously omitted from
-codex because codex's `exec_command` tool polls spawned processes every 1–5 s
-and resets the stall timer, making a plain `sleep` prompt unable to trigger
-the detector — exercising the engine-side detector under claude is the
-authoritative check.
+Stall detection (`s16`) runs only in engine — the authoritative engine-side
+detector check under claude. The agent blocks in a server-side MCP python tool
+(`slow_probe`) that never returns within the stall window, so no hook events
+fire and the detector trips. (A `sleep 30` Bash prompt was used before, but the
+modern claude CLI auto-backgrounds long shell commands and the model may wait
+via a non-blocking tool like Monitor, so a blocking MCP call is the reliable
+trigger.)
 
 Adding a new scenario:
 1. Pick a new id (next free `sNN` or `PNN`).

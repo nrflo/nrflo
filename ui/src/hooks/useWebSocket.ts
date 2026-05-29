@@ -23,6 +23,7 @@ import {
   isReceivingSnapshot,
   bufferEventDuringSnapshot,
 } from './useWSSnapshot'
+import { computeReconnectDelay, useConnectionRecovery } from './useWSReconnect'
 
 // Event types from backend
 export type WSEventType =
@@ -115,7 +116,6 @@ interface UseWebSocketReturn {
   unsubscribe: (ticketId?: string) => void
 }
 
-const MAX_RECONNECT_ATTEMPTS = 5
 const BASE_RECONNECT_DELAY = 3000 // 3 seconds
 const HEARTBEAT_TIMEOUT = 60_000 // 60 seconds
 const isDev = import.meta.env.DEV
@@ -151,9 +151,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const heartbeatTimerRef = useRef<number | null>(null)
   const prevActiveIdRef = useRef(activeId)
 
-  // Use refs for callbacks to avoid dependency chain issues.
-  // This prevents connect() from being recreated when handlers change,
-  // which would cause unnecessary WS disconnect/reconnect cycles.
+  // Stable refs for callbacks — prevents connect() recreation on handler changes
   const queryClientRef = useRef(queryClient)
   queryClientRef.current = queryClient
   const onEventRef = useRef(onEvent)
@@ -170,8 +168,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }, HEARTBEAT_TIMEOUT)
   }, [])
 
-  // Request resync for a subscription. Clears the cached seq so any events
-  // arriving before the snapshot's current_seq are not dropped as duplicates.
   const requestResync = useCallback((projectId: string, ticketId: string) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return
     if (isDev) console.debug('[ws] requesting resync for', projectId, ticketId)
@@ -279,7 +275,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     return msg
   }, [])
 
-  // Connect to WebSocket
   const connect = useCallback(() => {
     if (!enabled || wsRef.current?.readyState === WebSocket.OPEN) {
       return
@@ -306,7 +301,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       reconnectAttemptsRef.current = 0
       resetHeartbeat()
 
-      // Re-subscribe with cursor resume
       const projectId = useConnectionsStore.getState().active().activeProject ?? 'default'
       subscriptionsRef.current.forEach((ticketId) => {
         const message = buildSubscribeMessage(projectId, ticketId)
@@ -314,7 +308,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         ws.send(JSON.stringify(message))
       })
 
-      // If no cursor data, fall back to full invalidation
       const hasAnyCursor = Array.from(subscriptionsRef.current).some((ticketId) => {
         const subKey = subscriptionKey(projectId, ticketId)
         return getLastSeq(subKey) !== undefined
@@ -356,18 +349,16 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       setIsConnected(false)
       wsRef.current = null
 
-      if (heartbeatTimerRef.current) {
-        clearTimeout(heartbeatTimerRef.current)
-        heartbeatTimerRef.current = null
-      }
+      if (heartbeatTimerRef.current) clearTimeout(heartbeatTimerRef.current)
+      heartbeatTimerRef.current = null
 
       // Attempt reconnection
-      if (enabled && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-        const delay = BASE_RECONNECT_DELAY * (reconnectAttemptsRef.current + 1)
+      if (enabled) {
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+        const delay = computeReconnectDelay(reconnectAttemptsRef.current, BASE_RECONNECT_DELAY)
         if (isDev) console.debug('[ws] reconnecting in', delay, 'ms (attempt', reconnectAttemptsRef.current + 1, ')')
         reconnectTimeoutRef.current = window.setTimeout(() => {
-          reconnectAttemptsRef.current++
-          connect()
+          reconnectTimeoutRef.current = null; reconnectAttemptsRef.current++; connect()
         }, delay)
       }
     }
@@ -450,6 +441,15 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     reconnectAttemptsRef.current = 0
     if (enabled) connect()
   }, [activeId, enabled, disconnect, connect])
+
+  // Recovery: revive a dead socket immediately on tab focus / browser online, skipping the backoff wait.
+  useConnectionRecovery(() => {
+    if (!enabled || wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) return
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+    reconnectTimeoutRef.current = null
+    reconnectAttemptsRef.current = 0
+    connect()
+  }, enabled)
 
   return {
     isConnected,

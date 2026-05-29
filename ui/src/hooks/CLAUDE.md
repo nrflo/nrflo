@@ -23,12 +23,13 @@ The WS layer uses protocol v2 with seq tracking, cursor resume, snapshot hydrati
 - `useWSProtocol.ts` — protocol v2 types: `WSEventV2`, `WSSubscribeMessage`, control event types
 - `useWSReducer.ts:1` — event dispatch + seq tracking; per-subscription `seqMap` with idempotency; persists to sessionStorage
 - `useWSSnapshot.ts` — snapshot state machine: `idle → receiving → applying`; buffers live events during snapshot
+- `useWSReconnect.ts` — `computeReconnectDelay` (capped exponential backoff) + `useConnectionRecovery` (online/visibilitychange recovery)
 - `useWebSocketSubscription.ts` — consumer hook for ticket-level subscriptions
 
 ### Connection
 
 - Connects to `ws://host/api/v1/ws`
-- Auto-reconnect with exponential backoff (3s, 6s, 9s...), max 5 attempts
+- Auto-reconnect with capped exponential backoff (`min(3s × 2^n, 30s)` + jitter), no attempt limit; revives immediately on `window.online` or tab becoming visible
 - Events dispatched through `useWSReducer.dispatchV2Event()` (seq tracking + cache invalidation)
 - Heartbeat liveness: reconnects if no message received in 60s
 

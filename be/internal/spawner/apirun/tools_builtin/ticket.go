@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/types"
@@ -113,11 +114,8 @@ func (ticketAddDependencyHandler) Invoke(ctx context.Context, env apirun.ToolEnv
 }
 
 func broadcastTicketCreated(env apirun.ToolEnv, ticketID string) {
-	if env.WSHub == nil {
-		return
-	}
-	env.WSHub.Broadcast(ws.NewEvent(ws.EventTicketUpdated, env.ProjectID, ticketID, "", map[string]interface{}{
+	service.BroadcastFromCtx(env.WSHub, ws.EventTicketUpdated, service.BroadcastCtx{ProjectID: env.ProjectID, TicketID: ticketID}, map[string]interface{}{
 		"status": "open",
 		"action": "created",
-	}))
+	})
 }

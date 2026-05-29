@@ -48,10 +48,10 @@ func (o *Orchestrator) setupInteractivePreStep(
 	// Determine agent type and model for the session. Both modes derive the
 	// model from the workflow's L0 agent (Phases[0] is the tie-breaker when
 	// L0 has multiple agents) so plan capability tracks workflow capability.
-	// opus_4_7 is the last-resort fallback when the workflow has no phases
+	// opus_4_8 is the last-resort fallback when the workflow has no phases
 	// or the L0 agent has no configured model.
 	var agentType, modelName, phase string
-	modelName = "opus_4_7"
+	modelName = "opus_4_8"
 	if len(svcWf.Phases) > 0 {
 		l0Agent := svcWf.Phases[0].Agent
 		if cfg, ok := svcAgents[l0Agent]; ok && cfg.Model != "" {
@@ -174,7 +174,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 			return nil, fmt.Errorf("workflow has no phases")
 		}
 		l0Agent := svcWf.Phases[0].Agent
-		l0Model := "opus_4_7"
+		l0Model := "opus_4_8"
 		if cfg, ok := agents[l0Agent]; ok && cfg.Model != "" {
 			l0Model = cfg.Model
 		}
@@ -258,7 +258,7 @@ func (o *Orchestrator) buildInteractivePtyArgs(
 
 	// Resolve mapped model: DB-sourced MappedModel wins, else fall back to
 	// the Claude adapter's hardcoded mapping. Without this, the raw nrflo ID
-	// (e.g. "opus_4_7") reaches `claude --model` and the CLI rejects it.
+	// (e.g. "opus_4_8") reaches `claude --model` and the CLI rejects it.
 	var ptyModel string
 	if cfg, ok := modelConfigs[modelName]; ok && cfg.MappedModel != "" {
 		ptyModel = cfg.MappedModel

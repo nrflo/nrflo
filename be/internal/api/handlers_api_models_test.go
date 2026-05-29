@@ -80,8 +80,8 @@ func TestHandleListAPIModels(t *testing.T) {
 		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
 	models := decodeAPIModelList(t, rr)
-	if len(models) != 12 {
-		t.Errorf("len = %d, want 12 (6 anthropic + 6 openai seeded rows)", len(models))
+	if len(models) != 14 {
+		t.Errorf("len = %d, want 14 (8 anthropic + 6 openai seeded rows)", len(models))
 	}
 	// Verify mix of providers
 	var anthropicCount, openaiCount int
@@ -93,8 +93,8 @@ func TestHandleListAPIModels(t *testing.T) {
 			openaiCount++
 		}
 	}
-	if anthropicCount != 6 {
-		t.Errorf("anthropic rows = %d, want 6", anthropicCount)
+	if anthropicCount != 8 {
+		t.Errorf("anthropic rows = %d, want 8", anthropicCount)
 	}
 	if openaiCount != 6 {
 		t.Errorf("openai rows = %d, want 6", openaiCount)

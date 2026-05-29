@@ -28,6 +28,8 @@ interactive telemetry.
 | `opus_4_6_1m` | `claude-opus-4-6` (1M context) |
 | `opus_4_7` | `claude-opus-4-7` (200k context) |
 | `opus_4_7_1m` | `claude-opus-4-7` (1M context) |
+| `opus_4_8` | `claude-opus-4-8` (200k context) |
+| `opus_4_8_1m` | `claude-opus-4-8` (1M context) |
 | `sonnet` | Claude Sonnet |
 | `haiku` | Claude Haiku |
 

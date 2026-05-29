@@ -32,16 +32,17 @@ const REASONING_EFFORT_OPTIONS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra High (Opus 4.7 only)' },
+  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 only)' },
   { value: 'max', label: 'Max' },
 ]
 
 function buildEffortOptions(provider: APIProviderName, mappedModel: string) {
   if (provider === 'anthropic') {
-    const isOpus47 = mappedModel.startsWith('claude-opus-4-7')
+    const isXHighOpus =
+      mappedModel.startsWith('claude-opus-4-7') || mappedModel.startsWith('claude-opus-4-8')
     return REASONING_EFFORT_OPTIONS.map((opt) =>
-      opt.value === 'xhigh' && !isOpus47
-        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Anthropic Opus 4.7 models" }
+      opt.value === 'xhigh' && !isXHighOpus
+        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Anthropic Opus 4.7/4.8 models" }
         : opt
     )
   }

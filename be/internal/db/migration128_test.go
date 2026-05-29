@@ -63,7 +63,8 @@ func TestMigration128_CheckRejectsInvalidProvider(t *testing.T) {
 	}
 }
 
-// TestMigration128_SeededAnthropicRowCount verifies exactly 6 anthropic read-only rows.
+// TestMigration128_SeededAnthropicRowCount verifies the anthropic read-only row
+// count after all migrations: 6 seeded by 128 plus the 2 Opus 4.8 rows added by 138.
 func TestMigration128_SeededAnthropicRowCount(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -77,8 +78,8 @@ func TestMigration128_SeededAnthropicRowCount(t *testing.T) {
 	).Scan(&count); err != nil {
 		t.Fatalf("SELECT COUNT anthropic: %v", err)
 	}
-	if count != 6 {
-		t.Errorf("seeded anthropic rows = %d, want 6", count)
+	if count != 8 {
+		t.Errorf("seeded anthropic rows = %d, want 8", count)
 	}
 }
 

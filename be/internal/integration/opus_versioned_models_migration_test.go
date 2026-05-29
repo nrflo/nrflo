@@ -60,8 +60,8 @@ func TestMigration057NewOpusModelsSeeded(t *testing.T) {
 }
 
 // TestMigration057ClaudeCLIModelsExactSet verifies the final post-migration
-// list of Claude CLI models is exactly the expected 6 (haiku, sonnet, and
-// the four versioned opus rows) — no bare opus/opus_1m leaking through.
+// list of Claude CLI models is exactly the expected 8 (haiku, sonnet, and
+// the six versioned opus rows) — no bare opus/opus_1m leaking through.
 func TestMigration057ClaudeCLIModelsExactSet(t *testing.T) {
 	env := NewTestEnv(t)
 
@@ -84,7 +84,7 @@ func TestMigration057ClaudeCLIModelsExactSet(t *testing.T) {
 		t.Fatalf("rows err: %v", err)
 	}
 
-	want := []string{"haiku", "opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m", "sonnet"}
+	want := []string{"haiku", "opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m", "opus_4_8", "opus_4_8_1m", "sonnet"}
 	if len(ids) != len(want) {
 		t.Fatalf("claude cli_models count = %d (%v), want %d (%v)", len(ids), ids, len(want), want)
 	}

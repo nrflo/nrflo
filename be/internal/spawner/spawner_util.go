@@ -161,7 +161,7 @@ func (s *Spawner) maxContextForModel(model string) int {
 	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.ContextLength > 0 {
 		return cfg.ContextLength
 	}
-	if model == "opus_4_6_1m" || model == "opus_4_7_1m" {
+	if model == "opus_4_6_1m" || model == "opus_4_7_1m" || model == "opus_4_8_1m" {
 		return 1000000
 	}
 	return 200000

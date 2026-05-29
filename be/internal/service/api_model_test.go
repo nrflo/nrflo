@@ -35,8 +35,8 @@ func TestAPIModel_List(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(models) != 12 {
-		t.Fatalf("List len = %d, want 12 (6 anthropic + 6 openai)", len(models))
+	if len(models) != 14 {
+		t.Fatalf("List len = %d, want 14 (8 anthropic + 6 openai)", len(models))
 	}
 
 	// ORDER BY id ascending — first and last entries.

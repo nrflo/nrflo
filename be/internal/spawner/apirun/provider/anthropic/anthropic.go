@@ -71,7 +71,7 @@ func (p *anthropicProvider) Name() string { return "anthropic" }
 // hardcoded; unknown models default to 200k.
 func (p *anthropicProvider) MaxContext(model string) int {
 	switch model {
-	case "claude-opus-4-7[1m]", "claude-opus-4-6[1m]":
+	case "claude-opus-4-8[1m]", "claude-opus-4-7[1m]", "claude-opus-4-6[1m]":
 		return 1000000
 	}
 	// Anthropic 200k-context models — opus, sonnet, haiku 4.x.

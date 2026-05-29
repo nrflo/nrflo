@@ -31,16 +31,17 @@ const REASONING_EFFORT_OPTIONS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra High (Opus 4.7 only)' },
+  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 only)' },
   { value: 'max', label: 'Max' },
 ]
 
 function buildEffortOptions(cliType: string, mappedModel: string) {
   if (cliType === 'claude') {
-    const isOpus47 = mappedModel.startsWith('claude-opus-4-7')
+    const isXHighOpus =
+      mappedModel.startsWith('claude-opus-4-7') || mappedModel.startsWith('claude-opus-4-8')
     return REASONING_EFFORT_OPTIONS.map((opt) =>
-      opt.value === 'xhigh' && !isOpus47
-        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7 Claude models" }
+      opt.value === 'xhigh' && !isXHighOpus
+        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7/4.8 Claude models" }
         : opt
     )
   }

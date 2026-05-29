@@ -248,8 +248,8 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 	if !strings.Contains(argsStr, pre.sessionID) {
 		t.Errorf("args missing session ID: %v", registeredArgs)
 	}
-	if !strings.Contains(argsStr, "--model claude-opus-4-7") {
-		t.Errorf("args missing mapped model --model claude-opus-4-7 (got nrflo ID instead): %v", registeredArgs)
+	if !strings.Contains(argsStr, "--model claude-opus-4-8") {
+		t.Errorf("args missing mapped model --model claude-opus-4-8 (got nrflo ID instead): %v", registeredArgs)
 	}
 
 	// Wait a bit for the DB write to be visible (pool commits synchronously, but let's be safe)
@@ -340,7 +340,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	}
 
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-db-override"},
+		"opus_4_8": {CLIType: "claude", MappedModel: "claude-opus-db-override"},
 	}
 
 	pre, err := env.orch.setupInteractivePreStep(
@@ -363,7 +363,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	if !strings.Contains(argsStr, "--model claude-opus-db-override") {
 		t.Errorf("DB MappedModel should override hardcoded mapping; got args: %v", registeredArgs)
 	}
-	if strings.Contains(argsStr, "--model opus_4_7") {
+	if strings.Contains(argsStr, "--model opus_4_8") {
 		t.Errorf("raw nrflo ID leaked to --model: %v", registeredArgs)
 	}
 }

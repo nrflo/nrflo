@@ -24,7 +24,7 @@ var layerFindingsPattern = regexp.MustCompile(`#\{LAYER_FINDINGS:(\d+)\}|#\{PRIO
 
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
-	model := "opus_4_7"
+	model := "opus_4_8"
 	if agentCfg, ok := s.config.Agents[agentType]; ok {
 		if agentCfg.Model != "" {
 			model = agentCfg.Model

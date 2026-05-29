@@ -22,6 +22,10 @@ func (a *ClaudeAdapter) MapModel(model string) string {
 		return "claude-opus-4-7"
 	case "opus_4_7_1m":
 		return "claude-opus-4-7[1m]"
+	case "opus_4_8":
+		return "claude-opus-4-8"
+	case "opus_4_8_1m":
+		return "claude-opus-4-8[1m]"
 	}
 	return model
 }

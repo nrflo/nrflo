@@ -764,6 +764,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// Agent sessions
 	protected("GET /api/v1/tickets/{id}/agents", s.handleGetAgentSessions)
 	protected("GET /api/v1/agents/running", s.handleGetRunningAgents)
+	protected("GET /api/v1/workflows/active", s.handleGetActiveWorkflows)
 	protected("GET /api/v1/agents/recent", s.handleGetRecentAgents)
 	protected("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
 	protected("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)

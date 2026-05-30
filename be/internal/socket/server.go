@@ -259,6 +259,9 @@ type Handler struct {
 	toolDispatcher     ToolDispatcher       // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
+
+	thinkingMu      sync.Mutex
+	thinkingOffsets map[string]int64
 }
 
 // NewHandler creates a new request handler.
@@ -276,6 +279,7 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		signaler:           signaler,
 		pool:               pool,
 		clk:                clk,
+		thinkingOffsets:    make(map[string]int64),
 	}
 }
 

@@ -408,6 +408,19 @@ func (s *AgentService) UpdateContextLeft(sessionID string, contextLeft int) (pro
 	return projectID, ticketID, workflowName, nil
 }
 
+// GetSessionProjectID returns the project_id for a session, or ("", nil) when not found.
+func (s *AgentService) GetSessionProjectID(sessionID string) (string, error) {
+	var projectID string
+	err := s.pool.QueryRow(`SELECT project_id FROM agent_sessions WHERE id = ?`, sessionID).Scan(&projectID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return projectID, nil
+}
+
 // GetRecentSessions gets recent agent sessions
 func (s *AgentService) GetRecentSessions(projectID string, limit int) ([]*model.AgentSession, error) {
 	if limit <= 0 {

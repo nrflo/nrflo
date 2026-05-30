@@ -76,6 +76,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		}
 		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "text")
 	case "PreCompact":
+		h.tailThinking(ctx, params.SessionID, asString(event["transcript_path"]))
 		trigger := asString(event["trigger"])
 		msg := "context compaction"
 		if trigger != "" {
@@ -98,7 +99,10 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		// signaled by `agent finished/fail/continue`, not by this event.
 		return MakeResponse(req.ID, map[string]string{"status": "recorded"})
 	case "SessionEnd":
-		// Predictable per-session noise — ignored.
+		// Predictable per-session noise — ignored. Clean up offset state.
+		h.thinkingMu.Lock()
+		delete(h.thinkingOffsets, params.SessionID)
+		h.thinkingMu.Unlock()
 		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 	default:
 		logger.Info(ctx, "record_event: unknown hook event", "hook_event_name", hookEventName, "session_id", params.SessionID)
@@ -198,6 +202,8 @@ func (h *Handler) recordSimpleEvent(ctx context.Context, req Request, sessionID,
 }
 
 func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
+	h.tailThinking(ctx, sessionID, asString(event["transcript_path"]))
+
 	toolName, _ := event["tool_name"].(string)
 	toolInput, _ := event["tool_input"].(map[string]interface{})
 

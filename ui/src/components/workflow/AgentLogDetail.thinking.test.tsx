@@ -64,47 +64,15 @@ const baseSelectedAgent: SelectedAgentData = {
   session: makeSession(),
 }
 
-describe('AgentLogDetail - validation category', () => {
+describe('AgentLogDetail - thinking category', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('shows Validation tab in category tablist', async () => {
+  it('Thinking tab exists at index 9 (last tab)', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
-      messages: [{ content: 'hello', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
-      total: 1,
-    })
-
-    renderDetail(baseSelectedAgent)
-    await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
-
-    expect(screen.getByRole('tab', { name: /Validation/ })).toBeInTheDocument()
-  })
-
-  it('Validation tab count shows correct count', async () => {
-    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
-      session_id: 'session-1',
-      messages: [
-        { content: 'text msg', category: 'text', created_at: '2026-01-01T00:00:10Z' },
-        { content: 'validation output', category: 'validation', created_at: '2026-01-01T00:00:20Z' },
-        { content: 'another validation', category: 'validation', created_at: '2026-01-01T00:00:30Z' },
-      ],
-      total: 3,
-    })
-
-    renderDetail(baseSelectedAgent)
-    await waitFor(() => expect(screen.getByText('3 messages')).toBeInTheDocument())
-
-    // tabs order: all=0, text=1, tool=2, subagent=3, skill=4, user_input=5, error=6, result=7, validation=8
-    const tabs = screen.getAllByRole('tab')
-    expect(tabs[8].textContent).toContain('2')
-  })
-
-  it('Validation tab is at index 8 in the tab list (9 total tabs)', async () => {
-    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
-      session_id: 'session-1',
-      messages: [{ content: 'hello', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
+      messages: [{ content: 'a thought', category: 'thinking', created_at: '2026-01-01T00:00:10Z' }],
       total: 1,
     })
 
@@ -113,17 +81,16 @@ describe('AgentLogDetail - validation category', () => {
 
     const tabs = screen.getAllByRole('tab')
     expect(tabs).toHaveLength(10)
-    expect(tabs[8].textContent).toMatch(/Validation/)
+    expect(tabs[9].textContent).toMatch(/Thinking/)
   })
 
-  it('filtering by Validation shows only validation messages', async () => {
-    const user = userEvent.setup()
+  it('Thinking tab count reflects thinking messages', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [
         { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:10Z' },
-        { content: 'error occurred', category: 'error', created_at: '2026-01-01T00:00:20Z' },
-        { content: 'validation failed: test suite', category: 'validation', created_at: '2026-01-01T00:00:30Z' },
+        { content: 'first thought', category: 'thinking', created_at: '2026-01-01T00:00:20Z' },
+        { content: 'second thought', category: 'thinking', created_at: '2026-01-01T00:00:30Z' },
       ],
       total: 3,
     })
@@ -131,38 +98,28 @@ describe('AgentLogDetail - validation category', () => {
     renderDetail(baseSelectedAgent)
     await waitFor(() => expect(screen.getByText('3 messages')).toBeInTheDocument())
 
-    await user.click(screen.getByRole('tab', { name: /Validation/ }))
-
-    await waitFor(() => expect(screen.getByText('1 of 3 messages')).toBeInTheDocument())
-
-    expect(screen.getByText('validation failed: test suite')).toBeInTheDocument()
-    expect(screen.queryByText('plain text')).not.toBeInTheDocument()
-    expect(screen.queryByText('error occurred')).not.toBeInTheDocument()
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs[9].textContent).toContain('2')
   })
 
-  it('validation row has border-l-destructive styling', async () => {
+  it('Thinking tab count is zero when no thinking messages', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
-      messages: [
-        { content: 'validation output', category: 'validation', created_at: '2026-01-01T00:00:10Z' },
-      ],
+      messages: [{ content: 'just text', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
       total: 1,
     })
 
     renderDetail(baseSelectedAgent)
     await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
 
-    const rows = document.querySelectorAll('[data-testid="message-row"]')
-    expect(rows).toHaveLength(1)
-    expect(rows[0].className).toContain('border-l-destructive')
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs[9].textContent).toContain('0')
   })
 
-  it('validation row has Validation badge in Tool column', async () => {
+  it('thinking row renders Thinking badge in Tool column', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
-      messages: [
-        { content: 'make test output', category: 'validation', created_at: '2026-01-01T00:00:10Z' },
-      ],
+      messages: [{ content: 'internal reasoning', category: 'thinking', created_at: '2026-01-01T00:00:10Z' }],
       total: 1,
     })
 
@@ -172,15 +129,73 @@ describe('AgentLogDetail - validation category', () => {
     const rows = document.querySelectorAll('[data-testid="message-row"]')
     expect(rows).toHaveLength(1)
     const toolCell = rows[0].querySelectorAll(':scope > td')[1]
-    expect(within(toolCell as HTMLElement).getByText('Validation')).toBeInTheDocument()
+    expect(within(toolCell as HTMLElement).getByText('Thinking')).toBeInTheDocument()
   })
 
-  it('validation count is zero when no validation messages', async () => {
+  it('thinking row message cell has italic and muted styling', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [{ content: 'internal reasoning', category: 'thinking', created_at: '2026-01-01T00:00:10Z' }],
+      total: 1,
+    })
+
+    renderDetail(baseSelectedAgent)
+    await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
+
+    const rows = document.querySelectorAll('[data-testid="message-row"]')
+    expect(rows).toHaveLength(1)
+    const messageCell = rows[0].querySelectorAll(':scope > td')[2]
+    expect(messageCell.className).toContain('italic')
+    expect(messageCell.className).toContain('text-muted-foreground')
+  })
+
+  it('clicking Thinking tab filters to only thinking messages', async () => {
+    const user = userEvent.setup()
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [
-        { content: 'just text', category: 'text', created_at: '2026-01-01T00:00:10Z' },
+        { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:10Z' },
+        { content: '[Bash] git status', category: 'tool', created_at: '2026-01-01T00:00:20Z' },
+        { content: 'my inner thought', category: 'thinking', created_at: '2026-01-01T00:00:30Z' },
       ],
+      total: 3,
+    })
+
+    renderDetail(baseSelectedAgent)
+    await waitFor(() => expect(screen.getByText('3 messages')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('tab', { name: /Thinking/ }))
+
+    await waitFor(() => expect(screen.getByText('1 of 3 messages')).toBeInTheDocument())
+
+    expect(screen.getByText('my inner thought')).toBeInTheDocument()
+    expect(screen.queryByText('plain text')).not.toBeInTheDocument()
+    expect(screen.queryByText('git status')).not.toBeInTheDocument()
+  })
+
+  it('All tab still includes thinking messages', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [
+        { content: 'plain text', category: 'text', created_at: '2026-01-01T00:00:10Z' },
+        { content: 'a thought', category: 'thinking', created_at: '2026-01-01T00:00:20Z' },
+      ],
+      total: 2,
+    })
+
+    renderDetail(baseSelectedAgent)
+    await waitFor(() => expect(screen.getByText('2 messages')).toBeInTheDocument())
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs[0].textContent).toContain('2')
+    expect(screen.getByText('plain text')).toBeInTheDocument()
+    expect(screen.getByText('a thought')).toBeInTheDocument()
+  })
+
+  it('Validation tab remains at index 8 (thinking appended last, not shifting validation)', async () => {
+    vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
+      session_id: 'session-1',
+      messages: [{ content: 'hello', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
       total: 1,
     })
 
@@ -188,6 +203,7 @@ describe('AgentLogDetail - validation category', () => {
     await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs[8].textContent).toContain('0')
+    expect(tabs[8].textContent).toMatch(/Validation/)
+    expect(tabs[9].textContent).toMatch(/Thinking/)
   })
 })

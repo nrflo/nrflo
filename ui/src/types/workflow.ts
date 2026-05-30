@@ -235,7 +235,7 @@ export interface AgentSession {
   updated_at: string
 }
 
-export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input' | 'error' | 'result' | 'validation'
+export type MessageCategory = 'text' | 'tool' | 'subagent' | 'skill' | 'user_input' | 'error' | 'result' | 'validation' | 'thinking'
 
 export interface MessageWithTime {
   content: string

@@ -36,7 +36,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	852
+be/internal/api/server.go	739
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -187,7 +187,6 @@ ui/src/components/workflow/AgentDefForm.restart-threshold.test.tsx	387
 ui/src/components/workflow/AgentDefForm.test.tsx	552
 ui/src/components/workflow/AgentLogDetail.errorResult.test.tsx	306
 ui/src/components/workflow/AgentLogDetail.test.tsx	962
-ui/src/components/workflow/AgentLogDetail.tsx	366
 ui/src/components/workflow/AgentLogImprovements.e2e.test.tsx	405
 ui/src/components/workflow/AgentLogPanel.multiagent.test.tsx	425
 ui/src/components/workflow/AgentLogPanel.test.tsx	567

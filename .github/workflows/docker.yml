@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      claude_version:
+        description: "Claude Code CLI version to bundle (e.g. 2.1.158 or 'latest'); blank keeps the Dockerfile pin"
+        required: false
 
 permissions:
   contents: read
@@ -68,5 +72,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ steps.ver.outputs.version }}
+            ${{ github.event.inputs.claude_version && format('CLAUDE_VERSION={0}', github.event.inputs.claude_version) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

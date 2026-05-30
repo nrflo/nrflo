@@ -144,16 +144,8 @@ See `be/cmd/server/main.go` for subcommands.
 
 ## Building & Installing
 
-```bash
-make build          # Build both binaries (dev, includes UI)
-make build-release  # Optimized release build
-make install        # Install to /usr/local/bin (or PREFIX=...)
-make test           # Run backend tests
-make help           # Show all targets
-```
+`make build` (dev, includes UI), `make build-release`, `make install` (→ /usr/local/bin, or `PREFIX=`), `make test`. `make help` lists all targets.
 
 ### Docker image
 
-Distributed as `ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile) and [.github/workflows/docker.yml](.github/workflows/docker.yml)). Ships with api-mode off by default; admin enables via Settings UI. Non-root user `nrflo`; `/data` as the `NRFLO_HOME` volume.
-
-Logs are written to `~/.nrflo/logs/be.log` (or `$NRFLO_HOME/logs/be.log`).
+`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile), [docker.yml](.github/workflows/docker.yml)). Api-mode off by default (admin enables in Settings UI). Bundles native Claude Code CLI (musl, no Node) for cli-mode (needs `ANTHROPIC_API_KEY`); no codex/opencode. Non-root `nrflo`; `/data`=`NRFLO_HOME` vol. Logs: `$NRFLO_HOME/logs/be.log`.

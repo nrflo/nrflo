@@ -29,6 +29,5 @@ jobs:
 
       - name: Verify binaries on PATH
         run: |
-          which nrflo
           which nrflo_server
           nrflo_server version

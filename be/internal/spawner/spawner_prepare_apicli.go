@@ -78,7 +78,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	}
 
 	// Write defaultAPISystemPrompt to a temp file for --system-prompt-file.
-	spf, spfErr := os.CreateTemp("/tmp/nrflo", "api-via-cli-system-*.md")
+	spf, spfErr := createScratchTemp("api-via-cli-system-*.md")
 	if spfErr != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: create system prompt file: %w", spfErr)
 	}
@@ -91,7 +91,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	systemPromptOverrideFile := spf.Name()
 
 	// Write the rendered prompt to a temp file for delivery via PTY stdin.
-	pf, pfErr := os.CreateTemp("/tmp/nrflo", "api-via-cli-prompt-*.md")
+	pf, pfErr := createScratchTemp("api-via-cli-prompt-*.md")
 	if pfErr != nil {
 		os.Remove(systemPromptOverrideFile)
 		return nil, nil, fmt.Errorf("api-via-cli: create prompt file: %w", pfErr)

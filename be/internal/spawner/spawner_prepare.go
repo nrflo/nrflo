@@ -312,7 +312,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 	safePrefix := strings.ReplaceAll(filePrefix, "/", "_")
 	safePrefix = strings.ReplaceAll(safePrefix, "\\", "_")
-	promptFile, err := os.CreateTemp("/tmp/nrflo", fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
+	promptFile, err := createScratchTemp(fmt.Sprintf("%s-%s-*.md", safePrefix, req.AgentType))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -326,7 +326,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// the suffix to a separate temp file so Claude appends it to its system prompt.
 	var suffixFilePath string
 	if suffix != "" && adapter.SupportsSystemPromptFile() {
-		sf, sfErr := os.CreateTemp("/tmp/nrflo", "system-suffix-*.md")
+		sf, sfErr := createScratchTemp("system-suffix-*.md")
 		if sfErr != nil {
 			logger.Warn(context.Background(), "failed to create suffix temp file", "error", sfErr)
 		} else {
@@ -345,7 +345,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// temp file for --system-prompt-file (overrides the default system prompt).
 	var systemPromptOverrideFilePath string
 	if systemPromptOverride != "" && adapter.SupportsSystemPromptFile() {
-		of, ofErr := os.CreateTemp("/tmp/nrflo", "system-prompt-*.md")
+		of, ofErr := createScratchTemp("system-prompt-*.md")
 		if ofErr != nil {
 			logger.Warn(context.Background(), "failed to create system-prompt override temp file", "error", ofErr)
 		} else {

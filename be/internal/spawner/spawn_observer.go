@@ -66,7 +66,7 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 	fullPrompt := strings.Join(promptParts, "\n\n---\n\n")
 
 	// Write prompt to temp file.
-	promptFile, err := os.CreateTemp("/tmp/nrflo", fmt.Sprintf("observer-%s-*.md", req.Scope))
+	promptFile, err := createScratchTemp(fmt.Sprintf("observer-%s-*.md", req.Scope))
 	if err != nil {
 		return fmt.Errorf("spawn_observer: create prompt file: %w", err)
 	}

@@ -43,3 +43,16 @@ export async function getObserver(projectId: string): Promise<ObserverSettings> 
 export async function setObserver(projectId: string, cfg: Partial<ObserverSettings>): Promise<ObserverSettings> {
   return apiPut<ObserverSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/observer`, cfg)
 }
+
+export interface CaptureThinkingSettings {
+  enabled: boolean
+  inherited: boolean
+}
+
+export async function getCaptureThinking(projectId: string): Promise<CaptureThinkingSettings> {
+  return apiGet<CaptureThinkingSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/capture-thinking`)
+}
+
+export async function setCaptureThinking(projectId: string, enabled: boolean | null): Promise<CaptureThinkingSettings> {
+  return apiPut<CaptureThinkingSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/capture-thinking`, { enabled })
+}

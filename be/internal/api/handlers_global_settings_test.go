@@ -47,6 +47,7 @@ var globalSettingsBoolFields = []string{
 	"api_mode_enabled",
 	"claude_system_prompt_override_enabled",
 	"api_via_cli_enabled",
+	"capture_thinking_enabled",
 }
 
 // TestGlobalSettings_BoolFields exercises the shared bool-field code path for

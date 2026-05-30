@@ -209,3 +209,67 @@ func (s *Server) handlePutProjectCleanup(w http.ResponseWriter, r *http.Request)
 		RetentionLimit: limit,
 	})
 }
+
+type projectCaptureThinkingResponse struct {
+	Enabled   bool `json:"enabled"`
+	Inherited bool `json:"inherited"`
+}
+
+type putProjectCaptureThinkingRequest struct {
+	Enabled *bool `json:"enabled"`
+}
+
+func (s *Server) handleGetProjectCaptureThinking(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project id is required")
+		return
+	}
+	svc := service.NewGlobalSettingsService(s.pool, s.clock)
+	resolved, err := svc.GetCaptureThinkingEnabled(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	projectVal, err := svc.GetProjectConfig(projectID, "capture_thinking_enabled")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, projectCaptureThinkingResponse{
+		Enabled:   resolved,
+		Inherited: projectVal == "",
+	})
+}
+
+func (s *Server) handlePutProjectCaptureThinking(w http.ResponseWriter, r *http.Request) {
+	projectID := r.PathValue("id")
+	if projectID == "" {
+		writeError(w, http.StatusBadRequest, "project id is required")
+		return
+	}
+	var req putProjectCaptureThinkingRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	svc := service.NewGlobalSettingsService(s.pool, s.clock)
+	if err := svc.SetCaptureThinkingEnabledForProject(projectID, req.Enabled); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	resolved, err := svc.GetCaptureThinkingEnabled(projectID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	projectVal, err := svc.GetProjectConfig(projectID, "capture_thinking_enabled")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, projectCaptureThinkingResponse{
+		Enabled:   resolved,
+		Inherited: projectVal == "",
+	})
+}

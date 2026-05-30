@@ -8,6 +8,7 @@ export interface GlobalSettings {
   context_save_via_agent: boolean
   simplified_agents_graph: boolean
   experimental: boolean
+  capture_thinking_enabled: boolean
   experimental_observer_enabled: boolean
   observer_system_context: string
   observer_provider: string

@@ -20,6 +20,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
+    capture_thinking_enabled: false,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     ...overrides,
@@ -27,7 +28,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
 }
 
 // Toggle DOM order: [0]=api_mode, [1]=system_prompt_override, [2]=low_consumption,
-// [3]=context_save, [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer.
+// [3]=context_save, [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer, [8]=capture_thinking.
 describe('GlobalSettingsSection boolean toggles', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -201,6 +202,49 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ claude_system_prompt_override_enabled: false })
+    })
+  })
+
+  it('renders capture_thinking_enabled toggle reflecting server state (false)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: false }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[8]).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByText('Capture model thinking')).toBeInTheDocument()
+  })
+
+  it('renders capture_thinking_enabled toggle reflecting server state (true)', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: true }))
+    renderWithQuery(<GlobalSettingsSection />)
+    const toggles = await screen.findAllByRole('switch')
+    expect(toggles[8]).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('clicking capture_thinking_enabled toggle (false→true) calls updateGlobalSettings({ capture_thinking_enabled: true })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: false }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[8])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ capture_thinking_enabled: true })
+    })
+  })
+
+  it('clicking capture_thinking_enabled toggle (true→false) calls updateGlobalSettings({ capture_thinking_enabled: false })', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: true }))
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalSettingsSection />)
+
+    const user = userEvent.setup()
+    const toggles = await screen.findAllByRole('switch')
+    await user.click(toggles[8])
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ capture_thinking_enabled: false })
     })
   })
 })

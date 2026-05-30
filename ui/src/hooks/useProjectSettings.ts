@@ -6,6 +6,8 @@ import {
   setCleanup,
   getObserver,
   setObserver,
+  getCaptureThinking,
+  setCaptureThinking,
   type ArtifactStorageConfig,
   type CleanupSettings,
   type ObserverSettings,
@@ -16,6 +18,7 @@ export const projectSettingsKeys = {
   artifactStorage: (projectId: string) => [...projectSettingsKeys.all, 'artifact-storage', projectId] as const,
   cleanup: (projectId: string) => [...projectSettingsKeys.all, 'cleanup', projectId] as const,
   observer: (projectId: string) => [...projectSettingsKeys.all, 'observer', projectId] as const,
+  captureThinking: (projectId: string) => [...projectSettingsKeys.all, 'capture-thinking', projectId] as const,
 }
 
 export function useArtifactStorage(projectId: string) {
@@ -71,6 +74,25 @@ export function useSetObserver() {
       setObserver(projectId, cfg),
     onSuccess: (_data, { projectId }) => {
       qc.invalidateQueries({ queryKey: projectSettingsKeys.observer(projectId) })
+    },
+  })
+}
+
+export function useCaptureThinking(projectId: string) {
+  return useQuery({
+    queryKey: projectSettingsKeys.captureThinking(projectId),
+    queryFn: () => getCaptureThinking(projectId),
+    enabled: !!projectId,
+  })
+}
+
+export function useSetCaptureThinking() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, enabled }: { projectId: string; enabled: boolean | null }) =>
+      setCaptureThinking(projectId, enabled),
+    onSuccess: (_data, { projectId }) => {
+      qc.invalidateQueries({ queryKey: projectSettingsKeys.captureThinking(projectId) })
     },
   })
 }

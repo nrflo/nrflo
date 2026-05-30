@@ -44,7 +44,7 @@ Write operations on global configuration resources require admin role (`admin`):
 
 Project-scoped writes use `projectAdmin` (admin user **or** a service token whose project matches the resolved project — for path-scoped routes via `{id}`, otherwise via `getProjectID` = X-Project header / `?project=` query):
 - `PUT|DELETE /api/v1/projects/{id}/env-vars/{name}`
-- `PUT /api/v1/projects/{id}/settings/{cleanup,artifact-storage,observer}`
+- `PUT /api/v1/projects/{id}/settings/{cleanup,artifact-storage,observer,capture-thinking}`
 - `DELETE /api/v1/artifacts/{aid}`
 - `POST|PATCH|DELETE /api/v1/python-scripts/{scriptId}` (scope from request, not the path; `{scriptId}` is the script ID)
 

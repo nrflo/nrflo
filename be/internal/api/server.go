@@ -619,6 +619,8 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	projectAdmin("PUT /api/v1/projects/{id}/settings/cleanup", s.handlePutProjectCleanup)
 	protected("GET /api/v1/projects/{id}/settings/observer", s.handleGetProjectObserver)
 	projectAdmin("PUT /api/v1/projects/{id}/settings/observer", s.handlePutProjectObserver)
+	protected("GET /api/v1/projects/{id}/settings/capture-thinking", s.handleGetProjectCaptureThinking)
+	projectAdmin("PUT /api/v1/projects/{id}/settings/capture-thinking", s.handlePutProjectCaptureThinking)
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)

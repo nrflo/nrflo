@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -55,6 +54,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	captureThinkingVal, err := svc.Get("capture_thinking_enabled")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	claudeSysPromptOverrideVal, err := svc.Get("claude_system_prompt_override_enabled")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -94,6 +99,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
 		"experimental":                          experimentalVal == "true",
 		"api_mode_enabled":                      apiModeVal == "true",
+		"capture_thinking_enabled":              captureThinkingVal == "true",
 		"claude_system_prompt_override_enabled": claudeSysPromptOverrideVal == "true",
 		"api_via_cli_enabled":                   apiViaCLIEnabled,
 		"experimental_observer_enabled":         observerEnabled,
@@ -139,6 +145,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
 		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
+		CaptureThinkingEnabled            *bool           `json:"capture_thinking_enabled"`
 		APIViaCLIEnabled                  *bool           `json:"api_via_cli_enabled"`
 		ExperimentalObserverEnabled       *bool           `json:"experimental_observer_enabled"`
 		ObserverSystemContext             *string         `json:"observer_system_context"`
@@ -233,6 +240,13 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	if req.CaptureThinkingEnabled != nil {
+		if err := svc.SetCaptureThinkingEnabled(*req.CaptureThinkingEnabled); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
 	if req.ExperimentalObserverEnabled != nil {
 		if err := svc.SetExperimentalObserverEnabled(*req.ExperimentalObserverEnabled); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
@@ -263,34 +277,4 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
-}
-
-// applyOptionalIntSetting handles a json.RawMessage field that can be absent (nil),
-// null ("null" → clear), or an integer (>= 0 → set). Returns a non-nil error sentinel
-// when an HTTP error was already written and the caller should return.
-func applyOptionalIntSetting(svc *service.GlobalSettingsService, raw json.RawMessage, key string, w http.ResponseWriter) error {
-	if raw == nil {
-		return nil // absent → no-op
-	}
-	if string(raw) == "null" {
-		if err := svc.Set(key, ""); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return err
-		}
-		return nil
-	}
-	var v int
-	if err := json.Unmarshal(raw, &v); err != nil {
-		writeError(w, http.StatusBadRequest, key+" must be an integer or null")
-		return err
-	}
-	if v < 0 {
-		writeError(w, http.StatusBadRequest, key+" must be >= 0")
-		return errors.New("bad request")
-	}
-	if err := svc.Set(key, strconv.Itoa(v)); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return err
-	}
-	return nil
 }

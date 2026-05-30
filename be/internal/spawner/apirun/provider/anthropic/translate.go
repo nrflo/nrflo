@@ -10,6 +10,25 @@ import (
 	"be/internal/spawner/apirun/provider"
 )
 
+// thinkingBudget maps a reasoning effort string to a thinking token budget.
+// Zero means thinking is disabled. Any non-zero budget enables extended thinking.
+func thinkingBudget(effort string) int {
+	switch effort {
+	case "":
+		return 0
+	case "low":
+		return 4096
+	case "medium":
+		return 8192
+	case "high":
+		return 16384
+	case "xhigh":
+		return 24576
+	default:
+		return 8192 // unknown non-empty → medium
+	}
+}
+
 // translateRequest converts a provider-neutral Request into the SDK's
 // MessageNewParams shape. Cache breakpoints are applied here so callers and
 // tests can inspect the result without going through the network.
@@ -17,6 +36,14 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 	params := sdk.MessageNewParams{
 		Model:     req.Model,
 		MaxTokens: int64(req.MaxTokens),
+	}
+
+	if budget := thinkingBudget(req.ReasoningEffort); budget > 0 {
+		params.Thinking = sdk.ThinkingConfigParamOfEnabled(int64(budget))
+		minTokens := int64(budget + 4096)
+		if params.MaxTokens < minTokens {
+			params.MaxTokens = minTokens
+		}
 	}
 
 	wantSystemCache := false
@@ -96,6 +123,10 @@ func translateContentBlocks(blocks []provider.ContentBlock) ([]sdk.ContentBlockP
 			out = append(out, sdk.ContentBlockParamUnion{
 				OfText: &sdk.TextBlockParam{Text: b.Text},
 			})
+		case "thinking":
+			out = append(out, sdk.NewThinkingBlock(b.Signature, b.Text))
+		case "redacted_thinking":
+			out = append(out, sdk.NewRedactedThinkingBlock(b.Data))
 		case "tool_use":
 			var input any
 			if len(b.Input) > 0 {

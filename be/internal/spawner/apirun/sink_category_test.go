@@ -44,7 +44,7 @@ func TestRunnerSink_ToolUseStartStop_SubagentAndSkillCategories(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.toolName, func(t *testing.T) {
 			sink := &recordingSink{}
-			rs := newRunnerSink(sink)
+			rs := newRunnerSink(sink, false)
 			t.Cleanup(rs.close)
 
 			rs.OnToolUseStart("id-1", tc.toolName)

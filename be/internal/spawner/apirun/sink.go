@@ -11,16 +11,19 @@ import (
 )
 
 type runnerSink struct {
-	msgSink   MessageSink
-	mu        sync.Mutex
-	buf       strings.Builder
-	toolNames map[string]string
+	msgSink         MessageSink
+	mu              sync.Mutex
+	buf             strings.Builder
+	thinkBuf        strings.Builder
+	captureThinking bool
+	toolNames       map[string]string
 }
 
-func newRunnerSink(msgSink MessageSink) *runnerSink {
+func newRunnerSink(msgSink MessageSink, captureThinking bool) *runnerSink {
 	return &runnerSink{
-		msgSink:   msgSink,
-		toolNames: map[string]string{},
+		msgSink:         msgSink,
+		captureThinking: captureThinking,
+		toolNames:       map[string]string{},
 	}
 }
 
@@ -35,6 +38,23 @@ func (s *runnerSink) OnTextDelta(text string) {
 		s.mu.Unlock()
 		if content != "" {
 			s.msgSink.TrackMessage(content, "text")
+		}
+		return
+	}
+	s.mu.Unlock()
+}
+
+func (s *runnerSink) OnThinkingDelta(text string) {
+	if text == "" {
+		return
+	}
+	s.mu.Lock()
+	s.thinkBuf.WriteString(text)
+	if s.thinkBuf.Len() >= 4096 {
+		content := s.takeThinkBufLocked()
+		s.mu.Unlock()
+		if content != "" && s.captureThinking {
+			s.msgSink.TrackMessage(content, "thinking")
 		}
 		return
 	}
@@ -79,8 +99,12 @@ func (s *runnerSink) OnUsage(u provider.Usage) {
 
 func (s *runnerSink) flush() {
 	s.mu.Lock()
+	thinkContent := s.takeThinkBufLocked()
 	content := s.takeBufLocked()
 	s.mu.Unlock()
+	if thinkContent != "" && s.captureThinking {
+		s.msgSink.TrackMessage(thinkContent, "thinking")
+	}
 	if content != "" {
 		s.msgSink.TrackMessage(content, "text")
 	}
@@ -92,6 +116,15 @@ func (s *runnerSink) takeBufLocked() string {
 	}
 	content := s.buf.String()
 	s.buf.Reset()
+	return content
+}
+
+func (s *runnerSink) takeThinkBufLocked() string {
+	if s.thinkBuf.Len() == 0 {
+		return ""
+	}
+	content := s.thinkBuf.String()
+	s.thinkBuf.Reset()
 	return content
 }
 

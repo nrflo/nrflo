@@ -103,11 +103,13 @@ func (p *anthropicProvider) Run(ctx context.Context, req provider.Request, sink 
 // blockAccumulator tracks per-index streaming state so we can assemble the
 // FinalResponse from a sequence of deltas.
 type blockAccumulator struct {
-	kind      string // "text" | "tool_use"
+	kind      string // "text" | "tool_use" | "thinking" | "redacted_thinking"
 	text      string
 	toolID    string
 	toolName  string
 	toolInput string // accumulated partial JSON
+	signature string // for thinking blocks
+	data      string // for redacted_thinking blocks
 }
 
 // decodeStream drives a single Anthropic stream to completion, emitting sink
@@ -134,6 +136,11 @@ func decodeStream(stream *ssestream.Stream[sdk.MessageStreamEventUnion], sink pr
 			case "text":
 				// Initial text is usually empty, but keep any prefill.
 				acc.text = cb.Text
+			case "thinking":
+				acc.text = cb.Thinking
+				acc.signature = cb.Signature
+			case "redacted_thinking":
+				acc.data = cb.Data
 			}
 			blocks[ev.Index] = acc
 
@@ -150,6 +157,11 @@ func decodeStream(stream *ssestream.Stream[sdk.MessageStreamEventUnion], sink pr
 			case "input_json_delta":
 				acc.toolInput += d.PartialJSON
 				sink.OnToolUseInputDelta(acc.toolID, d.PartialJSON)
+			case "thinking_delta":
+				acc.text += d.Thinking
+				sink.OnThinkingDelta(d.Thinking)
+			case "signature_delta":
+				acc.signature += d.Signature
 			}
 
 		case "content_block_stop":
@@ -208,6 +220,10 @@ func finalizeBlock(acc *blockAccumulator, sink provider.EventSink) (provider.Con
 		}, nil
 	case "text":
 		return provider.ContentBlock{Type: "text", Text: acc.text}, nil
+	case "thinking":
+		return provider.ContentBlock{Type: "thinking", Text: acc.text, Signature: acc.signature}, nil
+	case "redacted_thinking":
+		return provider.ContentBlock{Type: "redacted_thinking", Data: acc.data}, nil
 	}
 	return provider.ContentBlock{}, fmt.Errorf("unknown content block kind: %q", acc.kind)
 }

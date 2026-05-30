@@ -58,6 +58,14 @@ The concrete provider is selected per-agent from the agent's `api_models` row (`
 
 `context_save.go` forces `useAgentSave=true` for API agents (resume path is Claude-CLI-only). `apiBackend.Kill` cancels runner ctx → saver agent summarizes history → `relaunchForContinuation` with `${PREVIOUS_DATA}`.
 
+## Extended Thinking (Anthropic)
+
+The Anthropic provider decodes `thinking` and `redacted_thinking` content blocks from the stream and assembles them into `provider.ContentBlock` values with `Type="thinking"` (fields: `Text`, `Signature`) or `Type="redacted_thinking"` (field: `Data`). These blocks are appended verbatim to `resp.Content` and replayed in subsequent assistant turns — this replay is always enabled when thinking is on and is never gated.
+
+Thinking is requested by setting `params.Thinking = sdk.ThinkingConfigParamOfEnabled(budget)` in `translate.go:translateRequest` based on the per-agent `ReasoningEffort` value from the `api_models` row. Budget mapping (`thinkingBudget`): `""` → disabled, `low` → 4096, `medium` → 8192, `high` → 16384, `xhigh` → 24576; `max_tokens` is raised to `budget+4096` when below that floor. Temperature is left unset (extended thinking requires temperature=1 at the API level).
+
+Display gate: thinking deltas are emitted as `category="thinking"` agent-log rows only when `capture_thinking_enabled` is true (project > global > default false). `Config.CaptureThinking` carries the resolved flag from `spawner_prepare.go` → `apirun.Config` → `newRunnerSink`. The separate `thinkBuf` in `runnerSink` ensures thinking content is never mixed into `"text"` rows and is flushed before text/tool-use within each turn.
+
 ## Stall Detection
 
 `runner.go`/`sink.go` call `TrackMessage` on each text/tool-use event, identical to CLI agents. Stall detection in `stall_restart.go`; cap 15 restarts.

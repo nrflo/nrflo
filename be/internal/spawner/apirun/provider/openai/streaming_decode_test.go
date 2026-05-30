@@ -35,6 +35,8 @@ type recordingSink struct {
 func (s *recordingSink) OnTextDelta(text string) {
 	s.events = append(s.events, "text:"+text)
 }
+
+func (s *recordingSink) OnThinkingDelta(text string) {}
 func (s *recordingSink) OnToolUseStart(id, name string) {
 	s.events = append(s.events, "tool_start:"+id+":"+name)
 }

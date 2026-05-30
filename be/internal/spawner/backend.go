@@ -76,6 +76,7 @@ type prepResult struct {
 	apiMaxContext      int
 	apiProvider        provider.Provider // resolved per-spawn from APIModelConfigs + BuildAPIProvider
 	apiReasoningEffort string            // from api_models row
+	apiCaptureThinking bool              // from capture_thinking_enabled setting
 }
 
 // apiBackend executes an agent in-process via the apirun.Runner. There is no
@@ -146,6 +147,7 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		MaxContext:      prep.apiMaxContext,
 		Deadline:        prep.apiDeadline,
 		ReasoningEffort: prep.apiReasoningEffort,
+		CaptureThinking: prep.apiCaptureThinking,
 	})
 
 	doneCh := proc.doneCh

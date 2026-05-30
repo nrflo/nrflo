@@ -23,6 +23,22 @@ func (s *Spawner) pool() *db.Pool {
 	return nil
 }
 
+// projectOrGlobalBool resolves a "true"/other boolean config value, preferring
+// the project-scoped setting over the global one; defaults to false when unset.
+func (s *Spawner) projectOrGlobalBool(projectID, key string) bool {
+	pool := s.pool()
+	if pool == nil {
+		return false
+	}
+	if projectID != "" {
+		if v, _ := pool.GetProjectConfig(projectID, key); v != "" {
+			return v == "true"
+		}
+	}
+	v, _ := pool.GetConfig(key)
+	return v == "true"
+}
+
 // broadcast sends a WebSocket event via the in-process hub
 func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, data map[string]interface{}) {
 	if s.config.WSHub == nil {

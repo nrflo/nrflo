@@ -20,6 +20,7 @@ import (
 type discardSink struct{}
 
 func (discardSink) OnTextDelta(string)                    {}
+func (discardSink) OnThinkingDelta(string)                {}
 func (discardSink) OnToolUseStart(string, string)         {}
 func (discardSink) OnToolUseInputDelta(string, string)    {}
 func (discardSink) OnToolUseStop(string, json.RawMessage) {}

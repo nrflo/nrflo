@@ -155,7 +155,7 @@ be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	329
 be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
-be/internal/spawner/spawner_prepare.go	406
+be/internal/spawner/spawner_prepare.go	407
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	332
 be/internal/spawner/template_extra_vars_test.go	318

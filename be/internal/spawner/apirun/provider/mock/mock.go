@@ -22,6 +22,7 @@ const (
 	EventToolUseInputDelta
 	EventToolUseStop
 	EventUsage
+	EventThinking
 )
 
 // SinkEvent describes one EventSink callback invocation.
@@ -81,6 +82,8 @@ func (m *mockProvider) Run(ctx context.Context, req provider.Request, sink provi
 			sink.OnToolUseStop(ev.ToolUseID, ev.FullInput)
 		case EventUsage:
 			sink.OnUsage(ev.Usage)
+		case EventThinking:
+			sink.OnThinkingDelta(ev.Text)
 		}
 	}
 

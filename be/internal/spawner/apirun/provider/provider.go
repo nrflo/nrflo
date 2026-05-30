@@ -39,13 +39,17 @@ type Message struct {
 // ContentBlock is a single block within a Message. Type determines which
 // fields are populated.
 type ContentBlock struct {
-	Type      string // "text" | "tool_use" | "tool_result"
+	Type      string // "text" | "tool_use" | "tool_result" | "thinking" | "redacted_thinking"
 	Text      string
 	ToolUseID string
 	ToolName  string
 	Input     json.RawMessage
 	Output    string
 	IsError   bool
+	// Signature carries the verifiable signature for a "thinking" block.
+	Signature string
+	// Data carries the opaque payload for a "redacted_thinking" block.
+	Data string
 	// OutputMedia carries image/document blocks returned by a tool alongside
 	// (or instead of) Output text. Only meaningful on a "tool_result" block.
 	// Providers that support multimodal tool results render these; others may
@@ -92,6 +96,7 @@ type CacheBreakpoint struct {
 // Provider.Run (no locking required by the implementer).
 type EventSink interface {
 	OnTextDelta(text string)
+	OnThinkingDelta(text string)
 	OnToolUseStart(id, name string)
 	OnToolUseInputDelta(id, partialJSON string)
 	OnToolUseStop(id string, fullInput json.RawMessage)

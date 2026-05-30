@@ -36,6 +36,7 @@ type Config struct {
 	MaxContext       int
 	Deadline         time.Time
 	ReasoningEffort  string
+	CaptureThinking  bool
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner
@@ -94,7 +95,7 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 			return
 		}
 
-		sink := newRunnerSink(r.cfg.Sink)
+		sink := newRunnerSink(r.cfg.Sink, r.cfg.CaptureThinking)
 		req := provider.Request{
 			System:           r.cfg.System,
 			Messages:         msgs,
@@ -139,6 +140,7 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 				r.fail(proc, "tool_use stop_reason but no tool_use blocks in response")
 				return
 			}
+			// Do NOT filter resp.Content — thinking blocks must ride along for required API replay.
 			msgs = append(msgs,
 				provider.Message{Role: "assistant", Content: resp.Content},
 				provider.Message{Role: "user", Content: toolResults},

@@ -224,6 +224,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		prep.apiProvider = apiProv
 		prep.apiReasoningEffort = am.ReasoningEffort
+		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
 
 		// Resolve mapped model name from the api_models row.
 		apiModelID := model

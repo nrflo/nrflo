@@ -54,6 +54,10 @@ func (s *recordingSink) OnTextDelta(text string) {
 	s.events = append(s.events, "text:"+text)
 }
 
+func (s *recordingSink) OnThinkingDelta(text string) {
+	s.events = append(s.events, "think:"+text)
+}
+
 func (s *recordingSink) OnToolUseStart(id, name string) {
 	s.events = append(s.events, "tool_start:"+id+":"+name)
 }

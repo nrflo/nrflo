@@ -11,21 +11,6 @@ before:
     - sh -c "mkdir -p be/internal/static/doc && cp doc/*.md be/internal/static/doc/"
 
 builds:
-  - id: nrflo
-    binary: nrflo
-    dir: be
-    main: ./cmd/nrflo
-    env:
-      - CGO_ENABLED=0
-    ldflags:
-      - -s -w -X be/internal/cli.version={{ .Version }}
-    goos:
-      - darwin
-      - linux
-    goarch:
-      - amd64
-      - arm64
-
   - id: nrflo_server_linux
     binary: nrflo_server
     dir: be
@@ -67,7 +52,6 @@ builds:
 archives:
   - id: default
     ids:
-      - nrflo
       - nrflo_server
       - nrflo_server_linux
     name_template: "nrflo_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
@@ -93,7 +77,6 @@ homebrew_casks:
     ids:
       - default
     binaries:
-      - nrflo
       - nrflo_server
     repository:
       owner: nrflo

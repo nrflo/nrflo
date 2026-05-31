@@ -4,6 +4,7 @@ const TOOL_USE_START = /^\[tool_use:start\]\s+id=(\S+)\s+name=(\S+)/
 const TOOL_USE_INPUT = /^\[tool_use:input\]\s+id=(\S+)\s+input=([\s\S]*)$/
 const TOOL_RESULT = /^\[tool_result\]\s+name=(\S+)\s+output=([\s\S]*)$/
 const TOOL_ERROR = /^\[tool_result:error\]\s+name=(\S+)\s+output=([\s\S]*)$/
+const HIDDEN_RESULT_TOOLS = new Set(['Read', 'Bash', 'Edit'])
 
 export function normalizeApiMessages(messages: MessageWithTime[]): MessageWithTime[] {
   const out: MessageWithTime[] = []
@@ -46,6 +47,10 @@ export function normalizeApiMessages(messages: MessageWithTime[]): MessageWithTi
       const match = m.content.match(TOOL_RESULT)
       if (!match) {
         out.push(m)
+        i++
+        continue
+      }
+      if (HIDDEN_RESULT_TOOLS.has(match[1])) {
         i++
         continue
       }

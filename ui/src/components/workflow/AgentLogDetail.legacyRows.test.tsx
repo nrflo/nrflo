@@ -69,11 +69,11 @@ describe('AgentLogDetail - legacy API-mode row normalization', () => {
     expect(tabs[2].textContent).toContain('1') // Tools: 1 (pair folds to one)
   })
 
-  it('normalizes tool_result into a Tools tab entry', async () => {
+  it('normalizes tool_result into a Tools tab entry (non-hidden tool)', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [
-        legacyMsg('[tool_result] name=Bash output=on branch main', 'tool_result'),
+        legacyMsg('[tool_result] name=WebFetch output=fetched data', 'tool_result'),
       ],
       total: 1,
     })
@@ -162,7 +162,8 @@ describe('AgentLogDetail - legacy API-mode row normalization', () => {
       total: 4,
     })
     renderDetail()
-    await waitFor(() => expect(screen.getByText('3 messages')).toBeInTheDocument())
+    // 4 raw rows → 2 normalized: pair folds to 1 tool, Read result dropped, Write error = 1 error
+    await waitFor(() => expect(screen.getByText('2 messages')).toBeInTheDocument())
     const tablist = document.querySelector('[role="tablist"]')!
     const rawCategories = ['tool_use_start', 'tool_use_input', 'tool_result', 'tool_error']
     for (const raw of rawCategories) {

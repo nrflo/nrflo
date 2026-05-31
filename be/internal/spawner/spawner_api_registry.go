@@ -17,11 +17,12 @@ import (
 // cli_interactive Claude/codex path. When toolsCSVOverride is empty, the agent
 // definition's tools field is used.
 //
-// forceLifecycleBaseline merges in the agent_* lifecycle tools regardless of
-// the CSV; socket-completion backends (cli_interactive/codex/api-via-cli) set
-// it so a restrictive CSV can never strip an agent's ability to signal
-// completion. Pure in-process api agents leave it false (they auto-PASS on
-// end_turn and may be intentionally text-only).
+// forceBaseline merges in the baseline tools (agent_* lifecycle group plus
+// findings_add) regardless of the CSV; socket-completion backends
+// (cli_interactive/codex/api-via-cli) set it so a restrictive CSV can never
+// strip an agent's ability to signal completion or record findings. Pure
+// in-process api agents leave it false (they auto-PASS on end_turn and may be
+// intentionally text-only).
 func (s *Spawner) buildAPIRegistry(
 	ctx context.Context,
 	req SpawnRequest,
@@ -29,7 +30,7 @@ func (s *Spawner) buildAPIRegistry(
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
 	toolsCSVOverride string,
-	forceLifecycleBaseline bool,
+	forceBaseline bool,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
 	toolsCSV := toolsCSVOverride
 	if toolsCSV == "" {
@@ -47,8 +48,8 @@ func (s *Spawner) buildAPIRegistry(
 		return nil, nil, apirun.ToolEnv{}, fmt.Errorf("api mode: %w", regErr)
 	}
 
-	if forceLifecycleBaseline {
-		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.LifecycleToolNames())
+	if forceBaseline {
+		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.BaselineToolNames())
 	}
 
 	// Recursion guard: consultant agents may not call consult themselves.

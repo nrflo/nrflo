@@ -42,7 +42,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `ResolveRegistry(toolsCSV, builtins, pythonHandlers)` composes builtins → python tools. Glob matching: `""` = empty registry; `"*"` = all; `"findings_*"` = prefix glob (note underscore — `findings.*` matches nothing). No match → spawn fails with `no tools matched`. Name collision (python vs builtin) → spawn fails with `collides with builtin`.
 
-`MergeBaseline(specs, handlers, builtins, names)` force-adds missing baseline tools (the `agent_*` lifecycle set, `tools_builtin.LifecycleToolNames()`). Socket-completion spawns (cli_interactive/codex/api-via-cli) pass `forceLifecycleBaseline=true` to `buildAPIRegistry` so a restrictive tools CSV can never strip an agent's ability to signal completion; pure in-process api agents leave it off (they auto-PASS on `end_turn`).
+`MergeBaseline(specs, handlers, builtins, names)` force-adds missing baseline tools (the `agent_*` lifecycle group plus `findings_add`, `tools_builtin.BaselineToolNames()`). Socket-completion spawns (cli_interactive/codex/api-via-cli) pass `forceBaseline=true` to `buildAPIRegistry` so a restrictive tools CSV can never strip an agent's ability to signal completion or record findings; pure in-process api agents leave it off (they auto-PASS on `end_turn`).
 
 ## Wiring
 

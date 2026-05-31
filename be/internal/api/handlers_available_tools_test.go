@@ -5,8 +5,8 @@ import (
 )
 
 // TestAvailableAgentTools_BuiltinsAndMandatory verifies the builtin tools are
-// returned with lifecycle tools flagged mandatory. projectID="" skips the
-// python lookup, so no DB is required.
+// returned with the baseline tools (agent_* lifecycle group plus findings_add)
+// flagged mandatory. projectID="" skips the python lookup, so no DB is required.
 func TestAvailableAgentTools_BuiltinsAndMandatory(t *testing.T) {
 	s := &Server{}
 	tools := s.availableAgentTools("")
@@ -29,8 +29,8 @@ func TestAvailableAgentTools_BuiltinsAndMandatory(t *testing.T) {
 
 	if add, ok := byName["findings_add"]; !ok {
 		t.Errorf("findings_add not in available tools")
-	} else if add.Mandatory {
-		t.Errorf("findings_add should not be mandatory")
+	} else if !add.Mandatory {
+		t.Errorf("findings_add should be mandatory (baseline)")
 	}
 }
 

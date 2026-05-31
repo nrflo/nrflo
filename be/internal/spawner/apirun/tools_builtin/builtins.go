@@ -54,16 +54,18 @@ func Builtins() map[string]apirun.ToolHandler {
 	}
 }
 
-// LifecycleToolNames returns the builtin tools an agent must always be able to
-// call to drive its own completion (the agent_* group). Socket-completion
-// backends (cli_interactive, codex, api-via-cli) hang without them, so the
-// spawner force-merges these into the registry regardless of the tools CSV.
-func LifecycleToolNames() []string {
+// BaselineToolNames returns the builtin tools force-granted to
+// socket-completion/CLI agents (cli_interactive, codex, api-via-cli)
+// regardless of the tools CSV: the agent_* lifecycle group plus findings_add.
+// The spawner merges these into the registry so a restrictive CSV can never
+// strip an agent's ability to signal completion or record findings.
+func BaselineToolNames() []string {
 	return []string{
 		"agent_finished",
 		"agent_fail",
 		"agent_continue",
 		"agent_callback",
 		"agent_context_update",
+		"findings_add",
 	}
 }

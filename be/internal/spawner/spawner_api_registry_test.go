@@ -11,11 +11,10 @@ import (
 	"be/internal/spawner/apirun/tools_builtin"
 )
 
-// TestBuildAPIRegistry_LifecycleBaseline verifies that forceLifecycleBaseline
-// merges the agent_* lifecycle tools regardless of a restrictive tools CSV, and
-// that the flag is a no-op when false.
-func TestBuildAPIRegistry_LifecycleBaseline(t *testing.T) {
-	t.Parallel()
+// TestBuildAPIRegistry_BaselineForce verifies that forceBaseline merges the
+// baseline tools (agent_* lifecycle group plus findings_add) regardless of a
+// restrictive tools CSV, and that the flag is a no-op when false.
+func TestBuildAPIRegistry_BaselineForce(t *testing.T) {
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
@@ -30,23 +29,23 @@ func TestBuildAPIRegistry_LifecycleBaseline(t *testing.T) {
 	req := SpawnRequest{ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}
 	agentDef := &model.AgentDefinition{Tools: "findings_add"}
 
-	// forceLifecycleBaseline=false: only the explicitly-selected tool resolves.
+	// forceBaseline=false: only the explicitly-selected tool resolves.
 	_, handlers, _, err := s.buildAPIRegistry(context.Background(), req, env.wfiID, agentDef, proc, "findings_add", false)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry(false): %v", err)
 	}
 	if _, ok := handlers["agent_finished"]; ok {
-		t.Errorf("agent_finished present without forceLifecycleBaseline")
+		t.Errorf("agent_finished present without forceBaseline")
 	}
 
-	// forceLifecycleBaseline=true: lifecycle tools are force-merged in.
+	// forceBaseline=true: all baseline tools are force-merged in.
 	specs, handlers, _, err := s.buildAPIRegistry(context.Background(), req, env.wfiID, agentDef, proc, "findings_add", true)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry(true): %v", err)
 	}
-	for _, n := range tools_builtin.LifecycleToolNames() {
+	for _, n := range tools_builtin.BaselineToolNames() {
 		if _, ok := handlers[n]; !ok {
-			t.Errorf("baseline tool %q missing with forceLifecycleBaseline=true", n)
+			t.Errorf("baseline tool %q missing with forceBaseline=true", n)
 		}
 	}
 	if _, ok := handlers["findings_add"]; !ok {
@@ -54,5 +53,26 @@ func TestBuildAPIRegistry_LifecycleBaseline(t *testing.T) {
 	}
 	if len(specs) != len(handlers) {
 		t.Errorf("specs len %d != handlers len %d", len(specs), len(handlers))
+	}
+
+	// Restrictive CSV that excludes findings_add: forceBaseline=true must
+	// include findings_add; forceBaseline=false must not.
+	_, handlersNoForce, _, err := s.buildAPIRegistry(context.Background(), req, env.wfiID, agentDef, proc, "agent_finished", false)
+	if err != nil {
+		t.Fatalf("buildAPIRegistry restrictive/false: %v", err)
+	}
+	if _, ok := handlersNoForce["findings_add"]; ok {
+		t.Errorf("findings_add present in handlers with forceBaseline=false and restrictive CSV")
+	}
+
+	specsForce, handlersForce, _, err := s.buildAPIRegistry(context.Background(), req, env.wfiID, agentDef, proc, "agent_finished", true)
+	if err != nil {
+		t.Fatalf("buildAPIRegistry restrictive/true: %v", err)
+	}
+	if _, ok := handlersForce["findings_add"]; !ok {
+		t.Errorf("findings_add absent in handlers with forceBaseline=true and restrictive CSV")
+	}
+	if len(specsForce) != len(handlersForce) {
+		t.Errorf("specs len %d != handlers len %d after restrictive-CSV force merge", len(specsForce), len(handlersForce))
 	}
 }

@@ -21,11 +21,12 @@ type availableTool struct {
 }
 
 // availableAgentTools returns the builtin tools plus the project's python
-// (kind=tool) scripts. Lifecycle builtins are flagged mandatory — the spawner
-// always grants them to socket-completion agents regardless of the tools CSV.
+// (kind=tool) scripts. Baseline (always-granted) builtins are flagged
+// mandatory — the spawner always grants them to socket-completion agents
+// regardless of the tools CSV.
 func (s *Server) availableAgentTools(projectID string) []availableTool {
 	mandatory := make(map[string]bool)
-	for _, n := range tools_builtin.LifecycleToolNames() {
+	for _, n := range tools_builtin.BaselineToolNames() {
 		mandatory[n] = true
 	}
 

@@ -173,10 +173,9 @@ func TestResolveRegistry_DotPatternMismatch(t *testing.T) {
 	}
 }
 
-// TestMergeBaseline verifies the lifecycle-baseline merge used by
-// socket-completion spawns: missing baseline tools are pulled from builtins,
-// existing entries are preserved, the merge is idempotent, and unknown names
-// are skipped.
+// TestMergeBaseline verifies the baseline merge used by socket-completion
+// spawns: missing baseline tools are pulled from builtins, existing entries are
+// preserved, the merge is idempotent, and unknown names are skipped.
 func TestMergeBaseline(t *testing.T) {
 	builtins := newStubBuiltins("agent_finished", "agent_fail", "findings_add")
 	baseline := []string{"agent_finished", "agent_fail"}
@@ -212,5 +211,36 @@ func TestMergeBaseline(t *testing.T) {
 	specs3, reg3 := MergeBaseline(specs2, reg2, builtins, []string{"does_not_exist"})
 	if len(reg3) != len(reg2) || len(specs3) != len(specs2) {
 		t.Errorf("MergeBaseline added an unknown baseline name")
+	}
+
+	// findings_add absent from CSV is merged in when in baseline.
+	baselineWithFindings := []string{"agent_finished", "findings_add"}
+	specs4, reg4, err := ResolveRegistry("agent_finished", builtins, nil)
+	if err != nil {
+		t.Fatalf("ResolveRegistry for findings_add absent case: %v", err)
+	}
+	if _, ok := reg4["findings_add"]; ok {
+		t.Fatalf("precondition: findings_add should be absent before merge")
+	}
+	specs4, reg4 = MergeBaseline(specs4, reg4, builtins, baselineWithFindings)
+	if _, ok := reg4["findings_add"]; !ok {
+		t.Errorf("findings_add not merged in when absent from CSV but in baseline")
+	}
+	if len(specs4) != len(reg4) {
+		t.Errorf("specs len %d != reg len %d after findings_add merge", len(specs4), len(reg4))
+	}
+
+	// findings_add already present in CSV: no duplicate spec is added.
+	specs5, reg5, err := ResolveRegistry("agent_finished,findings_add", builtins, nil)
+	if err != nil {
+		t.Fatalf("ResolveRegistry for findings_add present case: %v", err)
+	}
+	lenBefore := len(reg5)
+	specs5, reg5 = MergeBaseline(specs5, reg5, builtins, baselineWithFindings)
+	if len(reg5) != lenBefore {
+		t.Errorf("MergeBaseline added duplicate findings_add: reg %d->%d", lenBefore, len(reg5))
+	}
+	if len(specs5) != len(reg5) {
+		t.Errorf("specs len %d != reg len %d when findings_add already present", len(specs5), len(reg5))
 	}
 }

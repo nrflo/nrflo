@@ -30,8 +30,8 @@ interface Props {
 /**
  * AgentDefToolsField is the dynamic per-agent tools picker. It lists the tools
  * actually available (builtins + project python tools), highlighting builtins
- * and pinning the lifecycle (mandatory) tools. "All tools (*)" grants
- * everything; an Advanced mode exposes the raw CSV for glob patterns.
+ * and pinning the mandatory tools. "All tools (*)" grants everything; an
+ * Advanced mode exposes the raw CSV for glob patterns.
  */
 export function AgentDefToolsField({ value, onChange, executionMode }: Props) {
   const { data: tools = [], isLoading } = useAvailableTools()
@@ -46,7 +46,7 @@ export function AgentDefToolsField({ value, onChange, executionMode }: Props) {
   const pythonTools = useMemo(() => tools.filter((t) => t.source === 'python'), [tools])
   const selected = useMemo(() => new Set(patterns.filter((p) => !p.includes('*'))), [patterns])
 
-  // Always include mandatory (lifecycle) names so a subset never collapses to an
+  // Always include mandatory names so a subset never collapses to an
   // empty CSV — which means "all" for CLI agents.
   const emitSelection = (names: Set<string>) => {
     const all = new Set<string>(names)
@@ -118,7 +118,7 @@ export function AgentDefToolsField({ value, onChange, executionMode }: Props) {
           <div>
             <div className="flex items-center gap-1.5 mb-1.5">
               <Badge variant="secondary" className="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">built-in</Badge>
-              <span className="text-xs text-muted-foreground">lifecycle tools (· always) are granted to CLI agents regardless</span>
+              <span className="text-xs text-muted-foreground">mandatory tools (· always) are granted to CLI agents regardless</span>
             </div>
             <div className="flex flex-wrap gap-1.5">{builtins.map(renderChip)}</div>
           </div>

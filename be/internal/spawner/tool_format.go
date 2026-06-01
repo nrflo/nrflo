@@ -11,6 +11,19 @@ import (
 // tool activity at the same size.
 const maxInlineDetail = 2048
 
+// hiddenResultTools name the tools whose successful result row is dropped before
+// storage: the invoke row already names the file/command and the output (file
+// bodies, command stdout) is noise in the agent log. Errors are unaffected —
+// they take a different path and stay visible.
+var hiddenResultTools = map[string]bool{"Read": true, "Bash": true, "Edit": true}
+
+// IsHiddenResultTool reports whether a tool's success result row should be
+// suppressed. The name is title-cased so a lowercase CLI/MCP variant matches the
+// same way FormatToolResult would render it.
+func IsHiddenResultTool(toolName string) bool {
+	return hiddenResultTools[titleToolName(toolName)]
+}
+
 // ToolCategory returns the message category for a tool invocation.
 func ToolCategory(toolName string) string {
 	switch toolName {

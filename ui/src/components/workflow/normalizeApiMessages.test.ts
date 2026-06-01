@@ -70,40 +70,12 @@ describe('normalizeApiMessages', () => {
   })
 
   describe('tool_result', () => {
-    it('folds into [name] → output tool row for non-hidden tools', () => {
+    it('folds into [name] → output tool row', () => {
       const result = normalizeApiMessages([
-        msg('[tool_result] name=WebFetch output=on branch main', 'tool_result'),
+        msg('[tool_result] name=Bash output=on branch main', 'tool_result'),
       ])
       expect(result).toHaveLength(1)
-      expect(result[0]).toMatchObject({ category: 'tool', content: '[WebFetch] → on branch main' })
-    })
-
-    it('drops success result rows for Read, Bash, and Edit', () => {
-      for (const name of ['Read', 'Bash', 'Edit']) {
-        expect(normalizeApiMessages([
-          msg(`[tool_result] name=${name} output=some output`, 'tool_result'),
-        ])).toHaveLength(0)
-      }
-    })
-
-    it('retains tool_result:error (tool_error) rows for hidden tools', () => {
-      for (const name of ['Read', 'Bash', 'Edit']) {
-        const result = normalizeApiMessages([
-          msg(`[tool_result:error] name=${name} output=failed`, 'tool_error'),
-        ])
-        expect(result).toHaveLength(1)
-        expect(result[0]).toMatchObject({ category: 'error' })
-      }
-    })
-
-    it('Read call pair still renders even when success result is dropped', () => {
-      const result = normalizeApiMessages([
-        msg('[tool_use:start] id=c1 name=Read', 'tool_use_start'),
-        msg('[tool_use:input] id=c1 input=/tmp/file.ts', 'tool_use_input'),
-        msg('[tool_result] name=Read output=file contents', 'tool_result'),
-      ])
-      expect(result).toHaveLength(1)
-      expect(result[0]).toMatchObject({ category: 'tool', content: '[Read] /tmp/file.ts' })
+      expect(result[0]).toMatchObject({ category: 'tool', content: '[Bash] → on branch main' })
     })
 
     it('handles underscored tool names', () => {
@@ -186,14 +158,14 @@ describe('normalizeApiMessages', () => {
       }
     })
 
-    it('reduces 4 legacy rows to 2 normalized rows (pair counts as one, Read result dropped)', () => {
+    it('reduces 4 legacy rows to 3 normalized rows (pair counts as one)', () => {
       const result = normalizeApiMessages([
         msg('[tool_use:start] id=c1 name=Bash', 'tool_use_start'),
         msg('[tool_use:input] id=c1 input=ls', 'tool_use_input'),
         msg('[tool_result] name=Read output=ok', 'tool_result'),
         msg('[tool_result:error] name=Write output=err', 'tool_error'),
       ])
-      expect(result).toHaveLength(2)
+      expect(result).toHaveLength(3)
     })
   })
 })

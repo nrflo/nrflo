@@ -62,6 +62,22 @@ func TestFormatToolResult(t *testing.T) {
 	}
 }
 
+// TestIsHiddenResultTool verifies Read/Bash/Edit are flagged (case-normalized via
+// titleToolName) while other tools render their result rows.
+func TestIsHiddenResultTool(t *testing.T) {
+	t.Parallel()
+	for _, name := range []string{"Read", "Bash", "Edit", "read", "bash", "edit"} {
+		if !IsHiddenResultTool(name) {
+			t.Errorf("IsHiddenResultTool(%q) = false, want true", name)
+		}
+	}
+	for _, name := range []string{"WebFetch", "Write", "Grep", "mcp__nrflo__emit_findings", ""} {
+		if IsHiddenResultTool(name) {
+			t.Errorf("IsHiddenResultTool(%q) = true, want false", name)
+		}
+	}
+}
+
 // TestFormatToolResult_Capped verifies output is capped at maxInlineDetail.
 func TestFormatToolResult_Capped(t *testing.T) {
 	t.Parallel()

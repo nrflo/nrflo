@@ -245,6 +245,12 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 // (e.g. an MCP isError result) still surfaces here as the captured body.
 func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
 	toolName, _ := event["tool_name"].(string)
+	if spawner.IsHiddenResultTool(toolName) {
+		// Read/Bash/Edit success rows are suppressed: the PreToolUse invoke row
+		// already shows the file/command and the output is log noise. PostToolUse
+		// fires only on success, so errors (a separate path) stay visible.
+		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
+	}
 	body := extractToolResultBody(event)
 	if body == "" {
 		// Tool returned nothing renderable — ack without inserting an empty row.

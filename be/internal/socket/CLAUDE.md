@@ -31,7 +31,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `agent.chain_next_instructions` | Set instructions for the next pending chain step |
 | `agent.chain_next_ticket` | Set ticket ID for the next pending ticket-scope chain step |
 | `agent.consult` | Synchronously spawn an api-mode consultant under the caller workflow instance and return its answer. Params: `{session_id, consultant, question}`. Requires `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()` (nil → internal error). |
-| `agent.record_event` | Record Claude hook event; PreToolUse (invoke) + PostToolUse (`[tool] → output` result) insert message rows + WS broadcast; Stop is a no-op boundary ack. PreToolUse/PreCompact also tail the Claude transcript (`event["transcript_path"]`) into `category="thinking"` rows — see `transcript_thinking.go` |
+| `agent.record_event` | Record Claude hook event; PreToolUse (invoke) + PostToolUse (`[tool] → output` result) insert message rows + WS broadcast. PostToolUse for `spawner.IsHiddenResultTool` tools (Read/Bash/Edit) is dropped at the source (`status="ignored"`, no row) — the invoke row already names the file/command. Stop is a no-op boundary ack. PreToolUse/PreCompact also tail the Claude transcript (`event["transcript_path"]`) into `category="thinking"` rows — see `transcript_thinking.go` |
 | `agent.log` | Insert `agent_messages` row from script agent. Params: `{session_id, type?, message, payload?}` |
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |

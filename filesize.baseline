@@ -86,7 +86,7 @@ be/internal/orchestrator/orchestrator_ticket_status_test.go	321
 be/internal/orchestrator/orchestrator_worktree_test.go	757
 be/internal/repo/agent_definition.go	394
 be/internal/repo/agent_message.go	357
-be/internal/repo/agent_session.go	654
+be/internal/repo/agent_session.go	677
 be/internal/repo/artifact_test.go	318
 be/internal/repo/audit_repo_test.go	307
 be/internal/repo/daily_stats_test.go	440

@@ -336,6 +336,29 @@ func (r *AgentSessionRepo) SetEndedAt(id string) error {
 	return err
 }
 
+// SetSpawnRuntime records the runtime pid and final spawn command on a session
+// row once its backend has started. A zero pid or empty spawnCommand leaves the
+// existing column untouched (api agents have no child pid; some backends set
+// spawn_command before Start, others only during it).
+func (r *AgentSessionRepo) SetSpawnRuntime(id string, pid int, spawnCommand string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	res, err := r.db.Exec(`
+		UPDATE agent_sessions
+		SET pid = CASE WHEN ? > 0 THEN ? ELSE pid END,
+		    spawn_command = CASE WHEN ? <> '' THEN ? ELSE spawn_command END,
+		    updated_at = ?
+		WHERE id = ?`,
+		pid, pid, spawnCommand, spawnCommand, now, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent session not found: %s", id)
+	}
+	return nil
+}
+
 // Delete deletes an agent session
 func (r *AgentSessionRepo) Delete(id string) error {
 	result, err := r.db.Exec("DELETE FROM agent_sessions WHERE id = ?", id)

@@ -103,20 +103,18 @@ func TestEffectiveMode_ConsistentWithBackendSelector(t *testing.T) {
 	}
 }
 
-// TestRegisterAgentStart_EffectiveModePersisted verifies that registerAgentStart
+// TestCreateAgentSessionRow_EffectiveModePersisted verifies that createAgentSessionRow
 // writes the effectiveMode parameter into agent_sessions.effective_mode.
-func TestRegisterAgentStart_EffectiveModePersisted(t *testing.T) {
+func TestCreateAgentSessionRow_EffectiveModePersisted(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
 	s := New(Config{Pool: pool, Clock: clock.Real()})
 
-	s.registerAgentStart(
-		"proj", "T-1", "feature", "wfi-1",
-		"agent-em", "implementor", 0,
-		"sess-em-persist", "sonnet", "phase1",
+	s.createAgentSessionRow(
+		"proj", "T-1", "wfi-1",
+		"implementor", "sess-em-persist", "sonnet", "phase1",
 		"", "", "", "", "tok-em-persist",
-		"cli_interactive",
-		0, 25,
+		"cli_interactive", 0,
 	)
 
 	var effectiveMode sql.NullString
@@ -130,9 +128,9 @@ func TestRegisterAgentStart_EffectiveModePersisted(t *testing.T) {
 	}
 }
 
-// TestRegisterAgentStart_AllEffectiveModes verifies all three valid mode values are
-// persisted correctly by registerAgentStart.
-func TestRegisterAgentStart_AllEffectiveModes(t *testing.T) {
+// TestCreateAgentSessionRow_AllEffectiveModes verifies all three valid mode values are
+// persisted correctly by createAgentSessionRow.
+func TestCreateAgentSessionRow_AllEffectiveModes(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
 
@@ -141,13 +139,11 @@ func TestRegisterAgentStart_AllEffectiveModes(t *testing.T) {
 		sessionID := "sess-allmode-" + mode
 		spawnToken := "tok-allmode-" + mode
 		s := New(Config{Pool: pool, Clock: clock.Real()})
-		s.registerAgentStart(
-			"proj", "T-1", "feature", "wfi-1",
-			"agent-"+mode, "implementor", 0,
-			sessionID, "sonnet", "phase1",
+		s.createAgentSessionRow(
+			"proj", "T-1", "wfi-1",
+			"implementor", sessionID, "sonnet", "phase1",
 			"", "", "", "", spawnToken,
-			mode,
-			i, 25,
+			mode, i,
 		)
 
 		var got sql.NullString
@@ -159,5 +155,37 @@ func TestRegisterAgentStart_AllEffectiveModes(t *testing.T) {
 		} else if got.String != mode {
 			t.Errorf("mode=%q: effective_mode = %q, want %q", mode, got.String, mode)
 		}
+	}
+}
+
+// TestCreateAgentSessionRow_InsertOnceGatesRollback verifies createAgentSessionRow
+// reports true only for the call that actually inserted the row. The observer
+// path pre-inserts its own row (via ObserverService.Launch) before startBackend
+// runs, so a second call for the same session must report false — and that
+// false is what stops startBackend from deleting a row it does not own when a
+// later backend.Start fails.
+func TestCreateAgentSessionRow_InsertOnceGatesRollback(t *testing.T) {
+	t.Parallel()
+	pool := setupTestDB(t)
+	s := New(Config{Pool: pool, Clock: clock.Real()})
+
+	first := s.createAgentSessionRow(
+		"proj", "T-1", "wfi-1",
+		"implementor", "sess-once", "sonnet", "phase1",
+		"", "", "", "", "tok-once",
+		"script", 0,
+	)
+	if !first {
+		t.Fatal("first createAgentSessionRow = false, want true (row inserted)")
+	}
+
+	second := s.createAgentSessionRow(
+		"proj", "T-1", "wfi-1",
+		"implementor", "sess-once", "sonnet", "phase1",
+		"", "", "", "", "tok-once-2",
+		"script", 0,
+	)
+	if second {
+		t.Error("second createAgentSessionRow = true, want false (row already exists)")
 	}
 }

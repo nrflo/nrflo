@@ -131,7 +131,23 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	// moment Claude posts back, not after we've returned from Start.
 	s.registerSessionProc(proc.sessionID, proc)
 
+	// Insert the agent_sessions row BEFORE starting the child. Script agents
+	// call c.context() as their very first action; writing the row only after
+	// Start let that lookup race the INSERT and fail with "agent session not
+	// found" under spawn contention (parallel layers + SQLite single-writer).
+	// pid and the final spawn_command are unknown until Start returns and are
+	// recorded by markAgentStarted below.
+	rowCreated := s.createAgentSessionRow(proc.projectID, proc.ticketID, proc.workflowInstanceID,
+		proc.agentType, proc.sessionID, proc.modelID, prep.phase,
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, effectiveMode, 0)
+
 	if err := backend.Start(context.Background(), proc, prep); err != nil {
+		// Roll back only the row we inserted, so a failed spawn leaves no
+		// orphaned "running" session. A pre-existing row (observer path) is
+		// owned by its creator and left untouched.
+		if rowCreated {
+			s.deleteAgentSessionRow(proc.sessionID)
+		}
 		s.unregisterSessionProcs([]*processInfo{proc})
 		return err
 	}
@@ -140,9 +156,9 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	if proc.cmd != nil && proc.cmd.Process != nil {
 		pid = proc.cmd.Process.Pid
 	}
-	s.registerAgentStart(proc.projectID, proc.ticketID, proc.workflowName, proc.workflowInstanceID,
-		proc.agentID, proc.agentType, pid, proc.sessionID, proc.modelID, prep.phase,
-		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, effectiveMode, 0, proc.restartThreshold)
+	s.markAgentStarted(proc.projectID, proc.ticketID, proc.workflowName,
+		proc.agentID, proc.agentType, proc.modelID, proc.sessionID, prep.phase,
+		proc.spawnCommand, pid, proc.restartThreshold)
 	return nil
 }
 

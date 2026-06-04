@@ -11,7 +11,7 @@ import (
 )
 
 // selectBackendForTest mirrors startBackend's three-way switch on executionMode,
-// enabling clean unit tests of the selector without calling Start() or registerAgentStart().
+// enabling clean unit tests of the selector without calling Start() or writing the session row.
 // Returns nil for unknown modes (startBackend returns an error for those).
 func selectBackendForTest(s *Spawner, executionMode string, adapter CLIAdapter) ExecutionBackend {
 	switch executionMode {

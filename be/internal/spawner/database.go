@@ -10,11 +10,23 @@ import (
 	"be/internal/ws"
 )
 
-// registerAgentStart creates an agent_sessions row for a newly spawned agent
-func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, agentID, agentType string, pid int, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, ancestorSessionID, spawnToken, effectiveMode string, restartCount, restartThreshold int) {
+// createAgentSessionRow inserts the agent_sessions row for a newly spawned
+// agent. It runs BEFORE backend.Start so the spawned child can never make its
+// first socket call before the row exists — script agents call c.context() as
+// their very first action, and writing the row only after Start let that lookup
+// race the INSERT and fail with "agent session not found" under spawn
+// contention. The runtime pid and final spawn_command are unknown until Start
+// returns and are filled in by markAgentStarted.
+//
+// Returns true only when this call inserted the row, so the caller can roll it
+// back on a failed Start. It returns false on a benign conflict — the observer
+// path inserts its own row via ObserverService.Launch before this runs — or on
+// any DB error; the insert is best-effort, matching the rest of the spawn hot
+// path where sibling status writes are also fire-and-forget.
+func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, ancestorSessionID, spawnToken, effectiveMode string, restartCount int) bool {
 	pool := s.pool()
 	if pool == nil {
-		return
+		return false
 	}
 
 	now := s.config.Clock.Now().UTC().Format(time.RFC3339Nano)
@@ -28,7 +40,6 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		AgentType:          agentType,
 		ModelID:            sql.NullString{String: modelID, Valid: modelID != ""},
 		Status:             model.AgentSessionRunning,
-		PID:                sql.NullInt64{Int64: int64(pid), Valid: pid > 0},
 		SpawnCommand:       sql.NullString{String: spawnCommand, Valid: spawnCommand != ""},
 		Prompt:             sql.NullString{String: prompt, Valid: prompt != ""},
 		SystemPrompt:       sql.NullString{String: systemPrompt, Valid: systemPrompt != ""},
@@ -39,7 +50,16 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		StartedAt:          sql.NullString{String: now, Valid: true},
 		Config:             s.config.ClaudeSettingsJSON,
 	}
-	_ = sessionRepo.Create(session) // best-effort: void hot path, sibling status writes are also fire-and-forget
+	return sessionRepo.Create(session) == nil
+}
+
+// markAgentStarted records the runtime pid and final spawn_command on the
+// session row (both known only after backend.Start) and broadcasts the
+// agent-started events. Best-effort, mirroring the spawn hot path.
+func (s *Spawner) markAgentStarted(projectID, ticketID, workflowName, agentID, agentType, modelID, sessionID, phase, spawnCommand string, pid, restartThreshold int) {
+	if pool := s.pool(); pool != nil {
+		_ = repo.NewAgentSessionRepo(pool, s.config.Clock).SetSpawnRuntime(sessionID, pid, spawnCommand)
+	}
 
 	s.broadcast(ws.EventAgentStarted, projectID, ticketID, workflowName, map[string]interface{}{
 		"agent_id":          agentID,
@@ -51,6 +71,14 @@ func (s *Spawner) registerAgentStart(projectID, ticketID, workflowName, wfiID, a
 		"kind":              "workflow_agent",
 	})
 	s.broadcastGlobal()
+}
+
+// deleteAgentSessionRow removes a provisional agent_sessions row after a failed
+// backend.Start, restoring the "no row for a spawn that never ran" invariant.
+func (s *Spawner) deleteAgentSessionRow(sessionID string) {
+	if pool := s.pool(); pool != nil {
+		_ = repo.NewAgentSessionRepo(pool, s.config.Clock).Delete(sessionID)
+	}
 }
 
 // registerAgentStopWithReason updates the agent_sessions row when an agent stops

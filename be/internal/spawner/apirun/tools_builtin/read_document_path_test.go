@@ -98,7 +98,7 @@ func TestReadDocumentPathHandler_NotFoundIsError(t *testing.T) {
 func TestReadDocumentPathHandler_EmptyNameIsError(t *testing.T) {
 	env := newBuiltinTestEnv(t)
 	input := json.RawMessage(`{"name":""}`)
-	out, isErr, err := ReadDocumentPathHandler{}.Invoke(context.Background(), env.env, json.RawMessage(input))
+	out, isErr, err := ReadDocumentPathHandler{}.Invoke(context.Background(), env.env, input)
 	if err != nil {
 		t.Fatalf("Invoke err: %v", err)
 	}

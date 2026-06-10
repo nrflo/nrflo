@@ -101,7 +101,7 @@ type processInfo struct {
 	pendingMessages []repo.MessageEntry // messages not yet flushed to DB
 	lastMessage     string              // most recent message (for status display)
 	messagesMutex   sync.Mutex
-	saveMu          sync.Mutex // serializes saveMessages drain+insert per proc
+	saveMu          sync.Mutex          // serializes saveMessages drain+insert per proc
 	pendingTasks    map[string]taskInfo // tool_use_id -> taskInfo for in-flight Task invocations
 	finalStatus     string
 	elapsed         time.Duration

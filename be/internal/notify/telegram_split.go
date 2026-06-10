@@ -58,7 +58,6 @@ func splitTelegram(body string) []string {
 		}
 		if curLen+add > telegramChunkTarget && cur.Len() > 0 {
 			flush()
-			add = pLen
 		}
 		if cur.Len() > 0 {
 			cur.WriteString(sep)
@@ -131,7 +130,6 @@ func linePackParagraph(p string) []string {
 		}
 		if curLen+add > telegramChunkTarget && cur.Len() > 0 {
 			flush()
-			add = aLen
 		}
 		if cur.Len() > 0 {
 			cur.WriteByte('\n')

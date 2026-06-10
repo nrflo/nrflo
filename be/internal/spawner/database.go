@@ -23,7 +23,7 @@ import (
 // path inserts its own row via ObserverService.Launch before this runs — or on
 // any DB error; the insert is best-effort, matching the rest of the spawn hot
 // path where sibling status writes are also fire-and-forget.
-func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, ancestorSessionID, spawnToken, effectiveMode string, restartCount int) bool {
+func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, spawnToken, effectiveMode string, restartCount int) bool {
 	pool := s.pool()
 	if pool == nil {
 		return false
@@ -43,7 +43,6 @@ func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, s
 		SpawnCommand:       sql.NullString{String: spawnCommand, Valid: spawnCommand != ""},
 		Prompt:             sql.NullString{String: prompt, Valid: prompt != ""},
 		SystemPrompt:       sql.NullString{String: systemPrompt, Valid: systemPrompt != ""},
-		AncestorSessionID:  sql.NullString{String: ancestorSessionID, Valid: ancestorSessionID != ""},
 		SpawnToken:         sql.NullString{String: spawnToken, Valid: spawnToken != ""},
 		EffectiveMode:      sql.NullString{String: effectiveMode, Valid: effectiveMode != ""},
 		RestartCount:       restartCount,

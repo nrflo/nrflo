@@ -159,4 +159,3 @@ func TestListTools_MultipleTools(t *testing.T) {
 		t.Errorf("len = %d, want 2", len(entries))
 	}
 }
-

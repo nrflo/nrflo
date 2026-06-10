@@ -20,7 +20,7 @@ type capturingProvider struct {
 	cursor   int
 }
 
-func (c *capturingProvider) Name() string           { return "capturing" }
+func (c *capturingProvider) Name() string            { return "capturing" }
 func (c *capturingProvider) MaxContext(_ string) int { return 200000 }
 
 func (c *capturingProvider) Run(ctx context.Context, req provider.Request, sink provider.EventSink) (*provider.FinalResponse, error) {
@@ -274,6 +274,6 @@ func (r *recordingEventSink) OnThinkingDelta(s string) { r.events = append(r.eve
 func (r *recordingEventSink) OnToolUseStart(id, name string) {
 	r.events = append(r.events, "tool_start:"+id+":"+name)
 }
-func (r *recordingEventSink) OnToolUseInputDelta(id, p string) {}
+func (r *recordingEventSink) OnToolUseInputDelta(id, p string)          {}
 func (r *recordingEventSink) OnToolUseStop(_ string, _ json.RawMessage) {}
-func (r *recordingEventSink) OnUsage(_ provider.Usage) {}
+func (r *recordingEventSink) OnUsage(_ provider.Usage)                  {}

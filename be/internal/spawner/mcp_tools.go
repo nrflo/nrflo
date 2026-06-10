@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -59,7 +58,6 @@ func substituteReadDocumentPath(specs []provider.ToolSpec, handlers apirun.Regis
 // variant (the CLI agent reads files natively). Used for both Claude (which
 // gets --mcp-config) and codex (config.toml).
 func (s *Spawner) attachNrfloToolRegistry(
-	ctx context.Context,
 	req SpawnRequest,
 	wfiID string,
 	agentDef *model.AgentDefinition,
@@ -69,7 +67,7 @@ func (s *Spawner) attachNrfloToolRegistry(
 	if agentDef != nil && strings.TrimSpace(agentDef.Tools) != "" {
 		toolsCSV = agentDef.Tools
 	}
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, toolsCSV, true)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true)
 	if regErr != nil {
 		return regErr
 	}
@@ -84,13 +82,12 @@ func (s *Spawner) attachNrfloToolRegistry(
 // returns the --mcp-config + --allowedTools values for a Claude spawn. Native
 // coding tools are left untouched (NativeToolsCSV stays empty).
 func (s *Spawner) configureClaudeMCPTools(
-	ctx context.Context,
 	req SpawnRequest,
 	wfiID string,
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
 ) (mcpConfigJSON, allowedToolsCSV string, err error) {
-	if regErr := s.attachNrfloToolRegistry(ctx, req, wfiID, agentDef, proc); regErr != nil {
+	if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc); regErr != nil {
 		return "", "", regErr
 	}
 	cfg, cfgErr := buildNrfloMCPConfig()

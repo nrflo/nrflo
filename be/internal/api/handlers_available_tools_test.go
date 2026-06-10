@@ -51,8 +51,8 @@ func TestToolsCSVWarnings(t *testing.T) {
 		{"findings_add", 0},
 		{"findings_*", 0},
 		{"agent_*", 0},
-		{"findings.*", 1},  // dotted form matches nothing
-		{"bogus_tool", 1},  // unknown exact name
+		{"findings.*", 1}, // dotted form matches nothing
+		{"bogus_tool", 1}, // unknown exact name
 		{"findings_add,nope", 1},
 		{"", 0},
 	}

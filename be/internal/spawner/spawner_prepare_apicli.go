@@ -18,7 +18,7 @@ import (
 func (s *Spawner) prepareAPIViaCLISpawn(
 	ctx context.Context,
 	req SpawnRequest,
-	wfiID, agentID, sessionID, spawnToken string,
+	wfiID, sessionID, spawnToken string,
 	effectiveThreshold int,
 	extID, extCtx string,
 	prompt string,
@@ -37,7 +37,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 
 	// Build tool registry: honor the tools field but force the lifecycle
 	// baseline — api-via-cli completes over the socket like a CLI agent.
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "", true)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", true)
 	if regErr != nil {
 		return nil, nil, regErr
 	}

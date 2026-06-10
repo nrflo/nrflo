@@ -47,7 +47,7 @@ Workflow runtime state lives in `workflow_instances` and `agent_sessions`; phase
 
 ### 4. Test suites must complete in under 60 seconds
 
-`make test` (BE) and `make test-ui` (FE) are each capped at 60 s wall time. `time.Sleep` and real CLI binary execution are forbidden in tests.
+`make test` (BE) and `make test-ui` (FE) are each capped at 60 s wall time (enforced locally; the cap is skipped when `$CI` is set — CI runners are ~4x slower and gate correctness only). `time.Sleep` and real CLI binary execution are forbidden in tests.
 
 ### 5. Keep Source Files Under 300 Lines
 

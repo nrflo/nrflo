@@ -250,4 +250,3 @@ func TestDispatchMCP_ToolsCall_CallerError(t *testing.T) {
 		t.Errorf("code = %d, want -32603", resp.Error.Code)
 	}
 }
-

@@ -265,4 +265,3 @@ func (s *Spawner) checkToResumeFindings(ctx context.Context, proc *processInfo) 
 	logger.Info(ctx, "to_resume findings saved", "bytes", len(str), "session_id", proc.sessionID)
 	return true
 }
-

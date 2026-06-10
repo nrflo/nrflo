@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"context"
 	"fmt"
 
 	"be/internal/model"
@@ -24,7 +23,6 @@ import (
 // in-process api agents leave it false (they auto-PASS on end_turn and may be
 // intentionally text-only).
 func (s *Spawner) buildAPIRegistry(
-	ctx context.Context,
 	req SpawnRequest,
 	wfiID string,
 	agentDef *model.AgentDefinition,

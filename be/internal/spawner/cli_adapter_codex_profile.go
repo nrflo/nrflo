@@ -84,7 +84,7 @@ func writeCodexSessionProfile(dir string, proc *processInfo) error {
 // session env the bridge needs (NRF_SESSION_ID, socket path, …) is embedded here.
 func appendCodexMCPServer(dir, serverPath string, env map[string]string) error {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("\n[mcp_servers.nrflo]\ncommand = %q\nargs = [\"agent\", \"mcp\"]\n", serverPath))
+	fmt.Fprintf(&b, "\n[mcp_servers.nrflo]\ncommand = %q\nargs = [\"agent\", \"mcp\"]\n", serverPath)
 	if len(env) > 0 {
 		b.WriteString("\n[mcp_servers.nrflo.env]\n")
 		keys := make([]string, 0, len(env))
@@ -93,7 +93,7 @@ func appendCodexMCPServer(dir, serverPath string, env map[string]string) error {
 		}
 		sort.Strings(keys)
 		for _, k := range keys {
-			b.WriteString(fmt.Sprintf("%s = %q\n", k, env[k]))
+			fmt.Fprintf(&b, "%s = %q\n", k, env[k])
 		}
 	}
 	f, err := os.OpenFile(filepath.Join(dir, "config.toml"), os.O_APPEND|os.O_WRONLY, 0o644)

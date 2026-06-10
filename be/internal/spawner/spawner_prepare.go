@@ -214,7 +214,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 		// api-via-cli hybrid: route Anthropic api-models through the Claude CLI.
 		if s.config.APIViaCLI && am.Provider == "anthropic" {
-			return s.prepareAPIViaCLISpawn(ctx, req, wfiID, agentID, sessionID, spawnToken, effectiveThreshold, extID, extCtx, prompt, am, agentDef, proc, prep)
+			return s.prepareAPIViaCLISpawn(ctx, req, wfiID, sessionID, spawnToken, effectiveThreshold, extID, extCtx, prompt, am, agentDef, proc, prep)
 		}
 
 		// Build the provider for this spawn. Fail fast on missing credentials.
@@ -255,7 +255,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		proc.maxContext = maxCtx
 
-		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(ctx, req, wfiID, agentDef, proc, "", false)
+		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", false)
 		if regErr != nil {
 			return nil, nil, regErr
 		}
@@ -298,11 +298,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	switch adapter.Name() {
 	case "claude":
 		var mcpErr error
-		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(ctx, req, wfiID, agentDef, proc); mcpErr != nil {
+		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(req, wfiID, agentDef, proc); mcpErr != nil {
 			return nil, nil, mcpErr
 		}
 	case "codex":
-		if regErr := s.attachNrfloToolRegistry(ctx, req, wfiID, agentDef, proc); regErr != nil {
+		if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc); regErr != nil {
 			return nil, nil, regErr
 		}
 	}
@@ -394,7 +394,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		SystemPromptOverrideFile: systemPromptOverrideFilePath,
 		MCPConfigJSON:            mcpConfigJSON,
 		AllowedToolsCSV:          allowedToolsCSV,
-		Env: s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
+		Env:                      s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
 	}
 
 	prep.adapter = adapter

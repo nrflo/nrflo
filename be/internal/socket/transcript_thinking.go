@@ -117,10 +117,8 @@ func (h *Handler) tailThinking(ctx context.Context, sessionID, transcriptPath st
 		thinkTexts []string
 	)
 
-	for {
-		if consumed >= maxTailBytesPerCall || lineCount >= maxTailLinesPerCall {
-			break
-		}
+	for consumed < maxTailBytesPerCall && lineCount < maxTailLinesPerCall {
+
 		line, readErr := r.ReadBytes('\n')
 		if readErr != nil {
 			// Partial line or EOF — leave unconsumed for next call
@@ -141,7 +139,7 @@ func (h *Handler) tailThinking(ctx context.Context, sessionID, transcriptPath st
 	}
 
 	var (
-		insertedRows            int
+		insertedRows                          int
 		lastProjectID, ticketID, workflowName string
 	)
 	for _, text := range thinkTexts {

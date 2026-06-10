@@ -139,7 +139,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	// recorded by markAgentStarted below.
 	rowCreated := s.createAgentSessionRow(proc.projectID, proc.ticketID, proc.workflowInstanceID,
 		proc.agentType, proc.sessionID, proc.modelID, prep.phase,
-		proc.spawnCommand, proc.prompt, proc.systemPrompt, "", proc.spawnToken, effectiveMode, 0)
+		proc.spawnCommand, proc.prompt, proc.systemPrompt, proc.spawnToken, effectiveMode, 0)
 
 	if err := backend.Start(context.Background(), proc, prep); err != nil {
 		// Roll back only the row we inserted, so a failed spawn leaves no

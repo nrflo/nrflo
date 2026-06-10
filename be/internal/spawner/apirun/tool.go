@@ -67,12 +67,12 @@ type ToolEnv struct {
 	// NRF_EXTERNAL_ID / NRF_EXTERNAL_CONTEXT, matching spawner.prepareScriptSpawn.
 	ExternalID      string
 	ExternalContext string
-	Findings           *service.FindingsService
-	ProjectFindings    *service.ProjectFindingsService
-	Agent              *service.AgentService
-	Workflow           *service.WorkflowService
-	Ticket             *service.TicketService
-	ArtifactSvc        *service.ArtifactService
+	Findings        *service.FindingsService
+	ProjectFindings *service.ProjectFindingsService
+	Agent           *service.AgentService
+	Workflow        *service.WorkflowService
+	Ticket          *service.TicketService
+	ArtifactSvc     *service.ArtifactService
 	// DispatchRepo is required for tools that record dispatch rows (tools_python).
 	// Nil-safe: handlers skip Insert when nil.
 	DispatchRepo *repo.DispatchRepo

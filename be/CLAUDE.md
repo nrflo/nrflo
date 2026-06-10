@@ -18,7 +18,7 @@ Top-level packages under `be/internal/`:
 - `ws/` — WebSocket protocol, hub, client management, event log
 - `pty/` — PTY session management for interactive agent control
 - `config/` — Configuration management
-- `client/` — Unix socket + HTTP clients
+- `client/` — Unix socket client
 - `static/` — Embedded UI assets + per-kind agent docs (`//go:embed`; `Manual(kind)`)
 - `socket/` — Unix socket server (agent communication: findings, callbacks, ws.broadcast)
 - `notify/` — Notification dispatch: Slack/Telegram/Script transports, async retry queue

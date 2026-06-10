@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -64,14 +63,6 @@ func CheckServer() error {
 	c := GetClient()
 	if !c.IsServerRunning() {
 		return client.ServerNotRunningError()
-	}
-	return nil
-}
-
-// RequireProject is a helper that ensures ProjectID is set
-func RequireProject() error {
-	if ProjectID == "" {
-		return fmt.Errorf("project not found. Set NRFLO_PROJECT env variable")
 	}
 	return nil
 }

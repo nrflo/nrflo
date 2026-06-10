@@ -330,14 +330,14 @@ func cleanupBroadcastCoalescing(completed []*processInfo) {
 	lastBroadcastMu.Unlock()
 }
 
-// saveMessages flushes pending messages and raw output to the database
+// saveMessages flushes pending messages and raw output to the database.
+// saveMu serializes drain+insert so concurrent flushes keep seq order.
 func (s *Spawner) saveMessages(proc *processInfo) {
-	// Drain pending messages
+	proc.saveMu.Lock()
+	defer proc.saveMu.Unlock()
 	proc.messagesMutex.Lock()
 	pending := proc.pendingMessages
 	proc.pendingMessages = make([]repo.MessageEntry, 0)
-	seqStart := proc.nextSeq
-	proc.nextSeq += len(pending)
 	proc.messagesMutex.Unlock()
 
 	if len(pending) == 0 {
@@ -350,7 +350,7 @@ func (s *Spawner) saveMessages(proc *processInfo) {
 	}
 
 	msgRepo := repo.NewAgentMessageRepo(pool, s.config.Clock)
-	_ = msgRepo.InsertBatch(proc.sessionID, seqStart, pending) // best-effort message persistence
+	_ = msgRepo.InsertBatch(proc.sessionID, pending) // best-effort message persistence
 
 	// Broadcast messages update for real-time UI (coalesced per session)
 	if proc.projectID != "" {

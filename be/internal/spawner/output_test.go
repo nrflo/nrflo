@@ -64,7 +64,6 @@ func TestMessageCoalescingWindow(t *testing.T) {
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
 		pendingMessages: make([]repo.MessageEntry, 0),
-		nextSeq:         0,
 	}
 
 	// Track messages and flush (first broadcast should always happen)
@@ -184,7 +183,6 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
 		pendingMessages: make([]repo.MessageEntry, 0),
-		nextSeq:         0,
 	}
 	proc2 := &processInfo{
 		sessionID:       sessionID2,
@@ -194,7 +192,6 @@ func TestMessageCoalescingPerSession(t *testing.T) {
 		workflowName:    "test",
 		modelID:         "cli:claude-sonnet-4",
 		pendingMessages: make([]repo.MessageEntry, 0),
-		nextSeq:         0,
 	}
 
 	// Flush from session 1
@@ -287,7 +284,6 @@ func TestMessageBroadcastPayloadFields(t *testing.T) {
 		workflowName:    "test",
 		modelID:         "cli:claude-opus-4",
 		pendingMessages: make([]repo.MessageEntry, 0),
-		nextSeq:         0,
 	}
 
 	// Track and save messages

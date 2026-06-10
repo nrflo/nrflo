@@ -48,6 +48,12 @@ func (r *TicketRefRepo) BulkCreate(refs []*model.TicketRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
+	return db.WithBusyRetry(func() error {
+		return r.bulkCreateOnce(refs)
+	})
+}
+
+func (r *TicketRefRepo) bulkCreateOnce(refs []*model.TicketRef) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	tx, err := r.db.Begin()

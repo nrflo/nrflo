@@ -3,7 +3,6 @@ package repo
 import (
 	"database/sql"
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,40 +40,9 @@ func findingNullStr(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: s != ""}
 }
 
-// isBusy reports whether err is a SQLite contention error worth retrying.
-// Covers both SQLITE_BUSY (code 5) and SQLITE_BUSY_SNAPSHOT (517) which
-// the modernc.org/sqlite driver surfaces as 'database is locked' strings.
-// SQLITE_BUSY_SNAPSHOT specifically fires when two writers race to upgrade
-// a deferred read txn to write under WAL mode -- a routine pattern in
-// findings since migration 000110 unified the JSON columns into one table.
-func isBusy(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "database is locked") || strings.Contains(msg, "SQLITE_BUSY")
-}
-
-// withTxRetry runs fn inside a retry loop. On SQLite contention errors fn
-// is re-invoked with a small linear backoff up to maxAttempts. Each attempt
-// must start its own transaction -- the previous one is rolled back by the
-// defer in fn before the retry fires.
-func withTxRetry(fn func() error) error {
-	const maxAttempts = 5
-	var err error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		err = fn()
-		if !isBusy(err) {
-			return err
-		}
-		time.Sleep(time.Duration(10*(attempt+1)) * time.Millisecond)
-	}
-	return err
-}
-
 // Upsert inserts or updates a single finding and records an 'add' history row.
 func (r *FindingRepo) Upsert(scope, scopeID, key string, value json.RawMessage, denorm Denorm, actor Actor) error {
-	return withTxRetry(func() error {
+	return db.WithBusyRetry(func() error {
 		return r.upsertOnce(scope, scopeID, key, value, denorm, actor)
 	})
 }
@@ -143,7 +111,7 @@ func (r *FindingRepo) upsertOnce(scope, scopeID, key string, value json.RawMessa
 // Append merges newValue into the existing finding using array-merge semantics,
 // recording an 'append' history row.
 func (r *FindingRepo) Append(scope, scopeID, key string, newValue json.RawMessage, denorm Denorm, actor Actor) error {
-	return withTxRetry(func() error {
+	return db.WithBusyRetry(func() error {
 		return r.appendOnce(scope, scopeID, key, newValue, denorm, actor)
 	})
 }
@@ -232,7 +200,7 @@ func (r *FindingRepo) DeleteKeys(scope, scopeID string, keys []string, actor Act
 		return nil, nil
 	}
 	var deleted []string
-	err := withTxRetry(func() error {
+	err := db.WithBusyRetry(func() error {
 		out, dErr := r.deleteKeysOnce(scope, scopeID, keys, actor)
 		if dErr != nil {
 			return dErr

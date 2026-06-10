@@ -86,12 +86,7 @@ func recordUserInputFallback(dataPath string, clk clock.Clock, hub *ws.Hub, sess
 
 	pool := db.WrapAsPool(database)
 	msgRepo := repo.NewAgentMessageRepo(pool, clk)
-	count, err := msgRepo.CountBySession(sessionID)
-	if err != nil {
-		logger.Warn(context.Background(), "user input fallback: count failed", "session_id", sessionID, "err", err)
-		return
-	}
-	if err := msgRepo.InsertBatch(sessionID, count, []repo.MessageEntry{{Content: text, Category: "user_input"}}); err != nil {
+	if err := msgRepo.InsertBatch(sessionID, []repo.MessageEntry{{Content: text, Category: "user_input"}}); err != nil {
 		logger.Warn(context.Background(), "user input fallback: insert failed", "session_id", sessionID, "err", err)
 		return
 	}

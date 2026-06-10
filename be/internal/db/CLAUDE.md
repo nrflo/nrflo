@@ -9,12 +9,14 @@ SQLite database layer with connection pooling, auto-migration, and embedded SQL 
 - Repos that don't need pool/DB-specific features accept `db.Querier`
 - Enables passing either `*DB` or `*Pool` to the same repo constructor
 
-## Connection Pool
+## Connection Pool & Write Concurrency
 
 `pool.go` manages the connection pool:
 - Max connections: 10
 - Max idle connections: 5
 - Pure Go SQLite via `modernc.org/sqlite` (no CGO)
+
+The DSN (`buildDSN`, db.go) sets per-connection `busy_timeout(10000)`, `foreign_keys(1)`, and `_txlock=immediate`; WAL is enabled at open. `_txlock=immediate` makes every `Begin()` issue BEGIN IMMEDIATE, so writers queue on busy_timeout instead of failing deferred read→write upgrades with SQLITE_BUSY_SNAPSHOT (which bypasses busy_timeout by design). Wrap multi-statement write transactions in `db.WithBusyRetry` (retry.go) as a contention backstop; each attempt must open its own transaction.
 
 ## Schema and Migrations
 
@@ -41,6 +43,7 @@ This is the canonical KV store — do not create new tables for similar use case
 |------|---------|
 | `db.go` | SQLite connection setup, `Querier` interface |
 | `pool.go` | Connection pool (10 max, 5 idle) |
+| `retry.go` | `IsBusy` + `WithBusyRetry` for write transactions |
 | `migrate.go` | Migration runner |
 | `migrations/` | SQL files (embedded via `//go:embed`) |
 | `migrations/embed.go` | Go embed directive |

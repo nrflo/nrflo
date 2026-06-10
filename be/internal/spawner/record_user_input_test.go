@@ -224,6 +224,5 @@ func newRUIProc(projectID, ticketID, sessionID string) *processInfo {
 		workflowName:    "test",
 		modelID:         "claude:sonnet",
 		pendingMessages: make([]repo.MessageEntry, 0),
-		nextSeq:         0,
 	}
 }

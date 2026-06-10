@@ -288,8 +288,8 @@ func TestAgentLogImprovements_BatchInsertPreservesTimestamps(t *testing.T) {
 
 	insertTestSession(t, env, "sess-bi-1", "BI-1")
 
-	msgRepo := repo.NewAgentMessagePoolRepo(env.Pool, clock.Real())
-	err := msgRepo.InsertBatch("sess-bi-1", 0, []repo.MessageEntry{
+	msgRepo := repo.NewAgentMessageRepo(env.Pool, clock.Real())
+	err := msgRepo.InsertBatch("sess-bi-1", []repo.MessageEntry{
 		{Content: "[Bash] git status", Category: "tool"},
 		{Content: "[Read] main.go", Category: "tool"},
 		{Content: "[Edit] handler.go", Category: "tool"},

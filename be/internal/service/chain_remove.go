@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -35,30 +36,39 @@ func (s *ChainService) RemoveFromChain(chainID string, ticketIDs []string) (*mod
 		}
 	}
 
+	if err := db.WithBusyRetry(func() error {
+		return s.removeFromChainOnce(chainID, deduped)
+	}); err != nil {
+		return nil, err
+	}
+
+	return s.GetChainWithItems(chainID)
+}
+
+func (s *ChainService) removeFromChainOnce(chainID string, deduped []string) error {
 	tx, err := s.pool.Begin()
 	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() //nolint:errcheck
 
 	itemRepo := repo.NewChainItemRepo(s.pool, s.clock)
 	deleted, err := itemRepo.DeletePendingByTicketIDsTx(tx, chainID, deduped)
 	if err != nil {
-		return nil, fmt.Errorf("failed to delete pending items: %w", err)
+		return fmt.Errorf("failed to delete pending items: %w", err)
 	}
 
 	if deleted < int64(len(deduped)) {
-		return nil, fmt.Errorf("could not remove %d of %d items (not pending or not in chain)", int64(len(deduped))-deleted, len(deduped))
+		return fmt.Errorf("could not remove %d of %d items (not pending or not in chain)", int64(len(deduped))-deleted, len(deduped))
 	}
 
 	lockRepo := repo.NewChainLockRepo(s.pool)
 	if err := lockRepo.DeleteLocksByTicketIDsTx(tx, chainID, deduped); err != nil {
-		return nil, fmt.Errorf("failed to release locks: %w", err)
+		return fmt.Errorf("failed to release locks: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit removal: %w", err)
+		return fmt.Errorf("failed to commit removal: %w", err)
 	}
-
-	return s.GetChainWithItems(chainID)
+	return nil
 }

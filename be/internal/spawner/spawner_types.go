@@ -100,8 +100,8 @@ type processInfo struct {
 	timeout         time.Duration
 	pendingMessages []repo.MessageEntry // messages not yet flushed to DB
 	lastMessage     string              // most recent message (for status display)
-	nextSeq         int                 // next sequence number for agent_messages table
 	messagesMutex   sync.Mutex
+	saveMu          sync.Mutex // serializes saveMessages drain+insert per proc
 	pendingTasks    map[string]taskInfo // tool_use_id -> taskInfo for in-flight Task invocations
 	finalStatus     string
 	elapsed         time.Duration

@@ -145,6 +145,22 @@ func (r *WorkflowChainRunRepo) SetCurrentPosition(runID string, position int) er
 // MaterializeRunSteps inserts run steps derived from chain step definitions in a single transaction.
 // Returns the created run step rows.
 func (r *WorkflowChainRunRepo) MaterializeRunSteps(runID string, steps []*model.WorkflowChainStep) ([]*model.WorkflowChainRunStep, error) {
+	var created []*model.WorkflowChainRunStep
+	err := db.WithBusyRetry(func() error {
+		out, mErr := r.materializeRunStepsOnce(runID, steps)
+		if mErr != nil {
+			return mErr
+		}
+		created = out
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+func (r *WorkflowChainRunRepo) materializeRunStepsOnce(runID string, steps []*model.WorkflowChainStep) ([]*model.WorkflowChainRunStep, error) {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := r.db.Begin()
 	if err != nil {

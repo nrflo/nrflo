@@ -105,10 +105,18 @@ func OpenPathExisting(path string) (*DB, error) {
 // buildDSN returns a DSN with per-connection pragmas (busy_timeout, foreign_keys).
 // These are set via _pragma in the DSN so every pooled connection gets them,
 // not just the first one (which is what happens with Exec-based PRAGMA calls).
+//
+// _txlock=immediate makes every Begin() issue BEGIN IMMEDIATE: the write lock
+// is taken up front, where busy_timeout applies, instead of on the first write
+// statement — a deferred read→write upgrade under WAL fails instantly with
+// SQLITE_BUSY_SNAPSHOT when another writer committed since the read, and
+// busy_timeout cannot help there by design. All Begin() call sites are write
+// transactions, so no read path pays for this.
 func buildDSN(path string) string {
 	v := url.Values{}
 	v.Add("_pragma", "busy_timeout(10000)")
 	v.Add("_pragma", "foreign_keys(1)")
+	v.Add("_txlock", "immediate")
 	return "file:" + path + "?" + v.Encode()
 }
 

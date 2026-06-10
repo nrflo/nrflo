@@ -49,7 +49,7 @@ type AgentService struct {
 	clock       clock.Clock
 	pool        *db.Pool
 	workflowSvc *WorkflowService
-	msgRepo     *repo.AgentMessagePoolRepo
+	msgRepo     *repo.AgentMessageRepo
 }
 
 // NewAgentService creates a new agent service
@@ -58,7 +58,7 @@ func NewAgentService(pool *db.Pool, clk clock.Clock) *AgentService {
 		clock:       clk,
 		pool:        pool,
 		workflowSvc: NewWorkflowService(pool, clk),
-		msgRepo:     repo.NewAgentMessagePoolRepo(pool, clk),
+		msgRepo:     repo.NewAgentMessageRepo(pool, clk),
 	}
 }
 
@@ -355,17 +355,7 @@ func (s *AgentService) IncrementNudgeCount(sessionID string) (int, error) {
 // project/ticket/workflow IDs needed by the caller for WS broadcast.
 // Returns empty strings (no error) when the session is not found.
 func (s *AgentService) RecordHookMessage(sessionID, content, category, payload string) (projectID, ticketID, workflowName string, err error) {
-	// Compute next seq from existing rows
-	var seq int
-	if err = s.pool.QueryRow(
-		`SELECT COALESCE(MAX(seq), -1) + 1 FROM agent_messages WHERE session_id = ?`,
-		sessionID,
-	).Scan(&seq); err != nil {
-		return "", "", "", err
-	}
-
-	msgRepo := repo.NewAgentMessagePoolRepo(s.pool, s.clock)
-	if err = msgRepo.InsertBatch(sessionID, seq, []repo.MessageEntry{{Content: content, Category: category, Payload: payload}}); err != nil {
+	if err = s.msgRepo.InsertBatch(sessionID, []repo.MessageEntry{{Content: content, Category: category, Payload: payload}}); err != nil {
 		return "", "", "", err
 	}
 

@@ -201,6 +201,12 @@ func (r *WorkflowChainStepRepo) ListSteps(chainID string) ([]*model.WorkflowChai
 
 // BulkReorder assigns each step in stepIDsInOrder its index as the new position.
 func (r *WorkflowChainStepRepo) BulkReorder(chainID string, stepIDsInOrder []string) error {
+	return db.WithBusyRetry(func() error {
+		return r.bulkReorderOnce(chainID, stepIDsInOrder)
+	})
+}
+
+func (r *WorkflowChainStepRepo) bulkReorderOnce(chainID string, stepIDsInOrder []string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	tx, err := r.db.Begin()
 	if err != nil {

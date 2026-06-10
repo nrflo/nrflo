@@ -137,8 +137,8 @@ func TestSessionMessages_InsertBatch_CategoryPersisted(t *testing.T) {
 	env := NewTestEnv(t)
 	insertTestSession(t, env, "sess-ib-cat1", "IB-CAT1")
 
-	msgRepo := repo.NewAgentMessagePoolRepo(env.Pool, clock.Real())
-	err := msgRepo.InsertBatch("sess-ib-cat1", 0, []repo.MessageEntry{
+	msgRepo := repo.NewAgentMessageRepo(env.Pool, clock.Real())
+	err := msgRepo.InsertBatch("sess-ib-cat1", []repo.MessageEntry{
 		{Content: "[Task] run agent", Category: "subagent"},
 		{Content: "[Bash] git diff", Category: "tool"},
 		{Content: "[Skill] commit", Category: "skill"},
@@ -179,9 +179,9 @@ func TestSessionMessages_InsertBatch_DefaultCategory_IsText(t *testing.T) {
 	env := NewTestEnv(t)
 	insertTestSession(t, env, "sess-ib-def1", "IB-DEF1")
 
-	msgRepo := repo.NewAgentMessagePoolRepo(env.Pool, clock.Real())
+	msgRepo := repo.NewAgentMessageRepo(env.Pool, clock.Real())
 	// Category is empty string — should default to "text"
-	err := msgRepo.InsertBatch("sess-ib-def1", 0, []repo.MessageEntry{
+	err := msgRepo.InsertBatch("sess-ib-def1", []repo.MessageEntry{
 		{Content: "no category specified"},
 	})
 	if err != nil {
@@ -204,8 +204,8 @@ func TestSessionMessages_CategoryInGetSessionMessages_Returned(t *testing.T) {
 	env := NewTestEnv(t)
 	insertTestSession(t, env, "sess-cat-ret1", "CATRET-1")
 
-	msgRepo := repo.NewAgentMessagePoolRepo(env.Pool, clock.Real())
-	err := msgRepo.InsertBatch("sess-cat-ret1", 0, []repo.MessageEntry{
+	msgRepo := repo.NewAgentMessageRepo(env.Pool, clock.Real())
+	err := msgRepo.InsertBatch("sess-cat-ret1", []repo.MessageEntry{
 		{Content: "[Task] analyze", Category: "subagent"},
 		{Content: "hello", Category: "text"},
 	})

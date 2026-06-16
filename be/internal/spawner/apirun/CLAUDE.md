@@ -66,6 +66,10 @@ Thinking is requested by setting `params.Thinking = sdk.ThinkingConfigParamOfEna
 
 Display gate: thinking deltas are emitted as `category="thinking"` agent-log rows only when `capture_thinking_enabled` is true (project > global > default false). `Config.CaptureThinking` carries the resolved flag from `spawner_prepare.go` → `apirun.Config` → `newRunnerSink`. The separate `thinkBuf` in `runnerSink` ensures thinking content is never mixed into `"text"` rows and is flushed before text/tool-use within each turn.
 
+## Prompt Caching (Anthropic)
+
+The runner re-sends the full transcript every turn, so without caching a long tool loop re-bills the whole conversation each turn. `apiBackend.Start` sets `Config.CacheBreakpoints` to `{system, message}`; the runner forwards them on every `provider.Request`. Anthropic placement + the 4-slot / 20-block-lookback handling live in `provider/anthropic/cache.go`: the system marker also caches the tool definitions (tools render first), and `CacheTargetMessage` slides a marker onto the latest message each turn, adding intermediate markers when a turn appends more blocks than the lookback window. Markers MUST carry a non-zero TTL (`ephemeralCacheControl()`) — a zero-valued `CacheControlEphemeralParam{}` is dropped by the SDK's `omitzero` tag. OpenAI ignores breakpoints. Verify via `usage.cache_read_input_tokens` (`provider.Usage.CacheReadTokens`).
+
 ## Stall Detection
 
 `runner.go`/`sink.go` call `TrackMessage` on each text/tool-use event, identical to CLI agents. Stall detection in `stall_restart.go`; cap 15 restarts.

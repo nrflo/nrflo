@@ -132,15 +132,23 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 	procState := &procStateAdapter{proc: proc}
 
 	runner := apirun.NewRunner(apirun.Config{
-		Provider:        prep.apiProvider,
-		Sink:            sink,
-		AgentSvc:        b.agentSvc,
-		ErrorSvc:        apirunErrorAdapter(b.s.config.ErrorSvc),
-		System:          prep.apiSystem,
-		InitialPrompt:   prep.apiInitialPrompt,
-		Tools:           prep.apiTools,
-		Handlers:        prep.apiHandlers,
-		Env:             prep.apiToolEnv,
+		Provider:      prep.apiProvider,
+		Sink:          sink,
+		AgentSvc:      b.agentSvc,
+		ErrorSvc:      apirunErrorAdapter(b.s.config.ErrorSvc),
+		System:        prep.apiSystem,
+		InitialPrompt: prep.apiInitialPrompt,
+		Tools:         prep.apiTools,
+		Handlers:      prep.apiHandlers,
+		Env:           prep.apiToolEnv,
+		// Prompt caching: one marker on the system block (also caches the tool
+		// definitions, since tools render first) plus a sliding marker on the
+		// conversation tail each turn. Without it, every turn of the loop
+		// re-bills the full transcript at uncached input rates.
+		CacheBreakpoints: []provider.CacheBreakpoint{
+			{Target: provider.CacheTargetSystem},
+			{Target: provider.CacheTargetMessage},
+		},
 		Model:           prep.apiModelID,
 		MaxIterations:   prep.apiMaxIterations,
 		MaxTokens:       prep.apiMaxTokens,

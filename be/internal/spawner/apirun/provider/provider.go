@@ -85,8 +85,8 @@ const (
 )
 
 // CacheBreakpoint is a hint to the provider about where to attach a cache
-// marker. Anthropic supports at most two breakpoints today; providers without
-// caching may ignore this.
+// marker. Anthropic allows up to 4 cache_control breakpoints per request;
+// providers without caching may ignore this.
 type CacheBreakpoint struct {
 	Target CacheBreakpointTarget
 }

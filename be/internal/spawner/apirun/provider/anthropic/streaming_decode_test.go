@@ -173,8 +173,8 @@ func TestRun_StreamingHappyPath(t *testing.T) {
 	if rt.lastReq == nil {
 		t.Fatalf("fake transport never received a request")
 	}
-	if got := rt.lastReq.Header.Get("anthropic-beta"); !strings.Contains(got, "prompt-caching") {
-		t.Errorf("anthropic-beta header = %q, want substring 'prompt-caching'", got)
+	if got := rt.lastReq.Header.Get("anthropic-version"); got == "" {
+		t.Errorf("anthropic-version header missing; SDK should always set it")
 	}
 }
 

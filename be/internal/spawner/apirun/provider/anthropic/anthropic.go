@@ -2,11 +2,11 @@
 // github.com/anthropics/anthropic-sdk-go SDK. Only streaming is supported —
 // non-streaming has no callers and is intentionally not implemented.
 //
-// Cache breakpoints map onto Anthropic's two slot limit: the first SYSTEM
-// breakpoint attaches cache_control:ephemeral to the system block, the next
-// TOOLS breakpoint attaches it to the LAST tool definition. Additional
-// breakpoints in the request are silently ignored — Anthropic's API enforces
-// a 4-slot maximum but T2 only uses two (system + tools).
+// Cache breakpoints map onto Anthropic's 4-slot cache_control limit: a SYSTEM
+// breakpoint marks the system block (which also caches the tool definitions,
+// since tools render before system), a TOOLS breakpoint marks the last tool,
+// and MESSAGE breakpoints slide along the conversation tail each turn. See
+// cache.go for placement and lookback-window handling.
 package anthropic
 
 import (
@@ -21,11 +21,6 @@ import (
 
 	"be/internal/spawner/apirun/provider"
 )
-
-// betaPromptCaching is the legacy beta header value. Prompt caching is GA on
-// v1 of the SDK so this is largely informational, but we send it to remain
-// compatible with older API endpoints / proxies.
-const betaPromptCaching = "prompt-caching-2024-07-31"
 
 // claudeCodeIdentitySystem is the system-prompt block Anthropic requires as
 // the leading block when authenticating with an OAuth bearer token. Without
@@ -92,9 +87,7 @@ func (p *anthropicProvider) Run(ctx context.Context, req provider.Request, sink 
 			params.System...,
 		)
 	}
-	stream := p.client.Messages.NewStreaming(ctx, params,
-		option.WithHeaderAdd("anthropic-beta", betaPromptCaching),
-	)
+	stream := p.client.Messages.NewStreaming(ctx, params)
 	defer stream.Close()
 
 	return decodeStream(stream, sink)

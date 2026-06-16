@@ -55,8 +55,8 @@ func TestRun_APIKey_Headers(t *testing.T) {
 		t.Errorf("Authorization = %q, want empty for API key auth", got)
 	}
 	betaHdr := rt.lastReq.Header.Get("anthropic-beta")
-	if !strings.Contains(betaHdr, "prompt-caching-2024-07-31") {
-		t.Errorf("anthropic-beta = %q, want it to contain prompt-caching-2024-07-31", betaHdr)
+	if strings.Contains(betaHdr, "prompt-caching") {
+		t.Errorf("anthropic-beta = %q, legacy prompt-caching beta header must not be sent (caching is GA)", betaHdr)
 	}
 	if strings.Contains(betaHdr, "oauth-2025-04-20") {
 		t.Errorf("anthropic-beta = %q, must NOT contain oauth-2025-04-20 for API key auth", betaHdr)
@@ -87,8 +87,8 @@ func TestRun_OAuthBearer_Headers(t *testing.T) {
 	if !strings.Contains(betaHdr, "oauth-2025-04-20") {
 		t.Errorf("anthropic-beta = %q, want it to contain oauth-2025-04-20", betaHdr)
 	}
-	if !strings.Contains(betaHdr, "prompt-caching-2024-07-31") {
-		t.Errorf("anthropic-beta = %q, want it to contain prompt-caching-2024-07-31", betaHdr)
+	if strings.Contains(betaHdr, "prompt-caching") {
+		t.Errorf("anthropic-beta = %q, legacy prompt-caching beta header must not be sent (caching is GA)", betaHdr)
 	}
 }
 

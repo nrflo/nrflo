@@ -48,19 +48,22 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 
 	wantSystemCache := false
 	wantToolsCache := false
+	wantMessageCache := false
 	for _, b := range req.CacheBreakpoints {
 		switch b.Target {
 		case provider.CacheTargetSystem:
 			wantSystemCache = true
 		case provider.CacheTargetTools:
 			wantToolsCache = true
+		case provider.CacheTargetMessage:
+			wantMessageCache = true
 		}
 	}
 
 	if req.System != "" {
 		sys := sdk.TextBlockParam{Text: req.System}
 		if wantSystemCache {
-			sys.CacheControl = sdk.CacheControlEphemeralParam{}
+			sys.CacheControl = ephemeralCacheControl()
 		}
 		params.System = []sdk.TextBlockParam{sys}
 	}
@@ -85,7 +88,7 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 		// any earlier tool wastes a breakpoint slot.
 		if wantToolsCache {
 			last := tools[len(tools)-1].OfTool
-			last.CacheControl = sdk.CacheControlEphemeralParam{}
+			last.CacheControl = ephemeralCacheControl()
 		}
 		params.Tools = tools
 	}
@@ -101,6 +104,16 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 				Role:    sdk.MessageParamRole(m.Role),
 				Content: content,
 			})
+		}
+		if wantMessageCache {
+			budget := maxCacheBreakpoints
+			if wantSystemCache {
+				budget--
+			}
+			if wantToolsCache {
+				budget--
+			}
+			applyMessageCacheBreakpoints(msgs, budget)
 		}
 		params.Messages = msgs
 	}

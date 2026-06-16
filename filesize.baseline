@@ -96,7 +96,7 @@ be/internal/repo/ticket_blocked.go	325
 be/internal/repo/ticket_search_test.go	362
 be/internal/repo/workflow_instance_cleanup_test.go	319
 be/internal/scheduler/scheduler_dispatch_test.go	337
-be/internal/service/agent.go	668
+be/internal/service/agent.go	658
 be/internal/service/agent_definition.go	648
 be/internal/service/agent_definition_script_test.go	321
 be/internal/service/api_model.go	366
@@ -131,7 +131,6 @@ be/internal/socket/handler.go	446
 be/internal/socket/handler_record_event_test.go	352
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	340
-be/internal/spawner/apirun/provider/anthropic/translate_test.go	400
 be/internal/spawner/apirun/runner_test.go	475
 be/internal/spawner/apirun/runner_tools_test.go	416
 be/internal/spawner/apirun/tools_builtin/artifact_test.go	337
@@ -150,7 +149,7 @@ be/internal/spawner/output_claude_advanced_test.go	453
 be/internal/spawner/output_claude_agent_test.go	492
 be/internal/spawner/output_claude_events_test.go	313
 be/internal/spawner/output_claude_test.go	368
-be/internal/spawner/output_test.go	329
+be/internal/spawner/output_test.go	325
 be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
 be/internal/spawner/spawner_prepare.go	407

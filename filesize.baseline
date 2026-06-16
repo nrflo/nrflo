@@ -85,7 +85,7 @@ be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
 be/internal/orchestrator/orchestrator_worktree_test.go	757
 be/internal/repo/agent_definition.go	394
-be/internal/repo/agent_session.go	677
+be/internal/repo/agent_session.go	688
 be/internal/repo/artifact_test.go	318
 be/internal/repo/audit_repo_test.go	307
 be/internal/repo/daily_stats_test.go	440
@@ -108,7 +108,7 @@ be/internal/service/chain_order_test.go	413
 be/internal/service/chain_preview_test.go	343
 be/internal/service/chain_remove_test.go	425
 be/internal/service/chain_test.go	723
-be/internal/service/cli_model.go	375
+be/internal/service/cli_model.go	415
 be/internal/service/cli_model_test.go	629
 be/internal/service/daily_stats_test.go	604
 be/internal/service/default_template_type_test.go	362
@@ -127,7 +127,7 @@ be/internal/service/workflow_defs_next_on_success_test.go	373
 be/internal/service/workflow_derive_test.go	548
 be/internal/service/workflow_response.go	408
 be/internal/service/worktree_test.go	495
-be/internal/socket/handler.go	446
+be/internal/socket/handler.go	489
 be/internal/socket/handler_record_event_test.go	352
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	340
@@ -152,7 +152,7 @@ be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	325
 be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
-be/internal/spawner/spawner_prepare.go	407
+be/internal/spawner/spawner_prepare.go	409
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	332
 be/internal/spawner/template_extra_vars_test.go	318
@@ -162,7 +162,7 @@ be/internal/spawner/to_resume_integration_test.go	359
 be/internal/spawner/to_resume_test.go	472
 be/internal/venv/manager_test.go	328
 be/internal/ws/event_test.go	307
-be/internal/ws/hub.go	482
+be/internal/ws/hub.go	483
 be/internal/ws/integration_e2e_test.go	331
 be/internal/ws/replay_test.go	430
 be/internal/ws/snapshot_test.go	301

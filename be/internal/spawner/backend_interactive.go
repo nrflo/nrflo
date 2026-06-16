@@ -79,6 +79,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		SessionID:                sessionID,
 		Model:                    model,
 		ReasoningEffort:          prep.opts.ReasoningEffort,
+		FallbackModels:           prep.opts.FallbackModels,
 		WorkDir:                  workDir,
 		Env:                      env,
 		SystemPromptFile:         prep.suffixFile,               // non-empty for Claude (written by prepareSpawn)

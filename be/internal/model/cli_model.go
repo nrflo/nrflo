@@ -9,6 +9,7 @@ type CLIModel struct {
 	DisplayName     string    `json:"display_name"`
 	MappedModel     string    `json:"mapped_model"`
 	ReasoningEffort string    `json:"reasoning_effort"`
+	FallbackModels  string    `json:"fallback_models"`
 	ContextLength   int       `json:"context_length"`
 	ReadOnly        bool      `json:"read_only"`
 	Enabled         bool      `json:"enabled"`

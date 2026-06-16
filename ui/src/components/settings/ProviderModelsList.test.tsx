@@ -219,7 +219,7 @@ describe('ProviderModelsList', () => {
     })
   })
 
-  it('saving a read-only built-in claude model sends only reasoning_effort', async () => {
+  it('saving a read-only built-in claude model sends reasoning_effort + fallback_models', async () => {
     vi.mocked(useCLIModels).mockReturnValue({
       data: [makeModel({ id: 'opus_4_7', read_only: true })],
       isLoading: false,
@@ -235,7 +235,7 @@ describe('ProviderModelsList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => {
-      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', { reasoning_effort: '' })
+      expect(cliModelsApi.updateCLIModel).toHaveBeenCalledWith('opus_4_7', { reasoning_effort: '', fallback_models: '' })
     })
     const payload = vi.mocked(cliModelsApi.updateCLIModel).mock.calls[0][1]
     expect(payload).not.toHaveProperty('override_system_prompt')

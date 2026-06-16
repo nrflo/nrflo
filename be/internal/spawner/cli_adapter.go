@@ -121,6 +121,7 @@ type InteractiveSpawnOptions struct {
 	SessionID                string
 	Model                    string
 	ReasoningEffort          string // passed as --effort (Claude)
+	FallbackModels           string // Claude only: comma-separated --fallback-model chain (≤3); ignored by non-Claude adapters
 	WorkDir                  string
 	Env                      []string
 	SystemPromptFile         string // path to suffix file; Claude: --append-system-prompt-file; others: ignored
@@ -184,6 +185,7 @@ type SpawnOptions struct {
 	Env                      []string
 	MappedModel              string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
 	ReasoningEffort          string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
+	FallbackModels           string // Claude only / ignored by non-Claude adapters: comma-separated --fallback-model chain (≤3)
 	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
 	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
 	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only)

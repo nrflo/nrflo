@@ -50,6 +50,7 @@ const (
 	EventAgentStallWaiting          = "agent.stall_waiting"
 	EventAgentStallRestart          = "agent.stall_restart"
 	EventAgentRateLimited           = "agent.rate_limited"
+	EventAgentRateLimitsUpdated     = "agent.rate_limits_updated"
 	EventAgentNudged                = "agent.nudged"
 	EventAgentContextSaving         = "agent.context_saving"
 	EventSkipTagAdded               = "skip_tag.added"

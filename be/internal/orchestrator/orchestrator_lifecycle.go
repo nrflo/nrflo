@@ -28,6 +28,7 @@ func (o *Orchestrator) loadModelConfigs(pool *db.Pool) (map[string]spawner.Model
 			CLIType:         m.CLIType,
 			MappedModel:     m.MappedModel,
 			ReasoningEffort: m.ReasoningEffort,
+			FallbackModels:  m.FallbackModels,
 			ContextLength:   m.ContextLength,
 		}
 	}

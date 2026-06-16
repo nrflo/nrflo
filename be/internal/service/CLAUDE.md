@@ -30,7 +30,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `worktree.go` | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup |
 | `system_agent_definition.go` | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
-| `cli_model.go` | CLI model CRUD; `validateReasoningEffort` enforces allowed values (`xhigh` only for claude-opus-4-7/4-8); readonly rows only accept `reasoning_effort` updates |
+| `cli_model.go` | CLI model CRUD; `validateReasoningEffort` enforces allowed values (`xhigh` only for claude-opus-4-7/4-8); `normalizeFallbackModels` caps the claude-only `fallback_models` chain at 3; readonly rows only accept `reasoning_effort` + `fallback_models` updates |
 | `api_model.go` | API model CRUD (provider: anthropic/openai); `validateAPIReasoningEffort` enforces `xhigh` only on Anthropic Opus 4.7/4.8; readonly rows only accept `reasoning_effort` updates; `IsValidModel` used by `agent_definition.go` and `system_agent_definition.go` for api-mode validation |
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |

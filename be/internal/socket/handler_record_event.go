@@ -95,9 +95,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		}
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
 	case "Stop":
-		// Per-turn boundary. Acknowledged but not recorded — completion is
-		// signaled by `agent finished/fail/continue`, not by this event.
-		return MakeResponse(req.ID, map[string]string{"status": "recorded"})
+		return h.handleStopHook(ctx, req, params.SessionID)
 	case "SessionEnd":
 		// Predictable per-session noise — ignored. Clean up offset state.
 		h.thinkingMu.Lock()

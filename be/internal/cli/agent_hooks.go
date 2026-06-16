@@ -88,14 +88,32 @@ Context is read from environment variables set by the spawner:
 		addSpawnerIDs(reqParams)
 
 		// Enforce a 2s hard deadline — hooks must not block the agent.
+		var resp struct {
+			StopDecision *struct {
+				Block  bool   `json:"block"`
+				Reason string `json:"reason"`
+			} `json:"stop_decision"`
+		}
 		type result struct{ err error }
 		ch := make(chan result, 1)
 		go func() {
-			ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.record_event", reqParams, nil)}
+			ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.record_event", reqParams, &resp)}
 		}()
 		select {
 		case r := <-ch:
-			return r.err
+			if r.err != nil {
+				return r.err
+			}
+			// Stop-hook control output: blocks the turn-end and feeds `reason` back
+			// to the model so it keeps going until it calls a completion tool.
+			if resp.StopDecision != nil && resp.StopDecision.Block {
+				out, _ := json.Marshal(map[string]interface{}{
+					"decision": "block",
+					"reason":   resp.StopDecision.Reason,
+				})
+				fmt.Fprintln(cmd.OutOrStdout(), string(out))
+			}
+			return nil
 		case <-time.After(2 * time.Second):
 			return fmt.Errorf("record-event: server did not respond within 2s")
 		}

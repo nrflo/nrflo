@@ -102,6 +102,49 @@ func (h *Handler) handleAgent(ctx context.Context, req Request, action string) R
 		return MakeResponse(req.ID, map[string]string{"status": "updated"})
 	}
 
+	if action == "rate_limits_update" {
+		var params struct {
+			SessionID string `json:"session_id"`
+			FiveHour  *struct {
+				UsedPercentage *float64 `json:"used_percentage"`
+				ResetsAt       string   `json:"resets_at"`
+			} `json:"five_hour"`
+			SevenDay *struct {
+				UsedPercentage *float64 `json:"used_percentage"`
+				ResetsAt       string   `json:"resets_at"`
+			} `json:"seven_day"`
+		}
+		if err := json.Unmarshal(req.Params, &params); err != nil {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+		}
+		if params.SessionID == "" {
+			return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+		}
+		var fiveHour, sevenDay service.RateLimitWindow
+		if params.FiveHour != nil {
+			fiveHour = service.RateLimitWindow{UsedPercentage: params.FiveHour.UsedPercentage, ResetsAt: params.FiveHour.ResetsAt}
+		}
+		if params.SevenDay != nil {
+			sevenDay = service.RateLimitWindow{UsedPercentage: params.SevenDay.UsedPercentage, ResetsAt: params.SevenDay.ResetsAt}
+		}
+		projectID, ticketID, workflow, err := h.agentSvc.UpdateRateLimits(params.SessionID, fiveHour, sevenDay)
+		if err != nil {
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+		if projectID != "" {
+			service.BroadcastFromCtx(h.wsHub, ws.EventAgentRateLimitsUpdated, service.BroadcastCtx{
+				ProjectID: projectID,
+				TicketID:  ticketID,
+				Workflow:  workflow,
+			}, map[string]interface{}{
+				"session_id": params.SessionID,
+				"five_hour":  params.FiveHour,
+				"seven_day":  params.SevenDay,
+			})
+		}
+		return MakeResponse(req.ID, map[string]string{"status": "updated"})
+	}
+
 	projectID := req.Project
 	if projectID == "" {
 		return MakeErrorResponse(req.ID, NewValidationError("project is required"))

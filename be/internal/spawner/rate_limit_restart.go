@@ -22,7 +22,7 @@ import (
 // is a safe no-op (doneCh is already closed).
 func (s *Spawner) handleRateLimitRetry(ctx context.Context, proc *processInfo, req SpawnRequest, matchedPattern string) {
 	upcomingCount := proc.rateLimitRetryCount + 1
-	delay := computeRateLimitDelay(proc.rateLimitConfig, upcomingCount)
+	delay := resetAwareDelay(proc.rateLimitConfig, upcomingCount, s.rateLimitResetTs(proc), s.config.Clock.Now())
 
 	s.broadcast(ws.EventAgentRateLimited, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"session_id":         proc.sessionID,
@@ -66,7 +66,7 @@ func (s *Spawner) handleRateLimitRetry(ctx context.Context, proc *processInfo, r
 // next spawn. Uses the clock abstraction so tests can control time without
 // real sleeps. Returns true if the wait completed, false if ctx was cancelled.
 func (s *Spawner) waitForRateLimitRetry(ctx context.Context, proc *processInfo, _ SpawnRequest) bool {
-	delay := computeRateLimitDelay(proc.rateLimitConfig, proc.rateLimitRetryCount)
+	delay := resetAwareDelay(proc.rateLimitConfig, proc.rateLimitRetryCount, s.rateLimitResetTs(proc), s.config.Clock.Now())
 
 	logger.Info(ctx, "rate-limit retry: waiting before relaunch",
 		"delay", delay,
@@ -82,4 +82,15 @@ func (s *Spawner) waitForRateLimitRetry(ctx context.Context, proc *processInfo, 
 		proc.rateLimitTotalWait += delay
 		return true
 	}
+}
+
+// rateLimitResetTs reads the session's anticipated subscription reset time
+// (recorded by the statusline rate_limits dispatch), or "" when unknown.
+func (s *Spawner) rateLimitResetTs(proc *processInfo) string {
+	pool := s.pool()
+	if pool == nil {
+		return ""
+	}
+	ts, _ := repo.NewAgentSessionRepo(pool, s.config.Clock).GetRateLimitResetTs(proc.sessionID)
+	return ts
 }

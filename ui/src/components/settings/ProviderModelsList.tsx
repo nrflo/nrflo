@@ -34,6 +34,7 @@ function modelToFormData(m: CLIModel): CLIModelFormData {
     display_name: m.display_name,
     mapped_model: m.mapped_model,
     reasoning_effort: m.reasoning_effort || '',
+    fallback_models: m.fallback_models || '',
     context_length: String(m.context_length),
   }
 }
@@ -120,6 +121,7 @@ export function ProviderModelsList({ provider }: Props) {
       display_name: formData.display_name.trim(),
       mapped_model: formData.mapped_model.trim(),
       reasoning_effort: formData.reasoning_effort.trim() || undefined,
+      fallback_models: formData.fallback_models.trim() || undefined,
       context_length: isNaN(contextLength) ? undefined : contextLength,
     })
   }
@@ -133,6 +135,7 @@ export function ProviderModelsList({ provider }: Props) {
         id: editingId,
         data: {
           reasoning_effort: formData.reasoning_effort.trim() || '',
+          fallback_models: formData.fallback_models.trim() || '',
         },
       })
       return
@@ -144,6 +147,7 @@ export function ProviderModelsList({ provider }: Props) {
         display_name: formData.display_name.trim(),
         mapped_model: formData.mapped_model.trim(),
         reasoning_effort: formData.reasoning_effort.trim() || undefined,
+        fallback_models: formData.fallback_models.trim() || undefined,
         context_length: isNaN(contextLength) ? undefined : contextLength,
       },
     })

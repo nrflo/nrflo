@@ -19,6 +19,7 @@ type ModelConfig struct {
 	CLIType         string // "claude", "codex"
 	MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
 	ReasoningEffort string // "", "high", "medium"
+	FallbackModels  string // claude only: comma-separated --fallback-model chain (≤3)
 	ContextLength   int    // 200000, 1000000
 }
 

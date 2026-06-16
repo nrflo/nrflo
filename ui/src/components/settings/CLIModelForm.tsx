@@ -9,6 +9,7 @@ export interface CLIModelFormData {
   display_name: string
   mapped_model: string
   reasoning_effort: string
+  fallback_models: string
   context_length: string
 }
 
@@ -18,6 +19,7 @@ export const emptyCLIModelForm: CLIModelFormData = {
   display_name: '',
   mapped_model: '',
   reasoning_effort: '',
+  fallback_models: '',
   context_length: '200000',
 }
 
@@ -72,7 +74,7 @@ export function CLIModelForm({
       {lockBuiltIn && (
         <div className="flex items-center gap-2 rounded-md border border-muted bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           <Lock className="h-4 w-4 shrink-0" />
-          Built-in model — only reasoning effort can be changed
+          Built-in model — only reasoning effort and fallback models can be changed
         </div>
       )}
       {formData.cli_type === 'codex' && (
@@ -159,6 +161,19 @@ export function CLIModelForm({
           />
         </div>
       </div>
+      {formData.cli_type === 'claude' && (
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Fallback Models</label>
+          <Input
+            value={formData.fallback_models}
+            onChange={(e) => setFormData({ ...formData, fallback_models: e.target.value })}
+            placeholder="claude-opus-4-7, claude-sonnet-4-6"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Comma-separated models (max 3) tried in order when the primary is overloaded or unavailable.
+          </p>
+        </div>
+      )}
       <div className="flex gap-2 justify-end">
         <Button variant="ghost" onClick={onCancel}>
           {isCreate ? 'Cancel' : <><X className="h-4 w-4 mr-1" />Cancel</>}

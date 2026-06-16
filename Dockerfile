@@ -49,7 +49,7 @@ FROM alpine:3.20 AS runtime
 ARG TARGETARCH
 # Bundled Claude Code version. Pinned for reproducibility; bump deliberately.
 # "latest" is also accepted and resolves at build time.
-ARG CLAUDE_VERSION=2.1.158
+ARG CLAUDE_VERSION=2.1.178
 
 # Runtime deps: git + tini + python, plus the musl libs and ripgrep the native
 # Claude binary needs (its bundled ripgrep is glibc-built, unusable on musl).

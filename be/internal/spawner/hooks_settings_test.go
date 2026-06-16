@@ -52,9 +52,9 @@ func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
 	}
 }
 
-// TestBuildInteractiveSettingsJSON_HookKeys verifies we register only the
-// signal-bearing Claude hook events. Stop/SessionStart/SessionEnd are dropped
-// because they duplicate spawn/completion log lines without adding signal.
+// TestBuildInteractiveSettingsJSON_HookKeys verifies we register the
+// signal-bearing Claude hook events plus Stop (end-of-turn completion
+// enforcement). SessionEnd and unverified keys stay out.
 func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 	t.Parallel()
 	proc := &processInfo{modelID: "claude:opus"}
@@ -66,6 +66,8 @@ func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 		"PreToolUse", "PostToolUse",
 		"UserPromptSubmit", "Notification",
 		"SubagentStop", "PreCompact",
+		// Drives end-of-turn completion enforcement (handleStopHook).
+		"Stop",
 		// Used as a TUI-ready signal (handler does not record a message).
 		"SessionStart",
 	} {
@@ -74,7 +76,7 @@ func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 		}
 	}
 	for _, banned := range []string{
-		"Stop", "SessionEnd", "Setup",
+		"SessionEnd", "Setup",
 		// These trigger settings rejection on the installed Claude CLI
 		// version — keep out until verified.
 		"PostToolUseFailure", "StopFailure", "SubagentStart", "UserPromptExpansion",

@@ -95,6 +95,29 @@ func computeRateLimitDelay(cfg rateLimitConfig, retryCount int) time.Duration {
 	return delay
 }
 
+// rateLimitResetBuffer pads the wait past the reported reset so the first retry
+// lands after the subscription window has actually rolled over.
+const rateLimitResetBuffer = 30 * time.Second
+
+// rateLimitResetAbsCap bounds the reset-derived wait so a malformed or far-future
+// reset can't park an agent indefinitely.
+const rateLimitResetAbsCap = 8 * time.Hour
+
+// resetAwareDelay prefers a known subscription reset time (RFC3339, recorded from
+// the statusline rate_limits payload) over the exponential backoff: when resetTs is
+// in the future and within the absolute cap, it waits exactly until then (plus a
+// small buffer); otherwise it falls back to computeRateLimitDelay.
+func resetAwareDelay(cfg rateLimitConfig, retryCount int, resetTs string, now time.Time) time.Duration {
+	if resetTs != "" {
+		if t, err := time.Parse(time.RFC3339, resetTs); err == nil {
+			if d := t.Sub(now) + rateLimitResetBuffer; d > 0 && d <= rateLimitResetAbsCap {
+				return d
+			}
+		}
+	}
+	return computeRateLimitDelay(cfg, retryCount)
+}
+
 // appendRecent appends text to the recent-blocks ring buffer (cap 10).
 func (p *processInfo) appendRecent(text string) {
 	if text == "" {

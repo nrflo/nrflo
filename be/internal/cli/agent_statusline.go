@@ -14,6 +14,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type rlWindow struct {
+	UsedPercentage *float64 `json:"used_percentage"`
+	ResetsAt       string   `json:"resets_at"`
+}
+
 type statusLinePayload struct {
 	ContextWindow struct {
 		UsedPercentage *float64 `json:"used_percentage"`
@@ -24,6 +29,34 @@ type statusLinePayload struct {
 	Workspace struct {
 		CurrentDir string `json:"current_dir"`
 	} `json:"workspace"`
+	RateLimits *struct {
+		FiveHour *rlWindow `json:"five_hour"`
+		SevenDay *rlWindow `json:"seven_day"`
+	} `json:"rate_limits"`
+}
+
+// rateLimitsUpdateParams is the agent.rate_limits_update payload sent to the server.
+type rateLimitsUpdateParams struct {
+	SessionID string    `json:"session_id"`
+	FiveHour  *rlWindow `json:"five_hour,omitempty"`
+	SevenDay  *rlWindow `json:"seven_day,omitempty"`
+}
+
+// buildRateLimitsParams maps the statusline rate_limits payload to the
+// agent.rate_limits_update params, or (nil, false) when there is nothing to forward
+// (no rate_limits present, or no session id to attribute them to).
+func buildRateLimitsParams(p statusLinePayload, sessionID string) (*rateLimitsUpdateParams, bool) {
+	if p.RateLimits == nil || sessionID == "" {
+		return nil, false
+	}
+	if p.RateLimits.FiveHour == nil && p.RateLimits.SevenDay == nil {
+		return nil, false
+	}
+	return &rateLimitsUpdateParams{
+		SessionID: sessionID,
+		FiveHour:  p.RateLimits.FiveHour,
+		SevenDay:  p.RateLimits.SevenDay,
+	}, true
 }
 
 var agentStatuslineCmd = &cobra.Command{
@@ -95,6 +128,20 @@ var agentStatuslineCmd = &cobra.Command{
 			ch := make(chan result, 1)
 			go func() {
 				ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.context_update", reqParams, nil)}
+			}()
+			select {
+			case <-ch:
+			case <-time.After(1 * time.Second):
+			}
+		}
+
+		// rate_limits dispatch: forward Claude subscription limits to the server so
+		// it can surface them and drive precise rate-limit waits. Best-effort, async.
+		if rlParams, ok := buildRateLimitsParams(payload, GetSessionID()); ok && GetClient().IsServerRunning() {
+			type result struct{ err error }
+			ch := make(chan result, 1)
+			go func() {
+				ch <- result{err: GetClient().ExecuteAndUnmarshal("agent.rate_limits_update", rlParams, nil)}
 			}()
 			select {
 			case <-ch:

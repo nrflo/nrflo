@@ -38,6 +38,29 @@ func validateReasoningEffort(cliType, mappedModel, effort string) error {
 	return nil
 }
 
+// normalizeFallbackModels validates and normalizes a comma-separated --fallback-model
+// chain: trims entries, drops empties, caps at 3. Only Claude consumes
+// --fallback-model, so a non-empty chain for a non-claude model is rejected.
+func normalizeFallbackModels(cliType, raw string) (string, error) {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	if len(out) == 0 {
+		return "", nil
+	}
+	if cliType != "claude" {
+		return "", fmt.Errorf("fallback_models is only supported for claude models")
+	}
+	if len(out) > 3 {
+		return "", fmt.Errorf("fallback_models accepts at most 3 models")
+	}
+	return strings.Join(out, ","), nil
+}
+
 // CLIModelService handles CLI model business logic
 type CLIModelService struct {
 	pool  *db.Pool
@@ -52,7 +75,7 @@ func NewCLIModelService(pool *db.Pool, clk clock.Clock) *CLIModelService {
 // List retrieves all CLI models ordered by id
 func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		ORDER BY id`)
 	if err != nil {
@@ -74,7 +97,7 @@ func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 // ListEnabled retrieves only enabled CLI models ordered by id
 func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE enabled = 1
 		ORDER BY id`)
@@ -101,11 +124,11 @@ func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 	m := &model.CLIModel{}
 
 	err := s.pool.QueryRow(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
+		&m.ReasoningEffort, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -139,6 +162,10 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	if err := validateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
 		return nil, err
 	}
+	fallbackModels, fbErr := normalizeFallbackModels(req.CLIType, req.FallbackModels)
+	if fbErr != nil {
+		return nil, fbErr
+	}
 
 	contextLength := req.ContextLength
 	if contextLength == 0 {
@@ -149,9 +176,9 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	id := strings.ToLower(req.ID)
 
 	_, err := s.pool.Exec(`
-		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, context_length, read_only, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, contextLength, now, now,
+		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, fallbackModels, contextLength, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -167,6 +194,7 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 		DisplayName:     req.DisplayName,
 		MappedModel:     req.MappedModel,
 		ReasoningEffort: req.ReasoningEffort,
+		FallbackModels:  fallbackModels,
 		ContextLength:   contextLength,
 		ReadOnly:        false,
 		Enabled:         true,
@@ -184,7 +212,7 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 
 	if current.ReadOnly {
 		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil {
-			return nil, fmt.Errorf("only reasoning_effort can be updated on built-in models")
+			return nil, fmt.Errorf("only reasoning_effort and fallback_models can be updated on built-in models")
 		}
 	}
 
@@ -198,6 +226,14 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 			effort = *req.ReasoningEffort
 		}
 		if err := validateReasoningEffort(current.CLIType, mappedModel, effort); err != nil {
+			return nil, err
+		}
+	}
+
+	var normalizedFallback string
+	if req.FallbackModels != nil {
+		normalizedFallback, err = normalizeFallbackModels(current.CLIType, *req.FallbackModels)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -216,6 +252,10 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 	if req.ReasoningEffort != nil {
 		updates = append(updates, "reasoning_effort = ?")
 		args = append(args, *req.ReasoningEffort)
+	}
+	if req.FallbackModels != nil {
+		updates = append(updates, "fallback_models = ?")
+		args = append(args, normalizedFallback)
 	}
 	if req.ContextLength != nil {
 		updates = append(updates, "context_length = ?")
@@ -360,7 +400,7 @@ func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
 
 	err := rows.Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
+		&m.ReasoningEffort, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err != nil {

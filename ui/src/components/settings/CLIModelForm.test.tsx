@@ -170,7 +170,7 @@ describe('CLIModelForm — read_only (built-in) mode', () => {
   it('shows built-in hint, disables display_name/mapped_model/context_length, keeps reasoning_effort dropdown enabled', () => {
     renderReadOnly({ cli_type: 'claude', mapped_model: 'claude-opus-4-7' })
 
-    expect(screen.getByText(/Built-in model — only reasoning effort can be changed/i)).toBeInTheDocument()
+    expect(screen.getByText(/Built-in model — only reasoning effort and fallback models can be changed/i)).toBeInTheDocument()
 
     expect(screen.getByDisplayValue('Opus 4.7')).toBeDisabled()
     expect(screen.getByDisplayValue('claude-opus-4-7')).toBeDisabled()

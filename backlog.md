@@ -157,7 +157,7 @@ That is a blind heuristic. An agent that genuinely paused to ask a question gets
 
 ### Current state (verified)
 - Claude hook set is registered in `BuildInteractiveSettingsJSON` (`hooks_settings.go:43-54`): `PreToolUse, PostToolUse, UserPromptSubmit, Notification, SubagentStop, PreCompact, SessionStart`. The set is deliberately conservative — adding hook keys the installed CLI doesn't recognize made the CLI reject `--settings` on bootstrap and broke prompt delivery (`hooks_settings.go:38-42`).
-- **`Stop` is NOT registered for Claude.** `handler_record_event.go` has a `Stop` case (reached only by Gemini's `AfterAgent`→`Stop` normalization) that is now a no-op boundary ack; for Claude the hook never fires because it isn't in the settings.
+- **`Stop` IS registered for Claude** (`hooks_settings.go`) and drives end-of-turn completion enforcement (`handler_record_event.go` `handleStopHook`): an autonomous turn ending without a completion tool gets a `decision:block` + finish-reminder, then a fail after the block budget. The block/continue *mechanism* (old section B) shipped; the remaining gap is input-wait **detection** — block-and-remind is blunt and cannot tell "asked a question" from "not done yet".
 - **`Notification` IS registered** (`hooks_settings.go:48`) but `handler_record_event.go:80` just records `event["message"]` as a generic `"text"` agent_message. It never branches on it.
 - Claude is launched with `--dangerously-skip-permissions` (`cli_adapter_claude.go`), so permission-driven Notifications never fire.
 
@@ -174,10 +174,7 @@ Claude Code emits `Notification` when (a) it needs tool permission, and (b) the 
 
 No new hook registration, no `--settings` bootstrap risk.
 
-**B. Add the `Stop` hook (more work, enables auto-continue).**
-`Stop` fires whenever Claude yields the turn back to the user — which includes "asked a question and waiting." Two caveats:
-1. **Ambiguous alone.** Stop fires on *every* turn boundary (finished / asked / paused all look identical). In nrflo's autonomous flow a normal completion also ends in a Stop after the agent calls `nrflo agent continue/fail`. To tell "stopped to ask" from "stopped because done" you must inspect the transcript (last assistant message: no tool call + a question?). The payload alone doesn't carry intent.
-2. **Its real payoff is the block/continue response.** A `Stop` hook can return `{"decision":"block","reason":"..."}`, forcing Claude to keep going with `reason` as the next turn — a protocol-level auto-continue, strictly cleaner than the current "write `finish-reminder` to PTY stdin and hope the TUI parses it" nudge. Adding `Stop` requires re-verifying the installed CLI accepts the key (the exact reason it was left out of the conservative set).
+**B. Stop-hook block/continue — SHIPPED (completion enforcement).** The `Stop` hook is registered and the server returns `{"decision":"block","reason":...}` to force-continue an autonomous turn that ended without a completion tool, capped at `stopBlockCap` then failed (`handleStopHook`). What this does **not** yet do — and the remaining open work for this item — is distinguish "stopped to ask the user a question" from "stopped because not done": Stop fires on every turn boundary and the payload carries no intent, so an agent that legitimately pauses to ask gets the same blunt finish-reminder. Telling them apart needs transcript inspection (last assistant message: no tool call + a question?) and, on a genuine ask, escalation to a human instead of a block. That escalation is the same surface as option A below.
 
 ### Surface area
 - `handler_record_event.go` (Notification branch; optional Stop branch + transcript read).
@@ -196,3 +193,87 @@ No new hook registration, no `--settings` bootstrap risk.
 ### Out of scope
 - Per-provider input-wait detection for non-Claude CLIs (no native signal).
 - Replacing the idle/nudge loop — this augments it (suppress nudges while genuinely awaiting input), not removes it.
+
+---
+
+## 4. Per-cli-model thinking toggle (mirror api-mode `reasoning_effort=''`)
+
+### Motivation
+The same `cli_models` row behaves differently across execution modes. In `api` mode, `reasoning_effort=''` maps to a thinking budget of 0 — thinking is fully off (`spawner/apirun/provider/anthropic/translate.go`, `thinkingBudget`). In `cli` mode, `''` just omits the `--effort` flag (`cli_adapter_claude.go:54-56`), leaving Claude Code's default — which on Opus 4.8 (lean prompt + high-effort default) means thinking is **on**. So an operator who sets empty effort to save tokens gets thinking-off via the api lane and thinking-on via the cli lane.
+
+### Design
+When `reasoning_effort==''` for a `claude` cli model, set `MAX_THINKING_TOKENS=0` in the spawned agent's env (or pass `--thinking disabled`) so the cli lane mirrors the api lane. Non-empty effort keeps `--effort=<value>` (thinking on at that tier). Requires Claude Code ≥ 2.1.166 (bundled image is 2.1.178; BYO hosts may be older — see item 5).
+
+### Surface area
+- `cli_adapter_claude.go` (argv/env construction).
+- Possibly a one-line note in `spawner/CLAUDE.md`.
+
+### Open questions
+- Interaction of `--effort` and `MAX_THINKING_TOKENS`: confirm CC honors `MAX_THINKING_TOKENS=0` on a default-thinking model when no `--effort` is passed.
+- Implicit (empty effort ⇒ off) vs. an explicit per-model toggle column. Lean implicit to avoid a schema change.
+
+---
+
+## 5. Claude CLI version-floor preflight
+
+### Motivation
+Several incorporated features depend on a minimum Claude Code version: Stop `additionalContext` (≥2.1.163), `--fallback-model` in interactive sessions (≥2.1.166), thinking-disable (≥2.1.166). A too-old `claude` on a bring-your-own host degrades **silently** — unknown flags ignored, unrecognized hook keys can break `--settings` bootstrap. The Docker image is build-pinned to 2.1.178, so this is the non-Docker case.
+
+### Design
+At server startup (or first claude spawn), run `claude --version`, parse the semver, compare against a floor constant, and refuse/warn with a clear message. This is the lightweight alternative to CC's `requiredMinimumVersion` managed setting (which would require nrflo to start writing a managed-settings policy file to a system path — nrflo writes none today; everything is inline `--settings`, and the managed file is redundant in Docker where the version is build-pinned + autoupdater disabled).
+
+### Surface area
+- `spawner/` preflight + a floor constant (or global setting).
+- Startup log / health surface.
+
+### Open questions
+- Hard-fail vs. warn-and-continue.
+- Per-provider floors (codex/opencode have independent version contracts).
+
+---
+
+## 6. Relocate Claude CLI temp/session state under `NRFLO_HOME` (`CLAUDE_CODE_TMPDIR`)
+
+### Motivation
+Claude Code's own session state / temp may live in ephemeral `/tmp`. In the Docker image a container restart could drop anything CC persists there. nrflo's MCP socket is already under `NRFLO_HOME` (`socket/server.go:21-27`), so this is strictly about CC-owned state, not nrflo's.
+
+### Design
+Set `CLAUDE_CODE_TMPDIR` to a dir under `NRFLO_HOME` (e.g. `$NRFLO_HOME/cc-tmp`) in the Docker image and/or the spawn env. `CLAUDE_CODE_TMPDIR` predates the current pin so the bundled CC honors it (CC docs note it is only *partially* respected).
+
+### Precondition (validate before building)
+Only worth doing if `--resume` depends on CC's on-disk session transcripts. If nrflo reconstructs resume context itself (the `to_resume` finding / `${PREVIOUS_DATA}` template var) and does not read CC's session store, this is pure hygiene and can be skipped. **Gate the whole item on confirming that dependency.**
+
+### Surface area
+- `Dockerfile` ENV, spawn env construction.
+
+---
+
+## 7. Register Fable 5 as a selectable cli model
+
+### Motivation
+Claude Code 2.1.170 introduced Fable 5 (`claude-fable-5`). nrflo's `cli_models` registry should offer it for selection and as a fallback-chain entry (pairs with the `--fallback-model` work).
+
+### Design
+Seed migration adding a `claude` `cli_models` row mapped to `claude-fable-5`, mirroring the Opus 4.8 seed (`000138_opus_4_8_models.up.sql`). Confirm default `reasoning_effort` and whether the `xhigh`-restricted-to-Opus rule (`service/cli_model.go`) needs to include Fable 5.
+
+### Surface area
+- DB seed migration; possibly the UI model list (auto-driven from the table).
+
+### Open questions
+- Default reasoning effort and `xhigh` eligibility for Fable 5.
+
+---
+
+## 8. Disable Claude Code bundled skills for nrflo agents (`disableBundledSkills`)
+
+### Motivation
+Claude Code 2.1.169 added `disableBundledSkills` / `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`. nrflo agents run on custom system prompts + MCP tools; CC's bundled skills add context/token overhead and can surface behaviors nrflo doesn't drive.
+
+### Design
+Set `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS=1` in the spawn env (or `disableBundledSkills` in the inline `--settings`), likely behind a global/per-project toggle. Measure the token/behavior delta before defaulting it on.
+
+### Surface area
+- `hooks_settings.go` / spawn env; a settings toggle.
+
+### Open questions
+- Default on or off; confirm no nrflo flow relies on a bundled skill (unlikely).

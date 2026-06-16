@@ -22,6 +22,7 @@ type CLIModelCreateRequest struct {
 	DisplayName     string `json:"display_name"`
 	MappedModel     string `json:"mapped_model"`
 	ReasoningEffort string `json:"reasoning_effort"`
+	FallbackModels  string `json:"fallback_models"`
 	ContextLength   int    `json:"context_length"`
 }
 
@@ -30,6 +31,7 @@ type CLIModelUpdateRequest struct {
 	DisplayName     *string `json:"display_name,omitempty"`
 	MappedModel     *string `json:"mapped_model,omitempty"`
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	FallbackModels  *string `json:"fallback_models,omitempty"`
 	ContextLength   *int    `json:"context_length,omitempty"`
 	Enabled         *bool   `json:"enabled,omitempty"`
 }

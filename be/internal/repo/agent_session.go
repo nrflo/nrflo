@@ -327,6 +327,17 @@ func (r *AgentSessionRepo) UpdateRateLimitUntil(id, ts string, retryCount int, l
 	return err
 }
 
+// GetRateLimitResetTs returns the anticipated subscription reset timestamp
+// (RFC3339) recorded from the statusline rate_limits payload, or "" when unset.
+func (r *AgentSessionRepo) GetRateLimitResetTs(id string) (string, error) {
+	var ts sql.NullString
+	err := r.db.QueryRow(`SELECT rate_limit_reset_ts FROM agent_sessions WHERE id = ?`, id).Scan(&ts)
+	if err != nil {
+		return "", err
+	}
+	return ts.String, nil
+}
+
 // SetEndedAt sets the ended_at timestamp
 func (r *AgentSessionRepo) SetEndedAt(id string) error {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)

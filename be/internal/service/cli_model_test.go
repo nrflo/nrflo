@@ -385,7 +385,7 @@ func TestCLIModel_UpdateReadonly(t *testing.T) {
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// On read_only rows, only reasoning_effort may be updated — all other fields are rejected.
+	// On read_only rows, only reasoning_effort and fallback_models may be updated — all other fields are rejected.
 	newName := "My Opus"
 	_, err := svc.Update("opus_4_7", types.CLIModelUpdateRequest{
 		DisplayName: &newName,
@@ -393,8 +393,8 @@ func TestCLIModel_UpdateReadonly(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error updating display_name on read_only row, got nil")
 	}
-	if !strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "only reasoning_effort can be updated on built-in models")
+	if !strings.Contains(err.Error(), "can be updated on built-in models") {
+		t.Errorf("error = %q, want to contain %q", err.Error(), "can be updated on built-in models")
 	}
 	// TODO(test-writer): cover each locked field individually (mapped_model, context_length, enabled=false)
 	// and happy-path reasoning_effort updates on read_only rows.

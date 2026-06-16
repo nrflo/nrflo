@@ -54,6 +54,11 @@ func BuildInteractiveSettingsJSON(proc *processInfo) string {
 			"Notification":     []interface{}{hookEntry},
 			"SubagentStop":     []interface{}{hookEntry},
 			"PreCompact":       []interface{}{hookEntry},
+			// Stop drives end-of-turn completion enforcement: the server returns a
+			// block decision (carrying a finish-reminder) when an autonomous turn
+			// ends without a completion tool. Long-established event — safe to
+			// register (handled in handler_record_event's Stop case).
+			"Stop": []interface{}{hookEntry},
 			// SessionStart is used as a TUI-ready signal (no message
 			// recorded). Spawner waits on this before writing the prompt.
 			"SessionStart": []interface{}{hookEntry},

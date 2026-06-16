@@ -362,10 +362,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	// DB-sourced mapped model + reasoning effort
-	var mappedModel, reasoningEffort string
+	var mappedModel, reasoningEffort, fallbackModels string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
 		mappedModel = cfg.MappedModel
 		reasoningEffort = cfg.ReasoningEffort
+		fallbackModels = cfg.FallbackModels
 	}
 
 	cliStageDir, _ := EnsureStageDir(req.ProjectID, wfiID)
@@ -389,6 +390,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		WorkDir:                  workDir,
 		MappedModel:              mappedModel,
 		ReasoningEffort:          reasoningEffort,
+		FallbackModels:           fallbackModels,
 		SettingsJSON:             s.config.ClaudeSettingsJSON,
 		SystemPromptFile:         suffixFilePath,
 		SystemPromptOverrideFile: systemPromptOverrideFilePath,

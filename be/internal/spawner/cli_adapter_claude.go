@@ -54,6 +54,9 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.ReasoningEffort != "" {
 		args = append(args, "--effort", opts.ReasoningEffort)
 	}
+	if opts.FallbackModels != "" {
+		args = append(args, "--fallback-model", opts.FallbackModels)
+	}
 	if opts.SettingsJSON != "" {
 		args = append(args, "--settings", opts.SettingsJSON)
 	}

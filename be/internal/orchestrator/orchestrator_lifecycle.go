@@ -122,6 +122,9 @@ func (o *Orchestrator) forceStopInstance(instanceID string) error {
 		"instance_id": instanceID,
 		"reason":      "force_stopped",
 	}))
+
+	// Purge sensitive trace data when the workflow opted in (orphaned force-stop path).
+	o.maybePurgeTrace(instanceID)
 	return nil
 }
 

@@ -130,13 +130,14 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 }
 
 // buildWorkflowInstance creates a WorkflowInstance from a workflow definition.
-func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, _ *WorkflowDef) *model.WorkflowInstance {
+func (s *WorkflowService) buildWorkflowInstance(projectID, workflowName string, wf *WorkflowDef) *model.WorkflowInstance {
 	return &model.WorkflowInstance{
-		ID:         uuid.New().String(),
-		ProjectID:  projectID,
-		WorkflowID: workflowName,
-		Status:     model.WorkflowInstanceActive,
-		RetryCount: 0,
+		ID:                uuid.New().String(),
+		ProjectID:         projectID,
+		WorkflowID:        workflowName,
+		Status:            model.WorkflowInstanceActive,
+		RetryCount:        0,
+		PurgeOnCompletion: wf.PurgeOnCompletion,
 	}
 }
 

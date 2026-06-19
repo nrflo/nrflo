@@ -85,7 +85,7 @@ def workflow_instance(home: Path, instance_id: str) -> dict[str, Any] | None:
         row = c.execute(
             """
             SELECT id, project_id, ticket_id, workflow_id, scope_type, status,
-                   skip_tags, retry_count, created_at, updated_at
+                   skip_tags, retry_count, external_id, external_context, created_at, updated_at
             FROM workflow_instances WHERE id = ?
             """,
             (instance_id,),

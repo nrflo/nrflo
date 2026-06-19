@@ -406,6 +406,10 @@ func (o *Orchestrator) runLoop(
 	if req.IsProjectScope() && req.EndlessLoop && ctx.Err() == nil {
 		o.maybeRestartEndlessLoop(wfiID, req)
 	}
+
+	// Purge sensitive trace data when the workflow opted in (runs last, after finalize and
+	// any next-workflow/endless-loop spawn so those still read the just-completed data).
+	o.maybePurgeTrace(wfiID)
 }
 
 // maybeRestartEndlessLoop starts a fresh workflow instance for the same

@@ -44,6 +44,7 @@ from . import (
     s46_observer,
     s47_rate_limit_cli,
     s48_ws_query_token,
+    s49_purge_on_completion,
 )
 
 
@@ -81,4 +82,5 @@ ALL_SCENARIOS = [
     s46_observer.run,
     s47_rate_limit_cli.run,
     s48_ws_query_token.run,
+    s49_purge_on_completion.run,
 ]

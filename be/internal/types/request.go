@@ -222,6 +222,7 @@ type WorkflowDefCreateRequest struct {
 	ScopeType               string          `json:"scope_type,omitempty"` // "ticket" (default) or "project"
 	Groups                  []string        `json:"groups,omitempty"`
 	CloseTicketOnComplete   *bool           `json:"close_ticket_on_complete,omitempty"`
+	PurgeOnCompletion       *bool           `json:"purge_on_completion,omitempty"`
 	NextWorkflowOnSuccess   string          `json:"next_workflow_on_success,omitempty"`
 	FinalizeSuccessCommand  string          `json:"finalize_success_command,omitempty"`
 	FinalizeSuccessScriptID string          `json:"finalize_success_script_id,omitempty"`
@@ -241,6 +242,7 @@ type WorkflowDefUpdateRequest struct {
 	ScopeType               *string          `json:"scope_type,omitempty"`
 	Groups                  *[]string        `json:"groups,omitempty"`
 	CloseTicketOnComplete   *bool            `json:"close_ticket_on_complete,omitempty"`
+	PurgeOnCompletion       *bool            `json:"purge_on_completion,omitempty"`
 	NextWorkflowOnSuccess   *string          `json:"next_workflow_on_success,omitempty"`
 	FinalizeSuccessCommand  *string          `json:"finalize_success_command,omitempty"`
 	FinalizeSuccessScriptID *string          `json:"finalize_success_script_id,omitempty"`

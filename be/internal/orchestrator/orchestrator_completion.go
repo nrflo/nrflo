@@ -119,6 +119,9 @@ func (o *Orchestrator) markFailed(wfiID string, req RunRequest, reason string) {
 	if reason != reasonCancelled {
 		o.runFinalize(context.Background(), wfiID, req, outcomeFailure, reason)
 	}
+
+	// Purge sensitive trace data when the workflow opted in (after the failure-finalize slot).
+	o.maybePurgeTrace(wfiID)
 }
 
 // failReasonOr returns the custom failReason set on the runState (by FailWorkflow before cancel),

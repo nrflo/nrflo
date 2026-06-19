@@ -48,6 +48,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | s46 | observer agents: launch/read/mutate per scope, cross-scope deny, flag-off 404 |
 | s47 | CLI rate-limit detection: stub claude → agent.rate_limited WS + DB cols |
 | s48 | WS `?token=` query auth accepts service token; bogus token rejected |
+| s49 | purge_on_completion: sensitive trace scrubbed on finish (sessions redacted; msgs/findings/artifacts/caller cols gone) |
 
 ## Python (script-mode) scenarios (P-prefix)
 

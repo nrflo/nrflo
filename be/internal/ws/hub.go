@@ -58,6 +58,7 @@ const (
 	EventMergeConflictResolved      = "merge.conflict_resolved"
 	EventMergeConflictFailed        = "merge.conflict_failed"
 	EventWorkflowInstanceDeleted    = "workflow_instance.deleted"
+	EventWorkflowPurged             = "workflow.purged"
 	EventDefaultTemplateCreated     = "default_template.created"
 	EventDefaultTemplateUpdated     = "default_template.updated"
 	EventDefaultTemplateDeleted     = "default_template.deleted"

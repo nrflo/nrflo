@@ -135,12 +135,14 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 		}
 
 		closeOnComplete := entry.Workflow.CloseTicketOnComplete
+		purgeOnComplete := entry.Workflow.PurgeOnCompletion
 		wf, err := s.workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 			ID:                    finalID,
 			Description:           entry.Workflow.Description,
 			ScopeType:             entry.Workflow.ScopeType,
 			Groups:                entry.Workflow.GetGroups(),
 			CloseTicketOnComplete: &closeOnComplete,
+			PurgeOnCompletion:     &purgeOnComplete,
 			NextWorkflowOnSuccess: entry.Workflow.NextWorkflowOnSuccess,
 			PauseEventCommand:     entry.Workflow.PauseEventCommand,
 			PauseEventScriptID:    entry.Workflow.PauseEventScriptID,

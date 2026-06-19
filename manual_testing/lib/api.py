@@ -140,6 +140,7 @@ class NrfloClient:
         scope_type: str = "project",
         description: str = "",
         close_ticket_on_complete: bool = True,
+        purge_on_completion: bool = False,
         groups: list[str] | None = None,
         next_workflow_on_success: str = "",
     ) -> dict:
@@ -148,6 +149,7 @@ class NrfloClient:
             "description": description,
             "scope_type": scope_type,
             "close_ticket_on_complete": close_ticket_on_complete,
+            "purge_on_completion": purge_on_completion,
         }
         if groups:
             body["groups"] = groups
@@ -278,6 +280,8 @@ class NrfloClient:
         plan_mode: bool = False,
         input_artifacts: list[dict] | None = None,
         seed_findings: dict[str, str] | None = None,
+        external_id: str = "",
+        external_context: str = "",
     ) -> dict:
         body: dict[str, Any] = {"workflow": workflow_id}
         if endless_loop:
@@ -292,6 +296,10 @@ class NrfloClient:
             body["input_artifacts"] = input_artifacts
         if seed_findings:
             body["seed_findings"] = seed_findings
+        if external_id:
+            body["external_id"] = external_id
+        if external_context:
+            body["external_context"] = external_context
         return self._request(
             "POST",
             f"/api/v1/projects/{project_id}/workflow/run",

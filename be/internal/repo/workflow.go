@@ -32,14 +32,15 @@ func (r *WorkflowRepo) Create(wf *model.Workflow) error {
 	}
 
 	_, err := r.db.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(wf.ID),
 		strings.ToLower(wf.ProjectID),
 		wf.Description,
 		wf.ScopeType,
 		wf.Groups,
 		wf.CloseTicketOnComplete,
+		wf.PurgeOnCompletion,
 		wf.NextWorkflowOnSuccess,
 		wf.FinalizeSuccessCommand,
 		wf.FinalizeSuccessScriptID,
@@ -62,7 +63,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 	var createdAt, updatedAt string
 
 	err := r.db.QueryRow(`
-		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, id).Scan(
 		&wf.ID,
@@ -71,6 +72,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 		&wf.ScopeType,
 		&wf.Groups,
 		&wf.CloseTicketOnComplete,
+		&wf.PurgeOnCompletion,
 		&wf.NextWorkflowOnSuccess,
 		&wf.FinalizeSuccessCommand,
 		&wf.FinalizeSuccessScriptID,
@@ -100,7 +102,7 @@ func (r *WorkflowRepo) Get(projectID, id string) (*model.Workflow, error) {
 // List retrieves all workflow definitions for a project
 func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at
+		SELECT id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, created_at, updated_at
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -120,6 +122,7 @@ func (r *WorkflowRepo) List(projectID string) ([]*model.Workflow, error) {
 			&wf.ScopeType,
 			&wf.Groups,
 			&wf.CloseTicketOnComplete,
+			&wf.PurgeOnCompletion,
 			&wf.NextWorkflowOnSuccess,
 			&wf.FinalizeSuccessCommand,
 			&wf.FinalizeSuccessScriptID,
@@ -151,6 +154,7 @@ type WorkflowUpdateFields struct {
 	Description             *string
 	Groups                  *string
 	CloseTicketOnComplete   *bool
+	PurgeOnCompletion       *bool
 	NextWorkflowOnSuccess   *string
 	FinalizeSuccessCommand  *string
 	FinalizeSuccessScriptID *string
@@ -176,6 +180,10 @@ func (r *WorkflowRepo) Update(projectID, id string, fields *WorkflowUpdateFields
 	if fields.CloseTicketOnComplete != nil {
 		updates = append(updates, "close_ticket_on_complete = ?")
 		args = append(args, *fields.CloseTicketOnComplete)
+	}
+	if fields.PurgeOnCompletion != nil {
+		updates = append(updates, "purge_on_completion = ?")
+		args = append(args, *fields.PurgeOnCompletion)
 	}
 	if fields.NextWorkflowOnSuccess != nil {
 		updates = append(updates, "next_workflow_on_success = ?")

@@ -26,6 +26,7 @@ interface EditingWorkflow {
   scope_type?: ScopeType
   groups?: string[]
   close_ticket_on_complete?: boolean
+  purge_on_completion?: boolean
   next_workflow_on_success?: string
   observer_context?: string
   observer_provider?: string | null

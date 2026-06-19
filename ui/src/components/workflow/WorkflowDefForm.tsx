@@ -27,6 +27,7 @@ interface WorkflowDefFormProps {
     scope_type?: ScopeType
     groups?: string[]
     close_ticket_on_complete?: boolean
+    purge_on_completion?: boolean
     next_workflow_on_success?: string
     observer_context?: string
     observer_provider?: string | null
@@ -51,6 +52,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groups, setGroups] = useState<string[]>(initial?.groups || [])
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
+  const [purgeOnCompletion, setPurgeOnCompletion] = useState(initial?.purge_on_completion ?? false)
   const [nextWorkflowOnSuccess, setNextWorkflowOnSuccess] = useState(initial?.next_workflow_on_success || '')
   const [observer, setObserver] = useState<ObserverState>({
     context: initial?.observer_context || '',
@@ -114,6 +116,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       scope_type: scopeType,
       groups,
       close_ticket_on_complete: closeTicketOnComplete,
+      purge_on_completion: purgeOnCompletion,
       next_workflow_on_success: nextWorkflowOnSuccess || undefined,
       observer_context: observer.context.trim() || undefined,
       observer_provider: observer.provider || null,
@@ -198,6 +201,18 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
           label="Close ticket after workflow finished"
         />
       )}
+
+      <div>
+        <Toggle
+          checked={purgeOnCompletion}
+          onChange={setPurgeOnCompletion}
+          label="Purge sensitive data after the run completes"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          On completion, scrubs agent prompts/messages, findings, artifacts, and caller inputs,
+          keeping only a redacted execution record. The final result is delivered via events, not retained.
+        </p>
+      </div>
 
       <div>
         <Toggle

@@ -79,7 +79,7 @@ be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_interactive.go	340
 be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	664
+be/internal/orchestrator/orchestrator_loop.go	668
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -119,7 +119,7 @@ be/internal/service/scheduled_task_test.go	466
 be/internal/service/system_agent_definition.go	368
 be/internal/service/system_agent_definition_test.go	423
 be/internal/service/ticket.go	387
-be/internal/service/workflow.go	477
+be/internal/service/workflow.go	478
 be/internal/service/workflow_chain.go	373
 be/internal/service/workflow_chain_run_test.go	344
 be/internal/service/workflow_chain_test.go	349
@@ -162,7 +162,7 @@ be/internal/spawner/to_resume_integration_test.go	359
 be/internal/spawner/to_resume_test.go	472
 be/internal/venv/manager_test.go	328
 be/internal/ws/event_test.go	307
-be/internal/ws/hub.go	483
+be/internal/ws/hub.go	484
 be/internal/ws/integration_e2e_test.go	331
 be/internal/ws/replay_test.go	430
 be/internal/ws/snapshot_test.go	301
@@ -237,4 +237,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	389
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	491
+ui/src/types/workflow.ts	495

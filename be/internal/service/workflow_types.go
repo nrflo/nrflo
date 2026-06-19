@@ -39,6 +39,7 @@ type WorkflowDef struct {
 	Description             string                `json:"description"`
 	ScopeType               string                `json:"scope_type"` // "ticket" or "project"
 	CloseTicketOnComplete   bool                  `json:"close_ticket_on_complete"`
+	PurgeOnCompletion       bool                  `json:"purge_on_completion"`
 	Groups                  []string              `json:"groups"`
 	NextWorkflowOnSuccess   string                `json:"next_workflow_on_success"`
 	FinalizeSuccessCommand  string                `json:"finalize_success_command,omitempty"`
@@ -61,6 +62,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		Description             string                `json:"description"`
 		ScopeType               string                `json:"scope_type"`
 		CloseTicketOnComplete   bool                  `json:"close_ticket_on_complete"`
+		PurgeOnCompletion       bool                  `json:"purge_on_completion"`
 		Groups                  []string              `json:"groups"`
 		NextWorkflowOnSuccess   string                `json:"next_workflow_on_success"`
 		FinalizeSuccessCommand  string                `json:"finalize_success_command,omitempty"`
@@ -96,6 +98,7 @@ func (wf WorkflowDef) MarshalJSON() ([]byte, error) {
 		Description:             wf.Description,
 		ScopeType:               scopeType,
 		CloseTicketOnComplete:   wf.CloseTicketOnComplete,
+		PurgeOnCompletion:       wf.PurgeOnCompletion,
 		Groups:                  groups,
 		NextWorkflowOnSuccess:   wf.NextWorkflowOnSuccess,
 		FinalizeSuccessCommand:  wf.FinalizeSuccessCommand,
@@ -119,6 +122,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 		Description             string                `json:"description"`
 		ScopeType               string                `json:"scope_type"`
 		CloseTicketOnComplete   bool                  `json:"close_ticket_on_complete"`
+		PurgeOnCompletion       bool                  `json:"purge_on_completion"`
 		NextWorkflowOnSuccess   string                `json:"next_workflow_on_success"`
 		FinalizeSuccessCommand  string                `json:"finalize_success_command,omitempty"`
 		FinalizeSuccessScriptID string                `json:"finalize_success_script_id,omitempty"`
@@ -139,6 +143,7 @@ func (wf *WorkflowDef) UnmarshalJSON(data []byte) error {
 	wf.Description = raw.Description
 	wf.ScopeType = raw.ScopeType
 	wf.CloseTicketOnComplete = raw.CloseTicketOnComplete
+	wf.PurgeOnCompletion = raw.PurgeOnCompletion
 	wf.NextWorkflowOnSuccess = raw.NextWorkflowOnSuccess
 	wf.FinalizeSuccessCommand = raw.FinalizeSuccessCommand
 	wf.FinalizeSuccessScriptID = raw.FinalizeSuccessScriptID

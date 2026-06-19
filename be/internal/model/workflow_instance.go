@@ -42,6 +42,7 @@ type WorkflowInstance struct {
 	BranchName                    sql.NullString         `json:"-"`
 	EndlessLoop                   bool                   `json:"endless_loop"`
 	StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+	PurgeOnCompletion             bool                   `json:"purge_on_completion"` // snapshot of the workflow def flag at creation; drives terminal-state trace purge
 	ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 	ExternalID                    string                 `json:"external_id,omitempty"`
 	ExternalContext               string                 `json:"external_context,omitempty"`
@@ -123,6 +124,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName                    *string                `json:"branch_name,omitempty"`
 		EndlessLoop                   bool                   `json:"endless_loop"`
 		StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+		PurgeOnCompletion             bool                   `json:"purge_on_completion"`
 		ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 		ExternalID                    string                 `json:"external_id,omitempty"`
 		ExternalContext               string                 `json:"external_context,omitempty"`
@@ -142,6 +144,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName:                    branchName,
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
+		PurgeOnCompletion:             wi.PurgeOnCompletion,
 		ScheduledTaskID:               wi.ScheduledTaskID,
 		ExternalID:                    wi.ExternalID,
 		ExternalContext:               wi.ExternalContext,

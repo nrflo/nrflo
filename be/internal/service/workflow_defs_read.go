@@ -27,15 +27,15 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	var description, scopeType, groupsStr, nextWorkflowOnSuccess string
 	var finalizeSuccessCommand, finalizeSuccessScriptID, finalizeFailureCommand, finalizeFailureScriptID string
 	var pauseEventCommand, pauseEventScriptID string
-	var closeTicketOnComplete bool
+	var closeTicketOnComplete, purgeOnCompletion bool
 	var observerContext string
 	var observerProvider, observerModel sql.NullString
 	var findingSchemasStr string
 
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
+		SELECT description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &nextWorkflowOnSuccess,
+		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &purgeOnCompletion, &nextWorkflowOnSuccess,
 		&finalizeSuccessCommand, &finalizeSuccessScriptID, &finalizeFailureCommand, &finalizeFailureScriptID,
 		&pauseEventCommand, &pauseEventScriptID,
 		&observerContext, &observerProvider, &observerModel, &findingSchemasStr)
@@ -54,6 +54,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	wf := parseWorkflowDefFromDB(description, agentDefs)
 	wf.ScopeType = scopeType
 	wf.CloseTicketOnComplete = closeTicketOnComplete
+	wf.PurgeOnCompletion = purgeOnCompletion
 	wf.NextWorkflowOnSuccess = nextWorkflowOnSuccess
 	wf.FinalizeSuccessCommand = finalizeSuccessCommand
 	wf.FinalizeSuccessScriptID = finalizeSuccessScriptID
@@ -83,7 +84,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 // ListWorkflowDefs loads all workflow definitions for a project from the database
 func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]WorkflowDef, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
+		SELECT id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?)
 		ORDER BY id`, projectID)
 	if err != nil {
@@ -96,7 +97,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		finalizeSuccessCommand, finalizeSuccessScriptID              string
 		finalizeFailureCommand, finalizeFailureScriptID              string
 		pauseEventCommand, pauseEventScriptID                        string
-		closeTicketOnComplete                                        bool
+		closeTicketOnComplete, purgeOnCompletion                     bool
 		observerContext                                              string
 		observerProvider, observerModel                              sql.NullString
 		findingSchemasStr                                            string
@@ -104,7 +105,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 	var metas []wfMeta
 	for rows.Next() {
 		var m wfMeta
-		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.nextWorkflowOnSuccess,
+		if err := rows.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.purgeOnCompletion, &m.nextWorkflowOnSuccess,
 			&m.finalizeSuccessCommand, &m.finalizeSuccessScriptID, &m.finalizeFailureCommand, &m.finalizeFailureScriptID,
 			&m.pauseEventCommand, &m.pauseEventScriptID,
 			&m.observerContext, &m.observerProvider, &m.observerModel, &m.findingSchemasStr); err != nil {
@@ -131,6 +132,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		wf := parseWorkflowDefFromDB(m.description, agentsByWorkflow[m.id])
 		wf.ScopeType = m.scopeType
 		wf.CloseTicketOnComplete = m.closeTicketOnComplete
+		wf.PurgeOnCompletion = m.purgeOnCompletion
 		wf.NextWorkflowOnSuccess = m.nextWorkflowOnSuccess
 		wf.FinalizeSuccessCommand = m.finalizeSuccessCommand
 		wf.FinalizeSuccessScriptID = m.finalizeSuccessScriptID

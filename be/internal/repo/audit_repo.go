@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -26,8 +27,9 @@ const auditCols = `id, user_id, action, resource_type, resource_id, ip, user_age
 func scanAuditEntry(s interface{ Scan(...interface{}) error }) (*model.AuditEntry, error) {
 	e := &model.AuditEntry{}
 	var createdAt string
+	var userID sql.NullString // NULL once the referenced user is deleted (ON DELETE SET NULL)
 	err := s.Scan(
-		&e.ID, &e.UserID, &e.Action,
+		&e.ID, &userID, &e.Action,
 		&e.ResourceType, &e.ResourceID,
 		&e.IP, &e.UserAgent, &e.Metadata,
 		&createdAt,
@@ -35,6 +37,7 @@ func scanAuditEntry(s interface{ Scan(...interface{}) error }) (*model.AuditEntr
 	if err != nil {
 		return nil, err
 	}
+	e.UserID = userID.String
 	e.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	return e, nil
 }
@@ -53,7 +56,8 @@ func (r *AuditRepo) Append(e *model.AuditEntry) error {
 
 	_, err := r.db.Exec(
 		`INSERT INTO audit_log (`+auditCols+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		e.ID, e.UserID, e.Action,
+		// NULL (not "") when there is no user, else the users(id) FK is violated.
+		e.ID, sql.NullString{String: e.UserID, Valid: e.UserID != ""}, e.Action,
 		e.ResourceType, e.ResourceID,
 		e.IP, e.UserAgent, metadata,
 		createdAt,

@@ -72,6 +72,11 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		closeTicketOnComplete = *req.CloseTicketOnComplete
 	}
 
+	purgeOnCompletion := false
+	if req.PurgeOnCompletion != nil {
+		purgeOnCompletion = *req.PurgeOnCompletion
+	}
+
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	wf := &model.Workflow{
 		ID:                      strings.ToLower(req.ID),
@@ -79,6 +84,7 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 		Description:             req.Description,
 		ScopeType:               scopeType,
 		CloseTicketOnComplete:   closeTicketOnComplete,
+		PurgeOnCompletion:       purgeOnCompletion,
 		NextWorkflowOnSuccess:   req.NextWorkflowOnSuccess,
 		FinalizeSuccessCommand:  req.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: req.FinalizeSuccessScriptID,
@@ -101,9 +107,9 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	}
 
 	_, err := s.pool.Exec(`
-		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.NextWorkflowOnSuccess,
+		INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wf.ID, wf.ProjectID, wf.Description, wf.ScopeType, wf.Groups, wf.CloseTicketOnComplete, wf.PurgeOnCompletion, wf.NextWorkflowOnSuccess,
 		wf.FinalizeSuccessCommand, wf.FinalizeSuccessScriptID, wf.FinalizeFailureCommand, wf.FinalizeFailureScriptID,
 		wf.PauseEventCommand, wf.PauseEventScriptID,
 		req.ObserverContext, observerProvider, observerModel, wf.FindingSchemas, now, now)
@@ -144,6 +150,10 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 	if req.CloseTicketOnComplete != nil {
 		updates = append(updates, "close_ticket_on_complete = ?")
 		args = append(args, *req.CloseTicketOnComplete)
+	}
+	if req.PurgeOnCompletion != nil {
+		updates = append(updates, "purge_on_completion = ?")
+		args = append(args, *req.PurgeOnCompletion)
 	}
 	if req.NextWorkflowOnSuccess != nil {
 		if *req.NextWorkflowOnSuccess != "" {

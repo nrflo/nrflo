@@ -123,7 +123,6 @@ See `orchestrator_interactive.go`.
 
 - `RunRequest.EndlessLoop=true` on project-scoped runs; persisted as `endless_loop=1` on instance row.
 - After `markCompleted`, `maybeRestartEndlessLoop` re-reads instance, exits if `StopEndlessLoopAfterIteration=true`, broadcasts `endless_loop_iterating=true`, spawns a fresh `Start()` in a detached goroutine.
-- `/api/v1/projects/{id}/workflow/stop-endless-loop` toggles `stop_endless_loop_after_iteration`.
 - Failure, `Stop()`, and callback errors terminate the loop.
 
 ## Next Workflow on Success
@@ -155,7 +154,11 @@ After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes
 
 ## Scheduled Task Origin Tracking
 
-`RunRequest.ScheduledTaskID` forwarded through `Init`/`InitProjectWorkflow` → `workflow_instances.scheduled_task_id` (nullable FK to `scheduled_tasks`). Set by `scheduler_dispatch.go`; empty for all other entrypoints.
+`RunRequest.ScheduledTaskID` → `workflow_instances.scheduled_task_id` (FK, nullable); set by `scheduler_dispatch.go`, empty elsewhere.
+
+## Purge on Completion
+
+When the instance's `purge_on_completion` snapshot is set, `maybePurgeTrace` (`orchestrator_purge.go`) runs `service.PurgeService` at each terminal path's end (after finalize). Invariant: chain steps pass data via instructions + status polling, never prior-instance findings, else purge breaks hand-off.
 
 ## Ticket Status Management
 

@@ -33,16 +33,28 @@ func thinkingBudget(effort string) int {
 // MessageNewParams shape. Cache breakpoints are applied here so callers and
 // tests can inspect the result without going through the network.
 func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
+	// Strip the "[1m]" context marker — it's a Claude Code convention and 404s
+	// on the API. It selects the context window (see MaxContext), not the model.
+	model := stripContextSuffix(req.Model)
 	params := sdk.MessageNewParams{
-		Model:     req.Model,
+		Model:     model,
 		MaxTokens: int64(req.MaxTokens),
 	}
 
-	if budget := thinkingBudget(req.ReasoningEffort); budget > 0 {
-		params.Thinking = sdk.ThinkingConfigParamOfEnabled(int64(budget))
-		minTokens := int64(budget + 4096)
-		if params.MaxTokens < minTokens {
-			params.MaxTokens = minTokens
+	// Thinking is opt-in via reasoning_effort. 4.6+ models use adaptive thinking
+	// + the effort output-config (the enabled+budget shape is rejected with a 400
+	// on Opus 4.7/4.8). Haiku 4.5 and older keep the enabled+budget path — they
+	// have no adaptive mode and reject the effort parameter.
+	if req.ReasoningEffort != "" {
+		if is46Plus(model) {
+			params.Thinking = sdk.ThinkingConfigParamUnion{OfAdaptive: &sdk.ThinkingConfigAdaptiveParam{}}
+			params.OutputConfig = sdk.OutputConfigParam{Effort: effortParam(req.ReasoningEffort)}
+		} else if budget := thinkingBudget(req.ReasoningEffort); budget > 0 {
+			params.Thinking = sdk.ThinkingConfigParamOfEnabled(int64(budget))
+			minTokens := int64(budget + 4096)
+			if params.MaxTokens < minTokens {
+				params.MaxTokens = minTokens
+			}
 		}
 	}
 

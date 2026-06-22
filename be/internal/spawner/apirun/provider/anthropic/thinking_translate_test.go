@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	sdk "github.com/anthropics/anthropic-sdk-go"
+
 	"be/internal/spawner/apirun/provider"
 )
 
@@ -42,11 +44,14 @@ func TestThinkingBudget_UnknownNonEmpty(t *testing.T) {
 	}
 }
 
-// TestTranslateRequest_ThinkingEnabled_LowEffort verifies budget=4096 is set and
-// MaxTokens is raised to budget+4096 when the request MaxTokens is below the floor.
-func TestTranslateRequest_ThinkingEnabled_LowEffort(t *testing.T) {
+// Budget (enabled) thinking path: Haiku 4.5 and older have no adaptive mode and
+// reject the effort parameter, so they keep thinking:{type:"enabled",budget_tokens}.
+
+// TestTranslateRequest_BudgetThinking_LowEffort verifies budget=4096 is set and
+// MaxTokens is raised to budget+4096 when below the floor (Haiku path).
+func TestTranslateRequest_BudgetThinking_LowEffort(t *testing.T) {
 	req := provider.Request{
-		Model:           "claude-opus-4-7",
+		Model:           "claude-haiku-4-5",
 		MaxTokens:       100, // below budget+4096 = 8192
 		ReasoningEffort: "low",
 	}
@@ -55,27 +60,24 @@ func TestTranslateRequest_ThinkingEnabled_LowEffort(t *testing.T) {
 		t.Fatalf("translateRequest: %v", err)
 	}
 
-	// Thinking must be present (non-zero budget)
 	body, _ := json.Marshal(params)
 	out := string(body)
-	if !strings.Contains(out, `"thinking"`) {
-		t.Errorf("expected 'thinking' in params; body=%s", out)
-	}
 	if !strings.Contains(out, `"budget_tokens"`) {
 		t.Errorf("expected budget_tokens in thinking params; body=%s", out)
 	}
-
-	// MaxTokens raised to budget+4096 = 8192
+	if strings.Contains(out, `"adaptive"`) {
+		t.Errorf("Haiku must not use adaptive thinking; body=%s", out)
+	}
 	if params.MaxTokens != 8192 {
 		t.Errorf("MaxTokens = %d, want 8192 (budget 4096 + 4096)", params.MaxTokens)
 	}
 }
 
-// TestTranslateRequest_ThinkingEnabled_HighEffort verifies budget=16384 and
-// MaxTokens raised to 20480 (16384+4096) when below that.
-func TestTranslateRequest_ThinkingEnabled_HighEffort(t *testing.T) {
+// TestTranslateRequest_BudgetThinking_HighEffort verifies budget=16384 and
+// MaxTokens raised to 20480 (16384+4096) when below that (Haiku path).
+func TestTranslateRequest_BudgetThinking_HighEffort(t *testing.T) {
 	req := provider.Request{
-		Model:           "claude-opus-4-7",
+		Model:           "claude-haiku-4-5",
 		MaxTokens:       1000,
 		ReasoningEffort: "high",
 	}
@@ -88,11 +90,11 @@ func TestTranslateRequest_ThinkingEnabled_HighEffort(t *testing.T) {
 	}
 }
 
-// TestTranslateRequest_ThinkingEnabled_SufficientMaxTokens verifies MaxTokens
-// is NOT raised when it already exceeds budget+4096.
-func TestTranslateRequest_ThinkingEnabled_SufficientMaxTokens(t *testing.T) {
+// TestTranslateRequest_BudgetThinking_SufficientMaxTokens verifies MaxTokens is
+// NOT raised when it already exceeds budget+4096 (Haiku path).
+func TestTranslateRequest_BudgetThinking_SufficientMaxTokens(t *testing.T) {
 	req := provider.Request{
-		Model:           "claude-opus-4-7",
+		Model:           "claude-haiku-4-5",
 		MaxTokens:       32000, // already > medium budget+4096 = 12288
 		ReasoningEffort: "medium",
 	}
@@ -105,11 +107,50 @@ func TestTranslateRequest_ThinkingEnabled_SufficientMaxTokens(t *testing.T) {
 	}
 }
 
+// TestTranslateRequest_AdaptiveThinking_46Plus verifies 4.6+ models use adaptive
+// thinking + the effort output-config (never the budget shape, which 400s on
+// Opus 4.7/4.8) and that MaxTokens is left untouched.
+func TestTranslateRequest_AdaptiveThinking_46Plus(t *testing.T) {
+	for _, model := range []string{
+		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-4-6",
+	} {
+		t.Run(model, func(t *testing.T) {
+			params, err := translateRequest(provider.Request{
+				Model:           model,
+				MaxTokens:       1000,
+				ReasoningEffort: "high",
+			})
+			if err != nil {
+				t.Fatalf("translateRequest: %v", err)
+			}
+			if params.Thinking.OfAdaptive == nil {
+				t.Errorf("Thinking.OfAdaptive = nil, want adaptive for %s", model)
+			}
+			if params.OutputConfig.Effort != sdk.OutputConfigEffortHigh {
+				t.Errorf("OutputConfig.Effort = %q, want high", params.OutputConfig.Effort)
+			}
+			if params.MaxTokens != 1000 {
+				t.Errorf("MaxTokens = %d, want 1000 (adaptive must not raise it)", params.MaxTokens)
+			}
+			out := string(mustMarshal(t, params))
+			if !strings.Contains(out, `"type":"adaptive"`) {
+				t.Errorf("expected adaptive thinking on the wire; body=%s", out)
+			}
+			if !strings.Contains(out, `"effort":"high"`) {
+				t.Errorf("expected effort on the wire; body=%s", out)
+			}
+			if strings.Contains(out, `"budget_tokens"`) {
+				t.Errorf("budget_tokens must be absent for 4.6+; body=%s", out)
+			}
+		})
+	}
+}
+
 // TestTranslateRequest_ThinkingDisabled_EmptyEffort verifies that empty effort
-// leaves thinking params unset.
+// leaves thinking and effort unset on any model.
 func TestTranslateRequest_ThinkingDisabled_EmptyEffort(t *testing.T) {
 	req := provider.Request{
-		Model:           "claude-opus-4-7",
+		Model:           "claude-opus-4-8",
 		MaxTokens:       1000,
 		ReasoningEffort: "",
 	}
@@ -117,16 +158,23 @@ func TestTranslateRequest_ThinkingDisabled_EmptyEffort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("translateRequest: %v", err)
 	}
-	body, _ := json.Marshal(params)
-	out := string(body)
-	// budget_tokens must be absent when thinking is disabled
-	if strings.Contains(out, `"budget_tokens"`) {
-		t.Errorf("budget_tokens present in payload with empty effort; body=%s", out)
+	out := string(mustMarshal(t, params))
+	if strings.Contains(out, `"budget_tokens"`) || strings.Contains(out, `"adaptive"`) || strings.Contains(out, `"effort"`) {
+		t.Errorf("thinking/effort present with empty effort; body=%s", out)
 	}
-	// MaxTokens unchanged
 	if params.MaxTokens != 1000 {
 		t.Errorf("MaxTokens = %d, want 1000 (unchanged)", params.MaxTokens)
 	}
+}
+
+// mustMarshal JSON-encodes the SDK params for wire-shape assertions.
+func mustMarshal(t *testing.T, params sdk.MessageNewParams) []byte {
+	t.Helper()
+	b, err := json.Marshal(params)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	return b
 }
 
 // TestTranslateContentBlocks_ThinkingPreservesSignature verifies that a

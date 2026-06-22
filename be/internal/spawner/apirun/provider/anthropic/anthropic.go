@@ -62,15 +62,12 @@ type anthropicProvider struct {
 
 func (p *anthropicProvider) Name() string { return "anthropic" }
 
-// MaxContext returns the model's input context window in tokens. Values are
-// hardcoded; unknown models default to 200k.
+// MaxContext returns the model's input context window in tokens. The DB
+// api_models.context_length is authoritative (see spawner_prepare); this is the
+// fallback consulted only when a row carries no explicit value. Window values
+// live in model.go (contextWindow); unknown models default to 200k.
 func (p *anthropicProvider) MaxContext(model string) int {
-	switch model {
-	case "claude-opus-4-8[1m]", "claude-opus-4-7[1m]", "claude-opus-4-6[1m]":
-		return 1000000
-	}
-	// Anthropic 200k-context models — opus, sonnet, haiku 4.x.
-	return 200000
+	return contextWindow(model)
 }
 
 // Run executes a single streaming model turn. It blocks until the stream

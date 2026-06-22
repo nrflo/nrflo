@@ -76,8 +76,8 @@ func TestAPIModel_Get(t *testing.T) {
 	if m.MappedModel != "claude-opus-4-7" {
 		t.Errorf("MappedModel = %q, want claude-opus-4-7", m.MappedModel)
 	}
-	if m.ContextLength != 200000 {
-		t.Errorf("ContextLength = %d, want 200000", m.ContextLength)
+	if m.ContextLength != 1000000 {
+		t.Errorf("ContextLength = %d, want 1000000 (opus 4.7 is 1M-native on the API)", m.ContextLength)
 	}
 	if !m.ReadOnly {
 		t.Error("ReadOnly = false, want true")

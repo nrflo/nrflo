@@ -50,13 +50,13 @@ The `model` field on an agent definition must be the `id` of a row in the
 
 | id | mapped_model | context |
 |----|--------------|---------|
-| `opus_4_8` | `claude-opus-4-8` | 200k |
+| `opus_4_8` | `claude-opus-4-8` | 1M |
 | `opus_4_8_1m` | `claude-opus-4-8` | 1M |
-| `opus_4_7` | `claude-opus-4-7` | 200k |
+| `opus_4_7` | `claude-opus-4-7` | 1M |
 | `opus_4_7_1m` | `claude-opus-4-7` | 1M |
-| `opus_4_6` | `claude-opus-4-6` | 200k |
+| `opus_4_6` | `claude-opus-4-6` | 1M |
 | `opus_4_6_1m` | `claude-opus-4-6` | 1M |
-| `sonnet` | `claude-sonnet-4-6` | 200k |
+| `sonnet` | `claude-sonnet-4-6` | 1M |
 | `haiku` | `claude-haiku-4-5` | 200k |
 
 **Seeded OpenAI rows** (read-only):

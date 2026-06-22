@@ -17,13 +17,17 @@ func TestMaxContext(t *testing.T) {
 		model string
 		want  int
 	}{
-		{"claude-opus-4-7", 200000},
+		// 4.6+ families are 1M-native on the API (bare or with the [1m] marker).
+		{"claude-opus-4-8", 1000000},
+		{"claude-opus-4-8[1m]", 1000000},
+		{"claude-opus-4-7", 1000000},
 		{"claude-opus-4-7[1m]", 1000000},
-		{"claude-opus-4-6", 200000},
+		{"claude-opus-4-6", 1000000},
 		{"claude-opus-4-6[1m]", 1000000},
-		{"claude-sonnet-4-6", 200000},
-		{"claude-sonnet-4-7", 200000},
+		{"claude-sonnet-4-6", 1000000},
+		// Haiku 4.5 and unknown/future ids default to 200k.
 		{"claude-haiku-4-5", 200000},
+		{"claude-sonnet-4-7", 200000},
 		{"unknown-model", 200000},
 		{"", 200000},
 	}

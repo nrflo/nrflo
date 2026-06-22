@@ -249,9 +249,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 				maxTokens = *agentCfg.APIMaxTokens
 			}
 		}
-		maxCtx := am.ContextLength
-		if pmc := apiProv.MaxContext(apiModelID); pmc > 0 {
-			maxCtx = pmc
+		maxCtx := am.ContextLength // DB authoritative; provider hardcode is fallback
+		if maxCtx <= 0 {
+			maxCtx = apiProv.MaxContext(apiModelID)
 		}
 		proc.maxContext = maxCtx
 

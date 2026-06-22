@@ -23,6 +23,18 @@ func marshaledParams(t *testing.T, req provider.Request) []byte {
 	return b
 }
 
+// TestTranslateRequest_StripsContextSuffix verifies the "[1m]" context marker is
+// stripped from the model id before the request (it 404s on the API).
+func TestTranslateRequest_StripsContextSuffix(t *testing.T) {
+	params, err := translateRequest(provider.Request{Model: "claude-opus-4-8[1m]", MaxTokens: 10})
+	if err != nil {
+		t.Fatalf("translateRequest: %v", err)
+	}
+	if params.Model != "claude-opus-4-8" {
+		t.Errorf("Model = %q, want %q (suffix stripped)", params.Model, "claude-opus-4-8")
+	}
+}
+
 func TestTranslateRequest_ToolChoice(t *testing.T) {
 	for _, choice := range []string{"", "auto"} {
 		t.Run("ok_"+choice, func(t *testing.T) {

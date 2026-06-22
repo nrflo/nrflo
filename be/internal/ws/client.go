@@ -33,6 +33,42 @@ type Client struct {
 	// Client subscriptions
 	subscriptions map[string]bool
 	mu            sync.Mutex
+
+	// closed guards the send channel against the close/send race: the hub
+	// closes send on unregister/shutdown while detached goroutines (replay,
+	// snapshot) may still be sending. Both paths take mu, so a send never
+	// races the close. See trySend / closeSend.
+	closed bool
+}
+
+// trySend queues data for the write pump without blocking. It is safe to call
+// from any goroutine concurrently with connection teardown: once the client is
+// closed the send is dropped (returns false) instead of panicking on a closed
+// channel. Returns false when the client is closed or its buffer is full.
+func (c *Client) trySend(data []byte) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return false
+	}
+	select {
+	case c.send <- data:
+		return true
+	default:
+		return false
+	}
+}
+
+// closeSend marks the client closed and closes its send channel exactly once,
+// signaling the write pump to exit. Idempotent and safe under the hub lock.
+func (c *Client) closeSend() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return
+	}
+	c.closed = true
+	close(c.send)
 }
 
 // ClientMessage represents a message from the client
@@ -162,9 +198,5 @@ func (c *Client) sendAck(action, projectID, ticketID string) {
 		"ticket_id":  ticketID,
 	}
 	data, _ := json.Marshal(ack)
-	select {
-	case c.send <- data:
-	default:
-		// Buffer full
-	}
+	c.trySend(data)
 }

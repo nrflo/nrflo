@@ -232,7 +232,7 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				h.removeClientSubscriptions(client)
-				close(client.send)
+				client.closeSend()
 			}
 			h.mu.Unlock()
 
@@ -245,7 +245,7 @@ func (h *Hub) Run() {
 		case <-h.shutdown:
 			h.mu.Lock()
 			for client := range h.clients {
-				close(client.send)
+				client.closeSend()
 				delete(h.clients, client)
 			}
 			h.mu.Unlock()
@@ -453,14 +453,12 @@ func (h *Hub) broadcastEvent(event *Event) {
 
 }
 
-// sendToClient sends data to a client (non-blocking)
+// sendToClient sends data to a client (non-blocking, close-safe).
 func (h *Hub) sendToClient(client *Client, data []byte) {
 	checkBackpressure(client)
-	select {
-	case client.send <- data:
-	default:
-		// Client buffer full, will be disconnected by write pump
-	}
+	// trySend drops the message if the client's buffer is full (write pump will
+	// disconnect it) or the client has already been closed.
+	client.trySend(data)
 }
 
 // ClientCount returns the number of connected clients

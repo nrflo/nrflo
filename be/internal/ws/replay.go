@@ -81,9 +81,9 @@ func handleReplay(c *Client, projectID, ticketID string, sinceSeq int64, hub *Hu
 		if err != nil {
 			continue
 		}
-		select {
-		case c.send <- evtData:
-		default:
+		// Stop replaying if the buffer is full or the client has been closed
+		// (this runs on a detached goroutine that can outlive the connection).
+		if !c.trySend(evtData) {
 			return
 		}
 	}
@@ -100,8 +100,5 @@ func sendControlEvent(c *Client, eventType, projectID, ticketID string, data map
 		Data:            data,
 	}
 	evtData, _ := json.Marshal(evt)
-	select {
-	case c.send <- evtData:
-	default:
-	}
+	c.trySend(evtData)
 }

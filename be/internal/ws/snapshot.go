@@ -45,9 +45,7 @@ func streamSnapshot(c *Client, projectID, ticketID string, hub *Hub) {
 			Data:            chunk.Data,
 		}
 		evtData, _ := json.Marshal(evt)
-		select {
-		case c.send <- evtData:
-		default:
+		if !c.trySend(evtData) {
 			return
 		}
 	}

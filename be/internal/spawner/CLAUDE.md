@@ -82,9 +82,11 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Rate-Limit Restart
 
-For `cli_interactive` agents: on a non-zero exit whose last ~10 output/stderr blocks match a rate-limit pattern (adapter `ClassifyExit`), `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts`, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps with exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`) via `s.config.Clock.After`; when a subscription reset is known from the statusline `rate_limits` payload (`agent.rate_limits_update` → `rate_limit_reset_ts`), `resetAwareDelay` (`rate_limit_config.go`) waits until that exact reset (+30s, ≤8h) instead. `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
+For `cli_interactive` agents: on a non-zero exit whose last ~10 output/stderr blocks match a rate-limit pattern (adapter `ClassifyExit`), `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts`, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`); a known subscription reset (`agent.rate_limits_update` → `rate_limit_reset_ts`) makes `resetAwareDelay` (`rate_limit_config.go`) wait until that reset (+30s, ≤8h) instead. `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
 
-For `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit` from a typed `*sdk.Error` (no regex); `apiBackend.Start`'s goroutine runs the same broadcast/register-stop/wait dance and flips `finalStatus=CONTINUE`. `rateLimitConfig` loads for both lanes in `prepareSpawn` (adapter `"api"` for the API lane).
+In-band variant: a 529 the Claude CLI prints as text *without exiting* (no Stop hook fires) is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`, from `checkIdleNudge`) — it reads the last assistant message from the reconstructed transcript and on a rate-limit match runs the same retry (relaunch uses `--fallback-model`). `"Overloaded"` is a claude `ClassifyExit` limit pattern; covers api-via-cli.
+
+For `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit` from a typed `*sdk.Error`; `apiBackend.Start`'s goroutine runs the same dance and flips `finalStatus=CONTINUE`. `rateLimitConfig` loads for both lanes in `prepareSpawn`.
 
 Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`GetConfig`):
 
@@ -95,8 +97,6 @@ Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`Ge
 | `rate_limit_max_wait_sec` | `3600` | Max per-step wait; total-wait gate for future retries |
 | `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated rate-limit patterns |
 | `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated error patterns |
-
-Default patterns are defined in each adapter's `ClassifyExit` method.
 
 ## Stall Detection
 
@@ -110,13 +110,13 @@ On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `r
 
 ## Validation Commands
 
-When an agent finishes `result=pass` (explicit or implicit), `handleCompletion` runs `agent_definitions.validation_commands` (JSON array) sequentially via `sh -c` in `proc.workDir` (`validation.go`); per-command timeout 5 min, env = full agent envelope minus `NRFLO_AGENT_TOKEN`/`NRF_SESSION_ID`, output tail-captured to 64 KB. First non-zero exit flips result to `fail` (`result_reason=validation_failure`) and writes a `validation_failure` finding (`{command, command_index, exit_code, output_tail}`) carried to the retry session; progress logged as `category=validation` rows.
+When an agent finishes `result=pass` (explicit or implicit), `handleCompletion` runs `agent_definitions.validation_commands` (JSON array) sequentially via `sh -c` in `proc.workDir` (`validation.go`); per-command timeout 5 min, env = full agent envelope minus `NRFLO_AGENT_TOKEN`/`NRF_SESSION_ID`, output tail-captured to 64 KB. First non-zero exit flips result to `fail` (`result_reason=validation_failure`) and writes a `validation_failure` finding (`{command, command_index, exit_code, output_tail}`) carried to the retry session.
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.IdleAfterMessageTimeoutSec`, `Config.IdleStartTimeoutSec`, `Config.NudgeMax`.
+Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.Idle*Sec`/`NudgeMax`.
 
-End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session. This covers the nudge-less api-via-cli lane and complements the idle nudge (which still catches mid-turn silence).
+End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session. Complements the idle nudge.
 
 ## Template Variables
 

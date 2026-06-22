@@ -21,6 +21,9 @@ func (a *CodexAdapter) MapModel(model string) string {
 		"codex_gpt54_normal":   "gpt-5.4",
 		"codex_gpt54_high":     "gpt-5.4",
 		"codex_gpt54_mini_low": "gpt-5.4-mini",
+		"codex_gpt55_normal":   "gpt-5.5",
+		"codex_gpt55_high":     "gpt-5.5",
+		"codex_gpt55_mini_low": "gpt-5.5-mini",
 	}
 	if mapped, ok := modelMap[model]; ok {
 		return mapped
@@ -33,11 +36,11 @@ func (a *CodexAdapter) GetReasoningEffort(model string) string {
 	switch model {
 	case "codex_gpt_normal", "codex_gpt_high":
 		return "high"
-	case "codex_gpt54_normal":
+	case "codex_gpt54_normal", "codex_gpt55_normal":
 		return "medium"
-	case "codex_gpt54_high":
+	case "codex_gpt54_high", "codex_gpt55_high":
 		return "high"
-	case "codex_gpt54_mini_low":
+	case "codex_gpt54_mini_low", "codex_gpt55_mini_low":
 		return "low"
 	default:
 		return "high"

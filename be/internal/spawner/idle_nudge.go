@@ -10,16 +10,29 @@ import (
 	"be/internal/ws"
 )
 
-// checkIdleNudge checks whether an interactive-CLI agent has been silent past its idle
-// window and either sends a finish-reminder nudge or triggers an auto-fail when the
-// nudge cap is exhausted. Only active for cliInteractiveBackend (proc.nudgeMax > 0).
-// Does not cause the proc to leave the running list — the agent keeps running after a
-// nudge; the auto-fail path relies on RequestTerminalSignal to drive the kill.
+// checkIdleNudge runs the idle-time checks for an interactive-CLI agent. It
+// first routes a swallowed server-side API error to a rate-limit relaunch
+// (handleInBandRateLimit) — this runs for every cli_interactive agent including
+// the nudge-less api-via-cli lane and, when it fires, kills the proc with
+// finalStatus=CONTINUE for the monitor to relaunch. Otherwise, when the agent
+// has been silent past its idle window (proc.nudgeMax > 0), it sends a
+// finish-reminder nudge or triggers an auto-fail once the nudge cap is spent.
+// The nudge path itself does not remove the proc from the running list; its
+// auto-fail relies on RequestTerminalSignal to drive the kill.
 func (s *Spawner) checkIdleNudge(ctx context.Context, proc *processInfo, req SpawnRequest) {
-	if proc.nudgeMax == 0 {
+	if proc.backend == nil || proc.backend.Name() != "cli_interactive" {
 		return
 	}
-	if proc.backend == nil || proc.backend.Name() != "cli_interactive" {
+
+	// Before nudging, catch a turn that ended on a swallowed server-side API
+	// error (e.g. 529 Overloaded): no Stop hook fires and nudging cannot revive
+	// it, so relaunch with rate-limit backoff instead. Runs for every
+	// interactive agent, including the nudge-less api-via-cli lane.
+	if s.handleInBandRateLimit(ctx, proc, req) {
+		return
+	}
+
+	if proc.nudgeMax == 0 {
 		return
 	}
 

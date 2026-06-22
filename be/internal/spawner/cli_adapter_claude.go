@@ -116,6 +116,10 @@ func (a *ClaudeAdapter) ClassifyExit(recentText, stderrTail string, exitCode int
 		"You've hit your limit",
 		"You've hit your org's monthly usage limit",
 		"Your usage allocation has been disabled by your admin",
+		// Server-side overload (HTTP 529). Anthropic's overloaded_error surfaces
+		// in the CLI as "API Error: 529 Overloaded"; treat it as a rate limit so
+		// it gets backoff+retry instead of being a terminal error.
+		"Overloaded",
 	}, extraLimitPatterns...)
 	errorPatterns := append([]string{
 		"API Error:",

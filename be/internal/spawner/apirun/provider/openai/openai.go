@@ -50,7 +50,7 @@ func (p *openaiProvider) MaxContext(model string) int {
 	switch model {
 	case "gpt-5", "gpt-5-mini":
 		return 1000000
-	case "gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini":
+	case "gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini", "gpt-5.5", "gpt-5.5-mini":
 		return 200000
 	case "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano":
 		return 1047576

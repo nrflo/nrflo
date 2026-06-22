@@ -83,7 +83,8 @@ func TestMigration128_SeededAnthropicRowCount(t *testing.T) {
 	}
 }
 
-// TestMigration128_SeededOpenAIRowCount verifies exactly 6 openai read-only rows.
+// TestMigration128_SeededOpenAIRowCount verifies the openai read-only row count
+// after all migrations: 6 seeded by 128 plus the 3 GPT-5.5 rows added by 144.
 func TestMigration128_SeededOpenAIRowCount(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -97,8 +98,8 @@ func TestMigration128_SeededOpenAIRowCount(t *testing.T) {
 	).Scan(&count); err != nil {
 		t.Fatalf("SELECT COUNT openai: %v", err)
 	}
-	if count != 6 {
-		t.Errorf("seeded openai rows = %d, want 6", count)
+	if count != 9 {
+		t.Errorf("seeded openai rows = %d, want 9", count)
 	}
 }
 

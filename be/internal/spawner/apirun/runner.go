@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"be/internal/logger"
 	"be/internal/spawner/apirun/provider"
 )
 
@@ -122,7 +123,7 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 			return
 		}
 
-		r.updateContext(proc, resp.Usage)
+		r.updateContext(ctx, proc, resp.Usage)
 
 		switch resp.StopReason {
 		case "end_turn":
@@ -233,10 +234,31 @@ func formatToolResult(name, out string, isErr bool) string {
 
 // updateContext computes the percentage of context window remaining from the
 // turn's Usage and writes it to proc + AgentSvc so monitorAll observes the
-// same low-context threshold path used by CLI agents.
-func (r *Runner) updateContext(proc ProcState, u provider.Usage) {
+// same low-context threshold path used by CLI agents. It also emits a
+// structured per-turn usage line (the only place cache_read/cache_creation are
+// surfaced — they are otherwise summed away into the context-left %).
+func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.Usage) {
 	total := u.InputTokens + u.CacheReadTokens + u.CacheCreationTokens
-	if total <= 0 || r.cfg.MaxContext <= 0 {
+	if total <= 0 {
+		return
+	}
+	// cache_read = reused prefix, cache_creation = fresh write, input = uncached.
+	// cache_hit_pct is the share of billed input served from cache this turn.
+	cacheStatus := "miss"
+	if u.CacheReadTokens > 0 {
+		cacheStatus = "hit"
+	}
+	logger.Info(ctx, "apirun turn usage",
+		"session", proc.SessionID(),
+		"model", r.cfg.Model,
+		"input", u.InputTokens,
+		"cache_read", u.CacheReadTokens,
+		"cache_creation", u.CacheCreationTokens,
+		"output", u.OutputTokens,
+		"cache", cacheStatus,
+		"cache_hit_pct", 100*u.CacheReadTokens/total,
+	)
+	if r.cfg.MaxContext <= 0 {
 		return
 	}
 	pct := 100 - (100*total)/r.cfg.MaxContext

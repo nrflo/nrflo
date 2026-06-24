@@ -29,7 +29,7 @@ export function RunWorkflowForm({
   hasUploadPending,
   onUploadPendingChange,
 }: {
-  projectWorkflows: [string, { description: string; scope_type?: string; phases: WorkflowDefSummary['phases'] }][]
+  projectWorkflows: [string, { description: string; scope_type?: string; is_global?: boolean; phases: WorkflowDefSummary['phases'] }][]
   defsLoading: boolean
   selectedWorkflowDef: string
   onSelectWorkflowDef: (v: string) => void
@@ -107,7 +107,7 @@ export function RunWorkflowForm({
           onChange={onSelectWorkflowDef}
           options={projectWorkflows.map(([id, def]) => ({
             value: id,
-            label: id + (def.description ? ` - ${def.description}` : ''),
+            label: id + (def.is_global ? ' (global)' : '') + (def.description ? ` - ${def.description}` : ''),
           }))}
         />
       </div>

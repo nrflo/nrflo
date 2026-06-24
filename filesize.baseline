@@ -162,7 +162,7 @@ be/internal/spawner/to_resume_integration_test.go	359
 be/internal/spawner/to_resume_test.go	472
 be/internal/venv/manager_test.go	328
 be/internal/ws/event_test.go	307
-be/internal/ws/hub.go	484
+be/internal/ws/hub.go	482
 be/internal/ws/integration_e2e_test.go	331
 be/internal/ws/replay_test.go	430
 be/internal/ws/snapshot_test.go	301
@@ -237,4 +237,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	389
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	495
+ui/src/types/workflow.ts	497

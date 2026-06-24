@@ -2,10 +2,12 @@ package service
 
 import "strings"
 
-// GlobalProjectID is the reserved project that holds global (project-agnostic)
-// workflow definitions. Workflow resolution falls back to this project when a
-// workflow is not defined under the selected project; execution still happens
-// under the real selected project.
+// GlobalProjectID is the reserved storage namespace that holds global
+// (project-agnostic) workflow definitions. It is NOT a user project: it is
+// hidden from every project listing, and the authoritative "this is global"
+// signal is the workflows.is_global column, not this string. Workflow
+// resolution falls back to this namespace when a workflow is not defined under
+// the selected project; execution still happens under the real selected project.
 const GlobalProjectID = "__global__"
 
 // DeepResearchWorkflow is the reserved name of the built-in deep-research

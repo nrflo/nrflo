@@ -85,9 +85,12 @@ func (r *ProjectRepo) Exists(id string) (bool, error) {
 
 // List retrieves all projects
 func (r *ProjectRepo) List() ([]*model.Project, error) {
+	// '__global__' is the reserved storage namespace for global workflow
+	// definitions (service.GlobalProjectID), not a user project — never list it.
 	rows, err := r.db.Query(`
 		SELECT id, name, root_path, default_workflow, default_branch, use_git_worktrees, created_at, updated_at
 		FROM projects
+		WHERE LOWER(id) <> '__global__'
 		ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err

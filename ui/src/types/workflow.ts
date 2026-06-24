@@ -296,6 +296,7 @@ export interface FindingSchema {
 export interface WorkflowDefSummary {
   description: string
   scope_type?: ScopeType
+  is_global?: boolean // true → reserved global namespace; run-only from a project
   groups?: string[]
   close_ticket_on_complete?: boolean
   purge_on_completion?: boolean
@@ -320,6 +321,7 @@ export interface WorkflowDef {
   project_id: string
   description: string
   scope_type?: ScopeType
+  is_global?: boolean // true → reserved global namespace; run-only from a project
   groups?: string[]
   close_ticket_on_complete?: boolean
   purge_on_completion?: boolean

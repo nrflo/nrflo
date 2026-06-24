@@ -15,7 +15,8 @@ type Workflow struct {
 	ScopeType               string         `json:"scope_type"` // "ticket" or "project"
 	CloseTicketOnComplete   bool           `json:"close_ticket_on_complete"`
 	PurgeOnCompletion       bool           `json:"purge_on_completion"`
-	Groups                  string         `json:"-"` // JSON array of tag strings
+	IsGlobal                bool           `json:"is_global"` // true when the def lives in the reserved global storage namespace
+	Groups                  string         `json:"-"`         // JSON array of tag strings
 	NextWorkflowOnSuccess   string         `json:"-"`
 	FinalizeSuccessCommand  string         `json:"-"`
 	FinalizeSuccessScriptID string         `json:"-"`
@@ -77,6 +78,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ScopeType               string          `json:"scope_type"`
 		CloseTicketOnComplete   bool            `json:"close_ticket_on_complete"`
 		PurgeOnCompletion       bool            `json:"purge_on_completion"`
+		IsGlobal                bool            `json:"is_global"`
 		Groups                  []string        `json:"groups"`
 		NextWorkflowOnSuccess   string          `json:"next_workflow_on_success"`
 		FinalizeSuccessCommand  string          `json:"finalize_success_command"`
@@ -95,6 +97,7 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 		ScopeType:               scopeType,
 		CloseTicketOnComplete:   w.CloseTicketOnComplete,
 		PurgeOnCompletion:       w.PurgeOnCompletion,
+		IsGlobal:                w.IsGlobal,
 		Groups:                  groups,
 		NextWorkflowOnSuccess:   w.NextWorkflowOnSuccess,
 		FinalizeSuccessCommand:  w.FinalizeSuccessCommand,
@@ -120,6 +123,7 @@ func (w *Workflow) UnmarshalJSON(data []byte) error {
 		ScopeType               string          `json:"scope_type"`
 		CloseTicketOnComplete   bool            `json:"close_ticket_on_complete"`
 		PurgeOnCompletion       bool            `json:"purge_on_completion"`
+		IsGlobal                bool            `json:"is_global"`
 		Groups                  []string        `json:"groups"`
 		NextWorkflowOnSuccess   string          `json:"next_workflow_on_success"`
 		FinalizeSuccessCommand  string          `json:"finalize_success_command"`
@@ -141,6 +145,7 @@ func (w *Workflow) UnmarshalJSON(data []byte) error {
 	w.ScopeType = raw.ScopeType
 	w.CloseTicketOnComplete = raw.CloseTicketOnComplete
 	w.PurgeOnCompletion = raw.PurgeOnCompletion
+	w.IsGlobal = raw.IsGlobal
 	w.SetGroups(raw.Groups)
 	w.NextWorkflowOnSuccess = raw.NextWorkflowOnSuccess
 	w.FinalizeSuccessCommand = raw.FinalizeSuccessCommand

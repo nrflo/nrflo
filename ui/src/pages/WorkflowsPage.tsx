@@ -54,6 +54,13 @@ export function WorkflowsPage() {
     queryFn: listWorkflowDefs,
   })
 
+  // Global definitions are unioned into the listing so they're runnable from any
+  // project, but they are not editable here (they live in the reserved global
+  // namespace, admin-managed). Show only this project's own definitions.
+  const localWorkflows = workflows
+    ? Object.entries(workflows).filter(([, def]) => !def.is_global)
+    : []
+
   const createMutation = useMutation({
     mutationFn: (data: WorkflowDefCreateRequest) => createWorkflowDef(data),
     onSuccess: () => {
@@ -122,24 +129,23 @@ export function WorkflowsPage() {
       {isLoading && <p className="text-muted-foreground">Loading workflows...</p>}
       {error && <p className="text-destructive">Failed to load workflows: {String(error)}</p>}
 
-      {workflows && Object.keys(workflows).length === 0 && (
+      {workflows && localWorkflows.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <p>No workflow definitions found.</p>
         </div>
       )}
 
       <div className="space-y-3">
-        {workflows &&
-          Object.entries(workflows).map(([id, def]: [string, WorkflowDefSummary]) => (
-            <WorkflowCard
-              key={id}
-              id={id}
-              def={def}
-              onEdit={() => setEditingWorkflow({ id, ...def })}
-              onDelete={() => setDeleteTarget(id)}
-              onExport={() => handleExport(id)}
-            />
-          ))}
+        {localWorkflows.map(([id, def]: [string, WorkflowDefSummary]) => (
+          <WorkflowCard
+            key={id}
+            id={id}
+            def={def}
+            onEdit={() => setEditingWorkflow({ id, ...def })}
+            onDelete={() => setDeleteTarget(id)}
+            onExport={() => handleExport(id)}
+          />
+        ))}
       </div>
 
       {/* Create Dialog */}

@@ -54,6 +54,13 @@ func (s *WorkflowExportService) Export(projectID string, workflowIDs []string) (
 			return nil, err
 		}
 		for id := range defs {
+			// Global definitions are unioned into the listing but are not owned by
+			// this project; exporting them would both fail (fetchWorkflowModel
+			// scopes to projectID) and wrongly copy a global def into a project
+			// bundle. Export only the project's own definitions.
+			if defs[id].IsGlobal {
+				continue
+			}
 			workflowIDs = append(workflowIDs, id)
 		}
 		sort.Strings(workflowIDs)

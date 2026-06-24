@@ -138,10 +138,13 @@ func (s *ProjectService) Get(projectID string) (*model.Project, error) {
 
 // List lists all projects
 func (s *ProjectService) List() ([]*model.Project, error) {
+	// GlobalProjectID is the reserved storage namespace for global workflow
+	// definitions, not a user project — never list it.
 	rows, err := s.pool.Query(`
 		SELECT id, name, root_path, default_workflow, default_branch, created_at, updated_at
 		FROM projects
-		ORDER BY created_at DESC`)
+		WHERE LOWER(id) <> LOWER(?)
+		ORDER BY created_at DESC`, GlobalProjectID)
 	if err != nil {
 		return nil, err
 	}

@@ -71,6 +71,15 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		t.Errorf("L2 pass_policy = %q, want quorum:2", policy)
 	}
 
+	var isGlobal bool
+	if err := pool.QueryRow(`SELECT is_global FROM workflows WHERE project_id=? AND id=?`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&isGlobal); err != nil {
+		t.Fatal(err)
+	}
+	if !isGlobal {
+		t.Error("deep-research workflow row is_global = false, want true")
+	}
+
 	// End-to-end: from an unrelated project, GetWorkflowDef resolves via the
 	// global fallback with all phases + the report finding schema.
 	def, err := NewWorkflowService(pool, clk).GetWorkflowDef("some-other-project", DeepResearchWorkflow)
@@ -88,5 +97,72 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	}
 	if !hasReport {
 		t.Error("missing 'report' finding schema")
+	}
+	if !def.IsGlobal {
+		t.Error("GetWorkflowDef(global fallback).IsGlobal = false, want true")
+	}
+}
+
+// TestListWorkflowDefs_GlobalUnionAndPrecedence verifies that a project's
+// selectable workflow list unions in global definitions (flagged IsGlobal), and
+// that a project-local definition shadows a same-named global one.
+func TestListWorkflowDefs_GlobalUnionAndPrecedence(t *testing.T) {
+	t.Parallel()
+	dbPath := filepath.Join(t.TempDir(), "list.db")
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("open pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	clk := clock.Real()
+	now := "2026-01-01T00:00:00Z"
+
+	if err := EnsureGlobalDeepResearch(pool, clk); err != nil {
+		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
+	}
+	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES ('p1','P1',NULL,?,?)`, now, now); err != nil {
+		t.Fatalf("insert project: %v", err)
+	}
+	if _, err := pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, is_global, finding_schemas, created_at, updated_at)
+		VALUES ('feature','p1','Local feature','project','[]',0,0,0,'[]',?,?)`, now, now); err != nil {
+		t.Fatalf("insert local workflow: %v", err)
+	}
+
+	svc := NewWorkflowService(pool, clk)
+
+	defs, err := svc.ListWorkflowDefs("p1")
+	if err != nil {
+		t.Fatalf("ListWorkflowDefs: %v", err)
+	}
+	dr, ok := defs[DeepResearchWorkflow]
+	if !ok {
+		t.Fatal("global deep-research not present in project p1 listing")
+	}
+	if !dr.IsGlobal {
+		t.Error("unioned deep-research IsGlobal = false, want true")
+	}
+	feat, ok := defs["feature"]
+	if !ok {
+		t.Fatal("local 'feature' missing from listing")
+	}
+	if feat.IsGlobal {
+		t.Error("local feature IsGlobal = true, want false")
+	}
+
+	// Local precedence: a project-local workflow named 'deep-research' must shadow
+	// the global one (same name → local wins, IsGlobal=false).
+	if _, err := pool.Exec(`INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, is_global, finding_schemas, created_at, updated_at)
+		VALUES (?,'p1','Local override','project','[]',0,0,0,'[]',?,?)`, DeepResearchWorkflow, now, now); err != nil {
+		t.Fatalf("insert local override: %v", err)
+	}
+	defs2, err := svc.ListWorkflowDefs("p1")
+	if err != nil {
+		t.Fatalf("ListWorkflowDefs (2): %v", err)
+	}
+	if got := defs2[DeepResearchWorkflow]; got.IsGlobal || got.Description != "Local override" {
+		t.Errorf("local override did not shadow global: IsGlobal=%v description=%q", got.IsGlobal, got.Description)
 	}
 }

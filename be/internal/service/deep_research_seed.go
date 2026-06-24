@@ -44,8 +44,8 @@ func EnsureGlobalDeepResearch(pool *db.Pool, clk clock.Clock) error {
 	}
 
 	if _, err := tx.Exec(
-		`INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, finding_schemas, created_at, updated_at)
-		 VALUES (?, ?, ?, 'project', '[]', 0, 0, ?, ?, ?)`,
+		`INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, is_global, finding_schemas, created_at, updated_at)
+		 VALUES (?, ?, ?, 'project', '[]', 0, 0, 1, ?, ?, ?)`,
 		DeepResearchWorkflow, GlobalProjectID, "Multi-source, fact-checked web research", drFindingSchemas, now, now); err != nil {
 		return fmt.Errorf("deep-research seed: workflow: %w", err)
 	}

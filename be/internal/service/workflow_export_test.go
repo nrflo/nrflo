@@ -223,6 +223,30 @@ func TestExport_ExcludesReservedWorkflows(t *testing.T) {
 	}
 }
 
+func TestExport_ExcludesGlobalWorkflows(t *testing.T) {
+	t.Parallel()
+	env := setupExportImportEnv(t)
+	env.createSimpleWorkflow(t, "wf-local")
+
+	// Seed the bundled global deep-research; ListWorkflowDefs("proj1") now unions
+	// it in, but export-all must skip it (it isn't owned by proj1 — fetching it
+	// under proj1 would error, and a global def must not be copied into a bundle).
+	if err := EnsureGlobalDeepResearch(env.pool, clock.Real()); err != nil {
+		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
+	}
+
+	bundle, err := env.exportSvc.Export(env.projectID, nil)
+	if err != nil {
+		t.Fatalf("Export all: %v", err)
+	}
+	if len(bundle.Workflows) != 1 {
+		t.Fatalf("Workflows len = %d, want 1 (global excluded)", len(bundle.Workflows))
+	}
+	if bundle.Workflows[0].Workflow.ID != "wf-local" {
+		t.Errorf("exported %q, want wf-local", bundle.Workflows[0].Workflow.ID)
+	}
+}
+
 func TestExport_NonExistentWorkflow_Error(t *testing.T) {
 	t.Parallel()
 	env := setupExportImportEnv(t)

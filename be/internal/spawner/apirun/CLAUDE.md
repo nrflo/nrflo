@@ -30,6 +30,10 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `consult` (`tools_builtin/consult.go`) synchronously spawns a named consultant agent via `apirun.ConsultantSpawner` and returns the `_consult_answer` finding inline; see [doc/api.md § Consultants](../../../../doc/api.md#consultants) for authoring requirements.
 
+`web_search` / `web_fetch` (`tools_builtin/web_search.go`, `web_fetch.go`) call the provider-agnostic `tools_web` layer (Exa search + Jina fetch by default; provider selected via `web_search_provider`/`web_fetch_provider` config, API keys via project/server env). `web_fetch` SSRF-guards every URL (`tools_web/urlguard.go`), returns an excerpt inline and offloads full markdown to an artifact; blocked/failed fetches surface as `ok:false` rather than failing the turn. These are backend-agnostic (available to cli/codex agents over the MCP bridge too).
+
+`web_deep_research` (`tools_builtin/web_deep_research.go`) runs the global `deep-research` workflow as a synchronous sub-workflow via `ToolEnv.DeepResearch` (the orchestrator) and returns a cited summary plus a full-report artifact. `ToolEnv.Heartbeat` bumps the caller's stall timer during the blocking run; the tool is stripped from deep-research's own agents (recursion guard, `spawner_api_registry.go`).
+
 ## Multimodal Tool Results
 
 `provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. `provider/anthropic/translate.go:translateMediaBlock` maps each `MediaBlock` to the SDK `ToolResultBlockParamContentUnion` (`OfImage` base64 / `OfDocument` base64 PDF). Image media types: jpeg/png/gif/webp; document: application/pdf only.

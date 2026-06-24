@@ -48,6 +48,14 @@ type ChainRunController interface {
 	SetNextStepTicket(instanceID, ticketID string) error
 }
 
+// DeepResearchRunner runs the deep-research workflow synchronously under the
+// given project and returns its `report` finding as raw JSON. Implemented by the
+// orchestrator and injected via spawner.Config; the web_deep_research builtin
+// calls it. Nil-safe; guard with env.DeepResearch == nil before calling.
+type DeepResearchRunner interface {
+	RunDeepResearch(ctx context.Context, projectID, question string) (report json.RawMessage, err error)
+}
+
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
 // It carries the in-process services and identifiers handlers need to
 // mirror the CLI socket flow without going over the network.
@@ -85,6 +93,12 @@ type ToolEnv struct {
 	// ChainRun lets the chain_next_* builtins set the next chain step's
 	// instructions/ticket. Nil outside chain runs / in tests.
 	ChainRun ChainRunController
+	// DeepResearch runs the deep-research workflow synchronously (web_deep_research
+	// builtin). Nil when not wired (tests, or contexts without an orchestrator).
+	DeepResearch DeepResearchRunner
+	// Heartbeat bumps the calling agent's lastMessageTime so stall detection does
+	// not kill it during a long blocking tool call. Nil-safe.
+	Heartbeat func()
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

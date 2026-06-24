@@ -46,6 +46,10 @@ func (s *Server) handleCreateWorkflowDef(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
+
 	svc := s.workflowService()
 
 	wf, err := svc.CreateWorkflowDef(projectID, &req)
@@ -113,6 +117,10 @@ func (s *Server) handleUpdateWorkflowDef(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
+
 	svc := s.workflowService()
 
 	if err := svc.UpdateWorkflowDef(projectID, id, &req); err != nil {
@@ -147,6 +155,10 @@ func (s *Server) handleDeleteWorkflowDef(w http.ResponseWriter, r *http.Request)
 	}
 
 	id := extractID(r)
+
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
 
 	svc := s.workflowService()
 

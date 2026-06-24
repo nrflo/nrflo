@@ -137,4 +137,7 @@ type Config struct {
 	// WorkflowControl allows API-mode workflow_continue/workflow_fail builtins to act on the workflow.
 	// Optional (nil-safe).
 	WorkflowControl apirun.WorkflowController
+	// DeepResearch runs the deep-research workflow synchronously for the
+	// web_deep_research builtin. Optional (nil-safe); set by the orchestrator.
+	DeepResearch apirun.DeepResearchRunner
 }

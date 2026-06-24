@@ -183,6 +183,9 @@ func (h *Handler) obsWorkflowDefUpdate(req Request, session *model.AgentSession,
 	if errR != nil {
 		return MakeErrorResponse(req.ID, errR)
 	}
+	if resp, denied := denyGlobalWorkflowMutation(req, projectID); denied {
+		return resp
+	}
 	var params types.WorkflowDefUpdateRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))

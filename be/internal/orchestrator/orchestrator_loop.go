@@ -140,8 +140,7 @@ func (o *Orchestrator) runLoop(
 	runAPIMode := apiModeSettingVal == "true"
 	runAPIViaCLI, _ := apiModeSettingsSvc.GetAPIViaCLIEnabled()
 
-	// Build shared spawner config used by all phases in this run.
-	// OnSessionRegister/Unregister are set per-spawn in spawnPhases.
+	// Shared spawner config for all phases; OnSessionRegister/Unregister set per-spawn in spawnPhases.
 	baseCfg := spawner.Config{
 		Workflows:                 workflows,
 		Agents:                    agents,
@@ -177,6 +176,7 @@ func (o *Orchestrator) runLoop(
 		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
 		ArtifactSvc:        artifactSvcRun,
 		WorkflowControl:    apiWorkflowControl{o: o, pool: pool},
+		DeepResearch:       o,
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.

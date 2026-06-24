@@ -182,3 +182,19 @@ func getUserID(r *http.Request) string {
 	}
 	return ""
 }
+
+// denyNonAdminGlobalWrite writes a 403 and returns true when projectID is the
+// reserved global project and the caller is not an admin user. Mutating a global
+// workflow definition (or its agent defs) affects every project, so only admins
+// may do it; per-project CRUD is unaffected. Bearer/service principals never
+// populate the user context, so they are denied here too.
+func denyNonAdminGlobalWrite(w http.ResponseWriter, r *http.Request, projectID string) bool {
+	if !strings.EqualFold(projectID, service.GlobalProjectID) {
+		return false
+	}
+	if u := getUser(r); u != nil && u.Role == model.UserRoleAdmin {
+		return false
+	}
+	writeError(w, http.StatusForbidden, "admin role required to modify global workflows")
+	return true
+}

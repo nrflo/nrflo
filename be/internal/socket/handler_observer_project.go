@@ -134,6 +134,9 @@ func (h *Handler) obsProjectWorkflowCreate(req Request, session *model.AgentSess
 	if projectID == "" {
 		projectID = session.ProjectID
 	}
+	if resp, denied := denyGlobalWorkflowMutation(req, projectID); denied {
+		return resp
+	}
 	var params types.WorkflowDefCreateRequest
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
@@ -156,6 +159,9 @@ func (h *Handler) obsProjectWorkflowDelete(req Request, session *model.AgentSess
 	workflowID := base.WorkflowID
 	if workflowID == "" {
 		return MakeErrorResponse(req.ID, NewValidationError("workflow_id is required"))
+	}
+	if resp, denied := denyGlobalWorkflowMutation(req, projectID); denied {
+		return resp
 	}
 	if err := h.workflowSvc.DeleteWorkflowDef(projectID, workflowID); err != nil {
 		if strings.Contains(err.Error(), "not found") {

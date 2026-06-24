@@ -75,6 +75,7 @@ All `observer.*` methods require `session_id` in params identifying the calling 
 3. Project-scoped observer: `project_id` in params must match session's project
 4. Workflow-scoped observer: `workflow_id` in params must match session's workflow instance
 5. Mutate methods additionally re-check `experimental_observer_enabled` at call time
+6. `observer.*` workflow-def create/update/delete reject the reserved `__global__` project via `denyGlobalWorkflowMutation` (`handler_observer.go`) — global workflow defs are admin-HTTP-only, never mutable from the agent socket
 
 `observer.workflow.trigger` and `observer.workflow.retry_failed` require a `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()` (nil → internal error response).
 

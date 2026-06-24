@@ -100,6 +100,10 @@ func (s *Server) handleImportWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
+
 	svc := s.workflowExportService()
 	result, err := svc.Import(projectID, &req)
 	if err != nil {

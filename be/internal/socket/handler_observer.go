@@ -8,10 +8,22 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // scopeLevel maps observer scope names to numeric precedence: workflow < project < global.
 var scopeLevel = map[string]int{"workflow": 1, "project": 2, "global": 3}
+
+// denyGlobalWorkflowMutation rejects any agent/observer attempt to mutate a
+// global (__global__) workflow definition. Global workflow CRUD is reserved to
+// human admins via the HTTP API (api.denyNonAdminGlobalWrite); the socket/agent
+// path has no user/role, so it may never touch the global namespace.
+func denyGlobalWorkflowMutation(req Request, projectID string) (Response, bool) {
+	if strings.EqualFold(projectID, service.GlobalProjectID) {
+		return MakeErrorResponse(req.ID, NewValidationError("global workflows cannot be modified via the agent/observer socket; manage them through the admin HTTP API")), true
+	}
+	return Response{}, false
+}
 
 // methodSpec describes the authorization requirements for an observer method.
 type methodSpec struct {

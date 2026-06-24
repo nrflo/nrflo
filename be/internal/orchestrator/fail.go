@@ -73,15 +73,9 @@ func (o *Orchestrator) FailWorkflow(ctx context.Context, projectID, ticketID, wo
 // buildMinimalReq constructs a RunRequest with just enough data for markFailed
 // (finalize slots, scope type). Does not set up a worktree or pool.
 func (o *Orchestrator) buildMinimalReq(pool *db.Pool, projectID, ticketID, workflowName string, wi *model.WorkflowInstance) (RunRequest, error) {
-	wfRepo := repo.NewWorkflowRepo(pool, o.clock)
-	dbWorkflow, err := wfRepo.Get(projectID, workflowName)
+	dbWorkflow, dbAgentDefs, _, err := o.resolveWorkflowDef(pool, projectID, workflowName)
 	if err != nil {
-		return RunRequest{}, fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
-	}
-	adRepo := repo.NewAgentDefinitionRepo(pool, o.clock)
-	dbAgentDefs, err := adRepo.ListExecutable(projectID, dbWorkflow.ID)
-	if err != nil {
-		return RunRequest{}, fmt.Errorf("failed to load agent definitions: %w", err)
+		return RunRequest{}, err
 	}
 
 	svcWorkflows, _ := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)

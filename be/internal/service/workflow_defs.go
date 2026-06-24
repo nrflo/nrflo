@@ -10,11 +10,7 @@ import (
 	"be/internal/types"
 )
 
-// IsReservedWorkflowName returns true for internal system workflow names like __spec_import__.
-// Reserved workflows are excluded from the workflow definition listing.
-func IsReservedWorkflowName(name string) bool {
-	return strings.HasPrefix(name, "__") && strings.HasSuffix(name, "__")
-}
+// Reserved workflow/project name helpers live in workflow_reserved.go.
 
 // --- Workflow Definition CRUD ---
 

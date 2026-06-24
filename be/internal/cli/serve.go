@@ -15,6 +15,7 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/socket"
 
 	"github.com/spf13/cobra"
@@ -133,6 +134,10 @@ func setupServer() (*serverComponents, error) {
 	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, insecureCookies)
 
 	clk := clock.Real()
+	// Seed the bundled global deep-research workflow (best-effort, idempotent).
+	if err := service.EnsureGlobalDeepResearch(pool, clk); err != nil {
+		logger.Warn(context.Background(), "deep-research seed failed", "error", err)
+	}
 	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
 	socketServer.SetWorkflowRunner(newWorkflowRunnerAdapter(httpServer.GetOrchestrator(), pool, clk))
 	socketServer.SetToolDispatcher(httpServer.GetOrchestrator())

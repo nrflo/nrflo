@@ -65,6 +65,10 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
+
 	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), service.NewAPIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	def, err := svc.CreateAgentDef(projectID, workflowID, &req)
@@ -144,6 +148,10 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
+
 	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), service.NewAPIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 
 	if err := svc.UpdateAgentDef(projectID, workflowID, id, &req); err != nil {
@@ -190,6 +198,10 @@ func (s *Server) handleDeleteAgentDef(w http.ResponseWriter, r *http.Request) {
 
 	workflowID := r.PathValue("wid")
 	id := r.PathValue("id")
+
+	if denyNonAdminGlobalWrite(w, r, projectID) {
+		return
+	}
 
 	svc := service.NewAgentDefinitionService(s.pool, s.clock, service.NewCLIModelService(s.pool, s.clock), service.NewAPIModelService(s.pool, s.clock), repo.NewPythonScriptRepo(s.pool, s.clock))
 

@@ -81,17 +81,10 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	wfRepo := repo.NewWorkflowRepo(database, o.clock)
-	dbWorkflow, err := wfRepo.Get(req.ProjectID, req.WorkflowName)
+	dbWorkflow, dbAgentDefs, defProjectID, err := o.resolveWorkflowDef(database, req.ProjectID, req.WorkflowName)
 	if err != nil {
 		database.Close()
-		return nil, fmt.Errorf("workflow definition '%s' not found: %w", req.WorkflowName, err)
-	}
-	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	dbAgentDefs, err := adRepo.ListExecutable(req.ProjectID, dbWorkflow.ID)
-	if err != nil {
-		database.Close()
-		return nil, fmt.Errorf("failed to load agent definitions: %w", err)
+		return nil, err
 	}
 	database.Close()
 
@@ -204,12 +197,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Load per-layer pass policies for this workflow
 	layerPolicySvc := service.NewWorkflowLayerPolicyService(pool, o.clock)
-	layerPolicies, err := layerPolicySvc.GetLayerPolicies(req.ProjectID, dbWorkflow.ID)
+	layerPolicies, err := layerPolicySvc.GetLayerPolicies(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("failed to load layer policies: %w", err)
 	}
-	layerPause, err := layerPolicySvc.GetLayerPauseAfter(req.ProjectID, dbWorkflow.ID)
+	layerPause, err := layerPolicySvc.GetLayerPauseAfter(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("failed to load layer pause flags: %w", err)

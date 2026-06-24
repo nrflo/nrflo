@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"fmt"
+	"strings"
 
 	"be/internal/model"
 	"be/internal/service"
@@ -52,14 +53,12 @@ func (s *Spawner) buildAPIRegistry(
 
 	// Recursion guard: consultant agents may not call consult themselves.
 	if agentDef != nil && agentDef.Consultant {
-		delete(handlers, "consult")
-		filtered := specs[:0]
-		for _, spec := range specs {
-			if spec.Name != "consult" {
-				filtered = append(filtered, spec)
-			}
-		}
-		specs = filtered
+		specs = stripTool(specs, handlers, "consult")
+	}
+	// Recursion guard: agents inside the deep-research workflow may not invoke
+	// web_deep_research (which would spawn another deep-research run).
+	if strings.EqualFold(req.WorkflowName, service.DeepResearchWorkflow) {
+		specs = stripTool(specs, handlers, "web_deep_research")
 	}
 
 	extID, extCtx := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
@@ -86,7 +85,22 @@ func (s *Spawner) buildAPIRegistry(
 		WorkflowControl:    s.config.WorkflowControl,
 		Consultant:         s,
 		ChainRun:           service.NewWorkflowChainRunService(s.config.Pool, s.config.Clock),
+		DeepResearch:       s.config.DeepResearch,
+		Heartbeat:          func() { s.BumpLastMessage(proc.sessionID) },
 	}
 
 	return specs, handlers, toolEnv, nil
+}
+
+// stripTool removes a tool by name from both the handler registry and the spec
+// list (recursion guards). Returns the filtered specs.
+func stripTool(specs []provider.ToolSpec, handlers apirun.Registry, name string) []provider.ToolSpec {
+	delete(handlers, name)
+	filtered := specs[:0]
+	for _, spec := range specs {
+		if spec.Name != name {
+			filtered = append(filtered, spec)
+		}
+	}
+	return filtered
 }

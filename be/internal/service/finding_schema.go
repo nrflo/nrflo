@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -71,12 +72,19 @@ func ValidateFindingSchemas(defs []types.FindingSchema) error {
 	return nil
 }
 
-// loadFindingSchemas reads the finding-schema definitions for a workflow.
+// loadFindingSchemas reads the finding-schema definitions for a workflow. For a
+// global workflow the instance runs under the selected project but the workflow
+// row lives under GlobalProjectID, so a not-found lookup falls back there.
 func loadFindingSchemas(pool *db.Pool, projectID, workflowID string) ([]types.FindingSchema, error) {
 	var raw string
 	err := pool.QueryRow(
 		`SELECT finding_schemas FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID).Scan(&raw)
+	if err == sql.ErrNoRows {
+		err = pool.QueryRow(
+			`SELECT finding_schemas FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+			GlobalProjectID, workflowID).Scan(&raw)
+	}
 	if err != nil {
 		return nil, err
 	}

@@ -50,6 +50,8 @@ Project-scoped writes use `projectAdmin` (admin user **or** a service token whos
 
 All reads on those resources are `protected` (requireAuth only). All other routes are `protected`.
 
+Workflow-def / agent-def / import writes are `protected`, but mutating the reserved `__global__` project's definitions additionally requires an admin user via `denyNonAdminGlobalWrite` (`auth_middleware.go`), called in each mutating handler — a per-request check because the requirement is conditional on `projectID == "__global__"` (per-project workflow CRUD is unaffected). Bearer/service principals are denied. The agent socket path enforces the same invariant via `socket.denyGlobalWorkflowMutation`.
+
 ### Login Rate Limiter
 
 `auth_ratelimit.go` implements a per-IP+email token bucket: 5 attempts per 5-minute sliding window. On limit exceeded, returns HTTP 429 with `Retry-After` header (seconds). Keys are `{ip}|{email}`.

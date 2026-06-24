@@ -136,6 +136,10 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 
 		closeOnComplete := entry.Workflow.CloseTicketOnComplete
 		purgeOnComplete := entry.Workflow.PurgeOnCompletion
+		var findingSchemas []types.FindingSchema
+		if raw := entry.Workflow.GetFindingSchemas(); len(raw) > 0 {
+			_ = json.Unmarshal(raw, &findingSchemas)
+		}
 		wf, err := s.workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 			ID:                    finalID,
 			Description:           entry.Workflow.Description,
@@ -146,6 +150,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 			NextWorkflowOnSuccess: entry.Workflow.NextWorkflowOnSuccess,
 			PauseEventCommand:     entry.Workflow.PauseEventCommand,
 			PauseEventScriptID:    entry.Workflow.PauseEventScriptID,
+			FindingSchemas:        findingSchemas,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create workflow %s: %w", finalID, err)

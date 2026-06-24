@@ -54,7 +54,7 @@ func New(config Config) *Spawner {
 		takeControlCh:      make(chan string, 1),
 		takeControlReadies: make(map[string]chan struct{}),
 		terminalSignals:    make(map[string]chan terminalSignal),
-		bumpMessageCh:      make(chan string, 1),
+		bumpMessageCh:      make(chan string, 16), // buffered so concurrent heartbeats/hook bumps aren't dropped
 		interactiveWaits:   make(map[string]chan struct{}),
 		killedInteractive:  make(map[string]struct{}),
 		sessionProcs:       make(map[string]*processInfo),

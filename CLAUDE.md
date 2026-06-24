@@ -78,7 +78,7 @@ Rules every change must respect.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
 - **Spawned agents authenticate via per-session bearer token in `NRFLO_AGENT_TOKEN`**: see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
-- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` for Claude, `nrflo/*` for codex) — findings, lifecycle (finished/fail/continue/callback), artifacts, skip, chain, consult — served by the `nrflo_server agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
+- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` for Claude, `nrflo/*` for codex) — served by the `nrflo_server agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
 - **API mode is a runtime admin toggle** (`api_mode_enabled` global setting); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Feature Index
@@ -115,10 +115,10 @@ Rules every change must respect.
 ### Auth & administration
 - **Auth + sessions + login rate limit** → [auth/CLAUDE.md](be/internal/auth/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Route list, audit-log + user CRUD** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Service tokens (long-lived project-scoped bearer tokens for external callers)** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Service tokens** (long-lived project-scoped bearer tokens) → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
-- **Artifact storage + agent runtime (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, the `artifact_add`/`artifact_list`/`artifact_get` MCP tools, Python SDK `c.artifacts`)** → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
+- **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools, SDK `c.artifacts`) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
@@ -137,15 +137,16 @@ See `be/cmd/server/main.go` for subcommands.
 | `hotfix` | L0: implementor | Urgent fixes |
 | `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
+| `deep-research` (global) | L0: scope -> L1: research -> L2: verify_a/b/c -> L3: synthesize | Multi-source web research, runnable from any project |
 
 ## API Response Format
 
-`GET /api/v1/tickets/:id/workflow` returns a v4 format wrapper with workflow state, findings, and agent history. See [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md) for full details.
+`GET /api/v1/tickets/:id/workflow` returns a v4 wrapper (state, findings, agent history); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Building & Installing
 
-`make build` (dev, includes UI), `make build-release`, `make install` (→ /usr/local/bin, or `PREFIX=`), `make test`. `make help` lists all targets.
+`make build` (dev, includes UI), `make build-release`, `make install` (→ `PREFIX`), `make test`; `make help` lists all targets.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile), [docker.yml](.github/workflows/docker.yml)). Api-mode off by default (admin enables in Settings UI). Bundles native Claude Code CLI (musl, no Node) for cli-mode (needs `ANTHROPIC_API_KEY`); no codex/opencode. Non-root `nrflo`; `/data`=`NRFLO_HOME` vol. Logs: `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile), [docker.yml](.github/workflows/docker.yml)). Api-mode off by default. Bundles native Claude Code CLI (musl) for cli-mode (`ANTHROPIC_API_KEY`); no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.

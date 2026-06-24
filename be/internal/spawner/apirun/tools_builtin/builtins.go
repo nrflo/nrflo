@@ -51,6 +51,10 @@ func Builtins() map[string]apirun.ToolHandler {
 		"read_document": readDocumentHandler{},
 
 		"consult": consultHandler{},
+
+		"web_search":        webSearchHandler{},
+		"web_fetch":         webFetchHandler{},
+		"web_deep_research": webDeepResearchHandler{},
 	}
 }
 

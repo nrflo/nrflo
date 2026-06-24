@@ -56,15 +56,9 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	}
 	projectRoot := project.RootPath.String
 
-	wfRepo := repo.NewWorkflowRepo(database, o.clock)
-	dbWorkflow, err := wfRepo.Get(projectID, workflowName)
+	dbWorkflow, dbAgentDefs, defProjectID, err := o.resolveWorkflowDef(database, projectID, workflowName)
 	if err != nil {
-		return fmt.Errorf("workflow definition '%s' not found: %w", workflowName, err)
-	}
-	adRepo := repo.NewAgentDefinitionRepo(database, o.clock)
-	dbAgentDefs, err := adRepo.ListExecutable(projectID, dbWorkflow.ID)
-	if err != nil {
-		return fmt.Errorf("failed to load agent definitions: %w", err)
+		return err
 	}
 
 	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
@@ -146,11 +140,11 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	}
 
 	layerPolicySvc := service.NewWorkflowLayerPolicyService(pool, o.clock)
-	layerPolicies, err := layerPolicySvc.GetLayerPolicies(projectID, dbWorkflow.ID)
+	layerPolicies, err := layerPolicySvc.GetLayerPolicies(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load layer policies: %w", err)
 	}
-	layerPause, err := layerPolicySvc.GetLayerPauseAfter(projectID, dbWorkflow.ID)
+	layerPause, err := layerPolicySvc.GetLayerPauseAfter(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load layer pause flags: %w", err)
 	}

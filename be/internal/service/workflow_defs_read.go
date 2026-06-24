@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"be/internal/model"
 	"be/internal/types"
@@ -32,13 +33,24 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	var observerProvider, observerModel sql.NullString
 	var findingSchemasStr string
 
-	err := s.pool.QueryRow(`
+	load := func(pid string) error {
+		return s.pool.QueryRow(`
 		SELECT description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &purgeOnCompletion, &nextWorkflowOnSuccess,
-		&finalizeSuccessCommand, &finalizeSuccessScriptID, &finalizeFailureCommand, &finalizeFailureScriptID,
-		&pauseEventCommand, &pauseEventScriptID,
-		&observerContext, &observerProvider, &observerModel, &findingSchemasStr)
+			pid, workflowID).Scan(&description, &scopeType, &groupsStr, &closeTicketOnComplete, &purgeOnCompletion, &nextWorkflowOnSuccess,
+			&finalizeSuccessCommand, &finalizeSuccessScriptID, &finalizeFailureCommand, &finalizeFailureScriptID,
+			&pauseEventCommand, &pauseEventScriptID,
+			&observerContext, &observerProvider, &observerModel, &findingSchemasStr)
+	}
+	// Definitions may be global: try the selected project, then fall back to
+	// GlobalProjectID. Sub-definitions (agent defs) load from the project the
+	// workflow row was actually found under.
+	defProjectID := projectID
+	err := load(projectID)
+	if err == sql.ErrNoRows && !strings.EqualFold(projectID, GlobalProjectID) {
+		defProjectID = GlobalProjectID
+		err = load(GlobalProjectID)
+	}
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -46,7 +58,7 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 		return nil, err
 	}
 
-	agentDefs, err := s.listAgentDefsForWorkflow(projectID, workflowID)
+	agentDefs, err := s.listAgentDefsForWorkflow(defProjectID, workflowID)
 	if err != nil {
 		return nil, err
 	}

@@ -135,12 +135,12 @@ func (s *WorkflowExportService) Export(projectID string, workflowIDs []string) (
 // fetchWorkflowModel queries the workflows table and returns a model.Workflow.
 func (s *WorkflowExportService) fetchWorkflowModel(projectID, workflowID string) (*model.Workflow, error) {
 	var desc, scopeType, groupsStr, nextWF string
-	var pauseEventCommand, pauseEventScriptID string
+	var pauseEventCommand, pauseEventScriptID, findingSchemas string
 	var closeOnComplete, purgeOnComplete bool
 	err := s.pool.QueryRow(`
-		SELECT description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, pause_event_command, pause_event_script_id
+		SELECT description, scope_type, groups, close_ticket_on_complete, purge_on_completion, next_workflow_on_success, pause_event_command, pause_event_script_id, finding_schemas
 		FROM workflows WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&desc, &scopeType, &groupsStr, &closeOnComplete, &purgeOnComplete, &nextWF, &pauseEventCommand, &pauseEventScriptID)
+		projectID, workflowID).Scan(&desc, &scopeType, &groupsStr, &closeOnComplete, &purgeOnComplete, &nextWF, &pauseEventCommand, &pauseEventScriptID, &findingSchemas)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -158,5 +158,6 @@ func (s *WorkflowExportService) fetchWorkflowModel(projectID, workflowID string)
 		PauseEventCommand:     pauseEventCommand,
 		PauseEventScriptID:    pauseEventScriptID,
 		Groups:                groupsStr,
+		FindingSchemas:        findingSchemas,
 	}, nil
 }

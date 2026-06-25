@@ -90,6 +90,34 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		t.Errorf("verify_b model = %q, want codex_gpt55_high", verifyBModel)
 	}
 
+	// Flow tuning (migration 000149 / seed): verifiers can read the researcher's
+	// cached artifacts; the angles floor is relaxed; prompts use the emit-or-fail
+	// completion contract.
+	var verifiersWithArtifact int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id LIKE 'verify_%' AND tools LIKE '%artifact_get%'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&verifiersWithArtifact); err != nil {
+		t.Fatal(err)
+	}
+	if verifiersWithArtifact != 3 {
+		t.Errorf("verifiers with artifact_get = %d, want 3", verifiersWithArtifact)
+	}
+	var agentsWithFailContract int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND prompt LIKE '%call agent_fail with the reason.%'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&agentsWithFailContract); err != nil {
+		t.Fatal(err)
+	}
+	if agentsWithFailContract != len(drAgents) {
+		t.Errorf("agents with emit-or-fail completion contract = %d, want %d", agentsWithFailContract, len(drAgents))
+	}
+	var anglesFloor int // angles schema minItems must be relaxed to 1
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM workflows WHERE project_id=? AND id=? AND finding_schemas LIKE '%"minItems":1%' AND finding_schemas NOT LIKE '%"minItems":3%'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&anglesFloor); err != nil {
+		t.Fatal(err)
+	}
+	if anglesFloor != 1 {
+		t.Errorf("angles minItems not relaxed to 1 (matched rows = %d)", anglesFloor)
+	}
+
 	var isGlobal bool
 	if err := pool.QueryRow(`SELECT is_global FROM workflows WHERE project_id=? AND id=?`,
 		GlobalProjectID, DeepResearchWorkflow).Scan(&isGlobal); err != nil {

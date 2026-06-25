@@ -90,16 +90,17 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		t.Errorf("verify_b model = %q, want codex_gpt55_high", verifyBModel)
 	}
 
-	// Flow tuning (migration 000149 / seed): verifiers can read the researcher's
-	// cached artifacts; the angles floor is relaxed; prompts use the emit-or-fail
-	// completion contract.
-	var verifiersWithArtifact int
-	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id LIKE 'verify_%' AND tools LIKE '%artifact_get%'`,
-		GlobalProjectID, DeepResearchWorkflow).Scan(&verifiersWithArtifact); err != nil {
+	// Flow tuning (seed / migrations 000149+000151): verifiers are lean
+	// (web_search + emit_findings only — no full-page artifact/fetch reads, which
+	// exhausted verifier context); the angles floor is relaxed; prompts use the
+	// emit-or-fail completion contract.
+	var verifiersLean int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id LIKE 'verify_%' AND tools='web_search,emit_findings'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&verifiersLean); err != nil {
 		t.Fatal(err)
 	}
-	if verifiersWithArtifact != 3 {
-		t.Errorf("verifiers with artifact_get = %d, want 3", verifiersWithArtifact)
+	if verifiersLean != 3 {
+		t.Errorf("verifiers with lean tools 'web_search,emit_findings' = %d, want 3", verifiersLean)
 	}
 	var agentsWithFailContract int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND prompt LIKE '%call agent_fail with the reason.%'`,

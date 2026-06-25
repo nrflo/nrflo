@@ -43,21 +43,21 @@ const drVerifyAPrompt = `You are an adversarial claim verifier (lens: QUOTE SUPP
 
 Be skeptical. For each claim ask: is it actually entailed by its quote, or is it an overreach / misread / out-of-context? You MAY web_search for contradicting evidence. Default to refuted=true when uncertain.
 
-You have artifact_list/artifact_get to read pages the researcher already fetched (named websrc_*), plus web_search/web_fetch to gather more. Prefer reading an already-fetched page over re-fetching it; use only these nrflo tools (not any built-in web-browsing tool); and never fetch or search the same URL or query twice — record your verdict and move on. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
+Verify primarily from each claim's verbatim quote and sourceUrl (already provided above). Use web_search (it returns short snippets) sparingly — only to check for clearly contradicting or corroborating evidence. Do NOT open or read full pages, do NOT use any built-in web-browsing or fetch tool, and never repeat the same search — keep your context small so you do not exhaust it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
 
 const drVerifyBPrompt = `You are an adversarial claim verifier (lens: INDEPENDENT CORROBORATION). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 For each claim, web_search for independent sources that confirm or contradict it. refuted=true unless the claim is independently corroborated by a credible source other than the original. Default to refuted=true when uncertain.
 
-You have artifact_list/artifact_get to read pages the researcher already fetched (named websrc_*), plus web_search/web_fetch to gather more. Prefer reading an already-fetched page over re-fetching it; use only these nrflo tools (not any built-in web-browsing tool); and never fetch or search the same URL or query twice — record your verdict and move on. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
+Verify primarily from each claim's verbatim quote and sourceUrl (already provided above). Use web_search (it returns short snippets) sparingly — only to check for clearly contradicting or corroborating evidence. Do NOT open or read full pages, do NOT use any built-in web-browsing or fetch tool, and never repeat the same search — keep your context small so you do not exhaust it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
 
 const drVerifyCPrompt = `You are an adversarial claim verifier (lens: SOURCE QUALITY & RECENCY). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 For each claim ask: is the source strong enough for the claim's strength (extraordinary claims need primary sources)? Is it stale for a fast-moving topic? Is it marketing / a press release / a cherry-picked benchmark? refuted=true for weak-source-for-strong-claim, outdated, or promotional. Default to refuted=true when uncertain.
 
-You have artifact_list/artifact_get to read pages the researcher already fetched (named websrc_*), plus web_search/web_fetch to gather more. Prefer reading an already-fetched page over re-fetching it; use only these nrflo tools (not any built-in web-browsing tool); and never fetch or search the same URL or query twice — record your verdict and move on. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_c" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
+Verify primarily from each claim's verbatim quote and sourceUrl (already provided above). Use web_search (it returns short snippets) sparingly — only to check for clearly contradicting or corroborating evidence. Do NOT open or read full pages, do NOT use any built-in web-browsing or fetch tool, and never repeat the same search — keep your context small so you do not exhaust it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_c" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
 
 const drSynthesizePrompt = `You are the synthesizer of a deep-research workflow.
 
@@ -89,9 +89,9 @@ type drAgent struct {
 var drAgents = []drAgent{
 	{ID: "scope", Layer: 0, Model: "sonnet", Tools: "emit_findings"},
 	{ID: "research", Layer: 1, Model: "sonnet", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
-	{ID: "verify_a", Layer: 2, Model: "sonnet", Tools: "web_search,web_fetch,artifact_list,artifact_get,emit_findings"},
-	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,web_fetch,artifact_list,artifact_get,emit_findings"},
-	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,web_fetch,artifact_list,artifact_get,emit_findings"},
+	{ID: "verify_a", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
+	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,emit_findings"},
+	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
 	{ID: "synthesize", Layer: 3, Model: "opus_4_8", Tools: "emit_findings"},
 }
 

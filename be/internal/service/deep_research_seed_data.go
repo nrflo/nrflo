@@ -20,7 +20,7 @@ const drScopePrompt = `You are the scope planner of a deep-research workflow. Th
 
 Decompose it into 5 complementary web-search angles that together cover the question from different directions (e.g. broad/primary, academic/technical, recent news, contrarian/skeptical, practitioner/implementation — adapt to the domain). Make each query specific enough to surface high-signal results; avoid redundancy.
 
-Emit one finding with the emit_findings tool, key "angles", value {question, angles:[{label, query, rationale}]} (3-6 angles). Then stop.`
+Emit one finding with the emit_findings tool, key "angles", value {question, angles:[{label, query, rationale}]} (3-6 angles). Then call agent_finished.`
 
 const drResearchPrompt = `You are the researcher of a deep-research workflow. The search angles from the previous layer are:
 #{LAYER_FINDINGS:0}
@@ -31,28 +31,28 @@ For each angle:
 3. Call web_fetch on the chosen URLs. If a page was offloaded to an artifact, use artifact_get / read_document to read the full content.
 4. Extract 2-5 FALSIFIABLE claims per useful source. Each claim: a concrete checkable statement, a verbatim supporting quote, the sourceUrl, sourceQuality (primary|secondary|blog|forum|unreliable), and importance (central|supporting|tangential).
 
-A failed/blocked fetch returns ok:false — note it and move on; do not invent content. Emit one finding with emit_findings, key "claims" (the array of all extracted claims). Then stop.`
+A failed/blocked fetch returns ok:false — note it and move on; do not invent content. Emit one finding with emit_findings, key "claims" (the array of all extracted claims). Then call agent_finished.`
 
 const drVerifyAPrompt = `You are an adversarial claim verifier (lens: QUOTE SUPPORT). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 Be skeptical. For each claim ask: is it actually entailed by its quote, or is it an overreach / misread / out-of-context? You MAY web_search for contradicting evidence. Default to refuted=true when uncertain.
 
-Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. Then stop.`
+Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. Then call agent_finished.`
 
 const drVerifyBPrompt = `You are an adversarial claim verifier (lens: INDEPENDENT CORROBORATION). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 For each claim, web_search for independent sources that confirm or contradict it. refuted=true unless the claim is independently corroborated by a credible source other than the original. Default to refuted=true when uncertain.
 
-Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. Then stop.`
+Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. Then call agent_finished.`
 
 const drVerifyCPrompt = `You are an adversarial claim verifier (lens: SOURCE QUALITY & RECENCY). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 For each claim ask: is the source strong enough for the claim's strength (extraordinary claims need primary sources)? Is it stale for a fast-moving topic? Is it marketing / a press release / a cherry-picked benchmark? refuted=true for weak-source-for-strong-claim, outdated, or promotional. Default to refuted=true when uncertain.
 
-Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_c" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. Then stop.`
+Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_c" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. Then call agent_finished.`
 
 const drSynthesizePrompt = `You are the synthesizer of a deep-research workflow.
 
@@ -66,7 +66,7 @@ Each verdict's claimRef is the 0-based index of the claim in the claims array ab
 
 A claim SURVIVES when a majority of the AVAILABLE verdicts for it are not-refuted (e.g. >=2 of 3, or >=2 of 2 when one verifier is absent). Drop refuted claims. Merge semantically duplicate survivors and combine their sources. Weight each finding's confidence by corroboration count and source quality (high = multiple primary/independent sources; low = single blog-quality source).
 
-Emit one finding with emit_findings, key "report", value {summary (3-5 sentences directly answering the question), findings:[{claim, confidence (high|medium|low), sources:[url], vote (e.g. "2-1"), evidence}], caveats, openQuestions:[...]}. Then stop.`
+Emit one finding with emit_findings, key "report", value {summary (3-5 sentences directly answering the question), findings:[{claim, confidence (high|medium|low), sources:[url], vote (e.g. "2-1"), evidence}], caveats, openQuestions:[...]}. Then call agent_finished.`
 
 // drAgent describes one seeded agent definition.
 type drAgent struct {
@@ -76,14 +76,16 @@ type drAgent struct {
 	Tools string
 }
 
-// drAgents is the layer-ordered roster. verify_b uses an OpenAI model for
-// cross-provider verification; if OpenAI is not configured it simply fails and
-// the layer's quorum:2 policy still passes on the two Claude verifiers.
+// drAgents is the layer-ordered roster. All agents run cli_interactive: the
+// claude/codex CLIs self-authenticate, so the workflow needs no server-side API
+// credential. verify_b uses a codex (GPT-5.5) model for cross-provider
+// verification; if codex is not configured it simply fails and the layer's
+// quorum:2 policy still passes on the two Claude verifiers.
 var drAgents = []drAgent{
 	{ID: "scope", Layer: 0, Model: "sonnet", Tools: "emit_findings"},
 	{ID: "research", Layer: 1, Model: "sonnet", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
 	{ID: "verify_a", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
-	{ID: "verify_b", Layer: 2, Model: "gpt54_high", Tools: "web_search,emit_findings"},
+	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,emit_findings"},
 	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
 	{ID: "synthesize", Layer: 3, Model: "opus_4_8", Tools: "emit_findings"},
 }

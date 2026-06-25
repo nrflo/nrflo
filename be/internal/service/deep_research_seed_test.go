@@ -71,6 +71,25 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		t.Errorf("L2 pass_policy = %q, want quorum:2", policy)
 	}
 
+	// Agents ship as cli_interactive (claude/codex CLIs self-auth; no server API
+	// credential), and verify_b is the codex GPT-5.5 cross-provider verifier.
+	var nonCLI int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND execution_mode<>'cli_interactive'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&nonCLI); err != nil {
+		t.Fatal(err)
+	}
+	if nonCLI != 0 {
+		t.Errorf("non-cli_interactive deep-research agents = %d, want 0", nonCLI)
+	}
+	var verifyBModel string
+	if err := pool.QueryRow(`SELECT model FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id='verify_b'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&verifyBModel); err != nil {
+		t.Fatal(err)
+	}
+	if verifyBModel != "codex_gpt55_high" {
+		t.Errorf("verify_b model = %q, want codex_gpt55_high", verifyBModel)
+	}
+
 	var isGlobal bool
 	if err := pool.QueryRow(`SELECT is_global FROM workflows WHERE project_id=? AND id=?`,
 		GlobalProjectID, DeepResearchWorkflow).Scan(&isGlobal); err != nil {

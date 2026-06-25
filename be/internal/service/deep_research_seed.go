@@ -18,9 +18,11 @@ import (
 // workflow itself is create-if-absent so admin edits survive restarts. Safe and
 // cheap to call on every startup.
 //
-// It writes via direct SQL on purpose: the agent-def service rejects api-mode
-// agents when api_mode_enabled is off, but the definition is just data and must
-// seed regardless of the runtime api-mode toggle.
+// It writes via direct SQL on purpose: it seeds shipped definition data at
+// startup without the agent-def service layer (and its model-validation
+// dependencies), so the bundled workflow is present regardless of runtime
+// configuration. The agents run as cli_interactive (the claude/codex CLIs
+// self-authenticate), so the workflow needs no server-side API credential.
 func EnsureGlobalDeepResearch(pool *db.Pool, clk clock.Clock, rootPath string) error {
 	now := clk.Now().UTC().Format(time.RFC3339Nano)
 
@@ -66,7 +68,7 @@ func EnsureGlobalDeepResearch(pool *db.Pool, clk clock.Clock, rootPath string) e
 	for _, a := range drAgents {
 		if _, err := tx.Exec(
 			`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, tools, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, 'api', ?, ?, ?)`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, 'cli_interactive', ?, ?, ?)`,
 			a.ID, GlobalProjectID, DeepResearchWorkflow, a.Model, 30, drPrompt(a.ID), a.Layer, a.Tools, now, now); err != nil {
 			return fmt.Errorf("deep-research seed: agent %s: %w", a.ID, err)
 		}

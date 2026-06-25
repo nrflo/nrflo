@@ -83,6 +83,53 @@ func TestExternalTool_DeepResearch_HappyPath(t *testing.T) {
 	}
 }
 
+func TestExternalTool_DeepResearch_PassesContext(t *testing.T) {
+	var gotExternalContext string
+	sawRun := false
+	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
+			sawRun = true
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			gotExternalContext, _ = body["external_context"].(string)
+			_, _ = w.Write([]byte(`{"instance_id":"inst-ctx"}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
+			_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"R"}}}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+		}
+	})
+	out, err := callExternalTool(c, "deep_research",
+		json.RawMessage(`{"question":"q","context":"building a Go CLI with cobra; targets macOS musl"}`))
+	if err != nil || out != "R" {
+		t.Fatalf("deep_research = %q err=%v", out, err)
+	}
+	if !sawRun || !strings.Contains(gotExternalContext, "cobra") {
+		t.Errorf("context not forwarded as external_context; got %q", gotExternalContext)
+	}
+}
+
+func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
+	hasKey := true
+	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run") {
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			_, hasKey = body["external_context"]
+			_, _ = w.Write([]byte(`{"instance_id":"i"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"R"}}}`))
+	})
+	if _, err := callExternalTool(c, "deep_research", json.RawMessage(`{"question":"q"}`)); err != nil {
+		t.Fatalf("deep_research: %v", err)
+	}
+	if hasKey {
+		t.Error("external_context should be omitted when no context is supplied")
+	}
+}
+
 func TestExternalTool_DeepResearch_Failed(t *testing.T) {
 	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {

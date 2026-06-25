@@ -117,6 +117,15 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	if anglesFloor != 1 {
 		t.Errorf("angles minItems not relaxed to 1 (matched rows = %d)", anglesFloor)
 	}
+	// scope prompt surfaces caller-supplied context for opt-in project grounding.
+	var scopeHasCtx int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id='scope' AND prompt LIKE '%${EXTERNAL_CONTEXT}%'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&scopeHasCtx); err != nil {
+		t.Fatal(err)
+	}
+	if scopeHasCtx != 1 {
+		t.Error("scope prompt missing ${EXTERNAL_CONTEXT} caller-context injection")
+	}
 
 	var isGlobal bool
 	if err := pool.QueryRow(`SELECT is_global FROM workflows WHERE project_id=? AND id=?`,

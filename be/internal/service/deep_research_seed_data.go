@@ -18,6 +18,11 @@ const drFindingSchemas = `[
 
 const drScopePrompt = `You are the scope planner of a deep-research workflow. The user's research question is provided above as your instructions.
 
+Caller-supplied context (may be empty — if blank, ignore it and research the question on its own terms):
+${EXTERNAL_CONTEXT}
+
+When that context is present, bias the angles toward what it implies the caller cares about (their domain, tech stack and versions, constraints, and what they already know) while still covering the question objectively.
+
 Decompose it into 1-6 complementary web-search angles (a narrow or closed question may need only 1-2) that together cover the question from different directions (e.g. broad/primary, academic/technical, recent news, contrarian/skeptical, practitioner/implementation — adapt to the domain). Make each query specific enough to surface high-signal results; avoid redundancy.
 
 Emit one finding with the emit_findings tool, key "angles", value {question, angles:[{label, query, rationale}]} (1-6 angles). If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`

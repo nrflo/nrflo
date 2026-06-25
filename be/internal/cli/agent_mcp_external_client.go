@@ -71,13 +71,19 @@ func (c *nrfloHTTPClient) do(ctx context.Context, project, method, path string, 
 }
 
 // runWorkflow starts a project-scoped workflow and returns its instance_id.
-func (c *nrfloHTTPClient) runWorkflow(ctx context.Context, project, workflow, instructions string) (string, error) {
+// externalContext (optional) is passed as the instance's external_context, which
+// the workflow's prompts can surface via ${EXTERNAL_CONTEXT}.
+func (c *nrfloHTTPClient) runWorkflow(ctx context.Context, project, workflow, instructions, externalContext string) (string, error) {
 	var res struct {
 		InstanceID string `json:"instance_id"`
 	}
+	body := map[string]any{"workflow": workflow, "instructions": instructions}
+	if strings.TrimSpace(externalContext) != "" {
+		body["external_context"] = externalContext
+	}
 	err := c.do(ctx, project, http.MethodPost,
 		"/api/v1/projects/"+url.PathEscape(project)+"/workflow/run",
-		map[string]any{"workflow": workflow, "instructions": instructions}, &res)
+		body, &res)
 	if err != nil {
 		return "", err
 	}
@@ -114,8 +120,8 @@ func (c *nrfloHTTPClient) listWorkflows(ctx context.Context, project string) (js
 // deepResearch runs the deep-research workflow and blocks until it finishes,
 // returning the synthesized `report` finding. Polling is client-side (many short
 // GETs) rather than one long request, so no single HTTP call runs for minutes.
-func (c *nrfloHTTPClient) deepResearch(ctx context.Context, project, question string) (string, error) {
-	instanceID, err := c.runWorkflow(ctx, project, "deep-research", question)
+func (c *nrfloHTTPClient) deepResearch(ctx context.Context, project, question, callerContext string) (string, error) {
+	instanceID, err := c.runWorkflow(ctx, project, "deep-research", question, callerContext)
 	if err != nil {
 		return "", err
 	}

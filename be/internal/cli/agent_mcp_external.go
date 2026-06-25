@@ -126,6 +126,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 	case "deep_research":
 		var in struct {
 			Question string `json:"question"`
+			Context  string `json:"context"`
 			Project  string `json:"project"`
 		}
 		if err := json.Unmarshal(args, &in); err != nil {
@@ -135,7 +136,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 			return "", fmt.Errorf("question is required")
 		}
 		project := c.resolveProject(ctx, in.Project)
-		return c.deepResearch(ctx, project, in.Question)
+		return c.deepResearch(ctx, project, in.Question, in.Context)
 	case "run_workflow":
 		var in struct {
 			Workflow     string `json:"workflow"`
@@ -149,7 +150,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 			return "", fmt.Errorf("workflow is required")
 		}
 		project := c.resolveProject(ctx, in.Project)
-		id, err := c.runWorkflow(ctx, project, in.Workflow, in.Instructions)
+		id, err := c.runWorkflow(ctx, project, in.Workflow, in.Instructions, "")
 		if err != nil {
 			return "", err
 		}
@@ -223,8 +224,12 @@ func externalToolSpecs(defaultProject string) []map[string]interface{} {
 	return []map[string]interface{}{
 		{
 			"name":        "deep_research",
-			"description": "Run nrflo's multi-source, fact-checked deep-research workflow for a question and return a cited markdown report. Blocks until the run finishes (can take several minutes — raise the MCP tool timeout, e.g. MCP_TIMEOUT).",
-			"inputSchema": obj(map[string]interface{}{"question": str("The research question or topic."), "project": projectArg}, "question"),
+			"description": "Run nrflo's multi-source, fact-checked deep-research workflow for a question and return a cited markdown report. Blocks until the run finishes (can take several minutes — raise the MCP tool timeout, e.g. MCP_TIMEOUT). Pass `context` to ground the research in your current project and conversation.",
+			"inputSchema": obj(map[string]interface{}{
+				"question": str("The research question or topic."),
+				"context":  str("Optional. Relevant context from your current conversation and project to focus the research — e.g. what the user is building, the tech stack and versions in use, constraints, and decisions or facts already established. Summarize it concisely in a few sentences. Leave empty for general, project-agnostic web research."),
+				"project":  projectArg,
+			}, "question"),
 		},
 		{
 			"name":        "run_workflow",

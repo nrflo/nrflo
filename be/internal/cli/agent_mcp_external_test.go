@@ -130,6 +130,28 @@ func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
 	}
 }
 
+func TestExtractReport_NestedAndFlatShapes(t *testing.T) {
+	// Real v4 shape: workflow_findings keyed by "<agent_type>:<model_id>".
+	nested := map[string]any{"workflow_findings": map[string]any{
+		"verify_a:claude:sonnet":     map[string]any{"verdicts_a": []any{}},
+		"synthesize:claude:opus_4_8": map[string]any{"report": map[string]any{"summary": "S"}},
+	}}
+	out, err := extractReport(nested, "inst")
+	if err != nil || !strings.Contains(out, `"summary": "S"`) {
+		t.Fatalf("nested shape: out=%q err=%v", out, err)
+	}
+	// Flat shape is still accepted.
+	flat := map[string]any{"workflow_findings": map[string]any{"report": "FLAT"}}
+	if out, err := extractReport(flat, "inst"); err != nil || out != "FLAT" {
+		t.Fatalf("flat shape: out=%q err=%v", out, err)
+	}
+	// No report anywhere → error.
+	none := map[string]any{"workflow_findings": map[string]any{"verify_a:claude:sonnet": map[string]any{"verdicts_a": []any{}}}}
+	if _, err := extractReport(none, "inst"); err == nil {
+		t.Fatal("expected error when no report finding present")
+	}
+}
+
 func TestDeepResearch_CancelStopsWorkflow(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var stopped bool

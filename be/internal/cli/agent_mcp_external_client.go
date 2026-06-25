@@ -169,7 +169,7 @@ func (c *nrfloHTTPClient) stopWorkflow(project, instanceID string) {
 // extractReport pulls the `report` finding out of a terminal v4 state.
 func extractReport(state map[string]any, instanceID string) (string, error) {
 	wf, _ := state["workflow_findings"].(map[string]any)
-	report, ok := wf["report"]
+	report, ok := findReportFinding(wf)
 	if !ok {
 		return "", fmt.Errorf("deep-research run %s completed but emitted no 'report' finding", instanceID)
 	}
@@ -181,4 +181,26 @@ func extractReport(state map[string]any, instanceID string) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+// findReportFinding locates the synthesize agent's "report" value in the v4
+// workflow_findings map. BuildCombinedFindings keys that map by
+// "<agent_type>[:<model_id>]" → {findingKey: value} (so the report is at
+// workflow_findings["synthesize:claude:opus_4_8"]["report"]), so search the
+// per-agent groups. A flat {report: ...} shape is also accepted.
+func findReportFinding(wf map[string]any) (any, bool) {
+	if wf == nil {
+		return nil, false
+	}
+	if r, ok := wf["report"]; ok {
+		return r, true
+	}
+	for _, group := range wf {
+		if g, ok := group.(map[string]any); ok {
+			if r, ok := g["report"]; ok {
+				return r, true
+			}
+		}
+	}
+	return nil, false
 }

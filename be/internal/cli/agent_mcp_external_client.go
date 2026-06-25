@@ -22,6 +22,11 @@ type nrfloHTTPClient struct {
 	token          string // service token (Authorization: Bearer)
 	defaultProject string // X-Project used when a tool call omits `project`
 	hc             *http.Client
+
+	// cwd→project auto-detect, resolved lazily and cached for the process
+	// lifetime — but only after a successful lookup (see cwdProject).
+	cwdResolved  bool
+	cwdProjectID string
 }
 
 // deepResearch polling cadence; vars so tests can shrink them.

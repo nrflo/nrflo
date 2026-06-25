@@ -231,7 +231,7 @@ func TestExport_ExcludesGlobalWorkflows(t *testing.T) {
 	// Seed the bundled global deep-research; ListWorkflowDefs("proj1") now unions
 	// it in, but export-all must skip it (it isn't owned by proj1 — fetching it
 	// under proj1 would error, and a global def must not be copied into a bundle).
-	if err := EnsureGlobalDeepResearch(env.pool, clock.Real()); err != nil {
+	if err := EnsureGlobalDeepResearch(env.pool, clock.Real(), t.TempDir()); err != nil {
 		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
 	}
 

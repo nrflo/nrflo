@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	"be/internal/service"
 )
 
 // newTestExternalClient returns a client pointed at h, with fast polling.
@@ -18,7 +21,9 @@ func newTestExternalClient(t *testing.T, h http.HandlerFunc) *nrfloHTTPClient {
 	deepResearchPollInterval = time.Millisecond
 	deepResearchMaxWait = 5 * time.Second
 	t.Cleanup(func() { deepResearchPollInterval, deepResearchMaxWait = prevInterval, prevWait })
-	return &nrfloHTTPClient{base: srv.URL, token: "tok", defaultProject: "p1", hc: srv.Client()}
+	c := &nrfloHTTPClient{base: srv.URL, token: "tok", defaultProject: "p1", hc: srv.Client()}
+	c.cwdResolved = true // disable cwd auto-detect here; exercised in *_cwd_test.go
+	return c
 }
 
 func TestDispatchExternalMCP_Initialize(t *testing.T) {
@@ -151,11 +156,22 @@ func TestExternalTool_PerCallProjectOverridesDefault(t *testing.T) {
 	}
 }
 
-func TestExternalTool_NoProjectErrors(t *testing.T) {
-	c := &nrfloHTTPClient{} // no defaultProject, no per-call arg
-	if _, err := callExternalTool(c, "list_workflows", json.RawMessage(`{}`)); err == nil ||
-		!strings.Contains(err.Error(), "no project") {
-		t.Fatalf("want 'no project' error, got %v", err)
+func TestResolveProject_FallsBackToGlobal(t *testing.T) {
+	// No arg, no cwd match (cwdResolved pre-set, empty), no NRFLO_PROJECT default →
+	// the hidden global project is the final fallback (never errors).
+	c := &nrfloHTTPClient{}
+	c.cwdResolved = true
+	if got := c.resolveProject(context.Background(), ""); got != service.GlobalProjectID {
+		t.Fatalf("resolveProject fallback = %q, want %q", got, service.GlobalProjectID)
+	}
+	// Explicit arg and NRFLO_PROJECT default still win over the global fallback.
+	if got := c.resolveProject(context.Background(), "explicit"); got != "explicit" {
+		t.Errorf("arg should win: got %q", got)
+	}
+	c2 := &nrfloHTTPClient{defaultProject: "p1"}
+	c2.cwdResolved = true
+	if got := c2.resolveProject(context.Background(), ""); got != "p1" {
+		t.Errorf("NRFLO_PROJECT default should win over global: got %q", got)
 	}
 }
 

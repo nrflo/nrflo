@@ -37,11 +37,11 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	clk := clock.Real()
 
 	// Seeds against the real migrated schema; a missing NOT-NULL column would error here.
-	if err := EnsureGlobalDeepResearch(pool, clk); err != nil {
+	if err := EnsureGlobalDeepResearch(pool, clk, t.TempDir()); err != nil {
 		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
 	}
 	// Idempotent: a second call is a create-if-absent no-op.
-	if err := EnsureGlobalDeepResearch(pool, clk); err != nil {
+	if err := EnsureGlobalDeepResearch(pool, clk, t.TempDir()); err != nil {
 		t.Fatalf("EnsureGlobalDeepResearch (2nd): %v", err)
 	}
 
@@ -120,7 +120,7 @@ func TestListWorkflowDefs_GlobalUnionAndPrecedence(t *testing.T) {
 	clk := clock.Real()
 	now := "2026-01-01T00:00:00Z"
 
-	if err := EnsureGlobalDeepResearch(pool, clk); err != nil {
+	if err := EnsureGlobalDeepResearch(pool, clk, t.TempDir()); err != nil {
 		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
 	}
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES ('p1','P1',NULL,?,?)`, now, now); err != nil {

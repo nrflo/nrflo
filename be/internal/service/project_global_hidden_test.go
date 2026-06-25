@@ -25,7 +25,7 @@ func TestProjectList_ExcludesGlobalNamespace(t *testing.T) {
 	clk := clock.Real()
 
 	// Seeds the hidden __global__ namespace row + the deep-research definition.
-	if err := EnsureGlobalDeepResearch(pool, clk); err != nil {
+	if err := EnsureGlobalDeepResearch(pool, clk, t.TempDir()); err != nil {
 		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
 	}
 	now := "2026-01-01T00:00:00Z"

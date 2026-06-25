@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"be/internal/service"
 )
 
 // agentMCPExternalCmd is a token-authed MCP stdio proxy for STANDALONE Claude
@@ -25,11 +27,14 @@ exposing deep_research / run_workflow / get_workflow / list_workflows as MCP too
 Authentication is a long-lived nrflo service token (Settings → Administration →
 Service Tokens); no agent session is involved. Configuration is via env:
   NRFLO_MCP_TOKEN  — service token, sent as Authorization: Bearer (required)
-  NRFLO_PROJECT    — default project (X-Project); optional, overridden per call
+  NRFLO_PROJECT    — default project (X-Project); optional
   NRFLO_SERVER_URL — running server base URL (default http://127.0.0.1:6587)
 
 A global-scope token works across projects; a project-scope token is limited to
-its own project. Pass 'project' per tool call, or set NRFLO_PROJECT as default.
+its own project. Per call the project resolves as: explicit 'project' arg → the
+working directory matched against project root paths → NRFLO_PROJECT → the
+hidden global project (so project-agnostic tools like deep_research work from
+any directory with no config).
 
 Register with Claude Code:
   claude mcp add nrflo --env NRFLO_MCP_TOKEN=<token> --env NRFLO_PROJECT=<id> \
@@ -92,16 +97,23 @@ func dispatchExternalMCP(req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
 	}
 }
 
-// resolveProject picks the per-call project arg, falling back to the env
-// default, and errors when neither is set (execution always needs a project).
-func (c *nrfloHTTPClient) resolveProject(arg string) (string, error) {
+// resolveProject picks the project for a tool call, in order: explicit arg →
+// cwd auto-detect (the proxy's working dir matched against project root_paths) →
+// NRFLO_PROJECT default → the hidden global project. It never errors: execution
+// always needs a concrete project, and project-agnostic tools (deep_research)
+// run in the global project when nothing else resolves. A project-specific
+// workflow run there simply 404s server-side ("workflow not found").
+func (c *nrfloHTTPClient) resolveProject(ctx context.Context, arg string) string {
 	if p := strings.TrimSpace(arg); p != "" {
-		return p, nil
+		return p
+	}
+	if p := c.cwdProject(ctx); p != "" {
+		return p
 	}
 	if c.defaultProject != "" {
-		return c.defaultProject, nil
+		return c.defaultProject
 	}
-	return "", fmt.Errorf("no project: pass the `project` argument or set NRFLO_PROJECT")
+	return service.GlobalProjectID
 }
 
 // callExternalTool routes a tool call to the REST client and returns its text.
@@ -122,10 +134,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.Question) == "" {
 			return "", fmt.Errorf("question is required")
 		}
-		project, err := c.resolveProject(in.Project)
-		if err != nil {
-			return "", err
-		}
+		project := c.resolveProject(ctx, in.Project)
 		return c.deepResearch(ctx, project, in.Question)
 	case "run_workflow":
 		var in struct {
@@ -139,10 +148,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.Workflow) == "" {
 			return "", fmt.Errorf("workflow is required")
 		}
-		project, err := c.resolveProject(in.Project)
-		if err != nil {
-			return "", err
-		}
+		project := c.resolveProject(ctx, in.Project)
 		id, err := c.runWorkflow(ctx, project, in.Workflow, in.Instructions)
 		if err != nil {
 			return "", err
@@ -159,10 +165,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.InstanceID) == "" {
 			return "", fmt.Errorf("instance_id is required")
 		}
-		project, err := c.resolveProject(in.Project)
-		if err != nil {
-			return "", err
-		}
+		project := c.resolveProject(ctx, in.Project)
 		state, err := c.getWorkflow(ctx, project, in.InstanceID)
 		if err != nil {
 			return "", err
@@ -179,10 +182,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if err := json.Unmarshal(args, &in); err != nil {
 			return "", fmt.Errorf("invalid arguments: %w", err)
 		}
-		project, err := c.resolveProject(in.Project)
-		if err != nil {
-			return "", err
-		}
+		project := c.resolveProject(ctx, in.Project)
 		raw, err := c.listWorkflows(ctx, project)
 		if err != nil {
 			return "", err
@@ -215,11 +215,9 @@ func externalToolSpecs(defaultProject string) []map[string]interface{} {
 	str := func(desc string) map[string]interface{} {
 		return map[string]interface{}{"type": "string", "description": desc}
 	}
-	projDesc := "Project to run in."
+	projDesc := "Project to run in. Optional — if omitted it auto-detects from the working directory (matched against project root paths), then NRFLO_PROJECT, then the hidden global project."
 	if defaultProject != "" {
-		projDesc += " Optional; defaults to '" + defaultProject + "'."
-	} else {
-		projDesc += " Required (no default configured)."
+		projDesc += " NRFLO_PROJECT default: '" + defaultProject + "'."
 	}
 	projectArg := str(projDesc)
 	return []map[string]interface{}{

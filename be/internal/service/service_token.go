@@ -37,7 +37,9 @@ func NewServiceTokenService(pool *db.Pool, clk clock.Clock) *ServiceTokenService
 
 // Create generates a new service token, persists its hash, and returns the
 // model row alongside the one-time plaintext. The plaintext is never stored.
-func (s *ServiceTokenService) Create(projectID, name, createdBy string) (*model.ServiceToken, string, error) {
+// scope is "project" (requires projectID) or "global" (all projects, no
+// project); empty scope defaults to "project".
+func (s *ServiceTokenService) Create(projectID, name, createdBy, scope string) (*model.ServiceToken, string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, "", fmt.Errorf("name is required")
@@ -45,8 +47,18 @@ func (s *ServiceTokenService) Create(projectID, name, createdBy string) (*model.
 	if len(name) > maxServiceTokenNameLen {
 		return nil, "", fmt.Errorf("name exceeds maximum length of %d", maxServiceTokenNameLen)
 	}
-	if strings.TrimSpace(projectID) == "" {
-		return nil, "", fmt.Errorf("project_id is required")
+	if scope == "" {
+		scope = "project"
+	}
+	switch scope {
+	case "project":
+		if strings.TrimSpace(projectID) == "" {
+			return nil, "", fmt.Errorf("project_id is required")
+		}
+	case "global":
+		projectID = "" // a global token has no owning project
+	default:
+		return nil, "", fmt.Errorf("invalid scope %q (want 'project' or 'global')", scope)
 	}
 
 	plaintext, err := generateServiceToken()
@@ -58,6 +70,7 @@ func (s *ServiceTokenService) Create(projectID, name, createdBy string) (*model.
 	tok := &model.ServiceToken{
 		ID:          uuid.NewString(),
 		ProjectID:   strings.ToLower(projectID),
+		Scope:       scope,
 		Name:        name,
 		TokenHash:   hash,
 		DisplayHint: displayHint(plaintext),

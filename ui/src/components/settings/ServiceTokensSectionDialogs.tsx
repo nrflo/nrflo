@@ -18,6 +18,7 @@ interface CreateDialogProps {
 export function CreateServiceTokenDialog({ open, onClose, onCreated }: CreateDialogProps) {
   const projects = useProjectStore((s) => s.projects)
   const currentProject = useProjectStore((s) => s.currentProject)
+  const [scope, setScope] = useState<'project' | 'global'>('project')
   const [projectId, setProjectId] = useState<string>(currentProject || projects[0]?.id || '')
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -25,6 +26,7 @@ export function CreateServiceTokenDialog({ open, onClose, onCreated }: CreateDia
 
   useEffect(() => {
     if (open) {
+      setScope('project')
       setProjectId(currentProject || projects[0]?.id || '')
       setName('')
       setError(null)
@@ -36,14 +38,15 @@ export function CreateServiceTokenDialog({ open, onClose, onCreated }: CreateDia
   const handleSubmit = async () => {
     setError(null)
     try {
-      const result = await createMutation.mutateAsync({ projectId, name: name.trim() })
+      const result = await createMutation.mutateAsync({ projectId, name: name.trim(), scope })
       onCreated(result)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Failed to create token')
     }
   }
 
-  const canSubmit = !!projectId && name.trim().length > 0 && !createMutation.isPending
+  const canSubmit =
+    (scope === 'global' || !!projectId) && name.trim().length > 0 && !createMutation.isPending
 
   return (
     <Dialog open={open} onClose={onClose} className="max-w-md">
@@ -53,9 +56,28 @@ export function CreateServiceTokenDialog({ open, onClose, onCreated }: CreateDia
       <DialogBody className="space-y-4">
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="space-y-1">
-          <label className="text-sm font-medium">Project</label>
-          <Dropdown value={projectId} onChange={setProjectId} options={projectOptions} />
+          <label className="text-sm font-medium">Scope</label>
+          <Dropdown
+            value={scope}
+            onChange={(v) => setScope(v as 'project' | 'global')}
+            options={[
+              { value: 'project', label: 'Project — one project' },
+              { value: 'global', label: 'Global — all projects' },
+            ]}
+          />
+          {scope === 'global' && (
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              A global token can run workflows and read state in <strong>every</strong> project.
+              Grant it only to trusted clients.
+            </p>
+          )}
         </div>
+        {scope === 'project' && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Project</label>
+            <Dropdown value={projectId} onChange={setProjectId} options={projectOptions} />
+          </div>
+        )}
         <div className="space-y-1">
           <label className="text-sm font-medium">Name</label>
           <Input
@@ -133,10 +155,14 @@ export function RevealServiceTokenDialog({ open, token, record, onClose }: Revea
           <p>Send the token in the Authorization header of every request:</p>
           <pre className="bg-muted px-2 py-1.5 rounded font-mono text-[11px] overflow-x-auto">
 {`curl -H "Authorization: Bearer ${token}" \\
-     -H "X-Project: ${record?.project_id ?? ''}" \\
+     -H "X-Project: ${record?.scope === 'global' ? '<project>' : (record?.project_id ?? '')}" \\
      http://127.0.0.1:6587/api/v1/...`}
           </pre>
-          <p>X-Project is optional — the token already carries its project scope.</p>
+          {record?.scope === 'global' ? (
+            <p>Global token: X-Project is <strong>required</strong> and selects the target project per request.</p>
+          ) : (
+            <p>X-Project is optional — the token already carries its project scope.</p>
+          )}
         </div>
       </DialogBody>
       <DialogFooter>

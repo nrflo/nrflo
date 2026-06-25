@@ -18,11 +18,11 @@ func newTestExternalClient(t *testing.T, h http.HandlerFunc) *nrfloHTTPClient {
 	deepResearchPollInterval = time.Millisecond
 	deepResearchMaxWait = 5 * time.Second
 	t.Cleanup(func() { deepResearchPollInterval, deepResearchMaxWait = prevInterval, prevWait })
-	return &nrfloHTTPClient{base: srv.URL, token: "tok", project: "p1", hc: srv.Client()}
+	return &nrfloHTTPClient{base: srv.URL, token: "tok", defaultProject: "p1", hc: srv.Client()}
 }
 
 func TestDispatchExternalMCP_Initialize(t *testing.T) {
-	resp := dispatchExternalMCP(makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{project: "p1"})
+	resp := dispatchExternalMCP(makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{defaultProject: "p1"})
 	res, ok := resp.Result.(map[string]interface{})
 	if !ok || res["protocolVersion"] != "2024-11-05" {
 		t.Fatalf("unexpected initialize result: %+v", resp)
@@ -30,7 +30,7 @@ func TestDispatchExternalMCP_Initialize(t *testing.T) {
 }
 
 func TestDispatchExternalMCP_ToolsList(t *testing.T) {
-	resp := dispatchExternalMCP(makeMCPReq(1, "tools/list", ""), &nrfloHTTPClient{project: "p1"})
+	resp := dispatchExternalMCP(makeMCPReq(1, "tools/list", ""), &nrfloHTTPClient{defaultProject: "p1"})
 	res := resp.Result.(map[string]interface{})
 	tools := res["tools"].([]map[string]interface{})
 	want := map[string]bool{"deep_research": false, "run_workflow": false, "get_workflow": false, "list_workflows": false}
@@ -124,7 +124,7 @@ func TestExternalTool_RunAndGetAndList(t *testing.T) {
 }
 
 func TestExternalTool_Validation(t *testing.T) {
-	c := &nrfloHTTPClient{project: "p1"}
+	c := &nrfloHTTPClient{defaultProject: "p1"}
 	if _, err := callExternalTool(c, "deep_research", json.RawMessage(`{}`)); err == nil {
 		t.Error("deep_research without question should error")
 	}
@@ -133,6 +133,29 @@ func TestExternalTool_Validation(t *testing.T) {
 	}
 	if _, err := callExternalTool(c, "nope", nil); err == nil {
 		t.Error("unknown tool should error")
+	}
+}
+
+func TestExternalTool_PerCallProjectOverridesDefault(t *testing.T) {
+	var sawProject string
+	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
+		sawProject = r.Header.Get("X-Project")
+		_, _ = w.Write([]byte(`{"deep-research":{}}`))
+	})
+	// defaultProject is "p1"; the per-call arg must win.
+	if _, err := callExternalTool(c, "list_workflows", json.RawMessage(`{"project":"p2"}`)); err != nil {
+		t.Fatalf("list_workflows: %v", err)
+	}
+	if sawProject != "p2" {
+		t.Errorf("X-Project = %q, want p2 (per-call override)", sawProject)
+	}
+}
+
+func TestExternalTool_NoProjectErrors(t *testing.T) {
+	c := &nrfloHTTPClient{} // no defaultProject, no per-call arg
+	if _, err := callExternalTool(c, "list_workflows", json.RawMessage(`{}`)); err == nil ||
+		!strings.Contains(err.Error(), "no project") {
+		t.Fatalf("want 'no project' error, got %v", err)
 	}
 }
 

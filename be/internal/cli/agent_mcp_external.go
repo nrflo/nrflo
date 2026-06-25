@@ -25,8 +25,11 @@ exposing deep_research / run_workflow / get_workflow / list_workflows as MCP too
 Authentication is a long-lived nrflo service token (Settings → Administration →
 Service Tokens); no agent session is involved. Configuration is via env:
   NRFLO_MCP_TOKEN  — service token, sent as Authorization: Bearer (required)
-  NRFLO_PROJECT    — project scope, sent as X-Project (required)
+  NRFLO_PROJECT    — default project (X-Project); optional, overridden per call
   NRFLO_SERVER_URL — running server base URL (default http://127.0.0.1:6587)
+
+A global-scope token works across projects; a project-scope token is limited to
+its own project. Pass 'project' per tool call, or set NRFLO_PROJECT as default.
 
 Register with Claude Code:
   claude mcp add nrflo --env NRFLO_MCP_TOKEN=<token> --env NRFLO_PROJECT=<id> \
@@ -34,19 +37,18 @@ Register with Claude Code:
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		token := os.Getenv("NRFLO_MCP_TOKEN")
-		project := os.Getenv("NRFLO_PROJECT")
-		if token == "" || project == "" {
-			return fmt.Errorf("NRFLO_MCP_TOKEN and NRFLO_PROJECT must both be set")
+		if token == "" {
+			return fmt.Errorf("NRFLO_MCP_TOKEN must be set")
 		}
 		base := os.Getenv("NRFLO_SERVER_URL")
 		if base == "" {
 			base = "http://127.0.0.1:6587"
 		}
 		c := &nrfloHTTPClient{
-			base:    strings.TrimRight(base, "/"),
-			token:   token,
-			project: project,
-			hc:      &http.Client{Timeout: 60 * time.Second},
+			base:           strings.TrimRight(base, "/"),
+			token:          token,
+			defaultProject: os.Getenv("NRFLO_PROJECT"), // optional default; per-call `project` overrides
+			hc:             &http.Client{Timeout: 60 * time.Second},
 		}
 		return runMCPStdioLoop(os.Stdin, os.Stdout, func(req mcpRequest) *mcpResponse {
 			return dispatchExternalMCP(req, c)
@@ -66,7 +68,7 @@ func dispatchExternalMCP(req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
 	case "notifications/initialized":
 		return nil
 	case "tools/list":
-		return makeMCPResult(req.ID, map[string]interface{}{"tools": externalToolSpecs(c.project)})
+		return makeMCPResult(req.ID, map[string]interface{}{"tools": externalToolSpecs(c.defaultProject)})
 	case "tools/call":
 		var call struct {
 			Name      string          `json:"name"`
@@ -90,6 +92,18 @@ func dispatchExternalMCP(req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
 	}
 }
 
+// resolveProject picks the per-call project arg, falling back to the env
+// default, and errors when neither is set (execution always needs a project).
+func (c *nrfloHTTPClient) resolveProject(arg string) (string, error) {
+	if p := strings.TrimSpace(arg); p != "" {
+		return p, nil
+	}
+	if c.defaultProject != "" {
+		return c.defaultProject, nil
+	}
+	return "", fmt.Errorf("no project: pass the `project` argument or set NRFLO_PROJECT")
+}
+
 // callExternalTool routes a tool call to the REST client and returns its text.
 func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (string, error) {
 	ctx := context.Background()
@@ -100,6 +114,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 	case "deep_research":
 		var in struct {
 			Question string `json:"question"`
+			Project  string `json:"project"`
 		}
 		if err := json.Unmarshal(args, &in); err != nil {
 			return "", fmt.Errorf("invalid arguments: %w", err)
@@ -107,11 +122,16 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.Question) == "" {
 			return "", fmt.Errorf("question is required")
 		}
-		return c.deepResearch(ctx, in.Question)
+		project, err := c.resolveProject(in.Project)
+		if err != nil {
+			return "", err
+		}
+		return c.deepResearch(ctx, project, in.Question)
 	case "run_workflow":
 		var in struct {
 			Workflow     string `json:"workflow"`
 			Instructions string `json:"instructions"`
+			Project      string `json:"project"`
 		}
 		if err := json.Unmarshal(args, &in); err != nil {
 			return "", fmt.Errorf("invalid arguments: %w", err)
@@ -119,7 +139,11 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.Workflow) == "" {
 			return "", fmt.Errorf("workflow is required")
 		}
-		id, err := c.runWorkflow(ctx, in.Workflow, in.Instructions)
+		project, err := c.resolveProject(in.Project)
+		if err != nil {
+			return "", err
+		}
+		id, err := c.runWorkflow(ctx, project, in.Workflow, in.Instructions)
 		if err != nil {
 			return "", err
 		}
@@ -127,6 +151,7 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 	case "get_workflow":
 		var in struct {
 			InstanceID string `json:"instance_id"`
+			Project    string `json:"project"`
 		}
 		if err := json.Unmarshal(args, &in); err != nil {
 			return "", fmt.Errorf("invalid arguments: %w", err)
@@ -134,7 +159,11 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		if strings.TrimSpace(in.InstanceID) == "" {
 			return "", fmt.Errorf("instance_id is required")
 		}
-		state, err := c.getWorkflow(ctx, in.InstanceID)
+		project, err := c.resolveProject(in.Project)
+		if err != nil {
+			return "", err
+		}
+		state, err := c.getWorkflow(ctx, project, in.InstanceID)
 		if err != nil {
 			return "", err
 		}
@@ -144,7 +173,17 @@ func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (st
 		}
 		return string(b), nil
 	case "list_workflows":
-		raw, err := c.listWorkflows(ctx)
+		var in struct {
+			Project string `json:"project"`
+		}
+		if err := json.Unmarshal(args, &in); err != nil {
+			return "", fmt.Errorf("invalid arguments: %w", err)
+		}
+		project, err := c.resolveProject(in.Project)
+		if err != nil {
+			return "", err
+		}
+		raw, err := c.listWorkflows(ctx, project)
 		if err != nil {
 			return "", err
 		}
@@ -163,7 +202,9 @@ func mcpToolText(id interface{}, text string, isError bool) *mcpResponse {
 }
 
 // externalToolSpecs is the static MCP tool catalogue for the external proxy.
-func externalToolSpecs(project string) []map[string]interface{} {
+// defaultProject (NRFLO_PROJECT) is woven into the `project` arg description so
+// the model knows whether it must pass one.
+func externalToolSpecs(defaultProject string) []map[string]interface{} {
 	obj := func(props map[string]interface{}, required ...string) map[string]interface{} {
 		s := map[string]interface{}{"type": "object", "properties": props}
 		if len(required) > 0 {
@@ -174,11 +215,18 @@ func externalToolSpecs(project string) []map[string]interface{} {
 	str := func(desc string) map[string]interface{} {
 		return map[string]interface{}{"type": "string", "description": desc}
 	}
+	projDesc := "Project to run in."
+	if defaultProject != "" {
+		projDesc += " Optional; defaults to '" + defaultProject + "'."
+	} else {
+		projDesc += " Required (no default configured)."
+	}
+	projectArg := str(projDesc)
 	return []map[string]interface{}{
 		{
 			"name":        "deep_research",
-			"description": "Run nrflo's multi-source, fact-checked deep-research workflow for a question and return a cited markdown report. Blocks until the run finishes (can take several minutes — raise the MCP tool timeout, e.g. MCP_TIMEOUT). Runs in project '" + project + "'.",
-			"inputSchema": obj(map[string]interface{}{"question": str("The research question or topic.")}, "question"),
+			"description": "Run nrflo's multi-source, fact-checked deep-research workflow for a question and return a cited markdown report. Blocks until the run finishes (can take several minutes — raise the MCP tool timeout, e.g. MCP_TIMEOUT).",
+			"inputSchema": obj(map[string]interface{}{"question": str("The research question or topic."), "project": projectArg}, "question"),
 		},
 		{
 			"name":        "run_workflow",
@@ -186,17 +234,18 @@ func externalToolSpecs(project string) []map[string]interface{} {
 			"inputSchema": obj(map[string]interface{}{
 				"workflow":     str("Workflow name (e.g. 'deep-research', or a project workflow)."),
 				"instructions": str("Optional instructions/prompt passed to the workflow."),
+				"project":      projectArg,
 			}, "workflow"),
 		},
 		{
 			"name":        "get_workflow",
 			"description": "Fetch the current state (status, findings, agent history) of a workflow instance by id.",
-			"inputSchema": obj(map[string]interface{}{"instance_id": str("Workflow instance id returned by run_workflow.")}, "instance_id"),
+			"inputSchema": obj(map[string]interface{}{"instance_id": str("Workflow instance id returned by run_workflow."), "project": projectArg}, "instance_id"),
 		},
 		{
 			"name":        "list_workflows",
-			"description": "List the workflow definitions available in the project (includes global definitions like deep-research).",
-			"inputSchema": obj(map[string]interface{}{}),
+			"description": "List the workflow definitions available in a project (includes global definitions like deep-research).",
+			"inputSchema": obj(map[string]interface{}{"project": projectArg}),
 		},
 	}
 }

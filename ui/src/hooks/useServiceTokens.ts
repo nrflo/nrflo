@@ -16,8 +16,8 @@ export function useServiceTokens() {
 export function useCreateServiceToken() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ projectId, name }: { projectId: string; name: string }) =>
-      createServiceToken(projectId, name),
+    mutationFn: ({ projectId, name, scope }: { projectId: string; name: string; scope?: 'project' | 'global' }) =>
+      createServiceToken(projectId, name, scope),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: serviceTokenKeys.all })
     },

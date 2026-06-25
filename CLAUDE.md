@@ -115,7 +115,7 @@ Rules every change must respect.
 ### Auth & administration
 - **Auth + sessions + login rate limit** → [auth/CLAUDE.md](be/internal/auth/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Route list, audit-log + user CRUD** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Service tokens** (long-lived project-scoped bearer tokens) → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Service tokens** (long-lived project or global bearer tokens) → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
 - **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools, SDK `c.artifacts`) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)

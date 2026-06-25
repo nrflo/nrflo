@@ -13,14 +13,15 @@ import (
 )
 
 // nrfloHTTPClient is a thin REST client into a running `nrflo_server serve`,
-// authenticated with a long-lived service token and scoped to one project. The
-// external MCP proxy holds no DB pool or orchestrator — every tool call is a
-// REST request into the live server, which owns the orchestrator.
+// authenticated with a long-lived service token. The target project is supplied
+// per request (so one global token can drive many projects); defaultProject is
+// used when a tool call omits it. The external MCP proxy holds no DB pool or
+// orchestrator — every tool call is a REST request into the live server.
 type nrfloHTTPClient struct {
-	base    string // e.g. http://127.0.0.1:6587
-	token   string // service token (Authorization: Bearer)
-	project string // X-Project scope
-	hc      *http.Client
+	base           string // e.g. http://127.0.0.1:6587
+	token          string // service token (Authorization: Bearer)
+	defaultProject string // X-Project used when a tool call omits `project`
+	hc             *http.Client
 }
 
 // deepResearch polling cadence; vars so tests can shrink them.
@@ -29,7 +30,7 @@ var (
 	deepResearchMaxWait      = 25 * time.Minute
 )
 
-func (c *nrfloHTTPClient) do(ctx context.Context, method, path string, body any, out any) error {
+func (c *nrfloHTTPClient) do(ctx context.Context, project, method, path string, body any, out any) error {
 	var rdr io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -43,7 +44,7 @@ func (c *nrfloHTTPClient) do(ctx context.Context, method, path string, body any,
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("X-Project", c.project)
+	req.Header.Set("X-Project", project)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -65,12 +66,12 @@ func (c *nrfloHTTPClient) do(ctx context.Context, method, path string, body any,
 }
 
 // runWorkflow starts a project-scoped workflow and returns its instance_id.
-func (c *nrfloHTTPClient) runWorkflow(ctx context.Context, workflow, instructions string) (string, error) {
+func (c *nrfloHTTPClient) runWorkflow(ctx context.Context, project, workflow, instructions string) (string, error) {
 	var res struct {
 		InstanceID string `json:"instance_id"`
 	}
-	err := c.do(ctx, http.MethodPost,
-		"/api/v1/projects/"+url.PathEscape(c.project)+"/workflow/run",
+	err := c.do(ctx, project, http.MethodPost,
+		"/api/v1/projects/"+url.PathEscape(project)+"/workflow/run",
 		map[string]any{"workflow": workflow, "instructions": instructions}, &res)
 	if err != nil {
 		return "", err
@@ -82,12 +83,12 @@ func (c *nrfloHTTPClient) runWorkflow(ctx context.Context, workflow, instruction
 }
 
 // getWorkflow returns the v4 state map for one workflow instance.
-func (c *nrfloHTTPClient) getWorkflow(ctx context.Context, instanceID string) (map[string]any, error) {
+func (c *nrfloHTTPClient) getWorkflow(ctx context.Context, project, instanceID string) (map[string]any, error) {
 	var res struct {
 		State map[string]any `json:"state"`
 	}
-	err := c.do(ctx, http.MethodGet,
-		"/api/v1/projects/"+url.PathEscape(c.project)+"/workflow?instance_id="+url.QueryEscape(instanceID),
+	err := c.do(ctx, project, http.MethodGet,
+		"/api/v1/projects/"+url.PathEscape(project)+"/workflow?instance_id="+url.QueryEscape(instanceID),
 		nil, &res)
 	if err != nil {
 		return nil, err
@@ -97,9 +98,9 @@ func (c *nrfloHTTPClient) getWorkflow(ctx context.Context, instanceID string) (m
 
 // listWorkflows returns the project's selectable workflow definitions (includes
 // global definitions like deep-research).
-func (c *nrfloHTTPClient) listWorkflows(ctx context.Context) (json.RawMessage, error) {
+func (c *nrfloHTTPClient) listWorkflows(ctx context.Context, project string) (json.RawMessage, error) {
 	var raw json.RawMessage
-	if err := c.do(ctx, http.MethodGet, "/api/v1/workflows", nil, &raw); err != nil {
+	if err := c.do(ctx, project, http.MethodGet, "/api/v1/workflows", nil, &raw); err != nil {
 		return nil, err
 	}
 	return raw, nil
@@ -108,14 +109,14 @@ func (c *nrfloHTTPClient) listWorkflows(ctx context.Context) (json.RawMessage, e
 // deepResearch runs the deep-research workflow and blocks until it finishes,
 // returning the synthesized `report` finding. Polling is client-side (many short
 // GETs) rather than one long request, so no single HTTP call runs for minutes.
-func (c *nrfloHTTPClient) deepResearch(ctx context.Context, question string) (string, error) {
-	instanceID, err := c.runWorkflow(ctx, "deep-research", question)
+func (c *nrfloHTTPClient) deepResearch(ctx context.Context, project, question string) (string, error) {
+	instanceID, err := c.runWorkflow(ctx, project, "deep-research", question)
 	if err != nil {
 		return "", err
 	}
 	deadline := time.Now().Add(deepResearchMaxWait)
 	for {
-		state, err := c.getWorkflow(ctx, instanceID)
+		state, err := c.getWorkflow(ctx, project, instanceID)
 		if err != nil {
 			return "", err
 		}

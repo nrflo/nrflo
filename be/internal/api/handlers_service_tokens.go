@@ -13,6 +13,7 @@ import (
 type serviceTokenResponse struct {
 	ID          string `json:"id"`
 	ProjectID   string `json:"project_id"`
+	Scope       string `json:"scope"`
 	Name        string `json:"name"`
 	DisplayHint string `json:"display_hint"`
 	CreatedAt   string `json:"created_at"`
@@ -38,6 +39,7 @@ func (s *Server) handleListServiceTokens(w http.ResponseWriter, r *http.Request)
 		out = append(out, serviceTokenResponse{
 			ID:          t.ID,
 			ProjectID:   t.ProjectID,
+			Scope:       t.Scope,
 			Name:        t.Name,
 			DisplayHint: t.DisplayHint,
 			CreatedAt:   t.CreatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),
@@ -53,6 +55,7 @@ func (s *Server) handleListServiceTokens(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleCreateServiceToken(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		ProjectID string `json:"project_id"`
+		Scope     string `json:"scope"`
 		Name      string `json:"name"`
 	}
 	if err := readJSON(r, &req); err != nil {
@@ -61,26 +64,41 @@ func (s *Server) handleCreateServiceToken(w http.ResponseWriter, r *http.Request
 	}
 	req.ProjectID = strings.TrimSpace(req.ProjectID)
 	req.Name = strings.TrimSpace(req.Name)
-	if req.ProjectID == "" || req.Name == "" {
-		writeError(w, http.StatusBadRequest, "project_id and name are required")
+	req.Scope = strings.TrimSpace(req.Scope)
+	if req.Scope == "" {
+		req.Scope = "project"
+	}
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	projRepo := repo.NewProjectRepo(s.pool, s.clock)
-	proj, err := projRepo.Get(req.ProjectID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if proj == nil {
-		writeError(w, http.StatusNotFound, "project not found")
-		return
+	// Global tokens (all projects) have no owning project; project-scoped tokens
+	// must name an existing project. Global mint is implicitly admin-only (this
+	// route is registered with admin()).
+	projectID := ""
+	if req.Scope == "project" {
+		if req.ProjectID == "" {
+			writeError(w, http.StatusBadRequest, "project_id is required for a project-scoped token")
+			return
+		}
+		projRepo := repo.NewProjectRepo(s.pool, s.clock)
+		proj, err := projRepo.Get(req.ProjectID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if proj == nil {
+			writeError(w, http.StatusNotFound, "project not found")
+			return
+		}
+		projectID = proj.ID
 	}
 
 	svc := service.NewServiceTokenService(s.pool, s.clock)
-	tok, plaintext, err := svc.Create(proj.ID, req.Name, getUserID(r))
+	tok, plaintext, err := svc.Create(projectID, req.Name, getUserID(r), req.Scope)
 	if err != nil {
-		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "maximum length") {
+		if strings.Contains(err.Error(), "required") || strings.Contains(err.Error(), "maximum length") || strings.Contains(err.Error(), "invalid scope") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -104,6 +122,7 @@ func (s *Server) handleCreateServiceToken(w http.ResponseWriter, r *http.Request
 		"record": serviceTokenResponse{
 			ID:          tok.ID,
 			ProjectID:   tok.ProjectID,
+			Scope:       tok.Scope,
 			Name:        tok.Name,
 			DisplayHint: tok.DisplayHint,
 			CreatedAt:   tok.CreatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"),

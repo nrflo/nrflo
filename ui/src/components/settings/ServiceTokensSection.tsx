@@ -57,11 +57,12 @@ export function ServiceTokensSection() {
         <div>
           <h2 className="text-lg font-semibold">Service Tokens</h2>
           <p className="text-sm text-muted-foreground">
-            Long-lived bearer tokens for external services to call the nrflo REST API. Each token
-            is scoped to one project. {tokens.length} token{tokens.length === 1 ? '' : 's'}.
+            Long-lived bearer tokens for external services to call the nrflo REST API. A token is
+            scoped to one project, or <strong>global</strong> (all projects).{' '}
+            {tokens.length} token{tokens.length === 1 ? '' : 's'}.
           </p>
         </div>
-        <Button onClick={() => setShowCreate(true)} disabled={projects.length === 0}>
+        <Button onClick={() => setShowCreate(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Token
         </Button>
@@ -103,7 +104,15 @@ export function ServiceTokensSection() {
             {filtered.map((t) => (
               <TableRow key={t.id}>
                 <TableCell className="font-medium">{t.name}</TableCell>
-                <TableCell>{projectNameById.get(t.project_id.toLowerCase()) ?? t.project_id}</TableCell>
+                <TableCell>
+                  {t.scope === 'global' || t.project_id === '' ? (
+                    <span className="text-xs font-medium rounded px-1.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                      All projects
+                    </span>
+                  ) : (
+                    projectNameById.get(t.project_id.toLowerCase()) ?? t.project_id
+                  )}
+                </TableCell>
                 <TableCell>
                   <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{t.display_hint}</code>
                 </TableCell>

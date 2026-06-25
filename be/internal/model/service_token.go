@@ -2,12 +2,14 @@ package model
 
 import "time"
 
-// ServiceToken is a long-lived bearer credential scoped to a single project.
-// External services use the plaintext token (returned once at creation) to call
-// the REST API; the DB stores only the sha256 hash plus a short display hint.
+// ServiceToken is a long-lived bearer credential. Scope is either "project"
+// (bound to ProjectID) or "global" (all projects; ProjectID is empty). External
+// services use the plaintext token (returned once at creation) to call the REST
+// API; the DB stores only the sha256 hash plus a short display hint.
 type ServiceToken struct {
 	ID          string     `json:"id"`
-	ProjectID   string     `json:"project_id"`
+	ProjectID   string     `json:"project_id"` // empty when Scope=="global"
+	Scope       string     `json:"scope"`      // "project" | "global"
 	Name        string     `json:"name"`
 	TokenHash   string     `json:"-"`
 	DisplayHint string     `json:"display_hint"`

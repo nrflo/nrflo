@@ -7,10 +7,12 @@ export async function listServiceTokens(): Promise<ServiceToken[]> {
 
 export async function createServiceToken(
   projectId: string,
-  name: string
+  name: string,
+  scope: 'project' | 'global' = 'project'
 ): Promise<CreateServiceTokenResponse> {
   return apiPost<CreateServiceTokenResponse>('/api/v1/service-tokens', {
-    project_id: projectId,
+    project_id: scope === 'global' ? '' : projectId,
+    scope,
     name,
   })
 }

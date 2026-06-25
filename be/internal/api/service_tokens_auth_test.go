@@ -16,7 +16,7 @@ func seedServiceToken(t *testing.T, s *Server, projectID, name string) (tokenID,
 		t.Fatalf("seed project: %v", err)
 	}
 	svc := service.NewServiceTokenService(s.pool, clock.Real())
-	tok, plain, err := svc.Create(projectID, name, "")
+	tok, plain, err := svc.Create(projectID, name, "", "project")
 	if err != nil {
 		t.Fatalf("create token: %v", err)
 	}
@@ -57,6 +57,49 @@ func TestRequireAuth_ServiceToken_ProjectMismatch_Returns403(t *testing.T) {
 
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want 403; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestServiceTokenService_GlobalScope(t *testing.T) {
+	s := newServerWithAuth(t)
+	svc := service.NewServiceTokenService(s.pool, clock.Real())
+
+	tok, _, err := svc.Create("", "global-ci", "", "global")
+	if err != nil {
+		t.Fatalf("create global token: %v", err)
+	}
+	if tok.Scope != "global" || tok.ProjectID != "" {
+		t.Errorf("global token = scope %q project %q, want global/empty", tok.Scope, tok.ProjectID)
+	}
+	if _, _, err := svc.Create("", "bad", "", "project"); err == nil {
+		t.Error("project-scope token without project_id should error")
+	}
+	if _, _, err := svc.Create("", "bad", "", "weird"); err == nil {
+		t.Error("invalid scope should error")
+	}
+}
+
+func TestRequireAuth_GlobalServiceToken_AnyProjectAccepted(t *testing.T) {
+	s := newServerWithAuth(t)
+	svc := service.NewServiceTokenService(s.pool, clock.Real())
+	_, plain, err := svc.Create("", "global-ci", "", "global")
+	if err != nil {
+		t.Fatalf("create global token: %v", err)
+	}
+
+	called := false
+	chain := s.sessionMgr.LoadAndSave(s.requireAuth(sentinelHandler(&called)))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+plain)
+	req.Header.Set("X-Project", "any-project-at-all") // a project token would 403 here
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("global token status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if !called {
+		t.Fatal("expected next handler called for global service token with arbitrary X-Project")
 	}
 }
 
@@ -186,5 +229,39 @@ func TestServiceTokenService_LookupByPlaintext_RoundTrip(t *testing.T) {
 	}
 	if miss != nil {
 		t.Fatal("expected nil for unknown plaintext")
+	}
+}
+
+// A global service token must satisfy requireProjectAdmin, just like it
+// satisfies requireAuth with any X-Project. Without this, a global token
+// cannot manage any project-scoped resources (env-vars, python-scripts, etc),
+// defeating the purpose of a global token.
+func TestRequireProjectAdmin_GlobalServiceToken_AnyProjectAccepted(t *testing.T) {
+	s := newServerWithAuth(t)
+	svc := service.NewServiceTokenService(s.pool, clock.Real())
+	_, plain, err := svc.Create("", "global-ci", "", "global")
+	if err != nil {
+		t.Fatalf("create global token: %v", err)
+	}
+
+	// Seed a project so the path can target it
+	if _, err := s.pool.Exec(`INSERT OR IGNORE INTO projects (id, name, created_at, updated_at)
+		VALUES (?, ?, datetime('now'), datetime('now'))`, "proj-global-admin", "ProjGlobalAdmin"); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+
+	called := false
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(sentinelHandler(&called)))
+	req := httptest.NewRequest(http.MethodPut, "/projects/proj-global-admin/env-vars/FOO", nil)
+	req.SetPathValue("id", "proj-global-admin")
+	req.Header.Set("Authorization", "Bearer "+plain)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("global token status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if !called {
+		t.Fatal("expected next handler to be called for global service token")
 	}
 }

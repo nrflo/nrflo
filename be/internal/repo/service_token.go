@@ -22,17 +22,18 @@ func NewServiceTokenRepo(database db.Querier, clk clock.Clock) *ServiceTokenRepo
 	return &ServiceTokenRepo{db: database, clock: clk}
 }
 
-const serviceTokenCols = "id, project_id, name, token_hash, display_hint, created_at, created_by, last_used_at"
+const serviceTokenCols = "id, project_id, scope, name, token_hash, display_hint, created_at, created_by, last_used_at"
 
 func scanServiceToken(row interface {
 	Scan(dest ...any) error
 }) (*model.ServiceToken, error) {
 	t := &model.ServiceToken{}
 	var createdAt string
-	var createdBy, lastUsedAt sql.NullString
-	if err := row.Scan(&t.ID, &t.ProjectID, &t.Name, &t.TokenHash, &t.DisplayHint, &createdAt, &createdBy, &lastUsedAt); err != nil {
+	var projectID, createdBy, lastUsedAt sql.NullString
+	if err := row.Scan(&t.ID, &projectID, &t.Scope, &t.Name, &t.TokenHash, &t.DisplayHint, &createdAt, &createdBy, &lastUsedAt); err != nil {
 		return nil, err
 	}
+	t.ProjectID = projectID.String // empty when NULL (global scope)
 	t.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	if createdBy.Valid {
 		t.CreatedBy = createdBy.String
@@ -55,10 +56,19 @@ func (r *ServiceTokenRepo) Create(t *model.ServiceToken) error {
 	if t.CreatedBy != "" {
 		createdBy = sql.NullString{String: t.CreatedBy, Valid: true}
 	}
+	scope := t.Scope
+	if scope == "" {
+		scope = "project"
+	}
+	// Global tokens store NULL project_id (no owning project).
+	var projectID sql.NullString
+	if t.ProjectID != "" {
+		projectID = sql.NullString{String: strings.ToLower(t.ProjectID), Valid: true}
+	}
 	_, err := r.db.Exec(`
-		INSERT INTO service_tokens (id, project_id, name, token_hash, display_hint, created_at, created_by, last_used_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
-		t.ID, strings.ToLower(t.ProjectID), t.Name, t.TokenHash, t.DisplayHint, now, createdBy,
+		INSERT INTO service_tokens (id, project_id, scope, name, token_hash, display_hint, created_at, created_by, last_used_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+		t.ID, projectID, scope, t.Name, t.TokenHash, t.DisplayHint, now, createdBy,
 	)
 	return err
 }

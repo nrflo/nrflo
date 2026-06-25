@@ -18,10 +18,14 @@ const servicePrincipalKey contextKey = "service_principal"
 // ServicePrincipal represents a request authenticated by a long-lived service
 // token. The token grants project-scoped access to the API; principals never
 // satisfy `requireAdmin` (which is reserved for human admin users) but may
-// satisfy `requireProjectAdmin` when the project_id matches the route.
+// satisfy `requireProjectAdmin` when the project_id matches the route. A Global
+// principal (scope=="global") is exempt from the X-Project match and satisfies
+// `requireProjectAdmin` for ANY project; it still never satisfies `requireAdmin`
+// (human-admin routes) or `denyNonAdminGlobalWrite` (both require a user).
 type ServicePrincipal struct {
 	TokenID   string
 	ProjectID string
+	Global    bool
 }
 
 // requireAuth ensures the request has a valid, active session.
@@ -55,13 +59,19 @@ func (s *Server) requireAuthWith(acceptQueryToken bool, next http.Handler) http.
 		if token != "" {
 			svcTok := service.NewServiceTokenService(s.pool, s.clock)
 			if t, _ := svcTok.LookupByPlaintext(token); t != nil {
-				if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, t.ProjectID) {
-					writeError(w, http.StatusForbidden, "service token project mismatch")
-					return
+				global := t.Scope == "global"
+				// Global tokens carry no project and may target any project via
+				// X-Project; project-scoped tokens must match.
+				if !global {
+					if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, t.ProjectID) {
+						writeError(w, http.StatusForbidden, "service token project mismatch")
+						return
+					}
 				}
 				ctx := context.WithValue(r.Context(), servicePrincipalKey, &ServicePrincipal{
 					TokenID:   t.ID,
 					ProjectID: t.ProjectID,
+					Global:    global,
 				})
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
@@ -154,6 +164,11 @@ func (s *Server) requireProjectAdmin(next http.Handler) http.Handler {
 			return
 		}
 		if sp := getServicePrincipal(r); sp != nil {
+			// A global token is authorized for every project's admin writes.
+			if sp.Global {
+				next.ServeHTTP(w, r)
+				return
+			}
 			scope := r.PathValue("id")
 			if scope == "" {
 				scope = getProjectID(r)

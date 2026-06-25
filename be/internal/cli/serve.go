@@ -55,11 +55,21 @@ Example usage:
   nrflo_server serve --host 0.0.0.0        # Listen on all interfaces (LAN access)
   nrflo_server serve --host 192.168.1.50   # Bind to specific IP`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Load a gitignored .env from the launch directory before anything reads
+		// the environment. Existing vars win; logged after the logger is up.
+		dotenvKeys, dotenvErr := loadDotenv(".env")
+
 		sc, err := setupServer()
 		if err != nil {
 			return err
 		}
 		defer sc.pool.Close()
+
+		if dotenvErr != nil {
+			logger.Warn(context.Background(), "failed to read .env", "err", dotenvErr)
+		} else if len(dotenvKeys) > 0 {
+			logger.Info(context.Background(), "loaded .env", "count", len(dotenvKeys), "keys", dotenvKeys)
+		}
 
 		if noTray || !trayAvailable {
 			return runServer(sc)

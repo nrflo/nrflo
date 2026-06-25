@@ -90,6 +90,10 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 API mode is toggled per-server via the `api_mode_enabled` global setting (Settings → Admin) and read freshly at request/spawn time.
 
+### .env loading
+
+At `serve` startup, `loadDotenv` (`cli/dotenv.go`) reads a `.env` file from the launch directory and injects `KEY=VALUE` lines into the process environment, **without overriding** vars already set (real env wins); a missing file is a no-op. This is the convenient way to supply server-env secrets/config — e.g. `EXA_API_KEY`/`JINA_API_KEY`, which the web tools resolve via `os.Getenv` as the global fallback (per-project `project_env_vars` still override). `.env` is gitignored; `.env.example` documents the format.
+
 ## Authentication
 
 HTTP routes use SCS cookie-based sessions (`nrflo_session`). Handler chain: `cors → requestID → projectMiddleware → LoadAndSave → mux`. Routes are `protected` (requireAuth), `admin` (requireAdmin), `projectAdmin` (requireProjectAdmin — admin user or service token whose project matches the route), or public (login only). `requireAuth` also accepts `Authorization: Bearer <token>` for spawner-minted `spawn_token` (short-lived, while agent session is `running`/`user_interactive`) and for long-lived `service_tokens` (admin-minted under Settings → Administration → Service Tokens, sha256-hashed at rest, project-scoped). Bearer requests do not populate the user context so `requireAdmin` always 403s them; service-token principals do satisfy `requireProjectAdmin` when the project matches. Login rate limiter: 5 attempts per 5 min per IP+email, returns 429 with `Retry-After`. See [be/internal/auth/CLAUDE.md](internal/auth/CLAUDE.md) and [be/internal/api/CLAUDE.md](internal/api/CLAUDE.md).

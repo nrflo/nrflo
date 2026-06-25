@@ -71,7 +71,7 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 Rules every change must respect.
 
 - **Server-only**: `nrflo_server` is the only user-facing command; all management goes through the web UI.
-- **Single binary**: `nrflo_server` — the server, plus the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). There is no separate `nrflo` CLI.
+- **Single binary**: `nrflo_server` — the server plus agent subcommands (`nrflo_server agent {mcp,record-event,statusline,context-update}`, spawner-invoked; `mcp-external` = external-Claude MCP proxy). No separate `nrflo` CLI.
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
 - **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or the `X-Project` header for HTTP).
 - **Service layer**: business logic stays in `be/internal/service/`.

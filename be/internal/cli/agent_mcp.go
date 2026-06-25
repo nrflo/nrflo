@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bufio"
 	"encoding/json"
 	"os"
 
@@ -41,40 +40,8 @@ Used by Claude PTY agents spawned with --mcp-config pointing to this command.`,
 		observer := os.Getenv("NRF_OBSERVER") == "1"
 		caller := &clientSocketCaller{c: GetClient()}
 
-		scanner := bufio.NewScanner(os.Stdin)
-		writer := bufio.NewWriter(os.Stdout)
-
-		emit := func(resp *mcpResponse) error {
-			data, err := json.Marshal(resp)
-			if err != nil {
-				return err
-			}
-			if _, err := writer.Write(data); err != nil {
-				return err
-			}
-			if err := writer.WriteByte('\n'); err != nil {
-				return err
-			}
-			return writer.Flush()
-		}
-
-		for scanner.Scan() {
-			line := scanner.Bytes()
-			var req mcpRequest
-			if err := json.Unmarshal(line, &req); err != nil {
-				if werr := emit(makeMCPError(nil, -32700, "parse error: "+err.Error())); werr != nil {
-					return werr
-				}
-				continue
-			}
-			resp := dispatchMCP(req, sessionID, instanceID, observer, caller)
-			if resp == nil {
-				continue // notification — no reply
-			}
-			if werr := emit(resp); werr != nil {
-				return werr
-			}
-		}
-		return scanner.Err()
+		return runMCPStdioLoop(os.Stdin, os.Stdout, func(req mcpRequest) *mcpResponse {
+			return dispatchMCP(req, sessionID, instanceID, observer, caller)
+		})
 	},
 }

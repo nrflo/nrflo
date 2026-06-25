@@ -52,6 +52,10 @@ All reads on those resources are `protected` (requireAuth only). All other route
 
 Workflow-def / agent-def / import writes are `protected`, but mutating the reserved `__global__` project's definitions additionally requires an admin user via `denyNonAdminGlobalWrite` (`auth_middleware.go`), called in each mutating handler — a per-request check because the requirement is conditional on `projectID == "__global__"` (per-project workflow CRUD is unaffected). Bearer/service principals are denied. The agent socket path enforces the same invariant via `socket.denyGlobalWorkflowMutation`.
 
+### External MCP proxy (`agent mcp-external`)
+
+A **standalone** Claude Code session (not spawned by nrflo) drives the server via `nrflo_server agent mcp-external` (`cli/agent_mcp_external.go`) — a token-authed JSON-RPC stdio MCP server that proxies tool calls to this REST API and holds no orchestrator/DB itself. Auth is a long-lived **service token**: `NRFLO_MCP_TOKEN` (sent `Authorization: Bearer`) + `NRFLO_PROJECT` (sent `X-Project`); base URL `NRFLO_SERVER_URL` (default `http://127.0.0.1:6587`). Tools: `deep_research` (runs the global `deep-research` workflow then blocks-polls until terminal and returns `state.workflow_findings.report`), `run_workflow`, `get_workflow`, `list_workflows` — thin wrappers over `POST .../workflow/run`, `GET .../workflow?instance_id=`, `GET /api/v1/workflows` (all `protected`, satisfied by a service token). Connect: `claude mcp add nrflo --env NRFLO_MCP_TOKEN=… --env NRFLO_PROJECT=… -- nrflo_server agent mcp-external`. Deep-research can take minutes, so the MCP tool-call timeout must be raised on the client.
+
 ### Login Rate Limiter
 
 `auth_ratelimit.go` implements a per-IP+email token bucket: 5 attempts per 5-minute sliding window. On limit exceeded, returns HTTP 429 with `Retry-After` header (seconds). Keys are `{ip}|{email}`.

@@ -15,6 +15,7 @@ var agentInfraCmd = &cobra.Command{
 
 func init() {
 	agentInfraCmd.AddCommand(agentMCPCmd)
+	agentInfraCmd.AddCommand(agentMCPExternalCmd)
 	agentInfraCmd.AddCommand(agentStatuslineCmd)
 	agentInfraCmd.AddCommand(agentRecordEventCmd)
 

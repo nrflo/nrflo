@@ -1,6 +1,6 @@
 # Claude Code Instructions for nrflo Backend
 
-Go backend for nrflo. Single binary: `nrflo_server`. It provides the HTTP API + WebSocket for the web UI, a Unix socket for agent communication, and hosts the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). Agents themselves drive nrflo (findings, lifecycle, artifacts, …) via MCP tools served by the `agent mcp` bridge — there is no separate `nrflo` CLI.
+Go backend for nrflo. Single binary: `nrflo_server`. It provides the HTTP API + WebSocket for the web UI, a Unix socket for agent communication, and hosts the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). Agents themselves drive nrflo (findings, lifecycle, artifacts, …) via MCP tools served by the `agent mcp` bridge — there is no separate `nrflo` CLI. A standalone (non-spawned) Claude Code session drives nrflo over REST via the token-authed `agent mcp-external` MCP proxy (service token + `NRFLO_PROJECT`; see [internal/api/CLAUDE.md](internal/api/CLAUDE.md)).
 
 ## Project Structure
 

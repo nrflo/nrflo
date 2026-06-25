@@ -129,6 +129,10 @@ func (c *nrfloHTTPClient) deepResearch(ctx context.Context, project, question, c
 	for {
 		state, err := c.getWorkflow(ctx, project, instanceID)
 		if err != nil {
+			if ctx.Err() != nil {
+				c.stopWorkflow(project, instanceID) // caller cancelled mid-poll — don't orphan the run
+				return "", ctx.Err()
+			}
 			return "", err
 		}
 		switch fmt.Sprint(state["status"]) {
@@ -143,10 +147,23 @@ func (c *nrfloHTTPClient) deepResearch(ctx context.Context, project, question, c
 		}
 		select {
 		case <-ctx.Done():
+			c.stopWorkflow(project, instanceID) // caller cancelled/timed out — stop the server-side run
 			return "", ctx.Err()
 		case <-time.After(deepResearchPollInterval):
 		}
 	}
+}
+
+// stopWorkflow best-effort asks the server to stop a running instance, used when
+// the caller cancels a blocking tool call so the run does not keep executing
+// (and billing) with no consumer. It uses its own short-lived context because the
+// caller's context is already cancelled by the time this is called.
+func (c *nrfloHTTPClient) stopWorkflow(project, instanceID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = c.do(ctx, project, http.MethodPost,
+		"/api/v1/projects/"+url.PathEscape(project)+"/workflow/stop",
+		map[string]any{"instance_id": instanceID}, nil)
 }
 
 // extractReport pulls the `report` finding out of a terminal v4 state.

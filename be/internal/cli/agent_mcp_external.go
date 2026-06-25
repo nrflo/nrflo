@@ -55,14 +55,16 @@ Register with Claude Code:
 			defaultProject: os.Getenv("NRFLO_PROJECT"), // optional default; per-call `project` overrides
 			hc:             &http.Client{Timeout: 60 * time.Second},
 		}
-		return runMCPStdioLoop(os.Stdin, os.Stdout, func(req mcpRequest) *mcpResponse {
-			return dispatchExternalMCP(req, c)
+		return runMCPStdioLoopWithCancel(cmd.Context(), os.Stdin, os.Stdout, func(ctx context.Context, req mcpRequest) *mcpResponse {
+			return dispatchExternalMCP(ctx, req, c)
 		})
 	},
 }
 
-// dispatchExternalMCP handles one JSON-RPC request for the external proxy.
-func dispatchExternalMCP(req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
+// dispatchExternalMCP handles one JSON-RPC request for the external proxy. ctx
+// is cancelled if the client cancels the call (or kills the proxy), so a blocking
+// tool can stop its server-side run.
+func dispatchExternalMCP(ctx context.Context, req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
 	switch req.Method {
 	case "initialize":
 		return makeMCPResult(req.ID, map[string]interface{}{
@@ -87,7 +89,7 @@ func dispatchExternalMCP(req mcpRequest, c *nrfloHTTPClient) *mcpResponse {
 		if call.Name == "" {
 			return makeMCPError(req.ID, -32602, "name is required")
 		}
-		text, err := callExternalTool(c, call.Name, call.Arguments)
+		text, err := callExternalTool(ctx, c, call.Name, call.Arguments)
 		if err != nil {
 			return mcpToolText(req.ID, err.Error(), true)
 		}
@@ -117,8 +119,7 @@ func (c *nrfloHTTPClient) resolveProject(ctx context.Context, arg string) string
 }
 
 // callExternalTool routes a tool call to the REST client and returns its text.
-func callExternalTool(c *nrfloHTTPClient, name string, args json.RawMessage) (string, error) {
-	ctx := context.Background()
+func callExternalTool(ctx context.Context, c *nrfloHTTPClient, name string, args json.RawMessage) (string, error) {
 	if len(args) == 0 {
 		args = json.RawMessage("{}")
 	}

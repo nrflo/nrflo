@@ -67,7 +67,7 @@ func TestResolveProject_CwdBeatsEnvDefault(t *testing.T) {
 	var saw string
 	c := cwdTestServer(t, []projRoot{{ID: "cwdproj", RootPath: dir}}, &saw)
 
-	if _, err := callExternalTool(c, "list_workflows", nil); err != nil {
+	if _, err := callExternalTool(context.Background(), c, "list_workflows", nil); err != nil {
 		t.Fatalf("list_workflows: %v", err)
 	}
 	if saw != "cwdproj" {
@@ -81,7 +81,7 @@ func TestResolveProject_ExplicitArgBeatsCwd(t *testing.T) {
 	var saw string
 	c := cwdTestServer(t, []projRoot{{ID: "cwdproj", RootPath: dir}}, &saw)
 
-	if _, err := callExternalTool(c, "list_workflows", []byte(`{"project":"explicit"}`)); err != nil {
+	if _, err := callExternalTool(context.Background(), c, "list_workflows", []byte(`{"project":"explicit"}`)); err != nil {
 		t.Fatalf("list_workflows: %v", err)
 	}
 	if saw != "explicit" {
@@ -96,7 +96,7 @@ func TestResolveProject_NoCwdMatchUsesEnvDefault(t *testing.T) {
 	// Projects list contains nothing matching the cwd → falls back to NRFLO_PROJECT.
 	c := cwdTestServer(t, []projRoot{{ID: "other", RootPath: "/somewhere/else"}}, &saw)
 
-	if _, err := callExternalTool(c, "list_workflows", nil); err != nil {
+	if _, err := callExternalTool(context.Background(), c, "list_workflows", nil); err != nil {
 		t.Fatalf("list_workflows: %v", err)
 	}
 	if saw != "envdefault" {

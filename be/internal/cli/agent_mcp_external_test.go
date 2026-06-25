@@ -27,7 +27,7 @@ func newTestExternalClient(t *testing.T, h http.HandlerFunc) *nrfloHTTPClient {
 }
 
 func TestDispatchExternalMCP_Initialize(t *testing.T) {
-	resp := dispatchExternalMCP(makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{defaultProject: "p1"})
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{defaultProject: "p1"})
 	res, ok := resp.Result.(map[string]interface{})
 	if !ok || res["protocolVersion"] != "2024-11-05" {
 		t.Fatalf("unexpected initialize result: %+v", resp)
@@ -35,7 +35,7 @@ func TestDispatchExternalMCP_Initialize(t *testing.T) {
 }
 
 func TestDispatchExternalMCP_ToolsList(t *testing.T) {
-	resp := dispatchExternalMCP(makeMCPReq(1, "tools/list", ""), &nrfloHTTPClient{defaultProject: "p1"})
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/list", ""), &nrfloHTTPClient{defaultProject: "p1"})
 	res := resp.Result.(map[string]interface{})
 	tools := res["tools"].([]map[string]interface{})
 	want := map[string]bool{"deep_research": false, "run_workflow": false, "get_workflow": false, "list_workflows": false}
@@ -71,7 +71,7 @@ func TestExternalTool_DeepResearch_HappyPath(t *testing.T) {
 		}
 	})
 
-	out, err := callExternalTool(c, "deep_research", json.RawMessage(`{"question":"what is X"}`))
+	out, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"what is X"}`))
 	if err != nil {
 		t.Fatalf("deep_research: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestExternalTool_DeepResearch_PassesContext(t *testing.T) {
 			t.Errorf("unexpected %s %s", r.Method, r.URL)
 		}
 	})
-	out, err := callExternalTool(c, "deep_research",
+	out, err := callExternalTool(context.Background(), c, "deep_research",
 		json.RawMessage(`{"question":"q","context":"building a Go CLI with cobra; targets macOS musl"}`))
 	if err != nil || out != "R" {
 		t.Fatalf("deep_research = %q err=%v", out, err)
@@ -122,11 +122,40 @@ func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"R"}}}`))
 	})
-	if _, err := callExternalTool(c, "deep_research", json.RawMessage(`{"question":"q"}`)); err != nil {
+	if _, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"q"}`)); err != nil {
 		t.Fatalf("deep_research: %v", err)
 	}
 	if hasKey {
 		t.Error("external_context should be omitted when no context is supplied")
+	}
+}
+
+func TestDeepResearch_CancelStopsWorkflow(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var stopped bool
+	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
+			_, _ = w.Write([]byte(`{"instance_id":"inst-cancel"}`))
+		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/stop"):
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			if body["instance_id"] == "inst-cancel" {
+				stopped = true
+			}
+			_, _ = w.Write([]byte(`{"status":"stopping"}`))
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
+			cancel() // caller cancels mid-poll
+			_, _ = w.Write([]byte(`{"state":{"status":"running"}}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+		}
+	})
+	if _, err := c.deepResearch(ctx, "p1", "q", ""); err == nil {
+		t.Fatal("expected a cancellation error")
+	}
+	if !stopped {
+		t.Error("expected workflow/stop to be called for the in-flight instance on cancellation")
 	}
 }
 
@@ -138,7 +167,7 @@ func TestExternalTool_DeepResearch_Failed(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`{"state":{"status":"failed"}}`))
 	})
-	_, err := callExternalTool(c, "deep_research", json.RawMessage(`{"question":"q"}`))
+	_, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"q"}`))
 	if err == nil || !strings.Contains(err.Error(), "failed") {
 		t.Fatalf("want failure error, got %v", err)
 	}
@@ -161,15 +190,15 @@ func TestExternalTool_RunAndGetAndList(t *testing.T) {
 		}
 	})
 
-	run, err := callExternalTool(c, "run_workflow", json.RawMessage(`{"workflow":"deep-research","instructions":"go"}`))
+	run, err := callExternalTool(context.Background(), c, "run_workflow", json.RawMessage(`{"workflow":"deep-research","instructions":"go"}`))
 	if err != nil || !strings.Contains(run, `"instance_id":"inst-9"`) {
 		t.Fatalf("run_workflow = %q err=%v", run, err)
 	}
-	get, err := callExternalTool(c, "get_workflow", json.RawMessage(`{"instance_id":"inst-9"}`))
+	get, err := callExternalTool(context.Background(), c, "get_workflow", json.RawMessage(`{"instance_id":"inst-9"}`))
 	if err != nil || !strings.Contains(get, `"current_phase": "L1"`) {
 		t.Fatalf("get_workflow = %q err=%v", get, err)
 	}
-	list, err := callExternalTool(c, "list_workflows", nil)
+	list, err := callExternalTool(context.Background(), c, "list_workflows", nil)
 	if err != nil || !strings.Contains(list, "deep-research") {
 		t.Fatalf("list_workflows = %q err=%v", list, err)
 	}
@@ -177,13 +206,13 @@ func TestExternalTool_RunAndGetAndList(t *testing.T) {
 
 func TestExternalTool_Validation(t *testing.T) {
 	c := &nrfloHTTPClient{defaultProject: "p1"}
-	if _, err := callExternalTool(c, "deep_research", json.RawMessage(`{}`)); err == nil {
+	if _, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{}`)); err == nil {
 		t.Error("deep_research without question should error")
 	}
-	if _, err := callExternalTool(c, "run_workflow", json.RawMessage(`{}`)); err == nil {
+	if _, err := callExternalTool(context.Background(), c, "run_workflow", json.RawMessage(`{}`)); err == nil {
 		t.Error("run_workflow without workflow should error")
 	}
-	if _, err := callExternalTool(c, "nope", nil); err == nil {
+	if _, err := callExternalTool(context.Background(), c, "nope", nil); err == nil {
 		t.Error("unknown tool should error")
 	}
 }
@@ -195,7 +224,7 @@ func TestExternalTool_PerCallProjectOverridesDefault(t *testing.T) {
 		_, _ = w.Write([]byte(`{"deep-research":{}}`))
 	})
 	// defaultProject is "p1"; the per-call arg must win.
-	if _, err := callExternalTool(c, "list_workflows", json.RawMessage(`{"project":"p2"}`)); err != nil {
+	if _, err := callExternalTool(context.Background(), c, "list_workflows", json.RawMessage(`{"project":"p2"}`)); err != nil {
 		t.Fatalf("list_workflows: %v", err)
 	}
 	if sawProject != "p2" {
@@ -226,7 +255,7 @@ func TestExternalTool_ServerError_IsToolError(t *testing.T) {
 	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 	})
-	resp := dispatchExternalMCP(makeMCPReq(7, "tools/call", `{"name":"list_workflows"}`), c)
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(7, "tools/call", `{"name":"list_workflows"}`), c)
 	res := resp.Result.(map[string]interface{})
 	if res["isError"] != true {
 		t.Fatalf("expected isError=true on 403, got %+v", res)

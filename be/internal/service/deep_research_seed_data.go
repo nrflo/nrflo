@@ -43,14 +43,14 @@ const drVerifyAPrompt = `You are an adversarial claim verifier (lens: QUOTE SUPP
 
 Be skeptical. For each claim ask: is it actually entailed by its quote, or is it an overreach / misread / out-of-context? You MAY web_search for contradicting evidence. Default to refuted=true when uncertain.
 
-Verify primarily from each claim's verbatim quote and sourceUrl (already provided above). Use web_search (it returns short snippets) sparingly — only to check for clearly contradicting or corroborating evidence. Do NOT open or read full pages, do NOT use any built-in web-browsing or fetch tool, and never repeat the same search — keep your context small so you do not exhaust it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
+To check the quote rigorously, read each claim's own source material: call artifact_list to see the researcher's cached pages (named websrc_*) and read the relevant ones with artifact_get, confirming the claim's quote appears verbatim and is not wrenched out of context. If a page is not cached you may web_search to locate it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_a" = array of {claimRef (the claim's index as a string), refuted (bool), confidence (high|medium|low), evidence (specific), counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
 
 const drVerifyBPrompt = `You are an adversarial claim verifier (lens: INDEPENDENT CORROBORATION). The claims to review are:
 #{LAYER_FINDINGS:1}
 
 For each claim, web_search for independent sources that confirm or contradict it. refuted=true unless the claim is independently corroborated by a credible source other than the original. Default to refuted=true when uncertain.
 
-Verify primarily from each claim's verbatim quote and sourceUrl (already provided above). Use web_search (it returns short snippets) sparingly — only to check for clearly contradicting or corroborating evidence. Do NOT open or read full pages, do NOT use any built-in web-browsing or fetch tool, and never repeat the same search — keep your context small so you do not exhaust it. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
+Corroborate against INDEPENDENT sources only: web_search for each claim's key fact and prefer results from a different domain than the claim's sourceUrl. When a snippet is inconclusive, web_fetch at most ~5 of those new, different-domain pages to confirm or contradict — never fetch the claim's original source (that is not independent corroboration). refuted=true unless an independent source corroborates. Reference each claim by its 0-based index in the claims array above. Emit one finding with emit_findings, key "verdicts_b" = array of {claimRef (the claim's index as a string), refuted, confidence, evidence, counterSource?}. If emit_findings returns an error, fix the value using the example in the error and call it again until it succeeds — do not call agent_finished while your finding is unsaved. After it succeeds, call agent_finished; if you cannot produce a valid value, call agent_fail with the reason.`
 
 const drVerifyCPrompt = `You are an adversarial claim verifier (lens: SOURCE QUALITY & RECENCY). The claims to review are:
 #{LAYER_FINDINGS:1}
@@ -83,14 +83,22 @@ type drAgent struct {
 
 // drAgents is the layer-ordered roster. All agents run cli_interactive: the
 // claude/codex CLIs self-authenticate, so the workflow needs no server-side API
-// credential. verify_b uses a codex (GPT-5.5) model for cross-provider
-// verification; if codex is not configured it simply fails and the layer's
-// quorum:2 policy still passes on the two Claude verifiers.
+// credential. The L2 verifiers are differentiated by lens so each reads the
+// evidence its lens actually needs:
+//
+//	verify_a (QUOTE SUPPORT)            opus_4_8_1m + artifact_get — reads the
+//	    researcher's cached source pages to check each quote verbatim/in-context
+//	    (the 1M window holds them without exhausting).
+//	verify_b (INDEPENDENT CORROBORATION) codex GPT-5.5 (cross-provider diversity)
+//	    + bounded web_fetch of NEW sources only — never the cached originals.
+//	verify_c (SOURCE QUALITY/RECENCY)   lean sonnet, snippet-level web_search.
+//
+// quorum:2 tolerates one verifier failing (e.g. codex not configured).
 var drAgents = []drAgent{
 	{ID: "scope", Layer: 0, Model: "sonnet", Tools: "emit_findings"},
 	{ID: "research", Layer: 1, Model: "sonnet", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
-	{ID: "verify_a", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
-	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,emit_findings"},
+	{ID: "verify_a", Layer: 2, Model: "opus_4_8_1m", Tools: "web_search,artifact_list,artifact_get,emit_findings"},
+	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,web_fetch,emit_findings"},
 	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
 	{ID: "synthesize", Layer: 3, Model: "opus_4_8", Tools: "emit_findings"},
 }

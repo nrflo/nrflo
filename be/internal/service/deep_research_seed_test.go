@@ -90,17 +90,22 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		t.Errorf("verify_b model = %q, want codex_gpt55_high", verifyBModel)
 	}
 
-	// Flow tuning (seed / migrations 000149+000151): verifiers are lean
-	// (web_search + emit_findings only — no full-page artifact/fetch reads, which
-	// exhausted verifier context); the angles floor is relaxed; prompts use the
-	// emit-or-fail completion contract.
-	var verifiersLean int
-	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id LIKE 'verify_%' AND tools='web_search,emit_findings'`,
-		GlobalProjectID, DeepResearchWorkflow).Scan(&verifiersLean); err != nil {
-		t.Fatal(err)
-	}
-	if verifiersLean != 3 {
-		t.Errorf("verifiers with lean tools 'web_search,emit_findings' = %d, want 3", verifiersLean)
+	// L2 verifiers are differentiated by lens (migrations 000149-000152):
+	// verify_a = opus_4_8_1m + artifact reads (quote support); verify_b = codex +
+	// web_fetch (independent corroboration); verify_c = lean sonnet (source quality).
+	for _, tc := range []struct{ id, wantModel, toolsLike string }{
+		{"verify_a", "opus_4_8_1m", "%artifact_get%"},
+		{"verify_b", "codex_gpt55_high", "%web_fetch%"},
+		{"verify_c", "sonnet", "web_search,emit_findings"},
+	} {
+		var n int
+		if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=? AND model=? AND tools LIKE ?`,
+			GlobalProjectID, DeepResearchWorkflow, tc.id, tc.wantModel, tc.toolsLike).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != 1 {
+			t.Errorf("%s: want model=%s tools LIKE %q (matched %d)", tc.id, tc.wantModel, tc.toolsLike, n)
+		}
 	}
 	var agentsWithFailContract int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND prompt LIKE '%call agent_fail with the reason.%'`,

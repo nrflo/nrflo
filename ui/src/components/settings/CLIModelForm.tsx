@@ -33,17 +33,19 @@ const REASONING_EFFORT_OPTIONS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 only)' },
+  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 or Sonnet 5 only)' },
   { value: 'max', label: 'Max' },
 ]
 
 function buildEffortOptions(cliType: string, mappedModel: string) {
   if (cliType === 'claude') {
-    const isXHighOpus =
-      mappedModel.startsWith('claude-opus-4-7') || mappedModel.startsWith('claude-opus-4-8')
+    const supportsXHigh =
+      mappedModel.startsWith('claude-opus-4-7') ||
+      mappedModel.startsWith('claude-opus-4-8') ||
+      mappedModel.startsWith('claude-sonnet-5')
     return REASONING_EFFORT_OPTIONS.map((opt) =>
-      opt.value === 'xhigh' && !isXHighOpus
-        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7/4.8 Claude models" }
+      opt.value === 'xhigh' && !supportsXHigh
+        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7/4.8 or Sonnet 5 Claude models" }
         : opt
     )
   }
@@ -142,7 +144,7 @@ export function CLIModelForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Reasoning Effort</label>
-          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for codex, xhigh disabled with tooltip for non-Opus-4.7 claude, setFormData on select. */}
+          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for codex, xhigh disabled with tooltip for non-Opus-4.7/4.8/Sonnet-5 claude, setFormData on select. */}
           <Dropdown
             value={formData.reasoning_effort}
             onChange={(val) => setFormData({ ...formData, reasoning_effort: val })}
@@ -167,7 +169,7 @@ export function CLIModelForm({
           <Input
             value={formData.fallback_models}
             onChange={(e) => setFormData({ ...formData, fallback_models: e.target.value })}
-            placeholder="claude-opus-4-7, claude-sonnet-4-6"
+            placeholder="claude-opus-4-7, claude-sonnet-5"
           />
           <p className="text-xs text-muted-foreground mt-1">
             Comma-separated models (max 3) tried in order when the primary is overloaded or unavailable.

@@ -97,7 +97,7 @@ func TestHandleUpdateCLIModel_InvalidReasoningEffort(t *testing.T) {
 	assertErrorContains(t, rr, "must be one of low, medium, high, xhigh, max")
 }
 
-func TestHandleUpdateCLIModel_XhighOnNonOpus47(t *testing.T) {
+func TestHandleUpdateCLIModel_XhighOnSonnet5_Succeeds(t *testing.T) {
 	s := newCLIModelsServer(t)
 	body := `{"reasoning_effort":"xhigh"}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/sonnet", strings.NewReader(body))
@@ -105,10 +105,13 @@ func TestHandleUpdateCLIModel_XhighOnNonOpus47(t *testing.T) {
 	rr := httptest.NewRecorder()
 	s.handleUpdateCLIModel(rr, req)
 
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", rr.Code, rr.Body.String())
 	}
-	assertErrorContains(t, rr, "only supported on Opus 4.7")
+	m := decodeCLIModel(t, rr)
+	if m.ReasoningEffort != "xhigh" {
+		t.Errorf("ReasoningEffort = %q, want %q", m.ReasoningEffort, "xhigh")
+	}
 }
 
 func TestHandleUpdateCLIModel_XhighOnOpus47_Succeeds(t *testing.T) {

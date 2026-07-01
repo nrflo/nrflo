@@ -27,13 +27,13 @@ var validReasoningEfforts = map[string]bool{
 }
 
 // validateReasoningEffort checks that effort is one of the allowed levels and
-// enforces that "xhigh" is only used with Claude Opus 4.7/4.8 models.
+// enforces that "xhigh" is only used with Claude Opus 4.7/4.8 or Sonnet 5 models.
 func validateReasoningEffort(cliType, mappedModel, effort string) error {
 	if !validReasoningEfforts[effort] {
 		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
 	}
-	if effort == "xhigh" && cliType == "claude" && !isXHighOpus(mappedModel) {
-		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Opus 4.7/4.8 Claude models")
+	if effort == "xhigh" && cliType == "claude" && !supportsXHighEffort(mappedModel) {
+		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Opus 4.7/4.8 or Sonnet 5 Claude models")
 	}
 	return nil
 }

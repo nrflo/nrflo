@@ -112,7 +112,7 @@ func TestTranslateRequest_BudgetThinking_SufficientMaxTokens(t *testing.T) {
 // Opus 4.7/4.8) and that MaxTokens is left untouched.
 func TestTranslateRequest_AdaptiveThinking_46Plus(t *testing.T) {
 	for _, model := range []string{
-		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-4-6",
+		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-5",
 	} {
 		t.Run(model, func(t *testing.T) {
 			params, err := translateRequest(provider.Request{

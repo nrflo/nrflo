@@ -56,7 +56,7 @@ The `model` field on an agent definition must be the `id` of a row in the
 | `opus_4_7_1m` | `claude-opus-4-7` | 1M |
 | `opus_4_6` | `claude-opus-4-6` | 1M |
 | `opus_4_6_1m` | `claude-opus-4-6` | 1M |
-| `sonnet` | `claude-sonnet-4-6` | 1M |
+| `sonnet` | `claude-sonnet-5` | 1M |
 | `haiku` | `claude-haiku-4-5` | 200k |
 
 **Seeded OpenAI rows** (read-only):

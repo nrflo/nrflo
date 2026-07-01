@@ -477,21 +477,21 @@ func TestCLIModel_UpdateReasoningEffort_Valid(t *testing.T) {
 	}
 }
 
-func TestCLIModel_UpdateReasoningEffort_XhighRejectedOnNonOpus47(t *testing.T) {
+func TestCLIModel_UpdateReasoningEffort_XhighAllowedOnSonnet5(t *testing.T) {
 	t.Parallel()
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// sonnet is seeded as claude CLI with mapped_model=sonnet.
+	// sonnet is seeded as claude CLI with mapped_model=claude-sonnet-5, xhigh-capable.
 	effort := "xhigh"
-	_, err := svc.Update("sonnet", types.CLIModelUpdateRequest{
+	updated, err := svc.Update("sonnet", types.CLIModelUpdateRequest{
 		ReasoningEffort: &effort,
 	})
-	if err == nil {
-		t.Fatal("expected error for xhigh on non-Opus-4.7 model, got nil")
+	if err != nil {
+		t.Fatalf("Update reasoning_effort=xhigh on sonnet: %v", err)
 	}
-	if !strings.Contains(err.Error(), "only supported on Opus 4.7") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "only supported on Opus 4.7")
+	if updated.ReasoningEffort != "xhigh" {
+		t.Errorf("ReasoningEffort = %q, want %q", updated.ReasoningEffort, "xhigh")
 	}
 }
 

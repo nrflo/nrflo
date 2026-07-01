@@ -69,24 +69,31 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     expect(panelUtils.getByText('Low')).toBeInTheDocument()
     expect(panelUtils.getByText('Medium')).toBeInTheDocument()
     expect(panelUtils.getByText('High')).toBeInTheDocument()
-    expect(panelUtils.getByText('Extra High (Opus 4.7/4.8 only)')).toBeInTheDocument()
+    expect(panelUtils.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).toBeInTheDocument()
     expect(panelUtils.getByText('Max')).toBeInTheDocument()
 
-    const xhighOption = panelUtils.getByText('Extra High (Opus 4.7/4.8 only)').parentElement!
+    const xhighOption = panelUtils.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
     expect(xhighOption).not.toHaveAttribute('aria-disabled')
   })
 
   it('claude + Opus 4.7 1M prefix: xhigh option is enabled', async () => {
     renderForm({ cli_type: 'claude', mapped_model: 'claude-opus-4-7[1m]' })
     const { panel } = await openAndGetPanel()
-    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 only)').parentElement!
+    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
     expect(xhighOption).not.toHaveAttribute('aria-disabled')
   })
 
   it('claude + Opus 4.8: xhigh option is enabled', async () => {
     renderForm({ cli_type: 'claude', mapped_model: 'claude-opus-4-8' })
     const { panel } = await openAndGetPanel()
-    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 only)').parentElement!
+    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
+    expect(xhighOption).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('claude + Sonnet 5: xhigh option is enabled', async () => {
+    renderForm({ cli_type: 'claude', mapped_model: 'claude-sonnet-5' })
+    const { panel } = await openAndGetPanel()
+    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
     expect(xhighOption).not.toHaveAttribute('aria-disabled')
   })
 
@@ -94,7 +101,7 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     const { setFormData } = renderForm({ cli_type: 'claude', mapped_model: 'claude-sonnet-4-5' })
     const { user, panel } = await openAndGetPanel()
 
-    const xhighLabel = within(panel).getByText('Extra High (Opus 4.7/4.8 only)')
+    const xhighLabel = within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')
     const xhighOption = xhighLabel.parentElement!
     expect(xhighOption).toHaveAttribute('aria-disabled', 'true')
 
@@ -105,7 +112,7 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
   it('claude + non-Opus-4.7 model: hovering disabled xhigh shows tooltip', async () => {
     renderForm({ cli_type: 'claude', mapped_model: 'claude-sonnet-4-5' })
     const { user, panel } = await openAndGetPanel()
-    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 only)').parentElement!
+    const xhighOption = within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
 
     await user.hover(xhighOption)
     const tooltip = await screen.findByRole('tooltip')
@@ -115,7 +122,7 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
   it('codex cli_type: xhigh option is NOT rendered', async () => {
     renderForm({ cli_type: 'codex', mapped_model: 'gpt-5' })
     const { panel } = await openAndGetPanel()
-    expect(within(panel).queryByText('Extra High (Opus 4.7/4.8 only)')).not.toBeInTheDocument()
+    expect(within(panel).queryByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).not.toBeInTheDocument()
   })
 
   it('selecting High calls setFormData with reasoning_effort="high"', async () => {
@@ -142,7 +149,7 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     })
     const { user, panel } = await openAndGetPanel()
 
-    await user.click(within(panel).getByText('Extra High (Opus 4.7/4.8 only)'))
+    await user.click(within(panel).getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)'))
     expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'xhigh' })
   })
 })

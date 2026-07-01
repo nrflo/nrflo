@@ -18,7 +18,7 @@
 be/cmd/binaries_test.go	330
 be/internal/api/handlers_api_models_test.go	364
 be/internal/api/handlers_chains.go	388
-be/internal/api/handlers_cli_models_test.go	304
+be/internal/api/handlers_cli_models_test.go	307
 be/internal/api/handlers_default_template_type_test.go	333
 be/internal/api/handlers_git_test.go	670
 be/internal/api/handlers_observer_test.go	314

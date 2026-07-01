@@ -24,9 +24,10 @@ func TestMaxContext(t *testing.T) {
 		{"claude-opus-4-7[1m]", 1000000},
 		{"claude-opus-4-6", 1000000},
 		{"claude-opus-4-6[1m]", 1000000},
-		{"claude-sonnet-4-6", 1000000},
-		// Haiku 4.5 and unknown/future ids default to 200k.
+		{"claude-sonnet-5", 1000000},
+		// Haiku 4.5 and unknown/future/retired ids default to 200k.
 		{"claude-haiku-4-5", 200000},
+		{"claude-sonnet-4-6", 200000},
 		{"claude-sonnet-4-7", 200000},
 		{"unknown-model", 200000},
 		{"", 200000},

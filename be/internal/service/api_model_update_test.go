@@ -109,21 +109,22 @@ func TestAPIModel_UpdateReadOnly_ReasoningEffort_Succeeds(t *testing.T) {
 	}
 }
 
-func TestAPIModel_UpdateReasoningEffort_XhighOnAnthropicSonnet_Rejected(t *testing.T) {
+func TestAPIModel_UpdateReasoningEffort_XhighOnAnthropicSonnet5_Allowed(t *testing.T) {
 	t.Parallel()
 	svc, cleanup := setupAPIModelTestEnv(t)
 	defer cleanup()
 
-	// "sonnet" is seeded as anthropic with mapped_model=claude-sonnet-4-6
+	// "sonnet" is seeded as anthropic with mapped_model=claude-sonnet-5, which
+	// supports xhigh.
 	effort := "xhigh"
-	_, err := svc.Update("sonnet", types.APIModelUpdateRequest{
+	updated, err := svc.Update("sonnet", types.APIModelUpdateRequest{
 		ReasoningEffort: &effort,
 	})
-	if err == nil {
-		t.Fatal("expected error for xhigh on non-opus-4.7, got nil")
+	if err != nil {
+		t.Fatalf("Update reasoning_effort=xhigh on sonnet: %v", err)
 	}
-	if !strings.Contains(err.Error(), "only supported on Anthropic Opus 4.7") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "only supported on Anthropic Opus 4.7")
+	if updated.ReasoningEffort != "xhigh" {
+		t.Errorf("ReasoningEffort = %q, want xhigh", updated.ReasoningEffort)
 	}
 }
 

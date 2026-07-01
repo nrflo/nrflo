@@ -25,7 +25,7 @@ func stripContextSuffix(model string) string {
 // query the Models API for capabilities instead of hardcoding ids here.
 func is46Plus(base string) bool {
 	switch base {
-	case "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-4-6":
+	case "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-5":
 		return true
 	}
 	return false

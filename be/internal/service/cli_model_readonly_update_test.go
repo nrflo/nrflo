@@ -64,26 +64,21 @@ func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnOpus47(t *testing.T) {
 	}
 }
 
-func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnSonnet_Rejected(t *testing.T) {
+func TestCLIModel_UpdateReadonly_ReasoningEffort_XhighOnSonnet5_Allowed(t *testing.T) {
 	t.Parallel()
-	// xhigh rule is still enforced on read_only rows. Validation error, NOT the new
-	// "only reasoning_effort" guard, because the field allowed through is reasoning_effort itself.
+	// "sonnet" is seeded with mapped_model=claude-sonnet-5, which supports xhigh.
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
 	effort := "xhigh"
-	_, err := svc.Update("sonnet", types.CLIModelUpdateRequest{
+	updated, err := svc.Update("sonnet", types.CLIModelUpdateRequest{
 		ReasoningEffort: &effort,
 	})
-	if err == nil {
-		t.Fatal("expected error for xhigh on sonnet (non-Opus-4.7), got nil")
+	if err != nil {
+		t.Fatalf("Update reasoning_effort=xhigh on read_only sonnet: %v", err)
 	}
-	if !strings.Contains(err.Error(), "only supported on Opus 4.7") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "only supported on Opus 4.7")
-	}
-	// Must NOT surface the read_only guard message: the allowed field is reasoning_effort.
-	if strings.Contains(err.Error(), readonlyUpdateErr) {
-		t.Errorf("error = %q must not contain read_only guard text", err.Error())
+	if updated.ReasoningEffort != "xhigh" {
+		t.Errorf("ReasoningEffort = %q, want %q", updated.ReasoningEffort, "xhigh")
 	}
 }
 

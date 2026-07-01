@@ -71,7 +71,7 @@ describe('APIModelForm', () => {
         formData: { ...emptyAPIModelForm, provider: 'anthropic', mapped_model: 'claude-opus-4-7-20250514' },
       })
       await openEffortDropdown()
-      expect(screen.getByText('Extra High (Opus 4.7/4.8 only)')).toBeInTheDocument()
+      expect(screen.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).toBeInTheDocument()
     })
 
     it('xhigh option enabled for anthropic with Opus 4.8 mapped model', async () => {
@@ -79,7 +79,16 @@ describe('APIModelForm', () => {
         formData: { ...emptyAPIModelForm, provider: 'anthropic', mapped_model: 'claude-opus-4-8' },
       })
       await openEffortDropdown()
-      const xhighOption = screen.getByText('Extra High (Opus 4.7/4.8 only)').parentElement!
+      const xhighOption = screen.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
+      expect(xhighOption).not.toHaveAttribute('aria-disabled')
+    })
+
+    it('xhigh option enabled for anthropic with Sonnet 5 mapped model', async () => {
+      renderForm({
+        formData: { ...emptyAPIModelForm, provider: 'anthropic', mapped_model: 'claude-sonnet-5' },
+      })
+      await openEffortDropdown()
+      const xhighOption = screen.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)').parentElement!
       expect(xhighOption).not.toHaveAttribute('aria-disabled')
     })
 
@@ -88,7 +97,7 @@ describe('APIModelForm', () => {
         formData: { ...emptyAPIModelForm, provider: 'anthropic', mapped_model: 'claude-sonnet-4-6' },
       })
       await openEffortDropdown()
-      expect(screen.getByText('Extra High (Opus 4.7/4.8 only)')).toBeInTheDocument()
+      expect(screen.getByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).toBeInTheDocument()
     })
 
     it('xhigh option absent for openai provider', async () => {
@@ -96,7 +105,7 @@ describe('APIModelForm', () => {
         formData: { ...emptyAPIModelForm, provider: 'openai', mapped_model: 'gpt-4o' },
       })
       await openEffortDropdown()
-      expect(screen.queryByText('Extra High (Opus 4.7/4.8 only)')).not.toBeInTheDocument()
+      expect(screen.queryByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).not.toBeInTheDocument()
     })
   })
 

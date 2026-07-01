@@ -24,6 +24,9 @@ jobs:
       - name: Tap nrflo/tap
         run: brew tap nrflo/tap
 
+      - name: Trust nrflo/tap cask
+        run: brew trust --cask nrflo/tap/nrflo
+
       - name: Install cask
         run: brew install --cask nrflo
 

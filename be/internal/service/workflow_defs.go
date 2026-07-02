@@ -77,7 +77,7 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	if req.CallableAsSubworkflow != nil {
 		callableAsSubworkflow = *req.CallableAsSubworkflow
 	}
-	if err := validateCallableSubworkflow(callableAsSubworkflow, purgeOnCompletion); err != nil {
+	if err := validateCallableSubworkflow(callableAsSubworkflow, purgeOnCompletion, scopeType); err != nil {
 		return nil, err
 	}
 

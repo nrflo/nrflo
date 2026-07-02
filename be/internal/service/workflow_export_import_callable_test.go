@@ -15,6 +15,7 @@ func TestExportImport_CallableAsSubworkflow_RoundTrip(t *testing.T) {
 	callable := true
 	if _, err := env.workflowSvc.CreateWorkflowDef(env.projectID, &types.WorkflowDefCreateRequest{
 		ID:                    "wf-callable-rt",
+		ScopeType:             "project",
 		CallableAsSubworkflow: &callable,
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)

@@ -31,24 +31,32 @@ func (s *WorkflowService) validateNextWorkflowOnSuccess(projectID, sourceWorkflo
 	return nil
 }
 
-// validateCallableSubworkflow rejects the callable_as_subworkflow + purge_on_completion
-// combination: purge deletes the child's session findings before the sub-workflow
-// caller can read its result back.
-func validateCallableSubworkflow(callable, purge bool) error {
-	if callable && purge {
+// validateCallableSubworkflow rejects invalid callable_as_subworkflow combinations:
+// purge deletes the child's session findings before the sub-workflow caller can
+// read its result back, and ticket-scoped workflows cannot run as children
+// (sub-runs are started without a ticket).
+func validateCallableSubworkflow(callable, purge bool, scopeType string) error {
+	if !callable {
+		return nil
+	}
+	if purge {
 		return fmt.Errorf("callable_as_subworkflow requires purge_on_completion=false: purge deletes the result finding before the caller can read it")
+	}
+	if scopeType != "project" {
+		return fmt.Errorf("callable_as_subworkflow requires scope_type=project: sub-workflows run without a ticket")
 	}
 	return nil
 }
 
-// validateCallableUpdate validates the effective callable/purge pair for an update,
-// resolving unspecified sides against the current row.
-func (s *WorkflowService) validateCallableUpdate(projectID, workflowID string, callable, purge *bool) error {
+// validateCallableUpdate validates the effective callable/purge/scope triple for
+// an update, resolving unspecified sides against the current row.
+func (s *WorkflowService) validateCallableUpdate(projectID, workflowID string, callable, purge *bool, scopeType *string) error {
 	var curCallable, curPurge bool
+	var curScope string
 	err := s.pool.QueryRow(`
-		SELECT callable_as_subworkflow, purge_on_completion FROM workflows
+		SELECT callable_as_subworkflow, purge_on_completion, scope_type FROM workflows
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
-		projectID, workflowID).Scan(&curCallable, &curPurge)
+		projectID, workflowID).Scan(&curCallable, &curPurge, &curScope)
 	if err == sql.ErrNoRows {
 		return fmt.Errorf("workflow not found: %s", workflowID)
 	}
@@ -61,7 +69,10 @@ func (s *WorkflowService) validateCallableUpdate(projectID, workflowID string, c
 	if purge != nil {
 		curPurge = *purge
 	}
-	return validateCallableSubworkflow(curCallable, curPurge)
+	if scopeType != nil {
+		curScope = *scopeType
+	}
+	return validateCallableSubworkflow(curCallable, curPurge, curScope)
 }
 
 // validateFinalizeSlots checks mutual exclusivity of command vs script_id per slot,

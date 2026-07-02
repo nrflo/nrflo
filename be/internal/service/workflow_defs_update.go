@@ -37,8 +37,8 @@ func (s *WorkflowService) UpdateWorkflowDef(projectID, workflowID string, req *t
 		updates = append(updates, "close_ticket_on_complete = ?")
 		args = append(args, *req.CloseTicketOnComplete)
 	}
-	if req.PurgeOnCompletion != nil || req.CallableAsSubworkflow != nil {
-		if err := s.validateCallableUpdate(projectID, workflowID, req.CallableAsSubworkflow, req.PurgeOnCompletion); err != nil {
+	if req.PurgeOnCompletion != nil || req.CallableAsSubworkflow != nil || req.ScopeType != nil {
+		if err := s.validateCallableUpdate(projectID, workflowID, req.CallableAsSubworkflow, req.PurgeOnCompletion, req.ScopeType); err != nil {
 			return err
 		}
 	}

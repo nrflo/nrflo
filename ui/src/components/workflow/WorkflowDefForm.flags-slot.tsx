@@ -5,6 +5,8 @@ interface FlagTogglesProps {
   onPurgeChange: (v: boolean) => void
   callableAsSubworkflow: boolean
   onCallableChange: (v: boolean) => void
+  /** callable requires project scope; sub-workflows run without a ticket */
+  callableAllowed: boolean
 }
 
 /** Purge-on-completion + callable-as-sub-workflow toggles (mutually exclusive pair). */
@@ -13,6 +15,7 @@ export function FlagTogglesSection({
   onPurgeChange,
   callableAsSubworkflow,
   onCallableChange,
+  callableAllowed,
 }: FlagTogglesProps) {
   return (
     <>
@@ -33,12 +36,13 @@ export function FlagTogglesSection({
         <Toggle
           checked={callableAsSubworkflow}
           onChange={onCallableChange}
+          disabled={!callableAsSubworkflow && (purgeOnCompletion || !callableAllowed)}
           label="Callable as sub-workflow"
-          disabled={purgeOnCompletion}
         />
         <p className="text-xs text-muted-foreground mt-1">
           Lets agents start this workflow with the run_subworkflow tool and read its result back.
-          Requires purge to be off (the result finding must survive completion).
+          Requires project scope (sub-workflows run without a ticket) and purge off (the result
+          finding must survive completion).
         </p>
       </div>
     </>

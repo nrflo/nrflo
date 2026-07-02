@@ -211,6 +211,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         onPurgeChange={setPurgeOnCompletion}
         callableAsSubworkflow={callableAsSubworkflow}
         onCallableChange={setCallableAsSubworkflow}
+        callableAllowed={scopeType === 'project'}
       />
 
       <div>

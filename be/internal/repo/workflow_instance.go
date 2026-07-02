@@ -24,7 +24,7 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 
 const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
 	skip_tags, retry_count, parent_session, worktree_path, branch_name,
-	endless_loop, stop_endless_loop_after_iteration, purge_on_completion, launch_depth, created_at, updated_at, scheduled_task_id,
+	endless_loop, stop_endless_loop_after_iteration, purge_on_completion, launch_depth, parent_instance_id, subworkflow_depth, subworkflow_starts, created_at, updated_at, scheduled_task_id,
 	external_id, external_context`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
@@ -35,7 +35,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
 		&wi.Status, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
-		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &wi.PurgeOnCompletion, &wi.LaunchDepth, &createdAt, &updatedAt,
+		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &wi.PurgeOnCompletion, &wi.LaunchDepth, &wi.ParentInstanceID, &wi.SubworkflowDepth, &wi.SubworkflowStarts, &createdAt, &updatedAt,
 		&scheduledTaskID, &externalID, &externalContext,
 	)
 	if err != nil {
@@ -63,12 +63,12 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.SkipTags, wi.RetryCount, wi.ParentSession,
 		wi.WorktreePath, wi.BranchName,
-		wi.EndlessLoop, wi.StopEndlessLoopAfterIteration, wi.PurgeOnCompletion, wi.LaunchDepth,
+		wi.EndlessLoop, wi.StopEndlessLoopAfterIteration, wi.PurgeOnCompletion, wi.LaunchDepth, wi.ParentInstanceID, wi.SubworkflowDepth, wi.SubworkflowStarts,
 		now, now,
 		sql.NullString{String: wi.ScheduledTaskID, Valid: wi.ScheduledTaskID != ""},
 		sql.NullString{String: wi.ExternalID, Valid: wi.ExternalID != ""},

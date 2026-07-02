@@ -199,6 +199,8 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		WorkflowName:            workflowName,
 		ScopeType:               scopeType,
 		LaunchDepth:             wi.LaunchDepth,
+		ParentInstanceID:        wi.ParentInstanceID,
+		SubworkflowDepth:        wi.SubworkflowDepth,
 		CloseTicketOnComplete:   svcWf.CloseTicketOnComplete,
 		FinalizeSuccessCommand:  svcWf.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: svcWf.FinalizeSuccessScriptID,
@@ -214,6 +216,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
+	o.rearmSubworkflowWatcher(wi)
 
 	// Broadcast retry event
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationRetried, projectID, ticketID, workflowName, map[string]interface{}{

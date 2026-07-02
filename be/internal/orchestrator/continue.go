@@ -70,6 +70,8 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		WorkflowName:            workflowName,
 		ScopeType:               wi.ScopeType,
 		LaunchDepth:             wi.LaunchDepth,
+		ParentInstanceID:        wi.ParentInstanceID,
+		SubworkflowDepth:        wi.SubworkflowDepth,
 		CloseTicketOnComplete:   svcWf.CloseTicketOnComplete,
 		FinalizeSuccessCommand:  svcWf.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: svcWf.FinalizeSuccessScriptID,
@@ -213,6 +215,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	o.mu.Lock()
 	o.runs[wi.ID] = rs
 	o.mu.Unlock()
+	o.rearmSubworkflowWatcher(wi)
 
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventWorkflowResumed, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id":  wi.ID,

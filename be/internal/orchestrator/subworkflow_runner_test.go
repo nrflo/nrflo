@@ -11,13 +11,14 @@ import (
 	"be/internal/repo"
 )
 
-// seedChildInstance marks the instance as a sub-run at the given depth/status
-// and seeds a terminal session plus a session-scoped result finding under key,
-// mirroring what emit_findings stores during a real run.
-func seedChildInstance(t *testing.T, env *testEnv, wfiID, status string, depth int, key string) {
+// seedChildInstance marks the instance as a sub-run of parentID and seeds a
+// terminal session plus a session-scoped result finding under key, mirroring
+// what emit_findings stores during a real run.
+func seedChildInstance(t *testing.T, env *testEnv, wfiID, parentID, status string, key string) {
 	t.Helper()
 	if _, err := env.pool.Exec(
-		`UPDATE workflow_instances SET status=?, launch_depth=? WHERE id=?`, status, depth, wfiID); err != nil {
+		`UPDATE workflow_instances SET status=?, launch_depth=1, parent_instance_id=?, subworkflow_depth=1 WHERE id=?`,
+		status, parentID, wfiID); err != nil {
 		t.Fatalf("mark instance: %v", err)
 	}
 	if key == "" {
@@ -44,9 +45,9 @@ func seedChildInstance(t *testing.T, env *testEnv, wfiID, status string, depth i
 func TestGetSubworkflow_ReadsSessionScopedResult(t *testing.T) {
 	env := newTestEnv(t)
 	wfiID := env.initProjectWorkflow(t, "test")
-	seedChildInstance(t, env, wfiID, "project_completed", 1, "report")
+	seedChildInstance(t, env, wfiID, "parent-1", "project_completed", "report")
 
-	status, result, _, err := env.orch.GetSubworkflow(context.Background(), env.project, wfiID, "report")
+	status, result, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "report")
 	if err != nil {
 		t.Fatalf("GetSubworkflow: %v", err)
 	}
@@ -59,39 +60,50 @@ func TestGetSubworkflow_StatusMapping(t *testing.T) {
 	env := newTestEnv(t)
 
 	active := env.initProjectWorkflow(t, "test")
-	seedChildInstance(t, env, active, "active", 1, "")
-	if status, _, _, err := env.orch.GetSubworkflow(context.Background(), env.project, active, ""); err != nil || status != "running" {
+	seedChildInstance(t, env, active, "parent-1", "active", "")
+	if status, _, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, active, ""); err != nil || status != "running" {
 		t.Errorf("active: got (%q, %v), want running", status, err)
 	}
 
+	waiting := env.initProjectWorkflow(t, "test")
+	seedChildInstance(t, env, waiting, "parent-1", "waiting", "")
+	status, _, reason, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, waiting, "")
+	if err != nil || status != "waiting" || !strings.Contains(reason, "paused") {
+		t.Errorf("waiting: got (%q, %q, %v), want waiting with pause note", status, reason, err)
+	}
+
 	failed := env.initProjectWorkflow(t, "test")
-	seedChildInstance(t, env, failed, "failed", 1, "")
+	seedChildInstance(t, env, failed, "parent-1", "failed", "")
 	fr := repo.NewFindingRepo(env.pool, clock.Real())
 	_ = fr.Upsert("workflow_instance", failed, "_failure_reason", json.RawMessage(`{"reason":"boom"}`),
 		repo.Denorm{ProjectID: env.project, WorkflowInstanceID: failed}, repo.Actor{Source: "orchestrator"})
-	status, _, reason, err := env.orch.GetSubworkflow(context.Background(), env.project, failed, "")
+	status, _, reason, err = env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, failed, "")
 	if err != nil || status != "failed" || reason != "boom" {
 		t.Errorf("failed: got (%q, %q, %v), want (failed, boom)", status, reason, err)
 	}
 }
 
-// Top-level runs (launch_depth=0) and foreign projects are not pollable.
-func TestGetSubworkflow_RejectsNonSubRuns(t *testing.T) {
+// Only the run that started a child may poll it: top-level runs, foreign
+// projects, and foreign callers are all rejected.
+func TestGetSubworkflow_ParentageAuthorization(t *testing.T) {
 	env := newTestEnv(t)
-	wfiID := env.initProjectWorkflow(t, "test") // launch_depth stays 0
+	wfiID := env.initProjectWorkflow(t, "test") // parent_instance_id stays ""
 
-	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), env.project, wfiID, ""); err == nil {
-		t.Error("want error for launch_depth=0 instance")
+	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "anyone", env.project, wfiID, ""); err == nil {
+		t.Error("want error for top-level (no-parent) instance")
 	}
 
-	seedChildInstance(t, env, wfiID, "active", 1, "")
-	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "other-project", wfiID, ""); err == nil {
+	seedChildInstance(t, env, wfiID, "parent-1", "active", "")
+	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", "other-project", wfiID, ""); err == nil {
 		t.Error("want error for foreign project")
+	}
+	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "other-caller", env.project, wfiID, ""); err == nil {
+		t.Error("want error for a caller that did not start the child")
 	}
 }
 
-// StartSubworkflow guard order: non-callable defs are rejected before any
-// budget/concurrency reservation; an inactive parent is rejected after them.
+// StartSubworkflow guard order: def guards first, then the persisted budget,
+// then the live-parent requirement (with the budget refunded on failure).
 func TestStartSubworkflow_Guards(t *testing.T) {
 	env := newTestEnv(t)
 	parentID := env.initProjectWorkflow(t, "test")
@@ -113,13 +125,13 @@ func TestStartSubworkflow_Guards(t *testing.T) {
 		t.Fatalf("want purge error, got %v", err)
 	}
 
-	// Callable, non-purging, but depth cap exceeded.
+	// Callable, non-purging, but sub-workflow depth cap exceeded.
 	if _, err := env.pool.Exec(
 		`UPDATE workflows SET purge_on_completion=0 WHERE LOWER(project_id)=LOWER(?) AND LOWER(id)='test'`, env.project); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := env.pool.Exec(
-		`UPDATE workflow_instances SET launch_depth=? WHERE id=?`, 3, parentID); err != nil {
+		`UPDATE workflow_instances SET subworkflow_depth=3 WHERE id=?`, parentID); err != nil {
 		t.Fatal(err)
 	}
 	_, err = env.orch.StartSubworkflow(context.Background(), parentID, env.project, "test", "go")
@@ -127,13 +139,30 @@ func TestStartSubworkflow_Guards(t *testing.T) {
 		t.Fatalf("want depth-cap error, got %v", err)
 	}
 
-	// Depth ok but parent run not active (no o.runs entry).
+	// Persisted invocation budget exhausted (survives runState recreation).
 	if _, err := env.pool.Exec(
-		`UPDATE workflow_instances SET launch_depth=0 WHERE id=?`, parentID); err != nil {
+		`UPDATE workflow_instances SET subworkflow_depth=0, subworkflow_starts=25 WHERE id=?`, parentID); err != nil {
+		t.Fatal(err)
+	}
+	_, err = env.orch.StartSubworkflow(context.Background(), parentID, env.project, "test", "go")
+	if err == nil || !strings.Contains(err.Error(), "budget exhausted") {
+		t.Fatalf("want budget error, got %v", err)
+	}
+
+	// Budget ok but parent run not active: charged then refunded.
+	if _, err := env.pool.Exec(
+		`UPDATE workflow_instances SET subworkflow_starts=0 WHERE id=?`, parentID); err != nil {
 		t.Fatal(err)
 	}
 	_, err = env.orch.StartSubworkflow(context.Background(), parentID, env.project, "test", "go")
 	if err == nil || !strings.Contains(err.Error(), "not active") {
 		t.Fatalf("want parent-not-active error, got %v", err)
+	}
+	var starts int
+	if err := env.pool.QueryRow(`SELECT subworkflow_starts FROM workflow_instances WHERE id=?`, parentID).Scan(&starts); err != nil {
+		t.Fatal(err)
+	}
+	if starts != 0 {
+		t.Errorf("budget not refunded after failed start: %d, want 0", starts)
 	}
 }

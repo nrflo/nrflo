@@ -54,7 +54,7 @@ func (getSubworkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 	if args.WaitSec > 0 {
 		return pollSubworkflow(ctx, env, args.InstanceID, args.ResultKey, args.WaitSec)
 	}
-	status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.ProjectID, args.InstanceID, args.ResultKey)
+	status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, args.InstanceID, args.ResultKey)
 	if err != nil {
 		return err.Error(), true, nil
 	}

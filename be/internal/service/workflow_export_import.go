@@ -136,6 +136,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 
 		closeOnComplete := entry.Workflow.CloseTicketOnComplete
 		purgeOnComplete := entry.Workflow.PurgeOnCompletion
+		callable := entry.Workflow.CallableAsSubworkflow
 		var findingSchemas []types.FindingSchema
 		if raw := entry.Workflow.GetFindingSchemas(); len(raw) > 0 {
 			_ = json.Unmarshal(raw, &findingSchemas)
@@ -147,6 +148,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 			Groups:                entry.Workflow.GetGroups(),
 			CloseTicketOnComplete: &closeOnComplete,
 			PurgeOnCompletion:     &purgeOnComplete,
+			CallableAsSubworkflow: &callable,
 			NextWorkflowOnSuccess: entry.Workflow.NextWorkflowOnSuccess,
 			PauseEventCommand:     entry.Workflow.PauseEventCommand,
 			PauseEventScriptID:    entry.Workflow.PauseEventScriptID,

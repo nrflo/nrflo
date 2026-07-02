@@ -9,9 +9,9 @@ import (
 	"be/internal/repo"
 )
 
-// fetchExternalRefs returns the external_id, external_context and launch_depth
-// from the workflow instance. Returns ("", "", 0) on nil pool, unresolved wfiID,
-// or error.
+// fetchExternalRefs returns the external_id, external_context and
+// subworkflow_depth from the workflow instance. Returns ("", "", 0) on nil
+// pool, unresolved wfiID, or error.
 func (s *Spawner) fetchExternalRefs(projectID, ticketID, workflowName, wfiID string) (string, string, int) {
 	pool := s.pool()
 	if pool == nil {
@@ -25,7 +25,7 @@ func (s *Spawner) fetchExternalRefs(projectID, ticketID, workflowName, wfiID str
 	if err != nil || wi == nil {
 		return "", "", 0
 	}
-	return wi.ExternalID, wi.ExternalContext, wi.LaunchDepth
+	return wi.ExternalID, wi.ExternalContext, wi.SubworkflowDepth
 }
 
 // mergeExtraVars copies base (may be nil) and merges extra on top.

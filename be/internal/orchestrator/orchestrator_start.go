@@ -114,14 +114,16 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	var wi *model.WorkflowInstance
 	if req.IsProjectScope() {
 		wi, err = wfService.InitProjectWorkflow(req.ProjectID, &types.ProjectWorkflowRunRequest{
-			Workflow:        req.WorkflowName,
-			Instructions:    req.Instructions,
-			EndlessLoop:     req.EndlessLoop,
-			ScheduledTaskID: req.ScheduledTaskID,
-			ExternalID:      req.ExternalID,
-			ExternalContext: req.ExternalContext,
-			SeedFindings:    req.SeedFindings,
-			LaunchDepth:     req.LaunchDepth,
+			Workflow:         req.WorkflowName,
+			Instructions:     req.Instructions,
+			EndlessLoop:      req.EndlessLoop,
+			ScheduledTaskID:  req.ScheduledTaskID,
+			ExternalID:       req.ExternalID,
+			ExternalContext:  req.ExternalContext,
+			SeedFindings:     req.SeedFindings,
+			LaunchDepth:      req.LaunchDepth,
+			ParentInstanceID: req.ParentInstanceID,
+			SubworkflowDepth: req.SubworkflowDepth,
 		})
 	} else {
 		wi, err = wfService.Init(req.ProjectID, req.TicketID, &types.WorkflowInitRequest{

@@ -272,17 +272,19 @@ type FailWorkflowRequest struct {
 
 // ProjectWorkflowRunRequest is the request for running a project-scoped workflow
 type ProjectWorkflowRunRequest struct {
-	Workflow        string             `json:"workflow"`
-	Instructions    string             `json:"instructions,omitempty"`
-	Interactive     bool               `json:"interactive,omitempty"`
-	PlanMode        bool               `json:"plan_mode,omitempty"`
-	EndlessLoop     bool               `json:"endless_loop,omitempty"`
-	ScheduledTaskID string             `json:"scheduled_task_id,omitempty"`
-	ExternalID      string             `json:"external_id,omitempty"`
-	ExternalContext string             `json:"external_context,omitempty"`
-	SeedFindings    map[string]string  `json:"seed_findings,omitempty"`
-	InputArtifacts  []InputArtifactRef `json:"input_artifacts,omitempty"`
-	LaunchDepth     int                `json:"-"` // set by the orchestrator (sub-workflow / next-on-success starts), never by clients
+	Workflow         string             `json:"workflow"`
+	Instructions     string             `json:"instructions,omitempty"`
+	Interactive      bool               `json:"interactive,omitempty"`
+	PlanMode         bool               `json:"plan_mode,omitempty"`
+	EndlessLoop      bool               `json:"endless_loop,omitempty"`
+	ScheduledTaskID  string             `json:"scheduled_task_id,omitempty"`
+	ExternalID       string             `json:"external_id,omitempty"`
+	ExternalContext  string             `json:"external_context,omitempty"`
+	SeedFindings     map[string]string  `json:"seed_findings,omitempty"`
+	InputArtifacts   []InputArtifactRef `json:"input_artifacts,omitempty"`
+	LaunchDepth      int                `json:"-"` // set by the orchestrator (sub-workflow / next-on-success starts), never by clients
+	ParentInstanceID string             `json:"-"` // run_subworkflow caller's instance id; orchestrator-set only
+	SubworkflowDepth int                `json:"-"` // run_subworkflow nesting; orchestrator-set only
 }
 
 // DependencyRequest is the request for adding/removing dependencies

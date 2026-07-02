@@ -66,7 +66,7 @@ Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each la
 
 ## Sub-Workflow Runner
 
-`subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (`launch_depth=parent+1`, persisted; also bumped by next-on-success), enforcing purge-off/no-pause defs plus depth/children/invocation caps (`service/subworkflow.go`) reserved under `o.mu`; a watcher stops children when the parent run ends. `GetSubworkflow` polls status and reads the result via `GetSessionFindingByKey` (default `workflow_final_result`); only `launch_depth>0` runs of the caller's project are readable. Exposed as the `run_subworkflow`/`get_subworkflow` builtins via `Config.Subworkflows`.
+`subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (persisted `parent_instance_id`/`subworkflow_depth`; `launch_depth` carries the chain cap), enforcing purge-off/no-pause defs, depth/children caps (`service/subworkflow.go`) and a persisted invocation budget (`subworkflow_starts`, atomic — survives pause/continue/retry). Sub-runs never fire next-on-success. The watcher (`subworkflow_watch.go`) stops children only when the parent is TERMINAL (pause re-arms on the successor runState; retry/continue re-arm via `rearmSubworkflowWatcher`). `GetSubworkflow` returns running/waiting/completed/failed and reads results via `GetSessionFindingByKey`; only the caller matching `parent_instance_id` may read a child. Exposed as `run_subworkflow`/`get_subworkflow` via `Config.Subworkflows`.
 
 ## Automatic Merge Conflict Resolution
 
@@ -86,14 +86,14 @@ Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflow
 
 When `use_git_worktrees=true` and `default_branch` configured:
 
-- **Setup** (`Start`/`retryFailed`): `setupWorktree()` returns early for project scope; for ticket scope creates a branch (named after ticket ID) and worktree at `/tmp/nrflo/worktrees/<branchName>`.
+- **Setup**: `setupWorktree()` — project scope returns early; ticket scope creates a branch (ticket ID) + worktree under `/tmp/nrflo/worktrees/`.
 - **Success**: removes worktree, merges branch into `default_branch` (up to 5 retry attempts), deletes branch. Conflicts trigger `attemptConflictResolution()`; falls through to manual resolution if not configured or fails.
-- **Push after merge**: `pushIfEnabled()` pushes default branch to origin when `push_after_merge` is enabled. Failure logged and broadcast (`workflow.push_failed`) but does not fail the workflow.
+- **Push after merge**: `pushIfEnabled()`; failures logged + broadcast (`workflow.push_failed`), never fail the workflow.
 - **Failure/Cancellation**: force-removes worktree and branch without merging.
 
 ## Take-Control (Interactive Session)
 
-- `TakeControl(projectID, ticketID, workflow, sessionID)` → sends `RequestTakeControl` to the active spawner.
+- `TakeControl(...)` → sends `RequestTakeControl` to the active spawner.
 - Spawner kills the agent, sets status `user_interactive`, closes a per-session readiness channel.
 - HTTP handler waits on `WaitTakeControlReady` (10s) before returning, preventing PTY race.
 - `CompleteInteractive(sessionID)` → updates DB to `interactive_completed` (result=pass), advances workflow.
@@ -135,7 +135,7 @@ After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes
 - Slot source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` (from `workflow_definitions`). Both empty for the outcome → no-op (no finding, no event).
 - **Command slot**: `sh -c <cmd>` with outcome env (`NRF_WORKFLOW_STATUS`, `NRF_WORKFLOW_RESULT`=`pass`/`fail`, plus `NRF_WORKFLOW_FINAL_RESULT` on success / `NRF_FAILURE_REASON` on failure) on top of `loadProjectEnv`.
 - **Python-script slot**: runs the `python_scripts` row via per-project venv python through a transient `_finalize` `agent_session`; uses `runHookScript` from `hookexec.go` with `agentType="_finalize"`.
-- Persists a `_finalize` finding (`{slot,kind,target,exit_code,status,output_tail,timestamp}`) via `persistFinalizeFinding` (`finalize_persist.go`). On non-`ok` status: `errorSvc.RecordError` + `EventWorkflowFinalizeFailed`; on success: `EventWorkflowFinalizeSucceeded`.
+- Persists a `_finalize` finding via `persistFinalizeFinding` (`finalize_persist.go`); non-`ok` → `errorSvc.RecordError` + `EventWorkflowFinalizeFailed`, success → `EventWorkflowFinalizeSucceeded`.
 - Wired into success path (between `markCompleted` and `maybeStartNextOnSuccess`) and the tail of `markFailed` (after writing a `_failure_reason` finding), **skipped** when the failure reason is `reasonCancelled` (user Stop). `forceStopInstance` bypasses `markFailed`, so force-stop never finalizes.
 
 ## Pause Slots

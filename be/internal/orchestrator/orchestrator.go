@@ -43,7 +43,9 @@ type RunRequest struct {
 	ExternalContext         string                   `json:"external_context,omitempty"`  // Caller-supplied external context blob
 	SeedFindings            map[string]string        `json:"seed_findings,omitempty"`     // Pre-seed findings rows at scope=workflow_instance on run start
 	InputArtifacts          []types.InputArtifactRef `json:"input_artifacts,omitempty"`   // Staged uploads to attach at launch time
-	LaunchDepth             int                      `json:"-"`                           // nesting depth; persisted to workflow_instances.launch_depth at init (run_subworkflow + next_workflow_on_success)
+	LaunchDepth             int                      `json:"-"`                           // lineage distance from a human start; persisted (chain cap; bumped by run_subworkflow + next_workflow_on_success)
+	ParentInstanceID        string                   `json:"-"`                           // run_subworkflow caller's instance id; persisted ("" for top-level/chain runs)
+	SubworkflowDepth        int                      `json:"-"`                           // run_subworkflow nesting only; persisted (chain hops carry it unchanged)
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -70,13 +72,12 @@ type worktreeInfo struct {
 // spawners is a sessionID→*Spawner index maintained via spawner-side
 // OnSessionRegister/OnSessionUnregister callbacks.
 type runState struct {
-	cancel            context.CancelFunc
-	spawners          map[string]*spawner.Spawner
-	done              chan struct{} // closed when runLoop goroutine exits
-	callbackPlan      callbackPlan  // active callback plan; zero value = no plan
-	callbackPlanIdx   int           // index of the next unexecuted plan step
-	failReason        string        // custom failure reason set before cancel() by FailWorkflow
-	subworkflowStarts int           // run_subworkflow invocations charged to this run (budget)
+	cancel          context.CancelFunc
+	spawners        map[string]*spawner.Spawner
+	done            chan struct{} // closed when runLoop goroutine exits
+	callbackPlan    callbackPlan  // active callback plan; zero value = no plan
+	callbackPlanIdx int           // index of the next unexecuted plan step
+	failReason      string        // custom failure reason set before cancel() by FailWorkflow
 }
 
 // Orchestrator manages server-side workflow runs.

@@ -14,15 +14,15 @@ import (
 // stubSubworkflows adapts funcs to apirun.SubworkflowRunner.
 type stubSubworkflows struct {
 	start func(ctx context.Context, parentID, projectID, workflow, instructions string) (string, error)
-	get   func(ctx context.Context, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error)
+	get   func(ctx context.Context, callerID, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error)
 }
 
 func (s stubSubworkflows) StartSubworkflow(ctx context.Context, parentID, projectID, workflow, instructions string) (string, error) {
 	return s.start(ctx, parentID, projectID, workflow, instructions)
 }
 
-func (s stubSubworkflows) GetSubworkflow(ctx context.Context, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error) {
-	return s.get(ctx, projectID, instanceID, resultKey)
+func (s stubSubworkflows) GetSubworkflow(ctx context.Context, callerID, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error) {
+	return s.get(ctx, callerID, projectID, instanceID, resultKey)
 }
 
 func TestRunSubworkflow_AsyncStart(t *testing.T) {
@@ -53,7 +53,7 @@ func TestRunSubworkflow_BoundedWaitReturnsResult(t *testing.T) {
 	var polls int32
 	r := stubSubworkflows{
 		start: func(context.Context, string, string, string, string) (string, error) { return "child-2", nil },
-		get: func(_ context.Context, _, instanceID, resultKey string) (string, json.RawMessage, string, error) {
+		get: func(_ context.Context, _, _, instanceID, resultKey string) (string, json.RawMessage, string, error) {
 			if instanceID != "child-2" || resultKey != "report" {
 				t.Errorf("unexpected get args: %s %s", instanceID, resultKey)
 			}
@@ -98,7 +98,7 @@ func TestRunSubworkflow_StartErrorPropagates(t *testing.T) {
 }
 
 func TestGetSubworkflow_TerminalStatuses(t *testing.T) {
-	r := stubSubworkflows{get: func(context.Context, string, string, string) (string, json.RawMessage, string, error) {
+	r := stubSubworkflows{get: func(context.Context, string, string, string, string) (string, json.RawMessage, string, error) {
 		return "failed", nil, "boom", nil
 	}}
 	out, isErr, _ := getSubworkflowHandler{}.Invoke(context.Background(),
@@ -107,7 +107,7 @@ func TestGetSubworkflow_TerminalStatuses(t *testing.T) {
 		t.Errorf("failed child should surface isError with reason, got isErr=%v out=%q", isErr, out)
 	}
 
-	r.get = func(context.Context, string, string, string) (string, json.RawMessage, string, error) {
+	r.get = func(context.Context, string, string, string, string) (string, json.RawMessage, string, error) {
 		return "completed", json.RawMessage(`{"ok":true}`), "", nil
 	}
 	out, isErr, _ = getSubworkflowHandler{}.Invoke(context.Background(),

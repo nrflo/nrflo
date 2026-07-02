@@ -88,7 +88,7 @@ func pollSubworkflow(ctx context.Context, env apirun.ToolEnv, instanceID, result
 	heartbeatEvery := 0
 
 	for {
-		status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.ProjectID, instanceID, resultKey)
+		status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, instanceID, resultKey)
 		if err != nil {
 			return err.Error(), true, nil
 		}

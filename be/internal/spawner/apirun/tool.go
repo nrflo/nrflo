@@ -54,7 +54,7 @@ type ChainRunController interface {
 // get_subworkflow builtins call it. Nil-safe; guard with env.Subworkflows == nil.
 type SubworkflowRunner interface {
 	StartSubworkflow(ctx context.Context, parentInstanceID, projectID, workflow, instructions string) (instanceID string, err error)
-	GetSubworkflow(ctx context.Context, projectID, instanceID, resultKey string) (status string, result json.RawMessage, failureReason string, err error)
+	GetSubworkflow(ctx context.Context, callerInstanceID, projectID, instanceID, resultKey string) (status string, result json.RawMessage, failureReason string, err error)
 }
 
 // ToolEnv is the per-spawn environment threaded through every Invoke call.

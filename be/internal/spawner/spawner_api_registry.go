@@ -50,7 +50,7 @@ func (s *Spawner) buildAPIRegistry(
 		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.BaselineToolNames())
 	}
 
-	extID, extCtx, launchDepth := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
+	extID, extCtx, subDepth := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
 
 	// Recursion guard: consultant agents may not call consult themselves.
 	if agentDef != nil && agentDef.Consultant {
@@ -58,8 +58,10 @@ func (s *Spawner) buildAPIRegistry(
 	}
 	// Nesting guard: agents of a run at the sub-workflow depth cap may not start
 	// further sub-workflows. Depth-based (not name-based) so it also bounds
-	// mutual recursion A->B->A; StartSubworkflow re-checks server-side.
-	if launchDepth+1 > service.SubworkflowCap(s.config.Pool, req.ProjectID, service.SubworkflowMaxDepthKey, service.DefaultSubworkflowMaxDepth) {
+	// mutual recursion A->B->A; StartSubworkflow re-checks server-side. Uses
+	// subworkflow_depth (run_subworkflow nesting only), so next-on-success
+	// chain hops never lose the tool.
+	if subDepth+1 > service.SubworkflowCap(s.config.Pool, req.ProjectID, service.SubworkflowMaxDepthKey, service.DefaultSubworkflowMaxDepth) {
 		specs = stripTool(specs, handlers, "run_subworkflow")
 	}
 	toolEnv := apirun.ToolEnv{

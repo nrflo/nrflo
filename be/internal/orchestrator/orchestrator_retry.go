@@ -198,6 +198,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		TicketID:                ticketID,
 		WorkflowName:            workflowName,
 		ScopeType:               scopeType,
+		LaunchDepth:             wi.LaunchDepth,
 		CloseTicketOnComplete:   svcWf.CloseTicketOnComplete,
 		FinalizeSuccessCommand:  svcWf.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: svcWf.FinalizeSuccessScriptID,

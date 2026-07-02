@@ -32,7 +32,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `web_search` / `web_fetch` (`tools_builtin/web_search.go`, `web_fetch.go`) call the provider-agnostic `tools_web` layer (Exa search + Jina fetch by default; provider selected via `web_search_provider`/`web_fetch_provider` config, API keys via project/server env). `web_fetch` SSRF-guards every URL (`tools_web/urlguard.go`), returns an excerpt inline and offloads full markdown to an artifact; blocked/failed fetches surface as `ok:false` rather than failing the turn. These are backend-agnostic (available to cli/codex agents over the MCP bridge too).
 
-`web_deep_research` (`tools_builtin/web_deep_research.go`) runs the global `deep-research` workflow as a synchronous sub-workflow via `ToolEnv.DeepResearch` (the orchestrator) and returns a cited summary plus a full-report artifact. `ToolEnv.Heartbeat` bumps the caller's stall timer during the blocking run; the tool is stripped from deep-research's own agents (recursion guard, `spawner_api_registry.go`).
+`run_subworkflow` / `get_subworkflow` (`tools_builtin/run_subworkflow.go`, `get_subworkflow.go`) start and poll `callable_as_subworkflow` workflows via `ToolEnv.Subworkflows` (the orchestrator) — async-with-poll, with an optional bounded `wait_sec` (max 240, under the MCP bridge read deadline) that heartbeats the caller while blocking. Guards live server-side in `orchestrator/subworkflow_runner.go` (depth/children/invocation caps from the config KV, see `service/subworkflow.go`); the spawner additionally strips `run_subworkflow` from agents of runs already at the depth cap (`spawner_api_registry.go`). Feature-gated by `subworkflow_tools_enabled` (default on), re-checked per invocation.
 
 ## Multimodal Tool Results
 

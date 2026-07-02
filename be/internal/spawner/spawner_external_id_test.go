@@ -76,7 +76,7 @@ func TestFetchExternalRefs_ReturnsWFIValues(t *testing.T) {
 	}
 
 	sp := env.newSpawner()
-	gotID, gotCtx := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
+	gotID, gotCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	if gotID != "ext-id-99" {
 		t.Errorf("fetchExternalRefs extID = %q, want %q", gotID, "ext-id-99")
 	}
@@ -92,7 +92,7 @@ func TestFetchExternalRefs_EmptyWhenUnset(t *testing.T) {
 	wfiID := env.initWorkflow(t, ticketID)
 
 	sp := env.newSpawner()
-	gotID, gotCtx := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
+	gotID, gotCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	if gotID != "" {
 		t.Errorf("fetchExternalRefs extID = %q, want empty string when external_id unset", gotID)
 	}
@@ -106,7 +106,7 @@ func TestFetchExternalRefs_EmptyOnUnknownID(t *testing.T) {
 	env := newSpawnerTestEnv(t)
 
 	sp := env.newSpawner()
-	gotID, gotCtx := sp.fetchExternalRefs(env.project, "NONEXISTENT", "test", "no-such-wfi")
+	gotID, gotCtx, _ := sp.fetchExternalRefs(env.project, "NONEXISTENT", "test", "no-such-wfi")
 	if gotID != "" {
 		t.Errorf("fetchExternalRefs extID = %q, want empty string on unknown wfiID", gotID)
 	}
@@ -118,7 +118,7 @@ func TestFetchExternalRefs_EmptyOnUnknownID(t *testing.T) {
 func TestFetchExternalRefs_EmptyOnNilPool(t *testing.T) {
 	t.Parallel()
 	sp := New(Config{})
-	gotID, gotCtx := sp.fetchExternalRefs("p", "t", "w", "wfi-1")
+	gotID, gotCtx, _ := sp.fetchExternalRefs("p", "t", "w", "wfi-1")
 	if gotID != "" || gotCtx != "" {
 		t.Errorf("fetchExternalRefs(nil pool) = (%q, %q), want (\"\", \"\")", gotID, gotCtx)
 	}
@@ -232,7 +232,7 @@ func TestLoadTemplate_ExternalIDExpansion(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "ID=${EXTERNAL_ID} CTX=${EXTERNAL_CONTEXT}")
 
 	sp := env.newSpawner()
-	extID, extCtx := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
+	extID, extCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	extraVars := mergeExtraVars(nil, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
 
 	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet", "", wfiID, extraVars, 0)
@@ -256,7 +256,7 @@ func TestLoadTemplate_ExternalID_EmptyWhenUnset(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "ID=${EXTERNAL_ID} CTX=${EXTERNAL_CONTEXT}")
 
 	sp := env.newSpawner()
-	extID, extCtx := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
+	extID, extCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	extraVars := mergeExtraVars(nil, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
 
 	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet", "", wfiID, extraVars, 0)

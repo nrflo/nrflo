@@ -12,7 +12,7 @@ import (
 
 // workflowDefCols is the workflows column list shared by the single-get and
 // list queries (kept in one place so the scan order can never drift).
-const workflowDefCols = `id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, is_global, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas`
+const workflowDefCols = `id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, callable_as_subworkflow, is_global, next_workflow_on_success, finalize_success_command, finalize_success_script_id, finalize_failure_command, finalize_failure_script_id, pause_event_command, pause_event_script_id, observer_context, observer_provider, observer_model, finding_schemas`
 
 // wfMeta holds the raw workflow-definition columns scanned from a workflows row.
 type wfMeta struct {
@@ -21,6 +21,7 @@ type wfMeta struct {
 	finalizeFailureCommand, finalizeFailureScriptID              string
 	pauseEventCommand, pauseEventScriptID                        string
 	closeTicketOnComplete, purgeOnCompletion, isGlobal           bool
+	callableAsSubworkflow                                        bool
 	observerContext                                              string
 	observerProvider, observerModel                              sql.NullString
 	findingSchemasStr                                            string
@@ -30,7 +31,7 @@ type wfMeta struct {
 // It accepts both *sql.Row and *sql.Rows.
 func scanWFMeta(sc interface{ Scan(...any) error }) (wfMeta, error) {
 	var m wfMeta
-	err := sc.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.purgeOnCompletion, &m.isGlobal, &m.nextWorkflowOnSuccess,
+	err := sc.Scan(&m.id, &m.description, &m.scopeType, &m.groupsStr, &m.closeTicketOnComplete, &m.purgeOnCompletion, &m.callableAsSubworkflow, &m.isGlobal, &m.nextWorkflowOnSuccess,
 		&m.finalizeSuccessCommand, &m.finalizeSuccessScriptID, &m.finalizeFailureCommand, &m.finalizeFailureScriptID,
 		&m.pauseEventCommand, &m.pauseEventScriptID,
 		&m.observerContext, &m.observerProvider, &m.observerModel, &m.findingSchemasStr)
@@ -43,6 +44,7 @@ func buildWorkflowDef(m wfMeta, agentDefs []*model.AgentDefinition) WorkflowDef 
 	wf.ScopeType = m.scopeType
 	wf.CloseTicketOnComplete = m.closeTicketOnComplete
 	wf.PurgeOnCompletion = m.purgeOnCompletion
+	wf.CallableAsSubworkflow = m.callableAsSubworkflow
 	wf.IsGlobal = m.isGlobal
 	wf.NextWorkflowOnSuccess = m.nextWorkflowOnSuccess
 	wf.FinalizeSuccessCommand = m.finalizeSuccessCommand

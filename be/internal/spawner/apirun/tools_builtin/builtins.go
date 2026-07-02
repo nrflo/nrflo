@@ -52,9 +52,11 @@ func Builtins() map[string]apirun.ToolHandler {
 
 		"consult": consultHandler{},
 
-		"web_search":        webSearchHandler{},
-		"web_fetch":         webFetchHandler{},
-		"web_deep_research": webDeepResearchHandler{},
+		"web_search": webSearchHandler{},
+		"web_fetch":  webFetchHandler{},
+
+		"run_subworkflow": runSubworkflowHandler{},
+		"get_subworkflow": getSubworkflowHandler{},
 	}
 }
 

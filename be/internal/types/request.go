@@ -223,6 +223,7 @@ type WorkflowDefCreateRequest struct {
 	Groups                  []string        `json:"groups,omitempty"`
 	CloseTicketOnComplete   *bool           `json:"close_ticket_on_complete,omitempty"`
 	PurgeOnCompletion       *bool           `json:"purge_on_completion,omitempty"`
+	CallableAsSubworkflow   *bool           `json:"callable_as_subworkflow,omitempty"`
 	NextWorkflowOnSuccess   string          `json:"next_workflow_on_success,omitempty"`
 	FinalizeSuccessCommand  string          `json:"finalize_success_command,omitempty"`
 	FinalizeSuccessScriptID string          `json:"finalize_success_script_id,omitempty"`
@@ -243,6 +244,7 @@ type WorkflowDefUpdateRequest struct {
 	Groups                  *[]string        `json:"groups,omitempty"`
 	CloseTicketOnComplete   *bool            `json:"close_ticket_on_complete,omitempty"`
 	PurgeOnCompletion       *bool            `json:"purge_on_completion,omitempty"`
+	CallableAsSubworkflow   *bool            `json:"callable_as_subworkflow,omitempty"`
 	NextWorkflowOnSuccess   *string          `json:"next_workflow_on_success,omitempty"`
 	FinalizeSuccessCommand  *string          `json:"finalize_success_command,omitempty"`
 	FinalizeSuccessScriptID *string          `json:"finalize_success_script_id,omitempty"`
@@ -280,6 +282,7 @@ type ProjectWorkflowRunRequest struct {
 	ExternalContext string             `json:"external_context,omitempty"`
 	SeedFindings    map[string]string  `json:"seed_findings,omitempty"`
 	InputArtifacts  []InputArtifactRef `json:"input_artifacts,omitempty"`
+	LaunchDepth     int                `json:"-"` // set by the orchestrator (sub-workflow / next-on-success starts), never by clients
 }
 
 // DependencyRequest is the request for adding/removing dependencies

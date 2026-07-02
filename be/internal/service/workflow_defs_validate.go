@@ -31,6 +31,39 @@ func (s *WorkflowService) validateNextWorkflowOnSuccess(projectID, sourceWorkflo
 	return nil
 }
 
+// validateCallableSubworkflow rejects the callable_as_subworkflow + purge_on_completion
+// combination: purge deletes the child's session findings before the sub-workflow
+// caller can read its result back.
+func validateCallableSubworkflow(callable, purge bool) error {
+	if callable && purge {
+		return fmt.Errorf("callable_as_subworkflow requires purge_on_completion=false: purge deletes the result finding before the caller can read it")
+	}
+	return nil
+}
+
+// validateCallableUpdate validates the effective callable/purge pair for an update,
+// resolving unspecified sides against the current row.
+func (s *WorkflowService) validateCallableUpdate(projectID, workflowID string, callable, purge *bool) error {
+	var curCallable, curPurge bool
+	err := s.pool.QueryRow(`
+		SELECT callable_as_subworkflow, purge_on_completion FROM workflows
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
+		projectID, workflowID).Scan(&curCallable, &curPurge)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("workflow not found: %s", workflowID)
+	}
+	if err != nil {
+		return err
+	}
+	if callable != nil {
+		curCallable = *callable
+	}
+	if purge != nil {
+		curPurge = *purge
+	}
+	return validateCallableSubworkflow(curCallable, curPurge)
+}
+
 // validateFinalizeSlots checks mutual exclusivity of command vs script_id per slot,
 // and that any script_id resolves to a python_scripts row of kind=agent.
 func (s *WorkflowService) validateFinalizeSlots(

@@ -14,7 +14,6 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 - **Denominator rule**: `denom = passCount + failCount` (skipped agents excluded)
 - **Callback agents** count as pass (added to `passCount` before policy check)
 - **Policy check** (`denom > 0`): `passCount >= policy.Required(denom)` or workflow fails
-- Parallel-to-parallel topologies fully supported
 
 ### Fan-In Pass Policies (per-layer, stored in `workflow_layer_policies`)
 
@@ -25,15 +24,11 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 | `quorum:N` | exactly N |
 | `percent:P` | `ceil(denom * P / 100)` |
 
-Policies loaded from DB at workflow start via `WorkflowLayerPolicyService.GetLayerPolicies`; missing entries default to `"any"`.
+Policies load at start via `WorkflowLayerPolicyService`; missing entries default to `any`.
 
 ## Error Capture
 
-Records to `errors` table via `errorSvc` (`spawner.ErrorRecorder`). Recorded for workflow failure (`markFailed`) and merge conflict resolution failure (`attemptConflictResolution`).
-
-## Connection Pool
-
-One shared `*db.Pool` per workflow run, passed to all spawners via `spawner.Config.Pool` (`orchestrator_loop.go`).
+Errors recorded to the `errors` table via `errorSvc` on workflow failure and merge-resolution failure.
 
 ## Model Config Loading
 
@@ -41,7 +36,7 @@ Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to a
 
 ## Safety Hook Threading
 
-`claude_safety_hook` project config → `BuildSafetySettingsJSON()` → `claudeSettingsJSON`, threaded through all spawn paths. Read once at start; mid-workflow changes have no effect (`orchestrator_start.go`).
+`claude_safety_hook` project config → `BuildSafetySettingsJSON()` → threaded through all spawn paths; read once at start (`orchestrator_start.go`).
 
 ## Callback Flow
 
@@ -65,15 +60,17 @@ Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each la
 2. The remaining (runnable) agents still spawn; the skipped subset is excluded from `results`, so `denom = pass+fail` already excludes them in layer aggregation.
 3. Only when **every** agent in the layer matches a skip tag does `applyLayerSkips` return `wholeLayerSkipped=true` — `EventLayerSkipped` is broadcast and the loop advances past the layer (counts as passed).
 
-Helpers in `orchestrator_skip.go`: `buildAgentTags()`, `partitionLayerSkips()`, `applyLayerSkips()`, `createSkippedSessions()`.
-
 ## Consult
 
 `Orchestrator.Consult(ctx, callerSessionID, consultantID, question)` (`consult.go`) is the synchronous consult entry point. It resolves the caller session context, enforces the socket-boundary recursion guard (consultants cannot initiate a consult), builds an api-capable `spawner.Config`, then delegates to `Spawner.Consult`.
 
+## Sub-Workflow Runner
+
+`subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (`launch_depth=parent+1`, persisted; also bumped by next-on-success), enforcing purge-off/no-pause defs plus depth/children/invocation caps (`service/subworkflow.go`) reserved under `o.mu`; a watcher stops children when the parent run ends. `GetSubworkflow` polls status and reads the result via `GetSessionFindingByKey` (default `workflow_final_result`); only `launch_depth>0` runs of the caller's project are readable. Exposed as the `run_subworkflow`/`get_subworkflow` builtins via `Config.Subworkflows`.
+
 ## Automatic Merge Conflict Resolution
 
-Merge conflicts auto-resolved by the system agent defined in `be/internal/orchestrator/orchestrator_merge_resolve.go`.
+Merge conflicts auto-resolved by the system agent in `orchestrator_merge_resolve.go`.
 
 ## Chain Runner
 
@@ -101,7 +98,7 @@ When `use_git_worktrees=true` and `default_branch` configured:
 - HTTP handler waits on `WaitTakeControlReady` (10s) before returning, preventing PTY race.
 - `CompleteInteractive(sessionID)` → updates DB to `interactive_completed` (result=pass), advances workflow.
 - Only works for `SupportsResume() == true` agents (Claude CLI). Project-scoped: `TakeControlProject`.
-- `runState.spawners` is a `map[string]*spawner.Spawner` keyed by session ID; maintained via `OnSessionRegister`/`OnSessionUnregister` callbacks (`orchestrator.go`).
+- `runState.spawners`: sessionID→Spawner map via `OnSessionRegister/Unregister` (`orchestrator.go`).
 - `KillInteractive(sessionID)` → closes PTY, marks session failed (reason=user_killed), folds as agent failure in layer aggregation.
 
 ## Interactive Start & Plan Mode
@@ -154,7 +151,7 @@ After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes
 
 ## Scheduled Task Origin Tracking
 
-`RunRequest.ScheduledTaskID` → `workflow_instances.scheduled_task_id` (FK, nullable); set by `scheduler_dispatch.go`, empty elsewhere.
+`RunRequest.ScheduledTaskID` → `workflow_instances.scheduled_task_id`; set by `scheduler_dispatch.go`.
 
 ## Purge on Completion
 
@@ -165,4 +162,4 @@ When the instance's `purge_on_completion` snapshot is set, `maybePurgeTrace` (`o
 - Start: `SetInProgress()` (open → in_progress); Complete: `Close()`; Fail/Cancel: `Reopen()`.
 - Each broadcasts `ws.EventTicketUpdated`. Project-scoped workflows skip ticket status changes.
 
-Run `make test-pkg PKG=orchestrator`.
+`make test-pkg PKG=orchestrator`.

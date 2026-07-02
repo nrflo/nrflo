@@ -116,7 +116,7 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	}
 
 	wi := s.buildWorkflowInstance(projectID, req.Workflow, wf)
-	wi.ScopeType = "project"
+	wi.ScopeType, wi.LaunchDepth = "project", req.LaunchDepth
 	wi.EndlessLoop = req.EndlessLoop
 	wi.ScheduledTaskID = req.ScheduledTaskID
 	wi.ExternalID = req.ExternalID

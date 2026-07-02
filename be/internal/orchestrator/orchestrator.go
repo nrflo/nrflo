@@ -43,7 +43,7 @@ type RunRequest struct {
 	ExternalContext         string                   `json:"external_context,omitempty"`  // Caller-supplied external context blob
 	SeedFindings            map[string]string        `json:"seed_findings,omitempty"`     // Pre-seed findings rows at scope=workflow_instance on run start
 	InputArtifacts          []types.InputArtifactRef `json:"input_artifacts,omitempty"`   // Staged uploads to attach at launch time
-	ChainDepth              int                      `json:"-"`                           // next_workflow_on_success recursion depth (not persisted)
+	LaunchDepth             int                      `json:"-"`                           // nesting depth; persisted to workflow_instances.launch_depth at init (run_subworkflow + next_workflow_on_success)
 }
 
 // IsProjectScope returns true if this is a project-scoped run request
@@ -70,24 +70,26 @@ type worktreeInfo struct {
 // spawners is a sessionID→*Spawner index maintained via spawner-side
 // OnSessionRegister/OnSessionUnregister callbacks.
 type runState struct {
-	cancel          context.CancelFunc
-	spawners        map[string]*spawner.Spawner
-	done            chan struct{} // closed when runLoop goroutine exits
-	callbackPlan    callbackPlan  // active callback plan; zero value = no plan
-	callbackPlanIdx int           // index of the next unexecuted plan step
-	failReason      string        // custom failure reason set before cancel() by FailWorkflow
+	cancel            context.CancelFunc
+	spawners          map[string]*spawner.Spawner
+	done              chan struct{} // closed when runLoop goroutine exits
+	callbackPlan      callbackPlan  // active callback plan; zero value = no plan
+	callbackPlanIdx   int           // index of the next unexecuted plan step
+	failReason        string        // custom failure reason set before cancel() by FailWorkflow
+	subworkflowStarts int           // run_subworkflow invocations charged to this run (budget)
 }
 
 // Orchestrator manages server-side workflow runs.
 type Orchestrator struct {
-	mu       sync.Mutex
-	runs     map[string]*runState // wfi_id → state
-	dataPath string
-	sdkDir   string
-	venvMgr  *venv.Manager
-	wsHub    *ws.Hub
-	clock    clock.Clock
-	errorSvc spawner.ErrorRecorder
+	mu                sync.Mutex
+	runs              map[string]*runState // wfi_id → state
+	subworkflowActive int                  // in-flight sub-workflow children across all runs (global cap)
+	dataPath          string
+	sdkDir            string
+	venvMgr           *venv.Manager
+	wsHub             *ws.Hub
+	clock             clock.Clock
+	errorSvc          spawner.ErrorRecorder
 
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
 	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.

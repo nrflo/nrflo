@@ -128,6 +128,8 @@ compatible). For in-process `api` agents an empty field means no tools
 | `workflow_continue` | Resume a paused (waiting) workflow instance. Input: `{instance_id, instructions?}` |
 | `workflow_fail` | Fail a workflow instance with a reason. Input: `{instance_id, reason}` |
 | `consult` | Ask a named consultant agent a question and receive an inline answer (api-mode only). Input: `{consultant, question}` |
+| `run_subworkflow` | Start a callable workflow as a detached sub-workflow; returns `{instance_id, status}`. Input: `{workflow, instructions, result_key?, wait_sec?}` |
+| `get_subworkflow` | Poll a sub-workflow; terminal statuses include the result finding or failure reason. Input: `{instance_id, result_key?, wait_sec?}` |
 
 **`read_document`** materializes a named input artifact and returns its bytes
 as an image or document content block so the model can read it natively (OCR
@@ -137,6 +139,8 @@ at 32 MiB.
 **`emit_findings`** validates a finding before storing it. Each workflow definition may register finding schemas (`key` + JSON Schema Draft 2020 + a known-good example) under Settings. The tool looks up the schema for `key`, validates the supplied `value`, and on success stores it as a session finding. On a schema mismatch — or when the key has no schema — the call is rejected (nothing is stored) and the error result includes the validation message plus the example, so the agent can correct the value and call again. Use `findings_add` for free-form findings that have no schema.
 
 **`consult`** synchronously spawns a named consultant agent (agent definition with `consultant=true` and `execution_mode=api`) under the same workflow instance. The caller's recent message transcript and the question are passed as `${CALLER_TRANSCRIPT}` and `${CONSULT_QUESTION}` template variables. The consultant must write a `_consult_answer` finding (string) and then call `agent_finished`. The answer is returned inline to the calling agent; the `_consult` phase is hidden from the read model. Consultant agents cannot call `consult` themselves (recursion guard). WebSocket events: `consult.started`, `consult.answered`, `consult.failed`.
+
+**`run_subworkflow` / `get_subworkflow`** start and poll callable sub-workflows (async-with-poll). Only workflow definitions flagged `callable_as_subworkflow` can be started (the bundled global `deep-research` is; its result lives under `result_key: "report"`). `run_subworkflow` returns `{instance_id, status: "running"}` immediately; pass `wait_sec` (max 240) on either tool to block server-side until completion — the caller's stall timer is heartbeated during the wait. Results are read from the child's session finding named `result_key` (default `workflow_final_result`). Guards: nesting capped by `subworkflow_max_depth` (default 3; the tool is stripped from agents of runs at the cap), `subworkflow_max_children` concurrent children (default 6), `subworkflow_max_invocations` per run (default 25) — all config-KV overridable per project; children are stopped when their parent run ends. Disable with `subworkflow_tools_enabled=false`.
 
 **Python tools** — `python_scripts` rows with `kind=tool`. Each invocation
 writes the script to a temp file and execs `pythonPath` with JSON input on

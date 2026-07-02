@@ -44,7 +44,7 @@ func TestMaybeStartNextOnSuccess_HappyPath(t *testing.T) {
 	req := RunRequest{
 		ProjectID:    env.project,
 		WorkflowName: "test",
-		ChainDepth:   0,
+		LaunchDepth:  0,
 	}
 	env.orch.maybeStartNextOnSuccess(context.Background(), req, "the summary")
 
@@ -99,7 +99,7 @@ func TestMaybeStartNextOnSuccess_EmptySummary_NoSpawn(t *testing.T) {
 	}
 }
 
-// TestMaybeStartNextOnSuccess_DepthCap_NoSpawn verifies that when ChainDepth has reached
+// TestMaybeStartNextOnSuccess_DepthCap_NoSpawn verifies that when LaunchDepth has reached
 // maxNextWorkflowOnSuccessDepth (10), no new instance is created.
 func TestMaybeStartNextOnSuccess_DepthCap_NoSpawn(t *testing.T) {
 	env := newTestEnv(t)
@@ -108,14 +108,14 @@ func TestMaybeStartNextOnSuccess_DepthCap_NoSpawn(t *testing.T) {
 	req := RunRequest{
 		ProjectID:    env.project,
 		WorkflowName: "test",
-		ChainDepth:   maxNextWorkflowOnSuccessDepth,
+		LaunchDepth:  maxNextWorkflowOnSuccessDepth,
 	}
 	env.orch.maybeStartNextOnSuccess(context.Background(), req, "summary")
 
 	if pollUntil(200*time.Millisecond, func() bool {
 		return env.countProjectInstances(t, "next-wf") > 0
 	}) {
-		t.Fatal("instance created despite depth cap (ChainDepth=10)")
+		t.Fatal("instance created despite depth cap (LaunchDepth=10)")
 	}
 }
 

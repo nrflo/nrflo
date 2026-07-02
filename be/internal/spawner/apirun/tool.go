@@ -48,12 +48,13 @@ type ChainRunController interface {
 	SetNextStepTicket(instanceID, ticketID string) error
 }
 
-// DeepResearchRunner runs the deep-research workflow synchronously under the
-// given project and returns its `report` finding as raw JSON. Implemented by the
-// orchestrator and injected via spawner.Config; the web_deep_research builtin
-// calls it. Nil-safe; guard with env.DeepResearch == nil before calling.
-type DeepResearchRunner interface {
-	RunDeepResearch(ctx context.Context, projectID, question string) (report json.RawMessage, err error)
+// SubworkflowRunner starts callable workflows as detached project-scoped child
+// runs and polls their status/result (async-with-poll contract). Implemented by
+// the orchestrator and injected via spawner.Config; the run_subworkflow /
+// get_subworkflow builtins call it. Nil-safe; guard with env.Subworkflows == nil.
+type SubworkflowRunner interface {
+	StartSubworkflow(ctx context.Context, parentInstanceID, projectID, workflow, instructions string) (instanceID string, err error)
+	GetSubworkflow(ctx context.Context, projectID, instanceID, resultKey string) (status string, result json.RawMessage, failureReason string, err error)
 }
 
 // ToolEnv is the per-spawn environment threaded through every Invoke call.
@@ -93,9 +94,9 @@ type ToolEnv struct {
 	// ChainRun lets the chain_next_* builtins set the next chain step's
 	// instructions/ticket. Nil outside chain runs / in tests.
 	ChainRun ChainRunController
-	// DeepResearch runs the deep-research workflow synchronously (web_deep_research
-	// builtin). Nil when not wired (tests, or contexts without an orchestrator).
-	DeepResearch DeepResearchRunner
+	// Subworkflows starts/polls callable sub-workflows (run_subworkflow /
+	// get_subworkflow builtins). Nil when not wired (tests, no orchestrator).
+	Subworkflows SubworkflowRunner
 	// Heartbeat bumps the calling agent's lastMessageTime so stall detection does
 	// not kill it during a long blocking tool call. Nil-safe.
 	Heartbeat func()

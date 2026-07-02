@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"fmt"
-	"strings"
 
 	"be/internal/model"
 	"be/internal/service"
@@ -51,17 +50,18 @@ func (s *Spawner) buildAPIRegistry(
 		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.BaselineToolNames())
 	}
 
+	extID, extCtx, launchDepth := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
+
 	// Recursion guard: consultant agents may not call consult themselves.
 	if agentDef != nil && agentDef.Consultant {
 		specs = stripTool(specs, handlers, "consult")
 	}
-	// Recursion guard: agents inside the deep-research workflow may not invoke
-	// web_deep_research (which would spawn another deep-research run).
-	if strings.EqualFold(req.WorkflowName, service.DeepResearchWorkflow) {
-		specs = stripTool(specs, handlers, "web_deep_research")
+	// Nesting guard: agents of a run at the sub-workflow depth cap may not start
+	// further sub-workflows. Depth-based (not name-based) so it also bounds
+	// mutual recursion A->B->A; StartSubworkflow re-checks server-side.
+	if launchDepth+1 > service.SubworkflowCap(s.config.Pool, req.ProjectID, service.SubworkflowMaxDepthKey, service.DefaultSubworkflowMaxDepth) {
+		specs = stripTool(specs, handlers, "run_subworkflow")
 	}
-
-	extID, extCtx := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
 	toolEnv := apirun.ToolEnv{
 		Pool:               s.config.Pool,
 		WSHub:              s.config.WSHub,
@@ -85,7 +85,7 @@ func (s *Spawner) buildAPIRegistry(
 		WorkflowControl:    s.config.WorkflowControl,
 		Consultant:         s,
 		ChainRun:           service.NewWorkflowChainRunService(s.config.Pool, s.config.Clock),
-		DeepResearch:       s.config.DeepResearch,
+		Subworkflows:       s.config.Subworkflows,
 		Heartbeat:          func() { s.BumpLastMessage(proc.sessionID) },
 	}
 

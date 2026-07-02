@@ -9,22 +9,23 @@ import (
 	"be/internal/repo"
 )
 
-// fetchExternalRefs returns the external_id and external_context from the
-// workflow instance. Returns ("", "") on nil pool, unresolved wfiID, or error.
-func (s *Spawner) fetchExternalRefs(projectID, ticketID, workflowName, wfiID string) (string, string) {
+// fetchExternalRefs returns the external_id, external_context and launch_depth
+// from the workflow instance. Returns ("", "", 0) on nil pool, unresolved wfiID,
+// or error.
+func (s *Spawner) fetchExternalRefs(projectID, ticketID, workflowName, wfiID string) (string, string, int) {
 	pool := s.pool()
 	if pool == nil {
-		return "", ""
+		return "", "", 0
 	}
 	resolvedID := s.resolveWFIID(projectID, ticketID, workflowName, wfiID)
 	if resolvedID == "" {
-		return "", ""
+		return "", "", 0
 	}
 	wi, err := repo.NewWorkflowInstanceRepo(pool, s.config.Clock).Get(resolvedID)
 	if err != nil || wi == nil {
-		return "", ""
+		return "", "", 0
 	}
-	return wi.ExternalID, wi.ExternalContext
+	return wi.ExternalID, wi.ExternalContext, wi.LaunchDepth
 }
 
 // mergeExtraVars copies base (may be nil) and merges extra on top.

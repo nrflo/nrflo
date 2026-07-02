@@ -176,7 +176,7 @@ func (o *Orchestrator) runLoop(
 		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
 		ArtifactSvc:        artifactSvcRun,
 		WorkflowControl:    apiWorkflowControl{o: o, pool: pool},
-		DeepResearch:       o,
+		Subworkflows:       o,
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.
@@ -456,7 +456,7 @@ func (o *Orchestrator) maybeRestartEndlessLoop(wfiID string, req RunRequest) {
 // maybeStartNextOnSuccess spawns the workflow named in next_workflow_on_success for the
 // source workflow def when finalResult is non-empty. Runs in a detached goroutine so
 // source teardown cannot cancel the child. Skipped on empty finalResult, cancelled ctx,
-// or when ChainDepth >= maxNextWorkflowOnSuccessDepth.
+// or when LaunchDepth >= maxNextWorkflowOnSuccessDepth.
 func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunRequest, finalResult string) {
 	if finalResult == "" {
 		return
@@ -464,9 +464,9 @@ func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunReque
 	if ctx.Err() != nil {
 		return
 	}
-	if req.ChainDepth >= maxNextWorkflowOnSuccessDepth {
+	if req.LaunchDepth >= maxNextWorkflowOnSuccessDepth {
 		logger.Warn(ctx, "next_workflow_on_success depth cap reached, skipping",
-			"workflow", req.WorkflowName, "depth", req.ChainDepth)
+			"workflow", req.WorkflowName, "depth", req.LaunchDepth)
 		return
 	}
 
@@ -489,7 +489,7 @@ func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunReque
 	}
 
 	nextWorkflow := sourceDef.NextWorkflowOnSuccess
-	nextDepth := req.ChainDepth + 1
+	nextDepth := req.LaunchDepth + 1
 	logger.Info(context.Background(), "next_workflow_on_success: spawning next workflow",
 		"source", req.WorkflowName, "next", nextWorkflow, "depth", nextDepth)
 
@@ -499,7 +499,7 @@ func (o *Orchestrator) maybeStartNextOnSuccess(ctx context.Context, req RunReque
 			WorkflowName: nextWorkflow,
 			ScopeType:    "project",
 			Instructions: finalResult,
-			ChainDepth:   nextDepth,
+			LaunchDepth:  nextDepth,
 		}
 		if _, err := o.Start(context.Background(), nextReq); err != nil {
 			logger.Error(context.Background(), "next_workflow_on_success: auto-start failed",

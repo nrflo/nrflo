@@ -84,17 +84,17 @@ Rules every change must respect.
 ## Feature Index
 
 ### Workflow execution
-- **Layer-based concurrent execution + layer aggregation + agent callbacks** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Manual restart, retry-failed, server-side orchestration entry points** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Layer execution, aggregation, callbacks** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Manual restart, retry-failed, orchestration entry points** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Low-context relaunch** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
-- **Stall detection / global stall timeouts / restart cap** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
+- **Stall detection / stall timeouts / restart cap** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 - **Take-control / resume-session / exit-interactive / PTY relay** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Interactive start & plan mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Endless loop mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Automatic merge conflict resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Merge conflict auto-resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 
 ### Agents, templates, and configuration
-- **Workflow definitions, agent definitions, system agents** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
+- **Workflow / agent / system-agent definitions** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
 - **Default templates** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **CLI models registry / supported models** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
 
@@ -111,6 +111,7 @@ Rules every change must respect.
 - **Project-scoped workflows** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Scheduled tasks** → [scheduler/CLAUDE.md](be/internal/scheduler/CLAUDE.md)
 - **Workflow chains and chain runs** → [be/CLAUDE.md](be/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md) + [ui/CLAUDE.md](ui/CLAUDE.md)
+- **Sub-workflows** (`run_subworkflow`/`get_subworkflow` tools) → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 
 ### Auth & administration
 - **Auth + sessions + login rate limit** → [auth/CLAUDE.md](be/internal/auth/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
@@ -118,7 +119,7 @@ Rules every change must respect.
 - **Service tokens** (long-lived project or global bearer tokens) → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
-- **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools, SDK `c.artifacts`) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
+- **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
@@ -149,4 +150,4 @@ See `be/cmd/server/main.go` for subcommands.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile), [docker.yml](.github/workflows/docker.yml)). Api-mode off by default. Bundles native Claude Code CLI (musl) for cli-mode (`ANTHROPIC_API_KEY`); no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile)). Api-mode off by default. Bundles native Claude Code CLI (musl) for cli-mode (`ANTHROPIC_API_KEY`); no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.

@@ -43,6 +43,7 @@ type WorkflowInstance struct {
 	EndlessLoop                   bool                   `json:"endless_loop"`
 	StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
 	PurgeOnCompletion             bool                   `json:"purge_on_completion"` // snapshot of the workflow def flag at creation; drives terminal-state trace purge
+	LaunchDepth                   int                    `json:"launch_depth"`        // nesting depth: 0 = human/scheduler-started; incremented by run_subworkflow and next_workflow_on_success
 	ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 	ExternalID                    string                 `json:"external_id,omitempty"`
 	ExternalContext               string                 `json:"external_context,omitempty"`
@@ -125,6 +126,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		EndlessLoop                   bool                   `json:"endless_loop"`
 		StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
 		PurgeOnCompletion             bool                   `json:"purge_on_completion"`
+		LaunchDepth                   int                    `json:"launch_depth"`
 		ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 		ExternalID                    string                 `json:"external_id,omitempty"`
 		ExternalContext               string                 `json:"external_context,omitempty"`
@@ -145,6 +147,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
 		PurgeOnCompletion:             wi.PurgeOnCompletion,
+		LaunchDepth:                   wi.LaunchDepth,
 		ScheduledTaskID:               wi.ScheduledTaskID,
 		ExternalID:                    wi.ExternalID,
 		ExternalContext:               wi.ExternalContext,

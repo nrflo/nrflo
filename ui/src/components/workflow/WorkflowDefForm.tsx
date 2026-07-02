@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input'
 import { Toggle } from '@/components/ui/Toggle'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { FinalizeSection, type FinalizeState } from '@/components/workflow/WorkflowDefForm.finalize-slot'
+import { FlagTogglesSection } from '@/components/workflow/WorkflowDefForm.flags-slot'
 import { PauseSection, type PauseState } from '@/components/workflow/WorkflowDefForm.pause-slot'
 import { ObserverSection, type ObserverState } from '@/components/workflow/WorkflowDefForm.observer-slot'
 import {
@@ -28,6 +29,7 @@ interface WorkflowDefFormProps {
     groups?: string[]
     close_ticket_on_complete?: boolean
     purge_on_completion?: boolean
+    callable_as_subworkflow?: boolean
     next_workflow_on_success?: string
     observer_context?: string
     observer_provider?: string | null
@@ -53,6 +55,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
   const [groupInput, setGroupInput] = useState('')
   const [closeTicketOnComplete, setCloseTicketOnComplete] = useState(initial?.close_ticket_on_complete ?? true)
   const [purgeOnCompletion, setPurgeOnCompletion] = useState(initial?.purge_on_completion ?? false)
+  const [callableAsSubworkflow, setCallableAsSubworkflow] = useState(initial?.callable_as_subworkflow ?? false)
   const [nextWorkflowOnSuccess, setNextWorkflowOnSuccess] = useState(initial?.next_workflow_on_success || '')
   const [observer, setObserver] = useState<ObserverState>({
     context: initial?.observer_context || '',
@@ -117,6 +120,7 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
       groups,
       close_ticket_on_complete: closeTicketOnComplete,
       purge_on_completion: purgeOnCompletion,
+      callable_as_subworkflow: callableAsSubworkflow,
       next_workflow_on_success: nextWorkflowOnSuccess || undefined,
       observer_context: observer.context.trim() || undefined,
       observer_provider: observer.provider || null,
@@ -202,17 +206,12 @@ export function WorkflowDefForm({ initial, isCreate, onSubmit, formId }: Workflo
         />
       )}
 
-      <div>
-        <Toggle
-          checked={purgeOnCompletion}
-          onChange={setPurgeOnCompletion}
-          label="Purge sensitive data after the run completes"
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          On completion, scrubs agent prompts/messages, findings, artifacts, and caller inputs,
-          keeping only a redacted execution record. The final result is delivered via events, not retained.
-        </p>
-      </div>
+      <FlagTogglesSection
+        purgeOnCompletion={purgeOnCompletion}
+        onPurgeChange={setPurgeOnCompletion}
+        callableAsSubworkflow={callableAsSubworkflow}
+        onCallableChange={setCallableAsSubworkflow}
+      />
 
       <div>
         <Toggle

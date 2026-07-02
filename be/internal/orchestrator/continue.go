@@ -69,6 +69,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		TicketID:                ticketID,
 		WorkflowName:            workflowName,
 		ScopeType:               wi.ScopeType,
+		LaunchDepth:             wi.LaunchDepth,
 		CloseTicketOnComplete:   svcWf.CloseTicketOnComplete,
 		FinalizeSuccessCommand:  svcWf.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: svcWf.FinalizeSuccessScriptID,

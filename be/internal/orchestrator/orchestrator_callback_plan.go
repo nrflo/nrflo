@@ -1,12 +1,23 @@
 package orchestrator
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 
+	"be/internal/logger"
+	"be/internal/repo"
 	"be/internal/spawner"
 )
+
+// resetCallbackSessions resets the plan's scope, logging (rather than dropping) a failure:
+// a failed reset leaves stale sessions and findings that the callback replay would then read.
+func resetCallbackSessions(ctx context.Context, asRepo *repo.AgentSessionRepo, wfiID string, scope []string) {
+	if err := asRepo.ResetAgentSessionsInWorkflow(wfiID, scope); err != nil {
+		logger.Error(ctx, "callback session reset failed", "instance_id", wfiID, "err", err)
+	}
+}
 
 // callbackPlanStep is one unit of re-execution within a callback plan.
 type callbackPlanStep struct {

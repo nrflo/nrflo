@@ -565,7 +565,7 @@ func (o *Orchestrator) handleCallback(
 	asRepo := repo.NewAgentSessionRepo(database, o.clock)
 
 	// Reset all sessions in the plan's scope (single call)
-	asRepo.ResetAgentSessionsInWorkflow(wfiID, plan.resetScope)
+	resetCallbackSessions(ctx, asRepo, wfiID, plan.resetScope)
 
 	// Build serialisable summaries for findings and broadcast
 	planData := make([]map[string]interface{}, len(plan.steps))

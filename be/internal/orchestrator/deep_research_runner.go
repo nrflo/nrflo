@@ -77,19 +77,13 @@ func (o *Orchestrator) readDeepResearchReport(instanceID string) (json.RawMessag
 		return nil, fmt.Errorf("deep_research: run ended with status %q", wi.Status)
 	}
 
-	findings, err := repo.NewFindingRepo(pool, o.clock).GetOwn("workflow_instance", instanceID)
-	if err != nil {
-		return nil, fmt.Errorf("deep_research: read findings: %w", err)
-	}
 	// Contract: the deep-research workflow's synthesize agent emits the final
 	// report under the finding key "report" (see the seeded workflow definition).
-	report, ok := findings["report"]
-	if !ok || len(report) == 0 {
-		present := make([]string, 0, len(findings))
-		for k := range findings {
-			present = append(present, k)
-		}
-		return nil, fmt.Errorf("deep_research: completed but emitted no 'report' finding (present keys: %v)", present)
+	// emit_findings stores at session scope, so read it back the same way
+	// markCompleted reads workflow_final_result (GetSessionFindingByKey).
+	report, found := repo.NewFindingRepo(pool, o.clock).GetSessionFindingByKey(instanceID, "report")
+	if !found || len(report) == 0 {
+		return nil, fmt.Errorf("deep_research: completed but emitted no 'report' finding")
 	}
 	return report, nil
 }

@@ -302,45 +302,45 @@ func deliverPrompt(s *Spawner, proc *processInfo, sess ptySessionIface, body, ad
 	s.logAgent(proc, fmt.Sprintf("deliverPrompt: submitted (total %s)", time.Since(start).Round(time.Millisecond)))
 }
 
-// waitForReady implements the two-stage SessionStart→firstByte+floor logic.
-// Returns when ready (or when totalDeadline expires).
+// waitForReady blocks until the CLI's TUI is ready to accept a submitted
+// prompt. SessionStart / the first PTY byte only prove the TUI has *begun*
+// bootstrapping; its input loop must finish painting before it honors a paste
+// + submit CR. So after the start signal we ALWAYS gate on PTY quiescence +
+// the bootstrap floor — writing during bootstrap drops the submit CR, the
+// prompt is never sent, and the start-stall detector loops on the idle agent.
 func waitForReady(s *Spawner, proc *processInfo, start time.Time, sessionStartCh, firstByteCh <-chan struct{}, sessionStartTimeout, bootstrapFloor, totalDeadline time.Duration) {
 	if sessionStartCh == nil && firstByteCh == nil {
-		// Legacy / test path: blind floor.
-		time.Sleep(bootstrapFloor)
+		time.Sleep(bootstrapFloor) // Legacy / test path: blind floor.
 		return
 	}
-	// Stage 1: prefer SessionStart.
+	// Stage 1: wait for a "TUI began bootstrapping" signal — SessionStart, else first PTY byte.
 	select {
 	case <-sessionStartCh:
-		s.logAgent(proc, fmt.Sprintf("deliverPrompt: ready via SessionStart after %s", time.Since(start).Round(time.Millisecond)))
-		return
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: SessionStart after %s", time.Since(start).Round(time.Millisecond)))
 	case <-time.After(sessionStartTimeout):
-		s.logAgent(proc, fmt.Sprintf("deliverPrompt: SessionStart not received in %s — falling back to first-byte+floor", sessionStartTimeout))
+		s.logAgent(proc, fmt.Sprintf("deliverPrompt: SessionStart not received in %s — falling back to first-byte", sessionStartTimeout))
+		remaining := totalDeadline - time.Since(start)
+		if remaining <= 0 {
+			s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
+			return
+		}
+		select {
+		case <-firstByteCh:
+			s.logAgent(proc, fmt.Sprintf("deliverPrompt: first-byte fallback after %s", time.Since(start).Round(time.Millisecond)))
+		case <-time.After(remaining):
+			s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
+			return
+		}
 	}
-	// Stage 2: fall back to first-byte + bootstrap floor.
-	remaining := totalDeadline - time.Since(start)
-	if remaining <= 0 {
-		s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
-		return
-	}
-	select {
-	case <-firstByteCh:
-		s.logAgent(proc, fmt.Sprintf("deliverPrompt: first-byte fallback after %s", time.Since(start).Round(time.Millisecond)))
-	case <-time.After(remaining):
-		s.warnAgent(proc, fmt.Sprintf("deliverPrompt: total deadline %s reached — writing anyway", totalDeadline))
-		return
-	}
-	// Quiescence gate (PTY byte stream idle ≥ quietWindow). When the
-	// adapter has no precise readiness hook, the TUI is still painting its
-	// splash at first-byte time and won't interpret a
-	// submitted prompt yet. Waiting for the byte stream to fall silent
-	// is a universal "TUI ready for input" signal: once no new chunks
-	// arrive for quietWindow continuously, the TUI has finished its
-	// initial render and is parked on its input loop. Bounded by
-	// totalDeadline so a chatty TUI can't hang us forever; also clamped
-	// to a minimum equivalent of the legacy bootstrap floor so the path
-	// stays at least as conservative as before.
+	// Stage 2: gate on PTY quiescence + bootstrap floor (both paths above only mean the TUI *started* painting).
+	waitForPTYQuiescence(s, proc, start, bootstrapFloor, totalDeadline)
+}
+
+// waitForPTYQuiescence blocks until the PTY byte stream has been continuously
+// idle for quietWindow (TUI finished its initial render, parked on its input
+// loop) AND the bootstrap floor has elapsed. Bounded by totalDeadline so a
+// chatty TUI (spinner that never settles) can't hang delivery.
+func waitForPTYQuiescence(s *Spawner, proc *processInfo, start time.Time, bootstrapFloor, totalDeadline time.Duration) {
 	const quietWindow = 750 * time.Millisecond
 	const quietPoll = 100 * time.Millisecond
 	deadlineLeft := totalDeadline - time.Since(start)

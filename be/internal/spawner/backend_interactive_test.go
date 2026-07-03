@@ -139,6 +139,48 @@ outer:
 	}
 }
 
+// TestWaitForReady_SessionStart_GatesOnQuiescence is a regression guard for the
+// start-stall loop: an early SessionStart hook only means the TUI *began*
+// bootstrapping, not that its input loop can accept a paste + submit CR. If
+// waitForReady returns the instant SessionStart fires, deliverPrompt writes the
+// body + CR into a half-painted TUI, the submit is dropped, and the prompt is
+// never sent — the agent sits idle until the start-stall detector kills it.
+// waitForReady must therefore still wait for the bootstrap floor + PTY
+// quiescence even when SessionStart arrives immediately.
+func TestWaitForReady_SessionStart_GatesOnQuiescence(t *testing.T) {
+	t.Parallel()
+	s := New(Config{Clock: clock.Real()})
+	proc := &processInfo{sessionID: "sess-ready"}
+
+	// SessionStart already fired (closed channel = fires immediately).
+	sessionStartCh := make(chan struct{})
+	close(sessionStartCh)
+	firstByteCh := make(chan struct{})
+
+	// The TUI has painted (non-zero lastPTYByteAt) and is now quiet, so the
+	// quiescence gate can clear once quietWindow (750ms) elapses.
+	proc.messagesMutex.Lock()
+	proc.lastPTYByteAt = s.config.Clock.Now()
+	proc.messagesMutex.Unlock()
+
+	const bootstrapFloor = 200 * time.Millisecond
+	start := time.Now()
+	waitForReady(s, proc, start,
+		sessionStartCh, firstByteCh,
+		3*time.Second /*sessionStartTimeout*/, bootstrapFloor, 5*time.Second /*totalDeadline*/)
+	elapsed := time.Since(start)
+
+	// Must not return immediately (the old bug). Quiescence needs ~750ms of
+	// idle PTY, so delivery is gated well past "instant".
+	if elapsed < 500*time.Millisecond {
+		t.Fatalf("waitForReady returned after %s on early SessionStart — did not gate on quiescence (start-stall regression)", elapsed)
+	}
+	// And it must not hang until the total deadline.
+	if elapsed > 3*time.Second {
+		t.Fatalf("waitForReady took %s — quiescence gate never cleared", elapsed)
+	}
+}
+
 // =============================================================================
 // Kill routing tests
 // =============================================================================

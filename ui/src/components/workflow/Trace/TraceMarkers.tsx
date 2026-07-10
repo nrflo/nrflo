@@ -31,16 +31,24 @@ export function TraceMarkers({
   const buckets = bucketMarkers(points, domain, widthPx)
   return (
     <>
+      {/* Tooltips must sit inside the positioned wrapper — the Tooltip trigger
+          span is zero-size, so wrapping an absolute child would anchor the
+          tooltip at the row start instead of at the event. */}
       {spans.map((s) => (
-        <Tooltip key={`span-${s.startPct}-${s.marker.at}`} text={markerTooltip(s.marker)}>
-          <button
-            data-testid="trace-span"
-            onClick={() => s.marker.session_id && onSelect?.(s.marker.session_id)}
-            className={cn('absolute bottom-0.5 h-1.5 rounded-sm opacity-80', markerClasses(s.marker.type))}
-            style={{ left: `${s.startPct}%`, width: `${s.endPct - s.startPct}%` }}
-            aria-label={markerTooltip(s.marker)}
-          />
-        </Tooltip>
+        <div
+          key={`span-${s.startPct}-${s.marker.at}`}
+          data-testid="trace-span"
+          className="absolute bottom-0.5 h-1.5"
+          style={{ left: `${s.startPct}%`, width: `${s.endPct - s.startPct}%` }}
+        >
+          <Tooltip text={markerTooltip(s.marker)}>
+            <button
+              onClick={() => s.marker.session_id && onSelect?.(s.marker.session_id)}
+              className={cn('absolute inset-0 rounded-sm opacity-80', markerClasses(s.marker.type))}
+              aria-label={markerTooltip(s.marker)}
+            />
+          </Tooltip>
+        </div>
       ))}
       {buckets.map((b) => {
         const first = b.markers[0]
@@ -53,31 +61,36 @@ export function TraceMarkers({
             ].join('\n')
           : markerTooltip(first)
         return (
-          <Tooltip key={`${b.pct}-${first.at}`} text={<span className="whitespace-pre-line">{tooltip}</span>}>
-            <button
-              data-testid="trace-marker"
-              onClick={() => first.session_id && onSelect?.(first.session_id)}
-              className="absolute bottom-0 -translate-x-1/2 flex items-end"
-              style={{ left: `${b.pct}%` }}
-              aria-label={tooltip}
-            >
-              <span
-                className={cn(
-                  'rounded-full block',
-                  cluster ? 'w-2.5 h-2.5' : 'w-1.5 h-1.5',
-                  markerClasses(b.hasError ? 'error' : b.dominantType)
-                )}
-              />
-              {cluster && (
+          <div
+            key={`${b.pct}-${first.at}`}
+            className="absolute bottom-0 -translate-x-1/2"
+            style={{ left: `${b.pct}%` }}
+          >
+            <Tooltip text={<span className="whitespace-pre-line">{tooltip}</span>}>
+              <button
+                data-testid="trace-marker"
+                onClick={() => first.session_id && onSelect?.(first.session_id)}
+                className="flex items-end"
+                aria-label={tooltip}
+              >
                 <span
-                  data-testid="trace-marker-count"
-                  className="text-[9px] leading-none text-muted-foreground ml-0.5"
-                >
-                  {b.markers.length}
-                </span>
-              )}
-            </button>
-          </Tooltip>
+                  className={cn(
+                    'rounded-full block',
+                    cluster ? 'w-2.5 h-2.5' : 'w-1.5 h-1.5',
+                    markerClasses(b.hasError ? 'error' : b.dominantType)
+                  )}
+                />
+                {cluster && (
+                  <span
+                    data-testid="trace-marker-count"
+                    className="text-[9px] leading-none text-muted-foreground ml-0.5"
+                  >
+                    {b.markers.length}
+                  </span>
+                )}
+              </button>
+            </Tooltip>
+          </div>
         )
       })}
     </>

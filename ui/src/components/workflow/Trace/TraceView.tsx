@@ -12,6 +12,9 @@ import { TraceChildRow } from './TraceChildRow'
 import { TraceLegend } from './TraceLegend'
 import { TraceBreadcrumb, type TraceCrumb } from './TraceBreadcrumb'
 import { MARKER_TYPES } from './colors'
+import { useTraceZoom, TRACE_ZOOM_MIN, TRACE_ZOOM_MAX } from './useTraceZoom'
+import { Button } from '@/components/ui/Button'
+import { ZoomIn, ZoomOut } from 'lucide-react'
 
 function useContainerWidth(defaultWidth = 1000) {
   const ref = useRef<HTMLDivElement>(null)
@@ -54,6 +57,7 @@ export function TraceView({
   const { data: trace, isLoading, error, dataUpdatedAt } = useTrace(currentIid)
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(MARKER_TYPES))
   const { ref, width } = useContainerWidth()
+  const { zoom, scrollerRef, zoomIn, zoomOut, resetZoom } = useTraceZoom()
   const queryClient = useQueryClient()
 
   // "Now" is the query's data-arrival time, so the running edge advances on
@@ -110,22 +114,40 @@ export function TraceView({
           stack={stack}
           onNavigate={(i) => setStack(i === 0 ? [] : stack.slice(0, i + 1))}
         />
-        <TraceLegend
-          active={activeTypes}
-          truncated={trace.truncated}
-          onToggle={(type) =>
-            setActiveTypes((prev) => {
-              const next = new Set(prev)
-              if (next.has(type)) next.delete(type)
-              else next.add(type)
-              return next
-            })
-          }
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <TraceLegend
+            active={activeTypes}
+            truncated={trace.truncated}
+            onToggle={(type) =>
+              setActiveTypes((prev) => {
+                const next = new Set(prev)
+                if (next.has(type)) next.delete(type)
+                else next.add(type)
+                return next
+              })
+            }
+          />
+          <div className="flex items-center gap-0.5" title="Zoom (also Ctrl/Cmd + scroll)">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="trace-zoom-out"
+              disabled={zoom <= TRACE_ZOOM_MIN} onClick={zoomOut} aria-label="Zoom out">
+              <ZoomOut className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" data-testid="trace-zoom-in"
+              disabled={zoom >= TRACE_ZOOM_MAX} onClick={zoomIn} aria-label="Zoom in">
+              <ZoomIn className="h-3.5 w-3.5" />
+            </Button>
+            {zoom > TRACE_ZOOM_MIN && (
+              <Button variant="ghost" size="sm" className="h-6 px-1 text-[10px]" data-testid="trace-zoom-reset"
+                onClick={resetZoom} aria-label="Reset zoom">
+                {Math.round(zoom * 100)}%
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
-      <div className="overflow-x-auto border border-border rounded-lg bg-background">
-        <div className="min-w-[800px]" ref={ref}>
-          <TraceAxis trace={trace} domain={domain} />
+      <div className="overflow-x-auto border border-border rounded-lg bg-background" ref={scrollerRef}>
+        <div className="min-w-[800px]" style={{ width: `${zoom * 100}%` }} ref={ref} data-testid="trace-plot">
+          <TraceAxis trace={trace} domain={domain} tickTarget={Math.min(Math.round(7 * zoom), 48)} />
           {groups.length === 0 && (
             <div className="text-sm text-muted-foreground py-6 text-center">No agent sessions yet</div>
           )}

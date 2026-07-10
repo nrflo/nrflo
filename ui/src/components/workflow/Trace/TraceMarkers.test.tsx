@@ -41,7 +41,7 @@ describe('TraceMarkers', () => {
     const span = screen.getByTestId('trace-span')
     expect(span.style.left).toBe('10%')
     expect(span.style.width).toBe('50%')
-    expect(span.getAttribute('aria-label')).toContain('(50.0s)')
+    expect(span.querySelector('button')!.getAttribute('aria-label')).toContain('(50.0s)')
     expect(screen.getAllByTestId('trace-marker')).toHaveLength(1) // finding stays a dot
   })
 

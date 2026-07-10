@@ -13,8 +13,16 @@ function tickLabel(ms: number, spanMs: number): string {
 }
 
 /** Time ruler + workflow root span bar. */
-export function TraceAxis({ trace, domain }: { trace: WorkflowTraceResponse; domain: TimeDomain }) {
-  const ticks = niceTicks(domain)
+export function TraceAxis({
+  trace,
+  domain,
+  tickTarget = 7,
+}: {
+  trace: WorkflowTraceResponse
+  domain: TimeDomain
+  tickTarget?: number
+}) {
+  const ticks = niceTicks(domain, tickTarget)
   const startPct = toPct(parseTs(trace.started_at), domain) ?? 0
   const endPct = toPct(parseTs(trace.ended_at), domain) ?? 100
   const running = trace.status === 'active' || trace.status === 'waiting'

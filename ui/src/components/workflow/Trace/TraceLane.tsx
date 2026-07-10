@@ -65,16 +65,23 @@ export function TraceLane({
           const startPct = toPct(parseTs(seg.started_at), domain)
           if (startPct == null) return null
           const endPct = toPct(parseTs(seg.ended_at), domain) ?? 100
+          // Tooltip lives inside the positioned wrapper so it anchors at the
+          // segment, not at the row start (the trigger span is zero-size).
           return (
-            <Tooltip key={seg.session_id} text={segmentTooltip(seg.status, seg.result, seg.started_at, seg.ended_at)}>
-              <button
-                data-testid="trace-segment"
-                onClick={() => onSelect?.(seg.session_id)}
-                className={cn('absolute top-1 h-4 rounded border', segmentClasses(seg.status, seg.result))}
-                style={{ left: `${startPct}%`, width: `${Math.max(endPct - startPct, 0.5)}%` }}
-                aria-label={`${lane.agent_type} ${seg.status}`}
-              />
-            </Tooltip>
+            <div
+              key={seg.session_id}
+              data-testid="trace-segment"
+              className="absolute top-1 h-4"
+              style={{ left: `${startPct}%`, width: `${Math.max(endPct - startPct, 0.5)}%` }}
+            >
+              <Tooltip text={segmentTooltip(seg.status, seg.result, seg.started_at, seg.ended_at)}>
+                <button
+                  onClick={() => onSelect?.(seg.session_id)}
+                  className={cn('absolute inset-0 rounded border', segmentClasses(seg.status, seg.result))}
+                  aria-label={`${lane.agent_type} ${seg.status}`}
+                />
+              </Tooltip>
+            </div>
           )
         })}
         <TraceMarkers markers={markers} domain={domain} widthPx={widthPx} onSelect={onSelect} />

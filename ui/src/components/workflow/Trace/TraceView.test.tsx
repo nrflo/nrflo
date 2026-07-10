@@ -122,6 +122,25 @@ describe('TraceView', () => {
     expect(mockUseTrace).toHaveBeenLastCalledWith('wfi-child')
   })
 
+  it('zoom buttons widen the plot and reset restores 100%', () => {
+    mockUseTrace.mockReturnValue({ data: makeTrace(), isLoading: false, error: null })
+    renderWithQuery(<TraceView instanceId="wfi-1" />)
+
+    const plot = screen.getByTestId('trace-plot')
+    expect(plot.style.width).toBe('100%')
+    expect(screen.getByTestId('trace-zoom-out')).toBeDisabled()
+    expect(screen.queryByTestId('trace-zoom-reset')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('trace-zoom-in'))
+    expect(plot.style.width).toBe('150%')
+    fireEvent.click(screen.getByTestId('trace-zoom-in'))
+    expect(plot.style.width).toBe('225%')
+    expect(screen.getByTestId('trace-zoom-reset')).toHaveTextContent('225%')
+
+    fireEvent.click(screen.getByTestId('trace-zoom-reset'))
+    expect(plot.style.width).toBe('100%')
+  })
+
   it('shows truncation notice when marker cap was hit', () => {
     mockUseTrace.mockReturnValue({ data: makeTrace({ truncated: true }), isLoading: false, error: null })
     renderWithQuery(<TraceView instanceId="wfi-1" />)
@@ -134,7 +153,7 @@ describe('TraceView', () => {
     const sessions = [{ id: 's1', agent_type: 'analyzer' }] as never[]
     renderWithQuery(<TraceView instanceId="wfi-1" sessions={sessions} onAgentSelect={onAgentSelect} />)
 
-    fireEvent.click(screen.getAllByTestId('trace-segment')[0])
+    fireEvent.click(screen.getAllByTestId('trace-segment')[0].querySelector('button')!)
     expect(onAgentSelect).toHaveBeenCalledWith(
       expect.objectContaining({ phaseName: 'analyzer', session: expect.objectContaining({ id: 's1' }) })
     )

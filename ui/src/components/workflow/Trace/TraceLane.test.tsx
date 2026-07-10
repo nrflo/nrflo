@@ -38,14 +38,14 @@ describe('TraceLane', () => {
     expect(segments[0].style.width).toBe('50%')
     expect(segments[1].style.left).toBe('50%')
     expect(segments[1].style.width).toBe('50%') // ended_at null → to domain max
-    expect(segments[1].className).toContain('animate-pulse')
+    expect(segments[1].querySelector('button')!.className).toContain('animate-pulse')
   })
 
   it('shows restart count and calls onSelect with the clicked session', () => {
     const onSelect = vi.fn()
     render(<TraceLane lane={makeLane()} markers={[]} domain={domain} widthPx={1000} onSelect={onSelect} />)
     expect(screen.getByTestId('trace-lane-restarts')).toHaveTextContent('↻1')
-    fireEvent.click(screen.getAllByTestId('trace-segment')[0])
+    fireEvent.click(screen.getAllByTestId('trace-segment')[0].querySelector('button')!)
     expect(onSelect).toHaveBeenCalledWith('s1')
     fireEvent.click(screen.getByText('builder'))
     expect(onSelect).toHaveBeenCalledWith('s2') // lane label → last segment

@@ -41,6 +41,8 @@ export function buildDomain(trace: WorkflowTraceResponse, receivedAtMs: number):
     for (const m of lane.markers ?? []) {
       const t = parseTs(m.at)
       if (t != null && t > latest) latest = t
+      const e = parseTs(m.ended_at)
+      if (e != null && e > latest) latest = e
     }
   }
   if (min == null) return null
@@ -122,6 +124,50 @@ export function bucketMarkers(
         hasError: list.some((m) => m.type === 'error'),
       }
     })
+}
+
+export interface SpanBar {
+  marker: TraceMarker
+  startPct: number
+  endPct: number
+}
+
+export interface SpanSplit {
+  spans: SpanBar[]
+  points: TraceMarker[]
+}
+
+const MAX_SPANS_PER_LANE = 200
+
+/**
+ * Partition markers into duration bars (closed tool spans wide enough to draw)
+ * and point events. Spans narrower than minPx — and overflow beyond the
+ * per-lane cap, shortest first — degrade to points so nothing is dropped.
+ */
+export function splitSpans(
+  markers: TraceMarker[],
+  domain: TimeDomain,
+  widthPx: number,
+  minPx = 3
+): SpanSplit {
+  const spans: SpanBar[] = []
+  const points: TraceMarker[] = []
+  const minPct = widthPx > 0 ? (minPx / widthPx) * 100 : 100
+  for (const m of markers) {
+    const startPct = toPct(parseTs(m.at), domain)
+    const endPct = toPct(parseTs(m.ended_at), domain)
+    if (startPct == null || endPct == null || endPct - startPct < minPct) {
+      points.push(m)
+      continue
+    }
+    spans.push({ marker: m, startPct, endPct })
+  }
+  if (spans.length > MAX_SPANS_PER_LANE) {
+    spans.sort((a, b) => b.endPct - b.startPct - (a.endPct - a.startPct))
+    for (const dropped of spans.splice(MAX_SPANS_PER_LANE)) points.push(dropped.marker)
+    spans.sort((a, b) => a.startPct - b.startPct)
+  }
+  return { spans, points }
 }
 
 export interface LaneGroup {

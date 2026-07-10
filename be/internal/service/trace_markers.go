@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"sort"
 	"strconv"
@@ -153,7 +154,8 @@ func (s *WorkflowService) queryMessageMarkers(sessionIDs, categories []string, l
 	}
 	args = append(args, limit)
 	query := fmt.Sprintf(`
-		SELECT session_id, category, substr(content, 1, %d), created_at
+		SELECT session_id, category, substr(content, 1, %d), created_at,
+		       json_extract(payload, '$.ended_at')
 		FROM agent_messages
 		WHERE session_id IN (%s) AND category IN (%s)
 		ORDER BY created_at, session_id, seq
@@ -167,7 +169,12 @@ func (s *WorkflowService) queryMessageMarkers(sessionIDs, categories []string, l
 	var markers []types.TraceMarker
 	for rows.Next() {
 		var m types.TraceMarker
-		rows.Scan(&m.SessionID, &m.Type, &m.Label, &m.At)
+		var endedAt sql.NullString
+		rows.Scan(&m.SessionID, &m.Type, &m.Label, &m.At, &endedAt)
+		if endedAt.Valid {
+			v := endedAt.String
+			m.EndedAt = &v
+		}
 		markers = append(markers, m)
 	}
 	return markers

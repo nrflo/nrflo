@@ -136,8 +136,21 @@ func asString(v interface{}) string {
 // recordPostToolFailure inserts a "[Tool failed] <error>" row when a tool
 // invocation errored. PostToolUse only fires on success per Claude docs, so
 // we'd otherwise miss tool failures entirely.
+// closeToolSpan stamps ended_at onto the matching PreToolUse row (best-effort)
+// so the trace timeline can render the tool call as a duration bar.
+func (h *Handler) closeToolSpan(ctx context.Context, sessionID string, event map[string]interface{}) {
+	toolUseID, _ := event["tool_use_id"].(string)
+	if toolUseID == "" {
+		return
+	}
+	if err := h.agentSvc.MarkToolEnded(sessionID, toolUseID); err != nil {
+		logger.Info(ctx, "record_event: MarkToolEnded error (best-effort)", "error", err, "session_id", sessionID)
+	}
+}
+
 func (h *Handler) recordPostToolFailure(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
 	toolName, _ := event["tool_name"].(string)
+	h.closeToolSpan(ctx, sessionID, event)
 	category := spawner.ToolCategory(toolName)
 	content := "[" + toolName + " failed]"
 	if msg := extractErrorMessage(event); msg != "" {
@@ -208,7 +221,15 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 	content := spawner.FormatToolDetail(toolName, toolInput)
 	category := spawner.ToolCategory(toolName)
 
-	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, "")
+	// Persist tool_use_id so PostToolUse can close the span (trace tool bars).
+	payload := ""
+	if toolUseID, _ := event["tool_use_id"].(string); toolUseID != "" {
+		if b, jsonErr := json.Marshal(map[string]string{"tool_use_id": toolUseID}); jsonErr == nil {
+			payload = string(b)
+		}
+	}
+
+	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, payload)
 	if err != nil {
 		logger.Error(ctx, "record_event: failed to record pre-tool message", "error", err)
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
@@ -243,6 +264,7 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 // (e.g. an MCP isError result) still surfaces here as the captured body.
 func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
 	toolName, _ := event["tool_name"].(string)
+	h.closeToolSpan(ctx, sessionID, event)
 	if spawner.IsHiddenResultTool(toolName) {
 		// Read/Bash/Edit success rows are suppressed: the PreToolUse invoke row
 		// already shows the file/command and the output is log noise. PostToolUse

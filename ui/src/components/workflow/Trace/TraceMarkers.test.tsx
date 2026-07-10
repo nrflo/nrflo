@@ -27,6 +27,24 @@ describe('TraceMarkers', () => {
     expect(screen.getByTestId('trace-marker-count')).toHaveTextContent('2')
   })
 
+  it('closed tool spans render as duration bars with duration in tooltip', () => {
+    render(
+      <TraceMarkers
+        markers={[
+          { ...marker(10_000), ended_at: new Date(60_000).toISOString() },
+          marker(90_000, 'finding'),
+        ]}
+        domain={domain}
+        widthPx={1000}
+      />
+    )
+    const span = screen.getByTestId('trace-span')
+    expect(span.style.left).toBe('10%')
+    expect(span.style.width).toBe('50%')
+    expect(span.getAttribute('aria-label')).toContain('(50.0s)')
+    expect(screen.getAllByTestId('trace-marker')).toHaveLength(1) // finding stays a dot
+  })
+
   it('click calls onSelect with the marker session', () => {
     const onSelect = vi.fn()
     render(

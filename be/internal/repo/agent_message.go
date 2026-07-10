@@ -85,6 +85,27 @@ func (r *AgentMessageRepo) insertBatchOnce(sessionID string, messages []MessageE
 	return tx.Commit()
 }
 
+// SetToolEnded stamps ended_at into the payload of the PreToolUse row matching
+// tool_use_id, closing the tool span. Only the earliest unclosed match is
+// updated (a retried tool_use_id keeps its first span). Returns whether a row
+// was updated.
+func (r *AgentMessageRepo) SetToolEnded(sessionID, toolUseID, endedAt string) (bool, error) {
+	result, err := r.db.Exec(`
+		UPDATE agent_messages SET payload = json_set(payload, '$.ended_at', ?)
+		WHERE id = (
+			SELECT id FROM agent_messages
+			WHERE session_id = ? AND payload IS NOT NULL
+			  AND json_extract(payload, '$.tool_use_id') = ?
+			  AND json_extract(payload, '$.ended_at') IS NULL
+			ORDER BY seq LIMIT 1
+		)`, endedAt, sessionID, toolUseID)
+	if err != nil {
+		return false, err
+	}
+	n, err := result.RowsAffected()
+	return n > 0, err
+}
+
 // GetBySession returns all messages for a session ordered by seq
 func (r *AgentMessageRepo) GetBySession(sessionID string) ([]string, error) {
 	rows, err := r.db.Query(

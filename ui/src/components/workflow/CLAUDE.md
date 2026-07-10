@@ -20,7 +20,7 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama). I
 
 ## Trace
 
-`Trace/` — Gantt-style run timeline (`TraceView`): percentage-positioned divs on a linear time scale (pure math in `timeScale.ts`), one lane per agent with relaunch-chain segments, pixel-bucketed event markers with category filter chips, child sub-workflow rows with breadcrumb drill-down. Data from `useTrace` (`GET /workflow-instances/{iid}/trace`); no timers — the running edge advances on WS-driven refetches (`dataUpdatedAt`). Clicks open `AgentLogPanel`. Hosted by `TicketTraceSection` (ticket Trace sub-tab) and `ProjectTraceSection` (project runs).
+`Trace/` — Gantt-style run timeline (`TraceView`): percentage-positioned divs on a linear time scale (pure math in `timeScale.ts`), one lane per agent with relaunch-chain segments, pixel-bucketed event markers with category filter chips (closed tool spans render as duration bars via `splitSpans`; narrow/overflow spans degrade to dots), child sub-workflow rows with breadcrumb drill-down. Data from `useTrace` (`GET /workflow-instances/{iid}/trace`); no timers — the running edge advances on WS-driven refetches (`dataUpdatedAt`). Clicks open `AgentLogPanel`. Hosted by `TicketTraceSection` (ticket Trace sub-tab) and `ProjectTraceSection` (project runs).
 
 ## Agent Log Panel
 

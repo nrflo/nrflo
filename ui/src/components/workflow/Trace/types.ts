@@ -30,6 +30,7 @@ export type TraceMarkerType =
 export interface TraceMarker {
   type: TraceMarkerType
   at: string
+  ended_at?: string | null // tool spans closed by PostToolUse render as bars
   session_id?: string
   label: string
 }

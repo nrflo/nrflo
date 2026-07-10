@@ -2,17 +2,20 @@ import { cn } from '@/lib/utils'
 import { Tooltip } from '@/components/ui/Tooltip'
 import type { TraceMarker } from './types'
 import type { TimeDomain } from './timeScale'
-import { bucketMarkers } from './timeScale'
+import { bucketMarkers, splitSpans, parseTs } from './timeScale'
 import { markerClasses } from './colors'
 
 function markerTooltip(m: TraceMarker): string {
   const t = new Date(m.at)
   const time = Number.isNaN(t.getTime()) ? m.at : t.toLocaleTimeString()
   const label = m.label.length > 120 ? m.label.slice(0, 120) + '…' : m.label
-  return `${m.type} · ${time} — ${label}`
+  const start = parseTs(m.at)
+  const end = parseTs(m.ended_at)
+  const duration = start != null && end != null ? ` (${((end - start) / 1000).toFixed(1)}s)` : ''
+  return `${m.type} · ${time}${duration} — ${label}`
 }
 
-/** Bucketed point-event dots for one lane. */
+/** Point-event dots (pixel-bucketed) + closed tool spans as duration bars. */
 export function TraceMarkers({
   markers,
   domain,
@@ -24,9 +27,21 @@ export function TraceMarkers({
   widthPx: number
   onSelect?: (sessionId: string) => void
 }) {
-  const buckets = bucketMarkers(markers, domain, widthPx)
+  const { spans, points } = splitSpans(markers, domain, widthPx)
+  const buckets = bucketMarkers(points, domain, widthPx)
   return (
     <>
+      {spans.map((s) => (
+        <Tooltip key={`span-${s.startPct}-${s.marker.at}`} text={markerTooltip(s.marker)}>
+          <button
+            data-testid="trace-span"
+            onClick={() => s.marker.session_id && onSelect?.(s.marker.session_id)}
+            className={cn('absolute bottom-0.5 h-1.5 rounded-sm opacity-80', markerClasses(s.marker.type))}
+            style={{ left: `${s.startPct}%`, width: `${s.endPct - s.startPct}%` }}
+            aria-label={markerTooltip(s.marker)}
+          />
+        </Tooltip>
+      ))}
       {buckets.map((b) => {
         const first = b.markers[0]
         const cluster = b.markers.length > 1

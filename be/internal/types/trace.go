@@ -59,12 +59,14 @@ type TraceRestart struct {
 }
 
 // TraceMarker is a point event on a lane (or on the instance root when the
-// event cannot be attributed to a session).
+// event cannot be attributed to a session). Tool markers whose span was closed
+// by PostToolUse carry EndedAt and render as duration bars.
 type TraceMarker struct {
-	Type      string `json:"type"` // tool|subagent|skill|user_input|error|thinking|finding
-	At        string `json:"at"`
-	SessionID string `json:"session_id,omitempty"`
-	Label     string `json:"label"`
+	Type      string  `json:"type"` // tool|subagent|skill|user_input|error|thinking|finding
+	At        string  `json:"at"`
+	EndedAt   *string `json:"ended_at,omitempty"`
+	SessionID string  `json:"session_id,omitempty"`
+	Label     string  `json:"label"`
 }
 
 // TraceChildRun references a sub-workflow launched by this instance.

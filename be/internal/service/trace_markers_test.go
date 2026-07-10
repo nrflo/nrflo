@@ -152,6 +152,32 @@ func TestBuildTrace_LabelTruncatedTo200(t *testing.T) {
 	}
 }
 
+func TestBuildTrace_ToolSpanEndedAt(t *testing.T) {
+	t.Parallel()
+	pool, svc, wfiID := setupMarkerEnv(t)
+	// Closed span: payload carries tool_use_id + ended_at (stamped by PostToolUse).
+	mustExec(t, pool, `INSERT INTO agent_messages (session_id, seq, content, category, created_at, payload)
+		VALUES ('s-a', 0, '[Bash] make test', 'tool', '2025-01-01T00:00:01Z', '{"tool_use_id":"tu1","ended_at":"2025-01-01T00:00:20Z"}')`)
+	// Open span: pre-row only.
+	mustExec(t, pool, `INSERT INTO agent_messages (session_id, seq, content, category, created_at, payload)
+		VALUES ('s-a', 1, '[Edit] main.go', 'tool', '2025-01-01T00:00:30Z', '{"tool_use_id":"tu2"}')`)
+
+	trace, err := svc.BuildTrace(wfiID, TraceOptions{})
+	if err != nil {
+		t.Fatalf("BuildTrace: %v", err)
+	}
+	markers := laneMarkers(t, trace, "s-a")
+	if len(markers) != 2 {
+		t.Fatalf("markers = %d, want 2", len(markers))
+	}
+	if markers[0].EndedAt == nil || *markers[0].EndedAt != "2025-01-01T00:00:20Z" {
+		t.Errorf("closed span ended_at = %v, want 2025-01-01T00:00:20Z", markers[0].EndedAt)
+	}
+	if markers[1].EndedAt != nil {
+		t.Errorf("open span should have nil ended_at, got %v", markers[1].EndedAt)
+	}
+}
+
 func TestParseTraceOptions(t *testing.T) {
 	t.Parallel()
 	opts, err := ParseTraceOptions("", "")

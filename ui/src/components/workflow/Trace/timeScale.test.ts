@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildDomain, toPct, niceTicks, bucketMarkers, laneRows, parseTs } from './timeScale'
+import { buildDomain, toPct, niceTicks, bucketMarkers, laneRows, parseTs, splitSpans } from './timeScale'
 import type { TraceMarker, WorkflowTraceResponse, TraceLaneData } from './types'
 
 const T0 = '2025-01-01T00:00:00Z'
@@ -107,6 +107,61 @@ describe('bucketMarkers', () => {
 
   it('skips unparsable timestamps', () => {
     expect(bucketMarkers([{ type: 'tool', at: 'bogus', label: 'x' }], domain, 1000)).toHaveLength(0)
+  })
+})
+
+describe('splitSpans', () => {
+  const domain = { min: 0, max: 100_000 }
+  const span = (at: number, endedAt: number | null, type = 'tool'): TraceMarker => ({
+    type,
+    at: new Date(at).toISOString(),
+    ended_at: endedAt == null ? null : new Date(endedAt).toISOString(),
+    label: type,
+  })
+
+  it('wide closed spans become bars, open/narrow markers stay points', () => {
+    const { spans, points } = splitSpans(
+      [span(0, 50_000), span(60_000, 60_100), span(70_000, null)],
+      domain,
+      1000
+    )
+    expect(spans).toHaveLength(1)
+    expect(spans[0].startPct).toBe(0)
+    expect(spans[0].endPct).toBe(50)
+    expect(points).toHaveLength(2) // 0.1% wide (1px) + open span
+  })
+
+  it('overflow beyond the cap degrades shortest spans to points', () => {
+    const many = Array.from({ length: 250 }, (_, i) => span(i * 400, i * 400 + 5000 + i))
+    const { spans, points } = splitSpans(many, domain, 1000)
+    expect(spans).toHaveLength(200)
+    expect(points).toHaveLength(50)
+    // Spans stay sorted by start after decimation
+    for (let i = 1; i < spans.length; i++) {
+      expect(spans[i].startPct).toBeGreaterThanOrEqual(spans[i - 1].startPct)
+    }
+  })
+
+  it('domain max accounts for marker ended_at (buildDomain)', () => {
+    const trace = {
+      instance_id: 'i',
+      project_id: 'p',
+      workflow: 'w',
+      status: 'active',
+      started_at: T0,
+      lanes: [
+        {
+          lane_id: 's1',
+          phase: 'a',
+          layer: 0,
+          agent_type: 'a',
+          status: 'running',
+          markers: [{ type: 'tool', at: T1, ended_at: T2, label: 'x' }],
+        },
+      ],
+    }
+    const d = buildDomain(trace, 0)!
+    expect(d.max).toBe(parseTs(T2))
   })
 })
 

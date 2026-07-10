@@ -115,6 +115,28 @@ func (r *WorkflowInstanceRepo) ListActive() ([]*model.WorkflowInstance, error) {
 	return instances, nil
 }
 
+// ListByParentInstance returns sub-workflow instances launched by the given parent instance.
+func (r *WorkflowInstanceRepo) ListByParentInstance(parentInstanceID string) ([]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE parent_instance_id = ?
+		ORDER BY created_at`, parentInstanceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*model.WorkflowInstance
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, wi)
+	}
+	return instances, nil
+}
+
 // ListByTicket retrieves all workflow instances for a ticket
 func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
 	rows, err := r.pool.Query(`

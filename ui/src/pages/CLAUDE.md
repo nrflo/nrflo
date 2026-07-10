@@ -32,7 +32,7 @@ Routes are defined in `src/App.tsx`.
 
 The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
-- **Workflow tab** (default): Renders `TicketWorkflowTab` with Running/Failed/Completed sub-tabs (three-way partition matching `ProjectWorkflowsPage`), instance chips via `InstanceList`, and `CompletedAgentsTable` for completed instances
+- **Workflow tab** (default): Renders `TicketWorkflowTab` with Running/Failed/Completed/Trace sub-tabs (bar shown whenever any instance exists), instance chips via `InstanceList`, `TicketCompletedSection` (merged `CompletedAgentsTable`) for completed, `TicketTraceSection` (Gantt timeline, see workflow/CLAUDE.md → Trace) for trace
 - **Hierarchy tab**: Blockers (add/remove), blocks, epic hierarchy (parent + siblings/children)
 - **Description tab**: Ticket title heading, all metadata (priority, type, status, timestamps, close reason), description text
 - **Details tab**: Read-only dependency lists, description text, metadata
@@ -41,7 +41,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 | Component | Content |
 |-----------|---------|
-| `TicketWorkflowTab.tsx` | Workflow tab with Running/Failed/Completed sub-tabs, three-way instance partitioning, `InstanceList` chips, `CompletedAgentsTable` for completed tab. Pushes interactive sessions into `interactiveSessionsStore`. Manages workflow mutations. |
+| `TicketWorkflowTab.tsx` | Workflow tab with Running/Failed/Completed/Trace sub-tabs, three-way instance partitioning, `InstanceList` chips; completed/trace bodies extracted to `TicketCompletedSection.tsx`/`TicketTraceSection.tsx`. Pushes interactive sessions into `interactiveSessionsStore`. Manages workflow mutations. |
 | `HierarchyTabContent.tsx` | Blockers with TicketSearchDropdown for add/remove, blocks display, epic hierarchy (parent ticket link + title, sibling list with current ticket highlighted, children list for epics) |
 | `DescriptionTabContent.tsx` | Ticket title as h2, metadata grid, description text |
 | `DetailsTabContent.tsx` | Read-only dependency lists (blocked by / blocks with titles), description text, metadata grid |
@@ -51,7 +51,7 @@ The ticket detail page (`TicketDetailPage.tsx`) uses a tabbed interface:
 
 ## ProjectWorkflowsPage
 
-5-tab layout: Run Workflow / Running / Failed / Completed / Findings (project-level findings CRUD). Running tab uses `InstanceList` + `WorkflowTabContent`; Failed/Completed use `WorkflowInstanceTable` (paginated, PAGE_SIZE=10) + `WorkflowTabContent`. Sub-components in `ProjectWorkflowComponents.tsx` (`ProjectWorkflowTabBar`, `InstanceList`), `RunWorkflowForm.tsx` (Run tab form with embedded `ArtifactUploader` for `input_artifacts`), and `WorkflowSubTabBar.tsx` (`WorkflowSubTabBar` — shared Running/Failed/Completed sub-tab switcher, used by `TicketWorkflowTab`). The page holds `stagedArtifacts` state + `launchedRef` to cancel orphaned uploads on tab-leave / unmount and skip cancellation after a successful launch.
+5-tab layout: Run Workflow / Running / Failed / Completed / Findings (project-level findings CRUD). Running tab uses `InstanceList` + `WorkflowTabContent`; Failed/Completed render `ProjectTerminalTab.tsx` (`WorkflowInstanceTable`, paginated PAGE_SIZE=10, + read-only `WorkflowTabContent`); a per-row Gantt button and a Running-tab Trace button open `ProjectTraceSection.tsx` in place of the tab content. Sub-components in `ProjectWorkflowComponents.tsx` (`ProjectWorkflowTabBar`, `InstanceList`), `RunWorkflowForm.tsx` (Run tab form with embedded `ArtifactUploader` for `input_artifacts`), and `WorkflowSubTabBar.tsx` (`WorkflowSubTabBar` — shared Running/Failed/Completed/Trace sub-tab switcher, used by `TicketWorkflowTab`). The page holds `stagedArtifacts` state + `launchedRef` to cancel orphaned uploads on tab-leave / unmount and skip cancellation after a successful launch.
 
 ## Real-Time Update Patterns
 

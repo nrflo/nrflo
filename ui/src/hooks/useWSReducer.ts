@@ -12,6 +12,7 @@ import { agentSessionLogKeys } from './useAgentSessionLogs'
 import { projectEnvVarKeys } from './useProjectEnvVars'
 import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
+import { traceKeys } from './useTrace'
 import type { WSEventType } from './useWebSocket'
 import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
@@ -143,6 +144,8 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
     }
+    // Only active (mounted) trace queries refetch, so the broad key is cheap.
+    qc.invalidateQueries({ queryKey: traceKeys.all })
   },
 
   'agent.completed': (event, qc, isProjectScope) => {
@@ -156,6 +159,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
     qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
+    qc.invalidateQueries({ queryKey: traceKeys.all })
   },
 
   'consult.started': (event, qc, isProjectScope) => {
@@ -350,6 +354,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
+    qc.invalidateQueries({ queryKey: traceKeys.all })
   },
 
   'workflow.finalize_succeeded': (event, qc, isProjectScope) => {

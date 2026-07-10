@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-export type WorkflowSubTab = 'running' | 'failed' | 'completed'
+export type WorkflowSubTab = 'running' | 'failed' | 'completed' | 'trace'
 
 export function WorkflowSubTabBar({
   activeSubTab,
@@ -19,6 +19,7 @@ export function WorkflowSubTabBar({
     { id: 'running', label: `Running (${runningCount})` },
     { id: 'failed', label: `Failed (${failedCount})` },
     { id: 'completed', label: `Completed (${completedCount})` },
+    { id: 'trace', label: 'Trace' },
   ]
 
   return (

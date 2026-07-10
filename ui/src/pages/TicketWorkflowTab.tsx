@@ -1,11 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { cn } from '@/lib/utils'
 import { WorkflowSubTabBar } from './WorkflowSubTabBar'
 import type { WorkflowSubTab } from './WorkflowSubTabBar'
 import { InstanceList } from './ProjectWorkflowComponents'
-import { CompletedAgentsTable } from '@/components/workflow/CompletedAgentsTable'
-import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { WorkflowTabContent } from './WorkflowTabContent'
+import { TicketTraceSection } from './TicketTraceSection'
+import { TicketCompletedSection } from './TicketCompletedSection'
 import type { WorkflowResponse, WorkflowState, AgentSessionsResponse, CompletedAgentRow } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import {
@@ -86,13 +85,13 @@ export function TicketWorkflowTab({
   const failedCount = Object.keys(failedInstances).length
   const runningCount = Object.keys(runningInstances).length
 
-  // Show sub-tabs when multiple instances or any completed/failed
-  const showSubTabs = totalInstances > 1 || completedCount > 0 || failedCount > 0
-  // Single non-running instance optimization: skip sub-tabs when there's exactly one instance
+  // Show sub-tabs whenever any instance exists (Trace must stay reachable)
+  const showSubTabs = totalInstances > 0
+  // Single non-running instance optimization: show it regardless of status tab
   const singleNonRunningOnly = totalInstances === 1 && runningCount === 0
 
-  // Determine which instances to show based on sub-tab
-  const tabInstances = (!showSubTabs || singleNonRunningOnly)
+  // Determine which instances to show based on sub-tab; Trace spans all instances
+  const tabInstances = (!showSubTabs || singleNonRunningOnly || activeSubTab === 'trace')
     ? allWorkflows
     : activeSubTab === 'running' ? runningInstances
     : activeSubTab === 'failed' ? failedInstances
@@ -178,10 +177,19 @@ export function TicketWorkflowTab({
     })
   }
 
-  // --- Completed sub-tab rendering ---
-  const isCompletedTab = showSubTabs && !singleNonRunningOnly && activeSubTab === 'completed'
+  const handleResumeSession = (sessionId: string) => {
+    if (!ticketId) return
+    resumeSessionMutation.mutate(
+      { ticketId, params: { session_id: sessionId } },
+      { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
+    )
+  }
 
-  if (isCompletedTab) {
+  // --- Trace and Completed sub-tabs (shared bar + section body) ---
+  const isTraceTab = showSubTabs && activeSubTab === 'trace'
+  const isCompletedTab = showSubTabs && activeSubTab === 'completed'
+
+  if (isTraceTab || isCompletedTab) {
     return (
       <>
         <WorkflowSubTabBar
@@ -191,55 +199,41 @@ export function TicketWorkflowTab({
           failedCount={failedCount}
           completedCount={completedCount}
         />
-        <div className={cn(
-          'flex flex-col md:flex-row gap-0',
-          selectedPanelAgent && 'min-h-[calc(100vh-280px)]'
-        )}>
-          <div className="flex-1 min-w-0 space-y-4">
-            {instanceIds.length > 0 && (
-              <InstanceList
-                instanceIds={instanceIds}
-                instances={tabInstances}
-                labels={selectorLabels}
-                selectedId={resolvedInstanceId}
-                onSelect={setSelectedInstanceId}
-                tab="completed"
-              />
-            )}
-            {mergedCompletedAgents.length > 0 ? (
-              <CompletedAgentsTable
-                agentHistory={mergedCompletedAgents}
-                sessions={allCompletedSessions}
-                onAgentSelect={setSelectedPanelAgent}
-              />
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground text-sm">No completed workflows</p>
-              </div>
-            )}
-          </div>
-          {selectedPanelAgent && (
-            <AgentLogPanel
-              activeAgents={{}}
-              sessions={allCompletedSessions}
-              collapsed={logPanelCollapsed}
-              selectedAgent={selectedPanelAgent}
-              onAgentSelect={setSelectedPanelAgent}
-              onResumeSession={(sessionId) => {
-                if (!ticketId) return
-                resumeSessionMutation.mutate(
-                  { ticketId, params: { session_id: sessionId } },
-                  { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
-                )
-              }}
-              resumePending={resumeSessionMutation.isPending}
-              agentFindings={displayedState?.findings}
-              projectFindings={projectFindings}
-              phaseLayers={displayedState?.phase_layers}
-              workflowFindings={displayedState?.workflow_findings}
-            />
-          )}
-        </div>
+        {isTraceTab ? (
+          <TicketTraceSection
+            instanceIds={instanceIds}
+            instances={tabInstances}
+            labels={selectorLabels}
+            resolvedInstanceId={resolvedInstanceId}
+            onSelectInstance={setSelectedInstanceId}
+            displayedState={displayedState}
+            sessions={sessions}
+            activeAgents={activeAgents}
+            selectedPanelAgent={selectedPanelAgent}
+            onAgentSelect={setSelectedPanelAgent}
+            logPanelCollapsed={logPanelCollapsed}
+            onResumeSession={handleResumeSession}
+            resumePending={resumeSessionMutation.isPending}
+            projectFindings={projectFindings}
+          />
+        ) : (
+          <TicketCompletedSection
+            instanceIds={instanceIds}
+            instances={tabInstances}
+            labels={selectorLabels}
+            resolvedInstanceId={resolvedInstanceId}
+            onSelectInstance={setSelectedInstanceId}
+            mergedCompletedAgents={mergedCompletedAgents}
+            allCompletedSessions={allCompletedSessions}
+            displayedState={displayedState}
+            selectedPanelAgent={selectedPanelAgent}
+            onAgentSelect={setSelectedPanelAgent}
+            logPanelCollapsed={logPanelCollapsed}
+            onResumeSession={handleResumeSession}
+            resumePending={resumeSessionMutation.isPending}
+            projectFindings={projectFindings}
+          />
+        )}
       </>
     )
   }
@@ -248,7 +242,7 @@ export function TicketWorkflowTab({
   const isFailedTab = activeSubTab === 'failed'
   return (
     <>
-      {showSubTabs && !singleNonRunningOnly && (
+      {showSubTabs && (
         <WorkflowSubTabBar
           activeSubTab={activeSubTab}
           onSwitch={handleSubTabSwitch}
@@ -312,13 +306,7 @@ export function TicketWorkflowTab({
           )
         }}
         takeControlPending={isFailedTab ? false : takeControlMutation.isPending}
-        onResumeSession={(sessionId) => {
-          if (!ticketId) return
-          resumeSessionMutation.mutate(
-            { ticketId, params: { session_id: sessionId } },
-            { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
-          )
-        }}
+        onResumeSession={handleResumeSession}
         resumeSessionPending={resumeSessionMutation.isPending}
         projectFindings={projectFindings}
         blockedReason={blockedReason}

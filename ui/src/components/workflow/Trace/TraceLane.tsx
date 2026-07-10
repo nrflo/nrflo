@@ -1,0 +1,74 @@
+import { cn } from '@/lib/utils'
+import { Tooltip } from '@/components/ui/Tooltip'
+import type { TraceLaneData, TraceMarker } from './types'
+import type { TimeDomain } from './timeScale'
+import { toPct, parseTs } from './timeScale'
+import { segmentClasses } from './colors'
+import { TraceMarkers } from './TraceMarkers'
+
+function segmentTooltip(status: string, result: string | undefined, start?: string | null, end?: string | null): string {
+  const fmt = (ts?: string | null) => {
+    const t = parseTs(ts)
+    return t == null ? '…' : new Date(t).toLocaleTimeString()
+  }
+  return `${status}${result ? ` (${result})` : ''} · ${fmt(start)} → ${fmt(end)}`
+}
+
+/** One agent lane: relaunch-chain segments + bucketed markers. */
+export function TraceLane({
+  lane,
+  markers,
+  domain,
+  widthPx,
+  onSelect,
+}: {
+  lane: TraceLaneData
+  markers: TraceMarker[]
+  domain: TimeDomain
+  widthPx: number
+  onSelect?: (sessionId: string) => void
+}) {
+  return (
+    <div data-testid="trace-lane" className="grid grid-cols-[10rem_1fr] border-b border-border/40 last:border-b-0">
+      <div className="px-2 py-1 sticky left-0 bg-background min-w-0">
+        <button
+          className="text-xs font-medium truncate block max-w-full hover:text-primary text-left"
+          onClick={() => {
+            const last = lane.segments?.[lane.segments.length - 1]
+            if (last) onSelect?.(last.session_id)
+          }}
+          title={lane.phase}
+        >
+          {lane.agent_type.replace(/_/g, ' ')}
+        </button>
+        <div className="text-[10px] text-muted-foreground truncate">
+          {lane.model_id ?? ''}
+          {(lane.restarts?.length ?? 0) > 0 && (
+            <span className="ml-1" data-testid="trace-lane-restarts">
+              ↻{lane.restarts!.length}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="relative h-9">
+        {(lane.segments ?? []).map((seg) => {
+          const startPct = toPct(parseTs(seg.started_at), domain)
+          if (startPct == null) return null
+          const endPct = toPct(parseTs(seg.ended_at), domain) ?? 100
+          return (
+            <Tooltip key={seg.session_id} text={segmentTooltip(seg.status, seg.result, seg.started_at, seg.ended_at)}>
+              <button
+                data-testid="trace-segment"
+                onClick={() => onSelect?.(seg.session_id)}
+                className={cn('absolute top-1 h-4 rounded border', segmentClasses(seg.status, seg.result))}
+                style={{ left: `${startPct}%`, width: `${Math.max(endPct - startPct, 0.5)}%` }}
+                aria-label={`${lane.agent_type} ${seg.status}`}
+              />
+            </Tooltip>
+          )
+        })}
+        <TraceMarkers markers={markers} domain={domain} widthPx={widthPx} onSelect={onSelect} />
+      </div>
+    </div>
+  )
+}

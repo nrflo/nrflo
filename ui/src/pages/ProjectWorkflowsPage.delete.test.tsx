@@ -170,7 +170,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
       const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
-      expect(within(row).getByRole('button')).toBeInTheDocument()
+      expect(within(row).getByRole('button', { name: 'Delete instance' })).toBeInTheDocument()
     })
 
     it('shows trash icon in completed tab table row', async () => {
@@ -184,7 +184,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       const row = screen.getByText('#compinst').closest('[data-testid="instance-row"]')!
-      expect(within(row).getByRole('button')).toBeInTheDocument()
+      expect(within(row).getByRole('button', { name: 'Delete instance' })).toBeInTheDocument()
     })
 
     it('does NOT show trash icon in running tab chip (no onDelete prop)', async () => {
@@ -217,7 +217,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
       const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
-      await user.click(within(row).getByRole('button'))
+      await user.click(within(row).getByRole('button', { name: 'Delete instance' }))
 
       expect(await screen.findByText('Delete Workflow Instance')).toBeInTheDocument()
       expect(screen.getByText(/Are you sure you want to delete this workflow instance/)).toBeInTheDocument()
@@ -234,7 +234,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
       const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
-      await user.click(within(row).getByRole('button'))
+      await user.click(within(row).getByRole('button', { name: 'Delete instance' }))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 
       expect(deleteMutate).toHaveBeenCalledOnce()
@@ -252,7 +252,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Failed/ }))
 
       const row = screen.getByText('#failinst').closest('[data-testid="instance-row"]')!
-      await user.click(within(row).getByRole('button'))
+      await user.click(within(row).getByRole('button', { name: 'Delete instance' }))
       await user.click(await screen.findByRole('button', { name: /Cancel/ }))
 
       expect(deleteMutate).not.toHaveBeenCalled()
@@ -269,7 +269,7 @@ describe('ProjectWorkflowsPage — Failed tab and delete', () => {
       await user.click(screen.getByRole('button', { name: /Completed/ }))
 
       const row = screen.getByText('#compinst').closest('[data-testid="instance-row"]')!
-      await user.click(within(row).getByRole('button'))
+      await user.click(within(row).getByRole('button', { name: 'Delete instance' }))
       await user.click(await screen.findByRole('button', { name: /^Delete$/ }))
 
       expect(deleteMutate).toHaveBeenCalledWith({ projectId: 'test-project', instanceId: 'compinst' })

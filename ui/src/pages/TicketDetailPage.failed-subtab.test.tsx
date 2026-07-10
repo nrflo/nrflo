@@ -114,7 +114,7 @@ describe('TicketDetailPage - Failed sub-tab', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
   })
 
-  it('does not show sub-tabs for a single failed instance (singleNonRunningOnly)', async () => {
+  it('shows sub-tabs for a single failed instance (content stays via single-instance fallback)', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowFailed)
 
@@ -122,9 +122,8 @@ describe('TicketDetailPage - Failed sub-tab', () => {
     await goToWorkflowTab()
 
     await waitFor(() => expect(screen.getByTestId('phase-timeline')).toBeInTheDocument())
-    expect(screen.queryByText(/Running \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Failed \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Completed \(\d+\)/)).not.toBeInTheDocument()
+    expect(screen.getByText('Failed (1)')).toBeInTheDocument()
+    expect(screen.getByText('Trace')).toBeInTheDocument()
   })
 
   it('shows Failed (1) and Running (1) counts when one instance is failed', async () => {

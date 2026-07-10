@@ -147,7 +147,7 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
     vi.mocked(ticketsApi.getAgentSessions).mockResolvedValue(emptySessions)
   })
 
-  it('does not show sub-tabs for a single running instance', async () => {
+  it('shows sub-tabs (incl. Trace) for a single running instance', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowWithActivePhase)
 
@@ -157,24 +157,24 @@ describe('TicketDetailPage - Running/Completed sub-tabs visibility', () => {
     await waitFor(() => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
     })
-    expect(screen.queryByText(/Running \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Failed \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Completed \(\d+\)/)).not.toBeInTheDocument()
+    expect(screen.getByText('Running (1)')).toBeInTheDocument()
+    expect(screen.getByText('Trace')).toBeInTheDocument()
   })
 
-  it('does not show sub-tabs for a single completed instance (singleCompletedOnly optimization)', async () => {
+  it('shows sub-tabs for a single completed instance (content stays on default tab)', async () => {
     vi.mocked(ticketsApi.getTicket).mockResolvedValue(sampleTicket)
     vi.mocked(ticketsApi.getWorkflow).mockResolvedValue(workflowCompleted)
 
     renderPage()
     await goToWorkflowTab()
 
+    // Bar is visible (Trace reachable) and the single instance still renders
+    // its phase timeline under the default tab via the single-instance fallback.
     await waitFor(() => {
       expect(screen.getByTestId('phase-timeline')).toBeInTheDocument()
     })
-    expect(screen.queryByText(/Running \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Failed \(\d+\)/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Completed \(\d+\)/)).not.toBeInTheDocument()
+    expect(screen.getByText('Completed (1)')).toBeInTheDocument()
+    expect(screen.getByText('Trace')).toBeInTheDocument()
   })
 
   it('shows Running/Failed/Completed sub-tabs for mixed running+completed instances', async () => {

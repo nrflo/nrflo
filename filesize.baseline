@@ -36,7 +36,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	739
+be/internal/api/server.go	740
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -79,13 +79,13 @@ be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_interactive.go	340
 be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	668
+be/internal/orchestrator/orchestrator_loop.go	572
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	477
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
 be/internal/orchestrator/orchestrator_worktree_test.go	757
 be/internal/repo/agent_definition.go	394
-be/internal/repo/agent_session.go	688
+be/internal/repo/agent_session.go	655
 be/internal/repo/artifact_test.go	318
 be/internal/repo/audit_repo_test.go	307
 be/internal/repo/daily_stats_test.go	440
@@ -209,7 +209,7 @@ ui/src/components/workflows/NotificationChannelForm.tsx	325
 ui/src/hooks/useChains.test.tsx	470
 ui/src/hooks/useTickets.ts	589
 ui/src/hooks/useWSReducer.test.ts	1048
-ui/src/hooks/useWSReducer.ts	598
+ui/src/hooks/useWSReducer.ts	603
 ui/src/hooks/useWSSnapshot.test.ts	623
 ui/src/hooks/useWebSocket.eventHandling.test.tsx	735
 ui/src/hooks/useWebSocket.ts	459
@@ -220,14 +220,14 @@ ui/src/pages/DetailsTabContent.test.tsx	314
 ui/src/pages/GitStatusTabContent.test.tsx	417
 ui/src/pages/HierarchyTabContent.test.tsx	589
 ui/src/pages/ProjectWorkflowsPage.test.tsx	1452
-ui/src/pages/ProjectWorkflowsPage.tsx	533
+ui/src/pages/ProjectWorkflowsPage.tsx	531
 ui/src/pages/PythonScriptsPage.test.tsx	329
 ui/src/pages/SettingsPage.test.tsx	383
 ui/src/pages/TicketDetailPage.epic.test.tsx	408
 ui/src/pages/TicketDetailPage.retry.test.tsx	325
 ui/src/pages/TicketDetailPage.test-utils.ts	413
 ui/src/pages/TicketDetailPage.tsx	342
-ui/src/pages/TicketWorkflowTab.tsx	347
+ui/src/pages/TicketWorkflowTab.tsx	335
 ui/src/pages/WorkflowChainEditorPage.tsx	317
 ui/src/pages/WorkflowChainRunsTab.test.tsx	359
 ui/src/pages/WorkflowTabContent.epic.test.tsx	374
@@ -237,4 +237,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	389
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	497
+ui/src/types/workflow.ts	462

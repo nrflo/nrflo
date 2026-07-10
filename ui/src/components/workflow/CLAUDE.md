@@ -18,6 +18,10 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama). I
 - Height clamped to min 140px so the 4-button controls panel stays fully visible on short layouts.
 - `AgentsTable.tsx` provides a flat table view for simplified-graph mode.
 
+## Trace
+
+`Trace/` — Gantt-style run timeline (`TraceView`): percentage-positioned divs on a linear time scale (pure math in `timeScale.ts`), one lane per agent with relaunch-chain segments, pixel-bucketed event markers with category filter chips, child sub-workflow rows with breadcrumb drill-down. Data from `useTrace` (`GET /workflow-instances/{iid}/trace`); no timers — the running edge advances on WS-driven refetches (`dataUpdatedAt`). Clicks open `AgentLogPanel`. Hosted by `TicketTraceSection` (ticket Trace sub-tab) and `ProjectTraceSection` (project runs).
+
 ## Agent Log Panel
 
 `AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail`:

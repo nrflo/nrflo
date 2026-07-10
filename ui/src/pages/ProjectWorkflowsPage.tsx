@@ -21,12 +21,14 @@ import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm } from './RunWorkflowForm'
 import { InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
 import type { InputArtifactRef } from '@/types/artifact'
-import { WorkflowInstanceTable } from './WorkflowInstanceTable'
 import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
 import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
+import { ProjectTerminalTab } from './ProjectTerminalTab'
+import { ProjectTraceSection } from './ProjectTraceSection'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Badge } from '@/components/ui/Badge'
-import { Repeat } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Repeat, ChartGantt } from 'lucide-react'
 import { LaunchObserverButton } from '@/components/observer/LaunchObserverButton'
 import type { WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
@@ -43,6 +45,7 @@ export function ProjectWorkflowsPage() {
   const [logPanelCollapsed, setLogPanelCollapsed] = useState(false)
   const [selectedPanelAgent, setSelectedPanelAgent] = useState<SelectedAgentData | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [traceInstanceId, setTraceInstanceId] = useState<string | null>(null)
 
   // Run Workflow form state
   const [selectedWorkflowDef, setSelectedWorkflowDef] = useState('')
@@ -151,6 +154,11 @@ export function ProjectWorkflowsPage() {
     return sessionsData.sessions.filter(s => s.workflow_instance_id === resolvedInstanceId)
   }, [sessionsData?.sessions, resolvedInstanceId])
 
+  const traceSessions = useMemo(() => {
+    if (!sessionsData?.sessions || !traceInstanceId) return []
+    return sessionsData.sessions.filter(s => s.workflow_instance_id === traceInstanceId)
+  }, [sessionsData, traceInstanceId])
+
   const activeAgents = displayedState?.active_agents ?? {}
 
   const orchestrationStatus = displayedState?.findings?.['_orchestration'] as
@@ -170,6 +178,15 @@ export function ProjectWorkflowsPage() {
     setActiveTab(tab)
     setSelectedInstanceId('')
     setSelectedPanelAgent(null)
+    setTraceInstanceId(null)
+  }
+
+  const handleResumeSession = (sessionId: string) => {
+    if (!currentProject) return
+    resumeSessionMutation.mutate(
+      { projectId: currentProject, params: { session_id: sessionId } },
+      { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
+    )
   }
 
   const pushToStore = (sessionId: string, agentType: string, instanceId?: string) => {
@@ -278,128 +295,109 @@ export function ProjectWorkflowsPage() {
         <ProjectFindingsTab projectId={currentProject} />
       )}
 
-      {activeTab === 'completed' && (
-        <>
-          <WorkflowInstanceTable
-            instanceIds={instanceIds}
-            instances={tabInstances}
-            selectedId={resolvedInstanceId}
-            onSelect={setSelectedInstanceId}
-            onDelete={setDeleteTargetId}
-          />
-          <WorkflowTabContent
-            ticketId={undefined}
-            hasWorkflow={hasWorkflow}
-            displayedState={displayedState}
-            displayedWorkflowName={displayedWorkflowName}
-            hasMultipleWorkflows={hasMultipleWorkflows}
-            workflows={instanceIds}
-            workflowLabels={selectorLabels}
-            selectedWorkflow={selectedInstanceId}
-            onSelectWorkflow={setSelectedInstanceId}
-            isOrchestrated={false}
-            hasActivePhase={false}
-            activeAgents={{}}
-            sessions={filteredSessions}
-            logPanelCollapsed={logPanelCollapsed}
-            onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
-            selectedPanelAgent={selectedPanelAgent}
-            onAgentSelect={setSelectedPanelAgent}
-            onStop={() => {}}
-            stopPending={false}
-            onRetryFailed={() => {}}
-            retryingSessionId={null}
-            onTakeControl={() => {}}
-            takeControlPending={false}
-            onResumeSession={(sessionId) => {
-              if (!currentProject) return
-              resumeSessionMutation.mutate(
-                { projectId: currentProject, params: { session_id: sessionId } },
-                { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
-              )
-            }}
-            resumeSessionPending={resumeSessionMutation.isPending}
-            projectFindings={projectFindings}
-            headerExtra={
-              <LaunchObserverButton
-                payload={{ scope: 'workflow', project_id: currentProject, workflow_id: displayedState?.workflow ?? displayedWorkflowName }}
-              />
-            }
-          />
-        </>
+      {traceInstanceId && (
+        <ProjectTraceSection
+          instanceId={traceInstanceId}
+          workflowState={allWorkflows[traceInstanceId]}
+          sessions={traceSessions}
+          selectedPanelAgent={selectedPanelAgent}
+          onAgentSelect={setSelectedPanelAgent}
+          logPanelCollapsed={logPanelCollapsed}
+          onClose={() => setTraceInstanceId(null)}
+          onResumeSession={handleResumeSession}
+          resumePending={resumeSessionMutation.isPending}
+          projectFindings={projectFindings}
+        />
       )}
 
-      {activeTab === 'failed' && (
-        <>
-          <WorkflowInstanceTable
-            instanceIds={instanceIds}
-            instances={tabInstances}
-            selectedId={resolvedInstanceId}
-            onSelect={setSelectedInstanceId}
-            onDelete={setDeleteTargetId}
-          />
-          <WorkflowTabContent
-            ticketId={undefined}
-            hasWorkflow={hasWorkflow}
-            displayedState={displayedState}
-            displayedWorkflowName={displayedWorkflowName}
-            hasMultipleWorkflows={hasMultipleWorkflows}
-            workflows={instanceIds}
-            workflowLabels={selectorLabels}
-            selectedWorkflow={selectedInstanceId}
-            onSelectWorkflow={setSelectedInstanceId}
-            isOrchestrated={false}
-            hasActivePhase={false}
-            activeAgents={{}}
-            sessions={filteredSessions}
-            logPanelCollapsed={logPanelCollapsed}
-            onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
-            selectedPanelAgent={selectedPanelAgent}
-            onAgentSelect={setSelectedPanelAgent}
-            onStop={() => {}}
-            stopPending={false}
-            onRetryFailed={(sessionId) =>
-              currentProject &&
-              retryFailedMutation.mutate({
-                projectId: currentProject,
-                params: {
-                  workflow: displayedState?.workflow ?? '',
-                  session_id: sessionId,
-                  instance_id: resolvedInstanceId || undefined,
-                },
-              })
-            }
-            retryingSessionId={
-              retryFailedMutation.isPending
-                ? (retryFailedMutation.variables?.params.session_id ?? null)
-                : null
-            }
-            onTakeControl={() => {}}
-            takeControlPending={false}
-            onResumeSession={(sessionId) => {
-              if (!currentProject) return
-              resumeSessionMutation.mutate(
-                { projectId: currentProject, params: { session_id: sessionId } },
-                { onSuccess: (data) => pushToStore(data.session_id, 'agent') }
-              )
-            }}
-            resumeSessionPending={resumeSessionMutation.isPending}
-            projectFindings={projectFindings}
-          />
-        </>
+      {activeTab === 'completed' && !traceInstanceId && (
+        <ProjectTerminalTab
+          instanceIds={instanceIds}
+          instances={tabInstances}
+          resolvedInstanceId={resolvedInstanceId}
+          selectedInstanceId={selectedInstanceId}
+          onSelectInstance={setSelectedInstanceId}
+          onDelete={setDeleteTargetId}
+          onTrace={setTraceInstanceId}
+          displayedState={displayedState}
+          displayedWorkflowName={displayedWorkflowName}
+          selectorLabels={selectorLabels}
+          sessions={filteredSessions}
+          logPanelCollapsed={logPanelCollapsed}
+          onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
+          selectedPanelAgent={selectedPanelAgent}
+          onAgentSelect={setSelectedPanelAgent}
+          onResumeSession={handleResumeSession}
+          resumePending={resumeSessionMutation.isPending}
+          projectFindings={projectFindings}
+          headerExtra={
+            <LaunchObserverButton
+              payload={{ scope: 'workflow', project_id: currentProject, workflow_id: displayedState?.workflow ?? displayedWorkflowName }}
+            />
+          }
+        />
       )}
 
-      {activeTab === 'running' && (
+      {activeTab === 'failed' && !traceInstanceId && (
+        <ProjectTerminalTab
+          instanceIds={instanceIds}
+          instances={tabInstances}
+          resolvedInstanceId={resolvedInstanceId}
+          selectedInstanceId={selectedInstanceId}
+          onSelectInstance={setSelectedInstanceId}
+          onDelete={setDeleteTargetId}
+          onTrace={setTraceInstanceId}
+          displayedState={displayedState}
+          displayedWorkflowName={displayedWorkflowName}
+          selectorLabels={selectorLabels}
+          sessions={filteredSessions}
+          logPanelCollapsed={logPanelCollapsed}
+          onToggleLogPanel={() => setLogPanelCollapsed((p) => !p)}
+          selectedPanelAgent={selectedPanelAgent}
+          onAgentSelect={setSelectedPanelAgent}
+          onResumeSession={handleResumeSession}
+          resumePending={resumeSessionMutation.isPending}
+          projectFindings={projectFindings}
+          onRetryFailed={(sessionId) =>
+            currentProject &&
+            retryFailedMutation.mutate({
+              projectId: currentProject,
+              params: {
+                workflow: displayedState?.workflow ?? '',
+                session_id: sessionId,
+                instance_id: resolvedInstanceId || undefined,
+              },
+            })
+          }
+          retryingSessionId={
+            retryFailedMutation.isPending
+              ? (retryFailedMutation.variables?.params.session_id ?? null)
+              : null
+          }
+        />
+      )}
+
+      {activeTab === 'running' && !traceInstanceId && (
         <>
           {instanceIds.length > 0 && (
-            <InstanceList
-              instanceIds={instanceIds}
-              instances={tabInstances}
-              labels={selectorLabels}
-              selectedId={resolvedInstanceId}
-              onSelect={setSelectedInstanceId}
-              tab={activeTab}
-            />
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <InstanceList
+                  instanceIds={instanceIds}
+                  instances={tabInstances}
+                  labels={selectorLabels}
+                  selectedId={resolvedInstanceId}
+                  onSelect={setSelectedInstanceId}
+                  tab={activeTab}
+                />
+              </div>
+              {resolvedInstanceId && (
+                <Button variant="outline" size="sm" onClick={() => setTraceInstanceId(resolvedInstanceId)}>
+                  <ChartGantt className="h-3.5 w-3.5 mr-1" />
+                  Trace
+                </Button>
+              )}
+            </div>
           )}
           {displayedState?.endless_loop === true && displayedState?.status === 'active' && resolvedInstanceId && (
             <div className="flex flex-wrap items-center gap-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">

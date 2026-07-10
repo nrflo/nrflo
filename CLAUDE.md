@@ -112,6 +112,7 @@ Rules every change must respect.
 - **Scheduled tasks** → [scheduler/CLAUDE.md](be/internal/scheduler/CLAUDE.md)
 - **Workflow chains and chain runs** → [be/CLAUDE.md](be/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md) + [ui/CLAUDE.md](ui/CLAUDE.md)
 - **Sub-workflows** (`run_subworkflow`/`get_subworkflow` tools) → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Run trace timeline** (`GET /workflow-instances/{iid}/trace` + Trace UI tab) → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 
 ### Auth & administration
 - **Auth + sessions + login rate limit** → [auth/CLAUDE.md](be/internal/auth/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
@@ -139,10 +140,6 @@ See `be/cmd/server/main.go` for subcommands.
 | `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
 | `deep-research` (global) | L0: scope -> L1: research -> L2: verify_a/b/c -> L3: synthesize | Multi-source web research, runnable from any project |
-
-## API Response Format
-
-`GET /api/v1/tickets/:id/workflow` returns a v4 wrapper (state, findings, agent history); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Building & Installing
 

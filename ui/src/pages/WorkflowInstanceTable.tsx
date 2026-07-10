@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trash2, ChevronLeft, ChevronRight, ChartGantt } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ResultIcon } from '@/components/ui/ResultIcon'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
@@ -14,6 +14,7 @@ interface WorkflowInstanceTableProps {
   selectedId: string
   onSelect: (id: string) => void
   onDelete: (id: string) => void
+  onTrace?: (id: string) => void
 }
 
 export function WorkflowInstanceTable({
@@ -22,6 +23,7 @@ export function WorkflowInstanceTable({
   selectedId,
   onSelect,
   onDelete,
+  onTrace,
 }: WorkflowInstanceTableProps) {
   const [currentPage, setCurrentPage] = useState(0)
 
@@ -77,12 +79,25 @@ export function WorkflowInstanceTable({
                   {state?.completed_at ? formatDateTime(state.completed_at) : '-'}
                 </TableCell>
                 <TableCell className="w-10">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(id) }}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {onTrace && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onTrace(id) }}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                        aria-label="Open trace"
+                        data-testid="instance-trace"
+                      >
+                        <ChartGantt className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(id) }}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      aria-label="Delete instance"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </TableCell>
               </TableRow>
             )

@@ -19,7 +19,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `workflow_restart_details.go` | Restart detail loading: duration, context, message count from continued sessions |
 | `agent.go` | Agent session operations; `Fail`/`Continue` return `(sessionID, error)` |
 | `agent_definition.go` | Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli_interactive/api/script (default cli_interactive); script requires `python_script_id` in same project and rejects binding to a `kind='tool'` row with `python_script_kind_mismatch`; validates `validation_commands` (max 20 entries, ≤1024 bytes each, no empty/whitespace), persisted as JSON-array string with default `"[]"`; `consultant=true` requires `execution_mode='api'` (effective values resolved against the current row on update). Consultant defs never become phases: the execution graph uses `repo.AgentDefinitionRepo.ListExecutable` (`List` + `consultant=0`), the v4 read model omits them, and layer-gap/pass-policy/quorum counts exclude them |
-| `trace.go` (+ `_lanes`/`_markers`/`agent_tool_span`) | Read-time trace for `GET /workflow-instances/{iid}/trace`: lanes merged by chain root, layer bands, markers from agent_messages/findings_history (tool spans close via payload `ended_at`), children via `parent_instance_id` |
+| `trace.go` (+ `_lanes`/`_markers`/`agent_tool_span`) | Read-time trace for `GET /workflow-instances/{iid}/trace`: lanes merged by chain root, layer bands, markers from agent_messages/findings_history (tool spans close via payload `ended_at`) + `lifecycle` markers and nudge/stop-block lane counters derived from session columns, children via `parent_instance_id` |
 | `findings.go` | Findings add/append/get/delete |
 | `findings_emit.go` + `finding_schema.go` | `FindingsService.Emit`: validate a finding `value` against the workflow's per-key schema (resolved via session → workflow → `workflows.finding_schemas`), store on success, else error with the configured example. `ValidateFindingSchemas`/`compileJSONSchema` (Draft 2020, shared with python tool `input_schema`) validate schema definitions at workflow-def create/update |
 | `chain.go` | Chain build, dependency expansion, topological sort, cycle detection |
@@ -67,15 +67,4 @@ Most service constructors take `(pool *db.Pool, clk clock.Clock)`. Pass `clock.R
 
 **Exception:** `NewAgentDefinitionService(pool, clk, cliModelSvc, apiModelSvc, pythonScriptRepo)` additionally requires a `*CLIModelService` (validates `low_consumption_model` for cli_interactive) and `*APIModelService` (validates model and `low_consumption_model` for api mode). `NewSystemAgentDefinitionService(pool, clk, apiModelSvc)` also requires `*APIModelService` for api-mode model validation.
 
-## Common Tasks
-
-### Adding a New Agent Type
-
-1. Create agent definition via API: `POST /api/v1/workflows/:wid/agents` with `layer` field
-2. Update root `CLAUDE.md` agent references if user-visible
-
-### Adding a New Workflow
-
-1. Create workflow definition: `POST /api/v1/workflows`
-2. Create agent definitions: `POST /api/v1/workflows/:wid/agents` with `layer` field
-3. Update root `CLAUDE.md` Workflows table
+Workflow/agent definition CRUD routes: see [api/CLAUDE.md](../api/CLAUDE.md).

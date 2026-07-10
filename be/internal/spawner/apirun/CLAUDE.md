@@ -9,6 +9,7 @@ In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `i
 - `Provider.Run` returns `StopReason`: `end_turn` → `SetFinalStatus("PASS")`; `max_tokens` → fail with system message.
 - On `tool_use`: `handler.Invoke(ctx, env, block.Input)` per content block; `TerminalSignal` → set `proc.finalStatus` and return early.
 - Non-terminal results appended as tool_result messages; loop continues for next turn.
+- Trace tool spans: the streaming sink emits invoke rows via `MessageSink.TrackToolInvoke` (payload carries `tool_use_id`); after each handler returns, the runner calls `MessageSink.CloseToolSpan` to stamp `ended_at` (spawner side: in-memory pending-buffer stamp, DB fallback — `spawner/output_tool_span.go`).
 
 ## Terminal Signals
 

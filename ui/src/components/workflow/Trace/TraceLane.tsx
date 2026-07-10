@@ -44,8 +44,18 @@ export function TraceLane({
         <div className="text-[10px] text-muted-foreground truncate">
           {lane.model_id ?? ''}
           {(lane.restarts?.length ?? 0) > 0 && (
-            <span className="ml-1" data-testid="trace-lane-restarts">
+            <span className="ml-1" data-testid="trace-lane-restarts" title={`${lane.restarts!.length} restart(s)`}>
               ↻{lane.restarts!.length}
+            </span>
+          )}
+          {(lane.nudge_count ?? 0) > 0 && (
+            <span className="ml-1" data-testid="trace-lane-nudges" title={`nudged ${lane.nudge_count} time(s)`}>
+              nudged×{lane.nudge_count}
+            </span>
+          )}
+          {(lane.stop_block_count ?? 0) > 0 && (
+            <span className="ml-1" data-testid="trace-lane-stopblocks" title={`Stop hook blocked completion ${lane.stop_block_count} time(s)`}>
+              blocked×{lane.stop_block_count}
             </span>
           )}
         </div>

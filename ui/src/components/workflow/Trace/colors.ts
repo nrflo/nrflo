@@ -36,6 +36,8 @@ export function markerClasses(type: string): string {
       return 'bg-red-500 dark:bg-red-400'
     case 'finding':
       return 'bg-green-600 dark:bg-green-400'
+    case 'lifecycle':
+      return 'bg-orange-500 dark:bg-orange-400'
     case 'thinking':
       return 'bg-gray-400 dark:bg-gray-500'
     default:
@@ -44,4 +46,4 @@ export function markerClasses(type: string): string {
 }
 
 /** Legend chip label per marker type (also the filter chip set). */
-export const MARKER_TYPES = ['tool', 'subagent', 'skill', 'user_input', 'error', 'finding'] as const
+export const MARKER_TYPES = ['tool', 'subagent', 'skill', 'user_input', 'error', 'finding', 'lifecycle'] as const

@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -25,24 +26,28 @@ func parseTraceTime(s string) (time.Time, bool) {
 // chains into single lanes keyed by COALESCE(ancestor_session_id, id) — the
 // ancestor column always points at the chain root. Returns the sorted lanes
 // plus a session→lane index used for marker attribution.
-func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]int) ([]types.TraceLane, map[string]string) {
+func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]int) ([]types.TraceLane, map[string]string, []types.TraceMarker) {
 	sessionToLane := make(map[string]string)
 	lanes := []types.TraceLane{}
+	var lifecycle []types.TraceMarker
 	rows, err := s.pool.Query(`
-		SELECT COALESCE(ancestor_session_id, id), id, phase, agent_type, model_id, status, result, started_at, ended_at
+		SELECT COALESCE(ancestor_session_id, id), id, phase, agent_type, model_id, status, result, started_at, ended_at,
+		       result_reason, rate_limit_until_ts, rate_limit_retry_count, nudge_count, stop_block_count
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND `+transientAgentTypeExclusion+`
 		ORDER BY started_at, created_at`, wfiID)
 	if err != nil {
-		return lanes, sessionToLane
+		return lanes, sessionToLane, lifecycle
 	}
 	defer rows.Close()
 
 	laneIdx := make(map[string]int)
 	for rows.Next() {
 		var laneID, id string
-		var phase, agentType, modelID, status, result, startedAt, endedAt sql.NullString
-		rows.Scan(&laneID, &id, &phase, &agentType, &modelID, &status, &result, &startedAt, &endedAt)
+		var phase, agentType, modelID, status, result, startedAt, endedAt, resultReason, rateLimitUntil sql.NullString
+		var rateLimitRetries, nudgeCount, stopBlockCount sql.NullInt64
+		rows.Scan(&laneID, &id, &phase, &agentType, &modelID, &status, &result, &startedAt, &endedAt,
+			&resultReason, &rateLimitUntil, &rateLimitRetries, &nudgeCount, &stopBlockCount)
 
 		seg := types.TraceSegment{SessionID: id, Status: status.String, Result: result.String}
 		if startedAt.Valid {
@@ -77,11 +82,38 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]in
 		if modelID.Valid && modelID.String != "" {
 			lanes[idx].ModelID = modelID.String
 		}
+		lanes[idx].NudgeCount += int(nudgeCount.Int64)
+		lanes[idx].StopBlockCount += int(stopBlockCount.Int64)
 		sessionToLane[id] = laneID
+
+		lifecycle = append(lifecycle, sessionLifecycleMarkers(id, resultReason, endedAt, rateLimitUntil, rateLimitRetries)...)
 	}
 
 	sortTraceLanes(lanes)
-	return lanes, sessionToLane
+	return lanes, sessionToLane, lifecycle
+}
+
+// sessionLifecycleMarkers derives orchestration point events from session
+// columns: why a segment ended (result_reason at ended_at) and rate-limit
+// waits (at rate_limit_until_ts). Counters without timestamps (nudges, stop
+// blocks) surface as lane badges instead — they cannot sit on a time axis.
+func sessionLifecycleMarkers(sessionID string, resultReason, endedAt, rateLimitUntil sql.NullString, rateLimitRetries sql.NullInt64) []types.TraceMarker {
+	var markers []types.TraceMarker
+	if resultReason.Valid && resultReason.String != "" && endedAt.Valid {
+		markers = append(markers, types.TraceMarker{
+			Type: "lifecycle", At: endedAt.String, SessionID: sessionID, Label: resultReason.String,
+		})
+	}
+	if rateLimitUntil.Valid && rateLimitUntil.String != "" {
+		label := "rate_limited"
+		if rateLimitRetries.Int64 > 0 {
+			label = fmt.Sprintf("rate_limited (retry %d)", rateLimitRetries.Int64)
+		}
+		markers = append(markers, types.TraceMarker{
+			Type: "lifecycle", At: rateLimitUntil.String, SessionID: sessionID, Label: label,
+		})
+	}
+	return markers
 }
 
 // sortTraceLanes orders lanes (layer asc, phase asc, first start asc, lane id

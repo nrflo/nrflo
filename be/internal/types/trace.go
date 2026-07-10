@@ -39,6 +39,9 @@ type TraceLane struct {
 	Segments  []TraceSegment `json:"segments"`
 	Restarts  []TraceRestart `json:"restarts,omitempty"`
 	Markers   []TraceMarker  `json:"markers"`
+	// Timestamp-less counters summed across the chain, shown as lane badges.
+	NudgeCount     int `json:"nudge_count,omitempty"`
+	StopBlockCount int `json:"stop_block_count,omitempty"`
 }
 
 // TraceSegment is one agent_sessions row within a lane.
@@ -62,7 +65,7 @@ type TraceRestart struct {
 // event cannot be attributed to a session). Tool markers whose span was closed
 // by PostToolUse carry EndedAt and render as duration bars.
 type TraceMarker struct {
-	Type      string  `json:"type"` // tool|subagent|skill|user_input|error|thinking|finding
+	Type      string  `json:"type"` // tool|subagent|skill|user_input|error|thinking|finding|lifecycle
 	At        string  `json:"at"`
 	EndedAt   *string `json:"ended_at,omitempty"`
 	SessionID string  `json:"session_id,omitempty"`

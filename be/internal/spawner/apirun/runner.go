@@ -191,6 +191,7 @@ func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []pr
 		} else {
 			out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
 		}
+		r.cfg.Sink.CloseToolSpan(block.ToolUseID)
 
 		var ts TerminalSignal
 		if errors.As(terr, &ts) {

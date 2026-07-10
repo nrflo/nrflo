@@ -22,12 +22,12 @@ const (
 var traceMarkerCategories = map[string]bool{
 	"text": true, "tool": true, "subagent": true, "skill": true,
 	"user_input": true, "error": true, "result": true, "validation": true,
-	"thinking": true, "finding": true,
+	"thinking": true, "finding": true, "lifecycle": true,
 }
 
 // traceDefaultCategories excludes high-volume, low-signal rows (text,
 // thinking, result, validation) from the default timeline.
-var traceDefaultCategories = []string{"tool", "subagent", "skill", "user_input", "error", "finding"}
+var traceDefaultCategories = []string{"tool", "subagent", "skill", "user_input", "error", "finding", "lifecycle"}
 
 // TraceOptions controls marker extraction for BuildTrace.
 type TraceOptions struct {
@@ -70,7 +70,7 @@ func ParseTraceOptions(categoriesParam, markerLimitParam string) (TraceOptions, 
 // writes), attaches them to their lanes, and returns the markers that cannot
 // be attributed to a session (instance-scope finding writes by unknown
 // actors) plus whether the global cap truncated the set (earliest-first).
-func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLane, sessionToLane map[string]string, opts TraceOptions) ([]types.TraceMarker, bool) {
+func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLane, sessionToLane map[string]string, lifecycle []types.TraceMarker, opts TraceOptions) ([]types.TraceMarker, bool) {
 	if len(opts.Categories) == 0 {
 		opts.Categories = traceDefaultCategories
 	}
@@ -79,13 +79,16 @@ func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLa
 	}
 
 	var msgCats []string
-	includeFindings := false
+	includeFindings, includeLifecycle := false, false
 	for _, c := range opts.Categories {
-		if c == "finding" {
+		switch c {
+		case "finding":
 			includeFindings = true
-			continue
+		case "lifecycle":
+			includeLifecycle = true
+		default:
+			msgCats = append(msgCats, c)
 		}
-		msgCats = append(msgCats, c)
 	}
 
 	sessionIDs := make([]string, 0, len(sessionToLane))
@@ -97,6 +100,9 @@ func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLa
 	markers := s.queryMessageMarkers(sessionIDs, msgCats, opts.MarkerLimit+1)
 	if includeFindings {
 		markers = append(markers, s.queryFindingMarkers(wfiID, sessionIDs, opts.MarkerLimit+1)...)
+	}
+	if includeLifecycle {
+		markers = append(markers, lifecycle...)
 	}
 	sortTraceMarkers(markers)
 	truncated := false

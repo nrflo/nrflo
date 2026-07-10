@@ -58,31 +58,6 @@ func (p *fakeProc) ContextLeft() int {
 	return p.contextLeft
 }
 
-// recordingSink captures TrackMessage calls.
-type recordingSink struct {
-	mu    sync.Mutex
-	calls []recordedMsg
-}
-
-type recordedMsg struct {
-	content  string
-	category string
-}
-
-func (r *recordingSink) TrackMessage(content, category string) {
-	r.mu.Lock()
-	r.calls = append(r.calls, recordedMsg{content: content, category: category})
-	r.mu.Unlock()
-}
-
-func (r *recordingSink) Calls() []recordedMsg {
-	r.mu.Lock()
-	out := make([]recordedMsg, len(r.calls))
-	copy(out, r.calls)
-	r.mu.Unlock()
-	return out
-}
-
 // recordingAgentSvc captures UpdateContextLeft calls.
 type recordingAgentSvc struct {
 	mu    sync.Mutex

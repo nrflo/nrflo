@@ -178,6 +178,44 @@ func TestBuildTrace_ToolSpanEndedAt(t *testing.T) {
 	}
 }
 
+func TestBuildTrace_LifecycleMarkers(t *testing.T) {
+	t.Parallel()
+	pool, svc, wfiID := setupTraceTestEnv(t)
+	// Segment ended for a reason → lifecycle marker at ended_at.
+	insertTraceSession(t, pool, traceSession{id: "s-a", wfiID: wfiID, agentType: "analyzer",
+		status: "continued", result: "continue", resultReason: "stall_restart_1",
+		startedAt: "2025-01-01T00:00:00Z", endedAt: "2025-01-01T00:05:00Z"})
+	// Rate-limited relaunch waiting until a known time.
+	insertTraceSession(t, pool, traceSession{id: "s-a2", wfiID: wfiID, agentType: "analyzer",
+		status: "continued", ancestor: "s-a", startedAt: "2025-01-01T00:05:10Z", endedAt: "2025-01-01T00:06:00Z"})
+	mustExec(t, pool, `UPDATE agent_sessions SET rate_limit_until_ts = '2025-01-01T00:30:00Z', rate_limit_retry_count = 2, nudge_count = 3, stop_block_count = 1 WHERE id = 's-a2'`)
+
+	trace, err := svc.BuildTrace(wfiID, TraceOptions{})
+	if err != nil {
+		t.Fatalf("BuildTrace: %v", err)
+	}
+	markers := laneMarkers(t, trace, "s-a")
+	if len(markers) != 2 {
+		t.Fatalf("markers = %+v, want 2 lifecycle markers", markers)
+	}
+	if markers[0].Type != "lifecycle" || markers[0].Label != "stall_restart_1" || markers[0].At != "2025-01-01T00:05:00Z" {
+		t.Errorf("marker 0 = %+v, want stall_restart_1 at segment end", markers[0])
+	}
+	if markers[1].Label != "rate_limited (retry 2)" || markers[1].At != "2025-01-01T00:30:00Z" {
+		t.Errorf("marker 1 = %+v, want rate_limited retry marker at until_ts", markers[1])
+	}
+	lane := trace.Lanes[0]
+	if lane.NudgeCount != 3 || lane.StopBlockCount != 1 {
+		t.Errorf("lane counters = nudges %d / stop blocks %d, want 3/1", lane.NudgeCount, lane.StopBlockCount)
+	}
+
+	// Excluded when categories omit "lifecycle".
+	trace2, _ := svc.BuildTrace(wfiID, TraceOptions{Categories: []string{"tool"}})
+	if got := len(laneMarkers(t, trace2, "s-a")); got != 0 {
+		t.Errorf("lifecycle markers leaked despite categories=tool: %d", got)
+	}
+}
+
 func TestParseTraceOptions(t *testing.T) {
 	t.Parallel()
 	opts, err := ParseTraceOptions("", "")

@@ -13,6 +13,11 @@ package apirun
 // callers do not pass the process again per call.
 type MessageSink interface {
 	TrackMessage(content, category string)
+	// TrackToolInvoke records a tool-invoke row carrying tool_use_id in its
+	// payload so the trace timeline can pair it with the result.
+	TrackToolInvoke(content, category, toolUseID string)
+	// CloseToolSpan stamps ended_at on the invoke row once the tool returns.
+	CloseToolSpan(toolUseID string)
 }
 
 // ProcState is the small mutator surface the runner needs on the agent

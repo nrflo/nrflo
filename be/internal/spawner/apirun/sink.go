@@ -90,7 +90,7 @@ func (s *runnerSink) OnToolUseStop(id string, fullInput json.RawMessage) {
 	if len(compactStr) > 2048 {
 		compactStr = compactStr[:2048]
 	}
-	s.msgSink.TrackMessage(fmt.Sprintf("[%s] %s", name, compactStr), toolCategory(name))
+	s.msgSink.TrackToolInvoke(fmt.Sprintf("[%s] %s", name, compactStr), toolCategory(name), id)
 }
 
 func (s *runnerSink) OnUsage(u provider.Usage) {

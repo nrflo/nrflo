@@ -51,6 +51,19 @@ describe('TraceLane', () => {
     expect(onSelect).toHaveBeenCalledWith('s2') // lane label → last segment
   })
 
+  it('shows nudge and stop-block badges when counters are set', () => {
+    render(
+      <TraceLane
+        lane={makeLane({ nudge_count: 2, stop_block_count: 1 })}
+        markers={[]}
+        domain={domain}
+        widthPx={1000}
+      />
+    )
+    expect(screen.getByTestId('trace-lane-nudges')).toHaveTextContent('nudged×2')
+    expect(screen.getByTestId('trace-lane-stopblocks')).toHaveTextContent('blocked×1')
+  })
+
   it('skips segments without a parsable start', () => {
     render(
       <TraceLane

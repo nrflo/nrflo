@@ -28,9 +28,9 @@ func (s *WorkflowService) BuildTrace(iid string, opts TraceOptions) (*types.Trac
 		}
 	}
 
-	lanes, sessionToLane := s.loadTraceLanes(iid, phaseLayers)
+	lanes, sessionToLane, lifecycle := s.loadTraceLanes(iid, phaseLayers)
 	s.attachTraceRestarts(iid, lanes)
-	rootMarkers, truncated := s.attachTraceMarkers(iid, lanes, sessionToLane, opts)
+	rootMarkers, truncated := s.attachTraceMarkers(iid, lanes, sessionToLane, lifecycle, opts)
 
 	resp := &types.TraceResponse{
 		InstanceID:  wi.ID,

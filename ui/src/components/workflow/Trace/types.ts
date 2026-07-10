@@ -46,6 +46,8 @@ export interface TraceLaneData {
   segments?: TraceSegment[]
   restarts?: TraceRestart[]
   markers?: TraceMarker[]
+  nudge_count?: number
+  stop_block_count?: number
 }
 
 export interface TraceLayer {

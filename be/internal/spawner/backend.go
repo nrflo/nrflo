@@ -230,6 +230,14 @@ func (p *procMessageSink) TrackMessage(content, category string) {
 	p.s.TrackMessage(p.proc, content, category)
 }
 
+func (p *procMessageSink) TrackToolInvoke(content, category, toolUseID string) {
+	p.s.TrackToolInvoke(p.proc, content, category, toolUseID)
+}
+
+func (p *procMessageSink) CloseToolSpan(toolUseID string) {
+	p.s.CloseToolSpan(p.proc, toolUseID)
+}
+
 // procStateAdapter wraps *processInfo with the apirun.ProcState surface.
 type procStateAdapter struct {
 	proc *processInfo

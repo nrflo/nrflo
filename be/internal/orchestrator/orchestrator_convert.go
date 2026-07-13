@@ -19,9 +19,10 @@ func convertToSpawnerWorkflows(svc map[string]service.SpawnerWorkflowDef) map[st
 		var phases []spawner.PhaseDef
 		for _, sp := range swf.Phases {
 			phases = append(phases, spawner.PhaseDef{
-				NodeID: sp.NodeID,
-				Agent:  sp.Agent,
-				Layer:  sp.Layer,
+				NodeID:       sp.NodeID,
+				Agent:        sp.Agent,
+				Layer:        sp.Layer,
+				Instructions: sp.Instructions,
 			})
 		}
 		result[name] = spawner.WorkflowDef{

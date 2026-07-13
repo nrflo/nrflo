@@ -25,7 +25,26 @@ const (
 	WorkflowInstanceFailed           WorkflowInstanceStatus = "failed"
 	WorkflowInstanceProjectCompleted WorkflowInstanceStatus = "project_completed"
 	WorkflowInstanceWaiting          WorkflowInstanceStatus = "waiting"
+
+	// Plan-boundary suspend statuses (DYNWF-5): the engine has exhausted its
+	// static layers on a plan-driven workflow and is parked waiting on the
+	// plan lifecycle (draft/revise/approve), not the pause_after machinery.
+	WorkflowInstancePlanning        WorkflowInstanceStatus = "planning"
+	WorkflowInstancePlanReady       WorkflowInstanceStatus = "plan_ready"
+	WorkflowInstanceWaitingInput    WorkflowInstanceStatus = "waiting_input"
+	WorkflowInstanceWaitingApproval WorkflowInstanceStatus = "waiting_approval"
 )
+
+// IsPlanSuspended returns true for the four plan-boundary statuses — the
+// engine is parked at the plan boundary, not running and not pause_after-waiting.
+func IsPlanSuspended(status WorkflowInstanceStatus) bool {
+	switch status {
+	case WorkflowInstancePlanning, WorkflowInstancePlanReady, WorkflowInstanceWaitingInput, WorkflowInstanceWaitingApproval:
+		return true
+	default:
+		return false
+	}
+}
 
 // WorkflowInstance represents a running workflow on a ticket or project
 type WorkflowInstance struct {

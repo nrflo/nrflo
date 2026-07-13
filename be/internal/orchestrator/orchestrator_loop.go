@@ -99,8 +99,22 @@ func (o *Orchestrator) runLoop(
 	// Non-blocking: failures return "" and agents fall back to PATH python3.
 	pythonPath, _ := o.venvMgr.Ensure(ctx, req.ProjectID, projectRoot)
 
-	// Group phases by layer
-	layerGroups := groupPhasesByLayer(svcWf.Phases)
+	// Group phases by layer. Merge in any already-materialized plan nodes so a
+	// resumed run (retry/continue relaunch of runLoop) keeps its dynamic
+	// layers instead of re-deriving only the static graph.
+	materializedPhases, materializedPolicies, _ := service.LoadInstanceNodePhases(pool, o.clock, wfiID)
+	for layer, policy := range materializedPolicies {
+		layerPolicies[layer] = policy
+	}
+	layerGroups := groupPhasesByLayer(service.EffectivePhases(svcWf.Phases, materializedPhases))
+	mergeMaterializedIntoSpawnerWorkflow(workflows, req.WorkflowName, materializedPhases)
+	if len(materializedPhases) > 0 {
+		if _, _, defProjectID, derr := o.resolveWorkflowDef(pool, req.ProjectID, req.WorkflowName); derr == nil {
+			for id, cfg := range service.LoadMaterializedAgentConfigs(pool, o.clock, defProjectID, req.WorkflowName, materializedPhases) {
+				agents[id] = spawner.AgentConfig{Model: cfg.Model, Timeout: cfg.Timeout}
+			}
+		}
+	}
 
 	// Interactive/plan pre-step: wait for PTY session to complete before starting layers
 	if pre != nil {
@@ -178,8 +192,29 @@ func (o *Orchestrator) runLoop(
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.
+	// planSpliced is true once an approved plan's layers have been merged into
+	// layerGroups this run — it guards reloadPlanLayers from re-triggering when
+	// the now-extended layerGroups itself runs to completion.
 	layerIdx := startLayerIdx
-	for layerIdx < len(layerGroups) {
+	planSpliced := len(materializedPhases) > 0
+	for {
+		if layerIdx >= len(layerGroups) {
+			if planSpliced {
+				break
+			}
+			newGroups, extended, terminal, wtHandled := o.reloadPlanLayers(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents)
+			if extended {
+				layerGroups = newGroups
+				planSpliced = true
+				continue
+			}
+			if terminal {
+				worktreeHandled = wtHandled
+				return
+			}
+			break
+		}
+
 		// Cancellation check
 		select {
 		case <-ctx.Done():
@@ -190,108 +225,13 @@ func (o *Orchestrator) runLoop(
 		}
 
 		// === Plan execution: drain active plan steps before forward iteration ===
-		o.mu.Lock()
-		var planStep callbackPlanStep
-		hasPlanStep := false
-		if rs := o.runs[wfiID]; rs != nil && rs.callbackPlanIdx < len(rs.callbackPlan.steps) {
-			planStep = rs.callbackPlan.steps[rs.callbackPlanIdx]
-			hasPlanStep = true
-		}
-		o.mu.Unlock()
-
-		if hasPlanStep {
-			stepIdx := layerIndexOf(planStep.layer, layerGroups)
-			var stepPhases []service.SpawnerPhaseDef
-			if stepIdx >= 0 {
-				if planStep.wholeLayer {
-					stepPhases = layerGroups[stepIdx].phases
-				} else {
-					nodeSet := make(map[string]bool, len(planStep.nodes))
-					for _, n := range planStep.nodes {
-						nodeSet[n] = true
-					}
-					for _, p := range layerGroups[stepIdx].phases {
-						if nodeSet[p.NodeID] {
-							stepPhases = append(stepPhases, p)
-						}
-					}
-				}
-			}
-
-			logger.Info(ctx, "executing plan step", "layer", planStep.layer, "whole_layer", planStep.wholeLayer, "agents", len(stepPhases))
-			stepResults := o.spawnPhases(ctx, wfiID, req, stepPhases, parentSession, baseCfg)
-
-			passCount, failCount := 0, 0
-			var stepCBErrs []*spawner.CallbackError
-			for _, r := range stepResults {
-				switch {
-				case r.callbackErr != nil:
-					if !planStep.wholeLayer {
-						o.markFailed(wfiID, req, "callback within agent/chain plan step is not supported in v1")
-						return
-					}
-					passCount++
-					stepCBErrs = append(stepCBErrs, r.callbackErr)
-				case r.err != nil:
-					if ctx.Err() != nil {
-						o.markFailed(wfiID, req, o.failReasonOr(wfiID, reasonCancelled))
-						return
-					}
-					logger.Error(ctx, "plan step agent failed", "layer", planStep.layer, "agent", r.agent, "err", r.err)
-					failCount++
-				default:
-					logger.Info(ctx, "plan step agent completed", "layer", planStep.layer, "agent", r.agent)
-					passCount++
-				}
-			}
-
-			if len(stepCBErrs) > 0 {
-				// Whole-layer plan step triggered another callback: re-enter handleCallback
-				if !o.handleCallback(ctx, wfiID, req, layerGroups, stepIdx, stepCBErrs, &callbackCount) {
-					return
-				}
-				continue
-			}
-
-			denom := passCount + failCount
-			if denom > 0 {
-				policy, _ := service.ParseLayerPolicy(layerPolicies[planStep.layer])
-				required := policy.Required(denom)
-				if passCount < required {
-					logger.Error(ctx, "plan step pass_policy not satisfied", "layer", planStep.layer,
-						"policy", policy.String(), "passed", passCount, "total", denom, "required", required)
-					o.markFailed(wfiID, req, fmt.Sprintf(
-						"plan step layer %d: pass_policy %q not satisfied (%d/%d passed, %d required)",
-						planStep.layer, policy.String(), passCount, denom, required))
-					return
-				}
-			}
-
-			// Advance plan index; finalize plan when all steps are done
-			o.mu.Lock()
-			rs := o.runs[wfiID]
-			if rs != nil {
-				rs.callbackPlanIdx++
-				if rs.callbackPlanIdx >= len(rs.callbackPlan.steps) {
-					resumeLayer := rs.callbackPlan.resumeLayer
-					rs.callbackPlan = callbackPlan{}
-					rs.callbackPlanIdx = 0
-					o.mu.Unlock()
-					o.clearCallbackMetadata(ctx, wfiID)
-					newIdx := layerIndexOf(resumeLayer, layerGroups)
-					if newIdx < 0 {
-						newIdx = len(layerGroups) // resumeLayer past end → exit loop
-					}
-					layerIdx = newIdx
-					if newIdx > 0 && o.maybePauseAfterLayer(ctx, wfiID, req, newIdx-1, layerGroups, layerPause, pool, projectRoot) {
-						worktreeHandled = true
-						return
-					}
-				} else {
-					o.mu.Unlock()
-				}
-			} else {
-				o.mu.Unlock()
+		if hasStep, newIdx, shouldReturn, wtHandled := o.drainCallbackPlanStep(
+			ctx, wfiID, req, layerGroups, layerIdx, parentSession, baseCfg, layerPolicies, layerPause, pool, projectRoot, &callbackCount,
+		); hasStep {
+			layerIdx = newIdx
+			if shouldReturn {
+				worktreeHandled = wtHandled
+				return
 			}
 			continue
 		}

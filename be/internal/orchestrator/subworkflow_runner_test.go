@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"be/internal/clock"
+	"be/internal/model"
 	"be/internal/repo"
 )
 
@@ -164,5 +165,40 @@ func TestStartSubworkflow_Guards(t *testing.T) {
 	}
 	if starts != 0 {
 		t.Errorf("budget not refunded after failed start: %d, want 0", starts)
+	}
+}
+
+// TestGetSubworkflow_PlanSuspendedStatuses_ReturnNonTerminalPollState: the
+// four plan-boundary statuses must surface as their own poll states (not the
+// dead-end pause_after "waiting"), so a caller's poll loop can distinguish
+// them and drive the plan lifecycle instead of spinning forever.
+func TestGetSubworkflow_PlanSuspendedStatuses_ReturnNonTerminalPollState(t *testing.T) {
+	env := newTestEnv(t)
+
+	statuses := []model.WorkflowInstanceStatus{
+		model.WorkflowInstancePlanning,
+		model.WorkflowInstancePlanReady,
+		model.WorkflowInstanceWaitingInput,
+		model.WorkflowInstanceWaitingApproval,
+	}
+	for _, st := range statuses {
+		t.Run(string(st), func(t *testing.T) {
+			wfiID := env.initProjectWorkflow(t, "test")
+			seedChildInstance(t, env, wfiID, "parent-1", string(st), "")
+
+			status, result, failureReason, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "")
+			if err != nil {
+				t.Fatalf("GetSubworkflow: %v", err)
+			}
+			if status != string(st) {
+				t.Errorf("status = %q, want %q", status, st)
+			}
+			if result != nil {
+				t.Errorf("result = %s, want nil", result)
+			}
+			if failureReason == "" || !strings.Contains(failureReason, "plan boundary") {
+				t.Errorf("failureReason = %q, want mention of plan boundary", failureReason)
+			}
+		})
 	}
 }

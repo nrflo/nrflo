@@ -11,10 +11,10 @@ import (
 
 // PlanTemplate is a fanout_template agent definition a plan node may bind to.
 type PlanTemplate struct {
-	ID            string
-	Model         string
-	ExecutionMode string
-	Prompt        string
+	ID            string `json:"id"`
+	Model         string `json:"model"`
+	ExecutionMode string `json:"execution_mode"`
+	Prompt        string `json:"prompt"`
 }
 
 // AllowedTemplates returns the fanout_template agent definitions usable by a

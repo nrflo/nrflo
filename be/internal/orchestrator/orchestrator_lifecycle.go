@@ -79,11 +79,24 @@ func (o *Orchestrator) Stop(instanceID string) error {
 
 	if ok {
 		rs.cancel()
+		o.cancelDraftPlan(instanceID)
 		return nil
 	}
 
 	// No in-memory orchestration — clean up orphaned DB state.
 	return o.forceStopInstance(instanceID)
+}
+
+// cancelDraftPlan best-effort cancels any live draft plan for instanceID so a
+// stopped run leaves no live draft (the DYNWF-4 TTL sweep is the backstop,
+// not the primary path).
+func (o *Orchestrator) cancelDraftPlan(instanceID string) {
+	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
+	if err != nil {
+		return
+	}
+	defer pool.Close()
+	_ = repo.NewPlanRepo(pool, o.clock).Cancel(instanceID)
 }
 
 // forceStopInstance marks an orphaned workflow instance and its running sessions
@@ -103,13 +116,20 @@ func (o *Orchestrator) forceStopInstance(instanceID string) error {
 	if err != nil {
 		return fmt.Errorf("no running orchestration for instance %s", instanceID)
 	}
-	if wi.Status != model.WorkflowInstanceActive {
+	planSuspended := model.IsPlanSuspended(wi.Status)
+	if wi.Status != model.WorkflowInstanceActive && !planSuspended {
 		return fmt.Errorf("instance %s is not active (status: %s)", instanceID, wi.Status)
 	}
 
-	// Mark running sessions as failed.
-	asRepo := repo.NewAgentSessionRepo(pool, o.clock)
-	asRepo.FailRunningByInstance(instanceID)
+	// A plan-suspended instance is not in o.runs, so it has no live sessions to
+	// fail — but it may still hold a live draft plan; leave no draft behind.
+	if planSuspended {
+		_ = repo.NewPlanRepo(pool, o.clock).Cancel(instanceID)
+	} else {
+		// Mark running sessions as failed.
+		asRepo := repo.NewAgentSessionRepo(pool, o.clock)
+		asRepo.FailRunningByInstance(instanceID)
+	}
 
 	// Mark workflow instance as failed.
 	wfiRepo.UpdateStatus(instanceID, model.WorkflowInstanceFailed)

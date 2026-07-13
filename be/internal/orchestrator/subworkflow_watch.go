@@ -40,10 +40,52 @@ func (o *Orchestrator) watchSubworkflow(parentID string, parentDone chan struct{
 			}
 		}
 	}
+
+	// The child's own runLoop closes its done channel on every return path,
+	// including suspending at its own plan boundary (not just terminal
+	// completion/failure) — so childDone firing above does not mean the child
+	// is actually done. Keep watching the parent while the child remains
+	// plan-suspended so a parent that dies before the plan is approved
+	// doesn't leave an orphaned child holding a live draft.
+	o.watchPlanSuspendedChild(parentID, parentDone, childID)
+
 	if counted {
 		o.mu.Lock()
 		o.subworkflowActive--
 		o.mu.Unlock()
+	}
+}
+
+// watchPlanSuspendedChild polls childID while it remains plan-suspended:
+// stops it (forceStopInstance cancels its draft plan and marks it failed) if
+// the parent terminates first, or returns once the child is no longer
+// plan-suspended (resumed and re-armed via ResumeAfterPlanApproval, or
+// independently reached a terminal status).
+func (o *Orchestrator) watchPlanSuspendedChild(parentID string, parentDone chan struct{}, childID string) {
+	status, err := o.instanceStatus(childID)
+	if err != nil || !model.IsPlanSuspended(status) {
+		return
+	}
+	t := time.NewTicker(subworkflowWatchInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-parentDone:
+			pStatus, err := o.instanceStatus(parentID)
+			if err != nil || (pStatus != model.WorkflowInstanceWaiting && pStatus != model.WorkflowInstanceActive) {
+				logger.Info(context.Background(), "parent run ended; stopping plan-suspended sub-workflow", "instance_id", childID)
+				_ = o.Stop(childID)
+				return
+			}
+			if next := o.doneChan(parentID); next != nil {
+				parentDone = next // parent resumed under a fresh runState
+			}
+		case <-t.C:
+			status, err := o.instanceStatus(childID)
+			if err != nil || !model.IsPlanSuspended(status) {
+				return
+			}
+		}
 	}
 }
 

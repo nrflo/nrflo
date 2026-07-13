@@ -111,9 +111,11 @@ export function statusColor(status: string): string {
       return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
     case 'in_progress':
     case 'running':
+    case 'active':
       return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
     case 'closed':
     case 'completed':
+    case 'project_completed':
       return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
     case 'skipped':
       return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
@@ -124,6 +126,12 @@ export function statusColor(status: string): string {
       return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
     case 'canceled':
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+    case 'waiting':
+    case 'planning':
+    case 'plan_ready':
+    case 'waiting_input':
+    case 'waiting_approval':
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
     default:
       return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
   }
@@ -180,6 +188,44 @@ export function formatRestartReasons(details?: import('@/types/workflow').Restar
     return `${count} restart${count !== 1 ? 's' : ''}`
   }
   return ''
+}
+
+// Human labels for the plan-boundary instance statuses (DYNWF-5) — see
+// model.IsPlanSuspended (be/internal/model/workflow_instance.go).
+const PLAN_STATUS_LABELS: Record<string, string> = {
+  planning: 'Planning',
+  plan_ready: 'Awaiting plan approval',
+  waiting_input: 'Needs input',
+  waiting_approval: 'Awaiting plan approval',
+}
+
+export function planStatusLabel(status: string | undefined): string | undefined {
+  return status ? PLAN_STATUS_LABELS[status] : undefined
+}
+
+// Partition instances by status (three-way: running/failed/completed).
+// Plan-suspended instances (see PLAN_SUSPENDED_STATUSES in types/workflow.ts)
+// stay under "running" — they are not terminal, just parked at the plan boundary.
+export function partitionWorkflowInstances<T extends { status?: string }>(
+  allWorkflows: Record<string, T>
+): {
+  runningInstances: Record<string, T>
+  failedInstances: Record<string, T>
+  completedInstances: Record<string, T>
+} {
+  const running: Record<string, T> = {}
+  const failed: Record<string, T> = {}
+  const completed: Record<string, T> = {}
+  for (const [instanceId, state] of Object.entries(allWorkflows)) {
+    if (state.status === 'completed' || state.status === 'project_completed') {
+      completed[instanceId] = state
+    } else if (state.status === 'failed') {
+      failed[instanceId] = state
+    } else {
+      running[instanceId] = state
+    }
+  }
+  return { runningInstances: running, failedInstances: failed, completedInstances: completed }
 }
 
 export function issueTypeColor(type: string): string {

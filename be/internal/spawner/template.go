@@ -262,6 +262,11 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 			template = strings.ReplaceAll(template, "${TICKET_DESCRIPTION}", "")
 		}
 	}
+	// A static agent's template never receives NODE_INSTRUCTIONS (only
+	// materialized plan nodes do, via ExtraVars) — blank an unset placeholder
+	// rather than leave the literal in the rendered prompt.
+	template = strings.ReplaceAll(template, "${NODE_INSTRUCTIONS}", "")
+
 	// Strip legacy placeholders (clean break — any stray ones become empty)
 	template = strings.ReplaceAll(template, "${USER_INSTRUCTIONS}", "")
 	template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", "")

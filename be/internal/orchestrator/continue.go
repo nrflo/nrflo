@@ -81,7 +81,11 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		PauseEventScriptID:      svcWf.PauseEventScriptID,
 	}
 
-	layerGroups := groupPhasesByLayer(svcWf.Phases)
+	materializedPhases, materializedPolicies, err := service.LoadInstanceNodePhases(pool, o.clock, wi.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load materialized plan nodes: %w", err)
+	}
+	layerGroups := groupPhasesByLayer(service.EffectivePhases(svcWf.Phases, materializedPhases))
 
 	// Read resume_layer from _pause finding
 	findingRepo := repo.NewFindingRepo(pool, o.clock)
@@ -146,6 +150,9 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	layerPolicies, err := layerPolicySvc.GetLayerPolicies(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load layer policies: %w", err)
+	}
+	for layer, policy := range materializedPolicies {
+		layerPolicies[layer] = policy
 	}
 	layerPause, err := layerPolicySvc.GetLayerPauseAfter(defProjectID, dbWorkflow.ID)
 	if err != nil {

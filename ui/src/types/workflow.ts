@@ -1,4 +1,5 @@
 import type { InputArtifactRef } from '@/types/artifact'
+import type { PlanQuestion, PlanStatus } from '@/types/plan'
 
 export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'error' | 'rate_limited'
 export type PhaseResult = 'pass' | 'fail' | 'skipped' | null
@@ -122,6 +123,37 @@ export interface PauseResult {
   timestamp?: string
 }
 
+// Instance status set (workflow_instances.status). The four plan-boundary
+// statuses (DYNWF-5) are mutually exclusive with 'waiting' — the engine is
+// parked on the plan lifecycle, not the pause_after machinery.
+export type WorkflowInstanceStatus =
+  | 'active'
+  | 'completed'
+  | 'failed'
+  | 'project_completed'
+  | 'waiting'
+  | 'planning'
+  | 'plan_ready'
+  | 'waiting_input'
+  | 'waiting_approval'
+
+export const PLAN_SUSPENDED_STATUSES: readonly WorkflowInstanceStatus[] = [
+  'planning',
+  'plan_ready',
+  'waiting_input',
+  'waiting_approval',
+]
+
+// Plan lifecycle read model emitted by buildV4State — see
+// be/internal/service/workflow_v4_state.go.
+export interface PlanBlock {
+  status: PlanStatus
+  latest_revision: number
+  approved_revision: number
+  materialized_revision: number
+  questions?: PlanQuestion[]
+}
+
 export interface WorkflowState {
   workflow?: string
   instance_id?: string
@@ -130,7 +162,8 @@ export interface WorkflowState {
   worktree_path?: string
   branch_name?: string
   current_phase?: string
-  status?: string
+  status?: WorkflowInstanceStatus
+  plan?: PlanBlock
   initialized_at?: string
   completed_at?: string
   total_duration_sec?: number

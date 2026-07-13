@@ -19,10 +19,13 @@ type WorkflowDef struct {
 
 // PhaseDef represents a phase definition. NodeID is the execution identity
 // (which slot in the run); Agent is the agent_definitions template key.
+// Instructions carries a materialized plan node's per-node prompt data
+// (empty for static phases).
 type PhaseDef struct {
-	NodeID string `json:"id"`
-	Agent  string `json:"agent"`
-	Layer  int    `json:"layer"`
+	NodeID       string `json:"id"`
+	Agent        string `json:"agent"`
+	Layer        int    `json:"layer"`
+	Instructions string `json:"instructions,omitempty"`
 }
 
 // AgentConfig holds agent-specific configuration

@@ -20,6 +20,7 @@ import { cancelUpload } from '@/api/artifacts'
 import { WorkflowTabContent } from './WorkflowTabContent'
 import { RunWorkflowForm } from './RunWorkflowForm'
 import { InstanceList, ProjectWorkflowTabBar } from './ProjectWorkflowComponents'
+import { partitionWorkflowInstances } from '@/lib/utils'
 import type { InputArtifactRef } from '@/types/artifact'
 import type { ProjectWorkflowTabId, StartMode } from './ProjectWorkflowComponents'
 import { ProjectFindingsTab } from '@/components/workflow/ProjectFindingsTab'
@@ -99,21 +100,10 @@ export function ProjectWorkflowsPage() {
   // all_workflows keyed by instance_id
   const allWorkflows = (workflowData?.all_workflows ?? {}) as Record<string, WorkflowState>
 
-  const { runningInstances, failedInstances, completedInstances } = useMemo(() => {
-    const running: Record<string, WorkflowState> = {}
-    const failed: Record<string, WorkflowState> = {}
-    const completed: Record<string, WorkflowState> = {}
-    for (const [instanceId, state] of Object.entries(allWorkflows)) {
-      if (state.status === 'completed' || state.status === 'project_completed') {
-        completed[instanceId] = state
-      } else if (state.status === 'failed') {
-        failed[instanceId] = state
-      } else {
-        running[instanceId] = state
-      }
-    }
-    return { runningInstances: running, failedInstances: failed, completedInstances: completed }
-  }, [allWorkflows])
+  const { runningInstances, failedInstances, completedInstances } = useMemo(
+    () => partitionWorkflowInstances(allWorkflows),
+    [allWorkflows]
+  )
 
   const tabInstances = activeTab === 'running' ? runningInstances
     : activeTab === 'failed' ? failedInstances

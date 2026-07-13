@@ -107,8 +107,14 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
 	svcWf := svcWorkflows[workflowName]
 
-	// Determine which layer the failed phase belongs to
-	layerGroups := groupPhasesByLayer(svcWf.Phases)
+	// Determine which layer the failed phase belongs to. Reads
+	// workflow_instance_nodes rather than re-creating them — retry never
+	// re-materializes.
+	materializedPhases, materializedPolicies, err := service.LoadInstanceNodePhases(pool, o.clock, wi.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load materialized plan nodes: %w", err)
+	}
+	layerGroups := groupPhasesByLayer(service.EffectivePhases(svcWf.Phases, materializedPhases))
 	startLayerIdx := -1
 	for i, lg := range layerGroups {
 		for _, p := range lg.phases {
@@ -185,6 +191,9 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	layerPolicies, err := layerPolicySvc.GetLayerPolicies(defProjectID, dbWorkflow.ID)
 	if err != nil {
 		return fmt.Errorf("failed to load layer policies: %w", err)
+	}
+	for layer, policy := range materializedPolicies {
+		layerPolicies[layer] = policy
 	}
 	layerPause, err := layerPolicySvc.GetLayerPauseAfter(defProjectID, dbWorkflow.ID)
 	if err != nil {

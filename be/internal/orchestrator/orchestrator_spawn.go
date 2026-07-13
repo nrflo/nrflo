@@ -47,6 +47,10 @@ func (o *Orchestrator) spawnPhases(
 				o.mu.Unlock()
 			}
 			sp := spawner.New(cfg)
+			var extraVars map[string]string
+			if phase.Instructions != "" {
+				extraVars = map[string]string{"NODE_INSTRUCTIONS": phase.Instructions}
+			}
 			err := sp.Spawn(ctx, spawner.SpawnRequest{
 				AgentType:          phase.Agent,
 				NodeID:             phase.NodeID,
@@ -56,6 +60,7 @@ func (o *Orchestrator) spawnPhases(
 				ParentSession:      parentSession,
 				ScopeType:          req.ScopeType,
 				WorkflowInstanceID: wfiID,
+				ExtraVars:          extraVars,
 			})
 			sp.Close()
 			sr := spawnResult{agent: phase.Agent, node: phase.NodeID, err: err}

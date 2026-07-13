@@ -13,6 +13,7 @@ import { projectEnvVarKeys } from './useProjectEnvVars'
 import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import { traceKeys } from './useTrace'
+import { planKeys } from './usePlan'
 import type { WSEventType } from './useWebSocket'
 import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
@@ -399,6 +400,42 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
       qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
       qc.invalidateQueries({ queryKey: ticketKeys.lists() })
     }
+  },
+
+  'plan.drafted': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
+  'plan.revised': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
+  'plan.approved': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
+  'plan.cancelled': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
+  'plan.materialized': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
+  },
+
+  'workflow.plan_waiting': (event, qc, isProjectScope) => {
+    const instanceId = event.data?.instance_id as string | undefined
+    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
+    invalidateWorkflow(event, qc, isProjectScope)
   },
 
   'workflow_def.created': (_event, qc) => {

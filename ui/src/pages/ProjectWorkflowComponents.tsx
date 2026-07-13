@@ -1,7 +1,7 @@
 import { Bookmark, CheckCircle, Play, XCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { cn, formatElapsedTime } from '@/lib/utils'
-import type { WorkflowState } from '@/types/workflow'
+import { cn, formatElapsedTime, planStatusLabel } from '@/lib/utils'
+import { PLAN_SUSPENDED_STATUSES, type WorkflowState } from '@/types/workflow'
 
 export type StartMode = 'normal' | 'interactive' | 'plan' | 'endless'
 
@@ -41,10 +41,16 @@ export function InstanceList({
             <span className="font-medium">{labels[id] ?? id}</span>
             {tab === 'running' && (
               <Badge
-                variant={state?.status === 'failed' ? 'destructive' : 'default'}
+                variant={
+                  state?.status === 'failed'
+                    ? 'destructive'
+                    : state?.status && PLAN_SUSPENDED_STATUSES.includes(state.status)
+                    ? 'secondary'
+                    : 'default'
+                }
                 className="text-xs"
               >
-                {state?.status ?? 'active'}
+                {planStatusLabel(state?.status) ?? state?.status ?? 'active'}
               </Badge>
             )}
             {tab === 'completed' && (

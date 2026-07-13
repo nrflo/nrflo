@@ -90,6 +90,17 @@ func TestPlanRoutes_BroadcastsLifecycleEvents(t *testing.T) {
 		t.Fatalf("approve status = %d, want 200; body: %s", rrApprove.Code, rrApprove.Body.String())
 	}
 	env.rec.waitEvent(t, ws.EventPlanApproved)
+
+	// Approve() now always materializes in the same request (DYNWF-5), so
+	// handleApprovePlan always broadcasts plan.materialized right after
+	// plan.approved.
+	materialized := env.rec.waitEvent(t, ws.EventPlanMaterialized)
+	if materialized.ProjectID != pid {
+		t.Errorf("plan.materialized event.ProjectID = %q, want %q", materialized.ProjectID, pid)
+	}
+	if got, _ := materialized.Data["instance_id"].(string); got != iid {
+		t.Errorf("plan.materialized event.Data[instance_id] = %q, want %q", got, iid)
+	}
 }
 
 // TestHandleCancelPlan_BroadcastsCancelled verifies cancel emits plan.cancelled.

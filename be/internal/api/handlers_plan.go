@@ -1,14 +1,25 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
+	"be/internal/logger"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 	"be/internal/ws"
 )
+
+// PlanResumer resumes a plan-suspended workflow instance once its plan is
+// approved+materialized. Implemented by *orchestrator.Orchestrator; declared
+// here (rather than in service, which must not import orchestrator) since
+// api.Server already holds the concrete orchestrator as s.orchestrator.
+type PlanResumer interface {
+	ResumeAfterPlanApproval(ctx context.Context, instanceID string) error
+}
 
 // registerPlanRoutes registers the workflow plan lifecycle routes
 // (draft/revise/approve/cancel a planner-authored manifest), called from
@@ -144,6 +155,19 @@ func (s *Server) handleApprovePlan(w http.ResponseWriter, r *http.Request) {
 		"instance_id": iid,
 		"revision":    rev.Revision,
 	})
+	s.planBroadcast(ws.EventPlanMaterialized, ctx, map[string]interface{}{
+		"instance_id": iid,
+	})
+
+	// Approve() already materialized; resume the run if it was parked at the
+	// plan boundary. No-op (per PlanResumer contract) when the instance is
+	// still active — its own runLoop will materialize inline at the boundary.
+	if wfi, wfiErr := repo.NewWorkflowInstanceRepo(s.pool, s.clock).Get(iid); wfiErr == nil && model.IsPlanSuspended(wfi.Status) {
+		var resumer PlanResumer = s.orchestrator
+		if err := resumer.ResumeAfterPlanApproval(r.Context(), iid); err != nil {
+			logger.Error(r.Context(), "plan approve: resume failed", "instance_id", iid, "err", err)
+		}
+	}
 	writeJSON(w, http.StatusOK, rev)
 }
 

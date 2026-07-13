@@ -95,7 +95,9 @@ All four routes are `protected` (accept SCS sessions, spawn tokens, and service 
 
 ## Plan Routes
 
-`GET /api/v1/workflow-instances/{iid}/plan` (draft + latest manifest + template library), `GET .../plan/revisions` (full history), `POST .../plan/revise` (edited manifest OR feedback+answers → planner re-run; body `types.PlanReviseRequest`), `POST .../plan/approve` (`types.PlanApproveRequest`), `POST .../plan/cancel`. All `protected`; writes additionally call `denyNonAdminGlobalWrite` for the instance's project. Revise/approve are revision-pinned — a stale `revision` is 409. See `handlers_plan.go` + `service/plan.go`.
+`GET /api/v1/workflow-instances/{iid}/plan` (draft + latest manifest + template library), `GET .../plan/revisions` (full history), `POST .../plan/revise` (edited manifest OR feedback+answers → planner re-run; body `types.PlanReviseRequest`), `POST .../plan/approve` (`types.PlanApproveRequest`), `POST .../plan/cancel`. All `protected`; writes additionally call `denyNonAdminGlobalWrite` for the instance's project. Revise/approve are revision-pinned — a stale `revision` is 409.
+
+Approve now materializes in the same request (`PlanService.Approve` → `Materialize`, DYNWF-5): a materialization failure surfaces as the same 4xx as any other approve error. `handleApprovePlan` then broadcasts `ws.EventPlanMaterialized` and, if the instance parked at the plan boundary (`model.IsPlanSuspended`), calls `PlanResumer.ResumeAfterPlanApproval` (interface declared in `handlers_plan.go`, satisfied by `s.orchestrator`) to relaunch the run at the first materialized layer — a no-op if the run is still active (its own `runLoop` will materialize inline). See `handlers_plan.go` + `service/plan.go` + [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#plan-boundary--materialization).
 
 ## Observers
 

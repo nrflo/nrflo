@@ -28,6 +28,8 @@ import { ConflictResolverBanner } from '@/components/workflow/ConflictResolverBa
 import { FinalizeResultPanel } from '@/components/workflow/FinalizeResultPanel'
 import { PauseResultPanel } from '@/components/workflow/PauseResultPanel'
 import { WorkflowPauseControls, WorkflowFailControl } from '@/components/workflow/WorkflowPauseControls'
+import { PlanApprovalBanner } from '@/components/workflow/PlanApprovalBanner'
+import { PLAN_SUSPENDED_STATUSES } from '@/types/workflow'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { cn, formatDateTime, formatDurationSec, formatTokenCount } from '@/lib/utils'
@@ -285,6 +287,9 @@ export function WorkflowTabContent({
                 onFail={onFail}
                 failPending={failPending}
               />
+            )}
+            {displayedState.status && PLAN_SUSPENDED_STATUSES.includes(displayedState.status) && displayedState.instance_id && (
+              <PlanApprovalBanner instanceId={displayedState.instance_id} status={displayedState.status} />
             )}
             {(displayedState.status === 'completed' || displayedState.status === 'project_completed') && !sessions?.some(s => s.agent_type === 'conflict-resolver' && s.status === 'running') && !agentHistory?.some(a => a.agent_type === 'conflict-resolver' && !a.result) && (
               <div className="flex items-center gap-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm dark:border-green-800 dark:bg-green-950/30">

@@ -30,12 +30,16 @@ type PlanRevision struct {
 
 // WorkflowPlan is the mutable head row tracking a workflow instance's plan
 // lifecycle: current status and which revision (if any) was approved.
+// MaterializedRevision/MaterializedHash are the exactly-once materialization
+// stamp (0/"" until service.PlanService.Materialize succeeds).
 type WorkflowPlan struct {
-	InstanceID       string    `json:"instance_id"`
-	Status           string    `json:"status"`
-	LatestRevision   int       `json:"latest_revision"`
-	ApprovedRevision int       `json:"approved_revision"`
-	Goal             string    `json:"goal"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	InstanceID           string    `json:"instance_id"`
+	Status               string    `json:"status"`
+	LatestRevision       int       `json:"latest_revision"`
+	ApprovedRevision     int       `json:"approved_revision"`
+	Goal                 string    `json:"goal"`
+	MaterializedRevision int       `json:"materialized_revision"`
+	MaterializedHash     string    `json:"-"`
+	CreatedAt            time.Time `json:"created_at"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }

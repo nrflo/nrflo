@@ -6,6 +6,7 @@ import { chainKeys } from './useChains'
 import { scheduleKeys } from './useScheduledTasks'
 import { runningAgentsKeys } from './useRunningAgents'
 import { errorKeys } from './useErrors'
+import { planKeys } from './usePlan'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
 import { isControlEvent, subscriptionKey } from './useWSProtocol'
 import {
@@ -94,6 +95,12 @@ export type WSEventType =
   | 'consult.started'
   | 'consult.answered'
   | 'consult.failed'
+  | 'plan.drafted'
+  | 'plan.revised'
+  | 'plan.approved'
+  | 'plan.cancelled'
+  | 'plan.materialized'
+  | 'workflow.plan_waiting'
   | 'test.echo'
 
 export interface WSEvent {
@@ -258,6 +265,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     qc.invalidateQueries({ queryKey: errorKeys.all })
     qc.invalidateQueries({ queryKey: scheduleKeys.all })
     qc.invalidateQueries({ queryKey: ['notification-channels'] })
+    qc.invalidateQueries({ queryKey: planKeys.all })
   }, [])
 
   // Build subscribe message with cursor for v2 resume

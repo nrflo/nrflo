@@ -41,7 +41,9 @@ This is the canonical KV store — do not create new tables for similar use case
 
 ## Plan tables
 
-`plan_revisions` (migration `000158`) is append-only: PK `(instance_id, revision)`, `author` CHECK IN `('planner','caller')`, FK → `workflow_instances` ON DELETE CASCADE — a revision row is never UPDATEd. `workflow_plans` is the mutable head: PK `instance_id`, `status` CHECK IN `('draft','approved','cancelled')`, `latest_revision`/`approved_revision`/`goal`. Kept separate from `workflow_instances.status` (whose CHECK, migration `000136`, would need a full table rebuild to extend) — "plan ready" is derived from the head row. See `repo/plan.go` + `service/plan.go`.
+`plan_revisions` (migration `000158`) is append-only: PK `(instance_id, revision)`, `author` CHECK IN `('planner','caller')`, FK → `workflow_instances` ON DELETE CASCADE — a revision row is never UPDATEd. `workflow_plans` is the mutable head: PK `instance_id`, `status` CHECK IN `('draft','approved','cancelled')`, `latest_revision`/`approved_revision`/`goal`, plus the materialization stamp `materialized_revision`/`materialized_hash` (migration `000159`, default `0`/`''`). See `repo/plan.go` + `service/plan.go`.
+
+`workflow_instance_nodes` and `workflow_instance_layer_policies` (migration `000159`) are instance-scoped: an approved plan revision's nodes/layer policies are written into them exactly once by `service.PlanService.Materialize`, keyed on `instance_id`, FK CASCADE. `workflow_instance_nodes` is INSERT-only (immutable once materialized — no update/delete API on `repo.InstanceNodeRepo`); `node_id`/`layer`/`agent_type`/`instructions` mirror a plan manifest node, with `layer` offset above the workflow definition's static executable layers. `workflow_instances.status` (migration `000136`'s CHECK, rebuilt in `000159`) now also accepts `planning`/`plan_ready`/`waiting_input`/`waiting_approval` — the plan-boundary suspend statuses (see `orchestrator/CLAUDE.md`), distinct from `waiting` (pause_after).
 
 ## Files
 

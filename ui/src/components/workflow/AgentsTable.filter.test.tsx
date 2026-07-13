@@ -11,8 +11,8 @@ function makePhases(names: string[]): Record<string, PhaseState> {
   return Object.fromEntries(names.map(n => [n, { status: 'pending' as const }]))
 }
 
-describe('AgentsTable planner filter', () => {
-  it('filters out "planner" phase key and keeps regular phases', () => {
+describe('AgentsTable materialized plan node rendering', () => {
+  it('renders a "planner" phase key as a regular row (legal materialized node id)', () => {
     render(
       <AgentsTable
         phases={makePhases(['planner', 'analyzer'])}
@@ -20,11 +20,11 @@ describe('AgentsTable planner filter', () => {
         phaseOrder={['planner', 'analyzer']}
       />
     )
-    expect(screen.queryByText('planner')).not.toBeInTheDocument()
+    expect(screen.getByText('planner')).toBeInTheDocument()
     expect(screen.getByText('analyzer')).toBeInTheDocument()
   })
 
-  it('filters out "planning" phase key and keeps regular phases', () => {
+  it('renders a "planning" phase key as a regular row (legal materialized node id)', () => {
     render(
       <AgentsTable
         phases={makePhases(['planning', 'analyzer'])}
@@ -32,7 +32,7 @@ describe('AgentsTable planner filter', () => {
         phaseOrder={['planning', 'analyzer']}
       />
     )
-    expect(screen.queryByText('planning')).not.toBeInTheDocument()
+    expect(screen.getByText('planning')).toBeInTheDocument()
     expect(screen.getByText('analyzer')).toBeInTheDocument()
   })
 

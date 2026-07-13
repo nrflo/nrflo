@@ -140,82 +140,17 @@ func (s *PlanService) Revise(ctx context.Context, instanceID string, req types.P
 		return nil, err
 	}
 
+	var rev *model.PlanRevision
 	if len(req.Manifest) > 0 {
-		return s.reviseWithManifest(instanceID, wfi.ProjectID, wfi.WorkflowID, req.Manifest)
+		rev, err = s.reviseWithManifest(instanceID, wfi.ProjectID, wfi.WorkflowID, req.Manifest)
+	} else {
+		rev, err = s.reviseWithPlanner(ctx, instanceID, headExists, head, req)
 	}
-	return s.reviseWithPlanner(ctx, instanceID, headExists, head, req)
-}
-
-func (s *PlanService) reviseWithManifest(instanceID, projectID, workflowID string, raw json.RawMessage) (*model.PlanRevision, error) {
-	m, err := ParsePlanManifest(raw)
 	if err != nil {
 		return nil, err
 	}
-	if err := ValidatePlanManifest(s.pool, projectID, workflowID, m); err != nil {
-		return nil, err
-	}
-	canonical, err := json.Marshal(m)
-	if err != nil {
-		return nil, err
-	}
-	revNum, err := s.planRepo.Append(instanceID, string(canonical), HashManifest(m), model.PlanAuthorCaller, "", m.Goal)
-	if err != nil {
-		return nil, err
-	}
-	return s.planRepo.GetRevision(instanceID, revNum)
-}
-
-func (s *PlanService) reviseWithPlanner(ctx context.Context, instanceID string, headExists bool, head *model.WorkflowPlan, req types.PlanReviseRequest) (*model.PlanRevision, error) {
-	if s.runner == nil {
-		return nil, fmt.Errorf("plan: no planner runner configured")
-	}
-
-	goal := req.Goal
-	if goal == "" && headExists {
-		goal = head.Goal
-	}
-	if goal == "" {
-		return nil, fmt.Errorf("goal is required to start a plan")
-	}
-
-	prevManifest := ""
-	if headExists && head.LatestRevision > 0 {
-		if rev, err := s.planRepo.GetRevision(instanceID, head.LatestRevision); err == nil {
-			prevManifest = rev.Manifest
-		}
-	}
-
-	sessionID, err := s.runner.RunPlanner(ctx, instanceID, PlannerInput{
-		Goal:             goal,
-		Feedback:         req.Feedback,
-		Answers:          req.Answers,
-		PreviousManifest: prevManifest,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// RunPlanner blocks until the child session settles with a
-	// FindingsService.Emit-validated `_workflow_plan` finding, so this read is
-	// guaranteed to succeed on a nil error above. The finding is left in place
-	// as immutable audit (unlike consult, which deletes _consult_answer).
-	findings, err := repo.NewFindingRepo(s.pool, s.clock).GetOwn("session", sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("plan: read planner findings: %w", err)
-	}
-	raw, ok := findings[WorkflowPlanFindingKey]
-	if !ok {
-		return nil, fmt.Errorf("plan: planner session %s did not write %s", sessionID, WorkflowPlanFindingKey)
-	}
-	m, err := ParsePlanManifest(raw)
-	if err != nil {
-		return nil, err
-	}
-	revNum, err := s.planRepo.Append(instanceID, string(raw), HashManifest(m), model.PlanAuthorPlanner, sessionID, m.Goal)
-	if err != nil {
-		return nil, err
-	}
-	return s.planRepo.GetRevision(instanceID, revNum)
+	s.syncPlanSuspendedStatus(ctx, instanceID)
+	return rev, nil
 }
 
 // Approve transitions a draft plan to approved at the given revision.
@@ -257,6 +192,14 @@ func (s *PlanService) Approve(instanceID string, revision int) (*model.PlanRevis
 		if errors.Is(err, repo.ErrPlanStaleOrNotDraft) {
 			return nil, ErrStalePlanRevision
 		}
+		return nil, err
+	}
+
+	// Materialize in the same request so the caller sees a materialization
+	// failure (e.g. a template's model disabled since draft) as a 4xx instead
+	// of a mid-run failure at the plan boundary. Idempotent — the boundary may
+	// call it again for the same approved revision.
+	if _, err := s.Materialize(instanceID); err != nil {
 		return nil, err
 	}
 	return rev, nil

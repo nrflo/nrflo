@@ -81,11 +81,14 @@ type SpawnerWorkflowDef struct {
 	LayerPolicies           map[int]string    `json:"layer_policies,omitempty"`
 }
 
-// SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
+// SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building.
+// Instructions is set only for materialized plan nodes (DYNWF-5); empty for
+// static agent_definitions-derived phases.
 type SpawnerPhaseDef struct {
-	NodeID string `json:"id"`
-	Agent  string `json:"agent"`
-	Layer  int    `json:"layer"`
+	NodeID       string `json:"id"`
+	Agent        string `json:"agent"`
+	Layer        int    `json:"layer"`
+	Instructions string `json:"instructions,omitempty"`
 }
 
 // SpawnerAgentConfig mirrors spawner.AgentConfig for shared config building

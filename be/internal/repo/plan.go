@@ -91,7 +91,7 @@ func (r *PlanRepo) appendOnce(instanceID, manifest, hash, author, plannerSession
 // GetHead returns the mutable plan head row for a workflow instance.
 func (r *PlanRepo) GetHead(instanceID string) (*model.WorkflowPlan, error) {
 	row := r.db.QueryRow(
-		`SELECT instance_id, status, latest_revision, approved_revision, goal, created_at, updated_at
+		`SELECT instance_id, status, latest_revision, approved_revision, goal, materialized_revision, materialized_hash, created_at, updated_at
 		 FROM workflow_plans WHERE instance_id = ?`, instanceID)
 	return scanWorkflowPlan(row)
 }
@@ -182,7 +182,8 @@ func (r *PlanRepo) ListExpiredDrafts(cutoff string) ([]string, error) {
 func scanWorkflowPlan(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowPlan, error) {
 	p := &model.WorkflowPlan{}
 	var createdAt, updatedAt string
-	err := scanner.Scan(&p.InstanceID, &p.Status, &p.LatestRevision, &p.ApprovedRevision, &p.Goal, &createdAt, &updatedAt)
+	err := scanner.Scan(&p.InstanceID, &p.Status, &p.LatestRevision, &p.ApprovedRevision, &p.Goal,
+		&p.MaterializedRevision, &p.MaterializedHash, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}

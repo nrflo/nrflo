@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"be/internal/model"
+	"be/internal/repo"
 )
 
 // buildV4State builds the v4-compatible response from a workflow instance
@@ -21,14 +22,22 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	currentPhase := ""
 	var phaseLayers map[string]int
 
+	// Materialized plan nodes (DYNWF-5) merge into the static phase graph so
+	// the existing PhaseGraph renders dynamic layers with no separate read path.
+	materializedPhases, materializedPolicies, _ := LoadInstanceNodePhases(s.pool, s.clock, wi.ID)
+
 	if wf, err := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID); err == nil {
-		phaseOrder = make([]string, len(wf.Phases))
-		phaseLayers = make(map[string]int, len(wf.Phases))
-		for i, p := range wf.Phases {
+		allPhases := append([]PhaseDef{}, wf.Phases...)
+		for _, p := range materializedPhases {
+			allPhases = append(allPhases, PhaseDef{NodeID: p.NodeID, Agent: p.Agent, Layer: p.Layer})
+		}
+		phaseOrder = make([]string, len(allPhases))
+		phaseLayers = make(map[string]int, len(allPhases))
+		for i, p := range allPhases {
 			phaseOrder[i] = p.NodeID
 			phaseLayers[p.NodeID] = p.Layer
 		}
-		phases = s.derivePhaseStatuses(wi.ID, wf.Phases)
+		phases = s.derivePhaseStatuses(wi.ID, allPhases)
 		currentPhase = s.deriveCurrentPhase(wi.ID)
 	}
 
@@ -47,9 +56,36 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	if phaseLayers != nil {
 		result["phase_layers"] = phaseLayers
 	}
-	// Include per-layer pass policies so the UI can render policy badges
-	if policies, err := NewWorkflowLayerPolicyService(s.pool, s.clock).GetLayerPolicies(wi.ProjectID, wi.WorkflowID); err == nil && len(policies) > 0 {
+	// Include per-layer pass policies (def-scoped + materialized) so the UI can render policy badges
+	policies, _ := NewWorkflowLayerPolicyService(s.pool, s.clock).GetLayerPolicies(wi.ProjectID, wi.WorkflowID)
+	if len(materializedPolicies) > 0 {
+		if policies == nil {
+			policies = make(map[int]string, len(materializedPolicies))
+		}
+		for layer, policy := range materializedPolicies {
+			policies[layer] = policy
+		}
+	}
+	if len(policies) > 0 {
 		result["layer_policies"] = policies
+	}
+
+	// Plan lifecycle block: derived read model for the async plan boundary caller.
+	if head, err := repo.NewPlanRepo(s.pool, s.clock).GetHead(wi.ID); err == nil {
+		planBlock := map[string]interface{}{
+			"status":                head.Status,
+			"latest_revision":       head.LatestRevision,
+			"approved_revision":     head.ApprovedRevision,
+			"materialized_revision": head.MaterializedRevision,
+		}
+		if head.LatestRevision > 0 {
+			if rev, rerr := repo.NewPlanRepo(s.pool, s.clock).GetRevision(wi.ID, head.LatestRevision); rerr == nil {
+				if m, perr := ParsePlanManifest(json.RawMessage(rev.Manifest)); perr == nil {
+					planBlock["questions"] = m.Questions
+				}
+			}
+		}
+		result["plan"] = planBlock
 	}
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String

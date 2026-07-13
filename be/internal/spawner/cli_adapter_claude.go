@@ -8,6 +8,17 @@ import (
 // ClaudeAdapter implements CLIAdapter for Claude Code CLI
 type ClaudeAdapter struct{}
 
+// claudeDisallowedNativeTools denies the CLI's own multi-agent orchestration
+// tools so a managed session cannot spawn children invisible to nrflo.
+//
+// The delegation tool is "Agent" in both the Docker-pinned 2.1.178 and 2.1.207;
+// "Task" is its pre-rename name, kept for older CLIs. Deny names are matched
+// exactly and unknown ones are silently ignored, so listing "Task" neither
+// fails the spawn nor prefix-matches the unrelated Task* background-task tools.
+// mcp__nrflo__* and ordinary coding tools (Bash/Edit/Read/Write/...) survive.
+// Drift alarm for these names: TestNativeOrchestrationCLI (-tags clitools).
+const claudeDisallowedNativeTools = "Agent Task Workflow SendMessage"
+
 func (a *ClaudeAdapter) Name() string {
 	return "claude"
 }
@@ -75,6 +86,11 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.AllowedToolsCSV != "" {
 		args = append(args, "--allowedTools", opts.AllowedToolsCSV)
 	}
+	// Must stay the last flag pair: --disallowedTools is variadic and greedily
+	// consumes any following positional argv (it stops at the next `-`-prefixed
+	// flag). Claude never receives a positional prompt (DeliversPromptInline()
+	// is false), but keep this trailing to avoid ever swallowing one.
+	args = append(args, "--disallowedTools", claudeDisallowedNativeTools)
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = opts.WorkDir
 	cmd.Env = opts.Env

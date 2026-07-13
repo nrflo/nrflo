@@ -25,7 +25,7 @@ For `api` agents, model + provider come from `Config.APIModelConfigs`; see [apir
 
 `ExecutionBackend` interface is at `backend.go:21`. `startBackend` selects based on `prep.executionMode`:
 
-- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `attachNrfloToolRegistry` (`mcp_tools.go`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge (`read_document` → path-returning variant). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`, native tools untouched); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, since codex doesn't forward parent env).
+- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `attachNrfloToolRegistry` (`mcp_tools.go`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge (`read_document` → path-returning variant). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`) plus `--disallowedTools` denying native delegation (`cli_adapter_claude.go`); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, codex doesn't forward parent env).
 - **`api`** — drives an in-process `apirun.Runner` (no child process). See [apirun/CLAUDE.md](apirun/CLAUDE.md).
 - **`script`** — executes a stored Python script; no prompt template, no context tracking.
 
@@ -37,7 +37,7 @@ When `Config.APIViaCLI==true` and the `api_models` provider is `anthropic`, `pre
 
 ### Codex app-server backend
 
-`codexAppServerBackend` (`codex_appserver_backend.go`) drives `codex app-server` over newline-delimited JSON-RPC stdio (`codex_appserver_client.go`) — codex 0.133 emits no PTY hooks (openai/codex#21639) and no rollout JSONL, so app-server is the only structured channel. Events map to the standard `Sink` via `dispatchAppServerEvent` (`codex_appserver_events.go`): agentMessage→text, command/webSearch→tool, mcpToolCall→invoke+result, `thread/tokenUsage`→`context_left`, turn lifecycle→heartbeat, typed rate-limit. Completion stays socket/DB-driven; idle/nudge re-issues a `turn/start` with the `finish-reminder`. `SupportsResume()`/`SupportsTakeControl()` are both false (agent-path save; take-control rejected). `CodexAdapter` is still used for model mapping + `ClassifyExit`; its PTY methods are unused.
+`codexAppServerBackend` (`codex_appserver_backend.go`) drives `codex app-server` over newline-delimited JSON-RPC stdio (`codex_appserver_client.go`), spawned with `--disable` flags blocking native delegation (`appServerArgs()`) — codex 0.133 emits no PTY hooks (openai/codex#21639) and no rollout JSONL, so app-server is the only structured channel. Events map to the standard `Sink` via `dispatchAppServerEvent` (`codex_appserver_events.go`): agentMessage→text, command/webSearch→tool, mcpToolCall→invoke+result, `thread/tokenUsage`→`context_left`, turn lifecycle→heartbeat, typed rate-limit. Completion stays socket/DB-driven; idle/nudge re-issues a `turn/start` with the `finish-reminder`. `SupportsResume()`/`SupportsTakeControl()` are both false (agent-path save; take-control rejected). `CodexAdapter` is still used for model mapping + `ClassifyExit`; its PTY methods are unused.
 
 ## Host Process Probing
 
@@ -82,9 +82,9 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Rate-Limit Restart
 
-For `cli_interactive` agents: on a non-zero exit whose last ~10 output/stderr blocks match a rate-limit pattern (adapter `ClassifyExit`), `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers the stop (`result=continue/reason=rate_limit`), persists `rate_limit_until_ts`, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`); a known subscription reset (`agent.rate_limits_update` → `rate_limit_reset_ts`) makes `resetAwareDelay` (`rate_limit_config.go`) wait until that reset (+30s, ≤8h) instead. `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
+For `cli_interactive` agents: on a non-zero exit matching a rate-limit pattern (last ~10 output/stderr blocks, adapter `ClassifyExit`), `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers `result=continue/reason=rate_limit`, persists `rate_limit_until_ts`, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`); a known subscription reset (`agent.rate_limits_update` → `rate_limit_reset_ts`) makes `resetAwareDelay` (`rate_limit_config.go`) wait until that reset (+30s, ≤8h) instead. `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
 
-In-band variant: a 529 the Claude CLI prints as text *without exiting* (no Stop hook fires) is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`, from `checkIdleNudge`) — it reads the last assistant message from the reconstructed transcript and on a rate-limit match runs the same retry (relaunch uses `--fallback-model`). `"Overloaded"` is a claude `ClassifyExit` limit pattern; covers api-via-cli.
+In-band variant: a 529 the Claude CLI prints as text *without exiting* (no Stop hook fires) is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`, from `checkIdleNudge`) — it reads the last assistant message and on a rate-limit match runs the same retry (relaunch uses `--fallback-model`). `"Overloaded"` is a claude `ClassifyExit` limit pattern; covers api-via-cli.
 
 For `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit` from a typed `*sdk.Error`; `apiBackend.Start`'s goroutine runs the same dance and flips `finalStatus=CONTINUE`. `rateLimitConfig` loads for both lanes in `prepareSpawn`.
 
@@ -92,11 +92,11 @@ Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`Ge
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `rate_limit_enabled` | `true` | Enable/disable rate-limit restart |
-| `rate_limit_initial_backoff_sec` | `60` | First retry wait in seconds |
-| `rate_limit_max_wait_sec` | `3600` | Max per-step wait; total-wait gate for future retries |
-| `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated rate-limit patterns |
-| `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated error patterns |
+| `rate_limit_enabled` | `true` | Enable/disable restart |
+| `rate_limit_initial_backoff_sec` | `60` | First retry wait (sec) |
+| `rate_limit_max_wait_sec` | `3600` | Max per-step wait; gates future retries |
+| `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated patterns |
+| `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated patterns |
 
 ## Stall Detection
 
@@ -114,9 +114,9 @@ When an agent finishes `result=pass` (explicit or implicit), `handleCompletion` 
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` injectable to PTY stdin, broadcast `agent.nudged`, persist `nudge_count` in DB. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.Idle*Sec`/`NudgeMax`.
+Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` to PTY stdin, broadcast `agent.nudged`, persist `nudge_count`. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.Idle*Sec`/`NudgeMax`.
 
-End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session. Complements the idle nudge.
+End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session.
 
 ## Template Variables
 

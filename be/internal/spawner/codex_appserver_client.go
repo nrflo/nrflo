@@ -66,6 +66,27 @@ type rpcOut struct {
 
 var errAppServerClosed = errors.New("codex app-server connection closed")
 
+// codexDisabledFeatures are passed as `--disable <feature>` to `codex
+// app-server` to block native multi-agent delegation, which would let a
+// managed session spawn children invisible to nrflo. In codex 0.144.1,
+// multi_agent is stage=stable and default-ON (so stripping config.toml alone
+// would not disable it); multi_agent_v2/enable_fanout are under-development
+// and off today but denied defensively against a future default flip.
+// Drift alarm for these names: TestNativeOrchestrationCLI (-tags clitools) —
+// a --disable for a renamed/removed feature is a silent no-op.
+var codexDisabledFeatures = []string{"multi_agent", "multi_agent_v2", "enable_fanout"}
+
+// appServerArgs returns the `codex app-server` argv with codexDisabledFeatures
+// denied via repeatable `--disable <feature>` flags. Kept pure (no exec) so it
+// is unit-testable without running the codex binary.
+func appServerArgs() []string {
+	args := []string{"app-server"}
+	for _, f := range codexDisabledFeatures {
+		args = append(args, "--disable", f)
+	}
+	return args
+}
+
 // newAppServerClient wires a client over the given stdin/stdout and starts the
 // reader goroutine. Used directly by tests (in-memory pipes); production goes
 // through startAppServer.
@@ -87,7 +108,7 @@ func newAppServerClient(stdin io.WriteCloser, stdout io.Reader, cmd *exec.Cmd) *
 // returns a wired client. The process is bound to ctx (exec.CommandContext), so
 // cancelling ctx kills it.
 func startAppServer(ctx context.Context, env []string, workDir string) (*appServerClient, error) {
-	cmd := exec.CommandContext(ctx, "codex", "app-server")
+	cmd := exec.CommandContext(ctx, "codex", appServerArgs()...)
 	cmd.Dir = workDir
 	cmd.Env = env
 	stdin, err := cmd.StdinPipe()

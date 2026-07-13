@@ -16,7 +16,7 @@ const (
 	SubworkflowMaxChildrenKey    = "subworkflow_max_children"
 	SubworkflowMaxInvocationsKey = "subworkflow_max_invocations"
 
-	DefaultSubworkflowMaxDepth       = 3  // max child launch_depth (nesting)
+	DefaultSubworkflowMaxDepth       = 3  // max child subworkflow_depth (nesting); unrelated to launch_depth (next-on-success lineage)
 	DefaultSubworkflowMaxChildren    = 6  // concurrent children across all runs
 	DefaultSubworkflowMaxInvocations = 25 // starts charged per parent run
 )

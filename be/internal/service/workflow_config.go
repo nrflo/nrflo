@@ -56,9 +56,10 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 	agents := make(map[string]SpawnerAgentConfig)
 	for _, def := range dbAgentDefs {
 		agents[def.ID] = SpawnerAgentConfig{
-			Model:   def.Model,
-			Timeout: def.Timeout,
-			Tag:     def.Tag,
+			Model:           def.Model,
+			Timeout:         def.Timeout,
+			Tag:             def.Tag,
+			ReasoningEffort: def.ReasoningEffort,
 		}
 	}
 
@@ -93,9 +94,10 @@ type SpawnerPhaseDef struct {
 
 // SpawnerAgentConfig mirrors spawner.AgentConfig for shared config building
 type SpawnerAgentConfig struct {
-	Model   string `json:"model"`
-	Timeout int    `json:"timeout"`
-	Tag     string `json:"tag"`
+	Model           string  `json:"model"`
+	Timeout         int     `json:"timeout"`
+	Tag             string  `json:"tag"`
+	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
 }
 
 // parseWorkflowDefFromDB builds a WorkflowDef from agent definitions

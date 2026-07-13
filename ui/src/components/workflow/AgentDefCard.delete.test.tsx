@@ -90,7 +90,7 @@ describe('AgentDefCard - delete confirmation dialog', () => {
     await user.click(within(overlay).getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
-      expect(agentDefsApi.deleteAgentDef).toHaveBeenCalledWith('feature', 'my-agent')
+      expect(agentDefsApi.deleteAgentDef).toHaveBeenCalledWith('feature', 'my-agent', undefined)
     })
   })
 })

@@ -51,7 +51,7 @@ Synchronous one-off children under the caller's instance; `_`-prefixed node ids 
 
 - `Consult(...)` (`consult.go`): resolves the caller session, enforces the recursion guard (consultants cannot consult), builds an api-capable `spawner.Config`, delegates to `Spawner.Consult`.
 - `RunPlanner(...)` (`planner.go`, `service.PlannerRunner`): a fresh `_planner` child (workflow-local `node_role='planner'` def, else the `planner` system agent) emits a validated `_workflow_plan`. See [service/CLAUDE.md](../service/CLAUDE.md).
-- The `dynamic` workflow ships its own `node_role='planner'` def (`dynamic-planner`), so it always resolves ahead of the system planner; `renderTemplateLibrary` renders each template's `agent_definitions.description`, not its prompt.
+- The `dynamic` workflow ships its own `node_role='planner'` def (`dynamic-planner`), so it always resolves ahead of the system planner; `renderTemplateLibrary` renders each template's `description` + effective model/`reasoning_effort`, not its prompt, and omits templates unusable on this install (`service.EnabledTemplates`).
 
 ## Sub-Workflow Runner
 
@@ -93,13 +93,13 @@ Mutually exclusive modes (400 if both set): `interactive=true`, `plan_mode=true`
 
 ## Finalize Slots
 
-After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes the outcome-selected slot in the **project root** (never a worktree) under a fixed 5s timeout; it **never changes workflow status**. Slot source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` — both empty is a no-op. Command slot: `sh -c <cmd>` with outcome env (`NRF_WORKFLOW_STATUS`, `NRF_WORKFLOW_RESULT`, `NRF_WORKFLOW_FINAL_RESULT`/`NRF_FAILURE_REASON`) on `loadProjectEnv`. Python-script slot: per-project venv via a transient `_finalize` `agent_session` (`hookexec.go`). Persists a `_finalize` finding; broadcasts `EventWorkflowFinalizeFailed`/`Succeeded`. Wired into success + tail of `markFailed` (skipped for `reasonCancelled`); `forceStopInstance` bypasses `markFailed` so force-stop never finalizes.
+After a workflow reaches terminal status, `runFinalize` (`finalize.go`) executes the outcome-selected slot in the **project root** (never a worktree) under a fixed 5s timeout; it **never changes workflow status**. Slot source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` — both empty is a no-op. Command slot: `sh -c <cmd>` with outcome env (`NRF_WORKFLOW_STATUS`, `NRF_WORKFLOW_RESULT`, `NRF_WORKFLOW_FINAL_RESULT`/`NRF_FAILURE_REASON`) on `loadProjectEnv`. Python-script slot: per-project venv via a transient `_finalize` session. Persists a `_finalize` finding; broadcasts `EventWorkflowFinalizeFailed`/`Succeeded`. Wired into success + tail of `markFailed` (skipped for `reasonCancelled`); `forceStopInstance` bypasses `markFailed` so force-stop never finalizes.
 
 ## Pause Slots
 
 `workflow_layer_policies.pause_after=true` causes `runLoop` to pause after that layer completes (including when skipped), setting instance status to `waiting` and removing it from `o.runs`. Hook slot / env / python-script mechanics mirror Finalize Slots above (`RunRequest.PauseEvent{Command,ScriptID}`; env adds `NRF_PAUSED_AFTER_LAYER`/`NRF_NEXT_LAYER`).
 
-- Persists a `_pause` finding (`{paused_after_layer,resume_layer,event:{kind,target,exit_code,status,output_tail},timestamp}`) and broadcasts `EventWorkflowPaused`.
+- Persists a `_pause` finding (`{paused_after_layer,resume_layer,event,timestamp}`) + broadcasts `EventWorkflowPaused`.
 - Resume via `ContinueWorkflow` (`continue.go`): validates `status=waiting`, reads `resume_layer` from `_pause` finding, re-launches `runLoop` at the resume-layer index. Optionally appends instructions to `user_instructions` finding.
 - Fail via `FailWorkflow` (`fail.go`): running instance → set `rs.failReason` + `cancel()`; waiting instance → `markFailed` directly (fires failure-finalize slot).
 

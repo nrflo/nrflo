@@ -23,6 +23,7 @@ export interface AgentDef {
   consultant?: boolean
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
+  reasoning_effort?: string | null
   created_at: string
   updated_at: string
 }
@@ -46,6 +47,7 @@ export interface AgentDefCreateRequest {
   consultant?: boolean
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
+  reasoning_effort?: string | null
 }
 
 export interface AgentDefUpdateRequest {
@@ -66,4 +68,5 @@ export interface AgentDefUpdateRequest {
   consultant?: boolean
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
+  reasoning_effort?: string | null
 }

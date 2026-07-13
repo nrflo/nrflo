@@ -23,6 +23,7 @@ vi.mock('@/hooks/useAPIModels', () => ({
       { value: 'gpt-4o', label: 'OpenAI: GPT-4o' },
     ]},
   ],
+  useAPIModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({

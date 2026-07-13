@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import type { APIProviderName } from '@/api/apiModels'
+import { buildAPIEffortOptions } from './effortOptions'
 
 export interface APIModelFormData {
   id: string
@@ -26,30 +27,6 @@ const PROVIDER_OPTIONS = [
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'openai', label: 'OpenAI' },
 ]
-
-const REASONING_EFFORT_OPTIONS = [
-  { value: '', label: 'Default' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 or Sonnet 5 only)' },
-  { value: 'max', label: 'Max' },
-]
-
-function buildEffortOptions(provider: APIProviderName, mappedModel: string) {
-  if (provider === 'anthropic') {
-    const supportsXHigh =
-      mappedModel.startsWith('claude-opus-4-7') ||
-      mappedModel.startsWith('claude-opus-4-8') ||
-      mappedModel.startsWith('claude-sonnet-5')
-    return REASONING_EFFORT_OPTIONS.map((opt) =>
-      opt.value === 'xhigh' && !supportsXHigh
-        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Anthropic Opus 4.7/4.8 or Sonnet 5 models" }
-        : opt
-    )
-  }
-  return REASONING_EFFORT_OPTIONS.filter((opt) => opt.value !== 'xhigh')
-}
 
 export function APIModelForm({
   formData,
@@ -140,7 +117,7 @@ export function APIModelForm({
           <Dropdown
             value={formData.reasoning_effort}
             onChange={(val) => setFormData({ ...formData, reasoning_effort: val })}
-            options={buildEffortOptions(formData.provider, formData.mapped_model)}
+            options={buildAPIEffortOptions(formData.provider, formData.mapped_model)}
           />
         </div>
         <div>

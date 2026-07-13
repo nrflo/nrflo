@@ -7,6 +7,7 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
+import { AgentDefEffortField } from './AgentDefEffortField'
 import { AgentDefToolsField } from './AgentDefToolsField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
 import { useModelOptions } from '@/hooks/useCLIModels'
@@ -52,6 +53,7 @@ export function AgentDefForm({
   const [consultant, setConsultant] = useState(initial?.consultant ?? false)
   const [nodeRole, setNodeRole] = useState<NodeRole>((initial?.node_role as NodeRole) || 'static')
   const [description, setDescription] = useState(initial?.description || '')
+  const [reasoningEffort, setReasoningEffort] = useState(initial?.reasoning_effort ?? '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
   const apiModelOptions = useAPIModelOptions()
@@ -89,7 +91,7 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -129,6 +131,7 @@ export function AgentDefForm({
             <Dropdown value={model} onChange={setModel} options={activeModelOptions} />
           </div>
         )}
+        <AgentDefEffortField executionMode={executionMode} model={model} value={reasoningEffort} onChange={setReasoningEffort} />
         <div className="w-32">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Timeout (min)</label>
           <input type="number" value={timeout} onChange={(e) => setTimeout(Number(e.target.value))} min={1} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />

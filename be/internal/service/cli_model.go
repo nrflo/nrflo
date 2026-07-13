@@ -138,7 +138,7 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	if !validCLITypes[req.CLIType] {
 		return nil, fmt.Errorf("invalid cli_type: must be one of claude, codex")
 	}
-	if err := validateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
+	if err := ValidateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
 		return nil, err
 	}
 	fallbackModels, fbErr := normalizeFallbackModels(req.CLIType, req.FallbackModels)
@@ -204,7 +204,7 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 		if req.ReasoningEffort != nil {
 			effort = *req.ReasoningEffort
 		}
-		if err := validateReasoningEffort(current.CLIType, mappedModel, effort); err != nil {
+		if err := ValidateReasoningEffort(current.CLIType, mappedModel, effort); err != nil {
 			return nil, err
 		}
 	}

@@ -67,6 +67,43 @@ func TestResolvePlannerDef_SystemDefaultFallback(t *testing.T) {
 	}
 }
 
+// TestResolvePlannerDef_ReasoningEffort_WorkflowLocalOverride verifies a
+// workflow-local planner def's reasoning_effort override threads through
+// resolvePlannerDef into plannerAgentConfig, and that omitting the column
+// (system-default fallback) resolves to nil.
+func TestResolvePlannerDef_ReasoningEffort_WorkflowLocalOverride(t *testing.T) {
+	env := newTestEnv(t)
+	insertLocalPlannerDef(t, env, "test", "local-planner-effort", "opus_4_8", "cli_interactive")
+	if _, err := env.pool.Exec(
+		`UPDATE agent_definitions SET reasoning_effort = 'xhigh' WHERE id = 'local-planner-effort'`,
+	); err != nil {
+		t.Fatalf("set reasoning_effort: %v", err)
+	}
+
+	cfg, err := env.orch.resolvePlannerDef(env.pool, env.project, "test")
+	if err != nil {
+		t.Fatalf("resolvePlannerDef() error: %v", err)
+	}
+	if cfg.ReasoningEffort == nil || *cfg.ReasoningEffort != "xhigh" {
+		t.Errorf("ReasoningEffort = %v, want xhigh", cfg.ReasoningEffort)
+	}
+}
+
+// TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallbackIsNil verifies
+// that absent a workflow-local override, the system planner def's
+// (unset) reasoning_effort resolves to nil rather than a zero-value "".
+func TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallbackIsNil(t *testing.T) {
+	env := newTestEnv(t)
+
+	cfg, err := env.orch.resolvePlannerDef(env.pool, env.project, "test")
+	if err != nil {
+		t.Fatalf("resolvePlannerDef() error: %v", err)
+	}
+	if cfg.ReasoningEffort != nil {
+		t.Errorf("ReasoningEffort = %v, want nil (system planner-system def has no override)", *cfg.ReasoningEffort)
+	}
+}
+
 // TestRenderTemplateLibrary_Empty verifies the placeholder string returned
 // when no templates are configured.
 func TestRenderTemplateLibrary_Empty(t *testing.T) {
@@ -84,15 +121,15 @@ func TestRenderTemplateLibrary_Empty(t *testing.T) {
 // falls back to a placeholder instead of an empty line.
 func TestRenderTemplateLibrary_NonEmpty(t *testing.T) {
 	templates := []service.PlanTemplate{
-		{ID: "tpl-a", Model: "sonnet", ExecutionMode: "api", Prompt: "short prompt", Description: "Reviews code for correctness."},
+		{ID: "tpl-a", Model: "sonnet", ExecutionMode: "api", ReasoningEffort: "high", Prompt: "short prompt", Description: "Reviews code for correctness."},
 		{ID: "tpl-b", Model: "opus", ExecutionMode: "cli_interactive", Prompt: "irrelevant prompt body"},
 	}
 
 	got := renderTemplateLibrary(templates)
 
 	for _, want := range []string{
-		"tpl-a", "sonnet", "api", "Reviews code for correctness.",
-		"tpl-b", "opus", "cli_interactive", "(no description provided)",
+		"tpl-a", "sonnet", "api", "effort=high", "Reviews code for correctness.",
+		"tpl-b", "opus", "cli_interactive", "effort=", "(no description provided)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("renderTemplateLibrary() missing %q in output:\n%s", want, got)
@@ -100,6 +137,19 @@ func TestRenderTemplateLibrary_NonEmpty(t *testing.T) {
 	}
 	if strings.Contains(got, "irrelevant prompt body") {
 		t.Error("renderTemplateLibrary() leaked the prompt body — description is the selection surface, not the prompt")
+	}
+}
+
+// TestRenderTemplateLibrary_EmptyEffortRendersBlank verifies a template with
+// no effective reasoning effort (EnabledTemplates left it "") still renders
+// the "effort=" marker with a blank value, rather than omitting the field.
+func TestRenderTemplateLibrary_EmptyEffortRendersBlank(t *testing.T) {
+	templates := []service.PlanTemplate{
+		{ID: "tpl-noeffort", Model: "sonnet", ExecutionMode: "cli_interactive"},
+	}
+	got := renderTemplateLibrary(templates)
+	if !strings.Contains(got, "tpl-noeffort (sonnet, cli_interactive, effort=)") {
+		t.Errorf("renderTemplateLibrary() = %q, want a line with a blank effort=", got)
 	}
 }
 

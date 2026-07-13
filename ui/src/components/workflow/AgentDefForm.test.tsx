@@ -25,7 +25,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 // Mock MarkdownEditor to avoid CodeMirror dependencies
 vi.mock('@/components/ui/MarkdownEditor', () => ({
@@ -190,6 +190,7 @@ describe('AgentDefForm', () => {
         tools: '',
         api_max_iterations: undefined,
         validation_commands: [],
+        reasoning_effort: null,
       })
     })
 
@@ -222,6 +223,7 @@ describe('AgentDefForm', () => {
         tools: '',
         api_max_iterations: undefined,
         validation_commands: [],
+        reasoning_effort: null,
       })
     })
 

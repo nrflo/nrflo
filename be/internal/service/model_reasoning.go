@@ -15,10 +15,12 @@ var validReasoningEfforts = map[string]bool{
 	"ultra":  true,
 }
 
-// validateReasoningEffort checks that effort is one of the allowed levels and
+// ValidateReasoningEffort checks that effort is one of the allowed levels and
 // enforces the per-model restrictions: "xhigh" only with Claude Opus 4.7/4.8
-// or Sonnet 5, "ultra" only with codex GPT-5.6 Sol/Terra.
-func validateReasoningEffort(cliType, mappedModel, effort string) error {
+// or Sonnet 5, "ultra" only with codex GPT-5.6 Sol/Terra. Exported so the
+// spawner can re-validate a def-level override against the model row at
+// spawn time, reusing the same gating rules instead of duplicating them.
+func ValidateReasoningEffort(cliType, mappedModel, effort string) error {
 	if !validReasoningEfforts[effort] {
 		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max, ultra", effort)
 	}
@@ -31,10 +33,11 @@ func validateReasoningEffort(cliType, mappedModel, effort string) error {
 	return nil
 }
 
-// validateAPIReasoningEffort checks that effort is one of the allowed levels and
+// ValidateAPIReasoningEffort checks that effort is one of the allowed levels and
 // enforces that "xhigh" is only used with Anthropic Opus 4.7/4.8 or Sonnet 5
 // models. "ultra" is a codex-CLI-only effort and is rejected for API models.
-func validateAPIReasoningEffort(provider, mappedModel, effort string) error {
+// Exported for the same spawn-time re-validation reason as ValidateReasoningEffort.
+func ValidateAPIReasoningEffort(provider, mappedModel, effort string) error {
 	if !validReasoningEfforts[effort] {
 		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
 	}

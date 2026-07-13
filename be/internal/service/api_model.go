@@ -115,7 +115,7 @@ func (s *APIModelService) Create(req types.APIModelCreateRequest) (*model.APIMod
 	if !validAPIProviders[req.Provider] {
 		return nil, fmt.Errorf("invalid provider: must be one of anthropic, openai")
 	}
-	if err := validateAPIReasoningEffort(req.Provider, req.MappedModel, req.ReasoningEffort); err != nil {
+	if err := ValidateAPIReasoningEffort(req.Provider, req.MappedModel, req.ReasoningEffort); err != nil {
 		return nil, err
 	}
 
@@ -176,7 +176,7 @@ func (s *APIModelService) Update(id string, req types.APIModelUpdateRequest) (*m
 		if req.ReasoningEffort != nil {
 			effort = *req.ReasoningEffort
 		}
-		if err := validateAPIReasoningEffort(current.Provider, mappedModel, effort); err != nil {
+		if err := ValidateAPIReasoningEffort(current.Provider, mappedModel, effort); err != nil {
 			return nil, err
 		}
 	}

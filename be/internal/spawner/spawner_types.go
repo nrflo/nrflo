@@ -30,12 +30,13 @@ type PhaseDef struct {
 
 // AgentConfig holds agent-specific configuration
 type AgentConfig struct {
-	Model            string `json:"model"`
-	Timeout          int    `json:"timeout"`
-	ExecutionMode    string `json:"execution_mode"`
-	Tools            string `json:"tools"`
-	APIMaxIterations *int   `json:"api_max_iterations"`
-	APIMaxTokens     *int   `json:"api_max_tokens"`
+	Model            string  `json:"model"`
+	Timeout          int     `json:"timeout"`
+	ExecutionMode    string  `json:"execution_mode"`
+	Tools            string  `json:"tools"`
+	APIMaxIterations *int    `json:"api_max_iterations"`
+	APIMaxTokens     *int    `json:"api_max_tokens"`
+	ReasoningEffort  *string `json:"reasoning_effort,omitempty"`
 }
 
 // ErrorRecorder records error events. Implemented by service.ErrorService.

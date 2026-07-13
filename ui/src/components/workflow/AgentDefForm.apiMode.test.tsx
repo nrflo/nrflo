@@ -10,7 +10,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 const mockUseAPIModeEnabled = vi.fn().mockReturnValue(true)
 vi.mock('@/hooks/useGlobalSettings', () => ({

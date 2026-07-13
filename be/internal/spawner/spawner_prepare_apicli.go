@@ -8,6 +8,7 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // prepareAPIViaCLISpawn transforms an api-mode spawn into a cli_interactive spawn
@@ -113,10 +114,15 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		return nil, nil, fmt.Errorf("api-via-cli: build mcp config: %w", mcpErr)
 	}
 
+	effort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
+	if err := service.ValidateAPIReasoningEffort(am.Provider, am.MappedModel, effort); err != nil {
+		return nil, nil, fmt.Errorf("api-via-cli: %w", err)
+	}
+
 	opts := SpawnOptions{
 		Model:                    claudeModel,
 		MappedModel:              am.MappedModel,
-		ReasoningEffort:          am.ReasoningEffort,
+		ReasoningEffort:          effort,
 		SessionID:                sessionID,
 		WorkDir:                  s.config.ProjectRoot,
 		SettingsJSON:             s.config.ClaudeSettingsJSON,

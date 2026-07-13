@@ -17,7 +17,7 @@ The `CLIAdapter` interface is defined at `cli_adapter.go:11`. Implementations: `
 
 ## Model Resolution
 
-`Config.ModelConfigs` (`map[string]ModelConfig`) holds DB-sourced model configuration used before falling back to hardcoded adapter methods. Helpers: `cliForModel(model)` checks `ModelConfigs[model].CLIType`; `maxContextForModel(model)` checks `ModelConfigs[model].ContextLength`. `SpawnOptions.MappedModel`/`ReasoningEffort` carry DB overrides; adapters skip their own lookup when these are set.
+`Config.ModelConfigs` (`map[string]ModelConfig`) holds DB-sourced model configuration used before falling back to hardcoded adapter methods. Helpers: `cliForModel(model)` checks `ModelConfigs[model].CLIType`; `maxContextForModel(model)` checks `ModelConfigs[model].ContextLength`. `SpawnOptions.MappedModel`/`ReasoningEffort` carry DB overrides; adapters skip their own lookup when these are set. `SpawnOptions.ReasoningEffort` is def-override-first: `resolveReasoningEffort` resolves def override > `AgentConfig.ReasoningEffort` (materialized plan nodes, whose def is invisible to `loadAgentDefinition` for global workflows) > the model row's own effort, then re-validates the winner via `service.ValidateReasoningEffort`/`ValidateAPIReasoningEffort` — a stale override illegal for a swapped model fails the spawn.
 
 For `api` agents, model + provider come from `Config.APIModelConfigs`; see [apirun/CLAUDE.md](apirun/CLAUDE.md).
 
@@ -37,7 +37,7 @@ When `Config.APIViaCLI==true` and the `api_models` provider is `anthropic`, `pre
 
 ### Codex app-server backend
 
-`codexAppServerBackend` (`codex_appserver_backend.go`) drives `codex app-server` over newline-delimited JSON-RPC stdio (`codex_appserver_client.go`), spawned with `--disable` flags blocking native delegation (`appServerArgs()`) — codex 0.133 emits no PTY hooks (openai/codex#21639) and no rollout JSONL, so app-server is the only structured channel. Events map to the standard `Sink` via `dispatchAppServerEvent` (`codex_appserver_events.go`): agentMessage→text, command/webSearch→tool, mcpToolCall→invoke+result, `thread/tokenUsage`→`context_left`, turn lifecycle→heartbeat, typed rate-limit. Completion stays socket/DB-driven; idle/nudge re-issues a `turn/start` with the `finish-reminder`. `SupportsResume()`/`SupportsTakeControl()` are both false (agent-path save; take-control rejected). `CodexAdapter` is still used for model mapping + `ClassifyExit`; its PTY methods are unused.
+`codexAppServerBackend` (`codex_appserver_backend.go`) drives `codex app-server` over newline-delimited JSON-RPC stdio (`codex_appserver_client.go`), spawned with `--disable` flags blocking native delegation (`appServerArgs()`) — codex 0.133 emits no PTY hooks (openai/codex#21639) and no rollout JSONL, so app-server is the only structured channel. Events map to the standard `Sink` via `dispatchAppServerEvent` (`codex_appserver_events.go`): agentMessage→text, command/webSearch→tool, mcpToolCall→invoke+result, `thread/tokenUsage`→`context_left`, turn lifecycle→heartbeat, typed rate-limit. Completion stays socket/DB-driven; idle/nudge re-issues a `turn/start` with the `finish-reminder`. `SupportsResume()`/`SupportsTakeControl()` are both false. `CodexAdapter` is still used for model mapping + `ClassifyExit`; its PTY methods are unused.
 
 ## Host Process Probing
 
@@ -88,7 +88,7 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 `cli_interactive`: a non-zero exit matching a rate-limit pattern (adapter `ClassifyExit`) triggers `handleRateLimitRetry` (`rate_limit_restart.go`) — broadcasts `agent.rate_limited`, registers `result=continue/reason=rate_limit`, persists `rate_limit_until_ts`, sets `finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`), or waits for a known subscription reset via `resetAwareDelay` (`rate_limit_config.go`, +30s, ≤8h). `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
 
-In-band: a 529 the Claude CLI prints as text without exiting is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`) — same retry, relaunch uses `--fallback-model`; `"Overloaded"` is a claude limit pattern, also covers api-via-cli.
+In-band: a 529 the Claude CLI prints as text without exiting is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`) — same retry, relaunch uses `--fallback-model`.
 
 `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit`; `apiBackend.Start` runs the same dance. `rateLimitConfig` loads for both lanes in `prepareSpawn`.
 
@@ -96,17 +96,17 @@ Config keys (project > global, via `pool.GetProjectConfig`/`GetConfig`): `rate_l
 
 ## Stall Detection
 
-Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15). Config keys:
+Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15).
 
 - `stall_start_timeout_sec` (agent_definitions) — seconds with no output before a start-stall; NULL = global default (120s), 0 = disabled.
 - `stall_running_timeout_sec` (agent_definitions) — seconds with no output after first message; NULL = global default (480s), 0 = disabled.
-- `Config.GlobalStallStartTimeout` / `Config.GlobalStallRunningTimeout` — override hardcoded defaults when agent def has NULL. Priority: per-agent def > global config > hardcoded.
+- `Config.GlobalStallStartTimeout`/`GlobalStallRunningTimeout` — override hardcoded defaults when agent def has NULL. Priority: per-agent def > global config > hardcoded.
 
-On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue reason=stall_restart_*`, 15s delay, relaunch.
+On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue`, 15s delay, relaunch.
 
 ## Validation Commands
 
-When an agent finishes `result=pass` (explicit or implicit), `handleCompletion` runs `agent_definitions.validation_commands` (JSON array) sequentially via `sh -c` in `proc.workDir` (`validation.go`); per-command timeout 5 min, env = full agent envelope minus `NRFLO_AGENT_TOKEN`/`NRF_SESSION_ID`, output tail-captured to 64 KB. First non-zero exit flips result to `fail` (`result_reason=validation_failure`) and writes a `validation_failure` finding (`{command, command_index, exit_code, output_tail}`) carried to the retry session.
+When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions.validation_commands` (JSON array) sequentially via `sh -c` in `proc.workDir` (`validation.go`); per-command timeout 5 min, env = full agent envelope minus `NRFLO_AGENT_TOKEN`/`NRF_SESSION_ID`, output tail-captured to 64 KB. First non-zero exit flips result to `fail` (`result_reason=validation_failure`) and writes a `validation_failure` finding carried to the retry session.
 
 ## Idle/Nudge Loop
 
@@ -118,9 +118,9 @@ End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (r
 
 Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`.
 
-`#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found). Both use the same `EnsureStageDir`/`Materialize` helpers as NRF_ARTIFACTS_DIR injection.
+`#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 
-`SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars, before conditional DB fetches. `${EXTERNAL_ID}` and `${EXTERNAL_CONTEXT}` are automatically injected from the workflow instance (empty string when unset).
+`SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars. `${EXTERNAL_ID}`/`${EXTERNAL_CONTEXT}` are auto-injected from the workflow instance.
 
 ## Per-project Venv
 

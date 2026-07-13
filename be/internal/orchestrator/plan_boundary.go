@@ -184,7 +184,7 @@ func (o *Orchestrator) materializeAndSplice(
 	}
 	mergeMaterializedIntoSpawnerWorkflow(workflows, req.WorkflowName, materializedPhases)
 	for id, cfg := range service.LoadMaterializedAgentConfigs(pool, o.clock, defProjectID, req.WorkflowName, materializedPhases) {
-		agents[id] = spawner.AgentConfig{Model: cfg.Model, Timeout: cfg.Timeout}
+		agents[id] = spawner.AgentConfig{Model: cfg.Model, Timeout: cfg.Timeout, ReasoningEffort: cfg.ReasoningEffort}
 	}
 
 	logger.Info(ctx, "plan materialized and spliced", "instance_id", wfiID, "nodes", len(materializedPhases))

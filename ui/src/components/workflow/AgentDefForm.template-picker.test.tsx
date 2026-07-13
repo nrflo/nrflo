@@ -21,7 +21,7 @@ vi.mock('@/api/defaultTemplates', () => ({
   listDefaultTemplates: vi.fn().mockResolvedValue([]),
 }))
 
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 vi.mock('@/hooks/useCLIModels', () => ({ useModelOptions: () => [], useCLIModels: () => ({ data: [] }) }))
 vi.mock('@/hooks/useGlobalSettings', () => ({ useAPIModeEnabled: () => true }))
 

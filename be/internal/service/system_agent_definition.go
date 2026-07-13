@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -65,17 +64,21 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		return nil, fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 
+	if err := validateDefReasoningEffort(NewCLIModelService(s.pool, s.clock), s.apiModelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
+		return nil, err
+	}
+
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	_, err := s.pool.Exec(`
 		INSERT INTO system_agent_definitions
 			(id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 			 restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-			 execution_mode, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 execution_mode, reasoning_effort, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		id, role, modelName, timeout, req.Prompt, req.Tools, req.APIMaxIterations, req.APIMaxTokens,
 		req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec,
-		executionMode, now, now,
+		executionMode, req.ReasoningEffort, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -99,122 +102,10 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		MaxFailRestarts:        req.MaxFailRestarts,
 		StallStartTimeoutSec:   req.StallStartTimeoutSec,
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
+		ReasoningEffort:        req.ReasoningEffort,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
-}
-
-// Get retrieves a single system agent definition by id
-func (s *SystemAgentDefinitionService) Get(id string) (*model.SystemAgentDefinition, error) {
-	def := &model.SystemAgentDefinition{}
-	var createdAt, updatedAt string
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
-
-	err := s.pool.QueryRow(`
-		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
-		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, created_at, updated_at
-		FROM system_agent_definitions
-		WHERE LOWER(id) = LOWER(?)`, id).Scan(
-		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
-		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-		&def.ExecutionMode, &createdAt, &updatedAt,
-	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("system agent definition not found: %s", id)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
-	return def, nil
-}
-
-// GetForBackend retrieves a system agent definition by role and execution_mode.
-// Returns sql.ErrNoRows unwrapped if no match so callers can choose a fallback.
-func (s *SystemAgentDefinitionService) GetForBackend(role, backend string) (*model.SystemAgentDefinition, error) {
-	def := &model.SystemAgentDefinition{}
-	var createdAt, updatedAt string
-	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
-
-	err := s.pool.QueryRow(`
-		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
-		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, created_at, updated_at
-		FROM system_agent_definitions
-		WHERE role = ? AND execution_mode = ?
-		LIMIT 1`, role, backend).Scan(
-		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
-		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-		&def.ExecutionMode, &createdAt, &updatedAt,
-	)
-	if err != nil {
-		return nil, err // sql.ErrNoRows returned unwrapped for caller fallback
-	}
-
-	def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
-	return def, nil
-}
-
-// List retrieves all system agent definitions.
-func (s *SystemAgentDefinitionService) List() ([]*model.SystemAgentDefinition, error) {
-	return s.listQuery("")
-}
-
-// ListForAPI retrieves system agent definitions for the HTTP list endpoint.
-// When includeAPIMode is false, execution_mode='api' rows are excluded so they
-// remain hidden in cli-mode servers while still being resolvable by GetForBackend.
-func (s *SystemAgentDefinitionService) ListForAPI(includeAPIMode bool) ([]*model.SystemAgentDefinition, error) {
-	filter := ""
-	if !includeAPIMode {
-		filter = "WHERE execution_mode <> 'api'"
-	}
-	return s.listQuery(filter)
-}
-
-func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.SystemAgentDefinition, error) {
-	q := `SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
-		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, created_at, updated_at
-		FROM system_agent_definitions`
-	if whereClause != "" {
-		q += " " + whereClause
-	}
-	q += " ORDER BY id"
-
-	rows, err := s.pool.Query(q)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	defs := []*model.SystemAgentDefinition{}
-	for rows.Next() {
-		def := &model.SystemAgentDefinition{}
-		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens sql.NullInt64
-
-		err := rows.Scan(
-			&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
-			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-			&def.ExecutionMode, &createdAt, &updatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		def.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-		def.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-		scanNullableInts(def, restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIterations, apiMaxTokens)
-		defs = append(defs, def)
-	}
-
-	return defs, nil
 }
 
 // Update updates a system agent definition
@@ -298,6 +189,29 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		updates = append(updates, "stall_running_timeout_sec = ?")
 		args = append(args, *req.StallRunningTimeoutSec)
 	}
+	if req.ReasoningEffort != nil {
+		mode := req.ExecutionMode
+		modelName := req.Model
+		if mode == nil || modelName == nil {
+			var currentMode, currentModel string
+			if scanErr := s.pool.QueryRow(
+				"SELECT execution_mode, model FROM system_agent_definitions WHERE LOWER(id) = LOWER(?)",
+				id).Scan(&currentMode, &currentModel); scanErr != nil {
+				return fmt.Errorf("failed to load system agent definition: %w", scanErr)
+			}
+			if mode == nil {
+				mode = &currentMode
+			}
+			if modelName == nil {
+				modelName = &currentModel
+			}
+		}
+		if err := validateDefReasoningEffort(NewCLIModelService(s.pool, s.clock), s.apiModelSvc, *mode, *modelName, req.ReasoningEffort); err != nil {
+			return err
+		}
+		updates = append(updates, "reasoning_effort = ?")
+		args = append(args, *req.ReasoningEffort)
+	}
 
 	if len(updates) == 0 {
 		return nil
@@ -336,32 +250,4 @@ func (s *SystemAgentDefinitionService) Delete(id string) error {
 		return fmt.Errorf("system agent definition not found: %s", id)
 	}
 	return nil
-}
-
-// scanNullableInts populates nullable int pointer fields on the model from sql.NullInt64 scan vars.
-func scanNullableInts(def *model.SystemAgentDefinition, restart, maxFail, stallStart, stallRunning, apiMax, apiMaxTokens sql.NullInt64) {
-	if restart.Valid {
-		v := int(restart.Int64)
-		def.RestartThreshold = &v
-	}
-	if maxFail.Valid {
-		v := int(maxFail.Int64)
-		def.MaxFailRestarts = &v
-	}
-	if stallStart.Valid {
-		v := int(stallStart.Int64)
-		def.StallStartTimeoutSec = &v
-	}
-	if stallRunning.Valid {
-		v := int(stallRunning.Int64)
-		def.StallRunningTimeoutSec = &v
-	}
-	if apiMax.Valid {
-		v := int(apiMax.Int64)
-		def.APIMaxIterations = &v
-	}
-	if apiMaxTokens.Valid {
-		v := int(apiMaxTokens.Int64)
-		def.APIMaxTokens = &v
-	}
 }

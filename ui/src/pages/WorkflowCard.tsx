@@ -26,12 +26,14 @@ export function WorkflowCard({
   onEdit,
   onDelete,
   onExport,
+  project,
 }: {
   id: string
   def: WorkflowDefSummary
   onEdit: () => void
   onDelete: () => void
   onExport: () => void
+  project?: string
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -83,6 +85,11 @@ export function WorkflowCard({
           </div>
         </button>
         <div className="flex items-center gap-2">
+          {def.is_global && (
+            <Badge variant="outline" className="text-xs border-amber-300 text-amber-600">
+              Global
+            </Badge>
+          )}
           {def.scope_type === 'project' && (
             <Badge variant="outline" className="text-xs border-blue-300 text-blue-600">
               project
@@ -92,33 +99,37 @@ export function WorkflowCard({
           <span className="text-xs text-muted-foreground">
             {def.phases?.length || 0} agents
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={onExport}
-            title="Export workflow"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0"
-            onClick={onEdit}
-            title="Edit workflow"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-            onClick={onDelete}
-            title="Delete workflow"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {!def.is_global && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={onExport}
+                title="Export workflow"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={onEdit}
+                title="Edit workflow"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                onClick={onDelete}
+                title="Delete workflow"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -133,8 +144,8 @@ export function WorkflowCard({
             </div>
           )}
 
-          <AgentDefsSection workflowId={id} groups={def.groups || []} />
-          <WorkflowNotificationsSection workflowId={id} />
+          <AgentDefsSection workflowId={id} groups={def.groups || []} project={project} />
+          {!def.is_global && <WorkflowNotificationsSection workflowId={id} />}
         </div>
       )}
     </div>

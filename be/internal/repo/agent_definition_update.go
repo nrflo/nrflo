@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +28,10 @@ type AgentDefUpdateFields struct {
 	Consultant             *bool
 	NodeRole               *string
 	Description            *string
+	// ReasoningEffort: nil = untouched; non-nil with Valid=false writes NULL
+	// (revert to inherit-from-model-row); non-nil with Valid=true writes the
+	// string (incl. "" for an explicit no-effort override).
+	ReasoningEffort *sql.NullString
 }
 
 // Update updates an agent definition
@@ -109,6 +114,14 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.Description != nil {
 		updates = append(updates, "description = ?")
 		args = append(args, *fields.Description)
+	}
+	if fields.ReasoningEffort != nil {
+		updates = append(updates, "reasoning_effort = ?")
+		if fields.ReasoningEffort.Valid {
+			args = append(args, fields.ReasoningEffort.String)
+		} else {
+			args = append(args, nil)
+		}
 	}
 
 	if len(updates) == 0 {

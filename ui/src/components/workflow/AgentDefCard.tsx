@@ -14,10 +14,12 @@ export function AgentDefCard({
   def,
   workflowId,
   groups,
+  project,
 }: {
   def: AgentDef
   workflowId: string
   groups: string[]
+  project?: string
 }) {
   const [editing, setEditing] = useState(false)
   const [expanded, setExpanded] = useState(false)
@@ -25,11 +27,11 @@ export function AgentDefCard({
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
 
-  const agentDefsKey = ['agent-defs', currentProject, workflowId] as const
+  const agentDefsKey = ['agent-defs', project ?? currentProject, workflowId] as const
 
   const updateMutation = useMutation({
     mutationFn: (data: AgentDefUpdateRequest) =>
-      updateAgentDef(workflowId, def.id, data),
+      updateAgentDef(workflowId, def.id, data, project),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentDefsKey })
       setEditing(false)
@@ -37,7 +39,7 @@ export function AgentDefCard({
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => deleteAgentDef(workflowId, def.id),
+    mutationFn: () => deleteAgentDef(workflowId, def.id, project),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentDefsKey })
     },
@@ -64,6 +66,11 @@ export function AgentDefCard({
           <Badge variant="secondary" className="text-xs">
             {def.model}
           </Badge>
+          {def.reasoning_effort && (
+            <Badge variant="outline" className="text-xs">
+              effort: {def.reasoning_effort}
+            </Badge>
+          )}
           <span className="text-xs text-muted-foreground">{def.timeout}m timeout</span>
           {def.restart_threshold != null && (
             <span className="text-xs text-muted-foreground">{def.restart_threshold}% restart</span>
@@ -129,6 +136,9 @@ export function AgentDefCard({
       </div>
       {def.description && (
         <p className="text-xs text-muted-foreground mt-1">{def.description}</p>
+      )}
+      {def.tools && (
+        <p className="text-xs text-muted-foreground mt-1">Tools: {def.tools}</p>
       )}
       {!expanded && def.prompt && (
         <p className="text-xs text-muted-foreground mt-1 truncate max-w-xl">

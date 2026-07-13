@@ -19,6 +19,9 @@ import type { WorkflowDefSummary, WorkflowDefCreateRequest, WorkflowDefUpdateReq
 import { useProjectStore } from '@/stores/projectStore'
 import { triggerDownload, fallbackExportFilename } from '@/lib/downloadBlob'
 import { pythonScriptKeys } from '@/hooks/usePythonScripts'
+import { useIsAdmin } from '@/stores/authStore'
+
+const GLOBAL_PROJECT_SCOPE = '__global__'
 
 interface EditingWorkflow {
   id: string
@@ -43,6 +46,7 @@ interface EditingWorkflow {
 export function WorkflowsPage() {
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
+  const isAdmin = useIsAdmin()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [editingWorkflow, setEditingWorkflow] = useState<EditingWorkflow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
@@ -56,10 +60,11 @@ export function WorkflowsPage() {
   })
 
   // Global definitions are unioned into the listing so they're runnable from any
-  // project, but they are not editable here (they live in the reserved global
-  // namespace, admin-managed). Show only this project's own definitions.
+  // project. They live in the reserved global namespace (admin-managed): not
+  // editable/deletable here, but admins can browse and manage their agent-def
+  // templates via project="__global__" scoping.
   const localWorkflows = workflows
-    ? Object.entries(workflows).filter(([, def]) => !def.is_global)
+    ? Object.entries(workflows).filter(([, def]) => isAdmin || !def.is_global)
     : []
 
   const createMutation = useMutation({
@@ -145,6 +150,7 @@ export function WorkflowsPage() {
             onEdit={() => setEditingWorkflow({ id, ...def })}
             onDelete={() => setDeleteTarget(id)}
             onExport={() => handleExport(id)}
+            project={def.is_global ? GLOBAL_PROJECT_SCOPE : undefined}
           />
         ))}
       </div>

@@ -10,7 +10,9 @@ import (
 	"github.com/google/uuid"
 
 	"be/internal/logger"
+	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // prepareSpawn does all CLI-agnostic prep work: session/agent IDs, agent-def
@@ -182,7 +184,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, fmt.Errorf("api mode: %w", provErr)
 		}
 		prep.apiProvider = apiProv
-		prep.apiReasoningEffort = am.ReasoningEffort
+		apiEffort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
+		if err := service.ValidateAPIReasoningEffort(am.Provider, am.MappedModel, apiEffort); err != nil {
+			return nil, nil, fmt.Errorf("api mode: %w", err)
+		}
+		prep.apiReasoningEffort = apiEffort
 		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
 
 		// Resolve mapped model name from the api_models row.
@@ -282,50 +288,21 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 	promptFile.Close()
 
-	// For adapters that support --append-system-prompt-file (Claude), write
-	// the suffix to a separate temp file so Claude appends it to its system prompt.
-	var suffixFilePath string
-	if suffix != "" && adapter.SupportsSystemPromptFile() {
-		sf, sfErr := createScratchTemp("system-suffix-*.md")
-		if sfErr != nil {
-			logger.Warn(context.Background(), "failed to create suffix temp file", "error", sfErr)
-		} else {
-			if _, sfErr = sf.WriteString(suffix); sfErr != nil {
-				sf.Close()
-				os.Remove(sf.Name())
-				logger.Warn(context.Background(), "failed to write suffix temp file", "error", sfErr)
-			} else {
-				sf.Close()
-				suffixFilePath = sf.Name()
-			}
-		}
-	}
-
-	// For Claude with the system-prompt override on, write the system-prompt injectable to a
-	// temp file for --system-prompt-file (overrides the default system prompt).
-	var systemPromptOverrideFilePath string
-	if systemPromptOverride != "" && adapter.SupportsSystemPromptFile() {
-		of, ofErr := createScratchTemp("system-prompt-*.md")
-		if ofErr != nil {
-			logger.Warn(context.Background(), "failed to create system-prompt override temp file", "error", ofErr)
-		} else {
-			if _, ofErr = of.WriteString(systemPromptOverride); ofErr != nil {
-				of.Close()
-				os.Remove(of.Name())
-				logger.Warn(context.Background(), "failed to write system-prompt override temp file", "error", ofErr)
-			} else {
-				of.Close()
-				systemPromptOverrideFilePath = of.Name()
-			}
-		}
-	}
+	// Write the system-prompt-suffix and system-prompt-override injectables to
+	// temp files (Claude only — adapter.SupportsSystemPromptFile()).
+	suffixFilePath, systemPromptOverrideFilePath := writeSuffixAndOverrideFiles(suffix, systemPromptOverride, adapter)
 
 	// DB-sourced mapped model + reasoning effort
-	var mappedModel, reasoningEffort, fallbackModels string
+	var mappedModel, cliType, reasoningEffort, fallbackModels string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
 		mappedModel = cfg.MappedModel
+		cliType = cfg.CLIType
 		reasoningEffort = cfg.ReasoningEffort
 		fallbackModels = cfg.FallbackModels
+	}
+	reasoningEffort = s.resolveReasoningEffort(agentDef, req.AgentType, reasoningEffort)
+	if err := service.ValidateReasoningEffort(cliType, mappedModel, reasoningEffort); err != nil {
+		return nil, nil, fmt.Errorf("cli mode: %w", err)
 	}
 
 	cliStageDir, _ := EnsureStageDir(req.ProjectID, wfiID)
@@ -365,4 +342,24 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	prep.systemPromptOverrideFile = systemPromptOverrideFilePath
 	proc.env = opts.Env
 	return proc, prep, nil
+}
+
+// resolveReasoningEffort resolves the winning reasoning_effort override with
+// precedence def-level override > AgentConfig-carried override > the model
+// row's own effort (rowEffort). The AgentConfig fallback exists because a
+// global workflow's agent def is invisible to the spawner (loadAgentDefinition
+// has no __global__ fallback — see orchestrator/plan_boundary.go), so a
+// materialized plan node's override must also travel via
+// s.config.Agents[agentType].ReasoningEffort. Mirrors the executionMode
+// fallback shape above (agentDef != nil check, else config.Agents lookup).
+func (s *Spawner) resolveReasoningEffort(agentDef *model.AgentDefinition, agentType, rowEffort string) string {
+	if agentDef != nil && agentDef.ReasoningEffort != nil {
+		return *agentDef.ReasoningEffort
+	}
+	if agentDef == nil {
+		if agentCfg, ok := s.config.Agents[agentType]; ok && agentCfg.ReasoningEffort != nil {
+			return *agentCfg.ReasoningEffort
+		}
+	}
+	return rowEffort
 }

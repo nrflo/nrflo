@@ -12,17 +12,18 @@ import { listLayerPolicies, setLayerPolicy } from '@/api/workflowLayerPolicies'
 import { useProjectStore } from '@/stores/projectStore'
 import type { AgentDefCreateRequest } from '@/types/workflow'
 
-export function AgentDefsSection({ workflowId, groups }: { workflowId: string; groups: string[] }) {
+export function AgentDefsSection({ workflowId, groups, project }: { workflowId: string; groups: string[]; project?: string }) {
   const [creating, setCreating] = useState(false)
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
+  const scope = project ?? currentProject
 
-  const agentDefsQueryKey = ['agent-defs', currentProject, workflowId] as const
-  const layerPoliciesQueryKey = ['workflow-layer-policies', currentProject, workflowId] as const
+  const agentDefsQueryKey = ['agent-defs', scope, workflowId] as const
+  const layerPoliciesQueryKey = ['workflow-layer-policies', scope, workflowId] as const
 
   const { data: defs, isLoading } = useQuery({
     queryKey: agentDefsQueryKey,
-    queryFn: () => listAgentDefs(workflowId),
+    queryFn: () => listAgentDefs(workflowId, project),
   })
 
   const { data: layerPolicies } = useQuery({
@@ -32,7 +33,7 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
 
   const createMutation = useMutation({
     mutationFn: (data: AgentDefCreateRequest) =>
-      createAgentDef(workflowId, data),
+      createAgentDef(workflowId, data, project),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentDefsQueryKey })
       setCreating(false)
@@ -125,6 +126,7 @@ export function AgentDefsSection({ workflowId, groups }: { workflowId: string; g
                     def={def}
                     workflowId={workflowId}
                     groups={groups}
+                    project={project}
                   />
                 ))}
               </div>

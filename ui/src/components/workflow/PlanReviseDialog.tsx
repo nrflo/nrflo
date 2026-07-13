@@ -60,6 +60,9 @@ export function PlanReviseDialog({ onClose, instanceId, revision, questions, tem
                   <div className="flex items-center gap-1.5">
                     <Badge variant="secondary" className="text-xs">{t.id}</Badge>
                     <span className="text-muted-foreground">{t.model}</span>
+                    {t.reasoning_effort && (
+                      <span className="text-muted-foreground">· effort: {t.reasoning_effort}</span>
+                    )}
                   </div>
                   {t.description && <p className="text-muted-foreground mt-0.5">{t.description}</p>}
                 </li>

@@ -2,6 +2,7 @@ import { X, Check, AlertTriangle, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { buildCLIEffortOptions } from './effortOptions'
 
 export interface CLIModelFormData {
   id: string
@@ -27,37 +28,6 @@ const CLI_TYPE_OPTIONS = [
   { value: 'claude', label: 'Claude' },
   { value: 'codex', label: 'Codex' },
 ]
-
-const REASONING_EFFORT_OPTIONS = [
-  { value: '', label: 'Default' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'xhigh', label: 'Extra High (Opus 4.7/4.8 or Sonnet 5 only)' },
-  { value: 'max', label: 'Max' },
-  { value: 'ultra', label: 'Ultra (Codex GPT-5.6 Sol/Terra only)' },
-]
-
-function buildEffortOptions(cliType: string, mappedModel: string) {
-  if (cliType === 'claude') {
-    const supportsXHigh =
-      mappedModel.startsWith('claude-opus-4-7') ||
-      mappedModel.startsWith('claude-opus-4-8') ||
-      mappedModel.startsWith('claude-sonnet-5')
-    return REASONING_EFFORT_OPTIONS.filter((opt) => opt.value !== 'ultra').map((opt) =>
-      opt.value === 'xhigh' && !supportsXHigh
-        ? { ...opt, disabled: true, tooltip: "'xhigh' is only supported on Opus 4.7/4.8 or Sonnet 5 Claude models" }
-        : opt
-    )
-  }
-  const supportsUltra =
-    mappedModel.startsWith('gpt-5.6-sol') || mappedModel.startsWith('gpt-5.6-terra')
-  return REASONING_EFFORT_OPTIONS.filter((opt) => opt.value !== 'xhigh').map((opt) =>
-    opt.value === 'ultra' && !supportsUltra
-      ? { ...opt, disabled: true, tooltip: "'ultra' is only supported on Codex GPT-5.6 Sol/Terra models" }
-      : opt
-  )
-}
 
 export function CLIModelForm({
   formData,
@@ -151,11 +121,10 @@ export function CLIModelForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Reasoning Effort</label>
-          {/* TODO(test-writer): cover dropdown options rendering, xhigh hidden for codex, xhigh disabled with tooltip for non-Opus-4.7/4.8/Sonnet-5 claude, setFormData on select. */}
           <Dropdown
             value={formData.reasoning_effort}
             onChange={(val) => setFormData({ ...formData, reasoning_effort: val })}
-            options={buildEffortOptions(formData.cli_type, formData.mapped_model)}
+            options={buildCLIEffortOptions(formData.cli_type, formData.mapped_model)}
           />
         </div>
         <div>

@@ -95,7 +95,7 @@ be/internal/repo/ticket_search_test.go	362
 be/internal/repo/workflow_instance_cleanup_test.go	319
 be/internal/scheduler/scheduler_dispatch_test.go	337
 be/internal/service/agent.go	520
-be/internal/service/agent_definition.go	602
+be/internal/service/agent_definition.go	483
 be/internal/service/agent_definition_script_test.go	321
 be/internal/service/api_model.go	354
 be/internal/service/artifact.go	326
@@ -114,7 +114,6 @@ be/internal/service/findings_layer_test.go	338
 be/internal/service/git_test.go	696
 be/internal/service/scheduled_task_chain_test.go	381
 be/internal/service/scheduled_task_test.go	466
-be/internal/service/system_agent_definition.go	367
 be/internal/service/system_agent_definition_test.go	379
 be/internal/service/ticket.go	387
 be/internal/service/workflow.go	334
@@ -149,7 +148,7 @@ be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	325
 be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
-be/internal/spawner/spawner_prepare.go	368
+be/internal/spawner/spawner_prepare.go	365
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	324
 be/internal/spawner/template_extra_vars_test.go	318
@@ -178,7 +177,7 @@ ui/src/components/tickets/TicketCard.test.tsx	310
 ui/src/components/ui/TicketSearchDropdown.test.tsx	326
 ui/src/components/workflow/ActiveAgentsPanel.retry.test.tsx	415
 ui/src/components/workflow/AgentDefForm.restart-threshold.test.tsx	387
-ui/src/components/workflow/AgentDefForm.test.tsx	552
+ui/src/components/workflow/AgentDefForm.test.tsx	554
 ui/src/components/workflow/AgentLogDetail.errorResult.test.tsx	306
 ui/src/components/workflow/AgentLogDetail.test.tsx	962
 ui/src/components/workflow/AgentLogImprovements.e2e.test.tsx	405
@@ -234,4 +233,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	394
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	495
+ui/src/types/workflow.ts	434

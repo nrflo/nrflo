@@ -17,7 +17,7 @@ vi.mock('@/hooks/useCLIModels', () => ({
   useCLIModels: () => ({ data: [] }),
 }))
 
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [] }))
+vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/workflow/PythonScriptPickerField', () => ({
   PythonScriptPickerField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (

@@ -73,7 +73,7 @@ func LoadMaterializedAgentConfigs(pool *db.Pool, clk clock.Clock, defProjectID, 
 		if err != nil {
 			continue // template removed since materialization; spawn surfaces a clear "not found" error
 		}
-		out[p.Agent] = SpawnerAgentConfig{Model: def.Model, Timeout: def.Timeout, Tag: def.Tag}
+		out[p.Agent] = SpawnerAgentConfig{Model: def.Model, Timeout: def.Timeout, Tag: def.Tag, ReasoningEffort: def.ReasoningEffort}
 	}
 	return out
 }

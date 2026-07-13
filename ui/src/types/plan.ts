@@ -56,6 +56,7 @@ export interface PlanTemplate {
   execution_mode: string
   prompt: string
   description: string
+  reasoning_effort?: string
 }
 
 export interface PlanDraft {

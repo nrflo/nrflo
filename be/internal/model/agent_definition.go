@@ -24,8 +24,9 @@ type AgentDefinition struct {
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     string    `json:"validation_commands"`
 	Consultant             bool      `json:"consultant"`
-	NodeRole               string    `json:"node_role"`   // static|planner|fanout_template; non-static defs never auto-execute as a phase
-	Description            string    `json:"description"` // required (non-empty) when node_role='fanout_template'; the plan catalog's selection text
+	NodeRole               string    `json:"node_role"`                  // static|planner|fanout_template; non-static defs never auto-execute as a phase
+	Description            string    `json:"description"`                // required (non-empty) when node_role='fanout_template'; the plan catalog's selection text
+	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"` // nil = inherit from the model row; non-nil (incl. "") overrides it
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

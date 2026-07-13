@@ -39,8 +39,9 @@ func convertToSpawnerAgents(svc map[string]service.SpawnerAgentConfig) map[strin
 	result := make(map[string]spawner.AgentConfig, len(svc))
 	for name, sa := range svc {
 		result[name] = spawner.AgentConfig{
-			Model:   sa.Model,
-			Timeout: sa.Timeout,
+			Model:           sa.Model,
+			Timeout:         sa.Timeout,
+			ReasoningEffort: sa.ReasoningEffort,
 		}
 	}
 	return result

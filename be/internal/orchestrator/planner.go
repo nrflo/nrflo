@@ -36,6 +36,7 @@ type plannerAgentConfig struct {
 	Tools            string
 	APIMaxIterations *int
 	APIMaxTokens     *int
+	ReasoningEffort  *string
 }
 
 // resolvePlannerDef resolves the planner agent definition for a workflow:
@@ -59,6 +60,7 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 		return plannerAgentConfig{
 			ID: def.ID, Model: def.Model, Timeout: def.Timeout, ExecutionMode: def.ExecutionMode,
 			Tools: def.Tools, APIMaxIterations: def.APIMaxIterations, APIMaxTokens: def.APIMaxTokens,
+			ReasoningEffort: def.ReasoningEffort,
 		}, nil
 	}
 	if err != sql.ErrNoRows {
@@ -76,6 +78,7 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 	return plannerAgentConfig{
 		ID: sysDef.ID, Model: sysDef.Model, Timeout: sysDef.Timeout, ExecutionMode: sysDef.ExecutionMode,
 		Tools: sysDef.Tools, APIMaxIterations: sysDef.APIMaxIterations, APIMaxTokens: sysDef.APIMaxTokens,
+		ReasoningEffort: sysDef.ReasoningEffort,
 	}, nil
 }
 
@@ -95,7 +98,7 @@ func renderTemplateLibrary(templates []service.PlanTemplate) string {
 		if desc == "" {
 			desc = "(no description provided)"
 		}
-		fmt.Fprintf(&b, "- %s (%s, %s)\n  %s\n", t.ID, t.Model, t.ExecutionMode, strings.ReplaceAll(desc, "\n", " "))
+		fmt.Fprintf(&b, "- %s (%s, %s, effort=%s)\n  %s\n", t.ID, t.Model, t.ExecutionMode, t.ReasoningEffort, strings.ReplaceAll(desc, "\n", " "))
 	}
 	return b.String()
 }
@@ -213,6 +216,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 				Tools:            plannerDef.Tools,
 				APIMaxIterations: plannerDef.APIMaxIterations,
 				APIMaxTokens:     plannerDef.APIMaxTokens,
+				ReasoningEffort:  plannerDef.ReasoningEffort,
 			},
 		},
 		DataPath:           o.dataPath,

@@ -18,6 +18,10 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama). I
 - Height clamped to min 140px so the 4-button controls panel stays fully visible on short layouts.
 - `AgentsTable.tsx` provides a flat table view for simplified-graph mode.
 
+## Agent Definitions
+
+`AgentDefForm.tsx` (+ `AgentDefEffortField.tsx`, `AgentDefAPIModeFields.tsx`, `AgentDefNodeRoleFields.tsx` sub-fields) edits an `AgentDef`, including its optional `reasoning_effort` (gated Dropdown options shared with the model forms via `src/components/settings/effortOptions.ts`; empty = inherit from the model row). `AgentDefsSection`/`AgentDefCard` accept an optional `project` scope prop (defaults to the active project) so `WorkflowsPage` can manage global (`is_global`) workflow templates in the reserved `__global__` namespace when the viewer is admin.
+
 ## Plan Approval
 
 `PlanApprovalBanner.tsx` (approve/revise/cancel, revision-pinned) renders `PlanManifestView.tsx` (read-only manifest) and opens `PlanReviseDialog.tsx` (feedback + open-question answers, submitted via `useRevisePlan`) when revising.

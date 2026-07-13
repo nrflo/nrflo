@@ -37,8 +37,8 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		nodeRole = "static"
 	}
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -61,6 +61,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.Consultant,
 		nodeRole,
 		def.Description,
+		def.ReasoningEffort,
 		now,
 		now,
 	)
@@ -73,9 +74,9 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	var createdAt, updatedAt string
 
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
-	var pythonScriptID sql.NullString
+	var pythonScriptID, reasoningEffort sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -101,6 +102,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&def.Consultant,
 		&def.NodeRole,
 		&def.Description,
+		&reasoningEffort,
 		&createdAt,
 		&updatedAt,
 	)
@@ -141,6 +143,10 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		s := pythonScriptID.String
 		def.PythonScriptID = &s
 	}
+	if reasoningEffort.Valid {
+		v := reasoningEffort.String
+		def.ReasoningEffort = &v
+	}
 
 	return def, nil
 }
@@ -148,7 +154,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -164,7 +170,7 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 // Use this for execution graph construction; consultants must never become workflow phases.
 func (r *AgentDefinitionRepo) ListExecutable(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0 AND node_role = 'static'
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -187,7 +193,7 @@ func scanAgentDefRows(rows interface {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
 		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
-		var pythonScriptID sql.NullString
+		var pythonScriptID, reasoningEffort sql.NullString
 
 		err := rows.Scan(
 			&def.ID,
@@ -212,6 +218,7 @@ func scanAgentDefRows(rows interface {
 			&def.Consultant,
 			&def.NodeRole,
 			&def.Description,
+			&reasoningEffort,
 			&createdAt,
 			&updatedAt,
 		)
@@ -248,6 +255,10 @@ func scanAgentDefRows(rows interface {
 		if pythonScriptID.Valid {
 			s := pythonScriptID.String
 			def.PythonScriptID = &s
+		}
+		if reasoningEffort.Valid {
+			v := reasoningEffort.String
+			def.ReasoningEffort = &v
 		}
 
 		defs = append(defs, def)

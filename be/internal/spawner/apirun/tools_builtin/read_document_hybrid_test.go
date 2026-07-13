@@ -49,7 +49,8 @@ func TestReadDocumentHybridHandler_ImageReturnsMedia(t *testing.T) {
 	}
 }
 
-func TestReadDocumentHybridHandler_PDFReturnsPathOnly(t *testing.T) {
+func TestReadDocumentHybridHandler_PDFReturnsPathOnly_NoPdftoppm(t *testing.T) {
+	stubPdftoppmMissing(t)
 	env := newBuiltinTestEnv(t)
 	addHybridArtifact(t, env, "deed.pdf", "%PDF-1.4 fake", "application/pdf")
 

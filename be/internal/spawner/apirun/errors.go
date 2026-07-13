@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
-	openai "github.com/openai/openai-go"
+	openai "github.com/openai/openai-go/v3"
 )
 
 // RetryClass categorises whether a provider error is retriable and by which mechanism.

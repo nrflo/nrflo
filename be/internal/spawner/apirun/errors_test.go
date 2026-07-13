@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
-	openai "github.com/openai/openai-go"
+	openai "github.com/openai/openai-go/v3"
 )
 
 // makeOpenAIErr constructs an *openai.Error (alias for apierror.Error) with

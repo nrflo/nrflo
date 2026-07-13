@@ -37,7 +37,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Multimodal Tool Results
 
-`provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. Both providers render it — Anthropic: `provider/anthropic/translate.go:translateMediaBlock` maps each block into the tool_result content (image/document base64); OpenAI: `provider/openai/translate_media.go` appends a user-role message after the `function_call_output` (Responses API forbids media on tool outputs) with `input_image` (data URL, detail=high) / `input_file` (`filename` + `file_data` data URL) parts. Image media types: jpeg/png/gif/webp; document: application/pdf only.
+`provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. Both providers render it — Anthropic: `provider/anthropic/translate.go:translateMediaBlock` maps each block into the tool_result content (image/document base64); OpenAI: `provider/openai/translate_media.go` appends a user-role message after the `function_call_output` (Responses API forbids media on tool outputs) with `input_image` / `input_file` (`filename` + `file_data` data URL) parts, both detail=high. Image media types: jpeg/png/gif/webp; document: application/pdf only.
 
 ## Python Tool Handler
 

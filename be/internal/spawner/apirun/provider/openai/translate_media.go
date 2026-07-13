@@ -3,8 +3,8 @@ package openai
 import (
 	"fmt"
 
-	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/responses"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/responses"
 
 	"be/internal/spawner/apirun/provider"
 )
@@ -28,8 +28,8 @@ func mediaFollowupItem(b provider.ContentBlock) (responses.ResponseInputItemUnio
 }
 
 // translateMediaBlock maps a provider.MediaBlock to a Responses input content
-// part: images become input_image (base64 data URL, detail=high so scanned
-// pages are not downsampled), PDFs become input_file (file_data data URL).
+// part: images become input_image, PDFs become input_file (file_data data
+// URL). Both carry detail=high so scanned pages are not downsampled.
 func translateMediaBlock(m provider.MediaBlock) (responses.ResponseInputContentUnionParam, error) {
 	switch m.Kind {
 	case "image":
@@ -53,6 +53,7 @@ func translateMediaBlock(m provider.MediaBlock) (responses.ResponseInputContentU
 			OfInputFile: &responses.ResponseInputFileParam{
 				Filename: param.NewOpt(name),
 				FileData: param.NewOpt("data:application/pdf;base64," + m.DataB64),
+				Detail:   responses.ResponseInputFileDetailHigh,
 			},
 		}, nil
 	default:

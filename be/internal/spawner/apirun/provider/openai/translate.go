@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/packages/ssestream"
-	"github.com/openai/openai-go/responses"
-	"github.com/openai/openai-go/shared"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/packages/ssestream"
+	"github.com/openai/openai-go/v3/responses"
+	"github.com/openai/openai-go/v3/shared"
 
 	"be/internal/spawner/apirun/provider"
 )
@@ -146,12 +146,11 @@ func decodeStream(stream *ssestream.Stream[responses.ResponseStreamEventUnion], 
 			sink.OnTextDelta(ev.Text)
 
 		case "response.function_call_arguments.delta":
-			// The incremental chunk lives in the union's "delta" field
-			// (ResponseFunctionCallArgumentsDeltaEvent.Delta); "arguments" is
-			// only populated on the ".done" variant.
+			// The incremental chunk lives in the event's "delta" field;
+			// "arguments" is only populated on the ".done" variant.
 			if acc, ok := accs[ev.OutputIndex]; ok {
-				acc.args += ev.Delta.OfString
-				sink.OnToolUseInputDelta(acc.callID, ev.Delta.OfString)
+				acc.args += ev.Delta
+				sink.OnToolUseInputDelta(acc.callID, ev.Delta)
 			}
 
 		case "response.function_call_arguments.done":

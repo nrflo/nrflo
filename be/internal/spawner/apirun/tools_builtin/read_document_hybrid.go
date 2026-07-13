@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"be/internal/repo"
@@ -15,17 +16,20 @@ import (
 // for CLIs without native document reading (codex). It materializes the
 // artifact and returns its absolute path; PNG/JPEG bytes are additionally
 // returned as an image media block so the MCP bridge can attach them inline
-// as vision input. PDFs return the path only — the CLI extracts content from
-// the file itself. NOT registered in Builtins(); swapped in by
-// attachNrfloToolRegistry for adapters where SupportsNativeDocRead()==false.
+// as vision input, and PDFs are rasterized to per-page PNG media via the
+// server host's pdftoppm (read_document_rasterize.go), falling back to a
+// path-only result when the binary is absent or rendering fails. NOT
+// registered in Builtins(); swapped in by attachNrfloToolRegistry for
+// adapters where SupportsNativeDocRead()==false.
 type ReadDocumentHybridHandler struct{}
 
 func (ReadDocumentHybridHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name: "read_document",
-		Description: "Load an input artifact (uploaded PDF or image). Images are attached to the " +
-			"conversation directly; for PDFs the absolute file path is returned so you can " +
-			"extract its contents from disk. Pass the artifact name from #{ARTIFACTS} or artifact_list.",
+		Description: "Load an input artifact (uploaded PDF or image). Images and rendered PDF pages " +
+			"are attached to the conversation directly; when a PDF cannot be rendered its " +
+			"absolute file path is returned so you can extract the contents from disk. " +
+			"Pass the artifact name from #{ARTIFACTS} or artifact_list.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -93,6 +97,20 @@ func (ReadDocumentHybridHandler) InvokeMedia(ctx context.Context, env apirun.Too
 					DataB64:   base64.StdEncoding.EncodeToString(data),
 					Name:      a.Name,
 				}}, false, nil
+		}
+		if kind == "document" {
+			if bin, lerr := lookPdftoppm(); lerr == nil {
+				blocks, truncated, rerr := rasterizePDF(ctx, bin, absPath, a.Name, maxReadDocumentBytes)
+				if rerr == nil {
+					msg := fmt.Sprintf("Loaded %s (application/pdf); %d page(s) rendered and attached as images.", a.Name, len(blocks))
+					if truncated {
+						msg += fmt.Sprintf(" Output truncated (%d-page / 32 MiB cap) — the full file is at %s.", rasterMaxPages, absPath)
+					} else {
+						msg += " File also at " + absPath + "."
+					}
+					return msg, blocks, false, nil
+				}
+			}
 		}
 		out, _ := json.Marshal(map[string]string{
 			"path": absPath,

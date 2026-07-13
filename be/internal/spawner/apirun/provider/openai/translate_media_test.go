@@ -57,6 +57,9 @@ func TestTranslateRequest_ToolResultPDFMedia(t *testing.T) {
 	if !strings.Contains(body, `"filename":"deed.pdf"`) {
 		t.Errorf("filename missing; body=%s", body)
 	}
+	if !strings.Contains(body, `"detail":"high"`) {
+		t.Errorf("input_file detail=high missing; body=%s", body)
+	}
 }
 
 func TestTranslateRequest_ToolResultPDFMedia_DefaultFilename(t *testing.T) {

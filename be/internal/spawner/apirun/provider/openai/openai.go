@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 
-	openaisdk "github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+	openaisdk "github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
 
 	"be/internal/spawner/apirun/provider"
 )

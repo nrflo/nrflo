@@ -125,6 +125,37 @@ describe('CLIModelForm — Reasoning Effort dropdown', () => {
     expect(within(panel).queryByText('Extra High (Opus 4.7/4.8 or Sonnet 5 only)')).not.toBeInTheDocument()
   })
 
+  it('claude cli_type: ultra option is NOT rendered', async () => {
+    renderForm({ cli_type: 'claude', mapped_model: 'claude-opus-4-8' })
+    const { panel } = await openAndGetPanel()
+    expect(within(panel).queryByText('Ultra (Codex GPT-5.6 Sol/Terra only)')).not.toBeInTheDocument()
+  })
+
+  it('codex + GPT-5.6 Sol: ultra option is enabled and selectable', async () => {
+    const { setFormData, formData } = renderForm({
+      cli_type: 'codex',
+      mapped_model: 'gpt-5.6-sol',
+      reasoning_effort: '',
+    })
+    const { user, panel } = await openAndGetPanel()
+
+    const ultraLabel = within(panel).getByText('Ultra (Codex GPT-5.6 Sol/Terra only)')
+    expect(ultraLabel.parentElement!).not.toHaveAttribute('aria-disabled')
+    await user.click(ultraLabel)
+    expect(setFormData).toHaveBeenCalledWith({ ...formData, reasoning_effort: 'ultra' })
+  })
+
+  it('codex + non-5.6 model: ultra rendered but disabled and non-clickable', async () => {
+    const { setFormData } = renderForm({ cli_type: 'codex', mapped_model: 'gpt-5.5' })
+    const { user, panel } = await openAndGetPanel()
+
+    const ultraLabel = within(panel).getByText('Ultra (Codex GPT-5.6 Sol/Terra only)')
+    expect(ultraLabel.parentElement!).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(ultraLabel)
+    expect(setFormData).not.toHaveBeenCalled()
+  })
+
   it('selecting High calls setFormData with reasoning_effort="high"', async () => {
     const { setFormData, formData } = renderForm({ reasoning_effort: '' })
     const { user, panel } = await openAndGetPanel()

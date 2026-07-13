@@ -39,6 +39,8 @@ func TestAPIModel_CreateReasoningEffort(t *testing.T) {
 		{name: "xhigh on anthropic sonnet rejected", provider: "anthropic", mappedModel: "claude-sonnet-4-5", effort: "xhigh", wantErr: "only supported on Anthropic Opus 4.7"},
 		{name: "xhigh on anthropic opus 4.6 rejected", provider: "anthropic", mappedModel: "claude-opus-4-6", effort: "xhigh", wantErr: "only supported on Anthropic Opus 4.7"},
 		{name: "xhigh on anthropic opus 4.6 1m rejected", provider: "anthropic", mappedModel: "claude-opus-4-6[1m]", effort: "xhigh", wantErr: "only supported on Anthropic Opus 4.7"},
+		// ultra is a codex-CLI-only effort (GPT-5.6 Sol/Terra); API models reject it.
+		{name: "ultra on openai rejected", provider: "openai", mappedModel: "gpt-5.6-sol", effort: "ultra", wantErr: "not supported for API models"},
 	}
 
 	for i, tt := range tests {

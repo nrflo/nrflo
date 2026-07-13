@@ -36,8 +36,8 @@ func TestCLIModel_ListEnabled_ReturnsAllByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 16 {
-		t.Fatalf("ListEnabled len = %d, want 16 (all seeded models enabled)", len(enabled))
+	if len(enabled) != 21 {
+		t.Fatalf("ListEnabled len = %d, want 21 (all seeded models enabled)", len(enabled))
 	}
 }
 
@@ -63,8 +63,8 @@ func TestCLIModel_ListEnabled_ExcludesDisabledCustom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 16 {
-		t.Fatalf("ListEnabled len = %d, want 16 (disabled model excluded)", len(enabled))
+	if len(enabled) != 21 {
+		t.Fatalf("ListEnabled len = %d, want 21 (disabled model excluded)", len(enabled))
 	}
 	for _, m := range enabled {
 		if m.ID == "list-disabled" {
@@ -91,8 +91,8 @@ func TestCLIModel_ListEnabled_IncludesEnabledCustom(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListEnabled: %v", err)
 	}
-	if len(enabled) != 17 {
-		t.Fatalf("ListEnabled len = %d, want 17 (16 seeded + 1 custom)", len(enabled))
+	if len(enabled) != 22 {
+		t.Fatalf("ListEnabled len = %d, want 22 (21 seeded + 1 custom)", len(enabled))
 	}
 }
 

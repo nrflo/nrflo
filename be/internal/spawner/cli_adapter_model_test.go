@@ -18,6 +18,11 @@ func TestCodexAdapterModelMapping(t *testing.T) {
 		{"codex_gpt_high", "gpt-5.3-codex"},
 		{"codex_gpt54_normal", "gpt-5.4"},
 		{"codex_gpt54_high", "gpt-5.4"},
+		{"codex_gpt56_sol_normal", "gpt-5.6-sol"},
+		{"codex_gpt56_sol_high", "gpt-5.6-sol"},
+		{"codex_gpt56_terra_normal", "gpt-5.6-terra"},
+		{"codex_gpt56_terra_high", "gpt-5.6-terra"},
+		{"codex_gpt56_luna_low", "gpt-5.6-luna"},
 
 		// Unknown model (pass-through)
 		{"custom-model", "custom-model"},
@@ -77,6 +82,11 @@ func TestCodexReasoningEffort(t *testing.T) {
 		{"codex_gpt_high", "high"},
 		{"codex_gpt54_normal", "medium"},
 		{"codex_gpt54_high", "high"},
+		{"codex_gpt56_sol_normal", "medium"},
+		{"codex_gpt56_sol_high", "high"},
+		{"codex_gpt56_terra_normal", "medium"},
+		{"codex_gpt56_terra_high", "high"},
+		{"codex_gpt56_luna_low", "low"},
 		{"unknown", "high"},
 	}
 

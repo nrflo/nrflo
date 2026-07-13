@@ -72,7 +72,7 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	}
 
 	// Agents ship as cli_interactive (claude/codex CLIs self-auth; no server API
-	// credential), and verify_b is the codex GPT-5.5 cross-provider verifier.
+	// credential), and verify_b is the codex GPT-5.6 cross-provider verifier.
 	var nonCLI int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND execution_mode<>'cli_interactive'`,
 		GlobalProjectID, DeepResearchWorkflow).Scan(&nonCLI); err != nil {
@@ -86,8 +86,8 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 		GlobalProjectID, DeepResearchWorkflow).Scan(&verifyBModel); err != nil {
 		t.Fatal(err)
 	}
-	if verifyBModel != "codex_gpt55_high" {
-		t.Errorf("verify_b model = %q, want codex_gpt55_high", verifyBModel)
+	if verifyBModel != "codex_gpt56_sol_high" {
+		t.Errorf("verify_b model = %q, want codex_gpt56_sol_high", verifyBModel)
 	}
 
 	// L2 verifiers are differentiated by lens (migrations 000149-000152):
@@ -95,7 +95,7 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	// web_fetch (independent corroboration); verify_c = lean sonnet (source quality).
 	for _, tc := range []struct{ id, wantModel, toolsLike string }{
 		{"verify_a", "opus_4_8_1m", "%artifact_get%"},
-		{"verify_b", "codex_gpt55_high", "%web_fetch%"},
+		{"verify_b", "codex_gpt56_sol_high", "%web_fetch%"},
 		{"verify_c", "sonnet", "web_search,emit_findings"},
 	} {
 		var n int

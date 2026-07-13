@@ -17,27 +17,6 @@ var validCLITypes = map[string]bool{
 	"codex":  true,
 }
 
-var validReasoningEfforts = map[string]bool{
-	"":       true,
-	"low":    true,
-	"medium": true,
-	"high":   true,
-	"xhigh":  true,
-	"max":    true,
-}
-
-// validateReasoningEffort checks that effort is one of the allowed levels and
-// enforces that "xhigh" is only used with Claude Opus 4.7/4.8 or Sonnet 5 models.
-func validateReasoningEffort(cliType, mappedModel, effort string) error {
-	if !validReasoningEfforts[effort] {
-		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
-	}
-	if effort == "xhigh" && cliType == "claude" && !supportsXHighEffort(mappedModel) {
-		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Opus 4.7/4.8 or Sonnet 5 Claude models")
-	}
-	return nil
-}
-
 // normalizeFallbackModels validates and normalizes a comma-separated --fallback-model
 // chain: trims entries, drops empties, caps at 3. Only Claude consumes
 // --fallback-model, so a non-empty chain for a non-claude model is rejected.

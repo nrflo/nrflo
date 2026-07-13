@@ -89,7 +89,7 @@ type drAgent struct {
 //	verify_a (QUOTE SUPPORT)            opus_4_8_1m + artifact_get — reads the
 //	    researcher's cached source pages to check each quote verbatim/in-context
 //	    (the 1M window holds them without exhausting).
-//	verify_b (INDEPENDENT CORROBORATION) codex GPT-5.5 (cross-provider diversity)
+//	verify_b (INDEPENDENT CORROBORATION) codex GPT-5.6 Sol (cross-provider diversity)
 //	    + bounded web_fetch of NEW sources only — never the cached originals.
 //	verify_c (SOURCE QUALITY/RECENCY)   lean sonnet, snippet-level web_search.
 //
@@ -98,7 +98,7 @@ var drAgents = []drAgent{
 	{ID: "scope", Layer: 0, Model: "sonnet", Tools: "emit_findings"},
 	{ID: "research", Layer: 1, Model: "sonnet", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
 	{ID: "verify_a", Layer: 2, Model: "opus_4_8_1m", Tools: "web_search,artifact_list,artifact_get,emit_findings"},
-	{ID: "verify_b", Layer: 2, Model: "codex_gpt55_high", Tools: "web_search,web_fetch,emit_findings"},
+	{ID: "verify_b", Layer: 2, Model: "codex_gpt56_sol_high", Tools: "web_search,web_fetch,emit_findings"},
 	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
 	{ID: "synthesize", Layer: 3, Model: "opus_4_8", Tools: "emit_findings"},
 }

@@ -65,6 +65,9 @@ func (h *Handler) handleFindings(req Request, action string) Response {
 		if params.AgentType != "" && params.Layer != nil {
 			return MakeErrorResponse(req.ID, NewInvalidParamsError("agent_type and layer are mutually exclusive"))
 		}
+		if params.NodeID != "" && (params.AgentType != "" || params.Layer != nil) {
+			return MakeErrorResponse(req.ID, NewInvalidParamsError("node_id, agent_type and layer are mutually exclusive"))
+		}
 		findings, err := h.findingsSvc.Get(&params)
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "not initialized") {

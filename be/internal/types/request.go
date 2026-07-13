@@ -95,6 +95,7 @@ type FindingsGetRequest struct {
 	Keys       []string `json:"keys,omitempty"` // Multiple keys to fetch
 	Model      string   `json:"model,omitempty"`
 	Layer      *int     `json:"layer,omitempty"`       // layer-keyed read; mutually exclusive with agent_type
+	NodeID     string   `json:"node_id,omitempty"`     // node-keyed read; mutually exclusive with agent_type and layer
 	InstanceID string   `json:"instance_id,omitempty"` // required for cross-agent reads
 	SessionID  string   `json:"session_id,omitempty"`  // required for own-session reads
 }
@@ -121,9 +122,8 @@ type FindingsDeleteRequest struct {
 	InstanceID string   `json:"instance_id,omitempty"`
 }
 
-// FindingSchema is a workflow-scoped validation contract for a finding key.
-// Schema is a JSON Schema (Draft 2020) the emitted value must satisfy; Example
-// is a known-good value echoed back to the agent when validation fails.
+// FindingSchema is a workflow-scoped validation contract for a finding key: Schema is a
+// JSON Schema (Draft 2020) the value must satisfy; Example is echoed back on failure.
 type FindingSchema struct {
 	Key     string          `json:"key"`
 	Schema  json.RawMessage `json:"schema"`

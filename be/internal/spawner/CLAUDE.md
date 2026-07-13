@@ -120,7 +120,7 @@ End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (r
 
 ## Template Variables
 
-Full variable list (`${AGENT}`, `${TICKET_ID}`, `${MODEL}`, `#{FINDINGS:...}`, `#{PROJECT_FINDINGS:...}`, `#{LAYER_FINDINGS:N}`, `#{PRIOR_LAYER_FINDINGS}`, `#{ARTIFACTS}`, `#{ARTIFACT:name}`, etc.) and expansion order are in `template.go`. Auto-prepended injectables (`user-instructions`, `low-context`, `callback`, `system-prompt-suffix`) are loaded from the `default_templates` table.
+Full variable list (`${AGENT}`, `${NODE_ID}`, `${TICKET_ID}`, `${MODEL}`, `#{FINDINGS:...}`, `#{LAYER_FINDINGS:N}`, `#{NODE_FINDINGS:<node_id>}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`.
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found). Both use the same `EnsureStageDir`/`Materialize` helpers as NRF_ARTIFACTS_DIR injection.
 

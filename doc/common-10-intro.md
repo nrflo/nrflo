@@ -28,6 +28,7 @@ template. At runtime, the system substitutes them with actual values.
 | `${CHILD_SESSION}` | This agent's session UUID | UUID string |
 | `${MODEL_ID}` | Full model identifier | `claude:opus_4_7` |
 | `${MODEL}` | Short model name | `opus_4_7` (defaults to `sonnet`) |
+| `${NODE_ID}` | Execution node id (the slot in the run; equals `${AGENT}` for static workflows) | `implementor` |
 
 ### Ticket Context
 

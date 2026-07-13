@@ -22,6 +22,9 @@ var projectFindingsPattern = regexp.MustCompile(`#\{PROJECT_FINDINGS:([^}]+)\}`)
 // layerFindingsPattern matches #{LAYER_FINDINGS:N} or #{PRIOR_LAYER_FINDINGS}
 var layerFindingsPattern = regexp.MustCompile(`#\{LAYER_FINDINGS:(\d+)\}|#\{PRIOR_LAYER_FINDINGS\}`)
 
+// nodeFindingsPattern matches #{NODE_FINDINGS:node_id} or #{NODE_FINDINGS:node_id:key(s)}
+var nodeFindingsPattern = regexp.MustCompile(`#\{NODE_FINDINGS:([^:}]+)(?::([^}]*))?\}`)
+
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
 	model := "opus_4_8"
@@ -36,7 +39,7 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	if def := s.loadAgentDefinition(agentType, projectID, workflowName); def != nil {
 		currentLayer = def.Layer
 	}
-	body, _, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "", "", nil, currentLayer)
+	body, _, _, err := s.loadTemplate(agentType, ticketID, projectID, "preview-parent", "preview-child", workflowName, modelID, "" /* nodeID: unset for Preview */, "", nil, currentLayer)
 	return body, err
 }
 
@@ -173,54 +176,25 @@ func (s *Spawner) fetchCallbackRaw(projectID, ticketID, workflowName, wfiID stri
 	return instr, from
 }
 
-// resolveWFIID resolves a workflow instance ID from direct wfiID or ticket/project lookup.
-func (s *Spawner) resolveWFIID(projectID, ticketID, workflowName, wfiID string) string {
-	return s.resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID)
-}
-
-func (s *Spawner) resolveWFIIDFromPool(projectID, ticketID, workflowName, wfiID string) string {
-	pool := s.pool()
-	if pool == nil {
-		return ""
-	}
-	wfiRepo := repo.NewWorkflowInstanceRepo(pool, s.config.Clock)
-	var wi *model.WorkflowInstance
-	var err error
-	if wfiID != "" {
-		wi, err = wfiRepo.Get(wfiID)
-	} else if ticketID != "" {
-		wi, err = wfiRepo.GetByTicketAndWorkflow(projectID, ticketID, workflowName)
-	} else {
-		var instances []*model.WorkflowInstance
-		instances, err = wfiRepo.ListActiveByProjectAndWorkflow(projectID, workflowName)
-		if err == nil && len(instances) > 0 {
-			wi = instances[len(instances)-1]
-		}
-	}
-	if err != nil || wi == nil {
-		return ""
-	}
-	return wi.ID
-}
-
 // LoadTemplate is the public wrapper around loadTemplate. It loads and expands
 // an agent template from DB. Used by the orchestrator to build PTY command prompts.
 // Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
 // system-prompt-suffix injectable for --append-system-prompt-file; systemPromptOverride
 // is non-empty only when the model has CLIType=="claude" and claude_system_prompt_override_enabled is on.
 // currentLayer is the agent's layer number (0 for system agents and L0 interactive starts).
-func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
-	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID, extraVars, currentLayer)
+func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, nodeID, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
+	return s.loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, nodeID, wfiID, extraVars, currentLayer)
 }
 
 // loadTemplate loads and expands an agent template from DB.
 // wfiID is optional — when set, used for instance-specific lookups (user instructions, callbacks).
+// nodeID is the execution slot id (empty for Preview/interactive-L0 starts, which have no node).
 // extraVars is optional — when set, expanded after standard ${VAR} substitution.
 // currentLayer is the agent's layer number; used to resolve #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS}.
 // Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
 // system-prompt-suffix injectable; systemPromptOverride is non-empty only when the model
 // has CLIType=="claude" and the global claude_system_prompt_override_enabled setting is on.
-func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, phase, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
+func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, nodeID, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
 		return "", "", "", err
@@ -233,9 +207,16 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		model = "sonnet"
 	}
 
+	// nodeVar falls back to agentType when nodeID is unset (Preview, interactive L0 starts).
+	nodeVar := nodeID
+	if nodeVar == "" {
+		nodeVar = agentType
+	}
+
 	// Build the standard vars map (used for both template body and suffix expansion)
 	stdVars := map[string]string{
 		"AGENT":          agentType,
+		"NODE_ID":        nodeVar,
 		"TICKET_ID":      ticketID,
 		"PROJECT_ID":     projectID,
 		"WORKFLOW":       workflowName,
@@ -250,6 +231,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 
 	// Expand variables
 	template = strings.ReplaceAll(template, "${AGENT}", agentType)
+	template = strings.ReplaceAll(template, "${NODE_ID}", nodeVar)
 	template = strings.ReplaceAll(template, "${TICKET_ID}", ticketID)
 	template = strings.ReplaceAll(template, "${PROJECT_ID}", projectID)
 	template = strings.ReplaceAll(template, "${WORKFLOW}", workflowName)
@@ -290,7 +272,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	if ui := s.fetchUserInstructionsRaw(projectID, ticketID, workflowName, wfiID); ui != "" {
 		prepend = append(prepend, s.expandInjectable("user-instructions", map[string]string{"USER_INSTRUCTIONS": ui}))
 	}
-	prevData, _ := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, wfiID)
+	prevData, _ := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, nodeID, wfiID)
 	if prevData != "" {
 		prepend = append(prepend, s.expandInjectable("low-context", map[string]string{"PREVIOUS_DATA": prevData}))
 	}
@@ -309,6 +291,11 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	if err != nil {
 		logger.Warn(context.Background(), "layer findings expansion failed", "error", err)
 	}
+
+	// Expand node findings patterns (before #{FINDINGS:...}). Per-match failures
+	// (unknown node, missing key) expand to "" and warn; there is nothing to
+	// propagate.
+	template = s.expandNodeFindings(template, wfiID)
 
 	// Expand artifact patterns
 	template, err = s.expandArtifacts(template, projectID, wfiID)

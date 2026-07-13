@@ -25,7 +25,10 @@ using `findings_add`.
 
 ## Agent Findings (`#{FINDINGS:...}`)
 
-Pull prior agent findings into prompts.
+Pull prior agent findings into prompts. This is **template-keyed**: for a
+fan-out agent (multiple nodes sharing one template), it aggregates findings
+across every node running that template. Use `#{NODE_FINDINGS:...}` below to
+target a single node.
 
 **Syntax:**
 
@@ -115,7 +118,11 @@ or aggregator agents that summarise what earlier-layer siblings produced.
 current agent's layer. It renders `_No prior layer_` when the current agent is
 on layer 0.
 
-**Output format** (agents sorted alphabetically, findings two-space-indented):
+The roster is keyed by **node id**, not agent type: a static workflow has one
+node per agent def (so the roster looks agent_type-keyed), but a fan-out layer
+lists each sibling node separately under its own header.
+
+**Output format** (nodes sorted alphabetically, findings two-space-indented):
 
 ```
 analyzer:
@@ -138,8 +145,43 @@ researcher:
 Synthesise the above into a final recommendation.
 ```
 
-Agents that have no session row for the workflow instance render as
-`  _No findings_` under their agent_type header.
+Nodes that have no session row for the workflow instance render as
+`  _No findings_` under their node header.
+
+---
+
+## Node Findings (`#{NODE_FINDINGS:<node_id>}`)
+
+Pull findings attributed to a single execution node — the specific slot in
+the run, not the template it was spawned from. Use this over `#{FINDINGS:...}`
+when a template fans out into multiple nodes and you need one sibling's
+output rather than the aggregate.
+
+**Syntax:**
+
+```markdown
+#{NODE_FINDINGS:implementor}
+#{NODE_FINDINGS:implementor:summary}
+#{NODE_FINDINGS:implementor:summary,files_to_modify}
+```
+
+**Output format** — same `key: value` shape as a single-agent findings block:
+
+```
+summary: Analysis found 3 files to modify
+files_to_modify:
+  - src/handler.go
+  - src/service.go
+```
+
+**Unknown node id:** expands to an empty string and logs a server-side
+warning (same convention as `#{ARTIFACT:name}`).
+
+**Known node, no findings yet:**
+
+```
+_No findings yet available from implementor_
+```
 
 ---
 

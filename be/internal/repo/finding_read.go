@@ -53,10 +53,16 @@ func (r *FindingRepo) GetByAgentModel(wfiID, agentType, modelID string) (map[str
 
 // GetByAgentAllModels returns findings for all models of an agent_type, grouped by model key.
 // The map key is the model_id, or "default" when model_id is absent.
+// Rows are ordered so the most-recently-ended session's value wins on key
+// collision, collapsing multiple nodes/retries sharing one agent_type+model
+// deterministically instead of by arbitrary map iteration.
 func (r *FindingRepo) GetByAgentAllModels(wfiID, agentType string) (map[string]map[string]json.RawMessage, error) {
 	rows, err := r.db.Query(
-		`SELECT model_id, key, value FROM findings
-		 WHERE scope='session' AND workflow_instance_id=? AND agent_type=?`,
+		`SELECT f.model_id, f.key, f.value
+		 FROM findings f
+		 JOIN agent_sessions s ON s.id = f.scope_id
+		 WHERE f.scope='session' AND f.workflow_instance_id=? AND f.agent_type=?
+		 ORDER BY (s.ended_at IS NULL) DESC, s.ended_at ASC`,
 		wfiID, agentType,
 	)
 	if err != nil {
@@ -83,22 +89,44 @@ func (r *FindingRepo) GetByAgentAllModels(wfiID, agentType string) (map[string]m
 	return result, rows.Err()
 }
 
-// GetByLayer returns findings for all agent_definitions at a layer, keyed by agent_type.
-// Agents with no findings have a nil inner map.
+// GetByLayer returns findings for all executable nodes at a layer, keyed by
+// node_id (== agent def id for static workflows; N distinct keys for a
+// fan-out layer, one per sibling). Roster membership is the executable defs
+// at the layer (consultant=0, node_role='static', matching ListExecutable) —
+// a def with no session yet still renders with a nil map so the roster shows
+// it as pending. A def's sessions are attributed to it via agent_type, then
+// bucketed by their own node_id (falling back to phase for legacy rows).
+// On key collision within a node (retries), the most-recently-ended
+// session's value wins.
 func (r *FindingRepo) GetByLayer(wfiID string, layer int) (map[string]map[string]json.RawMessage, error) {
 	rows, err := r.db.Query(`
 		WITH wfi AS (SELECT project_id, workflow_id FROM workflow_instances WHERE id = ?)
-		SELECT ad.id, f.key, f.value
-		FROM agent_definitions ad, wfi
-		LEFT JOIN findings f
-		       ON f.scope = 'session'
-		      AND f.workflow_instance_id = ?
-		      AND f.agent_type = ad.id
-		WHERE ad.project_id = wfi.project_id
-		  AND ad.workflow_id = wfi.workflow_id
-		  AND ad.layer = ?
-		ORDER BY ad.id`,
-		wfiID, wfiID, layer,
+		SELECT node_id, key, value FROM (
+			SELECT ad.id AS node_id, NULL AS key, NULL AS value, 0 AS running, NULL AS ended_at
+			FROM agent_definitions ad, wfi
+			WHERE ad.project_id = wfi.project_id
+			  AND ad.workflow_id = wfi.workflow_id
+			  AND ad.layer = ?
+			  AND ad.consultant = 0
+			  AND ad.node_role = 'static'
+			UNION ALL
+			SELECT COALESCE(NULLIF(s.node_id, ''), s.phase) AS node_id, f.key, f.value,
+			       CASE WHEN s.ended_at IS NULL THEN 1 ELSE 0 END AS running, s.ended_at
+			FROM agent_sessions s
+			JOIN agent_definitions ad2, wfi
+			  ON ad2.project_id = wfi.project_id
+			 AND ad2.workflow_id = wfi.workflow_id
+			 AND ad2.id = s.agent_type
+			LEFT JOIN findings f
+			       ON f.scope = 'session'
+			      AND f.scope_id = s.id
+			WHERE s.workflow_instance_id = ?
+			  AND ad2.layer = ?
+			  AND ad2.consultant = 0
+			  AND ad2.node_role = 'static'
+		)
+		ORDER BY node_id, running DESC, ended_at ASC`,
+		wfiID, layer, wfiID, layer,
 	)
 	if err != nil {
 		return nil, err
@@ -107,21 +135,21 @@ func (r *FindingRepo) GetByLayer(wfiID string, layer int) (map[string]map[string
 
 	result := make(map[string]map[string]json.RawMessage)
 	for rows.Next() {
-		var agentType string
+		var nodeID string
 		var k, v sql.NullString
-		if err := rows.Scan(&agentType, &k, &v); err != nil {
+		if err := rows.Scan(&nodeID, &k, &v); err != nil {
 			return nil, err
 		}
 		if !k.Valid {
-			if _, exists := result[agentType]; !exists {
-				result[agentType] = nil
+			if _, exists := result[nodeID]; !exists {
+				result[nodeID] = nil
 			}
 			continue
 		}
-		if result[agentType] == nil {
-			result[agentType] = make(map[string]json.RawMessage)
+		if result[nodeID] == nil {
+			result[nodeID] = make(map[string]json.RawMessage)
 		}
-		result[agentType][k.String] = json.RawMessage(v.String)
+		result[nodeID][k.String] = json.RawMessage(v.String)
 	}
 	return result, rows.Err()
 }

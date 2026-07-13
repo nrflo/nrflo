@@ -69,9 +69,12 @@ func newBuiltinTestEnv(t *testing.T) *builtinTestEnv {
 	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, retry_count, created_at, updated_at)
 		VALUES (?, ?, ?, ?, 'active', 0, ?, ?)`,
 		testWFIID, testProjectID, testTicketID, testWorkflow, now, now)
+	// phase (and thus node_id, which falls back to phase for legacy/unset
+	// rows) matches testAgentType — mirroring real spawns, where a static
+	// workflow's node_id equals its agent_definitions id.
 	mustExec(t, pool, `INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'phase1', ?, ?, 'running', ?, ?)`,
-		testSessionID, testProjectID, testTicketID, testWFIID, testAgentType, testModelID, now, now)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 'running', ?, ?)`,
+		testSessionID, testProjectID, testTicketID, testWFIID, testAgentType, testAgentType, testModelID, now, now)
 
 	hub := &fakeHub{}
 	findingsSvc := service.NewFindingsService(pool, clk)

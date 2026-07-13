@@ -194,7 +194,10 @@ func (s *Spawner) formatFindingsError(agentType string) string {
 
 // expandLayerFindings replaces #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS} patterns.
 // #{PRIOR_LAYER_FINDINGS} expands to layer currentLayer-1 (or "_No prior layer_" when currentLayer==0).
-// #{LAYER_FINDINGS:N} expands to a flat sibling roster for layer N sorted by agent_type.
+// #{LAYER_FINDINGS:N} expands to a flat sibling roster for layer N, keyed by node_id
+// (== agent def id for static workflows; a fan-out layer renders N node headers, one
+// per sibling) and sorted alphabetically. #{FINDINGS:agent} stays template-keyed and
+// aggregates across every node of that template — see expandFindings above.
 func (s *Spawner) expandLayerFindings(template string, currentLayer int, _, wfiID string) (string, error) {
 	if !layerFindingsPattern.MatchString(template) {
 		return template, nil
@@ -245,9 +248,9 @@ func (s *Spawner) fetchAndFormatLayerFindings(svc *service.FindingsService, laye
 	return s.formatLayerFindings(layerMap)
 }
 
-// formatLayerFindings renders a flat agent_type-keyed roster sorted by agent_type.
-// Each agent_type gets a header line; its findings are indented two spaces.
-// Agents with nil or empty findings get "  _No findings_".
+// formatLayerFindings renders a flat node_id-keyed roster sorted by node_id.
+// Each node gets a header line; its findings are indented two spaces.
+// Nodes with nil or empty findings get "  _No findings_".
 func (s *Spawner) formatLayerFindings(layerMap map[string]interface{}) string {
 	var agentTypes []string
 	for k := range layerMap {

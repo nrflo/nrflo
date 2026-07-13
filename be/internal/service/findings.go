@@ -120,11 +120,19 @@ func (s *FindingsService) AddBulk(req *types.FindingsAddBulkRequest) (BroadcastC
 // Get gets findings for an agent.
 // If AgentType is omitted, reads the current session's own findings (requires SessionID).
 // If AgentType is provided, reads cross-agent findings (requires InstanceID).
-// If Layer is provided, reads findings keyed by agent_type for all agents in that layer.
+// If Layer is provided, reads findings keyed by node_id for all executable nodes in that layer.
+// If NodeID is provided, reads findings attributed to that single execution node.
 func (s *FindingsService) Get(req *types.FindingsGetRequest) (interface{}, error) {
 	keys := req.Keys
 	if req.Key != "" && len(keys) == 0 {
 		keys = []string{req.Key}
+	}
+
+	if req.NodeID != "" {
+		if req.AgentType != "" || req.Layer != nil {
+			return nil, fmt.Errorf("node_id, agent_type and layer are mutually exclusive")
+		}
+		return s.getByNode(req.InstanceID, req.NodeID, keys)
 	}
 
 	if req.Layer != nil {
@@ -264,22 +272,22 @@ func (s *FindingsService) Delete(req *types.FindingsDeleteRequest) (BroadcastCtx
 	return bctx, len(deleted), nil
 }
 
-// getByLayer returns a map[agent_type]interface{} for all agent_definitions in the given layer.
+// getByLayer returns a map[node_id]interface{} for all executable nodes in the given layer.
 func (s *FindingsService) getByLayer(instanceID string, layer int) (interface{}, error) {
 	wfiID, err := s.resolveWorkflowInstance(instanceID)
 	if err != nil {
 		return nil, err
 	}
-	byAgent, err := s.findingRepo.GetByLayer(wfiID, layer)
+	byNode, err := s.findingRepo.GetByLayer(wfiID, layer)
 	if err != nil {
 		return nil, fmt.Errorf("layer findings query failed: %w", err)
 	}
 	result := make(map[string]interface{})
-	for agentType, m := range byAgent {
+	for nodeID, m := range byNode {
 		if m == nil {
-			result[agentType] = nil
+			result[nodeID] = nil
 		} else {
-			result[agentType] = rawToInterface(m)
+			result[nodeID] = rawToInterface(m)
 		}
 	}
 	return result, nil

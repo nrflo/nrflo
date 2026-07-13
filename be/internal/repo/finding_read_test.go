@@ -97,10 +97,20 @@ func TestFindingRepo_GetByAgentAllModels_MultipleModels(t *testing.T) {
 	t.Parallel()
 	env := setupFindingReadDB(t)
 	actor := Actor{Source: "agent"}
+	now := env.clk.Now().UTC().Format(time.RFC3339Nano)
 
 	env.repo.Upsert("session", "sess-r-1", "k", json.RawMessage(`"no-model"`), //nolint:errcheck
 		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "analyzer"}, actor)
-	// A second session for same agent but different model
+	// A second session for same agent but different model. GetByAgentAllModels
+	// joins agent_sessions (for its ended-session-wins ordering), so the
+	// session row must exist — matching real usage, where FindingsService.Add
+	// always resolves an existing session before writing a finding.
+	if _, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, result, result_reason, pid, context_left, ancestor_session_id, spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
+		VALUES ('sess-r-extra', 'proj-r', 'tkt-r', ?, 'analyzer', 'analyzer', 'opus', 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
+		env.wfiID, now, now, now, now); err != nil {
+		t.Fatalf("insert sess-r-extra: %v", err)
+	}
 	env.repo.Upsert("session", "sess-r-extra", "k", json.RawMessage(`"with-model"`), //nolint:errcheck
 		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "analyzer", ModelID: "opus"}, actor)
 

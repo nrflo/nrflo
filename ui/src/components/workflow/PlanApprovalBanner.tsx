@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ClipboardList, XCircle } from 'lucide-react'
+import { ClipboardList, XCircle, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9,6 +9,7 @@ import { usePlan, useApprovePlan, useCancelPlan } from '@/hooks/usePlan'
 import { ApiError } from '@/api/client'
 import { planStatusLabel } from '@/lib/utils'
 import { PlanManifestView } from './PlanManifestView'
+import { PlanReviseDialog } from './PlanReviseDialog'
 import type { WorkflowInstanceStatus } from '@/types/workflow'
 
 interface PlanApprovalBannerProps {
@@ -16,7 +17,7 @@ interface PlanApprovalBannerProps {
   status: WorkflowInstanceStatus
 }
 
-function reportPlanError(action: string, err: unknown) {
+export function reportPlanError(action: string, err: unknown) {
   if (err instanceof ApiError && err.status === 409) {
     toast.error('The plan changed since this page loaded — reload to see the latest revision.')
     return
@@ -26,11 +27,10 @@ function reportPlanError(action: string, err: unknown) {
 }
 
 // The plan-suspended counterpart of WorkflowPauseControls: shown whenever the
-// instance status is one of PLAN_SUSPENDED_STATUSES. Manifest editing and the
-// open-questions answer form are out of scope here (DYNWF-6/7) — read + approve
-// (revision-pinned) + cancel only.
+// instance status is one of PLAN_SUSPENDED_STATUSES.
 export function PlanApprovalBanner({ instanceId, status }: PlanApprovalBannerProps) {
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [reviseOpen, setReviseOpen] = useState(false)
   const { data: draft, isLoading } = usePlan(instanceId)
   const approveMutation = useApprovePlan()
   const cancelMutation = useCancelPlan()
@@ -84,6 +84,15 @@ export function PlanApprovalBanner({ instanceId, status }: PlanApprovalBannerPro
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setReviseOpen(true)}
+            disabled={head.status !== 'draft'}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Revise
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setCancelConfirmOpen(true)}
             disabled={cancelMutation.isPending || head.status !== 'draft'}
             className="text-destructive hover:text-destructive"
@@ -103,6 +112,15 @@ export function PlanApprovalBanner({ instanceId, status }: PlanApprovalBannerPro
         confirmLabel="Cancel Plan"
         variant="destructive"
       />
+
+      {reviseOpen && head && (
+        <PlanReviseDialog
+          onClose={() => setReviseOpen(false)}
+          instanceId={instanceId}
+          revision={head.latest_revision}
+          questions={draft?.questions}
+        />
+      )}
     </div>
   )
 }

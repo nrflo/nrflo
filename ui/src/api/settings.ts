@@ -25,6 +25,7 @@ export interface GlobalSettings {
   menu_documentation: boolean
   menu_errors: boolean
   menu_agent_sessions: boolean
+  dynamic_workflow_auto_enabled: boolean
 }
 
 export const settingsKeys = {

@@ -58,11 +58,12 @@ func (s *Spawner) buildAPIRegistry(
 	}
 	// Nesting guard: agents of a run at the sub-workflow depth cap may not start
 	// further sub-workflows. Depth-based (not name-based) so it also bounds
-	// mutual recursion A->B->A; StartSubworkflow re-checks server-side. Uses
-	// subworkflow_depth (run_subworkflow nesting only), so next-on-success
-	// chain hops never lose the tool.
+	// mutual recursion A->B->A; StartSubworkflow/StartDynamicWorkflow re-check
+	// server-side. Uses subworkflow_depth (run_subworkflow/dynamic_workflow
+	// nesting only), so next-on-success chain hops never lose the tool.
 	if subDepth+1 > service.SubworkflowCap(s.config.Pool, req.ProjectID, service.SubworkflowMaxDepthKey, service.DefaultSubworkflowMaxDepth) {
 		specs = stripTool(specs, handlers, "run_subworkflow")
+		specs = stripTool(specs, handlers, "dynamic_workflow")
 	}
 	toolEnv := apirun.ToolEnv{
 		Pool:               s.config.Pool,

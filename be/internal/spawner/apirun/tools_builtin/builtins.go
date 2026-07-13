@@ -57,6 +57,10 @@ func Builtins() map[string]apirun.ToolHandler {
 
 		"run_subworkflow": runSubworkflowHandler{},
 		"get_subworkflow": getSubworkflowHandler{},
+
+		"dynamic_workflow": dynamicWorkflowHandler{},
+		"revise_plan":      revisePlanHandler{},
+		"approve_plan":     approvePlanHandler{},
 	}
 }
 

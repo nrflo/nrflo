@@ -61,6 +61,7 @@ type WorkflowInstance struct {
 	BranchName                    sql.NullString         `json:"-"`
 	EndlessLoop                   bool                   `json:"endless_loop"`
 	StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+	PlanAutoApprove               bool                   `json:"plan_auto_approve"`            // mode=auto for the self-drafting plan boundary (DYNWF-6), gated by service.DynamicAutoEnabled
 	PurgeOnCompletion             bool                   `json:"purge_on_completion"`          // snapshot of the workflow def flag at creation; drives terminal-state trace purge
 	LaunchDepth                   int                    `json:"launch_depth"`                 // lineage distance from a human/scheduler start; incremented by run_subworkflow and next_workflow_on_success (chain cap)
 	ParentInstanceID              string                 `json:"parent_instance_id,omitempty"` // run_subworkflow caller's instance id; "" for top-level and chain runs
@@ -147,6 +148,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName                    *string                `json:"branch_name,omitempty"`
 		EndlessLoop                   bool                   `json:"endless_loop"`
 		StopEndlessLoopAfterIteration bool                   `json:"stop_endless_loop_after_iteration"`
+		PlanAutoApprove               bool                   `json:"plan_auto_approve"`
 		PurgeOnCompletion             bool                   `json:"purge_on_completion"`
 		LaunchDepth                   int                    `json:"launch_depth"`
 		ParentInstanceID              string                 `json:"parent_instance_id,omitempty"`
@@ -170,6 +172,7 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		BranchName:                    branchName,
 		EndlessLoop:                   wi.EndlessLoop,
 		StopEndlessLoopAfterIteration: wi.StopEndlessLoopAfterIteration,
+		PlanAutoApprove:               wi.PlanAutoApprove,
 		PurgeOnCompletion:             wi.PurgeOnCompletion,
 		LaunchDepth:                   wi.LaunchDepth,
 		ParentInstanceID:              wi.ParentInstanceID,

@@ -8,21 +8,40 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/model"
 	"be/internal/spawner/apirun"
+	"be/internal/types"
 )
 
-// stubSubworkflows adapts funcs to apirun.SubworkflowRunner.
+// stubSubworkflows adapts funcs to apirun.SubworkflowRunner. Every method has
+// a func field; tests only set the ones they exercise (nil ones panic if
+// called, which surfaces an unexpected-call bug immediately).
 type stubSubworkflows struct {
-	start func(ctx context.Context, parentID, projectID, workflow, instructions string) (string, error)
-	get   func(ctx context.Context, callerID, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error)
+	start        func(ctx context.Context, parentID, projectID, workflow, instructions string) (string, error)
+	get          func(ctx context.Context, callerID, projectID, instanceID, resultKey string) (apirun.SubworkflowState, error)
+	startDynamic func(ctx context.Context, parentID, projectID, instructions, mode string) (string, error)
+	revisePlan   func(ctx context.Context, callerID, projectID, instanceID string, req types.PlanReviseRequest) (*model.PlanRevision, error)
+	approvePlan  func(ctx context.Context, callerID, projectID, instanceID string, revision int) (*model.PlanRevision, error)
 }
 
 func (s stubSubworkflows) StartSubworkflow(ctx context.Context, parentID, projectID, workflow, instructions string) (string, error) {
 	return s.start(ctx, parentID, projectID, workflow, instructions)
 }
 
-func (s stubSubworkflows) GetSubworkflow(ctx context.Context, callerID, projectID, instanceID, resultKey string) (string, json.RawMessage, string, error) {
+func (s stubSubworkflows) GetSubworkflow(ctx context.Context, callerID, projectID, instanceID, resultKey string) (apirun.SubworkflowState, error) {
 	return s.get(ctx, callerID, projectID, instanceID, resultKey)
+}
+
+func (s stubSubworkflows) StartDynamicWorkflow(ctx context.Context, parentID, projectID, instructions, mode string) (string, error) {
+	return s.startDynamic(ctx, parentID, projectID, instructions, mode)
+}
+
+func (s stubSubworkflows) RevisePlan(ctx context.Context, callerID, projectID, instanceID string, req types.PlanReviseRequest) (*model.PlanRevision, error) {
+	return s.revisePlan(ctx, callerID, projectID, instanceID, req)
+}
+
+func (s stubSubworkflows) ApprovePlan(ctx context.Context, callerID, projectID, instanceID string, revision int) (*model.PlanRevision, error) {
+	return s.approvePlan(ctx, callerID, projectID, instanceID, revision)
 }
 
 func TestRunSubworkflow_AsyncStart(t *testing.T) {
@@ -53,14 +72,14 @@ func TestRunSubworkflow_BoundedWaitReturnsResult(t *testing.T) {
 	var polls int32
 	r := stubSubworkflows{
 		start: func(context.Context, string, string, string, string) (string, error) { return "child-2", nil },
-		get: func(_ context.Context, _, _, instanceID, resultKey string) (string, json.RawMessage, string, error) {
+		get: func(_ context.Context, _, _, instanceID, resultKey string) (apirun.SubworkflowState, error) {
 			if instanceID != "child-2" || resultKey != "report" {
 				t.Errorf("unexpected get args: %s %s", instanceID, resultKey)
 			}
 			if atomic.AddInt32(&polls, 1) < 3 {
-				return "running", nil, "", nil
+				return apirun.SubworkflowState{Status: "running"}, nil
 			}
-			return "completed", json.RawMessage(`{"summary":"done"}`), "", nil
+			return apirun.SubworkflowState{Status: "completed", Result: json.RawMessage(`{"summary":"done"}`)}, nil
 		},
 	}
 	out, isErr, err := runSubworkflowHandler{}.Invoke(context.Background(),
@@ -98,8 +117,8 @@ func TestRunSubworkflow_StartErrorPropagates(t *testing.T) {
 }
 
 func TestGetSubworkflow_TerminalStatuses(t *testing.T) {
-	r := stubSubworkflows{get: func(context.Context, string, string, string, string) (string, json.RawMessage, string, error) {
-		return "failed", nil, "boom", nil
+	r := stubSubworkflows{get: func(context.Context, string, string, string, string) (apirun.SubworkflowState, error) {
+		return apirun.SubworkflowState{Status: "failed", FailureReason: "boom"}, nil
 	}}
 	out, isErr, _ := getSubworkflowHandler{}.Invoke(context.Background(),
 		apirun.ToolEnv{Subworkflows: r}, json.RawMessage(`{"instance_id":"c1"}`))
@@ -107,8 +126,8 @@ func TestGetSubworkflow_TerminalStatuses(t *testing.T) {
 		t.Errorf("failed child should surface isError with reason, got isErr=%v out=%q", isErr, out)
 	}
 
-	r.get = func(context.Context, string, string, string, string) (string, json.RawMessage, string, error) {
-		return "completed", json.RawMessage(`{"ok":true}`), "", nil
+	r.get = func(context.Context, string, string, string, string) (apirun.SubworkflowState, error) {
+		return apirun.SubworkflowState{Status: "completed", Result: json.RawMessage(`{"ok":true}`)}, nil
 	}
 	out, isErr, _ = getSubworkflowHandler{}.Invoke(context.Background(),
 		apirun.ToolEnv{Subworkflows: r}, json.RawMessage(`{"instance_id":"c1"}`))

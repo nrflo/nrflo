@@ -7,9 +7,11 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun/provider"
+	"be/internal/types"
 )
 
 // ToolHandler is the unified contract every API-mode tool implements. The
@@ -48,13 +50,41 @@ type ChainRunController interface {
 	SetNextStepTicket(instanceID, ticketID string) error
 }
 
+// SubworkflowState is the poll result returned by GetSubworkflow. Result and
+// FailureReason are populated only for the completed/failed terminal
+// statuses; Plan/Revision/Questions are populated only for the four
+// plan-boundary statuses (planning/plan_ready/waiting_input/waiting_approval)
+// — the polymorphism the plan-vs-terminal payload divergence belongs on this
+// struct (and the orchestrator that fills it), not name-checks in the tool
+// handlers (root CLAUDE.md rule 6).
+type SubworkflowState struct {
+	Status        string
+	Result        json.RawMessage
+	FailureReason string
+	Plan          json.RawMessage
+	Revision      int
+	Questions     json.RawMessage
+}
+
 // SubworkflowRunner starts callable workflows as detached project-scoped child
-// runs and polls their status/result (async-with-poll contract). Implemented by
-// the orchestrator and injected via spawner.Config; the run_subworkflow /
-// get_subworkflow builtins call it. Nil-safe; guard with env.Subworkflows == nil.
+// runs and polls their status/result (async-with-poll contract), and drives the
+// plan lifecycle (dynamic_workflow/revise_plan/approve_plan) for plan-driven
+// children. Implemented by the orchestrator and injected via spawner.Config;
+// the run_subworkflow/get_subworkflow/dynamic_workflow/revise_plan/approve_plan
+// builtins call it. Nil-safe; guard with env.Subworkflows == nil.
 type SubworkflowRunner interface {
 	StartSubworkflow(ctx context.Context, parentInstanceID, projectID, workflow, instructions string) (instanceID string, err error)
-	GetSubworkflow(ctx context.Context, callerInstanceID, projectID, instanceID, resultKey string) (status string, result json.RawMessage, failureReason string, err error)
+	GetSubworkflow(ctx context.Context, callerInstanceID, projectID, instanceID, resultKey string) (SubworkflowState, error)
+
+	// StartDynamicWorkflow starts the bundled plan-driven `dynamic` workflow (or
+	// mode=auto variant) as a detached child, sharing StartSubworkflow's guards
+	// (callable/purge/pause checks, depth cap, invocation budget, concurrency
+	// slot, parent-death watcher) via the same helper.
+	StartDynamicWorkflow(ctx context.Context, parentInstanceID, projectID, instructions, mode string) (instanceID string, err error)
+	// RevisePlan and ApprovePlan drive a child's plan lifecycle on behalf of the
+	// caller that started it (ownership enforced identically to GetSubworkflow).
+	RevisePlan(ctx context.Context, callerInstanceID, projectID, instanceID string, req types.PlanReviseRequest) (*model.PlanRevision, error)
+	ApprovePlan(ctx context.Context, callerInstanceID, projectID, instanceID string, revision int) (*model.PlanRevision, error)
 }
 
 // ToolEnv is the per-spawn environment threaded through every Invoke call.

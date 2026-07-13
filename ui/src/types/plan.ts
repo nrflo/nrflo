@@ -80,3 +80,16 @@ export interface PlanReviseRequest {
 export interface PlanApproveRequest {
   revision: number
 }
+
+export type DynamicWorkflowMode = 'approve' | 'auto'
+
+export interface DynamicWorkflowRunRequest {
+  instructions: string
+  mode?: DynamicWorkflowMode
+}
+
+export interface DynamicWorkflowRunResponse {
+  instance_id: string
+  status: string
+  session_id?: string
+}

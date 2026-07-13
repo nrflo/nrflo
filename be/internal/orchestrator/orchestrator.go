@@ -38,6 +38,7 @@ type RunRequest struct {
 	PauseEventScriptID      string                   `json:"pause_event_script_id"`
 	Force                   bool                     `json:"force"`                       // If true, bypass concurrent ticket workflow guard
 	EndlessLoop             bool                     `json:"endless_loop"`                // Project-scope only: auto re-run on successful completion until stopped or failed
+	PlanAutoApprove         bool                     `json:"plan_auto_approve"`           // Project-scope only: self-drafting plan boundary auto-approves instead of suspending (gated by service.DynamicAutoEnabled)
 	ScheduledTaskID         string                   `json:"scheduled_task_id,omitempty"` // Set by scheduler; empty for UI/API-triggered runs
 	ExternalID              string                   `json:"external_id,omitempty"`       // Caller-supplied external reference ID
 	ExternalContext         string                   `json:"external_context,omitempty"`  // Caller-supplied external context blob

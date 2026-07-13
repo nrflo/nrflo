@@ -100,15 +100,30 @@ func TestReloadPlanLayers_NotPlanDriven_NoOp(t *testing.T) {
 	}
 }
 
-// TestReloadPlanLayers_NoPlanHead_SuspendsPlanning: a plan-driven workflow
-// with no workflow_plans row at all suspends to 'planning' and preserves the
-// worktree for eventual resume.
-func TestReloadPlanLayers_NoPlanHead_SuspendsPlanning(t *testing.T) {
+// TestReloadPlanLayers_NoPlanHead_DraftAttemptFailsWithoutPlannerCLI: DYNWF-6
+// changed the "no head" branch from a plain suspend to an inline self-draft
+// (draftPlanAndProceed), which first broadcasts+persists 'planning' and then
+// BLOCKS this goroutine on a synchronous o.RunPlanner call. RunPlanner (unless
+// the workflow carries a workflow-local node_role='planner' override) resolves
+// the seeded system_agent_definitions 'planner-system' row, which is
+// execution_mode='cli_interactive' — i.e. a real `claude` CLI subprocess, not
+// an in-process API call. That must never actually happen in this suite (repo
+// rule: never spawn real CLI binaries in tests — a dev machine running these
+// tests plausibly HAS a real `claude` binary on PATH). PATH is masked to an
+// empty dir so exec.Command's LookPath fails before any process forks,
+// RunPlanner returns a fast synchronous spawn error, and draftPlanAndProceed
+// takes its "planner error -> markFailed" path — exercising that failure
+// mode deterministically and hermetically. (The success variants — draft
+// succeeds and suspends at waiting_approval/waiting_input, or mode=auto
+// materializes without suspending — need a real or mocked planner backend;
+// RunPlanner has no injectable seam for that today, see be_coverage_notes.)
+func TestReloadPlanLayers_NoPlanHead_DraftAttemptFailsWithoutPlannerCLI(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // guarantee no `claude`/`codex` binary resolves
+
 	env := newTestEnv(t)
 	addFanoutTemplate(t, env, "test", "fanout-tmpl")
 	env.createTicket(t, "PB-2", "no plan head")
 	wfiID := env.initWorkflow(t, "PB-2")
-	ch := env.subscribeWSClient(t, "ws-pb-2", "PB-2")
 
 	svcWf, workflows, agents := buildPlanReloadInputs(t, env, "test")
 	layerGroups := groupPhasesByLayer(svcWf.Phases)
@@ -117,24 +132,13 @@ func TestReloadPlanLayers_NoPlanHead_SuspendsPlanning(t *testing.T) {
 	_, extended, terminal, worktreeHandled := env.orch.reloadPlanLayers(
 		context.Background(), wfiID, req, env.pool, svcWf, layerGroups, map[int]string{}, workflows, agents)
 
-	if extended {
-		t.Errorf("extended = true, want false")
-	}
-	if !terminal || !worktreeHandled {
-		t.Fatalf("got (terminal=%v, worktreeHandled=%v), want both true", terminal, worktreeHandled)
+	if extended || !terminal || worktreeHandled {
+		t.Fatalf("got (extended=%v, terminal=%v, worktreeHandled=%v), want (false, true, false) — markFailed's own path handles cleanup", extended, terminal, worktreeHandled)
 	}
 
 	wi := env.getWorkflowInstance(t, wfiID)
-	if wi.Status != model.WorkflowInstancePlanning {
-		t.Errorf("status = %v, want planning", wi.Status)
-	}
-
-	event := expectEvent(t, ch, ws.EventPlanWaiting, 2*time.Second)
-	if event.Data["status"] != "planning" {
-		t.Errorf("event status = %v, want planning", event.Data["status"])
-	}
-	if event.Data["instance_id"] != wfiID {
-		t.Errorf("event instance_id = %v, want %v", event.Data["instance_id"], wfiID)
+	if wi.Status != model.WorkflowInstanceFailed {
+		t.Errorf("status = %v, want failed (planner spawn error must markFailed, not leave the run stuck at planning)", wi.Status)
 	}
 }
 

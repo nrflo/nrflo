@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Play } from 'lucide-react'
+import { Play, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { Textarea } from '@/components/ui/Textarea'
+import { Toggle } from '@/components/ui/Toggle'
 import { listAgentDefs } from '@/api/agentDefs'
+import { getGlobalSettings, settingsKeys } from '@/api/settings'
 import { ArtifactUploader } from '@/components/workflow/ArtifactUploader'
+import { useStartDynamicWorkflow } from '@/hooks/usePlan'
 import type { AgentDef, WorkflowDefSummary } from '@/types/workflow'
 import type { InputArtifactRef } from '@/types/artifact'
 import type { StartMode } from './ProjectWorkflowComponents'
@@ -28,6 +32,8 @@ export function RunWorkflowForm({
   onStagedArtifactsChange,
   hasUploadPending,
   onUploadPendingChange,
+  projectId,
+  onDynamicRunSuccess,
 }: {
   projectWorkflows: [string, { description: string; scope_type?: string; is_global?: boolean; phases: WorkflowDefSummary['phases'] }][]
   defsLoading: boolean
@@ -41,8 +47,40 @@ export function RunWorkflowForm({
   onStagedArtifactsChange: (refs: InputArtifactRef[]) => void
   hasUploadPending: boolean
   onUploadPendingChange: (pending: boolean) => void
+  projectId?: string
+  onDynamicRunSuccess?: (instanceId: string) => void
 }) {
   const [startMode, setStartMode] = useState<StartMode>('normal')
+  const [dynamicInstructions, setDynamicInstructions] = useState('')
+  const [dynamicAutoMode, setDynamicAutoMode] = useState(false)
+
+  const { data: globalSettings } = useQuery({
+    queryKey: settingsKeys.global(),
+    queryFn: getGlobalSettings,
+  })
+  const startDynamicMutation = useStartDynamicWorkflow()
+  const dynamicAutoAllowed = globalSettings?.dynamic_workflow_auto_enabled ?? false
+
+  const handleStartDynamic = () => {
+    const pid = projectId ?? ''
+    if (!pid || !dynamicInstructions.trim()) return
+    startDynamicMutation.mutate(
+      {
+        projectId: pid,
+        params: {
+          instructions: dynamicInstructions,
+          mode: dynamicAutoMode && dynamicAutoAllowed ? 'auto' : 'approve',
+        },
+      },
+      {
+        onSuccess: (result) => {
+          setDynamicInstructions('')
+          setDynamicAutoMode(false)
+          onDynamicRunSuccess?.(result.instance_id)
+        },
+      }
+    )
+  }
 
   const { data: agents } = useQuery({
     queryKey: ['workflows', selectedWorkflowDef, 'agents'],
@@ -206,6 +244,48 @@ export function RunWorkflowForm({
         <Play className="h-4 w-4 mr-2" />
         Run
       </Button>
+
+      <div className="rounded-md border border-border p-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-medium">Dynamic (planned) run</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            A planner agent drafts a multi-agent plan from your instructions; review and approve it before it runs.
+          </p>
+        </div>
+        <Textarea
+          value={dynamicInstructions}
+          onChange={(e) => setDynamicInstructions(e.target.value)}
+          placeholder="Describe the goal for the planner to turn into a plan..."
+          rows={4}
+        />
+        <div className="flex items-center gap-2">
+          <Toggle
+            checked={dynamicAutoMode}
+            onChange={setDynamicAutoMode}
+            disabled={!dynamicAutoAllowed}
+            label="Auto-approve plan"
+          />
+          {!dynamicAutoAllowed && (
+            <span className="text-xs text-muted-foreground">
+              Enable &quot;Allow dynamic_workflow mode=auto&quot; in Settings to skip manual review
+            </span>
+          )}
+        </div>
+        {startDynamicMutation.isError && (
+          <p className="text-sm text-destructive">
+            {startDynamicMutation.error instanceof Error ? startDynamicMutation.error.message : 'Failed to start dynamic run'}
+          </p>
+        )}
+        <Button
+          variant="outline"
+          onClick={handleStartDynamic}
+          disabled={!projectId || !dynamicInstructions.trim() || startDynamicMutation.isPending}
+        >
+          {startDynamicMutation.isPending && <Spinner size="sm" className="mr-2" />}
+          <Sparkles className="h-4 w-4 mr-2" />
+          Start Dynamic Run
+        </Button>
+      </div>
     </div>
   )
 }

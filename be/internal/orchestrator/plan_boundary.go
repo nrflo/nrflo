@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 
 	"be/internal/db"
@@ -11,6 +12,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
+	"be/internal/types"
 	"be/internal/ws"
 )
 
@@ -22,9 +24,12 @@ import (
 //
 // For a plan-driven workflow: an approved plan is materialized (idempotent)
 // and spliced into layerGroups/layerPolicies/workflows, and extended=true is
-// returned so runLoop continues at the same layerIdx. A draft (or missing)
-// plan suspends the run in its derived status; a cancelled plan fails the
-// run. Both set terminal=true — the caller must return immediately.
+// returned so runLoop continues at the same layerIdx. No head at all (or a
+// defensively-empty draft head, latest_revision==0) self-drafts inline (see
+// draftPlanAndProceed) — the DYNWF-6 dynamic_workflow/mode=auto entry point.
+// An existing draft (one that already carries a revision) suspends the run in
+// its derived status; a cancelled plan fails the run. All non-extending paths
+// set terminal=true — the caller must return immediately.
 //
 // This is deliberately NOT the pause_after machinery: no _pause finding, no
 // pause hook, and the four plan statuses (not `waiting`) keep the run
@@ -58,9 +63,8 @@ func (o *Orchestrator) reloadPlanLayers(
 	planRepo := repo.NewPlanRepo(pool, o.clock)
 	head, err := planRepo.GetHead(wfiID)
 	switch {
-	case err == sql.ErrNoRows:
-		o.suspendForPlan(ctx, wfiID, req, pool, model.WorkflowInstancePlanning)
-		return layerGroups, false, true, true
+	case err == sql.ErrNoRows, err == nil && head.Status == model.PlanStatusDraft && head.LatestRevision == 0:
+		return o.draftPlanAndProceed(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
 	case err != nil:
 		o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: load plan head: %v", err))
 		return layerGroups, false, true, false
@@ -69,7 +73,7 @@ func (o *Orchestrator) reloadPlanLayers(
 		return layerGroups, false, true, false
 	case head.Status == model.PlanStatusApproved:
 		return o.materializeAndSplice(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
-	default: // draft
+	default: // draft with at least one revision already on record
 		status, derr := service.DerivePlanInstanceStatus(pool, o.clock, wfiID)
 		if derr != nil {
 			o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: derive plan status: %v", derr))
@@ -78,6 +82,76 @@ func (o *Orchestrator) reloadPlanLayers(
 		o.suspendForPlan(ctx, wfiID, req, pool, status)
 		return layerGroups, false, true, true
 	}
+}
+
+// draftPlanAndProceed is the DYNWF-6 self-drafting boundary: a plan-driven
+// run reached the boundary with no plan head yet. It suspends visibly at
+// `planning`, then runs the planner inline — RunPlanner is synchronous and the
+// run has no live layer at this point, so blocking the run goroutine here is
+// safe (mirrors RunPlanner's own doc comment). On success: mode=auto
+// (req.PlanAutoApprove, gated by service.DynamicAutoEnabled) auto-approves and
+// falls straight through to materializeAndSplice so the run never visibly
+// suspends; otherwise it suspends in the freshly-derived plan status
+// (typically waiting_approval) for the caller to drive via
+// revise_plan/approve_plan (or the equivalent plan routes).
+func (o *Orchestrator) draftPlanAndProceed(
+	ctx context.Context,
+	wfiID string,
+	req RunRequest,
+	pool *db.Pool,
+	svcWf service.SpawnerWorkflowDef,
+	layerGroups []layerGroup,
+	layerPolicies map[int]string,
+	workflows map[string]spawner.WorkflowDef,
+	agents map[string]spawner.AgentConfig,
+	defProjectID string,
+) (newLayerGroups []layerGroup, extended bool, terminal bool, worktreeHandled bool) {
+	o.suspendForPlan(ctx, wfiID, req, pool, model.WorkflowInstancePlanning)
+
+	goal := ""
+	if raw, ferr := repo.NewFindingRepo(pool, o.clock).GetOwn("workflow_instance", wfiID); ferr == nil {
+		if v, ok := raw["user_instructions"]; ok {
+			_ = json.Unmarshal(v, &goal)
+		}
+	}
+
+	planSvc := service.NewPlanService(pool, o.clock, o)
+	rev, err := planSvc.Revise(ctx, wfiID, types.PlanReviseRequest{Revision: 0, Goal: goal})
+	if err != nil {
+		o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: draft: %v", err))
+		return layerGroups, false, true, false
+	}
+	o.wsHub.Broadcast(ws.NewEvent(ws.EventPlanDrafted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+		"instance_id": wfiID,
+		"revision":    rev.Revision,
+		"author":      rev.Author,
+	}))
+
+	if req.PlanAutoApprove && service.DynamicAutoEnabled(pool, req.ProjectID) {
+		if _, err := planSvc.Approve(wfiID, rev.Revision); err != nil {
+			o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: auto-approve: %v", err))
+			return layerGroups, false, true, false
+		}
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventPlanApproved, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+			"revision":    rev.Revision,
+		}))
+		// The run never actually suspended (mode=auto falls straight through),
+		// so undo the `planning` status set above before splicing — otherwise a
+		// poller would see "planning" for the rest of the run's lifetime instead
+		// of the active status ResumeAfterPlanApproval restores on the
+		// human-driven path.
+		_ = repo.NewWorkflowInstanceRepo(pool, o.clock).UpdateStatus(wfiID, model.WorkflowInstanceActive)
+		return o.materializeAndSplice(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
+	}
+
+	status, derr := service.DerivePlanInstanceStatus(pool, o.clock, wfiID)
+	if derr != nil {
+		o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: derive plan status: %v", derr))
+		return layerGroups, false, true, false
+	}
+	o.suspendForPlan(ctx, wfiID, req, pool, status)
+	return layerGroups, false, true, true
 }
 
 // materializeAndSplice materializes an approved plan (idempotent) and splices

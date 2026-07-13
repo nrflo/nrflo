@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"be/internal/db"
-	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/spawner/apirun"
 )
 
 // StartSubworkflow starts a callable workflow as a detached, project-scoped child
@@ -18,12 +17,13 @@ import (
 // poll with GetSubworkflow). It implements the start half of apirun.SubworkflowRunner
 // for the run_subworkflow builtin.
 //
-// Guards: the def must be callable_as_subworkflow (and, by validation, non-purging
-// with no pause layers), the child's subworkflow_depth must stay under
-// subworkflow_max_depth, the parent instance carries a persisted invocation budget
-// (survives pause/continue and retry), and a global concurrent-children cap is
-// reserved under o.mu. A watcher goroutine ties the child to the parent run:
-// children are stopped when the parent reaches a terminal status (a paused parent
+// Guards (shared with StartDynamicWorkflow via startChildRun): the def must be
+// callable_as_subworkflow (and, by validation, non-purging with no pause
+// layers), the child's subworkflow_depth must stay under subworkflow_max_depth,
+// the parent instance carries a persisted invocation budget (survives
+// pause/continue and retry), and a global concurrent-children cap is reserved
+// under o.mu. A watcher goroutine ties the child to the parent run: children
+// are stopped when the parent reaches a terminal status (a paused parent
 // re-arms the watcher instead — see subworkflow_watch.go).
 func (o *Orchestrator) StartSubworkflow(ctx context.Context, parentInstanceID, projectID, workflowName, instructions string) (string, error) {
 	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
@@ -32,83 +32,7 @@ func (o *Orchestrator) StartSubworkflow(ctx context.Context, parentInstanceID, p
 	}
 	defer pool.Close()
 
-	parent, err := repo.NewWorkflowInstanceRepo(pool, o.clock).Get(parentInstanceID)
-	if err != nil {
-		return "", fmt.Errorf("run_subworkflow: load parent instance: %w", err)
-	}
-
-	dbWorkflow, _, defProjectID, err := o.resolveWorkflowDef(pool, projectID, workflowName)
-	if err != nil {
-		return "", fmt.Errorf("run_subworkflow: %w", err)
-	}
-	if !dbWorkflow.CallableAsSubworkflow {
-		return "", fmt.Errorf("run_subworkflow: workflow %q is not callable_as_subworkflow", workflowName)
-	}
-	if dbWorkflow.PurgeOnCompletion {
-		return "", fmt.Errorf("run_subworkflow: workflow %q has purge_on_completion; its result would be purged before readback", workflowName)
-	}
-	pause, err := service.NewWorkflowLayerPolicyService(pool, o.clock).GetLayerPauseAfter(defProjectID, dbWorkflow.ID)
-	if err != nil {
-		return "", fmt.Errorf("run_subworkflow: load pause layers: %w", err)
-	}
-	for layer, p := range pause {
-		if p {
-			return "", fmt.Errorf("run_subworkflow: workflow %q pauses after layer %d; paused runs never terminate for the caller", workflowName, layer)
-		}
-	}
-
-	depth := parent.SubworkflowDepth + 1
-	if maxDepth := service.SubworkflowCap(pool, projectID, service.SubworkflowMaxDepthKey, service.DefaultSubworkflowMaxDepth); depth > maxDepth {
-		return "", fmt.Errorf("run_subworkflow: nesting depth %d exceeds subworkflow_max_depth %d", depth, maxDepth)
-	}
-	maxChildren := service.SubworkflowCap(pool, projectID, service.SubworkflowMaxChildrenKey, service.DefaultSubworkflowMaxChildren)
-	maxInvocations := service.SubworkflowCap(pool, projectID, service.SubworkflowMaxInvocationsKey, service.DefaultSubworkflowMaxInvocations)
-
-	// Persisted invocation budget: an atomic conditional increment on the parent
-	// row, so it survives pause/continue and retry-failed (the in-memory runState
-	// is recreated on those paths).
-	if err := o.chargeSubworkflowStart(pool, parentInstanceID, maxInvocations); err != nil {
-		return "", err
-	}
-
-	// Reserve a concurrency slot; the parent must still be live for the cascade.
-	o.mu.Lock()
-	rs := o.runs[parentInstanceID]
-	if rs == nil {
-		o.mu.Unlock()
-		o.refundSubworkflowStart(pool, parentInstanceID)
-		return "", fmt.Errorf("run_subworkflow: parent run %s is not active", parentInstanceID)
-	}
-	if o.subworkflowActive >= maxChildren {
-		o.mu.Unlock()
-		o.refundSubworkflowStart(pool, parentInstanceID)
-		return "", fmt.Errorf("run_subworkflow: %d sub-workflows already running (subworkflow_max_children)", maxChildren)
-	}
-	o.subworkflowActive++
-	parentDone := rs.done
-	o.mu.Unlock()
-
-	// Detached start: the caller's tool ctx must not cancel the child (async contract).
-	res, err := o.Start(context.Background(), RunRequest{
-		ProjectID:        projectID,
-		WorkflowName:     workflowName,
-		ScopeType:        "project",
-		Instructions:     instructions,
-		LaunchDepth:      parent.LaunchDepth + 1,
-		ParentInstanceID: parentInstanceID,
-		SubworkflowDepth: depth,
-	})
-	if err != nil {
-		o.mu.Lock()
-		o.subworkflowActive--
-		o.mu.Unlock()
-		o.refundSubworkflowStart(pool, parentInstanceID)
-		return "", fmt.Errorf("run_subworkflow: start failed: %w", err)
-	}
-
-	go o.watchSubworkflow(parentInstanceID, parentDone, res.InstanceID, true)
-	logger.Info(ctx, "sub-workflow started", "workflow", workflowName, "instance_id", res.InstanceID, "parent", parentInstanceID, "depth", depth)
-	return res.InstanceID, nil
+	return o.startChildRun(ctx, pool, parentInstanceID, projectID, workflowName, instructions, false)
 }
 
 // chargeSubworkflowStart atomically consumes one unit of the parent's persisted
@@ -133,25 +57,24 @@ func (o *Orchestrator) refundSubworkflowStart(pool *db.Pool, parentInstanceID st
 		parentInstanceID)
 }
 
-// GetSubworkflow returns a child run's status ("running", "waiting", "completed"
-// or "failed") and, when terminal, its result: the session finding named resultKey
-// (default "workflow_final_result") for completed runs, or the failure reason for
-// failed ones. It implements the poll half of apirun.SubworkflowRunner. Only the
-// run that started a child (its persisted parent_instance_id) may read it back.
-func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, projectID, instanceID, resultKey string) (status string, result json.RawMessage, failureReason string, err error) {
+// GetSubworkflow returns a child run's status ("running", "waiting", the four
+// plan-boundary statuses, "completed", or "failed") and, depending on status,
+// its payload: the session finding named resultKey (default
+// "workflow_final_result") for completed runs, the failure reason for failed
+// ones, or the current plan draft (Plan/Revision/Questions) for the four
+// plan-boundary statuses. It implements the poll half of
+// apirun.SubworkflowRunner. Only the run that started a child (its persisted
+// parent_instance_id) may read it back.
+func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, projectID, instanceID, resultKey string) (apirun.SubworkflowState, error) {
 	pool, err := db.NewPool(o.dataPath, db.DefaultPoolConfig())
 	if err != nil {
-		return "", nil, "", fmt.Errorf("get_subworkflow: open pool: %w", err)
+		return apirun.SubworkflowState{}, fmt.Errorf("get_subworkflow: open pool: %w", err)
 	}
 	defer pool.Close()
 
-	wi, err := repo.NewWorkflowInstanceRepo(pool, o.clock).Get(instanceID)
+	wi, err := o.assertChildOwnership(pool, callerInstanceID, projectID, instanceID)
 	if err != nil {
-		return "", nil, "", fmt.Errorf("get_subworkflow: %w", err)
-	}
-	if !strings.EqualFold(wi.ProjectID, projectID) ||
-		wi.ParentInstanceID == "" || !strings.EqualFold(wi.ParentInstanceID, callerInstanceID) {
-		return "", nil, "", fmt.Errorf("get_subworkflow: %s was not started by this run", instanceID)
+		return apirun.SubworkflowState{}, err
 	}
 
 	findingRepo := repo.NewFindingRepo(pool, o.clock)
@@ -162,7 +85,7 @@ func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, pro
 			key = "workflow_final_result"
 		}
 		val, _ := findingRepo.GetSessionFindingByKey(instanceID, key)
-		return "completed", val, "", nil
+		return apirun.SubworkflowState{Status: "completed", Result: val}, nil
 	case model.WorkflowInstanceFailed:
 		reason := ""
 		if own, ferr := findingRepo.GetOwn("workflow_instance", instanceID); ferr == nil {
@@ -175,16 +98,32 @@ func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, pro
 				}
 			}
 		}
-		return "failed", nil, reason, nil
+		return apirun.SubworkflowState{Status: "failed", FailureReason: reason}, nil
 	case model.WorkflowInstanceWaiting:
 		// Reachable despite the no-pause start guard (e.g. the def gained a pause
 		// layer mid-run): surface it so pollers terminate instead of spinning.
-		return "waiting", nil, "paused after a pause_after layer; requires human resume and will not complete for this caller", nil
+		return apirun.SubworkflowState{Status: "waiting", FailureReason: "paused after a pause_after layer; requires human resume and will not complete for this caller"}, nil
 	case model.WorkflowInstancePlanning, model.WorkflowInstancePlanReady, model.WorkflowInstanceWaitingInput, model.WorkflowInstanceWaitingApproval:
 		// Plan-driven runs are callable (unlike pause_after): the caller must
 		// drive the plan lifecycle (revise/approve) rather than poll forever.
-		return string(wi.Status), nil, "parked at the plan boundary; drive the plan lifecycle (revise/approve) via the plan routes for this instance", nil
+		state := apirun.SubworkflowState{Status: string(wi.Status)}
+		if draft, derr := service.NewPlanService(pool, o.clock, o).GetDraft(instanceID); derr == nil {
+			if draft.Head != nil {
+				state.Revision = draft.Head.LatestRevision
+			}
+			if draft.Manifest != nil {
+				if raw, merr := json.Marshal(draft.Manifest); merr == nil {
+					state.Plan = raw
+				}
+			}
+			if len(draft.Questions) > 0 {
+				if raw, qerr := json.Marshal(draft.Questions); qerr == nil {
+					state.Questions = raw
+				}
+			}
+		}
+		return state, nil
 	default:
-		return "running", nil, "", nil
+		return apirun.SubworkflowState{Status: "running"}, nil
 	}
 }

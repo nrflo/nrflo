@@ -86,6 +86,12 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		database.Close()
 		return nil, err
 	}
+	// A plan-driven def is legitimately phase-less: reloadPlanLayers drafts/materializes it at the boundary.
+	planDriven, err := service.IsPlanDriven(db.WrapAsPool(database), defProjectID, dbWorkflow.ID)
+	if err != nil {
+		database.Close()
+		return nil, fmt.Errorf("failed to check plan-driven: %w", err)
+	}
 	database.Close()
 
 	// Convert to spawner types
@@ -93,7 +99,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Find the requested workflow
 	svcWf := svcWorkflows[req.WorkflowName]
-	if len(svcWf.Phases) == 0 {
+	if len(svcWf.Phases) == 0 && !planDriven {
 		return nil, fmt.Errorf("workflow '%s' has no phases", req.WorkflowName)
 	}
 	req.CloseTicketOnComplete = svcWf.CloseTicketOnComplete
@@ -117,6 +123,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 			Workflow:         req.WorkflowName,
 			Instructions:     req.Instructions,
 			EndlessLoop:      req.EndlessLoop,
+			PlanAutoApprove:  req.PlanAutoApprove,
 			ScheduledTaskID:  req.ScheduledTaskID,
 			ExternalID:       req.ExternalID,
 			ExternalContext:  req.ExternalContext,

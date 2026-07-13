@@ -279,15 +279,15 @@ func assertReduceResultViaGetSubworkflow(t *testing.T, env *TestEnv, wfiID strin
 	}
 
 	orch := orchestrator.New(env.Pool.Path, env.Hub, env.Clock, nil, "")
-	status, result, _, err := orch.GetSubworkflow(context.Background(), callerInstanceID, env.ProjectID, wfiID, "")
+	state, err := orch.GetSubworkflow(context.Background(), callerInstanceID, env.ProjectID, wfiID, "")
 	if err != nil {
 		t.Fatalf("GetSubworkflow: %v", err)
 	}
-	if status != "completed" {
-		t.Fatalf("GetSubworkflow status = %q, want completed", status)
+	if state.Status != "completed" {
+		t.Fatalf("GetSubworkflow status = %q, want completed", state.Status)
 	}
 	var got string
-	if err := json.Unmarshal(result, &got); err != nil {
+	if err := json.Unmarshal(state.Result, &got); err != nil {
 		t.Fatalf("unmarshal GetSubworkflow result: %v", err)
 	}
 	if got != "reduce-1-final" {

@@ -1,5 +1,12 @@
 import { apiGet, apiPost } from './client'
-import type { PlanDraft, PlanRevision, PlanReviseRequest, PlanApproveRequest } from '@/types/plan'
+import type {
+  PlanDraft,
+  PlanRevision,
+  PlanReviseRequest,
+  PlanApproveRequest,
+  DynamicWorkflowRunRequest,
+  DynamicWorkflowRunResponse,
+} from '@/types/plan'
 
 function planBase(iid: string): string {
   return `/api/v1/workflow-instances/${encodeURIComponent(iid)}/plan`
@@ -23,4 +30,14 @@ export function approvePlan(iid: string, req: PlanApproveRequest): Promise<PlanR
 
 export function cancelPlan(iid: string): Promise<{ status: string }> {
   return apiPost<{ status: string }>(`${planBase(iid)}/cancel`)
+}
+
+export function startDynamicWorkflow(
+  projectId: string,
+  req: DynamicWorkflowRunRequest
+): Promise<DynamicWorkflowRunResponse> {
+  return apiPost<DynamicWorkflowRunResponse>(
+    `/api/v1/projects/${encodeURIComponent(projectId)}/dynamic-workflow`,
+    req
+  )
 }

@@ -154,6 +154,9 @@ func setupServer() (*serverComponents, error) {
 	if err := service.EnsureGlobalDeepResearch(pool, clk, globalRoot); err != nil {
 		logger.Warn(context.Background(), "deep-research seed failed", "error", err)
 	}
+	if err := service.EnsureGlobalDynamicWorkflow(pool, clk, globalRoot); err != nil {
+		logger.Warn(context.Background(), "dynamic workflow seed failed", "error", err)
+	}
 	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
 	socketServer.SetWorkflowRunner(newWorkflowRunnerAdapter(httpServer.GetOrchestrator(), pool, clk))
 	socketServer.SetToolDispatcher(httpServer.GetOrchestrator())

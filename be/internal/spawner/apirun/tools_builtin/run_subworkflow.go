@@ -68,15 +68,20 @@ func (runSubworkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 		return err.Error(), true, nil
 	}
 	if args.WaitSec <= 0 {
-		return subworkflowJSON(instanceID, "running", nil, ""), false, nil
+		return subworkflowJSON(instanceID, apirun.SubworkflowState{Status: "running"}), false, nil
 	}
 	return pollSubworkflow(ctx, env, instanceID, args.ResultKey, args.WaitSec)
 }
 
-// pollSubworkflow waits up to waitSec (capped) for the child to reach a terminal
-// status, heartbeating the caller so stall detection stays quiet, and returns
-// the current status either way (never an error on timeout — the caller can
-// keep polling with get_subworkflow).
+// pollSubworkflow waits up to waitSec (capped) for the child to leave the
+// running/planning states, heartbeating the caller so stall detection stays
+// quiet, and returns the current status either way (never an error on
+// timeout — the caller can keep polling with get_subworkflow). It returns
+// immediately once the child reaches a plan-boundary status
+// (planning excluded — the self-drafting boundary runs the planner inline on
+// the child's own run goroutine, so it is still "in flight" from the caller's
+// perspective) requiring the caller to act (waiting_input/waiting_approval/
+// plan_ready) or a terminal status (completed/failed).
 func pollSubworkflow(ctx context.Context, env apirun.ToolEnv, instanceID, resultKey string, waitSec int) (string, bool, error) {
 	if waitSec > subworkflowMaxWaitSec {
 		waitSec = subworkflowMaxWaitSec
@@ -86,20 +91,22 @@ func pollSubworkflow(ctx context.Context, env apirun.ToolEnv, instanceID, result
 	ticker := time.NewTicker(subworkflowPollInterval)
 	defer ticker.Stop()
 	heartbeatEvery := 0
+	var lastStatus string
 
 	for {
-		status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, instanceID, resultKey)
+		state, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, instanceID, resultKey)
 		if err != nil {
 			return err.Error(), true, nil
 		}
-		if status != "running" {
-			return subworkflowJSON(instanceID, status, result, failureReason), status == "failed", nil
+		lastStatus = state.Status
+		if state.Status != "running" && state.Status != "planning" {
+			return subworkflowJSON(instanceID, state), state.Status == "failed", nil
 		}
 		select {
 		case <-ctx.Done():
-			return subworkflowJSON(instanceID, "running", nil, ""), false, nil
+			return subworkflowJSON(instanceID, apirun.SubworkflowState{Status: lastStatus}), false, nil
 		case <-deadline.C:
-			return subworkflowJSON(instanceID, "running", nil, ""), false, nil
+			return subworkflowJSON(instanceID, apirun.SubworkflowState{Status: lastStatus}), false, nil
 		case <-ticker.C:
 			heartbeatEvery++
 			if env.Heartbeat != nil && heartbeatEvery%10 == 0 { // ~every 30s
@@ -109,16 +116,28 @@ func pollSubworkflow(ctx context.Context, env apirun.ToolEnv, instanceID, result
 	}
 }
 
-// subworkflowJSON renders the common tool result payload for both tools.
-func subworkflowJSON(instanceID, status string, result json.RawMessage, failureReason string) string {
-	out := map[string]interface{}{"instance_id": instanceID, "status": status}
-	if len(result) > 0 {
-		out["result"] = result
-	} else if status == "completed" {
+// subworkflowJSON renders the common tool result payload shared by
+// run_subworkflow/get_subworkflow/dynamic_workflow: result/failure_reason for
+// terminal statuses, plan/revision/questions for the four plan-boundary
+// statuses (both zero-valued and simply omitted otherwise).
+func subworkflowJSON(instanceID string, state apirun.SubworkflowState) string {
+	out := map[string]interface{}{"instance_id": instanceID, "status": state.Status}
+	if len(state.Result) > 0 {
+		out["result"] = state.Result
+	} else if state.Status == "completed" {
 		out["note"] = "completed but the result finding is empty; check result_key"
 	}
-	if failureReason != "" {
-		out["failure_reason"] = failureReason
+	if state.FailureReason != "" {
+		out["failure_reason"] = state.FailureReason
+	}
+	if len(state.Plan) > 0 {
+		out["plan"] = state.Plan
+	}
+	if state.Revision > 0 {
+		out["revision"] = state.Revision
+	}
+	if len(state.Questions) > 0 {
+		out["questions"] = state.Questions
 	}
 	b, _ := json.Marshal(out)
 	return string(b)

@@ -48,12 +48,12 @@ func TestGetSubworkflow_ReadsSessionScopedResult(t *testing.T) {
 	wfiID := env.initProjectWorkflow(t, "test")
 	seedChildInstance(t, env, wfiID, "parent-1", "project_completed", "report")
 
-	status, result, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "report")
+	state, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "report")
 	if err != nil {
 		t.Fatalf("GetSubworkflow: %v", err)
 	}
-	if status != "completed" || !strings.Contains(string(result), "the answer") {
-		t.Errorf("got (%q, %s), want completed with seeded result", status, result)
+	if state.Status != "completed" || !strings.Contains(string(state.Result), "the answer") {
+		t.Errorf("got (%q, %s), want completed with seeded result", state.Status, state.Result)
 	}
 }
 
@@ -62,15 +62,15 @@ func TestGetSubworkflow_StatusMapping(t *testing.T) {
 
 	active := env.initProjectWorkflow(t, "test")
 	seedChildInstance(t, env, active, "parent-1", "active", "")
-	if status, _, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, active, ""); err != nil || status != "running" {
-		t.Errorf("active: got (%q, %v), want running", status, err)
+	if state, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, active, ""); err != nil || state.Status != "running" {
+		t.Errorf("active: got (%q, %v), want running", state.Status, err)
 	}
 
 	waiting := env.initProjectWorkflow(t, "test")
 	seedChildInstance(t, env, waiting, "parent-1", "waiting", "")
-	status, _, reason, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, waiting, "")
-	if err != nil || status != "waiting" || !strings.Contains(reason, "paused") {
-		t.Errorf("waiting: got (%q, %q, %v), want waiting with pause note", status, reason, err)
+	state, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, waiting, "")
+	if err != nil || state.Status != "waiting" || !strings.Contains(state.FailureReason, "paused") {
+		t.Errorf("waiting: got (%q, %q, %v), want waiting with pause note", state.Status, state.FailureReason, err)
 	}
 
 	failed := env.initProjectWorkflow(t, "test")
@@ -78,9 +78,9 @@ func TestGetSubworkflow_StatusMapping(t *testing.T) {
 	fr := repo.NewFindingRepo(env.pool, clock.Real())
 	_ = fr.Upsert("workflow_instance", failed, "_failure_reason", json.RawMessage(`{"reason":"boom"}`),
 		repo.Denorm{ProjectID: env.project, WorkflowInstanceID: failed}, repo.Actor{Source: "orchestrator"})
-	status, _, reason, err = env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, failed, "")
-	if err != nil || status != "failed" || reason != "boom" {
-		t.Errorf("failed: got (%q, %q, %v), want (failed, boom)", status, reason, err)
+	state, err = env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, failed, "")
+	if err != nil || state.Status != "failed" || state.FailureReason != "boom" {
+		t.Errorf("failed: got (%q, %q, %v), want (failed, boom)", state.Status, state.FailureReason, err)
 	}
 }
 
@@ -90,15 +90,15 @@ func TestGetSubworkflow_ParentageAuthorization(t *testing.T) {
 	env := newTestEnv(t)
 	wfiID := env.initProjectWorkflow(t, "test") // parent_instance_id stays ""
 
-	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "anyone", env.project, wfiID, ""); err == nil {
+	if _, err := env.orch.GetSubworkflow(context.Background(), "anyone", env.project, wfiID, ""); err == nil {
 		t.Error("want error for top-level (no-parent) instance")
 	}
 
 	seedChildInstance(t, env, wfiID, "parent-1", "active", "")
-	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", "other-project", wfiID, ""); err == nil {
+	if _, err := env.orch.GetSubworkflow(context.Background(), "parent-1", "other-project", wfiID, ""); err == nil {
 		t.Error("want error for foreign project")
 	}
-	if _, _, _, err := env.orch.GetSubworkflow(context.Background(), "other-caller", env.project, wfiID, ""); err == nil {
+	if _, err := env.orch.GetSubworkflow(context.Background(), "other-caller", env.project, wfiID, ""); err == nil {
 		t.Error("want error for a caller that did not start the child")
 	}
 }
@@ -186,18 +186,18 @@ func TestGetSubworkflow_PlanSuspendedStatuses_ReturnNonTerminalPollState(t *test
 			wfiID := env.initProjectWorkflow(t, "test")
 			seedChildInstance(t, env, wfiID, "parent-1", string(st), "")
 
-			status, result, failureReason, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "")
+			state, err := env.orch.GetSubworkflow(context.Background(), "parent-1", env.project, wfiID, "")
 			if err != nil {
 				t.Fatalf("GetSubworkflow: %v", err)
 			}
-			if status != string(st) {
-				t.Errorf("status = %q, want %q", status, st)
+			if state.Status != string(st) {
+				t.Errorf("status = %q, want %q", state.Status, st)
 			}
-			if result != nil {
-				t.Errorf("result = %s, want nil", result)
+			if state.Result != nil {
+				t.Errorf("result = %s, want nil", state.Result)
 			}
-			if failureReason == "" || !strings.Contains(failureReason, "plan boundary") {
-				t.Errorf("failureReason = %q, want mention of plan boundary", failureReason)
+			if state.FailureReason != "" {
+				t.Errorf("failureReason = %q, want empty for a plan-boundary status (no result/failure payload)", state.FailureReason)
 			}
 		})
 	}

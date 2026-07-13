@@ -7,8 +7,8 @@ interface PlanManifestViewProps {
 }
 
 // Read-only renderer for a plan manifest: layer -> policy -> nodes with
-// template + instructions. Manifest editing is out of scope for this ticket
-// (DYNWF-6/7) — this is display-only.
+// template + instructions. Manifest editing is display-only here;
+// PlanReviseDialog binds answers to these question ids separately.
 export function PlanManifestView({ manifest, questions }: PlanManifestViewProps) {
   return (
     <div className="space-y-3">
@@ -39,7 +39,10 @@ export function PlanManifestView({ manifest, questions }: PlanManifestViewProps)
           <p className="text-xs font-medium text-muted-foreground">Open questions</p>
           <ul className="space-y-1 list-disc list-inside">
             {questions.map((q) => (
-              <li key={q.id} className="text-sm">{q.question}</li>
+              <li key={q.id} className="text-sm">
+                <Badge variant="outline" className="text-xs mr-1.5">{q.id}</Badge>
+                {q.question}
+              </li>
             ))}
           </ul>
         </div>

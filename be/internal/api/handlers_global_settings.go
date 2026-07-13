@@ -54,6 +54,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	dynamicAutoVal, err := svc.Get(service.DynamicWorkflowAutoEnabledKey)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	captureThinkingVal, err := svc.Get("capture_thinking_enabled")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -99,6 +105,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
 		"experimental":                          experimentalVal == "true",
 		"api_mode_enabled":                      apiModeVal == "true",
+		"dynamic_workflow_auto_enabled":         dynamicAutoVal == "true",
 		"capture_thinking_enabled":              captureThinkingVal == "true",
 		"claude_system_prompt_override_enabled": claudeSysPromptOverrideVal == "true",
 		"api_via_cli_enabled":                   apiViaCLIEnabled,
@@ -142,6 +149,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		SimplifiedAgentsGraph             *bool           `json:"simplified_agents_graph"`
 		Experimental                      *bool           `json:"experimental"`
 		APIModeEnabled                    *bool           `json:"api_mode_enabled"`
+		DynamicWorkflowAutoEnabled        *bool           `json:"dynamic_workflow_auto_enabled"`
 		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
 		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
@@ -210,6 +218,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("api_mode_enabled", val); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.DynamicWorkflowAutoEnabled != nil {
+		val := "false"
+		if *req.DynamicWorkflowAutoEnabled {
+			val = "true"
+		}
+		if err := svc.Set(service.DynamicWorkflowAutoEnabledKey, val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

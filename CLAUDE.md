@@ -2,7 +2,7 @@
 
 ## Overview
 
-nrflo is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents. Supports multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), and real-time WebSocket updates.
+nrflo is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents: multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), real-time WebSocket updates.
 
 ## New features
 Do not keep old / deprecated / backward compat / legacy code
@@ -39,19 +39,19 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 ### 2. Layer-Based Phase Execution
 
-Agents are grouped by `layer` number; all agents in the same layer run concurrently, layers execute in ascending order. See [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) for pass policies and fan-in rules.
+Agents are grouped by `layer` number; same-layer agents run concurrently, layers execute in ascending order. See [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md).
 
 ### 3. State is Stored in Database Tables
 
-Workflow runtime state lives in `workflow_instances` and `agent_sessions`; phases are derived at read time. See [db/CLAUDE.md](be/internal/db/CLAUDE.md) for schema.
+Workflow runtime state lives in `workflow_instances`/`agent_sessions`; phases derive at read time. See [db/CLAUDE.md](be/internal/db/CLAUDE.md).
 
 ### 4. Test suites must complete in under 60 seconds
 
-`make test` (BE) and `make test-ui` (FE) are each capped at 60 s wall time (enforced locally; the cap is skipped when `$CI` is set — CI runners are ~4x slower and gate correctness only). `time.Sleep` and real CLI binary execution are forbidden in tests.
+`make test` (BE) and `make test-ui` (FE) are capped at 60s wall time locally (skipped when `$CI` is set — CI is ~4x slower, gates correctness only). `time.Sleep` and real CLI execution are forbidden in tests.
 
 ### 5. Keep Source Files Under 300 Lines
 
-Split files over 300 lines into sub-files (code and docs); source files (`.go`/`.ts`/`.tsx`) are enforced in CI via `make filesize` against the shrink-only `filesize.baseline` ratchet — see [be/CLAUDE.md](be/CLAUDE.md) for the procedure.
+Split files over 300 lines into sub-files (code and docs); `.go`/`.ts`/`.tsx` enforced in CI via `make filesize` against the shrink-only `filesize.baseline` — see [be/CLAUDE.md](be/CLAUDE.md).
 
 ### 6. Polymorphism lives in the implementation, not the call site
 
@@ -71,15 +71,15 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 Rules every change must respect.
 
 - **Server-only**: `nrflo_server` is the only user-facing command; all management goes through the web UI.
-- **Single binary**: `nrflo_server` — the server plus agent subcommands (`nrflo_server agent {mcp,record-event,statusline,context-update}`, spawner-invoked; `mcp-external` = external-Claude MCP proxy). No separate `nrflo` CLI.
+- **Single binary**: `nrflo_server` — server + agent subcommands (`mcp`, `record-event`, `statusline`, `context-update`, `mcp-external`); see [be/CLAUDE.md](be/CLAUDE.md). No separate `nrflo` CLI.
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
-- **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or the `X-Project` header for HTTP).
+- **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or `X-Project` for HTTP).
 - **Service layer**: business logic stays in `be/internal/service/`.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
-- **Spawned agents authenticate via per-session bearer token in `NRFLO_AGENT_TOKEN`**: see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
-- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` for Claude, `nrflo/*` for codex) — served by the `nrflo_server agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
-- **API mode is a runtime admin toggle** (`api_mode_enabled` global setting); see [be/internal/api/CLAUDE.md](be/internal/api/CLAUDE.md).
+- **Spawned agents authenticate via per-session bearer token `NRFLO_AGENT_TOKEN`**: see [api/CLAUDE.md](be/internal/api/CLAUDE.md).
+- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` Claude, `nrflo/*` codex) served by the `agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
+- **API mode is a runtime admin toggle** (`api_mode_enabled`); see [api/CLAUDE.md](be/internal/api/CLAUDE.md).
 
 ## Feature Index
 
@@ -92,7 +92,7 @@ Rules every change must respect.
 - **Interactive start & plan mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Endless loop mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Merge conflict auto-resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Plan lifecycle** (planner, revisions, approve) → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
+- **Plan lifecycle & sub/dynamic workflows** (planner, revise/approve, self-drafting boundary, `run_subworkflow`/`dynamic_workflow`) → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 
 ### Agents, templates, and configuration
 - **Workflow / agent / system-agent definitions** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
@@ -111,8 +111,7 @@ Rules every change must respect.
 ### Project-scoped & scheduled work
 - **Project-scoped workflows** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Scheduled tasks** → [scheduler/CLAUDE.md](be/internal/scheduler/CLAUDE.md)
-- **Workflow chains and chain runs** → [be/CLAUDE.md](be/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md) + [ui/CLAUDE.md](ui/CLAUDE.md)
-- **Sub-workflows** (`run_subworkflow`/`get_subworkflow` tools) → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Workflow chains and chain runs** → [be/CLAUDE.md](be/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 - **Run trace timeline** (`GET /workflow-instances/{iid}/trace` + Trace UI tab) → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 
 ### Auth & administration
@@ -139,6 +138,7 @@ Rules every change must respect.
 | `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
 | `deep-research` (global) | L0: scope -> L1: research -> L2: verify_a/b/c -> L3: synthesize | Multi-source web research, runnable from any project |
+| `dynamic` (global) | plan-driven | On-demand multi-agent plan |
 
 ## Building & Installing
 
@@ -146,4 +146,4 @@ Rules every change must respect.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` (see [Dockerfile](Dockerfile)). Api-mode off by default. Bundles native Claude Code CLI (musl) for cli-mode (`ANTHROPIC_API_KEY`); no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code CLI (musl) for cli-mode; no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -205,45 +206,78 @@ func TestHandleApprovePlan_CorrectRevision_Returns200AndApproves(t *testing.T) {
 	}
 }
 
-// --- Case 8: denyNonAdminGlobalWrite enforcement ---
+// --- Case 8: plan routes on a __global__-project instance are NOT gated by
+// denyNonAdminGlobalWrite (removed in DYNWF-6) ---
 
-func TestPlanRoutes_GlobalProjectWriteDenied_ReadAllowed(t *testing.T) {
+// TestPlanRoutes_GlobalProjectInstance_WritesAllowedForBearerLikeCaller is the
+// regression test for the removed denyNonAdminGlobalWrite guard on plan
+// revise/approve/cancel: these are per-instance RUNTIME operations (not
+// __global__ definition mutations), so a spawned agent's spawn token or an
+// mcp-external service token — neither of which populates a human user in
+// request context — must be able to drive a dynamic_workflow run living in
+// the hidden __global__ project. Simulates that principal by stashing a
+// ServicePrincipal in the request context (mirroring what requireAuth does
+// for a bearer request) with no user at all; previously
+// denyNonAdminGlobalWrite required a human admin user and would 403 this.
+func TestPlanRoutes_GlobalProjectInstance_WritesAllowedForBearerLikeCaller(t *testing.T) {
 	s := newPlanServer(t)
 	seedPlanInstance(t, s, service.GlobalProjectID, "inst-global")
 
-	// Write route (revise) with no user in context -> 403.
+	asServicePrincipal := func(r *http.Request) *http.Request {
+		ctx := context.WithValue(r.Context(), servicePrincipalKey, &ServicePrincipal{TokenID: "tok-1", Global: true})
+		return r.WithContext(ctx)
+	}
+
+	// Write route (revise) with a service-principal (no user) context -> 200, not 403.
 	body, _ := json.Marshal(types.PlanReviseRequest{
 		Revision: 0,
 		Manifest: json.RawMessage(validPlanManifestJSON),
 	})
 	rr := httptest.NewRecorder()
-	s.handleRevisePlan(rr, planReviseReq(t, "inst-global", body))
-	if rr.Code != http.StatusForbidden {
-		t.Errorf("revise status = %d, want 403; body: %s", rr.Code, rr.Body.String())
+	s.handleRevisePlan(rr, asServicePrincipal(planReviseReq(t, "inst-global", body)))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("revise status = %d, want 200 (denyNonAdminGlobalWrite must not gate plan routes); body: %s", rr.Code, rr.Body.String())
 	}
+	rev := decodePlanRevision(t, rr)
 
-	// Write route (approve) with no user in context -> 403.
-	approveBody, _ := json.Marshal(types.PlanApproveRequest{Revision: 0})
+	// Write route (approve) -> 200, not 403.
+	approveBody, _ := json.Marshal(types.PlanApproveRequest{Revision: rev.Revision})
 	rrApprove := httptest.NewRecorder()
-	s.handleApprovePlan(rrApprove, planApproveReq(t, "inst-global", approveBody))
-	if rrApprove.Code != http.StatusForbidden {
-		t.Errorf("approve status = %d, want 403; body: %s", rrApprove.Code, rrApprove.Body.String())
+	s.handleApprovePlan(rrApprove, asServicePrincipal(planApproveReq(t, "inst-global", approveBody)))
+	if rrApprove.Code != http.StatusOK {
+		t.Errorf("approve status = %d, want 200; body: %s", rrApprove.Code, rrApprove.Body.String())
 	}
 
-	// Write route (cancel) with no user in context -> 403.
-	cancelReq := httptest.NewRequest(http.MethodPost, "/api/v1/workflow-instances/inst-global/plan/cancel", nil)
-	cancelReq.SetPathValue("iid", "inst-global")
-	rrCancel := httptest.NewRecorder()
-	s.handleCancelPlan(rrCancel, cancelReq)
-	if rrCancel.Code != http.StatusForbidden {
-		t.Errorf("cancel status = %d, want 403; body: %s", rrCancel.Code, rrCancel.Body.String())
-	}
-
-	// Read route (GET plan) on same global-project instance bypasses the admin
-	// gate entirely: it should 404 (no plan yet), not 403.
+	// Read route (GET plan) is unaffected either way.
 	getRR := httptest.NewRecorder()
 	s.handleGetPlan(getRR, planGetReq(t, "inst-global"))
-	if getRR.Code != http.StatusNotFound {
-		t.Errorf("GET plan status = %d, want 404 (not 403); body: %s", getRR.Code, getRR.Body.String())
+	if getRR.Code != http.StatusOK {
+		t.Errorf("GET plan status = %d, want 200; body: %s", getRR.Code, getRR.Body.String())
+	}
+}
+
+// TestPlanRoutes_GlobalProjectInstance_CancelAllowedForBearerLikeCaller
+// covers the cancel route separately (needs its own draft instance since
+// cancel only applies to a draft head, not an already-approved one).
+func TestPlanRoutes_GlobalProjectInstance_CancelAllowedForBearerLikeCaller(t *testing.T) {
+	s := newPlanServer(t)
+	seedPlanInstance(t, s, service.GlobalProjectID, "inst-global-cancel")
+
+	body, _ := json.Marshal(types.PlanReviseRequest{
+		Revision: 0,
+		Manifest: json.RawMessage(validPlanManifestJSON),
+	})
+	rr := httptest.NewRecorder()
+	s.handleRevisePlan(rr, planReviseReq(t, "inst-global-cancel", body))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("revise status = %d, want 200; body: %s", rr.Code, rr.Body.String())
+	}
+
+	cancelReq := httptest.NewRequest(http.MethodPost, "/api/v1/workflow-instances/inst-global-cancel/plan/cancel", nil)
+	cancelReq.SetPathValue("iid", "inst-global-cancel")
+	rrCancel := httptest.NewRecorder()
+	s.handleCancelPlan(rrCancel, cancelReq)
+	if rrCancel.Code != http.StatusOK {
+		t.Errorf("cancel status = %d, want 200 (not 403); body: %s", rrCancel.Code, rrCancel.Body.String())
 	}
 }

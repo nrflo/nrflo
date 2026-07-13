@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useProjectStore } from '@/stores/projectStore'
-import { getPlan, listPlanRevisions, revisePlan, approvePlan, cancelPlan } from '@/api/plan'
-import type { PlanApproveRequest, PlanReviseRequest } from '@/types/plan'
+import { getPlan, listPlanRevisions, revisePlan, approvePlan, cancelPlan, startDynamicWorkflow } from '@/api/plan'
+import { projectWorkflowKeys } from './useTickets'
+import type { PlanApproveRequest, PlanReviseRequest, DynamicWorkflowRunRequest } from '@/types/plan'
 
 export const planKeys = {
   all: ['plan'] as const,
@@ -55,6 +56,17 @@ export function useCancelPlan() {
     mutationFn: ({ instanceId }: { instanceId: string }) => cancelPlan(instanceId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: planKeys.detail(variables.instanceId) })
+    },
+  })
+}
+
+export function useStartDynamicWorkflow() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, params }: { projectId: string; params: DynamicWorkflowRunRequest }) =>
+      startDynamicWorkflow(projectId, params),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(variables.projectId) })
     },
   })
 }

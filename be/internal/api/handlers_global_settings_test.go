@@ -45,6 +45,7 @@ var globalSettingsBoolFields = []string{
 	"simplified_agents_graph",
 	"experimental",
 	"api_mode_enabled",
+	"dynamic_workflow_auto_enabled",
 	"claude_system_prompt_override_enabled",
 	"api_via_cli_enabled",
 	"capture_thinking_enabled",

@@ -190,6 +190,12 @@ func callExternalTool(ctx context.Context, c *nrfloHTTPClient, name string, args
 			return "", err
 		}
 		return string(raw), nil
+	case "dynamic_workflow":
+		return callDynamicWorkflowTool(ctx, c, args)
+	case "revise_plan":
+		return callRevisePlanTool(ctx, c, args)
+	case "approve_plan":
+		return callApprovePlanTool(ctx, c, args)
 	default:
 		return "", fmt.Errorf("unknown tool: %s", name)
 	}
@@ -222,7 +228,7 @@ func externalToolSpecs(defaultProject string) []map[string]interface{} {
 		projDesc += " NRFLO_PROJECT default: '" + defaultProject + "'."
 	}
 	projectArg := str(projDesc)
-	return []map[string]interface{}{
+	specs := []map[string]interface{}{
 		{
 			"name":        "deep_research",
 			"description": "Run nrflo's multi-source, fact-checked deep-research workflow for a question and return a cited markdown report. Blocks until the run finishes (can take several minutes — raise the MCP tool timeout, e.g. MCP_TIMEOUT). Pass `context` to ground the research in your current project and conversation.",
@@ -252,4 +258,5 @@ func externalToolSpecs(defaultProject string) []map[string]interface{} {
 			"inputSchema": obj(map[string]interface{}{"project": projectArg}),
 		},
 	}
+	return append(specs, dynamicWorkflowToolSpecs(projectArg)...)
 }

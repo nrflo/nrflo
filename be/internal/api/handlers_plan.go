@@ -32,16 +32,18 @@ func (s *Server) registerPlanRoutes(protected func(string, http.HandlerFunc)) {
 	protected("POST /api/v1/workflow-instances/{iid}/plan/cancel", s.handleCancelPlan)
 }
 
-// resolvePlanInstance loads the workflow instance for a plan route and, for
-// write routes, enforces the __global__ admin-only guard. Returns nil (after
-// writing the HTTP response) on any failure.
-func (s *Server) resolvePlanInstance(w http.ResponseWriter, r *http.Request, iid string, isWrite bool) *planInstanceCtx {
+// resolvePlanInstance loads the workflow instance for a plan route. Plan
+// revise/approve/cancel are per-instance RUNTIME operations, not __global__
+// definition mutations — unlike workflow/agent-def CRUD, they are not gated by
+// denyNonAdminGlobalWrite (which denies bearer/service principals), so a
+// spawned agent's spawn token or an mcp-external service token can drive a
+// dynamic_workflow/revise_plan/approve_plan run living in the hidden
+// __global__ project. Returns nil (after writing the HTTP response) on any
+// failure. Definition CRUD still calls denyNonAdminGlobalWrite directly.
+func (s *Server) resolvePlanInstance(w http.ResponseWriter, iid string) *planInstanceCtx {
 	wfi, err := repo.NewWorkflowInstanceRepo(s.pool, s.clock).Get(iid)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "workflow instance not found")
-		return nil
-	}
-	if isWrite && denyNonAdminGlobalWrite(w, r, wfi.ProjectID) {
 		return nil
 	}
 	return &planInstanceCtx{ProjectID: wfi.ProjectID, TicketID: wfi.TicketID, Workflow: wfi.WorkflowID}
@@ -75,7 +77,7 @@ func writePlanServiceError(w http.ResponseWriter, err error) {
 // handleGetPlan returns the plan head, latest manifest, and template library.
 func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 	iid := r.PathValue("iid")
-	if s.resolvePlanInstance(w, r, iid, false) == nil {
+	if s.resolvePlanInstance(w, iid) == nil {
 		return
 	}
 	svc := service.NewPlanService(s.pool, s.clock, s.orchestrator)
@@ -90,7 +92,7 @@ func (s *Server) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 // handleListPlanRevisions returns every revision for a workflow instance's plan.
 func (s *Server) handleListPlanRevisions(w http.ResponseWriter, r *http.Request) {
 	iid := r.PathValue("iid")
-	if s.resolvePlanInstance(w, r, iid, false) == nil {
+	if s.resolvePlanInstance(w, iid) == nil {
 		return
 	}
 	svc := service.NewPlanService(s.pool, s.clock, s.orchestrator)
@@ -106,7 +108,7 @@ func (s *Server) handleListPlanRevisions(w http.ResponseWriter, r *http.Request)
 // manifest or planner feedback/answers.
 func (s *Server) handleRevisePlan(w http.ResponseWriter, r *http.Request) {
 	iid := r.PathValue("iid")
-	ctx := s.resolvePlanInstance(w, r, iid, true)
+	ctx := s.resolvePlanInstance(w, iid)
 	if ctx == nil {
 		return
 	}
@@ -136,7 +138,7 @@ func (s *Server) handleRevisePlan(w http.ResponseWriter, r *http.Request) {
 // handleApprovePlan approves a plan at a specific (revision-pinned) revision.
 func (s *Server) handleApprovePlan(w http.ResponseWriter, r *http.Request) {
 	iid := r.PathValue("iid")
-	ctx := s.resolvePlanInstance(w, r, iid, true)
+	ctx := s.resolvePlanInstance(w, iid)
 	if ctx == nil {
 		return
 	}
@@ -174,7 +176,7 @@ func (s *Server) handleApprovePlan(w http.ResponseWriter, r *http.Request) {
 // handleCancelPlan cancels a draft plan.
 func (s *Server) handleCancelPlan(w http.ResponseWriter, r *http.Request) {
 	iid := r.PathValue("iid")
-	ctx := s.resolvePlanInstance(w, r, iid, true)
+	ctx := s.resolvePlanInstance(w, iid)
 	if ctx == nil {
 		return
 	}

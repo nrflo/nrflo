@@ -516,6 +516,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	// Project-scoped workflow operations
 	protected("POST /api/v1/projects/{id}/workflow/run", s.handleRunProjectWorkflow)
+	protected("POST /api/v1/projects/{id}/dynamic-workflow", s.handleRunDynamicWorkflow)
 	protected("POST /api/v1/projects/{id}/workflow/stop", s.handleStopProjectWorkflow)
 	protected("POST /api/v1/projects/{id}/workflow/restart", s.handleRestartProjectAgent)
 	protected("POST /api/v1/projects/{id}/workflow/retry-failed", s.handleRetryFailedProjectAgent)

@@ -11,20 +11,24 @@ import (
 )
 
 // getSubworkflowHandler implements get_subworkflow: poll a child run started by
-// run_subworkflow. Terminal statuses include the result finding (or failure
-// reason); an optional bounded wait long-polls instead of returning immediately.
+// run_subworkflow or dynamic_workflow. Terminal statuses include the result
+// finding (or failure reason); the four plan-boundary statuses
+// (planning/plan_ready/waiting_input/waiting_approval) include the current
+// plan draft (plan/revision/questions) so the caller can act via
+// revise_plan/approve_plan. An optional bounded wait long-polls instead of
+// returning immediately.
 type getSubworkflowHandler struct{}
 
 func (getSubworkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_subworkflow",
-		Description: "Poll a sub-workflow started with run_subworkflow. Returns {instance_id, status} and, when completed/failed, the result finding or failure reason. Set wait_sec to long-poll up to that many seconds (max 240).",
+		Description: "Poll a sub-workflow started with run_subworkflow or dynamic_workflow. Returns {instance_id, status} and, when completed/failed, the result finding or failure reason; when parked at the plan boundary (planning/plan_ready/waiting_input/waiting_approval), the current plan draft {plan, revision, questions} — drive it further with revise_plan/approve_plan. Set wait_sec to long-poll up to that many seconds (max 240); it returns as soon as the child reaches a plan-boundary or terminal status.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
- "instance_id":{"type":"string","description":"Instance id returned by run_subworkflow"},
+ "instance_id":{"type":"string","description":"Instance id returned by run_subworkflow or dynamic_workflow"},
  "result_key":{"type":"string","description":"Finding key holding the result (default workflow_final_result; deep-research emits 'report')"},
- "wait_sec":{"type":"integer","description":"Optionally block up to this many seconds (max 240) waiting for completion"}
+ "wait_sec":{"type":"integer","description":"Optionally block up to this many seconds (max 240) waiting for completion or a plan-boundary status"}
 },
 "required":["instance_id"],
 "additionalProperties":false
@@ -54,9 +58,9 @@ func (getSubworkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 	if args.WaitSec > 0 {
 		return pollSubworkflow(ctx, env, args.InstanceID, args.ResultKey, args.WaitSec)
 	}
-	status, result, failureReason, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, args.InstanceID, args.ResultKey)
+	state, err := env.Subworkflows.GetSubworkflow(ctx, env.WorkflowInstanceID, env.ProjectID, args.InstanceID, args.ResultKey)
 	if err != nil {
 		return err.Error(), true, nil
 	}
-	return subworkflowJSON(args.InstanceID, status, result, failureReason), status == "failed", nil
+	return subworkflowJSON(args.InstanceID, state), state.Status == "failed", nil
 }

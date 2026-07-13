@@ -36,7 +36,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	741
+be/internal/api/server.go	742
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -117,7 +117,7 @@ be/internal/service/scheduled_task_test.go	466
 be/internal/service/system_agent_definition.go	367
 be/internal/service/system_agent_definition_test.go	379
 be/internal/service/ticket.go	387
-be/internal/service/workflow.go	333
+be/internal/service/workflow.go	334
 be/internal/service/workflow_chain.go	373
 be/internal/service/workflow_chain_run_test.go	344
 be/internal/service/workflow_chain_test.go	349
@@ -156,6 +156,7 @@ be/internal/spawner/template_extra_vars_test.go	318
 be/internal/spawner/template_project_findings_test.go	436
 be/internal/spawner/to_resume_integration_test.go	361
 be/internal/spawner/to_resume_test.go	473
+be/internal/types/request.go	301
 be/internal/venv/manager_test.go	328
 be/internal/ws/event_test.go	307
 be/internal/ws/hub.go	482
@@ -216,7 +217,7 @@ ui/src/pages/DetailsTabContent.test.tsx	314
 ui/src/pages/GitStatusTabContent.test.tsx	417
 ui/src/pages/HierarchyTabContent.test.tsx	589
 ui/src/pages/ProjectWorkflowsPage.test.tsx	1452
-ui/src/pages/ProjectWorkflowsPage.tsx	521
+ui/src/pages/ProjectWorkflowsPage.tsx	523
 ui/src/pages/PythonScriptsPage.test.tsx	329
 ui/src/pages/SettingsPage.test.tsx	383
 ui/src/pages/TicketDetailPage.epic.test.tsx	408

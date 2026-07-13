@@ -71,6 +71,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const dynamicWorkflowAutoMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ dynamic_workflow_auto_enabled: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   return (
     <Card>
       <CardHeader>
@@ -210,6 +217,20 @@ export function GlobalSettingsSection() {
                 checked={settings.capture_thinking_enabled ?? false}
                 onChange={(val) => captureThinkingMutation.mutate(val)}
                 disabled={captureThinkingMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Allow dynamic_workflow mode=auto</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Plans are approved automatically after validation, skipping human review
+                </p>
+              </div>
+              <Toggle
+                checked={settings.dynamic_workflow_auto_enabled ?? false}
+                onChange={(val) => dynamicWorkflowAutoMutation.mutate(val)}
+                disabled={dynamicWorkflowAutoMutation.isPending}
               />
             </div>
             <GlobalStallSettings settings={settings} />

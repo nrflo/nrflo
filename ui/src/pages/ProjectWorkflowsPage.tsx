@@ -278,6 +278,8 @@ export function ProjectWorkflowsPage() {
           onStagedArtifactsChange={setStagedArtifacts}
           hasUploadPending={hasUploadPending}
           onUploadPendingChange={setHasUploadPending}
+          projectId={currentProject}
+          onDynamicRunSuccess={(id) => { setSelectedInstanceId(id); setActiveTab('running') }}
         />
       )}
 

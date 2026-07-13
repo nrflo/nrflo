@@ -277,6 +277,7 @@ type ProjectWorkflowRunRequest struct {
 	Interactive      bool               `json:"interactive,omitempty"`
 	PlanMode         bool               `json:"plan_mode,omitempty"`
 	EndlessLoop      bool               `json:"endless_loop,omitempty"`
+	PlanAutoApprove  bool               `json:"plan_auto_approve,omitempty"`
 	ScheduledTaskID  string             `json:"scheduled_task_id,omitempty"`
 	ExternalID       string             `json:"external_id,omitempty"`
 	ExternalContext  string             `json:"external_context,omitempty"`

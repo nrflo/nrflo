@@ -146,4 +146,4 @@ Rules every change must respect.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code CLI (musl) for cli-mode; no codex/opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction); no opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.

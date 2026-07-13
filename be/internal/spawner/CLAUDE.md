@@ -80,23 +80,19 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 `Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline: validates the target (`consultant=true`, `execution_mode=api`), truncates the caller transcript, then synchronously spawns a child `Spawner` running a one-phase `_consult` workflow under the caller's instance+ticket. The consultant's `_consult_answer` finding (read+deleted by session id) is returned as the `consult` tool result. `prepareSpawn` strips `consult` from a consultant's own toolset (recursion guard). Broadcasts `consult.started/answered/failed`; `_consult` is hidden from the v4 read model.
 
+## Planner
+
+`Orchestrator.RunPlanner` (`orchestrator/planner.go`, implements `service.PlannerRunner`) mirrors `Spawner.Consult`/`spawnContextSaver`: spawns a fresh one-off `_planner` child session per (re)plan under the caller's real `WorkflowInstanceID` (so a workflow-local `agent_definitions` node_role='planner' override resolves via the normal project→system prompt fallback), else falls back to `system_agent_definitions` role='planner'. Passes `ExtraVars` (`PLAN_GOAL`/`PLAN_INSTRUCTIONS`/`TEMPLATE_LIBRARY`/`PLAN_FEEDBACK`/`PLAN_ANSWERS`/`PREVIOUS_MANIFEST`), waits, reads the `_workflow_plan` finding — left as immutable audit (unlike consult, which deletes its answer).
+
 ## Rate-Limit Restart
 
-For `cli_interactive` agents: on a non-zero exit matching a rate-limit pattern (last ~10 output/stderr blocks, adapter `ClassifyExit`), `handleRateLimitRetry` (`rate_limit_restart.go`) broadcasts `agent.rate_limited`, registers `result=continue/reason=rate_limit`, persists `rate_limit_until_ts`, and sets `proc.finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`); a known subscription reset (`agent.rate_limits_update` → `rate_limit_reset_ts`) makes `resetAwareDelay` (`rate_limit_config.go`) wait until that reset (+30s, ≤8h) instead. `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
+`cli_interactive`: a non-zero exit matching a rate-limit pattern (adapter `ClassifyExit`) triggers `handleRateLimitRetry` (`rate_limit_restart.go`) — broadcasts `agent.rate_limited`, registers `result=continue/reason=rate_limit`, persists `rate_limit_until_ts`, sets `finalStatus=CONTINUE`. `waitForRateLimitRetry` sleeps exponential backoff (`min(InitialBackoff·2^(n-1), MaxWait)`), or waits for a known subscription reset via `resetAwareDelay` (`rate_limit_config.go`, +30s, ≤8h). `rateLimitRetryCount` is separate from `failRestartCount` and carries across relaunches.
 
-In-band variant: a 529 the Claude CLI prints as text *without exiting* (no Stop hook fires) is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`, from `checkIdleNudge`) — it reads the last assistant message and on a rate-limit match runs the same retry (relaunch uses `--fallback-model`). `"Overloaded"` is a claude `ClassifyExit` limit pattern; covers api-via-cli.
+In-band: a 529 the Claude CLI prints as text without exiting is caught on idle by `handleInBandRateLimit` (`inband_rate_limit.go`) — same retry, relaunch uses `--fallback-model`; `"Overloaded"` is a claude limit pattern, also covers api-via-cli.
 
-For `api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit` from a typed `*sdk.Error`; `apiBackend.Start`'s goroutine runs the same dance and flips `finalStatus=CONTINUE`. `rateLimitConfig` loads for both lanes in `prepareSpawn`.
+`api` agents: `apirun.classifyProviderError` returns `RetryClassRateLimit`; `apiBackend.Start` runs the same dance. `rateLimitConfig` loads for both lanes in `prepareSpawn`.
 
-Well-known config keys (project-scoped > global, via `pool.GetProjectConfig`/`GetConfig`):
-
-| Key | Default | Description |
-|-----|---------|-------------|
-| `rate_limit_enabled` | `true` | Enable/disable restart |
-| `rate_limit_initial_backoff_sec` | `60` | First retry wait (sec) |
-| `rate_limit_max_wait_sec` | `3600` | Max per-step wait; gates future retries |
-| `<adapter>_limit_patterns` | (adapter defaults) | Extra comma-separated patterns |
-| `<adapter>_error_patterns` | (adapter defaults) | Extra comma-separated patterns |
+Config keys (project > global, via `pool.GetProjectConfig`/`GetConfig`): `rate_limit_enabled` (default `true`), `rate_limit_initial_backoff_sec` (`60`), `rate_limit_max_wait_sec` (`3600`), `<adapter>_limit_patterns`/`<adapter>_error_patterns` (extra comma-separated patterns).
 
 ## Stall Detection
 
@@ -120,7 +116,7 @@ End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (r
 
 ## Template Variables
 
-Full variable list (`${AGENT}`, `${NODE_ID}`, `${TICKET_ID}`, `${MODEL}`, `#{FINDINGS:...}`, `#{LAYER_FINDINGS:N}`, `#{NODE_FINDINGS:<node_id>}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`.
+Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`.
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found). Both use the same `EnsureStageDir`/`Materialize` helpers as NRF_ARTIFACTS_DIR injection.
 

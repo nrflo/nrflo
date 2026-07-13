@@ -24,20 +24,27 @@ func (s *FindingsService) Emit(req *types.FindingsEmitRequest) (BroadcastCtx, er
 		return BroadcastCtx{}, err
 	}
 
-	defs, err := loadFindingSchemas(s.pool, bctx.ProjectID, bctx.Workflow)
-	if err != nil {
-		return BroadcastCtx{}, err
-	}
-
+	// Reserved keys (e.g. _workflow_plan) are server-owned: resolved AHEAD of
+	// the workflow's editable finding_schemas, and an operator can neither
+	// weaken nor remove them (ValidateFindingSchemas rejects declaring one).
 	var def *types.FindingSchema
-	for i := range defs {
-		if defs[i].Key == req.Key {
-			def = &defs[i]
-			break
+	reservedDef, isReserved := ReservedFindingSchema(req.Key)
+	if isReserved {
+		def = reservedDef
+	} else {
+		defs, err := loadFindingSchemas(s.pool, bctx.ProjectID, bctx.Workflow)
+		if err != nil {
+			return BroadcastCtx{}, err
 		}
-	}
-	if def == nil {
-		return BroadcastCtx{}, fmt.Errorf("no schema defined for key '%s'. Configured keys: %s", req.Key, configuredKeys(defs))
+		for i := range defs {
+			if defs[i].Key == req.Key {
+				def = &defs[i]
+				break
+			}
+		}
+		if def == nil {
+			return BroadcastCtx{}, fmt.Errorf("no schema defined for key '%s'. Configured keys: %s", req.Key, configuredKeys(defs))
+		}
 	}
 
 	sch, err := compileJSONSchema(string(def.Schema))
@@ -57,6 +64,18 @@ func (s *FindingsService) Emit(req *types.FindingsEmitRequest) (BroadcastCtx, er
 	}
 	if err := sch.Validate(value); err != nil {
 		return BroadcastCtx{}, fmt.Errorf("value for key '%s' does not match the required structure: %v\nExpected structure example:\n%s", req.Key, err, def.Example)
+	}
+
+	// Reserved keys carry a semantic validator beyond structural JSON Schema
+	// (e.g. plan-manifest cross-layer references, template resolution). It
+	// runs against the real workflow because a planner child session is
+	// created under the caller's workflow_instance_id.
+	if isReserved {
+		if rs, ok := reservedFindingSchemas[req.Key]; ok && rs.Validate != nil {
+			if err := rs.Validate(s.pool, bctx.ProjectID, bctx.Workflow, rawValue); err != nil {
+				return BroadcastCtx{}, fmt.Errorf("value for key '%s' failed validation:\n%v\nExpected structure example:\n%s", req.Key, err, def.Example)
+			}
+		}
 	}
 
 	val := json.RawMessage(normalizeJSONValue(string(rawValue)))
@@ -89,15 +108,17 @@ func unwrapDoubleEncodedJSON(raw json.RawMessage) json.RawMessage {
 	return json.RawMessage(innerTrim)
 }
 
-// configuredKeys returns a comma-separated sorted list of schema keys, or a
-// placeholder when none are defined.
+// configuredKeys returns a comma-separated sorted list of schema keys
+// (workflow-scoped plus server-owned reserved keys), or a placeholder when
+// none are defined.
 func configuredKeys(defs []types.FindingSchema) string {
-	if len(defs) == 0 {
-		return "(none defined for this workflow)"
-	}
-	keys := make([]string, 0, len(defs))
+	keys := make([]string, 0, len(defs)+len(reservedFindingSchemas))
 	for _, d := range defs {
 		keys = append(keys, d.Key)
+	}
+	keys = append(keys, ReservedFindingKeys()...)
+	if len(keys) == 0 {
+		return "(none defined for this workflow)"
 	}
 	sort.Strings(keys)
 	return strings.Join(keys, ", ")

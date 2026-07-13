@@ -36,7 +36,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	740
+be/internal/api/server.go	741
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -95,7 +95,7 @@ be/internal/repo/ticket_search_test.go	362
 be/internal/repo/workflow_instance_cleanup_test.go	319
 be/internal/scheduler/scheduler_dispatch_test.go	337
 be/internal/service/agent.go	520
-be/internal/service/agent_definition.go	618
+be/internal/service/agent_definition.go	594
 be/internal/service/agent_definition_script_test.go	321
 be/internal/service/api_model.go	354
 be/internal/service/artifact.go	326
@@ -114,7 +114,7 @@ be/internal/service/findings_layer_test.go	338
 be/internal/service/git_test.go	696
 be/internal/service/scheduled_task_chain_test.go	381
 be/internal/service/scheduled_task_test.go	466
-be/internal/service/system_agent_definition.go	368
+be/internal/service/system_agent_definition.go	367
 be/internal/service/system_agent_definition_test.go	423
 be/internal/service/ticket.go	387
 be/internal/service/workflow.go	333
@@ -151,7 +151,7 @@ be/internal/spawner/safety_hook_test.go	316
 be/internal/spawner/spawner_monitor.go	399
 be/internal/spawner/spawner_prepare.go	368
 be/internal/spawner/stall_global_timeout_test.go	351
-be/internal/spawner/template.go	332
+be/internal/spawner/template.go	319
 be/internal/spawner/template_extra_vars_test.go	318
 be/internal/spawner/template_project_findings_test.go	436
 be/internal/spawner/to_resume_integration_test.go	361

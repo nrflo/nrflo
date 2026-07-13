@@ -92,6 +92,7 @@ Rules every change must respect.
 - **Interactive start & plan mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Endless loop mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
 - **Merge conflict auto-resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
+- **Plan lifecycle** (planner, revisions, approve) → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 
 ### Agents, templates, and configuration
 - **Workflow / agent / system-agent definitions** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
@@ -125,10 +126,8 @@ Rules every change must respect.
 - **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
 
-### Observer (experimental)
-- **Observer agents (experimental, env-gated)** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-
-See `be/cmd/server/main.go` for subcommands.
+### Observer
+- **Observer agents (experimental)** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
 
 ## Workflows
 

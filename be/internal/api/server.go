@@ -704,6 +704,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("DELETE /api/v1/artifact-uploads/{upload_id}", s.handleCancelUpload)
 	protected("GET /api/v1/workflow-instances/{iid}/artifacts", s.handleListArtifacts)
 	protected("GET /api/v1/workflow-instances/{iid}/trace", s.handleGetWorkflowTrace)
+	s.registerPlanRoutes(protected)
 	protected("GET /api/v1/artifacts/{aid}/download", s.handleDownloadArtifact)
 	projectAdmin("DELETE /api/v1/artifacts/{aid}", s.handleDeleteArtifact)
 

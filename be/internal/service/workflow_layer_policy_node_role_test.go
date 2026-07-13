@@ -23,7 +23,7 @@ func TestSetLayerPolicy_QuorumDenominatorExcludesNonStaticRoles(t *testing.T) {
 		}
 	}
 	if _, err := agentSvc.CreateAgentDef(projectID, workflowID, &types.AgentDefCreateRequest{
-		ID: "planner-agent", Prompt: "plan", Layer: 0, NodeRole: "planner",
+		ID: "planner-agent", Prompt: "plan", Layer: 0, NodeRole: "planner", Tools: "emit_findings",
 	}); err != nil {
 		t.Fatalf("CreateAgentDef(planner-agent): %v", err)
 	}

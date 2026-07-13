@@ -16,11 +16,15 @@ func TestCreateAgentDef_NodeRole_AcceptsValidValues(t *testing.T) {
 		role := role
 		t.Run(role, func(t *testing.T) {
 			t.Parallel()
-			def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+			req := &types.AgentDefCreateRequest{
 				ID:       "agent-" + role,
 				Prompt:   "do stuff",
 				NodeRole: role,
-			})
+			}
+			if role == "planner" {
+				req.Tools = "emit_findings"
+			}
+			def, err := svc.CreateAgentDef("proj1", wfID, req)
 			if err != nil {
 				t.Fatalf("CreateAgentDef(node_role=%s): %v", role, err)
 			}
@@ -145,6 +149,7 @@ func TestUpdateAgentDef_NodeRole_OmittedFieldIsNoOp(t *testing.T) {
 		ID:       "agent-omit-role",
 		Prompt:   "do stuff",
 		NodeRole: "planner",
+		Tools:    "emit_findings",
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -178,6 +183,7 @@ func TestUpdateAgentDef_NodeRole_ConsultantInvariantReValidated(t *testing.T) {
 		Prompt:        "plan",
 		ExecutionMode: "api",
 		NodeRole:      "planner",
+		Tools:         "emit_findings",
 	}); err != nil {
 		t.Fatalf("create planner agent: %v", err)
 	}

@@ -21,6 +21,12 @@ Use it when a downstream agent or hook expects a specific shape (e.g. an array
 of `{file, severity}` objects). For free-form findings with no schema, keep
 using `findings_add`.
 
+**Reserved keys:** `_workflow_plan` is server-owned — its schema is resolved
+ahead of (and can never be overridden by) a workflow's configured schemas.
+Write it only with `emit_findings`; `findings_add`/`findings_append` (and
+their bulk variants) reject it outright, naming `emit_findings` as the
+correct tool.
+
 ---
 
 ## Agent Findings (`#{FINDINGS:...}`)

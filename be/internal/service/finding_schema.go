@@ -42,6 +42,9 @@ func ValidateFindingSchemas(defs []types.FindingSchema) error {
 		if key == "" {
 			return fmt.Errorf("finding schema key cannot be empty")
 		}
+		if IsReservedFindingKey(key) {
+			return fmt.Errorf("finding schema key '%s' is server-owned and cannot be declared by a workflow", key)
+		}
 		if seen[key] {
 			return fmt.Errorf("duplicate finding schema key: %s", key)
 		}

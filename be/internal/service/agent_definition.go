@@ -58,7 +58,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		return nil, fmt.Errorf("consultant agent requires execution_mode=api")
 	}
 
-	nodeRole, err0 := validateNodeRole(req.NodeRole, req.Consultant)
+	nodeRole, err0 := validateNodeRole(req.NodeRole, req.Consultant, req.Tools)
 	if err0 != nil {
 		return nil, err0
 	}
@@ -555,34 +555,10 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		args = append(args, string(b))
 	}
 	// Re-validate the consultant+node_role invariant whenever consultant,
-	// execution_mode, or node_role changes. Resolve effective values against the
-	// current row so that flipping execution_mode away from "api" on an existing
-	// consultant is also rejected, even when the request does not touch that field —
-	// this is also what makes the UI's explicit-payload PATCH (which won't send
-	// node_role) safe.
-	if req.Consultant != nil || req.ExecutionMode != nil || req.NodeRole != nil {
-		var currentConsultant bool
-		var currentMode, currentNodeRole string
-		if queryErr := s.pool.QueryRow(
-			"SELECT consultant, execution_mode, node_role FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-			projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole); queryErr != nil {
-			return fmt.Errorf("failed to load agent definition: %w", queryErr)
-		}
-		effectiveConsultant := currentConsultant
-		if req.Consultant != nil {
-			effectiveConsultant = *req.Consultant
-		}
-		effectiveMode := currentMode
-		if req.ExecutionMode != nil {
-			effectiveMode = *req.ExecutionMode
-		}
-		effectiveNodeRole := currentNodeRole
-		if req.NodeRole != nil {
-			effectiveNodeRole = *req.NodeRole
-		}
-		if err := validateConsultantAndNodeRole(effectiveConsultant, effectiveMode, effectiveNodeRole); err != nil {
-			return err
-		}
+	// execution_mode, node_role, or tools changes (effective values resolved
+	// against the current row — see revalidateConsultantAndNodeRole).
+	if err := s.revalidateConsultantAndNodeRole(projectID, workflowID, id, req); err != nil {
+		return err
 	}
 	if req.Consultant != nil {
 		updates = append(updates, "consultant = ?")

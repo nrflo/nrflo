@@ -93,6 +93,10 @@ All four routes are `protected` (accept SCS sessions, spawn tokens, and service 
 
 `POST /api/v1/projects/{id}/workflow/run` accepts `endless_loop: bool` (mutually exclusive with `interactive`/`plan_mode`; requires project-scope workflow). `POST .../stop-endless-loop` toggles the graceful-stop flag on an active instance without interrupting the in-flight iteration. See `handlers_project_workflow.go` for validation details.
 
+## Plan Routes
+
+`GET /api/v1/workflow-instances/{iid}/plan` (draft + latest manifest + template library), `GET .../plan/revisions` (full history), `POST .../plan/revise` (edited manifest OR feedback+answers → planner re-run; body `types.PlanReviseRequest`), `POST .../plan/approve` (`types.PlanApproveRequest`), `POST .../plan/cancel`. All `protected`; writes additionally call `denyNonAdminGlobalWrite` for the instance's project. Revise/approve are revision-pinned — a stale `revision` is 409. See `handlers_plan.go` + `service/plan.go`.
+
 ## Observers
 
 `POST /api/v1/observers` accepts `{scope: "workflow"|"project"|"global", project_id?, workflow_id?}` and returns `{session_id}` (handlers_observer.go:13). Returns 404 when `experimental_observer_enabled=false`. `GET /api/v1/observers` returns active observer sessions filtered by X-Project (handlers_observer.go:57).

@@ -24,13 +24,6 @@ func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock, apiModelSvc
 	return &SystemAgentDefinitionService{pool: pool, clock: clk, apiModelSvc: apiModelSvc}
 }
 
-func validateExecutionMode(mode string) error {
-	if mode != "cli_interactive" && mode != "api" {
-		return fmt.Errorf("invalid execution_mode: must be 'cli_interactive' or 'api'")
-	}
-	return nil
-}
-
 // Create creates a new system agent definition
 func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateRequest) (*model.SystemAgentDefinition, error) {
 	if req.ID == "" {
@@ -67,6 +60,9 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 	id := strings.ToLower(req.ID)
 	if role == "" {
 		role = id
+	}
+	if role == "planner" && !csvGrantsTool(req.Tools, "emit_findings") {
+		return nil, fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
@@ -223,6 +219,9 @@ func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.S
 
 // Update updates a system agent definition
 func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentDefUpdateRequest) error {
+	if err := s.revalidatePlannerTools(id, req); err != nil {
+		return err
+	}
 	updates := []string{}
 	args := []interface{}{}
 

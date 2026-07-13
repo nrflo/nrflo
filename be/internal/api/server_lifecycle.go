@@ -85,6 +85,14 @@ func (s *Server) startRetentionCleanup() {
 
 		// Reap staged uploads older than 1 hour.
 		s.reapStaleUploads()
+
+		// Auto-cancel plan drafts idle past plan_draft_ttl_min.
+		planSvc := service.NewPlanService(s.pool, s.clock, s.orchestrator)
+		if cancelled, err := planSvc.SweepExpiredDrafts(s.clock.Now()); err != nil {
+			logger.Info(context.Background(), "retention cleanup: plan draft sweep error", "error", err)
+		} else if cancelled > 0 {
+			logger.Info(context.Background(), "retention cleanup: plan drafts cancelled", "count", cancelled)
+		}
 	}
 
 	// Run once immediately on startup

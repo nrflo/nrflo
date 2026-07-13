@@ -27,10 +27,6 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 
 Policies load at start via `WorkflowLayerPolicyService`; missing entries default to `any`.
 
-## Error Capture
-
-Errors recorded to the `errors` table via `errorSvc` on workflow failure and merge-resolution failure.
-
 ## Model Config Loading
 
 Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to all spawners as `ModelConfigs` (`orchestrator_lifecycle.go`).
@@ -41,7 +37,7 @@ Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to a
 
 ## Callback Flow
 
-Agents trigger callbacks via `nrflo agent callback` with `--level` (whole-layer), `--agent` (single-agent), or `--chain` (sequential named agents). Flag shapes and restrictions: [doc/common-40-workflow.md](../../../doc/common-40-workflow.md#callback-mechanism).
+Agents trigger callbacks via the `agent_callback` tool (`level` = whole-layer, `target_agent`, or `chain`; the latter two are mutually exclusive). Shapes and restrictions: [doc/common-40-workflow.md](../../../doc/common-40-workflow.md#callback-mechanism).
 
 All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`):
 
@@ -61,17 +57,16 @@ Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each la
 2. The remaining (runnable) agents still spawn; the skipped subset is excluded from `results`, so `denom = pass+fail` already excludes them in layer aggregation.
 3. Only when **every** agent in the layer matches a skip tag does `applyLayerSkips` return `wholeLayerSkipped=true` — `EventLayerSkipped` is broadcast and the loop advances past the layer (counts as passed).
 
-## Consult
+## Consult / Planner
 
-`Orchestrator.Consult(ctx, callerSessionID, consultantID, question)` (`consult.go`) is the synchronous consult entry point. It resolves the caller session context, enforces the socket-boundary recursion guard (consultants cannot initiate a consult), builds an api-capable `spawner.Config`, then delegates to `Spawner.Consult`.
+Synchronous one-off children under the caller's instance; `_`-prefixed node ids keep both out of the v4 read model.
+
+- `Consult(...)` (`consult.go`): resolves the caller session, enforces the recursion guard (consultants cannot consult), builds an api-capable `spawner.Config`, delegates to `Spawner.Consult`.
+- `RunPlanner(...)` (`planner.go`, `service.PlannerRunner`): a fresh `_planner` child (workflow-local `node_role='planner'` def, else the `planner` system agent) emits a validated `_workflow_plan`. See [service/CLAUDE.md](../service/CLAUDE.md).
 
 ## Sub-Workflow Runner
 
 `subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (persisted `parent_instance_id`/`subworkflow_depth`; `launch_depth` carries the chain cap), enforcing purge-off/no-pause defs, depth/children caps (`service/subworkflow.go`) and a persisted invocation budget (`subworkflow_starts`, atomic across pause/continue/retry). Sub-runs never fire next-on-success. The watcher (`subworkflow_watch.go`) stops children only when the parent is TERMINAL (pause re-arms on the successor runState; retry/continue re-arm via `rearmSubworkflowWatcher`). `GetSubworkflow` returns running/waiting/completed/failed via `GetSessionFindingByKey`; only the matching `parent_instance_id` caller may read a child. Exposed as `run_subworkflow`/`get_subworkflow` via `Config.Subworkflows`.
-
-## Automatic Merge Conflict Resolution
-
-Merge conflicts auto-resolved by the system agent in `orchestrator_merge_resolve.go`.
 
 ## Chain Runner
 
@@ -88,7 +83,7 @@ Worktrees are only used for **ticket-scoped** workflows. Project-scoped workflow
 When `use_git_worktrees=true` and `default_branch` configured:
 
 - **Setup**: `setupWorktree()` — project scope returns early; ticket scope creates a branch (ticket ID) + worktree under `/tmp/nrflo/worktrees/`.
-- **Success**: removes worktree, merges branch into `default_branch` (up to 5 retry attempts), deletes branch. Conflicts trigger `attemptConflictResolution()`; falls through to manual resolution if not configured or fails.
+- **Success**: removes worktree, merges branch into `default_branch` (up to 5 retry attempts), deletes branch. Conflicts trigger `attemptConflictResolution()` (system agent, `orchestrator_merge_resolve.go`); falls through to manual resolution if not configured or fails.
 - **Push after merge**: `pushIfEnabled()`; failures logged + broadcast (`workflow.push_failed`), never fail the workflow.
 - **Failure/Cancellation**: force-removes worktree and branch without merging.
 
@@ -108,8 +103,6 @@ Mutually exclusive modes (400 if both set): `interactive=true`, `plan_mode=true`
 
 - **Interactive mode**: `runLoop` blocks until PTY completes, then skips L0 and starts from L1.
 - **Plan mode**: `runLoop` blocks until PTY completes, reads plan file via `plan_reader.go`, stores content as `user_instructions` finding, then executes all layers from L0.
-
-See `orchestrator_interactive.go`.
 
 ## Concurrent Ticket Workflow Guard
 

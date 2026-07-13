@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"strings"
+
+	"be/internal/types"
 )
 
 // validateScriptMode enforces coupling rules for execution_mode="script":
@@ -36,6 +38,14 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 	return nil
 }
 
+// validateExecutionMode validates a system_agent_definitions execution_mode value.
+func validateExecutionMode(mode string) error {
+	if mode != "cli_interactive" && mode != "api" {
+		return fmt.Errorf("invalid execution_mode: must be 'cli_interactive' or 'api'")
+	}
+	return nil
+}
+
 func validateValidationCommands(cmds []string) error {
 	if len(cmds) > 20 {
 		return fmt.Errorf("validation_commands: too many entries (max 20)")
@@ -54,8 +64,9 @@ func validateValidationCommands(cmds []string) error {
 // validateNodeRole validates node_role: static|planner|fanout_template, empty
 // defaults to static. A consultant def must stay static (consultant defs are
 // already forced to execution_mode=api, and only static defs auto-execute
-// as workflow phases).
-func validateNodeRole(role string, consultant bool) (string, error) {
+// as workflow phases). A planner def must carry a tools CSV that grants
+// emit_findings — without it a planner could never surface its manifest.
+func validateNodeRole(role string, consultant bool, toolsCSV string) (string, error) {
 	if role == "" {
 		role = "static"
 	}
@@ -67,18 +78,111 @@ func validateNodeRole(role string, consultant bool) (string, error) {
 	if consultant && role != "static" {
 		return "", fmt.Errorf("consultant agent requires node_role=static")
 	}
+	if role == "planner" && !csvGrantsTool(toolsCSV, "emit_findings") {
+		return "", fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
+	}
 	return role, nil
 }
 
 // validateConsultantAndNodeRole re-validates the consultant+execution_mode+node_role
 // invariant against the effective values (current row merged with the incoming
 // update), so a PATCH that omits a field cannot violate the invariant.
-func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole string) error {
+func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, toolsCSV string) error {
 	if consultant && executionMode != "api" {
 		return fmt.Errorf("consultant agent requires execution_mode=api")
 	}
-	if _, err := validateNodeRole(nodeRole, consultant); err != nil {
+	if _, err := validateNodeRole(nodeRole, consultant, toolsCSV); err != nil {
 		return err
 	}
 	return nil
+}
+
+// revalidateConsultantAndNodeRole re-checks the consultant+execution_mode+
+// node_role+tools invariant against the effective values (current row merged
+// with the incoming update) whenever any of those fields change on a PATCH —
+// so flipping execution_mode away from "api" on an existing consultant, or
+// stripping emit_findings from a planner's tools, is rejected even when the
+// request does not touch every field.
+func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, workflowID, id string, req *types.AgentDefUpdateRequest) error {
+	if req.Consultant == nil && req.ExecutionMode == nil && req.NodeRole == nil && req.Tools == nil {
+		return nil
+	}
+	var currentConsultant bool
+	var currentMode, currentNodeRole, currentTools string
+	if queryErr := s.pool.QueryRow(
+		"SELECT consultant, execution_mode, node_role, tools FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole, &currentTools); queryErr != nil {
+		return fmt.Errorf("failed to load agent definition: %w", queryErr)
+	}
+	effectiveConsultant := currentConsultant
+	if req.Consultant != nil {
+		effectiveConsultant = *req.Consultant
+	}
+	effectiveMode := currentMode
+	if req.ExecutionMode != nil {
+		effectiveMode = *req.ExecutionMode
+	}
+	effectiveNodeRole := currentNodeRole
+	if req.NodeRole != nil {
+		effectiveNodeRole = *req.NodeRole
+	}
+	effectiveTools := currentTools
+	if req.Tools != nil {
+		effectiveTools = *req.Tools
+	}
+	return validateConsultantAndNodeRole(effectiveConsultant, effectiveMode, effectiveNodeRole, effectiveTools)
+}
+
+// revalidatePlannerTools re-checks that a system agent def whose effective
+// role (current row merged with the incoming update) is 'planner' still
+// grants emit_findings in its effective tools CSV.
+func (s *SystemAgentDefinitionService) revalidatePlannerTools(id string, req *types.SystemAgentDefUpdateRequest) error {
+	if req.Role == nil && req.Tools == nil {
+		return nil
+	}
+	var currentRole, currentTools string
+	if scanErr := s.pool.QueryRow(
+		"SELECT role, tools FROM system_agent_definitions WHERE LOWER(id) = LOWER(?)", id,
+	).Scan(&currentRole, &currentTools); scanErr != nil {
+		return fmt.Errorf("failed to load system agent definition: %w", scanErr)
+	}
+	effectiveRole := currentRole
+	if req.Role != nil {
+		effectiveRole = *req.Role
+	}
+	effectiveTools := currentTools
+	if req.Tools != nil {
+		effectiveTools = *req.Tools
+	}
+	if effectiveRole == "planner" && !csvGrantsTool(effectiveTools, "emit_findings") {
+		return fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
+	}
+	return nil
+}
+
+// csvGrantsTool reports whether a tools CSV grants the named tool, using the
+// same glob semantics as apirun.ResolveRegistry/MatchName ("*" = all,
+// "prefix*" = prefix match, otherwise exact match). service cannot import
+// spawner/apirun (apirun/tools_builtin imports service — that would cycle),
+// so the matcher is duplicated here as a tiny leaf helper.
+func csvGrantsTool(csv, name string) bool {
+	for _, pat := range strings.Split(csv, ",") {
+		pat = strings.TrimSpace(pat)
+		if pat == "" {
+			continue
+		}
+		if pat == "*" {
+			return true
+		}
+		if strings.HasSuffix(pat, "*") {
+			if strings.HasPrefix(name, strings.TrimSuffix(pat, "*")) {
+				return true
+			}
+			continue
+		}
+		if pat == name {
+			return true
+		}
+	}
+	return false
 }

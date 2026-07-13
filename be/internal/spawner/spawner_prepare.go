@@ -257,11 +257,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	switch adapter.Name() {
 	case "claude":
 		var mcpErr error
-		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(req, wfiID, agentDef, proc); mcpErr != nil {
+		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(req, wfiID, agentDef, proc, adapter); mcpErr != nil {
 			return nil, nil, mcpErr
 		}
 	case "codex":
-		if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc); regErr != nil {
+		if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc, adapter); regErr != nil {
 			return nil, nil, regErr
 		}
 	}

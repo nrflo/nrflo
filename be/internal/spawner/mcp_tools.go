@@ -36,14 +36,24 @@ func buildNrfloMCPConfig() (string, error) {
 // pre-materialized to NRF_ARTIFACTS_DIR, so returning a path is cheaper than
 // inlining bytes. No-op when read_document is not in the registry.
 func substituteReadDocumentPath(specs []provider.ToolSpec, handlers apirun.Registry) {
+	substituteReadDocument(specs, handlers, tools_builtin.ReadDocumentPathHandler{})
+}
+
+// substituteReadDocumentHybrid swaps in the hybrid variant for CLIs without
+// native document reading (codex): path text plus inline image media that the
+// MCP bridge attaches as image content blocks.
+func substituteReadDocumentHybrid(specs []provider.ToolSpec, handlers apirun.Registry) {
+	substituteReadDocument(specs, handlers, tools_builtin.ReadDocumentHybridHandler{})
+}
+
+func substituteReadDocument(specs []provider.ToolSpec, handlers apirun.Registry, h apirun.ToolHandler) {
 	if _, ok := handlers["read_document"]; !ok {
 		return
 	}
-	pathHandler := tools_builtin.ReadDocumentPathHandler{}
-	handlers["read_document"] = pathHandler
+	handlers["read_document"] = h
 	for i, spec := range specs {
 		if spec.Name == "read_document" {
-			specs[i] = pathHandler.Spec()
+			specs[i] = h.Spec()
 			break
 		}
 	}
@@ -54,14 +64,16 @@ func substituteReadDocumentPath(specs []provider.ToolSpec, handlers apirun.Regis
 // tools/call. The agent definition's tools field is honored (empty → "*", the
 // full set, for backward compatibility); the agent_* lifecycle baseline is
 // force-merged so a restrictive tools CSV can never strip an agent's ability to
-// signal findings/lifecycle. read_document is swapped to the path-returning
-// variant (the CLI agent reads files natively). Used for both Claude (which
+// signal findings/lifecycle. read_document is swapped per adapter capability:
+// path-returning variant when the CLI reads documents natively (Claude), else
+// the hybrid path+image-media variant (codex). Used for both Claude (which
 // gets --mcp-config) and codex (config.toml).
 func (s *Spawner) attachNrfloToolRegistry(
 	req SpawnRequest,
 	wfiID string,
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
+	adapter CLIAdapter,
 ) error {
 	toolsCSV := "*"
 	if agentDef != nil && strings.TrimSpace(agentDef.Tools) != "" {
@@ -71,7 +83,11 @@ func (s *Spawner) attachNrfloToolRegistry(
 	if regErr != nil {
 		return regErr
 	}
-	substituteReadDocumentPath(specs, handlers)
+	if adapter != nil && !adapter.SupportsNativeDocRead() {
+		substituteReadDocumentHybrid(specs, handlers)
+	} else {
+		substituteReadDocumentPath(specs, handlers)
+	}
 	proc.apiTools = specs
 	proc.apiHandlers = handlers
 	proc.apiToolEnv = toolEnv
@@ -86,8 +102,9 @@ func (s *Spawner) configureClaudeMCPTools(
 	wfiID string,
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
+	adapter CLIAdapter,
 ) (mcpConfigJSON, allowedToolsCSV string, err error) {
-	if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc); regErr != nil {
+	if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc, adapter); regErr != nil {
 		return "", "", regErr
 	}
 	cfg, cfgErr := buildNrfloMCPConfig()

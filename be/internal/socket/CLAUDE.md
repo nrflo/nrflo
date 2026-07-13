@@ -43,7 +43,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 | `artifact.list` | List artifacts for the session's workflow instance. Params: `{session_id}` |
 | `artifact.get` | Materialize artifact to stage dir and return abs path. Params: `{session_id, name}` |
 | `tools.list` | MCP tool list for an api-via-cli session's in-process registry; returns the tools array (`name`/`description`/`inputSchema`). Params: `{session_id, instance_id}`. Requires a `ToolDispatcher` wired via `Server.SetToolDispatcher()` (nil → internal error) |
-| `tools.call` | Dispatch a tool call to the session registry; returns `{output, is_error}` (terminal signals fire `RequestTerminalSignal` server-side). Params: `{session_id, instance_id, name, input}` |
+| `tools.call` | Dispatch a tool call to the session registry; returns `{output, is_error, media?}` — `media` is a `[{kind, media_type, data_b64, name}]` array the MCP bridge turns into image content blocks (terminal signals fire `RequestTerminalSignal` server-side). Params: `{session_id, instance_id, name, input}` |
 | `observer.workflow.show` | Get workflow definition. Params: `{session_id, project_id?, workflow_id?}` |
 | `observer.workflow.runs` | List workflow instances for the attached workflow. Params: `{session_id, project_id?, workflow_id?}` |
 | `observer.workflow.findings` | Get findings for the attached workflow instance. Params: `{session_id, instance_id?}` |

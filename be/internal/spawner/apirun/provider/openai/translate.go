@@ -85,6 +85,13 @@ func translateMessages(msgs []provider.Message) ([]responses.ResponseInputItemUn
 					out = "Error: " + out
 				}
 				items = append(items, responses.ResponseInputItemParamOfFunctionCallOutput(b.ToolUseID, out))
+				if len(b.OutputMedia) > 0 {
+					item, err := mediaFollowupItem(b)
+					if err != nil {
+						return nil, err
+					}
+					items = append(items, item)
+				}
 			default:
 				return nil, fmt.Errorf("unsupported content block type: %q", b.Type)
 			}

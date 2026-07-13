@@ -25,7 +25,7 @@ For `api` agents, model + provider come from `Config.APIModelConfigs`; see [apir
 
 `ExecutionBackend` interface is at `backend.go:21`. `startBackend` selects based on `prep.executionMode`:
 
-- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `attachNrfloToolRegistry` (`mcp_tools.go`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge (`read_document` → path-returning variant). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`) plus `--disallowedTools` denying native delegation (`cli_adapter_claude.go`); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, codex doesn't forward parent env).
+- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `attachNrfloToolRegistry` (`mcp_tools.go`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge. `read_document` swaps per `SupportsNativeDocRead()`: Claude → path variant; codex → `ReadDocumentHybridHandler` (path + image media → MCP image blocks, vision on codex ≥0.51; PDFs path-only). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`) plus `--disallowedTools` denying native delegation (`cli_adapter_claude.go`); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, codex doesn't forward parent env).
 - **`api`** — drives an in-process `apirun.Runner` (no child process). See [apirun/CLAUDE.md](apirun/CLAUDE.md).
 - **`script`** — executes a stored Python script; no prompt template, no context tracking.
 
@@ -82,7 +82,7 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Planner
 
-`Orchestrator.RunPlanner` (`orchestrator/planner.go`, implements `service.PlannerRunner`) mirrors `Spawner.Consult`/`spawnContextSaver`: spawns a fresh one-off `_planner` child session per (re)plan under the caller's real `WorkflowInstanceID` (so a workflow-local `agent_definitions` node_role='planner' override resolves via the normal project→system prompt fallback), else falls back to `system_agent_definitions` role='planner'. Passes `ExtraVars` (`PLAN_GOAL`/`PLAN_INSTRUCTIONS`/`TEMPLATE_LIBRARY`/`PLAN_FEEDBACK`/`PLAN_ANSWERS`/`PREVIOUS_MANIFEST`), waits, reads the `_workflow_plan` finding — left as immutable audit (unlike consult, which deletes its answer).
+`Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner).
 
 ## Rate-Limit Restart
 

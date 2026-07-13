@@ -64,6 +64,10 @@ func (a *CodexAdapter) SupportsResume() bool {
 	return true
 }
 
+func (a *CodexAdapter) SupportsNativeDocRead() bool {
+	return false // codex cannot turn a local path into vision input on its own
+}
+
 // BuildInteractiveCommand and the other PTY-path methods below are interface
 // compliance only: codex/cli_interactive is routed to the codex app-server
 // backend (codex_appserver_backend.go), not this PTY command. CodexAdapter is

@@ -27,7 +27,7 @@ Each terminal handler also calls the corresponding `AgentService` method, so DB 
 
 Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal there is the canonical list.
 
-`read_document` (`tools_builtin/read_document.go`) materializes a named input artifact and returns its bytes as an image/document content block so the model can read it natively (OCR scanned PDFs, photos). PDF → document block, PNG/JPEG → image block; other types return a text error. Capped at 32 MiB. It implements `MediaToolHandler` (see below).
+`read_document` (`tools_builtin/read_document.go`) inlines a named input artifact as media (OCR): PDF → document block, PNG/JPEG → image block, others → text error; 32 MiB cap. Implements `MediaToolHandler` (see below).
 
 `consult` (`tools_builtin/consult.go`) synchronously spawns a named consultant agent via `apirun.ConsultantSpawner` and returns the `_consult_answer` finding inline; see [doc/api.md § Consultants](../../../../doc/api.md#consultants) for authoring requirements.
 
@@ -37,7 +37,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Multimodal Tool Results
 
-`provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. `provider/anthropic/translate.go:translateMediaBlock` maps each `MediaBlock` to the SDK `ToolResultBlockParamContentUnion` (`OfImage` base64 / `OfDocument` base64 PDF). Image media types: jpeg/png/gif/webp; document: application/pdf only.
+`provider.ContentBlock.OutputMedia []MediaBlock` carries image/document payloads on a `tool_result`. A handler opts in by implementing `apirun.MediaToolHandler` (`InvokeMedia` returns `(text, []MediaBlock, isError, err)`); the runner prefers it over `Invoke` via a type assertion and threads the media into the tool_result. Both providers render it — Anthropic: `provider/anthropic/translate.go:translateMediaBlock` maps each block into the tool_result content (image/document base64); OpenAI: `provider/openai/translate_media.go` appends a user-role message after the `function_call_output` (Responses API forbids media on tool outputs) with `input_image` (data URL, detail=high) / `input_file` (`filename` + `file_data` data URL) parts. Image media types: jpeg/png/gif/webp; document: application/pdf only.
 
 ## Python Tool Handler
 

@@ -115,14 +115,34 @@ func dispatchMCP(req mcpRequest, sessionID, instanceID string, observer bool, ca
 		var result struct {
 			Output  string `json:"output"`
 			IsError bool   `json:"is_error"`
+			Media   []struct {
+				Kind      string `json:"kind"`
+				MediaType string `json:"media_type"`
+				DataB64   string `json:"data_b64"`
+			} `json:"media"`
 		}
 		if err := json.Unmarshal(raw, &result); err != nil {
 			return makeMCPError(req.ID, -32603, fmt.Sprintf("parse result: %v", err))
 		}
+		content := []map[string]interface{}{
+			{"type": "text", "text": result.Output},
+		}
+		// Image media becomes MCP image content blocks — both Claude and codex
+		// (≥0.51) attach these to the conversation as vision input. Non-image
+		// kinds have no MCP tool-result encoding CLIs honor and are dropped
+		// (the text output carries the file path instead).
+		for _, m := range result.Media {
+			if m.Kind != "image" {
+				continue
+			}
+			content = append(content, map[string]interface{}{
+				"type":     "image",
+				"data":     m.DataB64,
+				"mimeType": m.MediaType,
+			})
+		}
 		return makeMCPResult(req.ID, map[string]interface{}{
-			"content": []map[string]interface{}{
-				{"type": "text", "text": result.Output},
-			},
+			"content": content,
 			"isError": result.IsError,
 		})
 

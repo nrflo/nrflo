@@ -21,7 +21,9 @@ type WorkflowOrchestrator interface {
 // json.RawMessage and primitives so the socket package stays free of apirun imports.
 type ToolDispatcher interface {
 	ListTools(instanceID, sessionID string) (json.RawMessage, error)
-	CallTool(instanceID, sessionID, name string, input json.RawMessage) (output string, isError bool, err error)
+	// CallTool's media is a marshaled array of {kind, media_type, data_b64, name}
+	// objects (nil when the tool returned no media).
+	CallTool(instanceID, sessionID, name string, input json.RawMessage) (output string, media json.RawMessage, isError bool, err error)
 }
 
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner

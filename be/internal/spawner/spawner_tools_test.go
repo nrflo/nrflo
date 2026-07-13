@@ -48,6 +48,7 @@ func (h *errorToolHandler) Invoke(_ context.Context, _ apirun.ToolEnv, _ json.Ra
 type mediaToolHandler struct {
 	spec   provider.ToolSpec
 	output string
+	media  []provider.MediaBlock
 }
 
 func (h *mediaToolHandler) Spec() provider.ToolSpec { return h.spec }
@@ -55,7 +56,7 @@ func (h *mediaToolHandler) Invoke(_ context.Context, _ apirun.ToolEnv, _ json.Ra
 	return h.output, false, nil
 }
 func (h *mediaToolHandler) InvokeMedia(_ context.Context, _ apirun.ToolEnv, _ json.RawMessage) (string, []provider.MediaBlock, bool, error) {
-	return h.output, nil, false, nil
+	return h.output, h.media, false, nil
 }
 
 func makeSpec(name, desc string) provider.ToolSpec {

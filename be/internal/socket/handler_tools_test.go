@@ -11,6 +11,7 @@ type fakeToolDispatcher struct {
 	listErr    error
 	listResult json.RawMessage
 	callOutput string
+	callMedia  json.RawMessage
 	callIsErr  bool
 	callErr    error
 
@@ -40,11 +41,11 @@ func (f *fakeToolDispatcher) ListTools(instanceID, sessionID string) (json.RawMe
 	return json.RawMessage(`[]`), nil
 }
 
-func (f *fakeToolDispatcher) CallTool(instanceID, sessionID, name string, input json.RawMessage) (string, bool, error) {
+func (f *fakeToolDispatcher) CallTool(instanceID, sessionID, name string, input json.RawMessage) (string, json.RawMessage, bool, error) {
 	f.callCalls = append(f.callCalls, toolCallCall{
 		instanceID: instanceID, sessionID: sessionID, name: name,
 	})
-	return f.callOutput, f.callIsErr, f.callErr
+	return f.callOutput, f.callMedia, f.callIsErr, f.callErr
 }
 
 func buildToolsReq(id, action string, params string) Request {

@@ -38,14 +38,18 @@ func (h *Handler) handleTools(req Request, action string) Response {
 		if callParams.Name == "" {
 			return MakeErrorResponse(req.ID, NewValidationError("name is required"))
 		}
-		output, isError, err := h.toolDispatcher.CallTool(callParams.InstanceID, callParams.SessionID, callParams.Name, callParams.Input)
+		output, media, isError, err := h.toolDispatcher.CallTool(callParams.InstanceID, callParams.SessionID, callParams.Name, callParams.Input)
 		if err != nil {
 			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 		}
-		return MakeResponse(req.ID, map[string]interface{}{
+		result := map[string]interface{}{
 			"output":   output,
 			"is_error": isError,
-		})
+		}
+		if len(media) > 0 {
+			result["media"] = media
+		}
+		return MakeResponse(req.ID, result)
 
 	default:
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("tools."+action))

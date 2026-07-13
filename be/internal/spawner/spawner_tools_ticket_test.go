@@ -61,7 +61,7 @@ func TestDispatchTool_TicketCreate_BroadcastsViaDispatch(t *testing.T) {
 	s := New(Config{Clock: clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))})
 	registerTicketCreateProc(t, s, "sess-tc-broadcast", hub)
 
-	out, isErr, terminal, err := s.DispatchTool(
+	out, _, isErr, terminal, err := s.DispatchTool(
 		"sess-tc-broadcast", "ticket_create",
 		json.RawMessage(`{"title":"New ticket from dispatch","type":"feature","priority":1}`),
 	)
@@ -110,7 +110,7 @@ func TestDispatchTool_TicketCreate_NilHub_NoBroadcast(t *testing.T) {
 	s := New(Config{Clock: clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))})
 	registerTicketCreateProc(t, s, "sess-tc-nilhub", nil)
 
-	out, isErr, terminal, err := s.DispatchTool(
+	out, _, isErr, terminal, err := s.DispatchTool(
 		"sess-tc-nilhub", "ticket_create",
 		json.RawMessage(`{"title":"No hub ticket"}`),
 	)
@@ -143,7 +143,7 @@ func TestDispatchTool_TicketCreate_MissingTitle_NoCreate(t *testing.T) {
 	s := New(Config{Clock: clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))})
 	registerTicketCreateProc(t, s, "sess-tc-notitle", hub)
 
-	out, isErr, _, err := s.DispatchTool(
+	out, _, isErr, _, err := s.DispatchTool(
 		"sess-tc-notitle", "ticket_create",
 		json.RawMessage(`{"description":"no title here"}`),
 	)

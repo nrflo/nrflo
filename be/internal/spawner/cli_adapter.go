@@ -46,6 +46,12 @@ type CLIAdapter interface {
 	// SupportsResume returns true if the CLI supports resuming a session
 	SupportsResume() bool
 
+	// SupportsNativeDocRead returns true when the CLI can ingest PDFs and
+	// images from a local path on its own (Claude's native Read). Adapters
+	// without native document reading (codex) get the hybrid read_document
+	// variant: path text plus inline image media over the MCP bridge.
+	SupportsNativeDocRead() bool
+
 	// BuildInteractiveCommand creates the exec.Cmd for interactive PTY execution.
 	// When opts.ResumeSessionID is non-empty, the CLI resumes that session with
 	// opts.Prompt delivered as the first turn's input.

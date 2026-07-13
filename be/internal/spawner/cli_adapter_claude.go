@@ -53,6 +53,10 @@ func (a *ClaudeAdapter) SupportsResume() bool {
 	return true
 }
 
+func (a *ClaudeAdapter) SupportsNativeDocRead() bool {
+	return true // native Read ingests PDFs and images from a path
+}
+
 func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--session-id", opts.SessionID,

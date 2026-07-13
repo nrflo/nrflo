@@ -15,7 +15,7 @@ import (
 // TestDispatchTool_UnknownSession returns isError=true without error.
 func TestDispatchTool_UnknownSession(t *testing.T) {
 	s := newTestSpawner()
-	out, isErr, terminal, err := s.DispatchTool("no-session", "my_tool", nil)
+	out, _, isErr, terminal, err := s.DispatchTool("no-session", "my_tool", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestDispatchTool_UnknownSession(t *testing.T) {
 func TestDispatchTool_UnknownTool(t *testing.T) {
 	s := newTestSpawner()
 	registerProc(s, "sess-2", nil, apirun.Registry{})
-	out, isErr, terminal, err := s.DispatchTool("sess-2", "no_such_tool", nil)
+	out, _, isErr, terminal, err := s.DispatchTool("sess-2", "no_such_tool", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestDispatchTool_PlainInvoke(t *testing.T) {
 	h := &plainToolHandler{spec: spec, output: "hello", isError: false}
 	registerProc(s, "sess-3", []provider.ToolSpec{spec}, apirun.Registry{"echo": h})
 
-	out, isErr, terminal, err := s.DispatchTool("sess-3", "echo", json.RawMessage(`{}`))
+	out, _, isErr, terminal, err := s.DispatchTool("sess-3", "echo", json.RawMessage(`{}`))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestDispatchTool_IsErrorTrue(t *testing.T) {
 	h := &plainToolHandler{spec: spec, output: "oops", isError: true}
 	registerProc(s, "sess-4", []provider.ToolSpec{spec}, apirun.Registry{"bad": h})
 
-	out, isErr, terminal, err := s.DispatchTool("sess-4", "bad", nil)
+	out, _, isErr, terminal, err := s.DispatchTool("sess-4", "bad", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -111,7 +111,7 @@ func TestDispatchTool_TerminalSignal(t *testing.T) {
 			h := &terminalToolHandler{spec: spec, status: tc.status}
 			registerProc(s, "sess-ts-"+tc.status, []provider.ToolSpec{spec}, apirun.Registry{"terminal_tool": h})
 
-			out, isErr, terminal, err := s.DispatchTool("sess-ts-"+tc.status, "terminal_tool", nil)
+			out, _, isErr, terminal, err := s.DispatchTool("sess-ts-"+tc.status, "terminal_tool", nil)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -135,7 +135,7 @@ func TestDispatchTool_PlainError(t *testing.T) {
 	h := &errorToolHandler{spec: spec, err: errors.New("something went wrong")}
 	registerProc(s, "sess-5", []provider.ToolSpec{spec}, apirun.Registry{"err_tool": h})
 
-	out, isErr, terminal, err := s.DispatchTool("sess-5", "err_tool", nil)
+	out, _, isErr, terminal, err := s.DispatchTool("sess-5", "err_tool", nil)
 	if err != nil {
 		t.Fatalf("unexpected outer error: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestDispatchTool_MediaHandler(t *testing.T) {
 	h := &mediaToolHandler{spec: spec, output: "doc text"}
 	registerProc(s, "sess-6", []provider.ToolSpec{spec}, apirun.Registry{"read_doc": h})
 
-	out, isErr, terminal, err := s.DispatchTool("sess-6", "read_doc", nil)
+	out, _, isErr, terminal, err := s.DispatchTool("sess-6", "read_doc", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -169,5 +169,31 @@ func TestDispatchTool_MediaHandler(t *testing.T) {
 	}
 	if terminal != "" {
 		t.Errorf("terminal = %q, want empty", terminal)
+	}
+}
+
+// TestDispatchTool_MediaWire marshals returned media blocks into the wire array.
+func TestDispatchTool_MediaWire(t *testing.T) {
+	s := newTestSpawner()
+	spec := makeSpec("read_document", "media tool")
+	h := &mediaToolHandler{spec: spec, output: "loaded", media: []provider.MediaBlock{
+		{Kind: "image", MediaType: "image/png", DataB64: "aGk=", Name: "scan.png"},
+	}}
+	registerProc(s, "sess-7", []provider.ToolSpec{spec}, apirun.Registry{"read_document": h})
+
+	out, media, isErr, terminal, err := s.DispatchTool("sess-7", "read_document", nil)
+	if err != nil || isErr || terminal != "" {
+		t.Fatalf("unexpected: err=%v isErr=%v terminal=%q", err, isErr, terminal)
+	}
+	if out != "loaded" {
+		t.Errorf("output = %q", out)
+	}
+	var wire []toolMediaWire
+	if err := json.Unmarshal(media, &wire); err != nil {
+		t.Fatalf("unmarshal media: %v (media=%s)", err, media)
+	}
+	if len(wire) != 1 || wire[0].Kind != "image" || wire[0].MediaType != "image/png" ||
+		wire[0].DataB64 != "aGk=" || wire[0].Name != "scan.png" {
+		t.Errorf("wire = %+v", wire)
 	}
 }

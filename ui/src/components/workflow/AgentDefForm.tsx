@@ -6,6 +6,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
+import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
 import { AgentDefToolsField } from './AgentDefToolsField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
 import { useModelOptions } from '@/hooks/useCLIModels'
@@ -14,6 +15,7 @@ import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
 type ExecutionMode = 'cli_interactive' | 'api' | 'script'
+type NodeRole = 'static' | 'planner' | 'fanout_template'
 
 export function AgentDefForm({
   initial,
@@ -48,6 +50,8 @@ export function AgentDefForm({
     try { return JSON.parse(initial?.validation_commands ?? '[]') } catch { return [] }
   })
   const [consultant, setConsultant] = useState(initial?.consultant ?? false)
+  const [nodeRole, setNodeRole] = useState<NodeRole>((initial?.node_role as NodeRole) || 'static')
+  const [description, setDescription] = useState(initial?.description || '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions()
   const apiModelOptions = useAPIModelOptions()
@@ -67,14 +71,17 @@ export function AgentDefForm({
     e.preventDefault()
     if (executionMode !== 'script' && isCreate && !prompt.trim()) return
     if (executionMode === 'script' && !pythonScriptId) return
+    if (nodeRole === 'fanout_template' && !description.trim()) return
 
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
     const tagValue = tag || undefined
     const trimmedCmds = validationCommands.map(s => s.trim()).filter(Boolean).slice(0, 20)
+    const nodeRoleValue = nodeRole !== 'static' ? nodeRole : undefined
+    const descriptionValue = description.trim() || undefined
 
     if (executionMode === 'script') {
-      const base = { layer, timeout, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, execution_mode: 'script' as const, python_script_id: pythonScriptId, validation_commands: trimmedCmds }
+      const base = { layer, timeout, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, execution_mode: 'script' as const, python_script_id: pythonScriptId, validation_commands: trimmedCmds, node_role: nodeRoleValue, description: descriptionValue }
       onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
       return
     }
@@ -82,7 +89,7 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -101,6 +108,7 @@ export function AgentDefForm({
         <label className="block text-xs font-medium text-muted-foreground mb-1">Execution Mode</label>
         <Dropdown value={executionMode} onChange={handleExecutionModeChange} options={executionModeOptions} disabled={consultant} />
       </div>
+      <AgentDefNodeRoleFields nodeRole={nodeRole} setNodeRole={setNodeRole} description={description} setDescription={setDescription} />
       {isCreate && (
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">ID</label>

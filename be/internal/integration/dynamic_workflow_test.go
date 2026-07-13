@@ -42,6 +42,7 @@ func TestDynamicWorkflow_RevisePlanApprovePlan_MaterializesViaTool(t *testing.T)
 		Prompt:        "do work",
 		Layer:         0,
 		NodeRole:      "fanout_template",
+		Description:   "worker template",
 		Model:         "sonnet",
 		ExecutionMode: "cli_interactive",
 	}); err != nil {

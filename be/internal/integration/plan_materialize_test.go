@@ -38,6 +38,7 @@ func TestPlanMaterialize_EndToEnd(t *testing.T) {
 		Prompt:        "do work",
 		Layer:         0,
 		NodeRole:      "fanout_template",
+		Description:   "worker template",
 		Model:         "sonnet",
 		ExecutionMode: "cli_interactive",
 	}); err != nil {

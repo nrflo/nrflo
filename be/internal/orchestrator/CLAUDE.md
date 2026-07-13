@@ -51,6 +51,7 @@ Synchronous one-off children under the caller's instance; `_`-prefixed node ids 
 
 - `Consult(...)` (`consult.go`): resolves the caller session, enforces the recursion guard (consultants cannot consult), builds an api-capable `spawner.Config`, delegates to `Spawner.Consult`.
 - `RunPlanner(...)` (`planner.go`, `service.PlannerRunner`): a fresh `_planner` child (workflow-local `node_role='planner'` def, else the `planner` system agent) emits a validated `_workflow_plan`. See [service/CLAUDE.md](../service/CLAUDE.md).
+- The `dynamic` workflow ships its own `node_role='planner'` def (`dynamic-planner`), so it always resolves ahead of the system planner; `renderTemplateLibrary` renders each template's `agent_definitions.description`, not its prompt.
 
 ## Sub-Workflow Runner
 

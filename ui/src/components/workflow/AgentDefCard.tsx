@@ -86,6 +86,11 @@ export function AgentDefCard({
               Consultant
             </Badge>
           )}
+          {def.node_role && def.node_role !== 'static' && (
+            <Badge variant="outline" className="text-xs border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+              {def.node_role === 'fanout_template' ? 'Fanout template' : 'Planner'}
+            </Badge>
+          )}
           {def.low_consumption_model && (
             <Badge variant="outline" className="text-xs">
               lc: {def.low_consumption_model}
@@ -122,6 +127,9 @@ export function AgentDefCard({
           </Button>
         </div>
       </div>
+      {def.description && (
+        <p className="text-xs text-muted-foreground mt-1">{def.description}</p>
+      )}
       {!expanded && def.prompt && (
         <p className="text-xs text-muted-foreground mt-1 truncate max-w-xl">
           {def.prompt.split('\n')[0]}

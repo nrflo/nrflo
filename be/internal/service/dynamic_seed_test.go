@@ -48,15 +48,33 @@ func TestEnsureGlobalDynamicWorkflow(t *testing.T) {
 		t.Errorf("agent defs = %d, want %d (no duplication after 2 seeds)", agents, len(dynAgents))
 	}
 
-	// All seeded defs ship as fanout_template + cli_interactive (no server-side
-	// API credential needed; self-authenticating CLIs).
+	// All seeded defs ship cli_interactive (no server-side API credential
+	// needed; self-authenticating CLIs), and every def is either the
+	// workflow-local planner override or a fanout_template — never static
+	// (a plan-driven workflow must have zero executable phases).
 	var nonTemplate int
-	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND node_role<>'fanout_template'`,
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND node_role NOT IN ('fanout_template','planner')`,
 		GlobalProjectID, DynamicWorkflow).Scan(&nonTemplate); err != nil {
 		t.Fatal(err)
 	}
 	if nonTemplate != 0 {
-		t.Errorf("non-fanout_template dynamic agents = %d, want 0", nonTemplate)
+		t.Errorf("dynamic agents outside {fanout_template,planner} = %d, want 0", nonTemplate)
+	}
+	var fanoutCount int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND node_role='fanout_template'`,
+		GlobalProjectID, DynamicWorkflow).Scan(&fanoutCount); err != nil {
+		t.Fatal(err)
+	}
+	if fanoutCount != 10 {
+		t.Errorf("fanout_template dynamic agents = %d, want 10", fanoutCount)
+	}
+	var plannerCount int
+	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND node_role='planner'`,
+		GlobalProjectID, DynamicWorkflow).Scan(&plannerCount); err != nil {
+		t.Fatal(err)
+	}
+	if plannerCount != 1 {
+		t.Errorf("planner dynamic agents = %d, want 1", plannerCount)
 	}
 	var nonCLI int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND execution_mode<>'cli_interactive'`,

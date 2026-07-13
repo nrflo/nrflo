@@ -26,6 +26,7 @@ type AgentDefUpdateFields struct {
 	ValidationCommands     *string
 	Consultant             *bool
 	NodeRole               *string
+	Description            *string
 }
 
 // Update updates an agent definition
@@ -104,6 +105,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.NodeRole != nil {
 		updates = append(updates, "node_role = ?")
 		args = append(args, *fields.NodeRole)
+	}
+	if fields.Description != nil {
+		updates = append(updates, "description = ?")
+		args = append(args, *fields.Description)
 	}
 
 	if len(updates) == 0 {

@@ -21,6 +21,7 @@ type AgentDefCreateRequest struct {
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 	Consultant             bool      `json:"consultant,omitempty"`
 	NodeRole               string    `json:"node_role,omitempty"`
+	Description            string    `json:"description,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -43,6 +44,7 @@ type AgentDefUpdateRequest struct {
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 	Consultant             *bool     `json:"consultant,omitempty"`
 	NodeRole               *string   `json:"node_role,omitempty"`
+	Description            *string   `json:"description,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

@@ -78,29 +78,44 @@ func TestRenderTemplateLibrary_Empty(t *testing.T) {
 }
 
 // TestRenderTemplateLibrary_NonEmpty verifies each template's id/model/
-// execution_mode appear in the rendered output, and a long prompt is
-// truncated with "...".
+// execution_mode/description appear in the rendered output verbatim (the
+// description, not the prompt body, is the planner's selection surface —
+// see planner.go renderTemplateLibrary), and that a missing description
+// falls back to a placeholder instead of an empty line.
 func TestRenderTemplateLibrary_NonEmpty(t *testing.T) {
-	longPrompt := strings.Repeat("x", 500)
 	templates := []service.PlanTemplate{
-		{ID: "tpl-a", Model: "sonnet", ExecutionMode: "api", Prompt: "short prompt"},
-		{ID: "tpl-b", Model: "opus", ExecutionMode: "cli_interactive", Prompt: longPrompt},
+		{ID: "tpl-a", Model: "sonnet", ExecutionMode: "api", Prompt: "short prompt", Description: "Reviews code for correctness."},
+		{ID: "tpl-b", Model: "opus", ExecutionMode: "cli_interactive", Prompt: "irrelevant prompt body"},
 	}
 
 	got := renderTemplateLibrary(templates)
 
-	for _, want := range []string{"tpl-a", "sonnet", "api", "short prompt", "tpl-b", "opus", "cli_interactive"} {
+	for _, want := range []string{
+		"tpl-a", "sonnet", "api", "Reviews code for correctness.",
+		"tpl-b", "opus", "cli_interactive", "(no description provided)",
+	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("renderTemplateLibrary() missing %q in output:\n%s", want, got)
 		}
 	}
-
-	truncated := longPrompt[:400] + "..."
-	if !strings.Contains(got, truncated) {
-		t.Errorf("renderTemplateLibrary() did not truncate long prompt to 400 chars + '...'")
+	if strings.Contains(got, "irrelevant prompt body") {
+		t.Error("renderTemplateLibrary() leaked the prompt body — description is the selection surface, not the prompt")
 	}
-	if strings.Contains(got, longPrompt) {
-		t.Errorf("renderTemplateLibrary() contains the full untruncated long prompt")
+}
+
+// TestRenderTemplateLibrary_DescriptionNewlinesCollapsed verifies a
+// multi-line description is rendered on a single line per template so the
+// library stays one entry per line for the planner to scan.
+func TestRenderTemplateLibrary_DescriptionNewlinesCollapsed(t *testing.T) {
+	templates := []service.PlanTemplate{
+		{ID: "tpl-multiline", Model: "sonnet", ExecutionMode: "cli_interactive", Description: "line one\nline two"},
+	}
+	got := renderTemplateLibrary(templates)
+	if !strings.Contains(got, "line one line two") {
+		t.Errorf("renderTemplateLibrary() did not collapse newlines in description:\n%s", got)
+	}
+	if strings.Contains(got, "line one\nline two") {
+		t.Error("renderTemplateLibrary() left an embedded newline inside a template's description block")
 	}
 }
 

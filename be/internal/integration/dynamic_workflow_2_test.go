@@ -39,6 +39,7 @@ func TestDynamicWorkflow_ApprovePlan_ResumesPlanSuspendedChild(t *testing.T) {
 		Prompt:        "do work",
 		Layer:         0,
 		NodeRole:      "fanout_template",
+		Description:   "fanout template",
 		Model:         "sonnet",
 		ExecutionMode: "cli_interactive",
 	}); err != nil {

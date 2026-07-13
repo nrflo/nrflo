@@ -119,6 +119,7 @@ export function PlanApprovalBanner({ instanceId, status }: PlanApprovalBannerPro
           instanceId={instanceId}
           revision={head.latest_revision}
           questions={draft?.questions}
+          templates={draft?.templates}
         />
       )}
     </div>

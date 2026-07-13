@@ -15,6 +15,7 @@ type PlanTemplate struct {
 	Model         string `json:"model"`
 	ExecutionMode string `json:"execution_mode"`
 	Prompt        string `json:"prompt"`
+	Description   string `json:"description"`
 }
 
 // AllowedTemplates returns the fanout_template agent definitions usable by a
@@ -36,7 +37,7 @@ func AllowedTemplates(pool *db.Pool, projectID, workflowID string) ([]PlanTempla
 	}
 
 	rows, err := pool.Query(
-		`SELECT id, model, execution_mode, prompt FROM agent_definitions
+		`SELECT id, model, execution_mode, prompt, description FROM agent_definitions
 		 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		   AND node_role = 'fanout_template' AND consultant = 0
 		 ORDER BY id`, defProjectID, workflowID)
@@ -48,7 +49,7 @@ func AllowedTemplates(pool *db.Pool, projectID, workflowID string) ([]PlanTempla
 	var out []PlanTemplate
 	for rows.Next() {
 		var t PlanTemplate
-		if err := rows.Scan(&t.ID, &t.Model, &t.ExecutionMode, &t.Prompt); err != nil {
+		if err := rows.Scan(&t.ID, &t.Model, &t.ExecutionMode, &t.Prompt, &t.Description); err != nil {
 			return nil, err
 		}
 		out = append(out, t)

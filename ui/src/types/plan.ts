@@ -55,6 +55,7 @@ export interface PlanTemplate {
   model: string
   execution_mode: string
   prompt: string
+  description: string
 }
 
 export interface PlanDraft {

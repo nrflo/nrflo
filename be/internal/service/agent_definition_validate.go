@@ -84,17 +84,27 @@ func validateNodeRole(role string, consultant bool, toolsCSV string) (string, er
 	return role, nil
 }
 
+// validateDescription requires a non-empty description for fanout_template
+// defs — it is the load-bearing text a planner (and the plan UI) uses to pick
+// a template, so an undescribed template is effectively unusable.
+func validateDescription(nodeRole, description string) error {
+	if nodeRole == "fanout_template" && strings.TrimSpace(description) == "" {
+		return fmt.Errorf("fanout_template agent requires a non-empty description")
+	}
+	return nil
+}
+
 // validateConsultantAndNodeRole re-validates the consultant+execution_mode+node_role
 // invariant against the effective values (current row merged with the incoming
 // update), so a PATCH that omits a field cannot violate the invariant.
-func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, toolsCSV string) error {
+func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, toolsCSV, description string) error {
 	if consultant && executionMode != "api" {
 		return fmt.Errorf("consultant agent requires execution_mode=api")
 	}
 	if _, err := validateNodeRole(nodeRole, consultant, toolsCSV); err != nil {
 		return err
 	}
-	return nil
+	return validateDescription(nodeRole, description)
 }
 
 // revalidateConsultantAndNodeRole re-checks the consultant+execution_mode+
@@ -104,14 +114,14 @@ func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, too
 // stripping emit_findings from a planner's tools, is rejected even when the
 // request does not touch every field.
 func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, workflowID, id string, req *types.AgentDefUpdateRequest) error {
-	if req.Consultant == nil && req.ExecutionMode == nil && req.NodeRole == nil && req.Tools == nil {
+	if req.Consultant == nil && req.ExecutionMode == nil && req.NodeRole == nil && req.Tools == nil && req.Description == nil {
 		return nil
 	}
 	var currentConsultant bool
-	var currentMode, currentNodeRole, currentTools string
+	var currentMode, currentNodeRole, currentTools, currentDescription string
 	if queryErr := s.pool.QueryRow(
-		"SELECT consultant, execution_mode, node_role, tools FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole, &currentTools); queryErr != nil {
+		"SELECT consultant, execution_mode, node_role, tools, description FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole, &currentTools, &currentDescription); queryErr != nil {
 		return fmt.Errorf("failed to load agent definition: %w", queryErr)
 	}
 	effectiveConsultant := currentConsultant
@@ -130,7 +140,11 @@ func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, work
 	if req.Tools != nil {
 		effectiveTools = *req.Tools
 	}
-	return validateConsultantAndNodeRole(effectiveConsultant, effectiveMode, effectiveNodeRole, effectiveTools)
+	effectiveDescription := currentDescription
+	if req.Description != nil {
+		effectiveDescription = *req.Description
+	}
+	return validateConsultantAndNodeRole(effectiveConsultant, effectiveMode, effectiveNodeRole, effectiveTools, effectiveDescription)
 }
 
 // revalidatePlannerTools re-checks that a system agent def whose effective
@@ -164,8 +178,10 @@ func (s *SystemAgentDefinitionService) revalidatePlannerTools(id string, req *ty
 // same glob semantics as apirun.ResolveRegistry/MatchName ("*" = all,
 // "prefix*" = prefix match, otherwise exact match). service cannot import
 // spawner/apirun (apirun/tools_builtin imports service — that would cycle),
-// so the matcher is duplicated here as a tiny leaf helper.
-func csvGrantsTool(csv, name string) bool {
+// so the matcher is duplicated here as a tiny leaf helper. `name` stays a
+// parameter to keep the port faithful to those glob semantics even though
+// emit_findings is currently the only tool any caller checks.
+func csvGrantsTool(csv, name string) bool { //nolint:unparam // general matcher: mirrors apirun.MatchName
 	for _, pat := range strings.Split(csv, ",") {
 		pat = strings.TrimSpace(pat)
 		if pat == "" {

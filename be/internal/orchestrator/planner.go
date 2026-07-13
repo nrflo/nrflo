@@ -81,18 +81,21 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 
 // renderTemplateLibrary formats the enabled fanout_template defs for the
 // ${TEMPLATE_LIBRARY} prompt var, so the planner only ever sees usable
-// templates (a disabled model is filtered out, not just flagged).
+// templates (a disabled model is filtered out, not just flagged). The
+// description (not the prompt body) is the selection surface: it is the
+// load-bearing text an operator writes to tell the planner what a template
+// does and which finding key it emits to.
 func renderTemplateLibrary(templates []service.PlanTemplate) string {
 	if len(templates) == 0 {
 		return "_No templates configured for this workflow — the plan cannot include any nodes._"
 	}
 	var b strings.Builder
 	for _, t := range templates {
-		prompt := strings.TrimSpace(t.Prompt)
-		if len(prompt) > 400 {
-			prompt = prompt[:400] + "..."
+		desc := strings.TrimSpace(t.Description)
+		if desc == "" {
+			desc = "(no description provided)"
 		}
-		fmt.Fprintf(&b, "- %s (%s, %s)\n  %s\n", t.ID, t.Model, t.ExecutionMode, strings.ReplaceAll(prompt, "\n", " "))
+		fmt.Fprintf(&b, "- %s (%s, %s)\n  %s\n", t.ID, t.Model, t.ExecutionMode, strings.ReplaceAll(desc, "\n", " "))
 	}
 	return b.String()
 }

@@ -1,6 +1,6 @@
 # Types
 
-TypeScript type definitions matching Go API models. Contains 6 files.
+TypeScript type definitions matching Go API models.
 
 ## Artifact Types (`artifact.ts`)
 
@@ -46,7 +46,7 @@ TypeScript type definitions matching Go API models. Contains 6 files.
 | `AgentSession` | Session record with `workflow_instance_id`, `result`, `result_reason`, `pid`, `findings`, `started_at`, `ended_at`, `last_messages`, `message_count`, `context_left` |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
 | `ActiveAgentV4` | Active agent record. Optional `effective_mode?: 'cli_interactive'\|'api'\|'script'` sourced from `agent_sessions.effective_mode`; omitted for legacy rows. |
-| `AgentDef` | Agent definition. `execution_mode` is `'cli_interactive'\|'api'\|'script'`; includes optional `python_script_id?: string` |
+| `AgentDef` (`workflow.agentDefs.ts`, re-exported from `workflow.ts`) | Agent definition. `execution_mode` is `'cli_interactive'\|'api'\|'script'`; includes optional `python_script_id?: string`, `node_role?: 'static'\|'planner'\|'fanout_template'`, `description?: string` |
 
 ## Chain Types (`chain.ts`)
 

@@ -52,7 +52,7 @@ func TestSetLayerPolicy_QuorumDenominatorExcludesFanoutTemplate(t *testing.T) {
 		t.Fatalf("CreateAgentDef(solo-agent): %v", err)
 	}
 	if _, err := agentSvc.CreateAgentDef(projectID, workflowID, &types.AgentDefCreateRequest{
-		ID: "fanout-template", Prompt: "template", Layer: 1, NodeRole: "fanout_template",
+		ID: "fanout-template", Prompt: "template", Layer: 1, NodeRole: "fanout_template", Description: "A template.",
 	}); err != nil {
 		t.Fatalf("CreateAgentDef(fanout-template): %v", err)
 	}

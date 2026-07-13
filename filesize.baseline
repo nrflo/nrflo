@@ -95,7 +95,7 @@ be/internal/repo/ticket_search_test.go	362
 be/internal/repo/workflow_instance_cleanup_test.go	319
 be/internal/scheduler/scheduler_dispatch_test.go	337
 be/internal/service/agent.go	520
-be/internal/service/agent_definition.go	594
+be/internal/service/agent_definition.go	602
 be/internal/service/agent_definition_script_test.go	321
 be/internal/service/api_model.go	354
 be/internal/service/artifact.go	326

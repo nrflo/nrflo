@@ -24,6 +24,9 @@ func TestCreateAgentDef_NodeRole_AcceptsValidValues(t *testing.T) {
 			if role == "planner" {
 				req.Tools = "emit_findings"
 			}
+			if role == "fanout_template" {
+				req.Description = "a template."
+			}
 			def, err := svc.CreateAgentDef("proj1", wfID, req)
 			if err != nil {
 				t.Fatalf("CreateAgentDef(node_role=%s): %v", role, err)
@@ -123,8 +126,10 @@ func TestUpdateAgentDef_NodeRole_RoundTrips(t *testing.T) {
 	}
 
 	newRole := "fanout_template"
+	newDesc := "a template."
 	if err := svc.UpdateAgentDef("proj1", wfID, "agent-patch-role", &types.AgentDefUpdateRequest{
-		NodeRole: &newRole,
+		NodeRole:    &newRole,
+		Description: &newDesc,
 	}); err != nil {
 		t.Fatalf("UpdateAgentDef(node_role=fanout_template): %v", err)
 	}

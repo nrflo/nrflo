@@ -378,6 +378,7 @@ export interface WorkflowDef {
 }
 
 export type { WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from './workflow.defs'
+export type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from './workflow.agentDefs'
 
 export interface ContinueWorkflowRequest {
   workflow?: string
@@ -389,68 +390,6 @@ export interface FailWorkflowRequest {
   workflow?: string
   instance_id?: string
   reason: string
-}
-
-// Agent definition types (DB-stored)
-
-export interface AgentDef {
-  id: string
-  project_id: string
-  workflow_id: string
-  layer: number
-  model: string
-  timeout: number
-  prompt: string
-  restart_threshold?: number
-  max_fail_restarts?: number
-  tag?: string
-  low_consumption_model?: string
-  execution_mode: 'cli_interactive' | 'api' | 'script'
-  tools: string
-  api_max_iterations?: number
-  api_max_tokens?: number
-  python_script_id?: string
-  validation_commands?: string
-  consultant?: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface AgentDefCreateRequest {
-  id: string
-  layer: number
-  model?: string
-  timeout?: number
-  prompt?: string
-  restart_threshold?: number
-  max_fail_restarts?: number
-  tag?: string
-  low_consumption_model?: string
-  execution_mode?: 'cli_interactive' | 'api' | 'script'
-  tools?: string
-  api_max_iterations?: number
-  api_max_tokens?: number
-  python_script_id?: string
-  validation_commands?: string[]
-  consultant?: boolean
-}
-
-export interface AgentDefUpdateRequest {
-  layer?: number
-  model?: string
-  timeout?: number
-  prompt?: string
-  restart_threshold?: number
-  max_fail_restarts?: number
-  tag?: string
-  low_consumption_model?: string
-  execution_mode?: 'cli_interactive' | 'api' | 'script'
-  tools?: string
-  api_max_iterations?: number
-  api_max_tokens?: number
-  python_script_id?: string
-  validation_commands?: string[]
-  consultant?: boolean
 }
 
 // Orchestration types

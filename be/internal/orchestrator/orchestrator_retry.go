@@ -67,6 +67,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return fmt.Errorf("session does not belong to this workflow instance")
 	}
 	failedPhase := session.Phase
+	failedNode := session.NodeID
 
 	// Load project root
 	projectRepo := repo.NewProjectRepo(database, o.clock)
@@ -111,7 +112,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	startLayerIdx := -1
 	for i, lg := range layerGroups {
 		for _, p := range lg.phases {
-			if p.Agent == failedPhase {
+			if p.NodeID == failedNode {
 				startLayerIdx = i
 				break
 			}
@@ -223,6 +224,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		"instance_id":       wi.ID,
 		"start_layer":       startLayerIdx,
 		"failed_phase":      failedPhase,
+		"failed_node_id":    failedNode,
 		"failed_session_id": sessionID,
 	}))
 

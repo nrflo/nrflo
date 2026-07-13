@@ -56,6 +56,7 @@ type prepResult struct {
 	systemPromptOverrideFile string // temp file for --system-prompt-file (Claude only, when the global system-prompt override is on); empty when unused
 	prompt                   string
 	phase                    string
+	nodeID                   string // execution identity; mirrors phase for static workflows
 
 	// Script-mode fields.
 	scriptCode string

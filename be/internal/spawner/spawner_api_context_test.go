@@ -36,7 +36,7 @@ func TestPrepareSpawn_APIMode_ContextLengthDBWins(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 

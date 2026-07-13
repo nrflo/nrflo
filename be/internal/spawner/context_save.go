@@ -168,7 +168,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			"_context_save": {
-				Phases: []PhaseDef{{ID: "context-saver", Agent: "context-saver", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "context-saver", Agent: "context-saver", Layer: 0}},
 			},
 		},
 		Agents: map[string]AgentConfig{
@@ -206,6 +206,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 
 	spawnErr := sp.Spawn(saveCtx, SpawnRequest{
 		AgentType:          "context-saver",
+		NodeID:             "context-saver",
 		TicketID:           req.TicketID,
 		ProjectID:          req.ProjectID,
 		WorkflowName:       "_context_save",

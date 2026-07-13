@@ -20,6 +20,7 @@ type AgentDefCreateRequest struct {
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 	Consultant             bool      `json:"consultant,omitempty"`
+	NodeRole               string    `json:"node_role,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -41,6 +42,7 @@ type AgentDefUpdateRequest struct {
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     *[]string `json:"validation_commands,omitempty"`
 	Consultant             *bool     `json:"consultant,omitempty"`
+	NodeRole               *string   `json:"node_role,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

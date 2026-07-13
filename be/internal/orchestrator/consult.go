@@ -46,7 +46,9 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 		return "", fmt.Errorf("consult: resolve workflow instance: %w", err)
 	}
 
-	// Recursion guard: consultants cannot initiate a consult.
+	// Recursion guard: consultants cannot initiate a consult. Keyed on AgentType
+	// (template identity) — this resolves which agent_definitions row the caller
+	// is, not which node it is, so it must NOT be switched to NodeID.
 	defRepo := repo.NewAgentDefinitionRepo(pool, o.clock)
 	callerDef, defErr := defRepo.Get(projectID, wfi.WorkflowID, callerSession.AgentType)
 	if defErr == nil && callerDef.Consultant {

@@ -437,6 +437,7 @@ func (env *toResumeTestEnv) createContinuedSessionFull(t *testing.T, sessionID s
 		TicketID:           env.ticketID,
 		WorkflowInstanceID: env.wfiID,
 		Phase:              "test-phase",
+		NodeID:             "test-phase",
 		AgentType:          agentType,
 		ModelID:            sql.NullString{String: modelID, Valid: true},
 		Status:             model.AgentSessionContinued,

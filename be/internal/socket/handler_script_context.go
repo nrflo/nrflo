@@ -132,6 +132,7 @@ func (h *Handler) handleScriptContext(_ context.Context, req Request) Response {
 		"instance_id":           wfi.ID,
 		"project_id":            session.ProjectID,
 		"agent_type":            session.AgentType,
+		"node_id":               session.NodeID,
 		"workflow_id":           wfi.WorkflowID,
 		"scope_type":            wfi.ScopeType,
 		"ticket_id":             ticketID,

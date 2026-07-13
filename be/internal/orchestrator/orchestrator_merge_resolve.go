@@ -54,7 +54,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	sp := spawner.New(spawner.Config{
 		Workflows: map[string]spawner.WorkflowDef{
 			"_conflict_resolution": {
-				Phases: []spawner.PhaseDef{{ID: "conflict-resolver", Agent: "conflict-resolver", Layer: 0}},
+				Phases: []spawner.PhaseDef{{NodeID: "conflict-resolver", Agent: "conflict-resolver", Layer: 0}},
 			},
 		},
 		Agents: map[string]spawner.AgentConfig{
@@ -93,6 +93,7 @@ func (o *Orchestrator) attemptConflictResolution(
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{
 		AgentType:          "conflict-resolver",
+		NodeID:             "conflict-resolver",
 		TicketID:           req.TicketID,
 		ProjectID:          req.ProjectID,
 		WorkflowName:       "_conflict_resolution",

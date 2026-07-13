@@ -113,7 +113,7 @@ func TestActiveAgentsOmitsTagWithNoAgentDef(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["unknown-agent:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}

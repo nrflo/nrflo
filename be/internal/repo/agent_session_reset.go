@@ -11,24 +11,24 @@ import (
 	"be/internal/db"
 )
 
-// ResetAgentSessionsInWorkflow resets sessions for an arbitrary list of phases across any
+// ResetAgentSessionsInWorkflow resets sessions for an arbitrary list of node ids across any
 // layer to callback state and deletes their session-scoped findings, so re-run agents start
 // from a clean slate and stale values from superseded attempts cannot win later reads.
 // Excludes running and continued sessions.
-func (r *AgentSessionRepo) ResetAgentSessionsInWorkflow(wfiID string, phases []string) error {
-	if len(phases) == 0 {
+func (r *AgentSessionRepo) ResetAgentSessionsInWorkflow(wfiID string, nodeIDs []string) error {
+	if len(nodeIDs) == 0 {
 		return nil
 	}
 	now := r.clock.Now().UTC()
 	nowStr := now.Format(time.RFC3339Nano)
-	placeholders := make([]string, len(phases))
-	phaseArgs := make([]interface{}, len(phases))
-	for i, p := range phases {
+	placeholders := make([]string, len(nodeIDs))
+	phaseArgs := make([]interface{}, len(nodeIDs))
+	for i, p := range nodeIDs {
 		placeholders[i] = "?"
 		phaseArgs[i] = p
 	}
 	sessionFilter := fmt.Sprintf(
-		`workflow_instance_id = ? AND phase IN (%s) AND status NOT IN ('running', 'continued')`,
+		`workflow_instance_id = ? AND node_id IN (%s) AND status NOT IN ('running', 'continued')`,
 		strings.Join(placeholders, ","))
 
 	return db.WithBusyRetry(func() error {

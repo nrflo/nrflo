@@ -86,20 +86,20 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	// Create agent_sessions for derivation:
 	// investigation completed (L0), test-design skipped (L1, no session), implementation running (L2)
 	_, err = database.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			status, result, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"sess-inv", "testproj", "testproj-001", "wf-1", "investigation", "investigation",
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"sess-inv", "testproj", "testproj-001", "wf-1", "investigation", "investigation", "investigation",
 		"completed", "pass", 0, now, now, now, now)
 	if err != nil {
 		database.Close()
 		t.Fatalf("failed to create investigation session: %v", err)
 	}
 	_, err = database.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			status, restart_count, started_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"sess-impl", "testproj", "testproj-001", "wf-1", "implementation", "implementation",
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"sess-impl", "testproj", "testproj-001", "wf-1", "implementation", "implementation", "implementation",
 		"running", 0, now, now, now)
 	if err != nil {
 		database.Close()
@@ -263,10 +263,10 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	} {
 		result := sql.NullString{String: sess.result, Valid: sess.result != ""}
 		_, err = database.Exec(`
-			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 				status, result, restart_count, started_at, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			sess.id, "testproj2", "proj2-001", "wf-prog", sess.phase, sess.phase,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			sess.id, "testproj2", "proj2-001", "wf-prog", sess.phase, sess.phase, sess.phase,
 			sess.status, result, 0, now, now, now)
 		if err != nil {
 			database.Close()

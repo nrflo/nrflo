@@ -29,6 +29,7 @@ type AgentSession struct {
 	TicketID            string             `json:"ticket_id"`
 	WorkflowInstanceID  string             `json:"workflow_instance_id"`
 	Phase               string             `json:"phase"`
+	NodeID              string             `json:"node_id"` // Execution identity (which slot in the run); AgentType stays the agent_definitions template key
 	AgentType           string             `json:"agent_type"`
 	ModelID             sql.NullString     `json:"-"`
 	Status              AgentSessionStatus `json:"status"`
@@ -147,6 +148,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		TicketID           string             `json:"ticket_id"`
 		WorkflowInstanceID string             `json:"workflow_instance_id"`
 		Phase              string             `json:"phase"`
+		NodeID             string             `json:"node_id"`
 		Workflow           string             `json:"workflow"`
 		AgentType          string             `json:"agent_type"`
 		ModelID            *string            `json:"model_id,omitempty"`
@@ -174,6 +176,7 @@ func (as AgentSession) MarshalJSON() ([]byte, error) {
 		TicketID:           as.TicketID,
 		WorkflowInstanceID: as.WorkflowInstanceID,
 		Phase:              as.Phase,
+		NodeID:             as.NodeID,
 		Workflow:           workflow,
 		AgentType:          as.AgentType,
 		ModelID:            modelID,

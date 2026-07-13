@@ -10,19 +10,19 @@ import (
 // threeLayerGroups returns a canonical 3-layer group for plan tests.
 func threeLayerGroups() []layerGroup {
 	return []layerGroup{
-		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
-		{layer: 1, phases: []service.SpawnerPhaseDef{{Agent: "builder", Layer: 1}}},
-		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "verifier", Layer: 2}}},
+		{layer: 0, phases: []service.SpawnerPhaseDef{{NodeID: "analyzer", Agent: "analyzer", Layer: 0}}},
+		{layer: 1, phases: []service.SpawnerPhaseDef{{NodeID: "builder", Agent: "builder", Layer: 1}}},
+		{layer: 2, phases: []service.SpawnerPhaseDef{{NodeID: "verifier", Agent: "verifier", Layer: 2}}},
 	}
 }
 
 // fourLayerGroups returns a 4-layer group with a multi-agent layer 1.
 func fourLayerGroups() []layerGroup {
 	return []layerGroup{
-		{layer: 0, phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}}},
-		{layer: 1, phases: []service.SpawnerPhaseDef{{Agent: "impl-a", Layer: 1}, {Agent: "impl-b", Layer: 1}}},
-		{layer: 2, phases: []service.SpawnerPhaseDef{{Agent: "tester", Layer: 2}}},
-		{layer: 3, phases: []service.SpawnerPhaseDef{{Agent: "deployer", Layer: 3}}},
+		{layer: 0, phases: []service.SpawnerPhaseDef{{NodeID: "analyzer", Agent: "analyzer", Layer: 0}}},
+		{layer: 1, phases: []service.SpawnerPhaseDef{{NodeID: "impl-a", Agent: "impl-a", Layer: 1}, {NodeID: "impl-b", Agent: "impl-b", Layer: 1}}},
+		{layer: 2, phases: []service.SpawnerPhaseDef{{NodeID: "tester", Agent: "tester", Layer: 2}}},
+		{layer: 3, phases: []service.SpawnerPhaseDef{{NodeID: "deployer", Agent: "deployer", Layer: 3}}},
 	}
 }
 
@@ -51,7 +51,7 @@ func TestAgentLayerOf(t *testing.T) {
 		{"unknown", 0, false},
 	}
 	for _, tc := range tests {
-		layer, ok := agentLayerOf(tc.agent, groups)
+		layer, _, ok := agentLayerOf(tc.agent, groups)
 		if ok != tc.wantOK || layer != tc.wantLayer {
 			t.Errorf("agentLayerOf(%q) = (%d,%v), want (%d,%v)", tc.agent, layer, ok, tc.wantLayer, tc.wantOK)
 		}
@@ -132,11 +132,11 @@ func TestDecomposeCallback_Agent(t *testing.T) {
 	if s0.layer != 1 || s0.wholeLayer {
 		t.Errorf("step[0]: layer=%d whole=%v, want layer=1 whole=false", s0.layer, s0.wholeLayer)
 	}
-	if len(s0.agents) != 1 || s0.agents[0] != "builder" {
-		t.Errorf("step[0].agents = %v, want [builder]", s0.agents)
+	if len(s0.nodes) != 1 || s0.nodes[0] != "builder" {
+		t.Errorf("step[0].nodes = %v, want [builder]", s0.nodes)
 	}
-	if s0.perAgentInstr["builder"] != "fix builder" {
-		t.Errorf("step[0] perAgentInstr[builder] = %q", s0.perAgentInstr["builder"])
+	if s0.perNodeInstr["builder"] != "fix builder" {
+		t.Errorf("step[0] perNodeInstr[builder] = %q", s0.perNodeInstr["builder"])
 	}
 	// second step: whole-layer step for layer 2
 	s1 := d.steps[1]
@@ -156,14 +156,14 @@ func TestDecomposeCallback_Chain(t *testing.T) {
 		t.Fatalf("steps len = %d, want 2", len(d.steps))
 	}
 	// steps sorted by layer: analyzer(0), builder(1)
-	if d.steps[0].layer != 0 || d.steps[0].agents[0] != "analyzer" {
+	if d.steps[0].layer != 0 || d.steps[0].nodes[0] != "analyzer" {
 		t.Errorf("step[0]: %+v", d.steps[0])
 	}
-	if d.steps[0].perAgentInstr["analyzer"] != "chain instr" {
-		t.Errorf("chain[0] should get instructions, got %q", d.steps[0].perAgentInstr["analyzer"])
+	if d.steps[0].perNodeInstr["analyzer"] != "chain instr" {
+		t.Errorf("chain[0] should get instructions, got %q", d.steps[0].perNodeInstr["analyzer"])
 	}
-	if d.steps[1].perAgentInstr["builder"] != "" {
-		t.Errorf("chain[1..] should have empty instructions, got %q", d.steps[1].perAgentInstr["builder"])
+	if d.steps[1].perNodeInstr["builder"] != "" {
+		t.Errorf("chain[1..] should have empty instructions, got %q", d.steps[1].perNodeInstr["builder"])
 	}
 	if d.resumeLayer != 2 {
 		t.Errorf("resumeLayer = %d, want 2 (lastLayer+1=1+1)", d.resumeLayer)
@@ -175,7 +175,7 @@ func TestMergeCallbackPlans_WholeLayerWins(t *testing.T) {
 	parts := []decomposedRequest{
 		{
 			agentID:    "agent-a",
-			steps:      []callbackPlanStep{{layer: 1, wholeLayer: false, agents: []string{"builder"}, perAgentInstr: map[string]string{"builder": "fix"}}},
+			steps:      []callbackPlanStep{{layer: 1, wholeLayer: false, nodes: []string{"builder"}, perNodeInstr: map[string]string{"builder": "fix"}}},
 			resetScope: []string{"builder"}, resumeLayer: 2,
 		},
 		{
@@ -256,13 +256,13 @@ func TestCumulativeAgentCount(t *testing.T) {
 		},
 		{
 			"per_agent_step",
-			callbackPlan{steps: []callbackPlanStep{{layer: 1, wholeLayer: false, agents: []string{"impl-a"}}}},
+			callbackPlan{steps: []callbackPlanStep{{layer: 1, wholeLayer: false, nodes: []string{"impl-a"}}}},
 			1,
 		},
 		{
 			"mixed_steps",
 			callbackPlan{steps: []callbackPlanStep{
-				{layer: 0, wholeLayer: false, agents: []string{"analyzer"}},
+				{layer: 0, wholeLayer: false, nodes: []string{"analyzer"}},
 				{layer: 1, wholeLayer: true},
 			}},
 			3,

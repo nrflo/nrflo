@@ -11,6 +11,7 @@ import (
 // spawnResult holds the outcome of one spawned agent.
 type spawnResult struct {
 	agent       string
+	node        string
 	err         error
 	callbackErr *spawner.CallbackError // non-nil when the agent requested a callback
 }
@@ -48,6 +49,7 @@ func (o *Orchestrator) spawnPhases(
 			sp := spawner.New(cfg)
 			err := sp.Spawn(ctx, spawner.SpawnRequest{
 				AgentType:          phase.Agent,
+				NodeID:             phase.NodeID,
 				TicketID:           req.TicketID,
 				ProjectID:          req.ProjectID,
 				WorkflowName:       req.WorkflowName,
@@ -56,7 +58,7 @@ func (o *Orchestrator) spawnPhases(
 				WorkflowInstanceID: wfiID,
 			})
 			sp.Close()
-			sr := spawnResult{agent: phase.Agent, err: err}
+			sr := spawnResult{agent: phase.Agent, node: phase.NodeID, err: err}
 			var cbErr *spawner.CallbackError
 			if errors.As(err, &cbErr) {
 				sr.callbackErr = cbErr

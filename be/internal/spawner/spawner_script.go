@@ -124,6 +124,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 	proc := &processInfo{
 		agentID:             agentID,
 		agentType:           req.AgentType,
+		nodeID:              phase,
 		modelID:             modelID,
 		sessionID:           sessionID,
 		spawnToken:          spawnToken,
@@ -156,6 +157,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		scriptID:      script.ID,
 		pythonPath:    s.config.PythonPath,
 		phase:         phase,
+		nodeID:        phase,
 		opts: SpawnOptions{
 			WorkDir: workDir,
 			Env:     env,

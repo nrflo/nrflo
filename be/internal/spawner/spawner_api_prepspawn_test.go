@@ -56,7 +56,7 @@ func TestPrepareSpawn_APIMode_AnthropicProvider(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -102,7 +102,7 @@ func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "codex-impl", Agent: "codex-impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "codex-impl", Agent: "codex-impl", Layer: 0}}},
 		},
 	})
 
@@ -146,7 +146,7 @@ func TestPrepareSpawn_APIMode_MissingModelInConfigs(t *testing.T) {
 		APIModelConfigs: map[string]APIModelConfig{},
 		AgentSvc:        &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -187,7 +187,7 @@ func TestPrepareSpawn_APIMode_BuildProviderError(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -232,7 +232,7 @@ func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -273,7 +273,7 @@ func TestPrepareSpawn_APIMode_MappedModelFromConfig(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 

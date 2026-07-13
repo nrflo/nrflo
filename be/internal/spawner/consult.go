@@ -65,7 +65,7 @@ func (s *Spawner) Consult(ctx context.Context, callerSessionID, consultantID, qu
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			workflowName: {
-				Phases: []PhaseDef{{ID: "_consult", Agent: consultantID, Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "_consult", Agent: consultantID, Layer: 0}},
 			},
 		},
 		Agents: map[string]AgentConfig{
@@ -120,6 +120,7 @@ func (s *Spawner) Consult(ctx context.Context, callerSessionID, consultantID, qu
 
 	spawnErr := sp.Spawn(ctxTimeout, SpawnRequest{
 		AgentType:          consultantID,
+		NodeID:             "_consult",
 		TicketID:           ticketID,
 		ProjectID:          projectID,
 		WorkflowName:       workflowName,

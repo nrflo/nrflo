@@ -264,7 +264,7 @@ func TestWorkflowDef_MarshalJSON_IncludesCloseTicketOnComplete(t *testing.T) {
 				ScopeType:             "ticket",
 				CloseTicketOnComplete: tc.value,
 				Groups:                []string{},
-				Phases:                []PhaseDef{{ID: "a", Agent: "a", Layer: 0}},
+				Phases:                []PhaseDef{{NodeID: "a", Agent: "a", Layer: 0}},
 			}
 
 			b, err := json.Marshal(wf)

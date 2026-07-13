@@ -24,7 +24,7 @@ func buildWorkflowDynamicContext(s *ObserverService, projectID, workflowID strin
 		if len(wfDef.Phases) > 0 {
 			b.WriteString("**Phases:**\n\n")
 			for _, p := range wfDef.Phases {
-				fmt.Fprintf(&b, "- layer %d: %s (%s)\n", p.Layer, p.ID, p.Agent)
+				fmt.Fprintf(&b, "- layer %d: %s (%s)\n", p.Layer, p.NodeID, p.Agent)
 			}
 			b.WriteString("\n")
 		}

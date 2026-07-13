@@ -77,11 +77,11 @@ func insertSession(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, re
 		resultVal = result
 	}
 	_, err := pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			status, result, result_reason, pid, context_left, ancestor_session_id,
 			spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
-		id, wfiID, agentType, agentType, status, resultVal, createdAt, createdAt, now)
+		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		id, wfiID, agentType, agentType, agentType, status, resultVal, createdAt, createdAt, now)
 	if err != nil {
 		t.Fatalf("failed to insert session %s: %v", id, err)
 	}
@@ -89,8 +89,8 @@ func insertSession(t *testing.T, pool *db.Pool, id, wfiID, agentType, status, re
 
 // twoPhases returns a standard 2-phase definition for tests.
 var twoPhases = []PhaseDef{
-	{ID: "analyzer", Agent: "analyzer", Layer: 0},
-	{ID: "builder", Agent: "builder", Layer: 1},
+	{NodeID: "analyzer", Agent: "analyzer", Layer: 0},
+	{NodeID: "builder", Agent: "builder", Layer: 1},
 }
 
 func TestDerivePhaseStatuses(t *testing.T) {
@@ -414,9 +414,9 @@ func TestDerivePhaseStatuses_ThreeLayerSkipInference(t *testing.T) {
 	insertSession(t, pool, "s1", wfiID2, "p3", "completed", "pass", "")
 
 	phases3 := []PhaseDef{
-		{ID: "p1", Agent: "p1", Layer: 0},
-		{ID: "p2", Agent: "p2", Layer: 1},
-		{ID: "p3", Agent: "p3", Layer: 2},
+		{NodeID: "p1", Agent: "p1", Layer: 0},
+		{NodeID: "p2", Agent: "p2", Layer: 1},
+		{NodeID: "p3", Agent: "p3", Layer: 2},
 	}
 	got := svc.derivePhaseStatuses(wfiID2, phases3)
 

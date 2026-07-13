@@ -17,18 +17,18 @@ func (s *WorkflowService) BuildTrace(iid string, opts TraceOptions) (*types.Trac
 		return nil, err
 	}
 
-	// Phase→layer map from the current def; a deleted/renamed def degrades to
+	// Node→layer map from the current def; a deleted/renamed def degrades to
 	// layer -1 lanes and no bands (same tolerance as buildV4State).
-	phaseLayers := map[string]int{}
+	nodeLayers := map[string]int{}
 	var defPhases []PhaseDef
 	if wf, defErr := s.GetWorkflowDef(wi.ProjectID, wi.WorkflowID); defErr == nil {
 		defPhases = wf.Phases
 		for _, p := range wf.Phases {
-			phaseLayers[p.ID] = p.Layer
+			nodeLayers[p.NodeID] = p.Layer
 		}
 	}
 
-	lanes, sessionToLane, lifecycle := s.loadTraceLanes(iid, phaseLayers)
+	lanes, sessionToLane, lifecycle := s.loadTraceLanes(iid, nodeLayers)
 	s.attachTraceRestarts(iid, lanes)
 	rootMarkers, truncated := s.attachTraceMarkers(iid, lanes, sessionToLane, lifecycle, opts)
 

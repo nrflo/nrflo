@@ -36,7 +36,7 @@ func cliMCPSpawner(env *contextSaveTestEnv) *Spawner {
 		Clock:    clock.Real(),
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 }

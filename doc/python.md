@@ -171,7 +171,8 @@ c.findings.get("setup-analyzer", "files_to_modify")
 | `session_id` | This agent's session UUID |
 | `instance_id` | Workflow instance UUID |
 | `project_id` | Project identifier |
-| `agent_type` | Agent type identifier |
+| `agent_type` | Agent definition (template) this agent was spawned from |
+| `node_id` | Execution slot this agent runs as (equal to `agent_type` in static workflows) |
 | `workflow_id` | Workflow definition UUID |
 | `scope_type` | `"ticket"` or `"project"` |
 | `ticket_id` | Ticket ID (empty string for project-scope) |

@@ -32,9 +32,13 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	if executionMode == "" {
 		executionMode = "cli_interactive"
 	}
+	nodeRole := def.NodeRole
+	if nodeRole == "" {
+		nodeRole = "static"
+	}
 	_, err := r.db.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -55,6 +59,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.PythonScriptID,
 		def.ValidationCommands,
 		def.Consultant,
+		nodeRole,
 		now,
 		now,
 	)
@@ -69,7 +74,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 	var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
 	var pythonScriptID sql.NullString
 	err := r.db.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -93,6 +98,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 		&pythonScriptID,
 		&def.ValidationCommands,
 		&def.Consultant,
+		&def.NodeRole,
 		&createdAt,
 		&updatedAt,
 	)
@@ -140,7 +146,7 @@ func (r *AgentDefinitionRepo) Get(projectID, workflowID, id string) (*model.Agen
 // List retrieves all agent definitions for a workflow
 func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -156,9 +162,9 @@ func (r *AgentDefinitionRepo) List(projectID, workflowID string) ([]*model.Agent
 // Use this for execution graph construction; consultants must never become workflow phases.
 func (r *AgentDefinitionRepo) ListExecutable(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := r.db.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at
 		FROM agent_definitions
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0 AND node_role = 'static'
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
 	if err != nil {
 		return nil, err
@@ -202,6 +208,7 @@ func scanAgentDefRows(rows interface {
 			&pythonScriptID,
 			&def.ValidationCommands,
 			&def.Consultant,
+			&def.NodeRole,
 			&createdAt,
 			&updatedAt,
 		)
@@ -244,125 +251,6 @@ func scanAgentDefRows(rows interface {
 	}
 
 	return defs, nil
-}
-
-// AgentDefUpdateFields contains fields that can be updated
-type AgentDefUpdateFields struct {
-	Model                  *string
-	Timeout                *int
-	Prompt                 *string
-	Layer                  *int
-	RestartThreshold       *int
-	MaxFailRestarts        *int
-	StallStartTimeoutSec   *int
-	StallRunningTimeoutSec *int
-	Tag                    *string
-	LowConsumptionModel    *string
-	ExecutionMode          *string
-	Tools                  *string
-	APIMaxIterations       *int
-	APIMaxTokens           *int
-	PythonScriptID         *string
-	ValidationCommands     *string
-	Consultant             *bool
-}
-
-// Update updates an agent definition
-func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *AgentDefUpdateFields) error {
-	updates := []string{}
-	args := []interface{}{}
-
-	if fields.Model != nil {
-		updates = append(updates, "model = ?")
-		args = append(args, *fields.Model)
-	}
-	if fields.Timeout != nil {
-		updates = append(updates, "timeout = ?")
-		args = append(args, *fields.Timeout)
-	}
-	if fields.Prompt != nil {
-		updates = append(updates, "prompt = ?")
-		args = append(args, *fields.Prompt)
-	}
-	if fields.Layer != nil {
-		updates = append(updates, "layer = ?")
-		args = append(args, *fields.Layer)
-	}
-	if fields.RestartThreshold != nil {
-		updates = append(updates, "restart_threshold = ?")
-		args = append(args, *fields.RestartThreshold)
-	}
-	if fields.MaxFailRestarts != nil {
-		updates = append(updates, "max_fail_restarts = ?")
-		args = append(args, *fields.MaxFailRestarts)
-	}
-	if fields.StallStartTimeoutSec != nil {
-		updates = append(updates, "stall_start_timeout_sec = ?")
-		args = append(args, *fields.StallStartTimeoutSec)
-	}
-	if fields.StallRunningTimeoutSec != nil {
-		updates = append(updates, "stall_running_timeout_sec = ?")
-		args = append(args, *fields.StallRunningTimeoutSec)
-	}
-	if fields.Tag != nil {
-		updates = append(updates, "tag = ?")
-		args = append(args, *fields.Tag)
-	}
-	if fields.LowConsumptionModel != nil {
-		updates = append(updates, "low_consumption_model = ?")
-		args = append(args, *fields.LowConsumptionModel)
-	}
-	if fields.ExecutionMode != nil {
-		updates = append(updates, "execution_mode = ?")
-		args = append(args, *fields.ExecutionMode)
-	}
-	if fields.Tools != nil {
-		updates = append(updates, "tools = ?")
-		args = append(args, *fields.Tools)
-	}
-	if fields.APIMaxIterations != nil {
-		updates = append(updates, "api_max_iterations = ?")
-		args = append(args, *fields.APIMaxIterations)
-	}
-	if fields.APIMaxTokens != nil {
-		updates = append(updates, "api_max_tokens = ?")
-		args = append(args, *fields.APIMaxTokens)
-	}
-	if fields.PythonScriptID != nil {
-		updates = append(updates, "python_script_id = ?")
-		args = append(args, *fields.PythonScriptID)
-	}
-	if fields.ValidationCommands != nil {
-		updates = append(updates, "validation_commands = ?")
-		args = append(args, *fields.ValidationCommands)
-	}
-	if fields.Consultant != nil {
-		updates = append(updates, "consultant = ?")
-		args = append(args, *fields.Consultant)
-	}
-
-	if len(updates) == 0 {
-		return nil
-	}
-
-	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
-	updates = append(updates, "updated_at = ?")
-	args = append(args, now)
-	args = append(args, projectID, workflowID, id)
-
-	query := "UPDATE agent_definitions SET " + strings.Join(updates, ", ") +
-		" WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)"
-
-	result, err := r.db.Exec(query, args...)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("agent definition not found: %s/%s/%s", projectID, workflowID, id)
-	}
-	return nil
 }
 
 // Delete deletes an agent definition

@@ -28,6 +28,8 @@ The clock abstraction (`internal/clock`) drives all `created_at`/`updated_at` ti
 
 Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agent_sessions → workflow_instances, workflow_instances → tickets). See the migration files for per-table FK details.
 
+`agent_sessions.node_id` is execution identity (which slot in the run — session dedupe, retry target, callback scope, trace lane layering); `agent_sessions.agent_type` stays template identity (which `agent_definitions` row — model/tag/prompt resolution). They are equal for every static workflow today. `agent_definitions.node_role` (`static`|`planner`|`fanout_template`) marks defs that must never auto-execute as a phase, alongside `consultant`.
+
 ## Per-project & global settings (config table)
 
 Composite PK `(project_id, key)`. `project_id=''` is the sentinel for global (non-project) settings. Accessors at `be/internal/db/pool.go:94-130`:

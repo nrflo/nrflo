@@ -13,7 +13,7 @@ func (s *WorkflowService) listAgentDefsForWorkflow(projectID, workflowID string)
 		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts,
 			stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
 		FROM agent_definitions
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0 AND node_role = 'static'
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func (s *WorkflowService) listAgentDefsForProject(projectID string) ([]*model.Ag
 		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts,
 			stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, created_at, updated_at
 		FROM agent_definitions
-		WHERE LOWER(project_id) = LOWER(?) AND consultant = 0
+		WHERE LOWER(project_id) = LOWER(?) AND consultant = 0 AND node_role = 'static'
 		ORDER BY layer ASC, id ASC`, projectID)
 	if err != nil {
 		return nil, err

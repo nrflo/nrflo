@@ -26,12 +26,12 @@ func parseTraceTime(s string) (time.Time, bool) {
 // chains into single lanes keyed by COALESCE(ancestor_session_id, id) — the
 // ancestor column always points at the chain root. Returns the sorted lanes
 // plus a session→lane index used for marker attribution.
-func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]int) ([]types.TraceLane, map[string]string, []types.TraceMarker) {
+func (s *WorkflowService) loadTraceLanes(wfiID string, nodeLayers map[string]int) ([]types.TraceLane, map[string]string, []types.TraceMarker) {
 	sessionToLane := make(map[string]string)
 	lanes := []types.TraceLane{}
 	var lifecycle []types.TraceMarker
 	rows, err := s.pool.Query(`
-		SELECT COALESCE(ancestor_session_id, id), id, phase, agent_type, model_id, status, result, started_at, ended_at,
+		SELECT COALESCE(ancestor_session_id, id), id, phase, node_id, agent_type, model_id, status, result, started_at, ended_at,
 		       result_reason, rate_limit_until_ts, rate_limit_retry_count, nudge_count, stop_block_count
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND `+transientAgentTypeExclusion+`
@@ -44,9 +44,9 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]in
 	laneIdx := make(map[string]int)
 	for rows.Next() {
 		var laneID, id string
-		var phase, agentType, modelID, status, result, startedAt, endedAt, resultReason, rateLimitUntil sql.NullString
+		var phase, nodeID, agentType, modelID, status, result, startedAt, endedAt, resultReason, rateLimitUntil sql.NullString
 		var rateLimitRetries, nudgeCount, stopBlockCount sql.NullInt64
-		rows.Scan(&laneID, &id, &phase, &agentType, &modelID, &status, &result, &startedAt, &endedAt,
+		rows.Scan(&laneID, &id, &phase, &nodeID, &agentType, &modelID, &status, &result, &startedAt, &endedAt,
 			&resultReason, &rateLimitUntil, &rateLimitRetries, &nudgeCount, &stopBlockCount)
 
 		seg := types.TraceSegment{SessionID: id, Status: status.String, Result: result.String}
@@ -62,12 +62,13 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, phaseLayers map[string]in
 		idx, ok := laneIdx[laneID]
 		if !ok {
 			layer := -1
-			if l, found := phaseLayers[phase.String]; found {
+			if l, found := nodeLayers[nodeID.String]; found {
 				layer = l
 			}
 			lanes = append(lanes, types.TraceLane{
 				LaneID:    laneID,
 				Phase:     phase.String,
+				NodeID:    nodeID.String,
 				Layer:     layer,
 				AgentType: agentType.String,
 				Segments:  []types.TraceSegment{},
@@ -167,7 +168,7 @@ func buildTraceLayers(defPhases []PhaseDef, lanes []types.TraceLane) []types.Tra
 		if _, seen := phasesByLayer[p.Layer]; !seen {
 			layerOrder = append(layerOrder, p.Layer)
 		}
-		phasesByLayer[p.Layer] = append(phasesByLayer[p.Layer], p.ID)
+		phasesByLayer[p.Layer] = append(phasesByLayer[p.Layer], p.NodeID)
 	}
 	sort.Ints(layerOrder)
 

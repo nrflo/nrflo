@@ -17,11 +17,12 @@ type WorkflowDef struct {
 	Phases      []PhaseDef `json:"phases"`
 }
 
-// PhaseDef represents a phase definition
+// PhaseDef represents a phase definition. NodeID is the execution identity
+// (which slot in the run); Agent is the agent_definitions template key.
 type PhaseDef struct {
-	ID    string `json:"id"`
-	Agent string `json:"agent"`
-	Layer int    `json:"layer"`
+	NodeID string `json:"id"`
+	Agent  string `json:"agent"`
+	Layer  int    `json:"layer"`
 }
 
 // AgentConfig holds agent-specific configuration
@@ -94,6 +95,7 @@ type processInfo struct {
 	lastPTYByteAt   time.Time
 	agentID         string
 	agentType       string
+	nodeID          string // execution identity (which slot in the run); distinct from agentType (template)
 	modelID         string
 	sessionID       string
 	startTime       time.Time

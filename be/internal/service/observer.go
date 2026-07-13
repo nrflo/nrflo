@@ -154,6 +154,7 @@ func (s *ObserverService) Launch(scope, projectID, workflowID string) (sessionID
 		TicketID:           "",
 		AgentType:          "_observer",
 		Phase:              "observer",
+		NodeID:             "observer",
 		Status:             model.AgentSessionRunning,
 		Kind:               "observer",
 		ObserverScope:      sql.NullString{String: scope, Valid: scope != ""},

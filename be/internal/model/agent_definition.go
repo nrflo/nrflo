@@ -24,6 +24,7 @@ type AgentDefinition struct {
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
 	ValidationCommands     string    `json:"validation_commands"`
 	Consultant             bool      `json:"consultant"`
+	NodeRole               string    `json:"node_role"` // static|planner|fanout_template; non-static defs never auto-execute as a phase
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

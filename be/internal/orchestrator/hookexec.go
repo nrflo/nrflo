@@ -93,6 +93,7 @@ func (o *Orchestrator) runHookScript(ctx context.Context, pool *db.Pool, project
 		TicketID:           ticketID,
 		WorkflowInstanceID: wfiID,
 		AgentType:          agentType,
+		NodeID:             agentType,
 		Status:             model.AgentSessionRunning,
 		SpawnToken:         sql.NullString{String: token, Valid: true},
 		StartedAt:          sql.NullString{String: now, Valid: true},

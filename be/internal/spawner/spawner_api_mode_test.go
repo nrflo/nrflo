@@ -38,7 +38,7 @@ func TestSpawner_RejectsAPIModeAgent_WhenConfigAPIModeFalse(t *testing.T) {
 		// APIMode deliberately omitted (defaults to false)
 		Workflows: map[string]WorkflowDef{
 			"feature": {
-				Phases: []PhaseDef{{ID: "implementor", Agent: "implementor", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "implementor", Agent: "implementor", Layer: 0}},
 			},
 		},
 	})
@@ -73,7 +73,7 @@ func TestSpawner_RejectsAPIModeAgent_ViaConfigAgents(t *testing.T) {
 		// APIMode deliberately omitted (defaults to false)
 		Workflows: map[string]WorkflowDef{
 			"feature": {
-				Phases: []PhaseDef{{ID: "implementor", Agent: "implementor", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "implementor", Agent: "implementor", Layer: 0}},
 			},
 		},
 		Agents: map[string]AgentConfig{

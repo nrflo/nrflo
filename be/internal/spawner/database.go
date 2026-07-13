@@ -23,7 +23,7 @@ import (
 // path inserts its own row via ObserverService.Launch before this runs — or on
 // any DB error; the insert is best-effort, matching the rest of the spawn hot
 // path where sibling status writes are also fire-and-forget.
-func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, spawnToken, effectiveMode string, restartCount int) bool {
+func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, nodeID, sessionID, modelID, phase, spawnCommand, prompt, systemPrompt, spawnToken, effectiveMode string, restartCount int) bool {
 	pool := s.pool()
 	if pool == nil {
 		return false
@@ -37,6 +37,7 @@ func (s *Spawner) createAgentSessionRow(projectID, ticketID, wfiID, agentType, s
 		TicketID:           ticketID,
 		WorkflowInstanceID: wfiID,
 		Phase:              phase,
+		NodeID:             nodeID,
 		AgentType:          agentType,
 		ModelID:            sql.NullString{String: modelID, Valid: modelID != ""},
 		Status:             model.AgentSessionRunning,
@@ -173,37 +174,39 @@ func (s *Spawner) getWorkflowInstanceByID(instanceID string) (*model.WorkflowIns
 }
 
 // validateAndAdvancePhase validates phase order.
-// Returns (phaseID, error). Queries agent_sessions for terminal status validation.
-// With layer-based execution, validates that all agents in prior layers are completed.
-func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedAgent string) (string, error) {
+// Returns (nodeID, error). Queries agent_sessions for terminal status validation.
+// With layer-based execution, validates that all nodes in prior layers are completed.
+// The prior-layer gate keys on node_id, not agent_type, so fan-out siblings sharing
+// a template cannot satisfy each other's gate.
+func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowName, requestedNode string) (string, error) {
 	workflow, ok := s.config.Workflows[workflowName]
 	if !ok {
 		return "", fmt.Errorf("unknown workflow: %s", workflowName)
 	}
 
-	// Find requested agent's phase
+	// Find requested node's phase
 	var requestedPhase *PhaseDef
 	for i := range workflow.Phases {
-		if workflow.Phases[i].Agent == requestedAgent {
+		if workflow.Phases[i].NodeID == requestedNode {
 			requestedPhase = &workflow.Phases[i]
 			break
 		}
 	}
 	if requestedPhase == nil {
-		return "", fmt.Errorf("agent '%s' not found in workflow '%s'", requestedAgent, workflowName)
+		return "", fmt.Errorf("node '%s' not found in workflow '%s'", requestedNode, workflowName)
 	}
 
-	// Collect prior-layer agent types that need to be completed
-	var priorAgents []PhaseDef
+	// Collect prior-layer nodes that need to be completed
+	var priorNodes []PhaseDef
 	for _, p := range workflow.Phases {
 		if p.Layer < requestedPhase.Layer {
-			priorAgents = append(priorAgents, p)
+			priorNodes = append(priorNodes, p)
 		}
 	}
 
 	// No prior layers — no validation needed
-	if len(priorAgents) == 0 {
-		return requestedPhase.ID, nil
+	if len(priorNodes) == 0 {
+		return requestedPhase.NodeID, nil
 	}
 
 	// Query terminal sessions for this workflow instance
@@ -213,7 +216,7 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	}
 
 	rows, err := pool.Query(`
-		SELECT agent_type, status FROM agent_sessions
+		SELECT node_id, status FROM agent_sessions
 		WHERE workflow_instance_id = ? AND status NOT IN ('running', 'continued', 'callback')
 		ORDER BY created_at DESC`, wi.ID)
 	if err != nil {
@@ -221,26 +224,26 @@ func (s *Spawner) validateAndAdvancePhase(wi *model.WorkflowInstance, workflowNa
 	}
 	defer rows.Close()
 
-	// Track which agent_types have a terminal session
-	terminalAgents := make(map[string]bool)
+	// Track which node_ids have a terminal session
+	terminalNodes := make(map[string]bool)
 	for rows.Next() {
-		var agentType, status string
-		rows.Scan(&agentType, &status)
-		if !terminalAgents[agentType] {
-			terminalAgents[agentType] = true
+		var nodeID, status string
+		rows.Scan(&nodeID, &status)
+		if !terminalNodes[nodeID] {
+			terminalNodes[nodeID] = true
 		}
 	}
 
-	// Validate that all agents in prior layers have a terminal session
-	for _, prior := range priorAgents {
-		if terminalAgents[prior.Agent] {
+	// Validate that all nodes in prior layers have a terminal session
+	for _, prior := range priorNodes {
+		if terminalNodes[prior.NodeID] {
 			continue
 		}
 		return "", fmt.Errorf("layer %d agent '%s' must complete before layer %d agent '%s'",
-			prior.Layer, prior.ID, requestedPhase.Layer, requestedPhase.ID)
+			prior.Layer, prior.NodeID, requestedPhase.Layer, requestedPhase.NodeID)
 	}
 
-	return requestedPhase.ID, nil
+	return requestedPhase.NodeID, nil
 }
 
 // broadcastGlobal sends a signal-only global.running_agents event to all WS clients.

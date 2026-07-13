@@ -31,6 +31,7 @@ type Spawner struct {
 // SpawnRequest contains parameters for spawning an agent
 type SpawnRequest struct {
 	AgentType          string
+	NodeID             string // execution identity (which slot in the run); AgentType stays the agent_definitions template key
 	TicketID           string
 	ProjectID          string
 	WorkflowName       string
@@ -87,16 +88,21 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		return fmt.Errorf("unknown workflow: %s", req.WorkflowName)
 	}
 
-	// Find phase for agent
+	// Find phase by node id (execution identity). AgentType alone cannot
+	// disambiguate multiple nodes sharing the same template.
+	nodeID := req.NodeID
+	if nodeID == "" {
+		nodeID = req.AgentType
+	}
 	var phase *PhaseDef
 	for i := range workflow.Phases {
-		if workflow.Phases[i].Agent == req.AgentType {
+		if workflow.Phases[i].NodeID == nodeID {
 			phase = &workflow.Phases[i]
 			break
 		}
 	}
 	if phase == nil {
-		return fmt.Errorf("agent type '%s' not found in workflow '%s'", req.AgentType, req.WorkflowName)
+		return fmt.Errorf("node '%s' not found in workflow '%s'", nodeID, req.WorkflowName)
 	}
 
 	// Validate workflow is initialized
@@ -114,7 +120,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 
 	// Validate phase order
-	if _, err := s.validateAndAdvancePhase(wi, req.WorkflowName, req.AgentType); err != nil {
+	if _, err := s.validateAndAdvancePhase(wi, req.WorkflowName, nodeID); err != nil {
 		return err
 	}
 
@@ -148,7 +154,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	logger.Info(ctx, "spawning agent", "agent_type", req.AgentType, "target", spawnTarget, "model", modelID, "workflow", req.WorkflowName, "layer", phase.Layer)
 
 	// Spawn agent
-	proc, err := s.spawnSingle(ctx, req, modelID, phase.ID, wi.ID)
+	proc, err := s.spawnSingle(ctx, req, modelID, phase.NodeID, wi.ID)
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
@@ -164,7 +170,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	processes := []*processInfo{proc}
 
 	// Monitor all processes
-	return s.monitorAll(ctx, processes, req, phase.ID)
+	return s.monitorAll(ctx, processes, req, phase.NodeID)
 }
 
 // spawnSingle spawns a single agent: prep -> backend.Start -> register.

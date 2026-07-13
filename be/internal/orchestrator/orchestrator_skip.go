@@ -60,7 +60,7 @@ func (o *Orchestrator) partitionLayerSkips(ctx context.Context, wfiID string, ph
 	for _, phase := range phases {
 		if tag := agentTags[phase.Agent]; tag != "" && skipSet[tag] {
 			skipped = append(skipped, phase)
-			tagOf[phase.Agent] = tag
+			tagOf[phase.NodeID] = tag
 		} else {
 			runnable = append(runnable, phase)
 		}
@@ -87,8 +87,9 @@ func (o *Orchestrator) applyLayerSkips(ctx context.Context, wfiID string, req Ru
 		o.wsHub.Broadcast(ws.NewEvent(ws.EventAgentCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 			"agent_id":   phase.Agent,
 			"agent_type": phase.Agent,
+			"node_id":    phase.NodeID,
 			"result":     "skipped",
-			"skip_tag":   tagOf[phase.Agent],
+			"skip_tag":   tagOf[phase.NodeID],
 		}))
 	}
 
@@ -101,7 +102,7 @@ func (o *Orchestrator) applyLayerSkips(ctx context.Context, wfiID string, req Ru
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventLayerSkipped, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"instance_id": wfiID,
 		"layer":       phases[0].Layer,
-		"skip_tag":    tagOf[skipped[0].Agent],
+		"skip_tag":    tagOf[skipped[0].NodeID],
 		"agents":      skippedNames,
 	}))
 	return nil, true
@@ -119,6 +120,7 @@ func (o *Orchestrator) createSkippedSessions(ctx context.Context, wfiID string, 
 			TicketID:           req.TicketID,
 			WorkflowInstanceID: wfiID,
 			Phase:              phase.Agent,
+			NodeID:             phase.NodeID,
 			AgentType:          phase.Agent,
 			Status:             model.AgentSessionSkipped,
 			Result:             sql.NullString{String: "skipped", Valid: true},

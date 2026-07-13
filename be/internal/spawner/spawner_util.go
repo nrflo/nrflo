@@ -138,7 +138,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	// pid and the final spawn_command are unknown until Start returns and are
 	// recorded by markAgentStarted below.
 	rowCreated := s.createAgentSessionRow(proc.projectID, proc.ticketID, proc.workflowInstanceID,
-		proc.agentType, proc.sessionID, proc.modelID, prep.phase,
+		proc.agentType, proc.nodeID, proc.sessionID, proc.modelID, prep.phase,
 		proc.spawnCommand, proc.prompt, proc.systemPrompt, proc.spawnToken, effectiveMode, 0)
 
 	if err := backend.Start(context.Background(), proc, prep); err != nil {

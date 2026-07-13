@@ -21,9 +21,9 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 		var phases []SpawnerPhaseDef
 		for _, ad := range agentsByWorkflow[wf.ID] {
 			phases = append(phases, SpawnerPhaseDef{
-				ID:    ad.ID,
-				Agent: ad.ID,
-				Layer: ad.Layer,
+				NodeID: ad.ID,
+				Agent:  ad.ID,
+				Layer:  ad.Layer,
 			})
 		}
 		// Sort by layer ASC, id ASC for deterministic ordering
@@ -31,7 +31,7 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 			if phases[i].Layer != phases[j].Layer {
 				return phases[i].Layer < phases[j].Layer
 			}
-			return phases[i].ID < phases[j].ID
+			return phases[i].NodeID < phases[j].NodeID
 		})
 
 		scopeType := wf.ScopeType
@@ -83,9 +83,9 @@ type SpawnerWorkflowDef struct {
 
 // SpawnerPhaseDef mirrors spawner.PhaseDef for shared config building
 type SpawnerPhaseDef struct {
-	ID    string `json:"id"`
-	Agent string `json:"agent"`
-	Layer int    `json:"layer"`
+	NodeID string `json:"id"`
+	Agent  string `json:"agent"`
+	Layer  int    `json:"layer"`
 }
 
 // SpawnerAgentConfig mirrors spawner.AgentConfig for shared config building
@@ -100,9 +100,9 @@ func parseWorkflowDefFromDB(description string, agentDefs []*model.AgentDefiniti
 	var phases []PhaseDef
 	for _, ad := range agentDefs {
 		phases = append(phases, PhaseDef{
-			ID:    ad.ID,
-			Agent: ad.ID,
-			Layer: ad.Layer,
+			NodeID: ad.ID,
+			Agent:  ad.ID,
+			Layer:  ad.Layer,
 		})
 	}
 	// Sort by layer ASC, id ASC for deterministic ordering
@@ -110,7 +110,7 @@ func parseWorkflowDefFromDB(description string, agentDefs []*model.AgentDefiniti
 		if phases[i].Layer != phases[j].Layer {
 			return phases[i].Layer < phases[j].Layer
 		}
-		return phases[i].ID < phases[j].ID
+		return phases[i].NodeID < phases[j].NodeID
 	})
 
 	return &WorkflowDef{

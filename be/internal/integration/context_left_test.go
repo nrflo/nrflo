@@ -12,12 +12,12 @@ func insertSessionWithContextLeft(t *testing.T, env *TestEnv, id, ticketID, wfiI
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := env.Pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			model_id, status, result, result_reason, pid,
 			context_left, ancestor_session_id, spawn_command, prompt,
 			started_at, ended_at, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?)`,
-		id, env.ProjectID, ticketID, wfiID, phase, agentType,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, NULL, NULL, NULL, ?, ?, ?, ?)`,
+		id, env.ProjectID, ticketID, wfiID, phase, phase, agentType,
 		nullStr(modelID),
 		status, nullStr(result),
 		contextLeft,
@@ -54,7 +54,7 @@ func TestActiveAgentsIncludesContextLeft(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["setup-analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -94,7 +94,7 @@ func TestActiveAgentsOmitsContextLeftWhenNull(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["setup-analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -265,7 +265,7 @@ func TestActiveAgentsIncludesStartedAt(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["setup-analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}

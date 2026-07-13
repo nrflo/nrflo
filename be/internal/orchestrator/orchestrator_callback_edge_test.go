@@ -196,7 +196,7 @@ func TestCallbackChainCountsAgainstCap(t *testing.T) {
 	}
 	plan := callbackPlan{steps: make([]callbackPlanStep, 11)}
 	for i := 0; i < 11; i++ {
-		plan.steps[i] = callbackPlanStep{layer: i, wholeLayer: false, agents: []string{groups[i].phases[0].Agent}}
+		plan.steps[i] = callbackPlanStep{layer: i, wholeLayer: false, nodes: []string{groups[i].phases[0].Agent}}
 	}
 	count := cumulativeAgentCount(plan, groups)
 	if count != 11 {

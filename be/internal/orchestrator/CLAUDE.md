@@ -8,6 +8,7 @@ Server-side workflow orchestration. Groups phases by layer and executes layers s
 - All agents within a layer run concurrently (one goroutine per `spawner.Spawn()` call).
 - Layer completes when all agents finish; pass policy evaluated via `denom = passCount + failCount` (skipped excluded).
 - All-skipped (`denom == 0`) → layer passes regardless of policy; entry point: `orchestrator_loop.go` `runLoop()`.
+- Layer execution, callback plans, retry, and skip partitioning key on `node_id`; model/tag/prompt resolution stays on `agent_type` — see [db/CLAUDE.md](../db/CLAUDE.md).
 
 ## Layer Aggregation
 
@@ -40,7 +41,7 @@ Loaded from `cli_models` at workflow start via `loadModelConfigs()`; passed to a
 
 ## Callback Flow
 
-Agents trigger callbacks via `nrflo agent callback` with `--level` (whole-layer), `--agent` (single-agent), or `--chain` (sequential named agents). CLI flag shapes, mutual-exclusion rules, instructions-placement, and the v1 no-further-callbacks restriction are documented in [doc/common-40-workflow.md](../../../doc/common-40-workflow.md#callback-mechanism).
+Agents trigger callbacks via `nrflo agent callback` with `--level` (whole-layer), `--agent` (single-agent), or `--chain` (sequential named agents). Flag shapes and restrictions: [doc/common-40-workflow.md](../../../doc/common-40-workflow.md#callback-mechanism).
 
 All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`):
 
@@ -50,11 +51,11 @@ All callbacks from a settled layer are collected and processed through the plan 
 4. **Execute steps**: `runLoop` drains `plan.steps[callbackPlanIdx]` via `spawnPhases` before forward iteration; each whole-layer step uses the pass policy; non-whole-layer steps (agent/chain) fail the workflow if they return a callback.
 5. **Resume**: when `callbackPlanIdx` reaches `len(plan.steps)`, `layerIdx` advances to `layerIndexOf(plan.resumeLayer)`, `_callback` findings are cleared, and forward iteration resumes.
 
-Cap: `maxCallbacks = 10` cumulative agent spawns across all callback plan steps per workflow run (whole-layer steps count len(phases), per-agent steps count len(agents)). Exceeding the cap fails the workflow. Subset/chain plan steps cannot themselves emit callbacks (v1 restriction).
+Cap: `maxCallbacks = 10` cumulative agent spawns per workflow run (whole-layer steps count len(phases), per-agent steps count len(nodes)). Exceeding the cap fails the workflow. Subset/chain plan steps cannot themselves emit callbacks (v1 restriction).
 
 ## Layer-Skip Logic
 
-Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each layer, `applyLayerSkips()` (`orchestrator_skip.go`) partitions the layer's phases against the instance's `skip_tags` (reloaded from DB each layer, since agents may add tags concurrently via `c.skip(tag)`):
+Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each layer, `applyLayerSkips()` (`orchestrator_skip.go`) partitions the layer's phases against `skip_tags` (reloaded from DB each layer — agents may add tags concurrently via `c.skip(tag)`):
 
 1. Each agent whose `agent_definitions.tag` is in `skip_tags` gets an `agent_sessions` row with `status=skipped`, `result=skipped`, plus a per-agent `EventAgentCompleted` (result=skipped) broadcast.
 2. The remaining (runnable) agents still spawn; the skipped subset is excluded from `results`, so `denom = pass+fail` already excludes them in layer aggregation.
@@ -66,7 +67,7 @@ Skipping is **per-agent**, not all-or-nothing per layer. Before spawning each la
 
 ## Sub-Workflow Runner
 
-`subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (persisted `parent_instance_id`/`subworkflow_depth`; `launch_depth` carries the chain cap), enforcing purge-off/no-pause defs, depth/children caps (`service/subworkflow.go`) and a persisted invocation budget (`subworkflow_starts`, atomic — survives pause/continue/retry). Sub-runs never fire next-on-success. The watcher (`subworkflow_watch.go`) stops children only when the parent is TERMINAL (pause re-arms on the successor runState; retry/continue re-arm via `rearmSubworkflowWatcher`). `GetSubworkflow` returns running/waiting/completed/failed and reads results via `GetSessionFindingByKey`; only the caller matching `parent_instance_id` may read a child. Exposed as `run_subworkflow`/`get_subworkflow` via `Config.Subworkflows`.
+`subworkflow_runner.go`: `StartSubworkflow` starts a `callable_as_subworkflow` def as a detached project-scoped child (persisted `parent_instance_id`/`subworkflow_depth`; `launch_depth` carries the chain cap), enforcing purge-off/no-pause defs, depth/children caps (`service/subworkflow.go`) and a persisted invocation budget (`subworkflow_starts`, atomic across pause/continue/retry). Sub-runs never fire next-on-success. The watcher (`subworkflow_watch.go`) stops children only when the parent is TERMINAL (pause re-arms on the successor runState; retry/continue re-arm via `rearmSubworkflowWatcher`). `GetSubworkflow` returns running/waiting/completed/failed via `GetSessionFindingByKey`; only the matching `parent_instance_id` caller may read a child. Exposed as `run_subworkflow`/`get_subworkflow` via `Config.Subworkflows`.
 
 ## Automatic Merge Conflict Resolution
 

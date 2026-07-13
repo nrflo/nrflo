@@ -45,7 +45,7 @@ func TestAgentConfigPrecedence_AgentDefWinsOverConfigAgents(t *testing.T) {
 		APIMode:  true, // allow api-mode to reach the API key check
 		Workflows: map[string]WorkflowDef{
 			"feature": {
-				Phases: []PhaseDef{{ID: "implementor", Agent: "implementor", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "implementor", Agent: "implementor", Layer: 0}},
 			},
 		},
 		Agents: map[string]AgentConfig{
@@ -109,7 +109,7 @@ func TestAgentConfigPrecedence_FallsBackToConfigWhenNoAgentDef(t *testing.T) {
 		APIMode:  true, // allow api-mode to reach the API key check
 		Workflows: map[string]WorkflowDef{
 			"_test_wf": {
-				Phases: []PhaseDef{{ID: "my-agent", Agent: "my-agent", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "my-agent", Agent: "my-agent", Layer: 0}},
 			},
 		},
 		Agents: map[string]AgentConfig{

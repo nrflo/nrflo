@@ -283,7 +283,7 @@ func TestActiveAgentsIncludesRestartThreshold(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["setup-analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -333,7 +333,7 @@ func TestActiveAgentsOmitsRestartThresholdWhenNull(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["setup-analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -369,7 +369,7 @@ func TestActiveAgentsRestartThresholdWithoutAgentDef(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["some-agent:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}

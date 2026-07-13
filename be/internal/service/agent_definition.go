@@ -32,52 +32,6 @@ func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIM
 	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, apiModelSvc: apiModelSvc, pythonScriptRepo: pythonScriptRepo}
 }
 
-// validateScriptMode enforces coupling rules for execution_mode="script":
-// PythonScriptID required, Prompt/Tools/APIMaxIterations/APIMaxTokens must be
-// empty/nil, script must belong to the given project.
-func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScriptID *string, prompt, tools string, apiMaxIterations, apiMaxTokens *int) error {
-	if pythonScriptID == nil {
-		return fmt.Errorf("python_script_id_required")
-	}
-	if prompt != "" {
-		return fmt.Errorf("script_mode_no_prompt")
-	}
-	if tools != "" {
-		return fmt.Errorf("script_mode_no_tools")
-	}
-	if apiMaxIterations != nil {
-		return fmt.Errorf("script_mode_no_api_max_iterations")
-	}
-	if apiMaxTokens != nil {
-		return fmt.Errorf("script_mode_no_api_max_tokens")
-	}
-	if s.pythonScriptRepo != nil {
-		script, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID)
-		if err != nil {
-			return fmt.Errorf("python_script_not_found: %s", *pythonScriptID)
-		}
-		if script.Kind == "tool" {
-			return fmt.Errorf("python_script_kind_mismatch")
-		}
-	}
-	return nil
-}
-
-func validateValidationCommands(cmds []string) error {
-	if len(cmds) > 20 {
-		return fmt.Errorf("validation_commands: too many entries (max 20)")
-	}
-	for _, cmd := range cmds {
-		if strings.TrimSpace(cmd) == "" {
-			return fmt.Errorf("validation_commands: empty or whitespace-only entry")
-		}
-		if len(cmd) > 1024 {
-			return fmt.Errorf("validation_commands: entry exceeds 1024 bytes")
-		}
-	}
-	return nil
-}
-
 // CreateAgentDef creates a new agent definition
 func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, req *types.AgentDefCreateRequest) (*model.AgentDefinition, error) {
 	if req.ID == "" {
@@ -102,6 +56,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 
 	if req.Consultant && executionMode != "api" {
 		return nil, fmt.Errorf("consultant agent requires execution_mode=api")
+	}
+
+	nodeRole, err0 := validateNodeRole(req.NodeRole, req.Consultant)
+	if err0 != nil {
+		return nil, err0
 	}
 
 	if executionMode != "script" && req.Prompt == "" {
@@ -213,9 +172,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -246,6 +205,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		PythonScriptID:         req.PythonScriptID,
 		ValidationCommands:     validationCommandsJSON,
 		Consultant:             req.Consultant,
+		NodeRole:               nodeRole,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
@@ -259,7 +219,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 	var pythonScriptID sql.NullString
 
 	err := s.pool.QueryRow(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)`,
 		projectID, workflowID, id).Scan(
@@ -268,7 +228,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 		&def.LowConsumptionModel, &def.Layer,
 		&def.ExecutionMode, &def.Tools, &apiMaxIter, &apiMaxTokens, &pythonScriptID,
-		&def.ValidationCommands, &def.Consultant,
+		&def.ValidationCommands, &def.Consultant, &def.NodeRole,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -314,7 +274,7 @@ func (s *AgentDefinitionService) GetAgentDef(projectID, workflowID, id string) (
 // ListAgentDefs retrieves all agent definitions for a workflow
 func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]*model.AgentDefinition, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, created_at, updated_at
+		SELECT id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, created_at, updated_at
 		FROM agent_definitions
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
 		ORDER BY layer ASC, id ASC`, projectID, workflowID)
@@ -336,7 +296,7 @@ func (s *AgentDefinitionService) ListAgentDefs(projectID, workflowID string) ([]
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout, &def.Tag,
 			&def.LowConsumptionModel, &def.Layer,
 			&def.ExecutionMode, &def.Tools, &apiMaxIter, &apiMaxTokens, &pythonScriptID,
-			&def.ValidationCommands, &def.Consultant,
+			&def.ValidationCommands, &def.Consultant, &def.NodeRole,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -441,7 +401,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			s.pool.QueryRow(
 				`SELECT COUNT(*) FROM agent_definitions
 				 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-				   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0`,
+				   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0 AND node_role = 'static'`,
 				projectID, workflowID, oldLayer, id).Scan(&remaining)
 			if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, oldLayer, remaining); err != nil {
 				return err
@@ -594,16 +554,18 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "validation_commands = ?")
 		args = append(args, string(b))
 	}
-	// Re-validate the consultant invariant whenever consultant or execution_mode
-	// changes. Resolve effective values against the current row so that flipping
-	// execution_mode away from "api" on an existing consultant is also rejected,
-	// even when the request does not touch the consultant field.
-	if req.Consultant != nil || req.ExecutionMode != nil {
+	// Re-validate the consultant+node_role invariant whenever consultant,
+	// execution_mode, or node_role changes. Resolve effective values against the
+	// current row so that flipping execution_mode away from "api" on an existing
+	// consultant is also rejected, even when the request does not touch that field —
+	// this is also what makes the UI's explicit-payload PATCH (which won't send
+	// node_role) safe.
+	if req.Consultant != nil || req.ExecutionMode != nil || req.NodeRole != nil {
 		var currentConsultant bool
-		var currentMode string
+		var currentMode, currentNodeRole string
 		if queryErr := s.pool.QueryRow(
-			"SELECT consultant, execution_mode FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-			projectID, workflowID, id).Scan(&currentConsultant, &currentMode); queryErr != nil {
+			"SELECT consultant, execution_mode, node_role FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+			projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole); queryErr != nil {
 			return fmt.Errorf("failed to load agent definition: %w", queryErr)
 		}
 		effectiveConsultant := currentConsultant
@@ -614,13 +576,21 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if req.ExecutionMode != nil {
 			effectiveMode = *req.ExecutionMode
 		}
-		if effectiveConsultant && effectiveMode != "api" {
-			return fmt.Errorf("consultant agent requires execution_mode=api")
+		effectiveNodeRole := currentNodeRole
+		if req.NodeRole != nil {
+			effectiveNodeRole = *req.NodeRole
+		}
+		if err := validateConsultantAndNodeRole(effectiveConsultant, effectiveMode, effectiveNodeRole); err != nil {
+			return err
 		}
 	}
 	if req.Consultant != nil {
 		updates = append(updates, "consultant = ?")
 		args = append(args, *req.Consultant)
+	}
+	if req.NodeRole != nil {
+		updates = append(updates, "node_role = ?")
+		args = append(args, *req.NodeRole)
 	}
 
 	if len(updates) == 0 {

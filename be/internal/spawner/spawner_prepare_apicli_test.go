@@ -72,7 +72,7 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -199,7 +199,7 @@ func TestPrepareSpawn_APIViaCLI_OpenAIFallsThrough(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 
@@ -249,7 +249,7 @@ func TestPrepareSpawn_APIViaCLI_Disabled_UsesInProcess(t *testing.T) {
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
-			"feature": {Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}}},
+			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
 	})
 

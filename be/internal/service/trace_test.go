@@ -56,10 +56,10 @@ func insertTraceSession(t *testing.T, pool *db.Pool, s traceSession) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	mustExec(t, pool, `
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			status, result, result_reason, ancestor_session_id, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES (?, 'test-proj', '', ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), 0, NULLIF(?, ''), NULLIF(?, ''), ?, ?)`,
-		s.id, s.wfiID, s.agentType, s.agentType, s.status, s.result, s.resultReason,
+		VALUES (?, 'test-proj', '', ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), 0, NULLIF(?, ''), NULLIF(?, ''), ?, ?)`,
+		s.id, s.wfiID, s.agentType, s.agentType, s.agentType, s.status, s.result, s.resultReason,
 		s.ancestor, s.startedAt, s.endedAt, now, now)
 }
 

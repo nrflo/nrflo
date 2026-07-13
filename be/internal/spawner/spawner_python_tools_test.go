@@ -157,7 +157,7 @@ func TestPrepareSpawn_PythonBuiltinCollision_ReturnsError(t *testing.T) {
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {
-				Phases: []PhaseDef{{ID: "impl", Agent: "impl", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}},
 			},
 		},
 	})

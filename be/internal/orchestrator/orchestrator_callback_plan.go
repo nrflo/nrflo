@@ -21,11 +21,11 @@ func resetCallbackSessions(ctx context.Context, asRepo *repo.AgentSessionRepo, w
 
 // callbackPlanStep is one unit of re-execution within a callback plan.
 type callbackPlanStep struct {
-	layer         int
-	wholeLayer    bool
-	agents        []string          // used when !wholeLayer
-	layerInstr    string            // instruction for whole-layer steps
-	perAgentInstr map[string]string // agent→instruction for !wholeLayer steps
+	layer        int
+	wholeLayer   bool
+	nodes        []string          // node ids, used when !wholeLayer
+	layerInstr   string            // instruction for whole-layer steps
+	perNodeInstr map[string]string // node id→instruction for !wholeLayer steps
 }
 
 // callbackPlan is the pre-computed execution plan for a batch of callback requests.
@@ -53,23 +53,11 @@ func layerIndexOf(layer int, groups []layerGroup) int {
 	return -1
 }
 
-// agentLayerOf returns the layer number for agentID and true, or 0+false if not found.
-func agentLayerOf(agentID string, groups []layerGroup) (int, bool) {
-	for _, g := range groups {
-		for _, p := range g.phases {
-			if p.Agent == agentID {
-				return g.layer, true
-			}
-		}
-	}
-	return 0, false
-}
-
 // validateCallbackRequest returns an error if the callback request is invalid.
 func validateCallbackRequest(req *spawner.CallbackError, originatorLayer int, groups []layerGroup) error {
 	switch req.Mode {
 	case "agent":
-		tl, ok := agentLayerOf(req.TargetAgent, groups)
+		tl, _, ok := agentLayerOf(req.TargetAgent, groups)
 		if !ok {
 			return fmt.Errorf("agent %q not found in workflow", req.TargetAgent)
 		}
@@ -82,7 +70,7 @@ func validateCallbackRequest(req *spawner.CallbackError, originatorLayer int, gr
 		}
 		prev := -1
 		for _, id := range req.Chain {
-			l, ok := agentLayerOf(id, groups)
+			l, _, ok := agentLayerOf(id, groups)
 			if !ok {
 				return fmt.Errorf("chain agent %q not found in workflow", id)
 			}
@@ -117,88 +105,6 @@ func decomposeCallback(req *spawner.CallbackError, originatorLayer int, groups [
 	}
 }
 
-func decomposeLevelCallback(req *spawner.CallbackError, originatorLayer int, groups []layerGroup) decomposedRequest {
-	var steps []callbackPlanStep
-	var reset []string
-	for _, g := range groups {
-		if g.layer < req.Level || g.layer > originatorLayer {
-			continue
-		}
-		steps = append(steps, callbackPlanStep{
-			layer:      g.layer,
-			wholeLayer: true,
-			layerInstr: req.Instructions,
-		})
-		for _, p := range g.phases {
-			reset = append(reset, p.Agent)
-		}
-	}
-	sort.Slice(steps, func(i, j int) bool { return steps[i].layer < steps[j].layer })
-	return decomposedRequest{
-		steps:       steps,
-		resetScope:  reset,
-		resumeLayer: originatorLayer + 1,
-		agentID:     req.AgentType,
-	}
-}
-
-func decomposeAgentCallback(req *spawner.CallbackError, originatorLayer int, groups []layerGroup) decomposedRequest {
-	targetLayer, _ := agentLayerOf(req.TargetAgent, groups)
-	steps := []callbackPlanStep{{
-		layer:         targetLayer,
-		wholeLayer:    false,
-		agents:        []string{req.TargetAgent},
-		perAgentInstr: map[string]string{req.TargetAgent: req.Instructions},
-	}}
-	reset := []string{req.TargetAgent}
-	for _, g := range groups {
-		if g.layer <= targetLayer || g.layer > originatorLayer {
-			continue
-		}
-		steps = append(steps, callbackPlanStep{layer: g.layer, wholeLayer: true})
-		for _, p := range g.phases {
-			reset = append(reset, p.Agent)
-		}
-	}
-	sort.Slice(steps, func(i, j int) bool { return steps[i].layer < steps[j].layer })
-	return decomposedRequest{
-		steps:       steps,
-		resetScope:  reset,
-		resumeLayer: originatorLayer + 1,
-		agentID:     req.AgentType,
-	}
-}
-
-func decomposeChainCallback(req *spawner.CallbackError, groups []layerGroup) decomposedRequest {
-	var steps []callbackPlanStep
-	for i, id := range req.Chain {
-		l, _ := agentLayerOf(id, groups)
-		instr := ""
-		if i == 0 {
-			instr = req.Instructions // instructions only on first chain entry
-		}
-		steps = append(steps, callbackPlanStep{
-			layer:         l,
-			wholeLayer:    false,
-			agents:        []string{id},
-			perAgentInstr: map[string]string{id: instr},
-		})
-	}
-	sort.Slice(steps, func(i, j int) bool { return steps[i].layer < steps[j].layer })
-	lastLayer := 0
-	if len(steps) > 0 {
-		lastLayer = steps[len(steps)-1].layer
-	}
-	reset := make([]string, len(req.Chain))
-	copy(reset, req.Chain)
-	return decomposedRequest{
-		steps:       steps,
-		resetScope:  reset,
-		resumeLayer: lastLayer + 1,
-		agentID:     req.AgentType,
-	}
-}
-
 // mergeCallbackPlans merges multiple decomposedRequests into one callbackPlan.
 // Whole-layer wins over per-agent for same layer; instructions joined sorted by contributor;
 // per-agent first-non-empty sorted by contributor agent ID; resetScope = deduped union;
@@ -210,8 +116,8 @@ func mergeCallbackPlans(parts []decomposedRequest) callbackPlan {
 	type layerMerge struct {
 		wholeLayer bool
 		instrParts []string          // whole-layer instruction fragments (sorted by agentID)
-		agentSet   map[string]bool   // union of agents for !wholeLayer
-		agentInstr map[string]string // first non-empty per-agent instruction
+		nodeSet    map[string]bool   // union of nodes for !wholeLayer
+		nodeInstr  map[string]string // first non-empty per-node instruction
 	}
 	byLayer := make(map[int]*layerMerge)
 	resetSet := make(map[string]bool)
@@ -221,7 +127,7 @@ func mergeCallbackPlans(parts []decomposedRequest) callbackPlan {
 		for _, s := range part.steps {
 			m := byLayer[s.layer]
 			if m == nil {
-				m = &layerMerge{agentSet: make(map[string]bool), agentInstr: make(map[string]string)}
+				m = &layerMerge{nodeSet: make(map[string]bool), nodeInstr: make(map[string]string)}
 				byLayer[s.layer] = m
 			}
 			if s.wholeLayer {
@@ -230,10 +136,10 @@ func mergeCallbackPlans(parts []decomposedRequest) callbackPlan {
 					m.instrParts = append(m.instrParts, s.layerInstr)
 				}
 			} else if !m.wholeLayer {
-				for _, a := range s.agents {
-					m.agentSet[a] = true
-					if _, exists := m.agentInstr[a]; !exists && s.perAgentInstr[a] != "" {
-						m.agentInstr[a] = s.perAgentInstr[a]
+				for _, n := range s.nodes {
+					m.nodeSet[n] = true
+					if _, exists := m.nodeInstr[n]; !exists && s.perNodeInstr[n] != "" {
+						m.nodeInstr[n] = s.perNodeInstr[n]
 					}
 				}
 			}
@@ -259,15 +165,15 @@ func mergeCallbackPlans(parts []decomposedRequest) callbackPlan {
 		if m.wholeLayer {
 			s.layerInstr = strings.Join(m.instrParts, "\n---\n")
 		} else {
-			agents := make([]string, 0, len(m.agentSet))
-			for a := range m.agentSet {
-				agents = append(agents, a)
+			nodes := make([]string, 0, len(m.nodeSet))
+			for n := range m.nodeSet {
+				nodes = append(nodes, n)
 			}
-			sort.Strings(agents)
-			s.agents = agents
-			s.perAgentInstr = make(map[string]string)
-			for _, a := range agents {
-				s.perAgentInstr[a] = m.agentInstr[a]
+			sort.Strings(nodes)
+			s.nodes = nodes
+			s.perNodeInstr = make(map[string]string)
+			for _, n := range nodes {
+				s.perNodeInstr[n] = m.nodeInstr[n]
 			}
 		}
 		steps = append(steps, s)
@@ -283,7 +189,7 @@ func mergeCallbackPlans(parts []decomposedRequest) callbackPlan {
 }
 
 // cumulativeAgentCount counts total agent spawns the plan would perform.
-// Whole-layer steps contribute len(phases) from layerGroups; per-agent steps contribute len(step.agents).
+// Whole-layer steps contribute len(phases) from layerGroups; per-node steps contribute len(step.nodes).
 func cumulativeAgentCount(plan callbackPlan, groups []layerGroup) int {
 	total := 0
 	for _, s := range plan.steps {
@@ -292,7 +198,7 @@ func cumulativeAgentCount(plan callbackPlan, groups []layerGroup) int {
 				total += len(groups[idx].phases)
 			}
 		} else {
-			total += len(s.agents)
+			total += len(s.nodes)
 		}
 	}
 	return total

@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -73,50 +72,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	// Load agent definition to get per-agent restart threshold and fail restart limit
-	effectiveThreshold := defaultContextThreshold
-	maxFailRestarts := 0
-	if agentDef != nil && agentDef.RestartThreshold != nil {
-		effectiveThreshold = *agentDef.RestartThreshold
-	}
-	if agentDef != nil && agentDef.MaxFailRestarts != nil {
-		maxFailRestarts = *agentDef.MaxFailRestarts
-	}
-	stallStartTimeout := defaultStallStartTimeout
-	stallRunningTimeout := defaultStallRunningTimeout
-	if agentDef != nil && agentDef.StallStartTimeoutSec != nil {
-		if *agentDef.StallStartTimeoutSec == 0 {
-			stallStartTimeout = 0
-		} else {
-			stallStartTimeout = time.Duration(*agentDef.StallStartTimeoutSec) * time.Second
-		}
-	} else if s.config.GlobalStallStartTimeout != nil {
-		if *s.config.GlobalStallStartTimeout == 0 {
-			stallStartTimeout = 0
-		} else {
-			stallStartTimeout = time.Duration(*s.config.GlobalStallStartTimeout) * time.Second
-		}
-	}
-	if agentDef != nil && agentDef.StallRunningTimeoutSec != nil {
-		if *agentDef.StallRunningTimeoutSec == 0 {
-			stallRunningTimeout = 0
-		} else {
-			stallRunningTimeout = time.Duration(*agentDef.StallRunningTimeoutSec) * time.Second
-		}
-	} else if s.config.GlobalStallRunningTimeout != nil {
-		if *s.config.GlobalStallRunningTimeout == 0 {
-			stallRunningTimeout = 0
-		} else {
-			stallRunningTimeout = time.Duration(*s.config.GlobalStallRunningTimeout) * time.Second
-		}
-	}
-
-	var validationCommands []string
-	if agentDef != nil && agentDef.ValidationCommands != "" {
-		if jsonErr := json.Unmarshal([]byte(agentDef.ValidationCommands), &validationCommands); jsonErr != nil {
-			logger.Warn(ctx, "failed to parse validation_commands", "agent", req.AgentType, "error", jsonErr)
-			validationCommands = nil
-		}
-	}
+	effectiveThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, validationCommands :=
+		s.resolveSpawnLimits(ctx, agentDef, req.AgentType)
 
 	extID, extCtx, _ := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
 	tmplVars := mergeExtraVars(req.ExtraVars, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
@@ -140,6 +97,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	proc := &processInfo{
 		agentID:             agentID,
 		agentType:           req.AgentType,
+		nodeID:              phase,
 		modelID:             modelID,
 		sessionID:           sessionID,
 		spawnToken:          spawnToken,
@@ -202,6 +160,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		cliName:       cliName,
 		prompt:        prompt,
 		phase:         phase,
+		nodeID:        phase,
 		executionMode: executionMode,
 	}
 

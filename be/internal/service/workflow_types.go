@@ -178,10 +178,12 @@ type RestartDetail struct {
 	MessageCount int     `json:"message_count"`
 }
 
-// PhaseDef represents a phase definition
+// PhaseDef represents a phase definition. NodeID is the execution identity
+// (which slot in the run); Agent is the agent_definitions template key. The
+// json tag stays "id" so the workflow-def API payload is unchanged.
 type PhaseDef struct {
-	ID    string `json:"id"`
-	Agent string `json:"agent"`
-	Layer int    `json:"layer"`
-	Order int    `json:"order,omitempty"`
+	NodeID string `json:"id"`
+	Agent  string `json:"agent"`
+	Layer  int    `json:"layer"`
+	Order  int    `json:"order,omitempty"`
 }

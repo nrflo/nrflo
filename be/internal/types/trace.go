@@ -31,7 +31,8 @@ type TraceLayer struct {
 type TraceLane struct {
 	LaneID    string         `json:"lane_id"`
 	Phase     string         `json:"phase"`
-	Layer     int            `json:"layer"` // -1 when the phase is absent from the current workflow def
+	NodeID    string         `json:"node_id"`
+	Layer     int            `json:"layer"` // -1 when the node is absent from the current workflow def
 	AgentType string         `json:"agent_type"`
 	ModelID   string         `json:"model_id,omitempty"`
 	Status    string         `json:"status"`

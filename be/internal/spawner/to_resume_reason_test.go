@@ -105,6 +105,7 @@ func createContinuedSessionWithReason(t *testing.T, env *toResumeTestEnv, sessio
 		TicketID:           env.ticketID,
 		WorkflowInstanceID: env.wfiID,
 		Phase:              "test-phase",
+		NodeID:             "test-phase",
 		AgentType:          "test-agent",
 		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
 		Status:             model.AgentSessionContinued,

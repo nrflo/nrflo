@@ -62,11 +62,11 @@ func insertSessionRateLimit(t *testing.T, pool *db.Pool, id, wfiID, agentType, r
 		rlTs = rateLimitUntilTs
 	}
 	_, err := pool.Exec(`
-		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 			status, restart_count, started_at, created_at, updated_at,
 			rate_limit_until_ts, rate_limit_retry_count)
-		VALUES (?, 'test-proj', '', ?, ?, ?, 'continued', 0, ?, ?, ?, ?, ?)`,
-		id, wfiID, agentType, agentType, createdAt, createdAt, now, rlTs, retryCount)
+		VALUES (?, 'test-proj', '', ?, ?, ?, ?, 'continued', 0, ?, ?, ?, ?, ?)`,
+		id, wfiID, agentType, agentType, agentType, createdAt, createdAt, now, rlTs, retryCount)
 	if err != nil {
 		t.Fatalf("insertSessionRateLimit(%s): %v", id, err)
 	}

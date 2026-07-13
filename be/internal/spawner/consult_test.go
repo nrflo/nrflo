@@ -273,7 +273,7 @@ func TestConsultRecursionGuard_ConsultExcludedForConsultantAgent(t *testing.T) {
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
 			"feature": {
-				Phases: []PhaseDef{{ID: "_consult", Agent: "consultant", Layer: 0}},
+				Phases: []PhaseDef{{NodeID: "_consult", Agent: "consultant", Layer: 0}},
 			},
 		},
 	})

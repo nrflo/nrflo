@@ -236,7 +236,7 @@ func TestLikeEscapeDoesNotExcludeLegitAgents(t *testing.T) {
 	insertSession(t, pool, "s-qa", wfiID, "qa_verifier", "running", "", "")
 	insertSession(t, pool, "s-finalize", wfiID, "_finalize", "running", "", "")
 
-	threePhases := append(twoPhases, PhaseDef{ID: "qa_verifier", Agent: "qa_verifier", Layer: 2})
+	threePhases := append(twoPhases, PhaseDef{NodeID: "qa_verifier", Agent: "qa_verifier", Layer: 2})
 
 	got := svc.derivePhaseStatuses(wfiID, threePhases)
 

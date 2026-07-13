@@ -35,8 +35,8 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 		{"setup", 0}, {"builder", 1}, {"verifier", 2},
 	}
 	for i, w := range want {
-		if wf.Phases[i].ID != w.id || wf.Phases[i].Layer != w.layer {
-			t.Errorf("phases[%d] = {%s, L%d}, want {%s, L%d}", i, wf.Phases[i].ID, wf.Phases[i].Layer, w.id, w.layer)
+		if wf.Phases[i].NodeID != w.id || wf.Phases[i].Layer != w.layer {
+			t.Errorf("phases[%d] = {%s, L%d}, want {%s, L%d}", i, wf.Phases[i].NodeID, wf.Phases[i].Layer, w.id, w.layer)
 		}
 		if wf.Phases[i].Agent != w.id {
 			t.Errorf("phases[%d].Agent = %s, want %s", i, wf.Phases[i].Agent, w.id)
@@ -81,8 +81,8 @@ func TestBuildSpawnerConfig_ParallelAgentsSameLayer(t *testing.T) {
 		{"setup", 0}, {"test-be", 1}, {"test-fe", 1}, {"merge", 2},
 	}
 	for i, w := range want {
-		if wf.Phases[i].ID != w.id || wf.Phases[i].Layer != w.layer {
-			t.Errorf("phases[%d] = {%s, L%d}, want {%s, L%d}", i, wf.Phases[i].ID, wf.Phases[i].Layer, w.id, w.layer)
+		if wf.Phases[i].NodeID != w.id || wf.Phases[i].Layer != w.layer {
+			t.Errorf("phases[%d] = {%s, L%d}, want {%s, L%d}", i, wf.Phases[i].NodeID, wf.Phases[i].Layer, w.id, w.layer)
 		}
 	}
 }
@@ -133,10 +133,10 @@ func TestBuildSpawnerConfig_MultipleWorkflows(t *testing.T) {
 	if len(workflows) != 2 {
 		t.Fatalf("workflows count = %d, want 2", len(workflows))
 	}
-	if len(workflows["wf-a"].Phases) != 1 || workflows["wf-a"].Phases[0].ID != "agent-a" {
+	if len(workflows["wf-a"].Phases) != 1 || workflows["wf-a"].Phases[0].NodeID != "agent-a" {
 		t.Errorf("wf-a phases unexpected: %+v", workflows["wf-a"].Phases)
 	}
-	if len(workflows["wf-b"].Phases) != 1 || workflows["wf-b"].Phases[0].ID != "agent-b" {
+	if len(workflows["wf-b"].Phases) != 1 || workflows["wf-b"].Phases[0].NodeID != "agent-b" {
 		t.Errorf("wf-b phases unexpected: %+v", workflows["wf-b"].Phases)
 	}
 }

@@ -169,6 +169,7 @@ func createContinuedSessionInEnv(t *testing.T, env *spawnerTestEnv, ticketID, wf
 		TicketID:           ticketID,
 		WorkflowInstanceID: wfiID,
 		Phase:              phase,
+		NodeID:             phase,
 		AgentType:          agentType,
 		ModelID:            sql.NullString{String: modelID, Valid: true},
 		Status:             model.AgentSessionContinued,

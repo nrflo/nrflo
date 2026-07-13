@@ -14,7 +14,7 @@ func (s *AgentDefinitionService) validateLayerConfigForWorkflow(projectID, workf
 	// Load all existing agent definitions for this workflow
 	rows, err := s.pool.Query(`
 		SELECT id, layer FROM agent_definitions
-		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0`,
+		WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND consultant = 0 AND node_role = 'static'`,
 		projectID, workflowID)
 	if err != nil {
 		return fmt.Errorf("failed to load agent definitions: %w", err)
@@ -31,15 +31,15 @@ func (s *AgentDefinitionService) validateLayerConfigForWorkflow(projectID, workf
 		}
 		if strings.EqualFold(id, agentID) {
 			// Replace with the new layer value
-			phases = append(phases, PhaseDef{ID: id, Agent: id, Layer: newLayer})
+			phases = append(phases, PhaseDef{NodeID: id, Agent: id, Layer: newLayer})
 			found = true
 		} else {
-			phases = append(phases, PhaseDef{ID: id, Agent: id, Layer: layer})
+			phases = append(phases, PhaseDef{NodeID: id, Agent: id, Layer: layer})
 		}
 	}
 	// If not found, this is a new agent being created
 	if !found {
-		phases = append(phases, PhaseDef{ID: agentID, Agent: agentID, Layer: newLayer})
+		phases = append(phases, PhaseDef{NodeID: agentID, Agent: agentID, Layer: newLayer})
 	}
 
 	return validateLayerConfig(phases)
@@ -94,7 +94,7 @@ func (s *AgentDefinitionService) DeleteAgentDef(projectID, workflowID, id string
 	s.pool.QueryRow(
 		`SELECT COUNT(*) FROM agent_definitions
 		 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-		   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0`,
+		   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0 AND node_role = 'static'`,
 		projectID, workflowID, currentLayer, id).Scan(&remaining)
 
 	if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, currentLayer, remaining); err != nil {

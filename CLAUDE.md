@@ -24,22 +24,7 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 **Populating (one pass, no thrash).** (1) Pick ONE owning package CLAUDE.md per changed area — deepest wins; no behavior change → no doc edit. (2) Add/update ≤3 sentences in the relevant section; anything longer is REFERENCE.md material. (3) Never reword existing unrelated content to free space. (4) Measure `wc -c` once at the END; if over cap, move the largest mechanics paragraph to REFERENCE.md — do not compress wording.
 
-**Hard caps (bytes; enforced by reviewer):**
-
-| File | Cap |
-|------|-----|
-| Root CLAUDE.md | 10 KB |
-| be/CLAUDE.md, ui/CLAUDE.md | 12 KB |
-| Package CLAUDE.md (spawner, db, api, orchestrator, …) | 12 KB (spawner exception: 15 KB) |
-| Sub-package / leaf CLAUDE.md | 6 KB |
-
-**Banned content:**
-- ASCII-art box diagrams (┌─┐, ├──, pipes-and-dashes). Bullet lists or short tables instead.
-- Copied Go interface or struct signatures — point to the .go file with `path:line` instead.
-- Verbatim JSON/TOML/protocol payload samples longer than 10 lines — link to a test fixture or source.
-- Per-test inventories (## Testing sections listing every test file with a description). Use `make test-pkg PKG=<name>` as the universal pointer.
-- Per-handler / per-endpoint / per-component enumerations that already exist in the file tree. List directory + grep hint.
-- Status matrices duplicated across files (Backend Capability Matrix, etc.) — keep one copy, link from others.
+**Hard caps** (bytes, enforced by reviewer + `check_caps.sh`): root 10240; be/, ui/, package 12288 (spawner 15360); leaf 6144. Banned content (box diagrams, copied signatures, long payload samples, per-test/per-endpoint inventories, duplicated matrices) and the **one-pass populate procedure**: [REFERENCE.md](REFERENCE.md#doc-authoring-full-rule-1) — read it before editing any CLAUDE.md.
 
 ### 2. Layer-Based Phase Execution
 
@@ -87,48 +72,7 @@ Rules every change must respect.
 
 ## Feature Index
 
-### Workflow execution
-- **Layer execution, aggregation, callbacks** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
-- **Manual restart, retry-failed, orchestration entry points** → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **Low-context relaunch** → [spawner](be/internal/spawner/CLAUDE.md)
-- **Stall detection / stall timeouts / restart cap** → [spawner](be/internal/spawner/CLAUDE.md)
-- **Take-control / resume-session / exit-interactive / PTY relay** → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **Interactive start & plan mode** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
-- **Endless loop mode** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
-- **Merge conflict auto-resolution / push-after-merge** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
-- **Plan lifecycle & sub/dynamic workflows** (planner, revise/approve, self-drafting boundary, `run_subworkflow`/`dynamic_workflow`) → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [service](be/internal/service/CLAUDE.md)
-
-### Agents, templates, and configuration
-- **Workflow / agent / system-agent definitions** → [spawner](be/internal/spawner/CLAUDE.md) + [service](be/internal/service/CLAUDE.md) + [doc/](doc/)
-- **Default templates** → [service](be/internal/service/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **CLI models registry / supported models** → [spawner](be/internal/spawner/CLAUDE.md)
-
-### Execution backends (`execution_mode`)
-- **`api` — in-process Anthropic runner** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
-- **`cli_interactive` backend** → [spawner](be/internal/spawner/CLAUDE.md)
-- **`script` — Python scriptBackend** → [spawner](be/internal/spawner/CLAUDE.md)
-- **Per-project venv** → [venv/](be/internal/venv/)
-- **Python tools (api-mode only)** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
-- **Python SDK + `script.context` socket method** → [sdk/python](be/internal/sdk/python/CLAUDE.md) + [socket](be/internal/socket/CLAUDE.md)
-- **Provider capability matrix** → [capabilities.md](capabilities.md)
-
-### Project-scoped & scheduled work
-- **Project-scoped workflows** → [service](be/internal/service/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **Scheduled tasks** → [scheduler](be/internal/scheduler/CLAUDE.md)
-- **Workflow chains and chain runs** → [be](be/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **Run trace timeline** (`GET /workflow-instances/{iid}/trace` + Trace UI tab) → [service](be/internal/service/CLAUDE.md)
-
-### Auth & administration
-- **Auth + sessions + login rate limit** → [auth](be/internal/auth/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **Route list, audit-log + user CRUD** → [api](be/internal/api/CLAUDE.md)
-- **Service tokens** (long-lived project or global bearer tokens) → [api](be/internal/api/CLAUDE.md)
-
-### Storage & operations
-- **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
-- **Agent session logs + live sessions** → [api](be/internal/api/CLAUDE.md)
-- **Per-project env vars** → [service](be/internal/service/CLAUDE.md)
-- **DB schema, migrations, connection pool** → [db](be/internal/db/CLAUDE.md)
-- **Observer agents (experimental)** → [spawner](be/internal/spawner/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+Feature → owning-doc routing table: [REFERENCE.md](REFERENCE.md#feature-index). Per-package doc table: [be/CLAUDE.md](be/CLAUDE.md).
 
 ## Workflows
 
@@ -148,4 +92,4 @@ Rules every change must respect.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction). Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` — build/runtime details: [REFERENCE.md](REFERENCE.md#docker-image).

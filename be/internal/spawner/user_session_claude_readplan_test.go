@@ -1,4 +1,4 @@
-package orchestrator
+package spawner
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 )
+
+// ── readPlanFile (migrated from orchestrator/plan_reader_test.go) ──────────
 
 // planReaderTestEnv sets up a fake HOME directory for plan reader tests.
 // It returns the plans dir path and a helper to write session JSONL logs.
@@ -36,7 +38,6 @@ func planReaderTestEnv(t *testing.T) (plansDir string, writeLog func(sessionID, 
 	return plansDir, writeLog
 }
 
-// TestReadPlanFile_NoPlansDirReturnsEmpty verifies empty string when ~/.claude/plans/ is missing.
 func TestReadPlanFile_NoPlansDirReturnsEmpty(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
@@ -48,10 +49,8 @@ func TestReadPlanFile_NoPlansDirReturnsEmpty(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_EmptyPlansDirReturnsEmpty verifies empty string when plans dir exists but has no .md files.
 func TestReadPlanFile_EmptyPlansDirReturnsEmpty(t *testing.T) {
 	plansDir, _ := planReaderTestEnv(t)
-	// Create a non-.md file
 	os.WriteFile(filepath.Join(plansDir, "notes.txt"), []byte("not a plan"), 0644)
 
 	result := readPlanFile("any-session", "/some/project")
@@ -60,13 +59,11 @@ func TestReadPlanFile_EmptyPlansDirReturnsEmpty(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_OldFilesExcluded verifies that .md files older than 2 days are ignored.
 func TestReadPlanFile_OldFilesExcluded(t *testing.T) {
 	plansDir, _ := planReaderTestEnv(t)
 
 	oldPlan := filepath.Join(plansDir, "old.md")
 	os.WriteFile(oldPlan, []byte("old plan content"), 0644)
-	// Backdate the file to 3 days ago (before the 48h cutoff)
 	oldTime := time.Now().Add(-72 * time.Hour)
 	os.Chtimes(oldPlan, oldTime, oldTime)
 
@@ -76,12 +73,10 @@ func TestReadPlanFile_OldFilesExcluded(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_NoSessionLogReturnsEmpty verifies empty string when session JSONL log is missing.
 func TestReadPlanFile_NoSessionLogReturnsEmpty(t *testing.T) {
 	plansDir, _ := planReaderTestEnv(t)
 
 	os.WriteFile(filepath.Join(plansDir, "plan.md"), []byte("plan content"), 0644)
-	// No session log created
 
 	result := readPlanFile("missing-session", "/some/project")
 	if result != "" {
@@ -89,7 +84,6 @@ func TestReadPlanFile_NoSessionLogReturnsEmpty(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_MatchingPlanFound verifies the plan content is returned when session log matches.
 func TestReadPlanFile_MatchingPlanFound(t *testing.T) {
 	plansDir, writeLog := planReaderTestEnv(t)
 
@@ -108,7 +102,6 @@ func TestReadPlanFile_MatchingPlanFound(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_ProjectRootEncoding verifies the path encoding (/ → - with leading -).
 func TestReadPlanFile_ProjectRootEncoding(t *testing.T) {
 	homeDir := t.TempDir()
 	t.Setenv("HOME", homeDir)
@@ -121,7 +114,6 @@ func TestReadPlanFile_ProjectRootEncoding(t *testing.T) {
 
 	sessionID := "enc-session-456"
 	projectRoot := "/Users/foo/bar/project"
-	// Expected encoding: /Users/foo/bar/project → -Users-foo-bar-project
 	encodedRoot := "-Users-foo-bar-project"
 	logDir := filepath.Join(homeDir, ".claude", "projects", encodedRoot)
 	os.MkdirAll(logDir, 0755)
@@ -133,8 +125,6 @@ func TestReadPlanFile_ProjectRootEncoding(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_MultipleMatchesUsesLast verifies that when multiple plan filenames appear
-// in the session log, the one appearing last is returned.
 func TestReadPlanFile_MultipleMatchesUsesLast(t *testing.T) {
 	plansDir, writeLog := planReaderTestEnv(t)
 
@@ -143,7 +133,6 @@ func TestReadPlanFile_MultipleMatchesUsesLast(t *testing.T) {
 
 	sessionID := "multi-match-session"
 	projectRoot := "/multi/project"
-	// Log mentions plan-a first, then plan-b — last match should win
 	logContent := "{\"msg\":\"draft plan-a.md\"}\n{\"msg\":\"final plan-b.md\"}\n"
 	writeLog(sessionID, projectRoot, logContent)
 
@@ -153,8 +142,6 @@ func TestReadPlanFile_MultipleMatchesUsesLast(t *testing.T) {
 	}
 }
 
-// TestReadPlanFile_SessionLogWithNoPlanMentionReturnsEmpty verifies empty result
-// when log file exists but doesn't mention any plan filename.
 func TestReadPlanFile_SessionLogWithNoPlanMentionReturnsEmpty(t *testing.T) {
 	plansDir, writeLog := planReaderTestEnv(t)
 
@@ -162,11 +149,29 @@ func TestReadPlanFile_SessionLogWithNoPlanMentionReturnsEmpty(t *testing.T) {
 
 	sessionID := "no-mention-session"
 	projectRoot := "/no/mention/project"
-	// Log does not mention any plan file
 	writeLog(sessionID, projectRoot, "{\"msg\":\"doing some work, no plans here\"}\n")
 
 	result := readPlanFile(sessionID, projectRoot)
 	if result != "" {
 		t.Errorf("readPlanFile() = %q, want empty string when plan not mentioned in session log", result)
+	}
+}
+
+// TestClaudeAdapter_ReadPlan_DelegatesToReadPlanFile verifies ReadPlan wires
+// SessionID/WorkDir through to readPlanFile.
+func TestClaudeAdapter_ReadPlan_DelegatesToReadPlanFile(t *testing.T) {
+	plansDir, writeLog := planReaderTestEnv(t)
+
+	planContent := "# Plan via adapter"
+	os.WriteFile(filepath.Join(plansDir, "adapter-plan.md"), []byte(planContent), 0644)
+
+	sessionID := "adapter-session"
+	projectRoot := "/adapter/project"
+	writeLog(sessionID, projectRoot, `{"msg":"see adapter-plan.md"}`)
+
+	adapter := &ClaudeAdapter{}
+	result := adapter.ReadPlan(PlanCaptureOptions{SessionID: sessionID, WorkDir: projectRoot})
+	if result != planContent {
+		t.Errorf("ReadPlan() = %q, want %q", result, planContent)
 	}
 }

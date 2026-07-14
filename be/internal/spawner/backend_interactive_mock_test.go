@@ -3,6 +3,8 @@ package spawner
 import (
 	"io"
 	"sync"
+
+	ptyPkg "be/internal/pty"
 )
 
 // mockPtySession implements ptySessionIface for tests. Write records all bytes
@@ -68,10 +70,11 @@ func (m *mockPtySession) Pid() int              { return m.pidVal }
 
 // mockPtyManager implements ptyManagerIface for tests.
 type mockPtyManager struct {
-	mu             sync.Mutex
-	sessions       map[string]*mockPtySession
-	registeredCmds map[string][]string
-	createErr      error
+	mu                 sync.Mutex
+	sessions           map[string]*mockPtySession
+	registeredCmds     map[string][]string
+	registeredLaunches map[string]ptyPkg.Launch
+	createErr          error
 	// lastEnv records the env slice passed to Create for each sessionID.
 	// Populated only when Create succeeds.
 	lastEnv map[string][]string
@@ -79,15 +82,17 @@ type mockPtyManager struct {
 
 func newMockPtyManager() *mockPtyManager {
 	return &mockPtyManager{
-		sessions:       make(map[string]*mockPtySession),
-		registeredCmds: make(map[string][]string),
-		lastEnv:        make(map[string][]string),
+		sessions:           make(map[string]*mockPtySession),
+		registeredCmds:     make(map[string][]string),
+		registeredLaunches: make(map[string]ptyPkg.Launch),
+		lastEnv:            make(map[string][]string),
 	}
 }
 
-func (m *mockPtyManager) RegisterCommand(sessionID, cmd string, args []string) {
+func (m *mockPtyManager) RegisterLaunch(sessionID string, l ptyPkg.Launch) {
 	m.mu.Lock()
-	m.registeredCmds[sessionID] = append([]string{cmd}, args...)
+	m.registeredCmds[sessionID] = append([]string{l.Command}, l.Args...)
+	m.registeredLaunches[sessionID] = l
 	m.mu.Unlock()
 }
 

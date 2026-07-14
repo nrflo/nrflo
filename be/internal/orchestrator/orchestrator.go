@@ -94,8 +94,8 @@ type Orchestrator struct {
 	errorSvc          spawner.ErrorRecorder
 
 	// OnRegisterPtyCommand is called when interactive/plan mode needs to register
-	// a PTY command for a session. The API server wires this to ptyManager.RegisterCommand.
-	OnRegisterPtyCommand func(sessionID string, cmd string, args []string)
+	// a PTY launch for a session. The API server wires this to ptyManager.RegisterLaunch.
+	OnRegisterPtyCommand func(sessionID string, l ptyPkg.Launch)
 
 	// OnClosePtySession is called when an interactive session is killed to close and
 	// remove its PTY session. The API server wires this to ptyManager.Get+Close+Remove.

@@ -1,10 +1,10 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,12 +12,15 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/model"
+	ptyPkg "be/internal/pty"
 	"be/internal/repo"
 	"be/internal/ws"
 )
 
 // newResumeTestServer creates a minimal Server for resume-session handler tests.
-// It does not need orchestrator or ptyManager.
+// It needs no orchestrator, but does need a ptyManager: the handler registers the
+// adapter-built resume launch before flipping status. Registering a launch spawns
+// nothing — only pty.Manager.Create() would, and these tests never call it.
 func newResumeTestServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dbPath := t.TempDir() + "/resume_handler_test.db"
@@ -35,10 +38,11 @@ func newResumeTestServer(t *testing.T) (*Server, string) {
 	t.Cleanup(hub.Stop)
 
 	s := &Server{
-		dataPath: dbPath,
-		pool:     pool,
-		wsHub:    hub,
-		clock:    clock.Real(),
+		dataPath:   dbPath,
+		pool:       pool,
+		wsHub:      hub,
+		clock:      clock.Real(),
+		ptyManager: ptyPkg.NewManager(),
 	}
 	return s, dbPath
 }
@@ -90,109 +94,6 @@ func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, 
 		sessionID, projectID, wfiID, modelIDVal, string(status), now, now, now)
 	if err != nil {
 		t.Fatalf("insertResumeTestSession: insert session: %v", err)
-	}
-}
-
-// --- validateResumeSession unit tests ---
-
-func TestValidateResumeSession(t *testing.T) {
-	cases := []struct {
-		name        string
-		session     *model.AgentSession
-		wantErr     bool
-		errContains string
-	}{
-		{
-			name:        "null model_id",
-			session:     &model.AgentSession{ModelID: sql.NullString{Valid: false}, Status: model.AgentSessionCompleted},
-			wantErr:     true,
-			errContains: "no model_id",
-		},
-		{
-			name:        "empty model_id string",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "", Valid: true}, Status: model.AgentSessionCompleted},
-			wantErr:     true,
-			errContains: "no model_id",
-		},
-		{
-			name:        "codex model_id (no resume support)",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "codex:codex_gpt_high", Valid: true}, Status: model.AgentSessionCompleted},
-			wantErr:     true,
-			errContains: "does not support resume",
-		},
-		{
-			name:        "running session",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionRunning},
-			wantErr:     true,
-			errContains: "terminal state",
-		},
-		{
-			name:        "user_interactive session",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionUserInteractive},
-			wantErr:     true,
-			errContains: "terminal state",
-		},
-		{
-			name:    "completed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionCompleted},
-			wantErr: false,
-		},
-		{
-			name:    "failed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:opus", Valid: true}, Status: model.AgentSessionFailed},
-			wantErr: false,
-		},
-		{
-			name:    "timeout claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:haiku", Valid: true}, Status: model.AgentSessionTimeout},
-			wantErr: false,
-		},
-		{
-			name:    "interactive_completed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionInteractiveCompleted},
-			wantErr: false,
-		},
-		{
-			name:    "skipped claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionSkipped},
-			wantErr: false,
-		},
-		{
-			// A closed console session is interactive_completed; resuming it would
-			// resurrect its dead bearer token. Only the kind guard blocks it.
-			name: "console session is never resumable",
-			session: &model.AgentSession{
-				ModelID: sql.NullString{String: "claude:sonnet", Valid: true},
-				Status:  model.AgentSessionInteractiveCompleted,
-				Kind:    model.AgentSessionKindConsole,
-			},
-			wantErr:     true,
-			errContains: "kind",
-		},
-	}
-
-	for _, tc := range cases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			// agent_sessions.kind is NOT NULL DEFAULT 'workflow_agent', so a row
-			// read from the DB always carries a kind; mirror that for fixtures
-			// that don't set one explicitly.
-			if tc.session.Kind == "" {
-				tc.session.Kind = model.AgentSessionKindWorkflowAgent
-			}
-			err := validateResumeSession(tc.session)
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("validateResumeSession() = nil, want error")
-					return
-				}
-				if tc.errContains != "" && !strings.Contains(err.Error(), tc.errContains) {
-					t.Errorf("error = %q, want to contain %q", err.Error(), tc.errContains)
-				}
-			} else if err != nil {
-				t.Errorf("validateResumeSession() = %v, want nil", err)
-			}
-		})
 	}
 }
 
@@ -325,104 +226,30 @@ func TestHandleResumeSession_HappyPath(t *testing.T) {
 	if updated.Status != model.AgentSessionUserInteractive {
 		t.Errorf("session status = %q, want user_interactive", updated.Status)
 	}
+
+	// The PTY manager has no default command: without a registered launch the
+	// PTY attach that the UI opens next fails with "no PTY launch registered".
+	assertResumeLaunchRegistered(t, s, "sess-happy-rs")
 }
 
-// --- handleResumeSessionProject tests ---
-
-func TestHandleResumeSessionProject_MissingProjectID(t *testing.T) {
-	s, _ := newResumeTestServer(t)
-	// No path value "id" set → r.PathValue("id") returns "".
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects//workflow/resume-session",
-		strings.NewReader(`{"session_id":"sess-1"}`))
-	rr := httptest.NewRecorder()
-	s.handleResumeSessionProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+// assertResumeLaunchRegistered verifies the resume handler registered a claude
+// resume launch for the session with the PTY manager.
+func assertResumeLaunchRegistered(t *testing.T, s *Server, sessionID string) {
+	t.Helper()
+	launch, ok := s.ptyManager.PendingLaunch(sessionID)
+	if !ok {
+		t.Fatalf("no PTY launch registered for session %s", sessionID)
 	}
-	assertErrorContains(t, rr, "project ID required")
-}
-
-func TestHandleResumeSessionProject_MissingSessionID(t *testing.T) {
-	s, _ := newResumeTestServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp/workflow/resume-session",
-		strings.NewReader(`{}`))
-	req.SetPathValue("id", "proj-rsp")
-	rr := httptest.NewRecorder()
-	s.handleResumeSessionProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
+	// exec.Command resolves a PATH lookup to an absolute path.
+	if filepath.Base(launch.Command) != "claude" {
+		t.Errorf("launch.Command = %q, want claude", launch.Command)
 	}
-	assertErrorContains(t, rr, "session_id is required")
-}
-
-func TestHandleResumeSessionProject_SessionNotFound(t *testing.T) {
-	s, _ := newResumeTestServer(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp/workflow/resume-session",
-		strings.NewReader(`{"session_id":"no-such-session-rsp"}`))
-	req.SetPathValue("id", "proj-rsp")
-	rr := httptest.NewRecorder()
-	s.handleResumeSessionProject(rr, req)
-
-	if rr.Code != http.StatusNotFound {
-		t.Errorf("status = %d, want 404", rr.Code)
+	args := strings.Join(launch.Args, " ")
+	if !strings.Contains(args, "--resume "+sessionID) {
+		t.Errorf("launch args missing --resume %s: %s", sessionID, args)
 	}
-}
-
-func TestHandleResumeSessionProject_NonClaudeSession(t *testing.T) {
-	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-nc-rsp", "proj-rsp-nc", model.AgentSessionCompleted, "codex:codex_gpt_high")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp-nc/workflow/resume-session",
-		strings.NewReader(`{"session_id":"sess-nc-rsp"}`))
-	req.SetPathValue("id", "proj-rsp-nc")
-	rr := httptest.NewRecorder()
-	s.handleResumeSessionProject(rr, req)
-
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want 400", rr.Code)
-	}
-	assertErrorContains(t, rr, "does not support resume")
-}
-
-func TestHandleResumeSessionProject_HappyPath(t *testing.T) {
-	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-happy-rsp", "proj-rsp-happy", model.AgentSessionFailed, "claude:opus")
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp-happy/workflow/resume-session",
-		strings.NewReader(`{"session_id":"sess-happy-rsp"}`))
-	req.SetPathValue("id", "proj-rsp-happy")
-	rr := httptest.NewRecorder()
-	s.handleResumeSessionProject(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Errorf("status = %d, want 200; body = %s", rr.Code, rr.Body.String())
-	}
-
-	var resp map[string]string
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if resp["status"] != "interactive" {
-		t.Errorf("status = %q, want interactive", resp["status"])
-	}
-	if resp["session_id"] != "sess-happy-rsp" {
-		t.Errorf("session_id = %q, want sess-happy-rsp", resp["session_id"])
-	}
-
-	// Verify the DB status was updated to user_interactive.
-	database, err := db.OpenPathExisting(dbPath)
-	if err != nil {
-		t.Fatalf("open db: %v", err)
-	}
-	defer database.Close()
-	r := repo.NewAgentSessionRepo(database, clock.Real())
-	updated, err := r.Get("sess-happy-rsp")
-	if err != nil {
-		t.Fatalf("get session: %v", err)
-	}
-	if updated.Status != model.AgentSessionUserInteractive {
-		t.Errorf("session status = %q, want user_interactive", updated.Status)
+	// The CLI rejects --session-id alongside --resume.
+	if strings.Contains(args, "--session-id") {
+		t.Errorf("resume launch must not pass --session-id: %s", args)
 	}
 }

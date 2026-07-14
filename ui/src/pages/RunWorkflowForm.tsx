@@ -15,10 +15,6 @@ import type { AgentDef, WorkflowDefSummary } from '@/types/workflow'
 import type { InputArtifactRef } from '@/types/artifact'
 import type { StartMode } from './ProjectWorkflowComponents'
 
-function isClaudeModel(model: string): boolean {
-  return !model.startsWith('codex_gpt_')
-}
-
 export function RunWorkflowForm({
   projectWorkflows,
   defsLoading,
@@ -102,7 +98,7 @@ export function RunWorkflowForm({
 
     const l0AgentId = l0Phases[0].agent
     const agentDef = agents.find((a: AgentDef) => a.id === l0AgentId)
-    if (!agentDef || !isClaudeModel(agentDef.model)) {
+    if (!agentDef) {
       return { canInteractive: false }
     }
 
@@ -114,10 +110,7 @@ export function RunWorkflowForm({
 
     const l0Phases = selectedDef.phases.filter((p) => p.layer === 0)
     if (l0Phases.length !== 1) return false
-    return l0Phases.some((p) => {
-      const agentDef = agents.find((a: AgentDef) => a.id === p.agent)
-      return agentDef && isClaudeModel(agentDef.model)
-    })
+    return l0Phases.some((p) => agents.find((a: AgentDef) => a.id === p.agent))
   }, [selectedDef, agents])
 
   if (defsLoading) {

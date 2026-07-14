@@ -427,7 +427,7 @@ func (s *Server) handleResumeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := asRepo.UpdateStatus(body.SessionID, model.AgentSessionUserInteractive); err != nil {
+	if err := s.startResumeSession(asRepo, session); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

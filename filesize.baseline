@@ -29,7 +29,6 @@ be/internal/api/handlers_project_workflow.go	724
 be/internal/api/handlers_projects_test.go	336
 be/internal/api/handlers_pty.go	314
 be/internal/api/handlers_pty_test.go	384
-be/internal/api/handlers_resume_session_test.go	428
 be/internal/api/handlers_scheduled_tasks_test.go	449
 be/internal/api/handlers_spec_import.go	420
 be/internal/api/handlers_spec_import_test.go	465
@@ -76,9 +75,8 @@ be/internal/model/ticket_test.go	333
 be/internal/notify/notify_test.go	342
 be/internal/orchestrator/chain_runner.go	385
 be/internal/orchestrator/chain_runner_logging_test.go	352
-be/internal/orchestrator/orchestrator_interactive_test.go	643
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	351
+be/internal/orchestrator/orchestrator_loop.go	332
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	485
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -196,8 +194,8 @@ ui/src/components/workflow/PhaseGraph/PhaseGraph.tsx	383
 ui/src/components/workflow/PhaseGraph/layout.test.ts	454
 ui/src/components/workflow/PhaseTimeline.test.tsx	311
 ui/src/components/workflow/RunEpicWorkflowDialog.test.tsx	689
-ui/src/components/workflow/RunWorkflowDialog.interactive.test.tsx	308
-ui/src/components/workflow/RunWorkflowDialog.tsx	324
+ui/src/components/workflow/RunWorkflowDialog.interactive.test.tsx	301
+ui/src/components/workflow/RunWorkflowDialog.tsx	317
 ui/src/components/workflow/WorkflowDefForm.test.tsx	302
 ui/src/components/workflows/NotificationChannelForm.test.tsx	301
 ui/src/components/workflows/NotificationChannelForm.tsx	325

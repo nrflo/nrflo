@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"be/internal/pty"
 )
 
 // RetryClass categorizes the reason an agent exited abnormally for retry decisions.
@@ -99,6 +101,24 @@ type CLIAdapter interface {
 	// them with their code defaults before matching. Limit patterns are
 	// checked first so a rate-limit message wins over a generic error pattern.
 	ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string)
+
+	// PrepareUserSession builds the pty.Launch (argv + env overrides + dir) for
+	// a human-driven PTY session (orchestrator interactive/plan pre-step,
+	// take-control resume) and returns a cleanup func that must run after the
+	// PTY session exits. Mirrors console.ConsoleDriver.Prepare's contract but
+	// stays on the CLIAdapter registry and returns the PTY manager's own input
+	// type. Returns an error when the adapter cannot host the requested mode.
+	PrepareUserSession(opts UserSessionOptions) (pty.Launch, func(), error)
+
+	// PlanPromptSuffix returns extra prompt text appended to the plan-mode
+	// prompt for CLIs without a native plan store (e.g. codex: tells the agent
+	// where to write its plan). Claude returns "" — its plan is read from the
+	// native ~/.claude/plans store instead.
+	PlanPromptSuffix(opts PlanCaptureOptions) string
+
+	// ReadPlan reads back the plan text written during a plan-mode session.
+	// Claude scans its native ~/.claude/plans store; codex reads opts.PlanFile.
+	ReadPlan(opts PlanCaptureOptions) string
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend

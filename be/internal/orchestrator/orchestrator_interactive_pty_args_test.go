@@ -8,14 +8,14 @@ import (
 	"be/internal/spawner"
 )
 
-// TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags verifies that when
+// TestBuildInteractiveLaunch_SystemPromptOverride_EmitsBothFlags verifies that when
 // the global claude_system_prompt_override_enabled setting is on and the L0 model is a
-// claude model, buildInteractivePtyArgs in interactive (non-plan) mode emits both
+// claude model, buildInteractiveLaunch in interactive (non-plan) mode emits both
 // --system-prompt-file and --append-system-prompt-file.
-func TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags(t *testing.T) {
+func TestBuildInteractiveLaunch_SystemPromptOverride_EmitsBothFlags(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
-	env.createTicket(t, "TKT-PTA-OVR", "buildInteractivePtyArgs override test")
+	env.createTicket(t, "TKT-PTA-OVR", "buildInteractiveLaunch override test")
 	wfiID := env.initWorkflow(t, "TKT-PTA-OVR")
 	wi := env.getWorkflowInstance(t, wfiID)
 
@@ -40,7 +40,7 @@ func TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags(t *testing.
 		Interactive:  true,
 	}
 
-	args, err := env.orch.buildInteractivePtyArgs(
+	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
 		req, wi, "test-session-ovr", "opus_4_7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
@@ -52,32 +52,33 @@ func TestBuildInteractivePtyArgs_SystemPromptOverride_EmitsBothFlags(t *testing.
 		"",
 	)
 	if err != nil {
-		t.Fatalf("buildInteractivePtyArgs() error: %v", err)
+		t.Fatalf("buildInteractiveLaunch() error: %v", err)
 	}
+	t.Cleanup(cleanup)
 
-	argsStr := strings.Join(args, " ")
+	argsStr := strings.Join(launch.Args, " ")
 	if !strings.Contains(argsStr, "--system-prompt-file") {
-		t.Errorf("args should contain --system-prompt-file when the override setting is on; got: %v", args)
+		t.Errorf("args should contain --system-prompt-file when the override setting is on; got: %v", launch.Args)
 	}
 	if !strings.Contains(argsStr, "--append-system-prompt-file") {
-		t.Errorf("args should contain --append-system-prompt-file; got: %v", args)
+		t.Errorf("args should contain --append-system-prompt-file; got: %v", launch.Args)
 	}
 	// Override must precede the append flag
 	overrideIdx := strings.Index(argsStr, "--system-prompt-file")
 	appendIdx := strings.Index(argsStr, "--append-system-prompt-file")
 	if overrideIdx >= appendIdx {
 		t.Errorf("--system-prompt-file (%d) should precede --append-system-prompt-file (%d): %v",
-			overrideIdx, appendIdx, args)
+			overrideIdx, appendIdx, launch.Args)
 	}
 }
 
-// TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse verifies that when
+// TestBuildInteractiveLaunch_SystemPromptOverride_ToggleFalse verifies that when
 // the global claude_system_prompt_override_enabled setting is off (stored false),
 // --system-prompt-file is NOT emitted but --append-system-prompt-file is still present.
-func TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse(t *testing.T) {
+func TestBuildInteractiveLaunch_SystemPromptOverride_ToggleFalse(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
-	env.createTicket(t, "TKT-PTA-NOV", "buildInteractivePtyArgs no-override test")
+	env.createTicket(t, "TKT-PTA-NOV", "buildInteractiveLaunch no-override test")
 	wfiID := env.initWorkflow(t, "TKT-PTA-NOV")
 	wi := env.getWorkflowInstance(t, wfiID)
 
@@ -102,7 +103,7 @@ func TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse(t *testing.T) 
 		Interactive:  true,
 	}
 
-	args, err := env.orch.buildInteractivePtyArgs(
+	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
 		req, wi, "test-session-nov", "opus_4_7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
@@ -114,30 +115,30 @@ func TestBuildInteractivePtyArgs_SystemPromptOverride_ToggleFalse(t *testing.T) 
 		"",
 	)
 	if err != nil {
-		t.Fatalf("buildInteractivePtyArgs() error: %v", err)
+		t.Fatalf("buildInteractiveLaunch() error: %v", err)
 	}
+	t.Cleanup(cleanup)
 
-	argsStr := strings.Join(args, " ")
+	argsStr := strings.Join(launch.Args, " ")
 	// --system-prompt-file must NOT appear as a standalone flag
 	// (--append-system-prompt-file contains the substring, so check for the bare flag)
-	parts := args
-	for i, p := range parts {
+	for i, p := range launch.Args {
 		if p == "--system-prompt-file" {
-			t.Errorf("args[%d]=%q: --system-prompt-file should not be emitted when the override setting is off; args: %v", i, p, args)
+			t.Errorf("args[%d]=%q: --system-prompt-file should not be emitted when the override setting is off; args: %v", i, p, launch.Args)
 		}
 	}
 	if !strings.Contains(argsStr, "--append-system-prompt-file") {
-		t.Errorf("args should still contain --append-system-prompt-file; got: %v", args)
+		t.Errorf("args should still contain --append-system-prompt-file; got: %v", launch.Args)
 	}
 }
 
-// TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile verifies that in plan mode,
+// TestBuildInteractiveLaunch_PlanMode_NoOverrideFile verifies that in plan mode,
 // --system-prompt-file is never emitted (plan mode skips template loading entirely),
 // even with the global claude_system_prompt_override_enabled setting on.
-func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
+func TestBuildInteractiveLaunch_PlanMode_NoOverrideFile(t *testing.T) {
 	t.Parallel()
 	env := newTestEnv(t)
-	env.createTicket(t, "TKT-PTA-PM", "buildInteractivePtyArgs plan mode test")
+	env.createTicket(t, "TKT-PTA-PM", "buildInteractiveLaunch plan mode test")
 	wfiID := env.initWorkflow(t, "TKT-PTA-PM")
 	wi := env.getWorkflowInstance(t, wfiID)
 
@@ -159,7 +160,7 @@ func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
 		PlanMode:     true,
 	}
 
-	args, err := env.orch.buildInteractivePtyArgs(
+	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
 		req, wi, "test-session-pm", "opus_4_7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
@@ -171,12 +172,13 @@ func TestBuildInteractivePtyArgs_PlanMode_NoOverrideFile(t *testing.T) {
 		"",
 	)
 	if err != nil {
-		t.Fatalf("buildInteractivePtyArgs() error: %v", err)
+		t.Fatalf("buildInteractiveLaunch() error: %v", err)
 	}
+	t.Cleanup(cleanup)
 
-	for i, p := range args {
+	for i, p := range launch.Args {
 		if p == "--system-prompt-file" {
-			t.Errorf("args[%d]=%q: plan mode should never emit --system-prompt-file; args: %v", i, p, args)
+			t.Errorf("args[%d]=%q: plan mode should never emit --system-prompt-file; args: %v", i, p, launch.Args)
 		}
 	}
 }

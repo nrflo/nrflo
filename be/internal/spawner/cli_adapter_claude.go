@@ -59,12 +59,16 @@ func (a *ClaudeAdapter) SupportsNativeDocRead() bool {
 
 func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
-		"--session-id", opts.SessionID,
 		"--model", opts.Model,
 		"--dangerously-skip-permissions",
 	}
 	if opts.ResumeSessionID != "" {
+		// The CLI rejects --session-id alongside --resume ("--session-id can only
+		// be used with --continue or --resume if --fork-session is also
+		// specified"); a resumed conversation keeps its original ID.
 		args = append([]string{"--resume", opts.ResumeSessionID}, args...)
+	} else {
+		args = append([]string{"--session-id", opts.SessionID}, args...)
 	}
 	if opts.ReasoningEffort != "" {
 		args = append(args, "--effort", opts.ReasoningEffort)

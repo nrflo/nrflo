@@ -19,10 +19,6 @@ import type { InputArtifactRef } from '@/types/artifact'
 
 type StartMode = 'normal' | 'interactive' | 'plan'
 
-function isClaudeModel(model: string): boolean {
-  return !model.startsWith('codex_gpt_')
-}
-
 interface RunWorkflowDialogProps {
   open: boolean
   onClose: () => void
@@ -70,7 +66,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
     }
   }, [workflowIds, selectedWorkflow])
 
-  // Compute canInteractive: L0 has exactly 1 agent AND that agent is Claude-based
+  // Compute canInteractive: L0 has exactly 1 agent and its agent def resolves
   const { canInteractive, l0AgentType } = useMemo(() => {
     if (!workflowDefs || !selectedWorkflow || !agents) {
       return { canInteractive: false, l0AgentType: '' }
@@ -86,14 +82,14 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
 
     const l0AgentId = l0Phases[0].agent
     const agentDef = agents.find((a: AgentDef) => a.id === l0AgentId)
-    if (!agentDef || !isClaudeModel(agentDef.model)) {
+    if (!agentDef) {
       return { canInteractive: false, l0AgentType: '' }
     }
 
     return { canInteractive: true, l0AgentType: l0AgentId }
   }, [workflowDefs, selectedWorkflow, agents])
 
-  // Check if any L0 agent is Claude-based (for plan mode)
+  // Check if the single L0 agent's def resolves (for plan mode)
   const canPlan = useMemo(() => {
     if (!workflowDefs || !selectedWorkflow || !agents) return false
     const def = workflowDefs[selectedWorkflow]
@@ -101,10 +97,7 @@ export function RunWorkflowDialog({ open, onClose, ticketId, blockedReason }: Ru
 
     const l0Phases = def.phases.filter((p) => p.layer === 0)
     if (l0Phases.length !== 1) return false
-    return l0Phases.some((p) => {
-      const agentDef = agents.find((a: AgentDef) => a.id === p.agent)
-      return agentDef && isClaudeModel(agentDef.model)
-    })
+    return l0Phases.some((p) => agents.find((a: AgentDef) => a.id === p.agent))
   }, [workflowDefs, selectedWorkflow, agents])
 
   const pushToStore = (sessionId: string, agentType: string, instanceId: string) => {

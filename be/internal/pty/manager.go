@@ -2,41 +2,60 @@ package pty
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 )
 
-// PendingCommand stores a pre-registered command+args for a PTY session.
-type PendingCommand struct {
+// Launch is a registered command+args+env+dir for a PTY session. Argv, env
+// overrides, and working directory all come from the adapter that owns the
+// session (spawner.CLIAdapter for managed take-control resumes; the
+// orchestrator's CLIAdapter-driven interactive/plan pre-step).
+type Launch struct {
 	Command string
 	Args    []string
+	Env     []string // overrides applied on top of Create's env, filter-then-append per key
+	Dir     string   // when non-empty, wins over Create's workDir argument
 }
 
 // Manager tracks active PTY sessions by session ID.
 type Manager struct {
 	mu       sync.Mutex
 	sessions map[string]*Session
-	pending  map[string]*PendingCommand
+	pending  map[string]*Launch
 }
 
 // NewManager creates a new PTY manager.
 func NewManager() *Manager {
 	return &Manager{
 		sessions: make(map[string]*Session),
-		pending:  make(map[string]*PendingCommand),
+		pending:  make(map[string]*Launch),
 	}
 }
 
-// RegisterCommand pre-registers a command+args for a session ID. When Create()
-// is called for this session ID, the registered command will be used instead of
-// the default `claude --resume`.
-func (m *Manager) RegisterCommand(sessionID, cmd string, args []string) {
+// RegisterLaunch pre-registers a Launch for a session ID. When Create() is
+// called for this session ID, the registered launch will be used.
+func (m *Manager) RegisterLaunch(sessionID string, l Launch) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.pending[sessionID] = &PendingCommand{Command: cmd, Args: args}
+	launch := l
+	m.pending[sessionID] = &launch
+}
+
+// PendingLaunch returns the launch registered for a session ID that Create()
+// has not yet consumed.
+func (m *Manager) PendingLaunch(sessionID string) (Launch, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	l, ok := m.pending[sessionID]
+	if !ok {
+		return Launch{}, false
+	}
+	return *l, true
 }
 
 // Create spawns a new PTY session and tracks it. Returns an error if one
-// already exists for the given session ID.
+// already exists for the given session ID, or if no launch has been
+// registered for a brand-new session.
 func (m *Manager) Create(sessionID, workDir string, env []string) (*Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -46,15 +65,18 @@ func (m *Manager) Create(sessionID, workDir string, env []string) (*Session, err
 		return s, nil
 	}
 
-	command := "claude"
-	args := []string{"--resume", sessionID, "--dangerously-skip-permissions"}
-	if pc, ok := m.pending[sessionID]; ok {
-		command = pc.Command
-		args = pc.Args
-		delete(m.pending, sessionID)
+	pc, ok := m.pending[sessionID]
+	if !ok {
+		return nil, fmt.Errorf("no PTY launch registered for session %s", sessionID)
+	}
+	delete(m.pending, sessionID)
+
+	dir := workDir
+	if pc.Dir != "" {
+		dir = pc.Dir
 	}
 
-	s, err := NewSession(sessionID, workDir, env, command, args)
+	s, err := NewSession(sessionID, dir, mergeLaunchEnv(env, pc.Env), pc.Command, pc.Args)
 	if err != nil {
 		return nil, fmt.Errorf("create pty session: %w", err)
 	}
@@ -67,6 +89,32 @@ func (m *Manager) Create(sessionID, workDir string, env []string) (*Session, err
 	}()
 
 	return s, nil
+}
+
+// mergeLaunchEnv returns base with each overrides entry applied: any existing
+// base entry sharing the override's key is dropped (filter-then-append per
+// key), then the override is appended. Preserves base's order for untouched
+// keys and overrides' order among themselves.
+func mergeLaunchEnv(base, overrides []string) []string {
+	if len(overrides) == 0 {
+		return base
+	}
+	out := append([]string{}, base...)
+	for _, ov := range overrides {
+		key := ov
+		if i := strings.IndexByte(ov, '='); i >= 0 {
+			key = ov[:i+1]
+		}
+		filtered := out[:0:0]
+		for _, e := range out {
+			if strings.HasPrefix(e, key) {
+				continue
+			}
+			filtered = append(filtered, e)
+		}
+		out = append(filtered, ov)
+	}
+	return out
 }
 
 // Get returns the active PTY session for the given session ID, or nil.

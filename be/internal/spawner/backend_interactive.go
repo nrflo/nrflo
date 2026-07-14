@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	ptyPkg "be/internal/pty"
 	"be/internal/ws"
 )
 
@@ -115,7 +116,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	// Register the command with the PTY manager then create the session.
 	// Capture wall-clock just before launch for adapter-owned post-start work.
 	spawnStartedAt := time.Now()
-	b.ptyMgr.RegisterCommand(sessionID, cmd.Path, cmd.Args[1:])
+	b.ptyMgr.RegisterLaunch(sessionID, ptyPkg.Launch{Command: cmd.Path, Args: cmd.Args[1:]})
 	// Use cmd.Env (not the bare `env`): BuildInteractiveCommand is where adapters
 	// inject their per-session env (codex CODEX_HOME, TERM). cmd.Env is
 	// opts.Env plus those additions; passing the bare `env` here silently drops

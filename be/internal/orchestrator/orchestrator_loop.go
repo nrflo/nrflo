@@ -118,30 +118,11 @@ func (o *Orchestrator) runLoop(
 
 	// Interactive/plan pre-step: wait for PTY session to complete before starting layers
 	if pre != nil {
-		logger.Info(ctx, "waiting for interactive pre-step", "session_id", pre.sessionID, "mode", func() string {
-			if req.PlanMode {
-				return "plan"
-			}
-			return "interactive"
-		}())
-		if !waitForInteractivePreStep(ctx, pre) {
-			logger.Warn(ctx, "interactive pre-step cancelled")
-			o.markFailed(wfiID, req, reasonCancelled)
+		newStartLayerIdx, ok := o.runInteractivePreStep(ctx, wfiID, req, pool, projectRoot, pre, startLayerIdx)
+		if !ok {
 			return
 		}
-		pre.spawner.Close()
-
-		if req.PlanMode {
-			if err := handlePlanModePostStep(pre.sessionID, projectRoot, pool, wfiID, o.clock); err != nil {
-				logger.Error(ctx, "plan mode post-step failed", "err", err)
-				o.markFailed(wfiID, req, fmt.Sprintf("plan_read_failed: %v", err))
-				return
-			}
-		} else {
-			// Interactive mode: skip L0 (user already did the work)
-			startLayerIdx = 1
-		}
-		logger.Info(ctx, "interactive pre-step completed", "start_layer", startLayerIdx)
+		startLayerIdx = newStartLayerIdx
 	}
 
 	callbackCount := 0

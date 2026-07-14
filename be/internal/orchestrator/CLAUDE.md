@@ -38,7 +38,7 @@ Worktrees are only used for **ticket-scoped** workflows; project-scoped runs sta
 
 ## Take-Control / Interactive / Plan Mode
 
-User can seize a live Claude CLI session (`TakeControl`, PTY relay), complete or kill it; workflows can also start in interactive or plan mode (mutually exclusive) with a pre-L0 PTY session. Mechanics: REFERENCE.md § Take-Control, § Interactive Start & Plan Mode.
+User can seize a live CLI session (`TakeControl`, PTY relay), complete or kill it; workflows can also start in interactive or plan mode (mutually exclusive) with a pre-L0 PTY session. Both launch the CLI resolved from the L0 model through `spawner.GetCLIAdapter` (claude or codex); take-control's kill+resume path requires `backend.SupportsResume()`. Mechanics: REFERENCE.md § Take-Control, § Interactive Start & Plan Mode.
 
 ## Finalize & Pause Slots
 

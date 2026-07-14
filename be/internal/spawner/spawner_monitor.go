@@ -101,13 +101,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if proc.backend == nil || !proc.backend.SupportsTakeControl() {
 					cliName, _ := parseModelID(proc.modelID)
 					logger.Error(ctx, "take-control: backend does not support take-control", "cli", cliName, "session_id", takeControlSessionID)
-					s.broadcast(ws.EventAgentTakeControlRejected, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-						"session_id": proc.sessionID,
-						"agent_type": proc.agentType,
-						"model_id":   proc.modelID,
-						"reason":     "api_mode_unsupported",
-					})
-					s.signalTakeControlReady(takeControlSessionID)
+					s.rejectTakeControl(req, proc, takeControlSessionID, "api_mode_unsupported")
 					break
 				}
 
@@ -122,6 +116,13 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						"model_id":   proc.modelID,
 					})
 					s.signalTakeControlReady(takeControlSessionID)
+					break
+				}
+
+				// Kill+resume needs adapter resume support — no hardcoded claude default left in the PTY manager.
+				if !canResumeTakeControl(proc) {
+					logger.Error(ctx, "take-control: resume unsupported for this session", "session_id", takeControlSessionID)
+					s.rejectTakeControl(req, proc, takeControlSessionID, "resume_unsupported")
 					break
 				}
 
@@ -140,8 +141,9 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					<-proc.doneCh
 				}
 
-				// Flush messages and register stop
+				// Flush messages, register the resume launch, and register stop.
 				s.saveMessages(proc)
+				s.registerTakeControlResumeLaunch(proc)
 				s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 					proc.sessionID, proc.agentID, "user_interactive", "take_control", proc.modelID)
 
@@ -152,10 +154,8 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 					"model_id":   proc.modelID,
 				})
 
-				// Status is now user_interactive and the agent is killed — the
-				// PTY handler can safely accept a connection. Unblock any HTTP
-				// caller waiting in WaitForTakeControlReady before we settle
-				// into the interactive wait.
+				// Status is now user_interactive and the agent is killed — unblock
+				// any HTTP caller waiting in WaitForTakeControlReady before settling into the interactive wait.
 				s.signalTakeControlReady(takeControlSessionID)
 
 				// Remove from running

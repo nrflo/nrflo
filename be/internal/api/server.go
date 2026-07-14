@@ -75,8 +75,8 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	}
 	orch := orchestrator.New(dataPath, hub, clk, errorSvc, sdkDir)
 	ptyMgr := ptyPkg.NewManager()
-	orch.OnRegisterPtyCommand = func(sessionID string, cmd string, args []string) {
-		ptyMgr.RegisterCommand(sessionID, cmd, args)
+	orch.OnRegisterPtyCommand = func(sessionID string, l ptyPkg.Launch) {
+		ptyMgr.RegisterLaunch(sessionID, l)
 	}
 	orch.OnClosePtySession = func(sessionID string) {
 		if sess := ptyMgr.Get(sessionID); sess != nil {

@@ -20,7 +20,7 @@ type ptySessionIface interface {
 
 // ptyManagerIface abstracts *pty.Manager so tests can inject a mock PTY manager.
 type ptyManagerIface interface {
-	RegisterCommand(sessionID, cmd string, args []string)
+	RegisterLaunch(sessionID string, l ptyPkg.Launch)
 	Create(sessionID, workDir string, env []string) (ptySessionIface, error)
 	Get(sessionID string) ptySessionIface
 }
@@ -38,8 +38,8 @@ func wrapPtyManager(m *ptyPkg.Manager) ptyManagerIface {
 	return &ptyManagerWrapper{m: m}
 }
 
-func (w *ptyManagerWrapper) RegisterCommand(sessionID, cmd string, args []string) {
-	w.m.RegisterCommand(sessionID, cmd, args)
+func (w *ptyManagerWrapper) RegisterLaunch(sessionID string, l ptyPkg.Launch) {
+	w.m.RegisterLaunch(sessionID, l)
 }
 
 func (w *ptyManagerWrapper) Create(sessionID, workDir string, env []string) (ptySessionIface, error) {

@@ -5,6 +5,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/repo"
+	"be/internal/spawner"
 )
 
 // TestHandlePlanModePostStep_MarksSessionInteractiveCompleted verifies that
@@ -33,7 +34,9 @@ func TestHandlePlanModePostStep_MarksSessionInteractiveCompleted(t *testing.T) {
 
 	setupPlanModeHome(t, sessionID, projectRoot, planContent)
 
-	if err := handlePlanModePostStep(sessionID, projectRoot, env.pool, wfiID, clock.Real()); err != nil {
+	adapter := &spawner.ClaudeAdapter{}
+	planCapture := spawner.PlanCaptureOptions{SessionID: sessionID, WorkDir: projectRoot}
+	if err := handlePlanModePostStep(adapter, planCapture, env.pool, wfiID, clock.Real()); err != nil {
 		t.Fatalf("handlePlanModePostStep() error: %v", err)
 	}
 
@@ -65,7 +68,9 @@ func TestHandlePlanModePostStep_MissingSession_ReturnsError(t *testing.T) {
 
 	setupPlanModeHome(t, sessionID, projectRoot, planContent)
 
-	err := handlePlanModePostStep(sessionID, projectRoot, env.pool, wfiID, clock.Real())
+	adapter := &spawner.ClaudeAdapter{}
+	planCapture := spawner.PlanCaptureOptions{SessionID: sessionID, WorkDir: projectRoot}
+	err := handlePlanModePostStep(adapter, planCapture, env.pool, wfiID, clock.Real())
 	if err == nil {
 		t.Fatal("handlePlanModePostStep() should return error when session does not exist")
 	}

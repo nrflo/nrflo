@@ -41,6 +41,10 @@ Any standalone MCP client (not spawned by nrflo, not Claude-specific) drives the
 
 `GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` authenticate **before** the WS upgrade and accept a `?token=<bearer>` query fallback; all other endpoints are header-only `requireAuth`. Mechanics + CORS header details: [REFERENCE.md](REFERENCE.md#ws--pty-auth) — read before changing WS/PTY auth.
 
+### Resume Session
+
+`pty.Manager` has **no default command**: `Create()` fails with `no PTY launch registered` unless a `pty.Launch` was registered for the session id. So both resume-session routes (`POST /api/v1/{tickets,projects}/{id}/workflow/resume-session`) go through `startResumeSession` (`handlers_resume_launch.go`), which registers the adapter-built resume launch via `spawner.GetCLIAdapter` **before** flipping the session to `user_interactive` — registering late (or not at all) would strand the PTY attach the UI opens next.
+
 ## Handlers
 
 Handlers live in `handlers_*.go` files. For the route table run:

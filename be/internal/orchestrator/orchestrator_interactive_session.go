@@ -87,15 +87,15 @@ func (o *Orchestrator) setupInteractivePreStep(
 		return nil, fmt.Errorf("failed to create interactive session: %w", err)
 	}
 
-	// Build PTY command args
-	args, err := o.buildInteractivePtyArgs(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
+	// Build the PTY launch via the CLI adapter resolved from the L0 model.
+	launch, adapter, planFile, cleanup, err := o.buildInteractiveLaunch(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build interactive PTY args: %w", err)
+		return nil, fmt.Errorf("failed to build interactive launch: %w", err)
 	}
 
-	// Register command with PTY manager
+	// Register the launch with the PTY manager.
 	if o.OnRegisterPtyCommand != nil {
-		o.OnRegisterPtyCommand(sessionID, "claude", args)
+		o.OnRegisterPtyCommand(sessionID, launch)
 	}
 
 	// Create a temp spawner just for the interactive wait mechanism.
@@ -134,5 +134,8 @@ func (o *Orchestrator) setupInteractivePreStep(
 		sessionID: sessionID,
 		waitCh:    waitCh,
 		spawner:   sp,
+		adapter:   adapter,
+		planFile:  planFile,
+		cleanup:   cleanup,
 	}, nil
 }

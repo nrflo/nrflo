@@ -86,29 +86,22 @@ describe('RunWorkflowDialog — interactive/plan mode', () => {
       expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
     })
 
-    it('hides Start Interactive checkbox when L0 agent is non-Claude', async () => {
+    it('shows Start Interactive checkbox for a codex L0 agent', async () => {
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([
-        makeAgentDef({ model: 'codex_gpt_high' }),
+        makeAgentDef({ model: 'codex_gpt55_high' }),
       ])
       renderDialog()
 
-      // Wait for agents to load — no Claude model means no checkboxes
-      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
-      await waitFor(() =>
-        expect(screen.queryByLabelText(/start interactive/i)).not.toBeInTheDocument()
-      )
+      expect(await screen.findByLabelText(/start interactive/i)).toBeInTheDocument()
     })
 
-    it('hides Plan Before Execution checkbox when L0 agent is non-Claude', async () => {
+    it('shows Plan Before Execution checkbox for a codex L0 agent', async () => {
       vi.mocked(agentDefsApi.listAgentDefs).mockResolvedValue([
-        makeAgentDef({ model: 'codex_gpt_high' }),
+        makeAgentDef({ model: 'codex_gpt55_high' }),
       ])
       renderDialog()
 
-      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
-      await waitFor(() =>
-        expect(screen.queryByLabelText(/plan before execution/i)).not.toBeInTheDocument()
-      )
+      expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
     })
 
     it('hides Start Interactive when workflow has only 1 layer', async () => {

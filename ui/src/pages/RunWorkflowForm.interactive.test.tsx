@@ -76,22 +76,16 @@ describe('RunWorkflowForm — interactive/plan mode', () => {
       expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
     })
 
-    it('hides Start Interactive checkbox when L0 agent is non-Claude', async () => {
-      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt_high' })])
+    it('shows Start Interactive checkbox for a codex L0 agent', async () => {
+      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt55_high' })])
 
-      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
-      await waitFor(() =>
-        expect(screen.queryByLabelText(/start interactive/i)).not.toBeInTheDocument()
-      )
+      expect(await screen.findByLabelText(/start interactive/i)).toBeInTheDocument()
     })
 
-    it('hides Plan Before Execution checkbox when L0 agent is non-Claude', async () => {
-      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt_high' })])
+    it('shows Plan Before Execution checkbox for a codex L0 agent', async () => {
+      renderForm(vi.fn(), featureWorkflows, [makeAgentDef({ model: 'codex_gpt55_high' })])
 
-      await waitFor(() => expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('feature'))
-      await waitFor(() =>
-        expect(screen.queryByLabelText(/plan before execution/i)).not.toBeInTheDocument()
-      )
+      expect(await screen.findByLabelText(/plan before execution/i)).toBeInTheDocument()
     })
 
     it('hides Start Interactive when workflow has only 1 layer', async () => {
@@ -252,6 +246,20 @@ describe('RunWorkflowForm — interactive/plan mode', () => {
       await user.click(screen.getByRole('button', { name: /^run$/i }))
 
       expect(onRun).toHaveBeenCalledWith('normal')
+    })
+
+    it('calls onRun with "interactive" then "plan" for a codex L0 agent', async () => {
+      const user = userEvent.setup()
+      const onRun = vi.fn()
+      renderForm(onRun, featureWorkflows, [makeAgentDef({ model: 'codex_gpt55_high' })])
+
+      await user.click(await screen.findByLabelText(/start interactive/i))
+      await user.click(screen.getByRole('button', { name: /^run$/i }))
+      expect(onRun).toHaveBeenNthCalledWith(1, 'interactive')
+
+      await user.click(screen.getByLabelText(/plan before execution/i))
+      await user.click(screen.getByRole('button', { name: /^run$/i }))
+      expect(onRun).toHaveBeenNthCalledWith(2, 'plan')
     })
   })
 })

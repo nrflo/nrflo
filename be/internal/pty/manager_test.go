@@ -127,20 +127,20 @@ func TestManager_ConcurrentGetRemove(t *testing.T) {
 	wg.Wait()
 }
 
-// TestManager_RegisterCommand_UsedByCreate verifies that a command registered
-// via RegisterCommand is consumed and used when Create is called for the same
+// TestManager_RegisterLaunch_UsedByCreate verifies that a launch registered
+// via RegisterLaunch is consumed and used when Create is called for the same
 // session ID.
-func TestManager_RegisterCommand_UsedByCreate(t *testing.T) {
+func TestManager_RegisterLaunch_UsedByCreate(t *testing.T) {
 	m := NewManager()
 
 	// Register "echo" so Create won't attempt to exec claude.
-	m.RegisterCommand("sess-echo", "echo", []string{"hello"})
+	m.RegisterLaunch("sess-echo", Launch{Command: "echo", Args: []string{"hello"}})
 
 	m.mu.Lock()
 	pc, hasPending := m.pending["sess-echo"]
 	m.mu.Unlock()
 	if !hasPending {
-		t.Fatal("RegisterCommand did not create a pending entry")
+		t.Fatal("RegisterLaunch did not create a pending entry")
 	}
 	if pc.Command != "echo" {
 		t.Errorf("pending.Command = %q, want %q", pc.Command, "echo")
@@ -169,14 +169,14 @@ func TestManager_RegisterCommand_UsedByCreate(t *testing.T) {
 	}
 }
 
-// TestManager_RegisterCommand_NotConsumedForOtherSession verifies that a
-// pending command registered for session A is not consumed when Create is
+// TestManager_RegisterLaunch_NotConsumedForOtherSession verifies that a
+// pending launch registered for session A is not consumed when Create is
 // called for a different session B.
-func TestManager_RegisterCommand_NotConsumedForOtherSession(t *testing.T) {
+func TestManager_RegisterLaunch_NotConsumedForOtherSession(t *testing.T) {
 	m := NewManager()
 
 	// Register a command for sess-A.
-	m.RegisterCommand("sess-A", "echo", []string{"hi"})
+	m.RegisterLaunch("sess-A", Launch{Command: "echo", Args: []string{"hi"}})
 
 	// Pre-inject a stub session for sess-B so Create returns it without exec.
 	existing := stubSession("sess-B")
@@ -202,17 +202,17 @@ func TestManager_RegisterCommand_NotConsumedForOtherSession(t *testing.T) {
 }
 
 // TestManager_Remove_CleansPending verifies that Remove deletes an orphan
-// pending entry (RegisterCommand called but Create never called).
+// pending entry (RegisterLaunch called but Create never called).
 func TestManager_Remove_CleansPending(t *testing.T) {
 	m := NewManager()
 
-	m.RegisterCommand("sess-orphan", "echo", []string{"hi"})
+	m.RegisterLaunch("sess-orphan", Launch{Command: "echo", Args: []string{"hi"}})
 
 	m.mu.Lock()
 	_, ok := m.pending["sess-orphan"]
 	m.mu.Unlock()
 	if !ok {
-		t.Fatal("RegisterCommand did not create a pending entry")
+		t.Fatal("RegisterLaunch did not create a pending entry")
 	}
 
 	m.Remove("sess-orphan")

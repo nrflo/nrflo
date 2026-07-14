@@ -30,7 +30,7 @@ func (s *stubErrorRecorder) RecordError(projectID, errorType, instanceID, messag
 func setupQueueDB(t *testing.T) (db.Querier, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := openNotifyTestDB(t, dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

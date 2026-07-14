@@ -17,7 +17,7 @@ import (
 // Children have parent_ticket_id set to epicID.
 func insertEpicAndChildrenDB(t *testing.T, dbPath, projectID, epicID string, childIDs []string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestAPICloseChild_NonEpicParentNotAffected(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Insert parent (task, not epic) + child with parent_ticket_id
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

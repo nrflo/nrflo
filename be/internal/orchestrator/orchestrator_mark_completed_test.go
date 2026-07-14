@@ -294,7 +294,7 @@ func TestMarkCompletedProjectScopeUpdatesAgentSessions(t *testing.T) {
 	wfiID := env.initProjectWorkflow(t, "test")
 
 	// Insert agent sessions with various statuses
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -345,7 +345,7 @@ func TestMarkCompletedProjectScopeDoesNotUpdateRunningOrContinued(t *testing.T) 
 	wfiID := env.initProjectWorkflow(t, "test")
 
 	// Insert agent sessions with running and continued statuses
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestMarkCompletedTicketScopeStillUsesCompleted(t *testing.T) {
 	wfiID := env.initWorkflow(t, "MC-TICKET")
 
 	// Insert agent session with completed status
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

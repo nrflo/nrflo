@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -108,7 +107,7 @@ func TestScriptTransport_NoSession_EmptyInstanceID(t *testing.T) {
 	skipIfNoPython3(t)
 
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openNotifyTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("open pool: %v", err)
 	}
@@ -150,7 +149,7 @@ func TestScriptTransport_WithSession_CreatesAndCompletes(t *testing.T) {
 	skipIfNoPython3(t)
 
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openNotifyTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("open pool: %v", err)
 	}

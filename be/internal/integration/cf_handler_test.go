@@ -57,7 +57,7 @@ const pauseFinding = `{"paused_after_layer":0,"resume_layer":1,"event":{},"times
 
 func insertPauseFinding(t *testing.T, dbPath, wfiID string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("insertPauseFinding: failed to open DB: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestContinueWorkflowHandler_HappyPath(t *testing.T) {
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -117,7 +117,7 @@ func TestContinueWorkflowHandler_HappyPath(t *testing.T) {
 	}
 
 	// ContinueWorkflow sets status=active synchronously before launching goroutine
-	database, err = db.Open(dbPath)
+	database, err = db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for verification: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestFailWorkflowHandler_WaitingInstance(t *testing.T) {
 	seedWorkflowDef(t, dbPath, "proj")
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestFailWorkflowHandler_WaitingInstance(t *testing.T) {
 	}
 
 	// FailWorkflow on a waiting instance is synchronous (markFailed directly)
-	database, err = db.Open(dbPath)
+	database, err = db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for verification: %v", err)
 	}
@@ -200,7 +200,7 @@ func seedProjectWorkflowWaiting(t *testing.T, dbPath string) string {
 	seedProjectWithRoot(t, dbPath, "proj")
 	seedWorkflowDef(t, dbPath, "proj")
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("seedProjectWorkflowWaiting: failed to open DB: %v", err)
 	}
@@ -269,7 +269,7 @@ func TestFailWorkflowProjectHandler_WaitingInstance(t *testing.T) {
 	}
 
 	// FailWorkflow on a waiting instance is synchronous (markFailed directly)
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for verification: %v", err)
 	}

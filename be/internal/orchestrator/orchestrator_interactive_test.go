@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -252,7 +253,6 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		t.Errorf("args missing mapped model --model claude-opus-4-8 (got nrflo ID instead): %v", registeredArgs)
 	}
 
-	// Wait a bit for the DB write to be visible (pool commits synchronously, but let's be safe)
 	var status, agentType string
 	var queryErr error
 	deadline := time.Now().Add(2 * time.Second)
@@ -264,7 +264,7 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		if queryErr == nil {
 			break
 		}
-		time.Sleep(5 * time.Millisecond)
+		runtime.Gosched()
 	}
 	if queryErr != nil {
 		t.Fatalf("failed to query session: %v", queryErr)
@@ -626,7 +626,7 @@ func TestRunLoop_PlanMode_StoresUserInstructions(t *testing.T) {
 				return // success
 			}
 		}
-		time.Sleep(20 * time.Millisecond)
+		runtime.Gosched()
 	}
 	t.Error("user_instructions not stored in workflow instance findings after plan mode completion")
 }

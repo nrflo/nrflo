@@ -16,12 +16,12 @@ import (
 func newSessionPromptServer(t *testing.T) (*Server, *db.DB) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "session_prompt_test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open db: %v", err)
-	}
 	if err := apiCopyTemplateDB(dbPath); err != nil {
 		t.Fatalf("copy template DB: %v", err)
+	}
+	database, err := db.OpenPathExisting(dbPath)
+	if err != nil {
+		t.Fatalf("failed to open db: %v", err)
 	}
 	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {

@@ -64,8 +64,8 @@ All dropdowns use the custom `Dropdown` component (not native `<select>`): butto
 
 ## Testing
 
-Vitest + jsdom + React Testing Library. Run: `make test-ui`. Must complete in ≤60 s.
-Test helpers: `src/test/setup.ts` (auto-cleanup, env stubs), `src/test/utils.tsx` (`renderWithQuery`, wrappers).
+Vitest uses a Node project for pure API/lib tests and a jsdom project for React/browser tests. Run: `make test-ui`. Must complete in ≤60 s.
+Test helpers: `src/test/setup.node.ts` (env stubs), `src/test/setup.ts` (jsdom, React Testing Library, browser stubs), `src/test/utils.tsx` (`renderWithQuery`, wrappers).
 
 ## Styling
 

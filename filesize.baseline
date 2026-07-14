@@ -161,7 +161,6 @@ be/internal/ws/event_test.go	307
 be/internal/ws/hub.go	482
 be/internal/ws/integration_e2e_test.go	331
 be/internal/ws/replay_test.go	430
-be/internal/ws/snapshot_test.go	301
 ui/src/api/chains.test.ts	411
 ui/src/api/client.ts	307
 ui/src/components/chains/AppendToChainDialog.test.tsx	821

@@ -7,11 +7,12 @@ interface TooltipProps {
   children: ReactNode
   placement?: 'top' | 'bottom' | 'left' | 'right'
   className?: string
+  delayDuration?: number
 }
 
-export function Tooltip({ text, children, placement = 'top', className }: TooltipProps) {
+export function Tooltip({ text, children, placement = 'top', className, delayDuration = 200 }: TooltipProps) {
   return (
-    <RadixTooltip.Provider delayDuration={200}>
+    <RadixTooltip.Provider delayDuration={delayDuration}>
       <RadixTooltip.Root>
         <RadixTooltip.Trigger asChild>
           <span className="inline-flex">

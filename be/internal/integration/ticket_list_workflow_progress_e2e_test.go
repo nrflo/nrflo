@@ -49,7 +49,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	}
 
 	// Directly seed workflow instances in DB
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -118,9 +118,6 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 	}
 
 	database.Close()
-
-	// Wait for DB writes to settle
-	time.Sleep(50 * time.Millisecond)
 
 	// Call GET /api/v1/tickets?status=open
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets?status=open", nil)
@@ -215,7 +212,7 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	createTicketViaAPI(t, client, baseURL, "testproj2", "PROJ2-002", "Open ticket")
 
 	// Set PROJ2-001 to in-progress status
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -275,7 +272,6 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 	}
 
 	database.Close()
-	time.Sleep(50 * time.Millisecond)
 
 	// Request tickets with status=in_progress
 	req, _ := http.NewRequest("GET", baseURL+"/api/v1/tickets?status=in_progress", nil)
@@ -379,7 +375,7 @@ func TestTicketListAPI_WorkflowProgressErrorRecovery(t *testing.T) {
 // Helper function to seed workflow definition directly into DB
 func seedWorkflow(t *testing.T, dbPath, projectID, workflowID, description string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding workflow: %v", err)
 	}

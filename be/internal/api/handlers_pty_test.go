@@ -52,7 +52,7 @@ func newPtyTestServer(t *testing.T) (*Server, string) {
 // agent_session) into the test DB so the handler's DB lookups succeed.
 func insertPtyTestSession(t *testing.T, dbPath, sessionID string, status model.AgentSessionStatus) {
 	t.Helper()
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("insertPtyTestSession: open db: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestHandlePtyWebSocket_StatusTable(t *testing.T) {
 // for a nonexistent session, which drives the 404 in handlePtyWebSocket.
 func TestAgentSessionRepo_GetMissingSession(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "repo_pty_test.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := apiOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

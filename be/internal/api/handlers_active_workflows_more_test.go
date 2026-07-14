@@ -170,14 +170,14 @@ func TestHandleGetActiveWorkflows_ClockNotRequired(t *testing.T) {
 	testClock := clock.NewTest(fixedNow)
 
 	dbPath := filepath.Join(t.TempDir(), "active_wf_clock_test.db")
-	database, err := db.OpenPath(dbPath)
+	if err := apiCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
 	defer database.Close()
-	if err := apiCopyTemplateDB(dbPath); err != nil {
-		t.Fatalf("copy template DB: %v", err)
-	}
 	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("create pool: %v", err)

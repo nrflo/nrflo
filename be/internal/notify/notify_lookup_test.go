@@ -15,7 +15,7 @@ import (
 func setupLookupDB(t *testing.T) (db.Querier, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "lookup.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := openNotifyTestDB(t, dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

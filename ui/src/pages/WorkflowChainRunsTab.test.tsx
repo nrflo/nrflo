@@ -10,11 +10,12 @@ const mockChainRun = vi.fn()
 const mockStartMutate = vi.fn()
 const mockCancelMutate = vi.fn()
 const mockIsAdmin = vi.fn().mockReturnValue(true)
+const mockStartError = vi.fn().mockReturnValue(null)
 
 vi.mock('@/hooks/useWorkflowChains', () => ({
   useChainRunsList: () => mockChainRunsList(),
   useChainRun: () => mockChainRun(),
-  useStartChainRun: () => ({ mutate: mockStartMutate, isPending: false, error: null }),
+  useStartChainRun: () => ({ mutate: mockStartMutate, isPending: false, error: mockStartError() }),
   useCancelChainRun: () => ({ mutate: mockCancelMutate, isPending: false }),
 }))
 
@@ -249,17 +250,14 @@ describe('WorkflowChainRunsTab - StartRunDialog', () => {
     expect(mockStartMutate).not.toHaveBeenCalled()
   })
 
-  it('shows error message when startMutation has error', () => {
-    vi.mock('@/hooks/useWorkflowChains', () => ({
-      useChainRunsList: () => mockChainRunsList(),
-      useChainRun: () => mockChainRun(),
-      useStartChainRun: () => ({
-        mutate: mockStartMutate,
-        isPending: false,
-        error: new Error('Server error'),
-      }),
-      useCancelChainRun: () => ({ mutate: mockCancelMutate, isPending: false }),
-    }))
+  it('shows error message when startMutation has error', async () => {
+    const user = userEvent.setup()
+    mockStartError.mockReturnValue(new Error('Server error'))
+    mockChainRunsList.mockReturnValue({ data: [], isLoading: false, error: null })
+    renderTab()
+
+    await user.click(screen.getByRole('button', { name: /Start run/ }))
+    expect(screen.getByText('Server error')).toBeInTheDocument()
   })
 })
 

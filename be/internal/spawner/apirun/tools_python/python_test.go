@@ -21,7 +21,7 @@ import (
 
 func newTestDispatchRepo(t *testing.T, clk clock.Clock) (*repo.DispatchRepo, string, *db.DB) {
 	t.Helper()
-	database, err := db.OpenPath(filepath.Join(t.TempDir(), "test.db"))
+	database, err := openPythonToolsTestDB(t, filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

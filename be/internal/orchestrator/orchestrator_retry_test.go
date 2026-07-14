@@ -19,7 +19,7 @@ func TestRetryFailedAgent_WorkflowNotFailed(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-1")
 
 	// Create a dummy agent session
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestRetryFailedAgent_SessionDoesNotBelongToWorkflow(t *testing.T) {
 	wfiID_B := env.initWorkflow(t, "RTR-4B")
 
 	// Create session for workflow A
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestRetryFailedAgent_FailedPhaseNotInWorkflowDef(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-5")
 
 	// Create session with phase not in workflow definition
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestRetryFailedAgent_AlreadyRunning(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-6")
 
 	// Create failed session
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestRetryFailedAgent_HappyPath(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-7")
 
 	// Create failed session in layer 1 (builder phase)
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -323,7 +323,7 @@ func TestRetryFailedAgent_ResetsOnlyFailedLayer(t *testing.T) {
 	}
 
 	// Create failed session for phase3
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -359,7 +359,7 @@ func TestRetryFailedAgent_IncrementRetryCount(t *testing.T) {
 	wfiID := env.initWorkflow(t, "RTR-9")
 
 	// Create failed session
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -422,7 +422,7 @@ func TestRetryFailedProjectAgent_HappyPath(t *testing.T) {
 	wfiID := env.initProjectWorkflow(t, "test")
 
 	// Create failed session
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

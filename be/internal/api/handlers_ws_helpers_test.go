@@ -1,6 +1,7 @@
 package api
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -38,7 +39,7 @@ func (r *wsRecorder) waitEvent(t *testing.T, eventType string) *ws.Event {
 			}
 		}
 		r.mu.Unlock()
-		time.Sleep(5 * time.Millisecond)
+		runtime.Gosched()
 	}
 	t.Fatalf("timeout waiting for WS event %q", eventType)
 	return nil

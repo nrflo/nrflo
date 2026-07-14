@@ -44,7 +44,6 @@ func TestAgentContextUpdateBroadcast(t *testing.T) {
 
 			client, sendCh := ws.NewTestClient(env.hub, "test-client-ctx")
 			env.hub.Register(client)
-			time.Sleep(50 * time.Millisecond)
 			env.hub.Subscribe(client, env.project, tc.ticketID)
 
 			params := map[string]interface{}{
@@ -105,7 +104,6 @@ func TestAgentContextUpdateNoBroadcastWhenSessionMissing(t *testing.T) {
 	// Subscribe WS client
 	client, sendCh := ws.NewTestClient(env.hub, "test-client-missing")
 	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "NONEXISTENT-TICKET")
 
 	// Send agent.context_update with nonexistent session_id

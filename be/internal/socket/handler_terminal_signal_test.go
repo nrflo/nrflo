@@ -95,7 +95,6 @@ func TestAgentFail_DispatchesTerminalSignal(t *testing.T) {
 
 	client, sendCh := ws.NewTestClient(env.hub, "test-client-fail")
 	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TS-FAIL-1")
 
 	params := types.AgentRequest{InstanceID: wfiID, SessionID: sessionID}
@@ -174,7 +173,6 @@ func TestAgentContinue_DispatchesTerminalSignal(t *testing.T) {
 
 	client, sendCh := ws.NewTestClient(env.hub, "test-client-continue")
 	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TS-CONT-1")
 
 	params := types.AgentRequest{InstanceID: wfiID, SessionID: sessionID}
@@ -240,7 +238,6 @@ func TestAgentCallback_DispatchesTerminalSignal(t *testing.T) {
 
 	client, sendCh := ws.NewTestClient(env.hub, "test-client-callback")
 	env.hub.Register(client)
-	time.Sleep(50 * time.Millisecond)
 	env.hub.Subscribe(client, env.project, "TS-CB-1")
 
 	params := types.AgentCallbackRequest{

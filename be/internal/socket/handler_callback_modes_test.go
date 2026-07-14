@@ -121,7 +121,6 @@ func TestAgentCallbackModeInference(t *testing.T) {
 
 			client, sendCh := ws.NewTestClient(env.hub, "client-"+tc.name)
 			env.hub.Register(client)
-			time.Sleep(20 * time.Millisecond)
 			env.hub.Subscribe(client, env.project, "TEST-1")
 
 			params := types.AgentCallbackRequest{

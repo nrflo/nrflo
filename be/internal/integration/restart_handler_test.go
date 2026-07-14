@@ -86,7 +86,7 @@ func TestRestartHandler_NoRunningOrchestration(t *testing.T) {
 // seedWorkflowDef creates a "test" workflow definition with agent definitions in the DB.
 func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -116,7 +116,7 @@ func seedWorkflowDef(t *testing.T, dbPath, projectID string) {
 // seedTicketAndWorkflow creates a ticket and initializes the "test" workflow.
 func seedTicketAndWorkflow(t *testing.T, dbPath, projectID, ticketID string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

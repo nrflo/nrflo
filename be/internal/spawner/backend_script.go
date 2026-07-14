@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -77,8 +78,14 @@ func (b *scriptBackend) Start(ctx context.Context, proc *processInfo, prep *prep
 	}
 	proc.cmd = cmd
 
-	go b.s.monitorOutput(proc, stdout)
+	var outputWG sync.WaitGroup
+	outputWG.Add(2)
 	go func() {
+		defer outputWG.Done()
+		b.s.monitorOutput(proc, stdout)
+	}()
+	go func() {
+		defer outputWG.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -90,8 +97,9 @@ func (b *scriptBackend) Start(ctx context.Context, proc *processInfo, prep *prep
 	origDoneCh := proc.doneCh
 	go func() {
 		proc.waitErr = cmd.Wait()
-		close(origDoneCh)
+		outputWG.Wait()
 		os.Remove(scriptPath)
+		close(origDoneCh)
 	}()
 
 	return nil

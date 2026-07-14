@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -61,9 +62,8 @@ func startAPIServerWithWS(t *testing.T, dbPath, projectID, ticketID string) (str
 			resp.Body.Close()
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		runtime.Gosched()
 	}
-
 	// Create test WS client subscribed to the ticket
 	wsClient, ch := ws.NewTestClient(hub, "test-ws-client")
 	hub.Register(wsClient)
@@ -136,7 +136,7 @@ func TestTicketUpdateBroadcastsWSEvent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestTicketCloseBroadcastsWSEvent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -254,7 +254,7 @@ func TestTicketReopenBroadcastsWSEvent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create closed ticket
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -311,7 +311,7 @@ func TestTicketDeleteBroadcastsWSEvent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -368,7 +368,7 @@ func TestTicketUpdateMultipleFieldsBroadcastsWSEvent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -427,7 +427,7 @@ func TestTicketUpdateNoWSHubDoesNotPanic(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket first
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -478,7 +478,7 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create both tickets
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -528,9 +528,8 @@ func TestTicketWSEventsSubscriptionFiltering(t *testing.T) {
 			resp.Body.Close()
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		runtime.Gosched()
 	}
-
 	// Login as admin for HTTP requests
 	client := loginAdminClient(t, baseURL)
 

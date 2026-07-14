@@ -19,7 +19,7 @@ import (
 func seedSessionAndMessages(t *testing.T, dbPath string) {
 	t.Helper()
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding: %v", err)
 	}

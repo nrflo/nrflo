@@ -34,7 +34,7 @@ func TestRunEpicWorkflow_HappyPath(t *testing.T) {
 	now := base.UTC().Format(time.RFC3339Nano)
 
 	// Open DB for seeding
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestRunEpicWorkflow_NoChildren(t *testing.T) {
 	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic with no children
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestRunEpicWorkflow_NonEpicTicket(t *testing.T) {
 	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create regular feature ticket
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestRunEpicWorkflow_ExcludesClosedChildren(t *testing.T) {
 	seedProject(t, dbPath, "test-proj")
 	baseURL, client := startAPIServer(t, dbPath)
 
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -387,7 +387,7 @@ func TestRunEpicWorkflow_MissingWorkflowName(t *testing.T) {
 	baseURL, client := startAPIServer(t, dbPath)
 
 	// Create epic
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -435,7 +435,7 @@ func TestListByParent_ExcludesClosedChildren(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}

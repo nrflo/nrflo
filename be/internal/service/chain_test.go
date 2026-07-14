@@ -53,7 +53,7 @@ func createTestTickets(t *testing.T, pool *db.Pool, projectID string, tickets ma
 
 func createTestDependencies(t *testing.T, pool *db.Pool, projectID string, deps map[string][]string) {
 	t.Helper()
-	database, err := db.Open(pool.Path)
+	database, err := db.OpenPathExisting(pool.Path)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

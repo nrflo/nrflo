@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/repo"
 )
 
@@ -19,7 +18,7 @@ func TestE2ESubscribeReplayLiveEvents(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -89,7 +88,7 @@ func TestE2EMultipleClientsReplay(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -178,7 +177,7 @@ func TestE2ESnapshotToLiveTransition(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -247,7 +246,7 @@ func TestE2ECleanupDoesNotAffectActiveCursors(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -291,7 +290,7 @@ func TestE2EProjectWideSubscription(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

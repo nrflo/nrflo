@@ -21,7 +21,7 @@ import (
 func seedAPISession(t *testing.T, dbPath, projectID, ticketID, sessionID, wfiID string) {
 	t.Helper()
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("seedAPISession: open DB: %v", err)
 	}

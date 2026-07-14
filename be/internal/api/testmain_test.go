@@ -22,8 +22,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("failed to create template dir: " + err.Error())
 	}
-	defer os.RemoveAll(tmpDir)
-
 	apiTemplateDBPath = filepath.Join(tmpDir, "template.db")
 	pool, err := db.NewPoolPath(apiTemplateDBPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -37,7 +35,9 @@ func TestMain(m *testing.M) {
 		panic("failed to patch admin hash: " + err.Error())
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+	os.RemoveAll(tmpDir)
+	os.Exit(code)
 }
 
 // patchFastAdminHash replaces the seeded admin user's password hash with a minimal-param
@@ -52,7 +52,7 @@ func patchFastAdminHash(dbPath string) error {
 	enc := base64.RawStdEncoding
 	hash := fmt.Sprintf("$argon2id$v=19$m=4096,t=1,p=1$%s$%s",
 		enc.EncodeToString(salt), enc.EncodeToString(key))
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		return err
 	}
@@ -77,4 +77,11 @@ func apiCopyTemplateDB(dst string) error {
 
 	_, err = io.Copy(out, src)
 	return err
+}
+
+func apiOpenTemplateDB(dst string) (*db.DB, error) {
+	if err := apiCopyTemplateDB(dst); err != nil {
+		return nil, err
+	}
+	return db.OpenPathExisting(dst)
 }

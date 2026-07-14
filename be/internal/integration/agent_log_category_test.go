@@ -18,7 +18,7 @@ func seedCategoryMessages(t *testing.T, dbPath, projectID, sessionID string) {
 
 	seedProject(t, dbPath, projectID)
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

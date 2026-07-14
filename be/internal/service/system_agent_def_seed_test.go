@@ -16,7 +16,10 @@ import (
 func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_accessible.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -108,7 +111,10 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 func TestSystemAgentDef_SeededConflictResolverPromptVars(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "seed_vars.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

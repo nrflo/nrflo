@@ -127,7 +127,8 @@ SeedFindings on RunRequest: see [orchestrator/CLAUDE.md](internal/orchestrator/C
 ## Running Tests
 
 ```bash
-make test                    # all tests (from project root)
+make test                    # fast backend suite (from project root)
+make test-smoke              # slow real-binary/build smoke tests
 make test-integration        # integration only (verbose)
 make test-pkg PKG=orchestrator  # single package
 make test-coverage           # with coverage report
@@ -143,4 +144,4 @@ Running all migrations per test dominates wall time under `-p` parallelism. Ever
 - A package `TestMain` migrates a template DB once (`db.NewPoolPath`) and stores its path.
 - Each test calls a `copyTemplateDB(t, dst)` helper, then opens the copy with `db.OpenPathExisting` / `db.NewPoolPathExisting` (or `db.OpenPoolExisting`) — which skip migrations. Per-test copies keep writes isolated.
 
-Implemented in `internal/db`, `internal/spawner`, `internal/integration`. Do **not** call `db.Open` / `db.NewPoolPath` in a test for a fresh DB. Migration tests assert the *outcome* of migrations (the template is that outcome); keep exactly one explicit from-scratch `NewPoolPath` test per package as the migrate-cleanly guarantee (e.g. `db.TestMigrationsApplyFromScratch`).
+Each DB-backed test package owns or reuses a migrated template. Do **not** call `db.Open` / `db.NewPoolPath` in a test for a fresh DB. Migration tests assert the *outcome* of migrations (the template is that outcome); keep exactly one explicit from-scratch `NewPoolPath` test per package as the migrate-cleanly guarantee (e.g. `db.TestMigrationsApplyFromScratch`).

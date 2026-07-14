@@ -59,7 +59,7 @@ func doRetryFailedProject(t *testing.T, client *http.Client, baseURL, projectID 
 // seedProjectWithRoot creates a project with a root_path set
 func seedProjectWithRoot(t *testing.T, dbPath, projectID string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	seedTicketAndWorkflow(t, dbPath, "proj", "TICK-1")
 
 	// Mark workflow as failed and create failed agent session
-	database, _ := db.Open(dbPath)
+	database, _ := db.OpenPathExisting(dbPath)
 	pool := db.WrapAsPool(database)
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clock.Real())
@@ -175,7 +175,7 @@ func TestRetryFailedHandler_HappyPath(t *testing.T) {
 	}
 
 	// Verify workflow status reset to active
-	database, _ = db.Open(dbPath)
+	database, _ = db.OpenPathExisting(dbPath)
 	pool = db.WrapAsPool(database)
 	wfiRepo = repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wi, _ = wfiRepo.Get(wi.ID)
@@ -200,7 +200,7 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	seedWorkflowDef(t, dbPath, "proj")
 
 	// Create project-scoped workflow
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestRetryFailedProjectHandler_HappyPath(t *testing.T) {
 	}
 
 	// Verify workflow status reset to active
-	database, _ = db.Open(dbPath)
+	database, _ = db.OpenPathExisting(dbPath)
 	pool = db.WrapAsPool(database)
 	wfiRepo = repo.NewWorkflowInstanceRepo(pool, clock.Real())
 	wi, _ = wfiRepo.Get(wi.ID)

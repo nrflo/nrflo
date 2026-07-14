@@ -45,7 +45,7 @@ func insertWFIWithFindings(t *testing.T, env *testEnv, id, ticketID, workflowID,
 // openAsRepo opens a fresh AgentSessionRepo using the test db path.
 func openAsRepo(t *testing.T, env *testEnv) (*db.DB, *repo.AgentSessionRepo) {
 	t.Helper()
-	database, err := db.Open(env.dbPath)
+	database, err := db.OpenPathExisting(env.dbPath)
 	if err != nil {
 		t.Fatalf("openAsRepo: %v", err)
 	}

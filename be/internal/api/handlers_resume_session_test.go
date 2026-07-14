@@ -49,7 +49,7 @@ func newResumeTestServer(t *testing.T) (*Server, string) {
 // Pass an empty string to insert a NULL model_id.
 func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, status model.AgentSessionStatus, modelID string) {
 	t.Helper()
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("insertResumeTestSession: open db: %v", err)
 	}
@@ -294,7 +294,7 @@ func TestHandleResumeSession_HappyPath(t *testing.T) {
 	}
 
 	// Verify the DB status was updated to user_interactive.
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -394,7 +394,7 @@ func TestHandleResumeSessionProject_HappyPath(t *testing.T) {
 	}
 
 	// Verify the DB status was updated to user_interactive.
-	database, err := db.OpenPath(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

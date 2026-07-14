@@ -1,14 +1,19 @@
 import { describe, it, expect } from 'vitest'
+import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Tooltip } from './Tooltip'
 
+function TestTooltip(props: ComponentProps<typeof Tooltip>) {
+  return <Tooltip {...props} delayDuration={0} />
+}
+
 describe('Tooltip', () => {
   it('renders children without tooltip initially', () => {
     render(
-      <Tooltip text="Hover me">
+      <TestTooltip text="Hover me">
         <button>Click me</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     expect(screen.getByText('Click me')).toBeInTheDocument()
@@ -18,9 +23,9 @@ describe('Tooltip', () => {
   it('shows tooltip on mouse enter', async () => {
     const user = userEvent.setup()
     render(
-      <Tooltip text="Tooltip text">
+      <TestTooltip text="Tooltip text">
         <button>Trigger</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     await user.hover(screen.getByText('Trigger'))
@@ -30,9 +35,9 @@ describe('Tooltip', () => {
   it('tooltip is accessible via role', async () => {
     const user = userEvent.setup()
     render(
-      <Tooltip text="Tooltip text">
+      <TestTooltip text="Tooltip text">
         <button>Trigger</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     // Not visible initially
@@ -54,9 +59,9 @@ describe('Tooltip', () => {
 
     for (const placement of placements) {
       const { unmount } = render(
-        <Tooltip text={`${placement} tooltip`} placement={placement}>
+        <TestTooltip text={`${placement} tooltip`} placement={placement}>
           <button>{placement}</button>
-        </Tooltip>
+        </TestTooltip>
       )
 
       await user.hover(screen.getByText(placement))
@@ -69,9 +74,9 @@ describe('Tooltip', () => {
   it('applies custom className', async () => {
     const user = userEvent.setup()
     render(
-      <Tooltip text="Custom" className="custom-class">
+      <TestTooltip text="Custom" className="custom-class">
         <button>Trigger</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     await user.hover(screen.getByText('Trigger'))
@@ -85,9 +90,9 @@ describe('Tooltip', () => {
     const user = userEvent.setup()
     const { container } = render(
       <div data-testid="wrapper">
-        <Tooltip text="Portal test">
+        <TestTooltip text="Portal test">
           <button>Trigger</button>
-        </Tooltip>
+        </TestTooltip>
       </div>
     )
 
@@ -102,9 +107,9 @@ describe('Tooltip', () => {
   it('renders ReactNode JSX content in tooltip', async () => {
     const user = userEvent.setup()
     render(
-      <Tooltip text={<><p>First paragraph</p><p>Second paragraph</p></>}>
+      <TestTooltip text={<><p>First paragraph</p><p>Second paragraph</p></>}>
         <button>Trigger</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     await user.hover(screen.getByText('Trigger'))
@@ -116,9 +121,9 @@ describe('Tooltip', () => {
   it('shows tooltip on keyboard focus', async () => {
     const user = userEvent.setup()
     render(
-      <Tooltip text="Focus tooltip">
+      <TestTooltip text="Focus tooltip">
         <button>Trigger</button>
-      </Tooltip>
+      </TestTooltip>
     )
 
     await user.tab()

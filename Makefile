@@ -1,7 +1,7 @@
 .PHONY: all build build-server build-server-only build-ui \
        build-release build-release-server \
        build-server-notray build-release-server-notray \
-       install clean test test-ui test-integration test-pkg test-verbose \
+       install clean test test-smoke test-ui test-integration test-pkg test-verbose \
        test-coverage test-race tidy release-check release-dry-run help \
        embed-assets docker-build docker-buildx docker-login \
        lint lint-fix lint-pkg deadcode filesize filesize-update cleanup
@@ -112,7 +112,7 @@ endef
 test: embed-assets
 	$(acquire_be_lock)
 	@START=$$(date +%s); \
-	cd $(BE_DIR) && $(GO) test -p 6 ./internal/... -count=1; \
+	cd $(BE_DIR) && $(GO) test -p 6 ./internal/... ./cmd -count=1; \
 	RC=$$?; \
 	rmdir $(BE_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \
@@ -123,11 +123,16 @@ test: embed-assets
 	fi; \
 	exit $$RC
 
+## test-smoke: Run slow real-binary/build smoke tests outside the fast suite
+test-smoke: embed-assets
+	$(acquire_be_lock)
+	@cd $(BE_DIR) && $(GO) test -tags smoke ./cmd -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
+
 ## test-ui: Run frontend tests (60s wall-time constraint; skipped on CI runners). Use ARGS= for path filter.
 test-ui:
 	$(acquire_ui_lock)
 	@START=$$(date +%s); \
-	cd $(UI_DIR) && npx vitest run $(ARGS); \
+	cd $(UI_DIR) && NODE_OPTIONS="$${NODE_OPTIONS:+$$NODE_OPTIONS }--no-experimental-webstorage" npx vitest run $(ARGS); \
 	RC=$$?; \
 	rmdir $(UI_LOCK) 2>/dev/null || true; \
 	ELAPSED=$$(( $$(date +%s) - $$START )); \

@@ -52,7 +52,7 @@ func insertPaginationTickets(t *testing.T, database *db.DB, projectID string, no
 func openPaginationDB(t *testing.T, projectID string) *repo.TicketRepo {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("open DB: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestListWithBlockedInfo_InvalidSort(t *testing.T) {
 // BlockedOnly subquery WHERE clause.
 func TestListWithBlockedInfo_BlockedOnlyPagination(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("open DB: %v", err)
 	}

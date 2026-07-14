@@ -18,7 +18,7 @@ import (
 // seedChainTickets inserts tickets directly into the DB for chain HTTP tests.
 func seedChainTickets(t *testing.T, dbPath, projectID string, tickets map[string]time.Time) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding tickets: %v", err)
 	}
@@ -39,7 +39,7 @@ func seedChainTickets(t *testing.T, dbPath, projectID string, tickets map[string
 // seedChainDeps inserts dependency rows directly into the DB.
 func seedChainDeps(t *testing.T, dbPath, projectID string, deps map[string][]string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding deps: %v", err)
 	}

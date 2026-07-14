@@ -14,7 +14,10 @@ import (
 func TestSystemAgentDef_ListForAPI_ExcludesAPIMode(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "listforapi_exclude.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}
@@ -53,7 +56,10 @@ func TestSystemAgentDef_ListForAPI_ExcludesAPIMode(t *testing.T) {
 func TestSystemAgentDef_ListForAPI_IncludesAPIMode(t *testing.T) {
 	t.Parallel()
 	dbPath := filepath.Join(t.TempDir(), "listforapi_include.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("NewPoolPath: %v", err)
 	}

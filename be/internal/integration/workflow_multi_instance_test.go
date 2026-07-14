@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"runtime"
 	"testing"
 	"time"
 
@@ -14,7 +15,6 @@ import (
 	"be/internal/types"
 )
 
-// waitForCondition polls check() every 5ms until it returns true or the timeout elapses.
 func waitForCondition(t *testing.T, timeout time.Duration, check func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
@@ -22,7 +22,7 @@ func waitForCondition(t *testing.T, timeout time.Duration, check func() bool) {
 		if check() {
 			return
 		}
-		time.Sleep(5 * time.Millisecond)
+		runtime.Gosched()
 	}
 	t.Fatal("condition not met within timeout")
 }
@@ -197,7 +197,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 
 	// Create a running agent session for the instance
 	// Open a DB connection for AgentSessionRepo (requires *db.DB not Pool)
-	database, err := db.Open(env.Pool.Path)
+	database, err := db.OpenPathExisting(env.Pool.Path)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 
 	// Create a failed agent session
 	// Open a DB connection for AgentSessionRepo (requires *db.DB not Pool)
-	database, err := db.Open(env.Pool.Path)
+	database, err := db.OpenPathExisting(env.Pool.Path)
 	if err != nil {
 		t.Fatalf("failed to open database: %v", err)
 	}

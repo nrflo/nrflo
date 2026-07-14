@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -99,7 +98,7 @@ func TestWorktreeSetup_EnabledWithDefaultBranch(t *testing.T) {
 	}
 
 	// Update project to enable worktrees
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -208,7 +207,7 @@ func TestWorktreeSetup_DisabledWhenFlagFalse(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -267,7 +266,7 @@ func TestWorktreeSetup_DisabledWhenNoDefaultBranch(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -334,7 +333,7 @@ func TestWorktreeSetup_ProjectScope(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -401,7 +400,7 @@ func TestRunLoop_WorktreeCleanupOnFailure(t *testing.T) {
 	}
 
 	// Update project to enable worktrees
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -485,7 +484,7 @@ func TestRunLoop_WorktreeMergeOnSuccess(t *testing.T) {
 	}
 
 	// Update project to enable worktrees
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -591,7 +590,7 @@ func TestRunLoop_WorktreeMergeConflict(t *testing.T) {
 	}
 
 	// Update project to enable worktrees
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -707,7 +706,7 @@ func TestWorktreeCleanup_Idempotent(t *testing.T) {
 	}
 
 	// Update project to enable worktrees
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -739,9 +738,6 @@ func TestWorktreeCleanup_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Errorf("first cleanup failed: %v", err)
 	}
-
-	// Give cleanup a moment to complete
-	time.Sleep(100 * time.Millisecond)
 
 	// Second cleanup (should not error)
 	err = wtSvc.Cleanup(wt.projectRoot, wt.branchName, wt.worktreePath)

@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"testing"
 	"time"
 
@@ -59,7 +60,7 @@ func startAPIServer(t *testing.T, dbPath string) (string, *http.Client) {
 			resp.Body.Close()
 			break
 		}
-		time.Sleep(50 * time.Millisecond)
+		runtime.Gosched()
 	}
 
 	t.Cleanup(func() {
@@ -92,7 +93,7 @@ func loginAdminClient(t *testing.T, baseURL string) *http.Client {
 // seedProject inserts a project directly into the DB.
 func seedProject(t *testing.T, dbPath, projectID string) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB for seeding: %v", err)
 	}
@@ -732,8 +733,6 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	time.Sleep(10 * time.Millisecond)
-
 	// Create child with priority 2, created second (same priority, later timestamp)
 	child2Body := `{"id":"C2","title":"Priority 2 Second","parent_ticket_id":"ORDER-EPIC","priority":2,"created_by":"tester"}`
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child2Body))
@@ -745,8 +744,6 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 	}
 	resp.Body.Close()
 
-	time.Sleep(10 * time.Millisecond)
-
 	// Create child with priority 1 (should come first despite later creation)
 	child3Body := `{"id":"C3","title":"Priority 1","parent_ticket_id":"ORDER-EPIC","priority":1,"created_by":"tester"}`
 	req, _ = http.NewRequest("POST", baseURL+"/api/v1/tickets", bytes.NewBufferString(child3Body))
@@ -757,8 +754,6 @@ func TestGetEpicChildrenOrderedByPriorityThenCreatedAt(t *testing.T) {
 		t.Fatalf("failed to create C3: %v", err)
 	}
 	resp.Body.Close()
-
-	time.Sleep(10 * time.Millisecond)
 
 	// Create child with priority 3 (should come last)
 	child4Body := `{"id":"C4","title":"Priority 3","parent_ticket_id":"ORDER-EPIC","priority":3,"created_by":"tester"}`

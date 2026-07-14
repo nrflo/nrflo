@@ -20,7 +20,10 @@ import (
 func setupNotificationServicePool(t *testing.T) (*db.Pool, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	if err := svcCopyTemplateDB(dbPath); err != nil {
+		t.Fatalf("copy template DB: %v", err)
+	}
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
 	if err != nil {
 		t.Fatalf("open pool: %v", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -53,7 +54,7 @@ func waitHTTP(t *testing.T, baseURL string, timeout time.Duration) {
 			resp.Body.Close()
 			return
 		}
-		time.Sleep(10 * time.Millisecond)
+		runtime.Gosched()
 	}
 	t.Fatalf("server at %s did not become ready within %s", baseURL, timeout)
 }

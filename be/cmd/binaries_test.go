@@ -1,36 +1,53 @@
+//go:build smoke
+
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
+var smokeBinaryPath string
+
+func TestMain(m *testing.M) {
+	tmpDir, err := os.MkdirTemp("", "nrflo-smoke-*")
+	if err != nil {
+		panic(err)
+	}
+	beDir, err := findBeDir()
+	if err != nil {
+		panic(err)
+	}
+	smokeBinaryPath = filepath.Join(tmpDir, "nrflo_server")
+	cmd := exec.Command("go", "build", "-o", smokeBinaryPath, "./cmd/server")
+	cmd.Dir = beDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "build smoke binary: %v\n%s", err, output)
+		os.RemoveAll(tmpDir)
+		os.Exit(1)
+	}
+	code := m.Run()
+	os.RemoveAll(tmpDir)
+	os.Exit(code)
+}
+
 // TestBinaryBuild_NrflowServer verifies that the server binary compiles successfully
 func TestBinaryBuild_NrflowServer(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := filepath.Join(tmpDir, "nrflo_server")
-
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/server")
-	cmd.Dir = getBeDir(t)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("nrflo_server binary failed to compile: %v\nOutput: %s", err, output)
-	}
-
-	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
-		t.Fatalf("nrflo_server binary was not created at %s", binaryPath)
+	if _, err := os.Stat(smokeBinaryPath); os.IsNotExist(err) {
+		t.Fatalf("nrflo_server binary was not created at %s", smokeBinaryPath)
 	}
 }
 
 // TestServerBinary_Help verifies nrflo_server --help shows serve, version, and the
 // agent infra parent, but no client commands.
 func TestServerBinary_Help(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	cmd := exec.Command(binaryPath, "--help")
 	output, err := cmd.CombinedOutput()
@@ -59,8 +76,7 @@ func TestServerBinary_Help(t *testing.T) {
 
 // TestServerBinary_TicketsCommandNotAvailable verifies the removed client commands error out.
 func TestServerBinary_TicketsCommandNotAvailable(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	cmd := exec.Command(binaryPath, "tickets")
 	output, err := cmd.CombinedOutput()
@@ -76,8 +92,7 @@ func TestServerBinary_TicketsCommandNotAvailable(t *testing.T) {
 // infrastructure subcommands (MCP bridge + Claude hook forwarders) but not the
 // agent-initiated commands (which are MCP tools, not CLI subcommands).
 func TestServerBinary_AgentInfraSubcommands(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	cmd := exec.Command(binaryPath, "agent", "--help")
 	output, err := cmd.CombinedOutput()
@@ -104,8 +119,7 @@ func TestServerBinary_AgentInfraSubcommands(t *testing.T) {
 
 // TestServerBinary_VersionCommand verifies nrflo_server version works
 func TestServerBinary_VersionCommand(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	cmd := exec.Command(binaryPath, "version")
 	output, err := cmd.CombinedOutput()
@@ -119,8 +133,7 @@ func TestServerBinary_VersionCommand(t *testing.T) {
 
 // TestServerBinary_ServeCommandExists verifies nrflo_server serve command exists.
 func TestServerBinary_ServeCommandExists(t *testing.T) {
-	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	cmd := exec.Command(binaryPath, "serve", "--help")
 	output, err := cmd.CombinedOutput()
@@ -135,8 +148,7 @@ func TestServerBinary_ServeCommandExists(t *testing.T) {
 
 // TestBinaryNaming verifies the server binary name matches convention.
 func TestBinaryNaming(t *testing.T) {
-	tmpDir := t.TempDir()
-	serverBinary := buildServerBinary(t, tmpDir)
+	serverBinary := smokeBinaryPath
 	if !strings.HasSuffix(serverBinary, "nrflo_server") {
 		t.Errorf("Server binary name should be 'nrflo_server', got %s", filepath.Base(serverBinary))
 	}
@@ -145,6 +157,8 @@ func TestBinaryNaming(t *testing.T) {
 // TestMakefileTargets_Build verifies make build builds the (single) server binary.
 func TestMakefileTargets_Build(t *testing.T) {
 	beDir := getBeDir(t)
+	legacyBinary := filepath.Join(beDir, "nrflo")
+	_, legacyErr := os.Stat(legacyBinary)
 	runMake(t, beDir, "clean")
 	defer runMake(t, beDir, "clean")
 
@@ -155,7 +169,7 @@ func TestMakefileTargets_Build(t *testing.T) {
 		t.Errorf("make build did not create nrflo_server binary")
 	}
 	// The nrflo CLI binary has been removed.
-	if _, err := os.Stat(filepath.Join(beDir, "nrflo")); err == nil {
+	if _, err := os.Stat(legacyBinary); os.IsNotExist(legacyErr) && err == nil {
 		t.Errorf("make build should NOT create a nrflo CLI binary (removed)")
 	}
 }
@@ -249,7 +263,7 @@ func TestServerBinary_StartStop(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
-	binaryPath := buildServerBinary(t, tmpDir)
+	binaryPath := smokeBinaryPath
 
 	dbPath := filepath.Join(tmpDir, "test.db")
 	socketPath := filepath.Join(tmpDir, "test.sock")
@@ -263,7 +277,13 @@ func TestServerBinary_StartStop(t *testing.T) {
 		t.Fatalf("Failed to start server: %v", err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(socketPath); err == nil {
+			break
+		}
+		runtime.Gosched()
+	}
 
 	if err := cmd.Process.Signal(os.Interrupt); err != nil {
 		t.Errorf("Failed to send interrupt signal: %v", err)
@@ -285,7 +305,7 @@ func TestServerBinary_StartStop(t *testing.T) {
 
 func makeCmd(beDir, target string) *exec.Cmd {
 	cmd := exec.Command("make", target)
-	cmd.Dir = beDir
+	cmd.Dir = filepath.Dir(beDir)
 	return cmd
 }
 
@@ -294,37 +314,4 @@ func runMake(t *testing.T, beDir, target string) {
 	if output, err := makeCmd(beDir, target).CombinedOutput(); err != nil {
 		t.Logf("make %s output: %s", target, output)
 	}
-}
-
-// getBeDir returns the absolute path to the be/ directory
-func getBeDir(t *testing.T) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	if strings.HasSuffix(wd, "/be/cmd") || strings.HasSuffix(wd, "/be/cmd/server") {
-		return filepath.Join(wd, "..")
-	}
-	if strings.HasSuffix(wd, "/be") {
-		return wd
-	}
-	beDir := filepath.Join(wd, "be")
-	if _, err := os.Stat(beDir); os.IsNotExist(err) {
-		t.Fatalf("Cannot find be/ directory from %s", wd)
-	}
-	return beDir
-}
-
-// buildServerBinary builds the server binary to tmpDir and returns the path
-func buildServerBinary(t *testing.T, tmpDir string) string {
-	t.Helper()
-	binaryPath := filepath.Join(tmpDir, "nrflo_server")
-	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/server")
-	cmd.Dir = getBeDir(t)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to build server binary: %v\nOutput: %s", err, output)
-	}
-	return binaryPath
 }

@@ -31,7 +31,7 @@ func TestCloseBlockerBroadcastsUnblockEvents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and dependent tickets
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestCloseBlockerWithMultipleDependents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and three dependent tickets
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestCloseBlockerWithClosedDependent(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create blocker and two dependents (one open, one closed)
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestCloseBlockerGetBlockedErrorHandling(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create ticket
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -379,7 +379,7 @@ func TestReopenBlockerDoesNotBroadcastUnblockEvents(t *testing.T) {
 	seedProject(t, dbPath, projectID)
 
 	// Create closed blocker and open dependent
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

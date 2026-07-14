@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/repo"
 )
 
@@ -15,7 +14,7 @@ func TestReplayWithValidCursor(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -72,7 +71,7 @@ func TestReplayWithCursorZero(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -120,7 +119,7 @@ func TestReplayWithPrunedEvents(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -180,7 +179,7 @@ func TestReplayWithGapRequiresSnapshot(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -242,7 +241,7 @@ func TestReplayWithCaughtUpCursor(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -282,7 +281,7 @@ func TestReplayDifferentScope(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -338,7 +337,7 @@ func TestReplayFutureCursorWithoutSnapshotResyncs(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

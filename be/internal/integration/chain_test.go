@@ -33,7 +33,7 @@ func createChainTickets(t *testing.T, env *TestEnv, tickets map[string]time.Time
 // createChainDependencies creates test dependencies
 func createChainDependencies(t *testing.T, env *TestEnv, deps map[string][]string) {
 	t.Helper()
-	database, err := db.Open(env.Pool.Path)
+	database, err := db.OpenPathExisting(env.Pool.Path)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}

@@ -186,7 +186,7 @@ func TestGetTicketWithDeletedParent(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestGetTicketWithDeletedParent(t *testing.T) {
 	resp.Body.Close()
 
 	// Delete parent directly from DB
-	openDB, err := db.Open(dbPath)
+	openDB, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open DB: %v", err)
 	}
@@ -338,7 +338,7 @@ func TestGetTicketWithDependenciesAndTitles(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}

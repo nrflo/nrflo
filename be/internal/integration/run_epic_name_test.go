@@ -95,7 +95,7 @@ func TestRunEpicWorkflow_EpicPrefixCases(t *testing.T) {
 			seedProject(t, dbPath, "test-proj")
 			baseURL, client := startAPIServer(t, dbPath)
 
-			database, err := db.OpenPath(dbPath)
+			database, err := db.OpenPathExisting(dbPath)
 			if err != nil {
 				t.Fatalf("failed to open DB: %v", err)
 			}

@@ -3,19 +3,31 @@ package ws
 import (
 	"encoding/json"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/repo"
 )
+
+func waitForEventLog(t *testing.T, check func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if check() {
+			return
+		}
+		runtime.Gosched()
+	}
+	t.Fatal("event log condition not met before timeout")
+}
 
 func TestHubBroadcastWithEventLog(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -83,7 +95,7 @@ func TestHubBroadcastSequentialSequence(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -137,7 +149,7 @@ func TestHubBroadcastAcrossProjects(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -152,11 +164,20 @@ func TestHubBroadcastAcrossProjects(t *testing.T) {
 
 	// Broadcast events to different projects
 	hub.Broadcast(NewEvent(EventTestEcho, "proj-1", "ticket-1", "feature", nil))
-	time.Sleep(50 * time.Millisecond)
+	waitForEventLog(t, func() bool {
+		seq, _ := eventLog.LatestSeq("proj-1", "ticket-1")
+		return seq == 1
+	})
 	hub.Broadcast(NewEvent(EventTestEcho, "proj-2", "ticket-1", "feature", nil))
-	time.Sleep(50 * time.Millisecond)
+	waitForEventLog(t, func() bool {
+		seq, _ := eventLog.LatestSeq("proj-2", "ticket-1")
+		return seq == 2
+	})
 	hub.Broadcast(NewEvent(EventTestEcho, "proj-1", "ticket-2", "feature", nil))
-	time.Sleep(50 * time.Millisecond)
+	waitForEventLog(t, func() bool {
+		seq, _ := eventLog.LatestSeq("proj-1", "ticket-2")
+		return seq == 3
+	})
 
 	// Check sequences are global across all scopes
 	seq1, _ := eventLog.LatestSeq("proj-1", "ticket-1")
@@ -209,7 +230,7 @@ func TestHubBroadcastCaseNormalization(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -224,7 +245,10 @@ func TestHubBroadcastCaseNormalization(t *testing.T) {
 
 	// Broadcast with mixed case
 	hub.Broadcast(NewEvent(EventTestEcho, "PROJ-1", "TICKET-1", "feature", nil))
-	time.Sleep(50 * time.Millisecond)
+	waitForEventLog(t, func() bool {
+		entries, _ := eventLog.QuerySince("proj-1", "ticket-1", 0, 100)
+		return len(entries) == 1
+	})
 
 	// Should be stored as lowercase
 	entries, err := eventLog.QuerySince("proj-1", "ticket-1", 0, 100)

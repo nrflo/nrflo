@@ -221,14 +221,7 @@ func TestScriptBackend_Start_ExitZeroClosesDoneCh(t *testing.T) {
 		t.Errorf("waitErr = %v, want nil for exit(0)", proc.waitErr)
 	}
 
-	// The wait goroutine removes the file after closing doneCh — poll briefly.
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if _, err := os.Stat(scriptPath); os.IsNotExist(err) {
-			break
-		}
-		time.Sleep(time.Millisecond)
-	}
+	// doneCh closes only after output drains and the script file is removed.
 	if _, err := os.Stat(scriptPath); !os.IsNotExist(err) {
 		t.Errorf("script file %s should be removed after exit, stat err: %v", scriptPath, err)
 	}
@@ -292,18 +285,6 @@ func TestScriptBackend_Start_StdoutTrackedAsText(t *testing.T) {
 	case <-proc.doneCh:
 	case <-time.After(5 * time.Second):
 		t.Fatalf("doneCh not closed within 5s")
-	}
-
-	// Poll for monitorOutput to drain. doneCh only signals process exit; the drain goroutine can be starved under parallel-test load, so allow 5s (matching the doneCh timeout above).
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		proc.messagesMutex.Lock()
-		n := len(proc.pendingMessages)
-		proc.messagesMutex.Unlock()
-		if n >= 2 {
-			break
-		}
-		time.Sleep(time.Millisecond)
 	}
 
 	proc.messagesMutex.Lock()

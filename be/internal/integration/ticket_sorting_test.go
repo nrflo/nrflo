@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/repo"
 )
 
@@ -21,7 +20,7 @@ func TestListWithBlockedInfo_SortsByUpdatedThenCreated(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}
@@ -100,7 +99,7 @@ func TestListWithBlockedInfo_TypeFilter(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}
@@ -170,7 +169,7 @@ func TestListWithBlockedInfo_NullUpdatedAt(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}
@@ -245,7 +244,7 @@ func TestListWithBlockedInfo_StatusFilterSorting(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}
@@ -405,7 +404,7 @@ func TestListWithBlockedInfo_SameTimestamps(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	database, err := db.OpenPath(dbPath)
+	database, err := copyAndOpenTemplateDB(dbPath)
 	if err != nil {
 		t.Fatalf("failed to init DB: %v", err)
 	}

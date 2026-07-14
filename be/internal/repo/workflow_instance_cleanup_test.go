@@ -214,8 +214,6 @@ func TestWorkflowInstanceCleanupKeepLatest_KeepExceedsTotal(t *testing.T) {
 		if err := repo.Create(wi); err != nil {
 			t.Fatalf("failed to create instance: %v", err)
 		}
-		// Sleep to ensure different timestamps
-		time.Sleep(10 * time.Millisecond)
 	}
 
 	// CleanupKeepLatest(100) should delete nothing (keep > total)

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/repo"
 )
 
@@ -16,7 +15,7 @@ func TestSnapshotStreamingSuccess(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -85,7 +84,7 @@ func TestSnapshotWithCurrentSeq(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -139,7 +138,7 @@ func TestSnapshotProviderError(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}
@@ -182,7 +181,7 @@ func TestSnapshotWithoutProvider(t *testing.T) {
 	dbDir := t.TempDir()
 	dbPath := filepath.Join(dbDir, "test.db")
 
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
+	pool, err := openWSTestPool(t, dbPath)
 	if err != nil {
 		t.Fatalf("failed to create pool: %v", err)
 	}

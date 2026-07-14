@@ -18,8 +18,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("failed to create template dir: " + err.Error())
 	}
-	defer os.RemoveAll(tmpDir)
-
 	svcTemplateDBPath = filepath.Join(tmpDir, "template.db")
 	pool, err := db.NewPoolPath(svcTemplateDBPath, db.DefaultPoolConfig())
 	if err != nil {
@@ -27,7 +25,9 @@ func TestMain(m *testing.M) {
 	}
 	pool.Close()
 
-	os.Exit(m.Run())
+	code := m.Run()
+	os.RemoveAll(tmpDir)
+	os.Exit(code)
 }
 
 // svcCopyTemplateDB copies the template DB to dst.

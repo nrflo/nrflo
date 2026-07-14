@@ -16,7 +16,7 @@ import (
 func setupNotifyDB(t *testing.T) (db.Querier, string, string) {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := openNotifyTestDB(t, dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}
@@ -298,7 +298,7 @@ func TestDispatcher_OnEvent_WorkflowFinalResultPreservedInPayload(t *testing.T) 
 // enqueue deliveries for wf-a channels, not for wf-b channels watching the same event.
 func TestDispatcher_OnEvent_WorkflowIsolation(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "isolation.db")
-	database, err := db.OpenPath(dbPath)
+	database, err := openNotifyTestDB(t, dbPath)
 	if err != nil {
 		t.Fatalf("open db: %v", err)
 	}

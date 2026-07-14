@@ -2,11 +2,9 @@ package repo
 
 import (
 	"database/sql"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
-	"be/internal/db"
 	"be/internal/model"
 )
 
@@ -97,17 +95,13 @@ func TestSanitizeFTS5Query(t *testing.T) {
 
 func newSearchTestDB(t *testing.T) (*TicketRepo, func()) {
 	t.Helper()
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	database, err := db.OpenPath(dbPath)
-	if err != nil {
-		t.Fatalf("failed to open database: %v", err)
-	}
-	_, err = database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
+	database := newTestDB(t)
+	_, err := database.Exec(`INSERT INTO projects (id, name, created_at, updated_at) VALUES (?, ?, datetime('now'), datetime('now'))`, "test-proj", "Test Project")
 	if err != nil {
 		t.Fatalf("failed to insert project: %v", err)
 	}
 	repo := NewTicketRepo(database, clock.Real())
-	return repo, func() { database.Close() }
+	return repo, func() {}
 }
 
 func mustCreateTicket(t *testing.T, repo *TicketRepo, ticket *model.Ticket) {
@@ -286,13 +280,6 @@ func TestSearchProjectIsolation(t *testing.T) {
 	t.Parallel()
 	repo, cleanup := newSearchTestDB(t)
 	defer cleanup()
-
-	// Insert a second project
-	database, err := db.OpenPath(filepath.Join(t.TempDir(), "iso.db"))
-	if err != nil {
-		t.Fatalf("open second db: %v", err)
-	}
-	defer database.Close()
 
 	mustCreateTicket(t, repo, &model.Ticket{
 		ID:        "ALPHA-1",

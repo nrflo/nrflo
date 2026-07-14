@@ -4,7 +4,6 @@ package repo
 
 import (
 	"be/internal/db"
-	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
@@ -20,14 +19,7 @@ func newSkipTagsDB(t *testing.T) *db.DB {
 // newSkipTagsPool opens a fresh Pool (for WorkflowInstanceRepo and AgentDefinitionRepo).
 func newSkipTagsPool(t *testing.T) *db.Pool {
 	t.Helper()
-	dbDir := t.TempDir()
-	dbPath := filepath.Join(dbDir, "test.db")
-	pool, err := db.NewPoolPath(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("failed to create pool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-	return pool
+	return newTestPool(t)
 }
 
 // seedProjectDB seeds a project into a *db.DB.

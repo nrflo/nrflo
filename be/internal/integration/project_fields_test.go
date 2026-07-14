@@ -60,7 +60,7 @@ func TestProjectFields_CreateGetList(t *testing.T) {
 			}
 
 			// Raw DB column value.
-			database, err := db.Open(dbPath)
+			database, err := db.OpenPathExisting(dbPath)
 			if err != nil {
 				t.Fatalf("reopen DB: %v", err)
 			}
@@ -144,7 +144,7 @@ func TestProjectFields_Update(t *testing.T) {
 
 		patchProjectMap(t, client, baseURL, "upd-br-clear", `{"default_branch":""}`)
 
-		database, err := db.Open(dbPath)
+		database, err := db.OpenPathExisting(dbPath)
 		if err != nil {
 			t.Fatalf("reopen DB: %v", err)
 		}
@@ -178,7 +178,7 @@ func TestProjectFields_Update(t *testing.T) {
 
 func assertWorktreesDB(t *testing.T, dbPath, id string, want int) {
 	t.Helper()
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("reopen DB: %v", err)
 	}

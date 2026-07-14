@@ -46,7 +46,7 @@ func TestWorktreePersistence_FieldsPopulatedOnInstance(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestWorktreePersistence_ProjectScopeHasNullFields(t *testing.T) {
 		t.Fatalf("failed to create project: %v", err)
 	}
 
-	database, err := db.Open(dbPath)
+	database, err := db.OpenPathExisting(dbPath)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}

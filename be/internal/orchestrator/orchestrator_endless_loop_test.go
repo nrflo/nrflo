@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"runtime"
 	"testing"
 	"time"
 
@@ -17,7 +18,7 @@ func pollUntil(timeout time.Duration, check func() bool) bool {
 		if check() {
 			return true
 		}
-		time.Sleep(5 * time.Millisecond)
+		runtime.Gosched()
 	}
 	return check()
 }

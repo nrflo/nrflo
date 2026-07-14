@@ -92,7 +92,7 @@ func TestRunner_ToolUse_ClosesSpan(t *testing.T) {
 // the invoke row through TrackToolInvoke with the tool_use_id attached.
 func TestRunnerSink_ToolUseStopTracksToolUseID(t *testing.T) {
 	rec := &recordingSink{}
-	s := newRunnerSink(rec, false)
+	s := newRunnerSink(rec, false, nil)
 
 	s.OnToolUseStart("tu_9", "Bash")
 	s.OnToolUseStop("tu_9", json.RawMessage(`{"command":"ls"}`))

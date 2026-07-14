@@ -15,7 +15,15 @@ func emitAgentText(sessionID, body string, sink Sink) {
 // emitMessage is the common path: RecordHookMessage + BroadcastMessagesUpdated
 // + BumpLastMessage + SetLastMessage.
 func emitMessage(sessionID, body, category string, sink Sink) {
-	projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, body, category, "")
+	emitMessageWithPayload(sessionID, body, category, "", sink)
+}
+
+// emitMessageWithPayload is emitMessage plus an explicit payload (e.g. the
+// tool_use_id carried by a tool-invoke row) — used by the api console engine,
+// which has no processInfo pending-message buffer to stamp in-memory the way
+// TrackToolInvoke does for autonomous agents (output_tool_span.go).
+func emitMessageWithPayload(sessionID, body, category, payload string, sink Sink) {
+	projectID, ticketID, workflow, err := sink.RecordHookMessage(sessionID, body, category, payload)
 	if err != nil {
 		return
 	}

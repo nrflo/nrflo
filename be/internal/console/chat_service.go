@@ -30,7 +30,10 @@ var ErrChatSessionNotFound = errors.New("console_chat_session_not_found")
 // engines. WSHub/PTY/Hub are the server's shared infrastructure (same
 // *ws.Hub, *pty.Manager, *spawner.ConsoleHub every other console/spawner path
 // uses) — a claude chat's PreToolUse approvals arrive through Hub exactly
-// like a human console session's.
+// like a human console session's. Tools is the console tool-profile Deps
+// (Pool/Clock/WSHub plus the service handles BuildRegistry/NewToolEnv need) —
+// every engine gets it via EngineDeps.API unconditionally; claude/codex
+// simply ignore it, the same as they ignore PTY/Hub/NrfloPath.
 type ChatDeps struct {
 	Pool      *db.Pool
 	Clock     clock.Clock
@@ -39,6 +42,7 @@ type ChatDeps struct {
 	Hub       *spawner.ConsoleHub
 	ErrorSvc  *service.ErrorService
 	ServerURL string
+	Tools     Deps
 }
 
 // ChatService owns kind='console_chat' agent_sessions lifecycle: the
@@ -117,11 +121,27 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 		sessionID: sessionID,
 		projectID: projectID,
 	}
+
+	// Built unconditionally (no engine name-check) — a chat engine gets the
+	// same tool profile the mcp-external bridge serves; claude/codex simply
+	// ignore EngineDeps.API.
+	reg, err := BuildRegistry(s.deps.Tools)
+	if err != nil {
+		return "", fmt.Errorf("build console tool registry: %w", err)
+	}
+
 	eng, err := s.engineFactory(engine, spawner.EngineDeps{
 		Sink:      sink,
 		PTY:       s.deps.PTY,
 		Hub:       s.deps.Hub,
 		NrfloPath: resolveNrfloPath(),
+		API: spawner.APIEngineDeps{
+			Pool:     s.deps.Pool,
+			Clock:    s.deps.Clock,
+			Tools:    Specs(reg),
+			Handlers: reg,
+			ToolEnv:  NewToolEnv(s.deps.Tools, sessionID, projectID),
+		},
 	})
 	if err != nil {
 		return "", fmt.Errorf("build console engine: %w", err)
@@ -243,58 +263,4 @@ func (s *ChatService) get(sid string) (*chatSession, bool) {
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[sid]
 	return sess, ok
-}
-
-// ChatSnapshot is a live chat session's in-memory state: engine identity plus
-// the turn/pending-approval state machine. Returned by Snapshot for the
-// GET .../{sid} detail route so a page reload can restore an in-flight
-// approval card and the turn spinner instead of losing them.
-type ChatSnapshot struct {
-	Engine           string
-	ModelID          string
-	WorkDir          string
-	Turn             string
-	PendingApprovals []*spawner.ApprovalRequest
-}
-
-// Snapshot returns sid's live in-memory state. ok=false means no live engine
-// is registered for sid — a hard-killed server leaves user_interactive rows
-// with no engine, so callers must not assume a DB row implies a snapshot.
-func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
-	sess, ok := s.get(sid)
-	if !ok {
-		return ChatSnapshot{}, false
-	}
-	turn, pending := sess.snapshot()
-	return ChatSnapshot{
-		Engine:           sess.EngineName(),
-		ModelID:          sess.ModelID(),
-		WorkDir:          sess.WorkDir(),
-		Turn:             string(turn),
-		PendingApprovals: pending,
-	}, true
-}
-
-// Live reports whether sid has a live engine registered with this service.
-func (s *ChatService) Live(sid string) bool {
-	_, ok := s.get(sid)
-	return ok
-}
-
-// StopAll stops every live chat engine. Called during graceful shutdown,
-// before repo.FailAllRunning marks running/user_interactive rows failed —
-// otherwise an engine process (PTY child, app-server child) would outlive
-// the server.
-func (s *ChatService) StopAll() {
-	s.mu.Lock()
-	sessions := make([]*chatSession, 0, len(s.sessions))
-	for _, sess := range s.sessions {
-		sessions = append(sessions, sess)
-	}
-	s.sessions = make(map[string]*chatSession)
-	s.mu.Unlock()
-
-	for _, sess := range sessions {
-		sess.engine.Stop()
-	}
 }

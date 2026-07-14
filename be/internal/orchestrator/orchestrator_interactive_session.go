@@ -111,7 +111,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 		ModelConfigs:    modelConfigs,
 		APIModelConfigs: apiModelConfigs,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
-			return buildAPIProvider(ctx, interactivePool, o.clock, providerName, projectID)
+			return service.BuildAPIProvider(ctx, interactivePool, o.clock, providerName, projectID)
 		},
 		OnSessionRegister: func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()

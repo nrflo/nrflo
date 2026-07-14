@@ -7,7 +7,6 @@ import (
 	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/repo"
-	"be/internal/service"
 	"be/internal/spawner"
 )
 
@@ -15,18 +14,17 @@ import (
 type chatSpecParams struct {
 	SessionID  string
 	ProjectID  string
-	Engine     string // "claude" | "codex"
-	ModelID    string // cli_models registry id, a raw model name, or ""
+	Engine     string // "claude" | "codex" | "api"
+	ModelID    string // cli_models/api_models registry id, a raw model name, or ""
 	SpawnToken string
 	ServerURL  string // loopback base, e.g. http://127.0.0.1:6587
 }
 
 // buildChatEngineSpec resolves the project workdir and (when ModelID names
-// one) the cli_models row into a spawner.EngineSpec for a console-chat
-// session. A ModelID absent from the registry passes through raw — still a
-// legal CLI model name — mirroring cli/console_client.go's resolveCLIModel. A
-// row that exists but belongs to another engine, or is disabled, is an error
-// surfaced before the engine is started.
+// one) the model registry row into a spawner.EngineSpec for a console-chat
+// session, via modelResolverFor(p.Engine) — cli_models and api_models are
+// separate tables whose ids collide, so resolution diverges by engine. A row
+// that doesn't resolve is an error surfaced before the engine is started.
 func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spawner.EngineSpec, error) {
 	project, err := repo.NewProjectRepo(pool, clk).Get(p.ProjectID)
 	if err != nil {
@@ -51,21 +49,9 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 		return spec, nil
 	}
 
-	row, getErr := service.NewCLIModelService(pool, clk).Get(p.ModelID)
-	if getErr != nil {
-		// Unknown id: keep spec.Model as the raw value, no effort/fallback.
-		return spec, nil
+	if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID); err != nil {
+		return spawner.EngineSpec{}, err
 	}
-	if row.CLIType != p.Engine {
-		return spawner.EngineSpec{}, fmt.Errorf("model %q is registered for cli %s, not %s", p.ModelID, row.CLIType, p.Engine)
-	}
-	if !row.Enabled {
-		return spawner.EngineSpec{}, fmt.Errorf("model %q is disabled in the cli_models registry", p.ModelID)
-	}
-	spec.Model = row.MappedModel
-	spec.ReasoningEffort = row.ReasoningEffort
-	spec.FallbackModels = row.FallbackModels
-	spec.MaxContext = row.ContextLength
 
 	return spec, nil
 }

@@ -155,6 +155,30 @@ func TestHandleCreateConsoleChat_AdminCookie_Returns201AndStartsEngine(t *testin
 	}
 }
 
+// TestHandleCreateConsoleChat_APIEngine_APIModeDisabled_Returns400 drives the
+// real spawner.GetConsoleEngine (consoleChatEngineFunc left nil, unlike every
+// other test in this file) so engine="api" reaches the real apiConsoleEngine
+// gate: with api_mode_enabled unset in a fresh DB, Start returns
+// service.ErrAPIModeDisabled, which the handler maps to 400.
+func TestHandleCreateConsoleChat_APIEngine_APIModeDisabled_Returns400(t *testing.T) {
+	s := newServerWithAuth(t)
+	seedConsoleProject(t, s, "proj-chat-api-disabled")
+	adminID := createTestUser(t, s, "chat-admin-apidisabled@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleCreateConsoleChat)))
+	req := createChatReq("proj-chat-api-disabled", `{"engine":"api","model":""}`)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "api mode is disabled") {
+		t.Errorf("body = %s, want it to mention api mode is disabled", rr.Body.String())
+	}
+}
+
 func TestHandleConsoleChatMessage_EmptyText_Returns400(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-msg-empty")

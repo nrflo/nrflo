@@ -8,21 +8,33 @@ import (
 	"sync"
 
 	"be/internal/spawner/apirun/provider"
+
+	"github.com/google/uuid"
 )
 
 type runnerSink struct {
-	msgSink         MessageSink
-	mu              sync.Mutex
-	buf             strings.Builder
-	thinkBuf        strings.Builder
+	msgSink  MessageSink
+	mu       sync.Mutex
+	buf      strings.Builder
+	thinkBuf strings.Builder
+	// textItemID/thinkItemID name the segment currently accumulating in the
+	// matching buffer, and rotate on every flush. Each id therefore maps 1:1
+	// onto exactly one persisted row, which is what lets a live consumer key
+	// its delta buffer by id and drop it once the row lands (chatStream.ts's
+	// dedupe). A single id reused across flushes would concatenate every
+	// segment of the session into one ever-growing live bubble.
+	textItemID      string
+	thinkItemID     string
 	captureThinking bool
+	stream          StreamHook
 	toolNames       map[string]string
 }
 
-func newRunnerSink(msgSink MessageSink, captureThinking bool) *runnerSink {
+func newRunnerSink(msgSink MessageSink, captureThinking bool, stream StreamHook) *runnerSink {
 	return &runnerSink{
 		msgSink:         msgSink,
 		captureThinking: captureThinking,
+		stream:          stream,
 		toolNames:       map[string]string{},
 	}
 }
@@ -32,16 +44,25 @@ func (s *runnerSink) OnTextDelta(text string) {
 		return
 	}
 	s.mu.Lock()
+	if s.textItemID == "" {
+		s.textItemID = uuid.New().String()
+	}
+	itemID := s.textItemID
 	s.buf.WriteString(text)
+	var content string
 	if s.buf.Len() >= 4096 {
-		content := s.takeBufLocked()
-		s.mu.Unlock()
-		if content != "" {
-			s.msgSink.TrackMessage(content, "text")
-		}
-		return
+		content = s.takeBufLocked()
 	}
 	s.mu.Unlock()
+
+	// Stream before persisting: the consumer's buffer must exist by the time
+	// the row it dedupes against arrives.
+	if s.stream != nil {
+		s.stream.OnTextDelta(itemID, text)
+	}
+	if content != "" {
+		s.msgSink.TrackMessage(content, "text")
+	}
 }
 
 func (s *runnerSink) OnThinkingDelta(text string) {
@@ -49,16 +70,23 @@ func (s *runnerSink) OnThinkingDelta(text string) {
 		return
 	}
 	s.mu.Lock()
+	if s.thinkItemID == "" {
+		s.thinkItemID = uuid.New().String()
+	}
+	itemID := s.thinkItemID
 	s.thinkBuf.WriteString(text)
+	var content string
 	if s.thinkBuf.Len() >= 4096 {
-		content := s.takeThinkBufLocked()
-		s.mu.Unlock()
-		if content != "" && s.captureThinking {
-			s.msgSink.TrackMessage(content, "thinking")
-		}
-		return
+		content = s.takeThinkBufLocked()
 	}
 	s.mu.Unlock()
+
+	if s.stream != nil {
+		s.stream.OnThinkingDelta(itemID, text)
+	}
+	if content != "" && s.captureThinking {
+		s.msgSink.TrackMessage(content, "thinking")
+	}
 }
 
 func (s *runnerSink) OnToolUseStart(id, name string) {
@@ -111,6 +139,7 @@ func (s *runnerSink) flush() {
 }
 
 func (s *runnerSink) takeBufLocked() string {
+	s.textItemID = ""
 	if s.buf.Len() == 0 {
 		return ""
 	}
@@ -120,6 +149,7 @@ func (s *runnerSink) takeBufLocked() string {
 }
 
 func (s *runnerSink) takeThinkBufLocked() string {
+	s.thinkItemID = ""
 	if s.thinkBuf.Len() == 0 {
 		return ""
 	}

@@ -17,11 +17,12 @@ type testSink struct {
 type recordedMsg struct {
 	content  string
 	category string
+	payload  string
 }
 
 func (s *testSink) RecordHookMessage(sessionID, content, category, payload string) (string, string, string, error) {
 	s.mu.Lock()
-	s.recordedMsgs = append(s.recordedMsgs, recordedMsg{content, category})
+	s.recordedMsgs = append(s.recordedMsgs, recordedMsg{content: content, category: category, payload: payload})
 	s.mu.Unlock()
 	return "proj", "t1", "feature", nil
 }

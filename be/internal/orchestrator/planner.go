@@ -230,7 +230,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 		APIModelConfigs:    apiModelConfigs,
 		ErrorSvc:           o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
-			return buildAPIProvider(ctx, plannerPool, o.clock, providerName, projectID)
+			return service.BuildAPIProvider(ctx, plannerPool, o.clock, providerName, projectID)
 		},
 		AgentSvc:           newAPIAgentSvc(pool, o.clock, o.wsHub),
 		FindingsSvc:        service.NewFindingsService(pool, o.clock),

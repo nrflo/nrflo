@@ -1,0 +1,170 @@
+package apirun
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"be/internal/spawner/apirun/provider"
+)
+
+// runTurns drives the shared tool-use loop starting from msgs until a
+// terminal status is reached, returning the accumulated message history
+// alongside the terminal status string. It calls proc.SetFinalStatus/r.fail()
+// at exactly the same points Run's inline loop used to. Run (single-shot
+// autonomous agents) discards the returned history; Conversation.SendTurn
+// keeps it so the next turn replays the full transcript. On end_turn the
+// assistant's content is appended to msgs before returning "PASS" so a
+// Conversation can replay it in the next turn's request.
+func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.Message) ([]provider.Message, string) {
+	for turn := 0; turn < r.cfg.MaxIterations; turn++ {
+		if ctx.Err() != nil {
+			proc.SetFinalStatus("CANCELLED")
+			return msgs, "CANCELLED"
+		}
+		if !r.cfg.Deadline.IsZero() && !time.Now().Before(r.cfg.Deadline) {
+			r.fail(proc, fmt.Sprintf("deadline exceeded (%s)", r.cfg.Deadline.Format(time.RFC3339)))
+			return msgs, "FAIL"
+		}
+
+		sink := newRunnerSink(r.cfg.Sink, r.cfg.CaptureThinking, r.cfg.Stream)
+		req := provider.Request{
+			System:           r.cfg.System,
+			Messages:         msgs,
+			Tools:            r.cfg.Tools,
+			MaxTokens:        r.cfg.MaxTokens,
+			ToolChoice:       "auto",
+			CacheBreakpoints: r.cfg.CacheBreakpoints,
+			Model:            r.cfg.Model,
+			ReasoningEffort:  r.cfg.ReasoningEffort,
+		}
+		resp, err := r.cfg.Provider.Run(ctx, req, sink)
+		sink.close()
+		if err != nil {
+			status, msg, class := classifyProviderError(ctx, err)
+			r.cfg.Sink.TrackMessage(msg, "system")
+			if class == RetryClassRateLimit {
+				proc.SetFinalStatus("RATE_LIMITED")
+				return msgs, "RATE_LIMITED"
+			}
+			if r.cfg.ErrorSvc != nil && status == "FAIL" {
+				r.cfg.ErrorSvc.RecordError(proc.ProjectID(), "agent", proc.SessionID(), msg)
+			}
+			proc.SetFinalStatus(status)
+			return msgs, status
+		}
+
+		r.updateContext(ctx, proc, resp.Usage)
+
+		switch resp.StopReason {
+		case "end_turn":
+			// Do NOT filter resp.Content — thinking blocks must ride along for
+			// required API replay, same as the tool_use branch below.
+			msgs = append(msgs, provider.Message{Role: "assistant", Content: resp.Content})
+			proc.SetFinalStatus("PASS")
+			return msgs, "PASS"
+		case "max_tokens", "stop_sequence":
+			r.fail(proc, fmt.Sprintf("stop_reason=%s", resp.StopReason))
+			return msgs, "FAIL"
+		case "tool_use":
+			toolResults, terminalStatus := r.dispatchTools(ctx, proc, resp.Content)
+			if terminalStatus != "" {
+				return msgs, terminalStatus
+			}
+			if len(toolResults) == 0 {
+				r.fail(proc, "tool_use stop_reason but no tool_use blocks in response")
+				return msgs, "FAIL"
+			}
+			// Do NOT filter resp.Content — thinking blocks must ride along for required API replay.
+			msgs = append(msgs,
+				provider.Message{Role: "assistant", Content: resp.Content},
+				provider.Message{Role: "user", Content: toolResults},
+			)
+			continue
+		default:
+			r.fail(proc, fmt.Sprintf("unexpected stop_reason=%q", resp.StopReason))
+			return msgs, "FAIL"
+		}
+	}
+
+	r.fail(proc, fmt.Sprintf("max iterations %d reached", r.cfg.MaxIterations))
+	return msgs, "FAIL"
+}
+
+// dispatchTools iterates tool_use blocks in resp.Content sequentially. It
+// returns the assembled tool_result blocks plus the terminal status a handler
+// signaled via TerminalSignal (empty when no handler terminated the loop).
+// Sequential dispatch only in v1 — TODO(parallel): the for-range loop below is
+// the natural slot for parallel dispatch.
+func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []provider.ContentBlock) ([]provider.ContentBlock, string) {
+	results := []provider.ContentBlock{}
+	for _, block := range content {
+		if block.Type != "tool_use" {
+			continue
+		}
+		handler, ok := r.cfg.Handlers[block.ToolName]
+		if !ok {
+			msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
+			r.cfg.Sink.TrackMessage(msg, "error")
+			results = append(results, provider.ContentBlock{
+				Type:      "tool_result",
+				ToolUseID: block.ToolUseID,
+				Output:    msg,
+				IsError:   true,
+			})
+			continue
+		}
+
+		var (
+			out   string
+			media []provider.MediaBlock
+			isErr bool
+			terr  error
+		)
+		if mh, ok := handler.(MediaToolHandler); ok {
+			out, media, isErr, terr = mh.InvokeMedia(ctx, r.cfg.Env, block.Input)
+		} else {
+			out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
+		}
+		r.cfg.Sink.CloseToolSpan(block.ToolUseID)
+
+		var ts TerminalSignal
+		if errors.As(terr, &ts) {
+			proc.SetFinalStatus(ts.Status)
+			if ts.Status == "CALLBACK" {
+				proc.SetCallbackLevel(ts.Level)
+			}
+			return nil, ts.Status
+		}
+		if terr != nil {
+			out = terr.Error()
+			isErr = true
+			media = nil
+		}
+		category := "tool"
+		if isErr {
+			category = "error"
+		}
+		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), category)
+		results = append(results, provider.ContentBlock{
+			Type:        "tool_result",
+			ToolUseID:   block.ToolUseID,
+			Output:      out,
+			IsError:     isErr,
+			OutputMedia: media,
+		})
+	}
+	return results, ""
+}
+
+func formatToolResult(name, out string, isErr bool) string {
+	const maxOut = 2048
+	if isErr {
+		return fmt.Sprintf("%s: %s", name, out)
+	}
+	if len(out) > maxOut {
+		out = out[:maxOut]
+	}
+	return fmt.Sprintf("[%s] → %s", name, out)
+}

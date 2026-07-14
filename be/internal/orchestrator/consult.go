@@ -14,7 +14,7 @@ import (
 
 // consultBuildAPIProvider is a test seam so unit tests can inject a mock factory
 // without needing real provider credentials.
-var consultBuildAPIProvider func(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) (provider.Provider, error) = buildAPIProvider
+var consultBuildAPIProvider func(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) (provider.Provider, error) = service.BuildAPIProvider
 
 // Consult synchronously spawns a named consultant agent under the caller's
 // workflow instance and returns its answer. It is the orchestrator-level

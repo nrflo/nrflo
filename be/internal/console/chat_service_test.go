@@ -109,6 +109,42 @@ func TestChatService_Create_MintsSessionAndStartsEngine(t *testing.T) {
 	}
 }
 
+// TestChatService_Create_InjectsAPIToolProfileUnconditionally verifies
+// ChatDeps.Tools is built into EngineDeps.API regardless of engine name (Rule
+// 6: no engine-name check at this call site) — the fake engine here is
+// "codex", yet it still receives a populated tool registry and a ToolEnv
+// scoped to this session/project, exactly as the api engine would consume it.
+func TestChatService_Create_InjectsAPIToolProfileUnconditionally(t *testing.T) {
+	t.Parallel()
+	svc, _, _, factory := newChatTestService(t)
+
+	sid, err := svc.Create("codex", "", chatTestProjectID)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	eng := factory.last()
+	if eng == nil {
+		t.Fatal("no fake engine constructed")
+	}
+	api := eng.apiDeps()
+	if len(api.Handlers) == 0 {
+		t.Error("EngineDeps.API.Handlers is empty, want the console tool registry")
+	}
+	if len(api.Tools) == 0 {
+		t.Error("EngineDeps.API.Tools is empty, want Specs(registry)")
+	}
+	if api.ToolEnv.SessionID != sid {
+		t.Errorf("API.ToolEnv.SessionID = %q, want %q", api.ToolEnv.SessionID, sid)
+	}
+	if api.ToolEnv.ProjectID != chatTestProjectID {
+		t.Errorf("API.ToolEnv.ProjectID = %q, want %q", api.ToolEnv.ProjectID, chatTestProjectID)
+	}
+	if api.Pool == nil {
+		t.Error("API.Pool is nil, want the shared pool")
+	}
+}
+
 func TestChatService_Create_UnknownProject_ReturnsErrConsoleProjectNotFound(t *testing.T) {
 	t.Parallel()
 	svc, _, _, _ := newChatTestService(t)

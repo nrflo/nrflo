@@ -29,6 +29,7 @@ func newConsoleChatService(s *Server, cfg *config.Config, pool *db.Pool, clk clo
 		Hub:       consoleHub,
 		ErrorSvc:  errorSvc,
 		ServerURL: fmt.Sprintf("http://127.0.0.1:%d", cfg.Server.Port),
+		Tools:     s.consoleDeps(),
 	})
 	svc.SetEngineFactory(func(name string, deps spawner.EngineDeps) (spawner.ConsoleEngine, error) {
 		if s.consoleChatEngineFunc != nil {

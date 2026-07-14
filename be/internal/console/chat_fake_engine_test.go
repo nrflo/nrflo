@@ -15,6 +15,10 @@ import (
 // Events(), exactly as chat_events.go documents.
 type fakeConsoleEngine struct {
 	sink spawner.Sink
+	// api is the API tool-profile deps ChatService.Create injects
+	// unconditionally (EngineDeps.API) — captured here so a test can assert
+	// what ChatService built without starting a real api engine.
+	api spawner.APIEngineDeps
 
 	events chan spawner.EngineEvent
 
@@ -33,9 +37,10 @@ type fakeApprovalCall struct {
 	decision spawner.ApprovalDecision
 }
 
-func newFakeConsoleEngine(sink spawner.Sink) *fakeConsoleEngine {
+func newFakeConsoleEngine(sink spawner.Sink, api spawner.APIEngineDeps) *fakeConsoleEngine {
 	return &fakeConsoleEngine{
 		sink:   sink,
+		api:    api,
 		events: make(chan spawner.EngineEvent, 32),
 	}
 }
@@ -51,7 +56,7 @@ type fakeEngineFactory struct {
 }
 
 func (f *fakeEngineFactory) factory(_ string, deps spawner.EngineDeps) (spawner.ConsoleEngine, error) {
-	eng := newFakeConsoleEngine(deps.Sink)
+	eng := newFakeConsoleEngine(deps.Sink, deps.API)
 	f.mu.Lock()
 	f.engines = append(f.engines, eng)
 	f.mu.Unlock()
@@ -156,6 +161,13 @@ func (f *fakeConsoleEngine) spec() spawner.EngineSpec {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.startSpec
+}
+
+// apiDeps returns the EngineDeps.API this engine was constructed with.
+func (f *fakeConsoleEngine) apiDeps() spawner.APIEngineDeps {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.api
 }
 
 // emit pushes ev onto Events() for the pump goroutine to consume.

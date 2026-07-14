@@ -2,7 +2,11 @@
 
 > **Note:** Only reachable when the `api_mode_enabled` global setting is `true`. When the setting is off, `prepareSpawn` returns `api_mode_disabled` before constructing a Runner.
 
-In-process tool-use loop for API-mode agents. Files: `runner.go` (turn loop), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry + MergeBaseline), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic and OpenAI streaming impls + mock), `tools_builtin/` (builtin handlers), `tools_python/` (python_scripts kind=tool handler).
+In-process tool-use loop for API-mode agents. Files: `runner.go` (Run + Config), `runner_loop.go` (shared `runTurns`/`dispatchTools` loop), `conversation.go` (`Conversation`/`StreamHook`, multi-turn), `interfaces.go` (MessageSink/ProcState/AgentSvc/ErrorRecorder surfaces), `tool.go` (ToolHandler/TerminalSignal/Registry, plus `ToolEnv.DispatchRepo`), `registry.go` (ResolveRegistry + MergeBaseline), `sink.go` (provider events → UI message rows), `errors.go` (error classification), `provider/` (Anthropic and OpenAI streaming impls + mock), `tools_builtin/` (builtin handlers), `tools_python/` (python_scripts kind=tool handler).
+
+## Conversation (multi-turn)
+
+`Conversation` (`conversation.go`) preserves `[]provider.Message` history across `SendTurn` calls instead of Run's single-shot session; on `end_turn` it returns the turn's status instead of finalizing the session, and `MaxIterations` applies per `SendTurn`, not per session. Both share the identical `runTurns` loop (`runner_loop.go`) — no copy. `Config.Stream` (nil for Run) receives raw text/thinking deltas before the sink's chunked buffering, for a live console consumer. Each delta carries the `itemID` of the segment accumulating in the sink's buffer, and that id rotates on every flush, so one id covers exactly one persisted row — a consumer keying its live buffer by id (the FE's delta dedupe) drops it when the row lands instead of concatenating the whole session.
 
 ## Tool Dispatch Flow
 

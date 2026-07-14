@@ -13,7 +13,7 @@ import (
 // call when OnUsage flushes.
 func TestRunnerSink_TextDeltas_BelowThreshold_FlushOnUsage(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnTextDelta("a")
@@ -41,7 +41,7 @@ func TestRunnerSink_TextDeltas_BelowThreshold_FlushOnUsage(t *testing.T) {
 // buffer cap flushes immediately without waiting for OnUsage.
 func TestRunnerSink_TextDeltas_4KBSafetyCapFlushes(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	long := strings.Repeat("x", 5000) // > 4096
@@ -63,7 +63,7 @@ func TestRunnerSink_TextDeltas_4KBSafetyCapFlushes(t *testing.T) {
 // less than 4 KB are all buffered and flushed in a single call on OnUsage.
 func TestRunnerSink_TextDeltas_FragmentsBelowCap(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	frag := strings.Repeat("y", 20)
@@ -96,7 +96,7 @@ func TestRunnerSink_TextDeltas_FragmentsBelowCap(t *testing.T) {
 // TestRunnerSink_EmptyDeltaIgnored verifies that an empty text delta is a no-op.
 func TestRunnerSink_EmptyDeltaIgnored(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnTextDelta("")
@@ -111,7 +111,7 @@ func TestRunnerSink_EmptyDeltaIgnored(t *testing.T) {
 // buffer is flushed before OnToolUseStart, but no tool_use_start row is emitted.
 func TestRunnerSink_ToolUseStart_FlushesBufferOnly(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnTextDelta("preamble")
@@ -131,7 +131,7 @@ func TestRunnerSink_ToolUseStart_FlushesBufferOnly(t *testing.T) {
 // or tool_use_input rows emitted).
 func TestRunnerSink_ToolUseStartStop_EmitsSingleRow(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnToolUseStart("tool-1", "Bash")
@@ -156,7 +156,7 @@ func TestRunnerSink_ToolUseStartStop_EmitsSingleRow(t *testing.T) {
 // OnToolUseStop flushes pending text and emits the [<name>] <input> row.
 func TestRunnerSink_ToolUseStop_FlushesBufferThenEmitsInput(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnToolUseStart("tool-1", "Bash")
@@ -185,7 +185,7 @@ func TestRunnerSink_ToolUseStop_FlushesBufferThenEmitsInput(t *testing.T) {
 // discarded (no TrackMessage emitted).
 func TestRunnerSink_ToolUseInputDelta_Discarded(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnToolUseInputDelta("tool-1", `{"cmd":`)
@@ -200,7 +200,7 @@ func TestRunnerSink_ToolUseInputDelta_Discarded(t *testing.T) {
 // even without other events.
 func TestRunnerSink_OnUsage_FlushesBuffer(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnTextDelta("buffered")
@@ -219,7 +219,7 @@ func TestRunnerSink_OnUsage_FlushesBuffer(t *testing.T) {
 // text synchronously before marking the sink closed.
 func TestRunnerSink_Close_FlushesBuffer(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 
 	rs.OnTextDelta("pending")
 	rs.close()
@@ -238,7 +238,7 @@ func TestRunnerSink_Close_FlushesBuffer(t *testing.T) {
 // not panic and produces a reasonable row (the id itself used as the name).
 func TestRunnerSink_ToolUseStop_UnknownIDFallback(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 	t.Cleanup(rs.close)
 
 	rs.OnToolUseStop("orphan-id", json.RawMessage(`{"x":1}`))

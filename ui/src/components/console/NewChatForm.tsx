@@ -3,6 +3,8 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { Button } from '@/components/ui/Button'
 import { useCLIModels } from '@/hooks/useCLIModels'
+import { useAPIModels } from '@/hooks/useAPIModels'
+import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import { useCreateConsoleChat } from '@/hooks/useConsoleChats'
 import { useProjectStore } from '@/stores/projectStore'
 
@@ -10,29 +12,42 @@ interface NewChatFormProps {
   onCreated: (sid: string) => void
 }
 
-const ENGINE_OPTIONS = [
+const BASE_ENGINE_OPTIONS = [
   { value: 'claude', label: 'Claude' },
   { value: 'codex', label: 'Codex' },
 ]
 
-// Engine picker, model picker filtered to the chosen engine's cli_type +
+const API_ENGINE_OPTION = { value: 'api', label: 'API (direct)' }
+
+// Engine picker, model picker filtered to the chosen engine's registry +
 // enabled rows (the BE rejects a model for the other engine or a disabled one
-// at create time, so filtering client-side avoids a guaranteed 500), project
+// at create time, so filtering client-side avoids a guaranteed 500 — for the
+// 'api' engine the registry is api_models instead of cli_models), project
 // picker, and a read-only workdir line — project.root_path is exactly what
 // buildChatEngineSpec uses as the engine WorkDir.
 export function NewChatForm({ onCreated }: NewChatFormProps) {
   const projects = useProjectStore((s) => s.projects)
   const currentProject = useProjectStore((s) => s.currentProject)
   const setCurrentProject = useProjectStore((s) => s.setCurrentProject)
-  const { data: models = [] } = useCLIModels()
+  const { data: cliModels = [] } = useCLIModels()
+  const { data: apiModels = [] } = useAPIModels()
+  const apiModeEnabled = useAPIModeEnabled()
   const createMutation = useCreateConsoleChat()
 
   const [engine, setEngine] = useState('claude')
   const [model, setModel] = useState('')
 
-  const modelOptions = models
-    .filter((m) => m.enabled && m.cli_type === engine)
-    .map((m) => ({ value: m.id, label: m.display_name }))
+  if (!apiModeEnabled && engine === 'api') {
+    setEngine('claude')
+    setModel('')
+  }
+
+  const engineOptions = apiModeEnabled ? [...BASE_ENGINE_OPTIONS, API_ENGINE_OPTION] : BASE_ENGINE_OPTIONS
+
+  const modelOptions =
+    engine === 'api'
+      ? apiModels.filter((m) => m.enabled).map((m) => ({ value: m.id, label: m.display_name }))
+      : cliModels.filter((m) => m.enabled && m.cli_type === engine).map((m) => ({ value: m.id, label: m.display_name }))
 
   const project = projects.find((p) => p.id === currentProject)
 
@@ -51,7 +66,7 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
     <div className="flex flex-col gap-3 border-b border-border p-3">
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Engine</label>
-        <Dropdown value={engine} onChange={handleEngineChange} options={ENGINE_OPTIONS} />
+        <Dropdown value={engine} onChange={handleEngineChange} options={engineOptions} />
       </div>
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Model</label>
@@ -63,6 +78,11 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
           disabled={modelOptions.length === 0}
         />
       </div>
+      {engine === 'api' && (
+        <div className="text-xs text-muted-foreground">
+          No file/edit/bash tools — nrflo control + web research only; use a CLI engine for local coding.
+        </div>
+      )}
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Project</label>
         <ProjectSelect value={currentProject} onChange={setCurrentProject} projects={projects} />

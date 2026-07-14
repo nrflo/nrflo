@@ -13,7 +13,7 @@ import (
 // thinking → text → tool when captureThinking=true.
 func TestRunnerSink_ThinkingCaptureEnabled_YieldsThinkingRow(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, true)
+	rs := newRunnerSink(sink, true, nil)
 
 	rs.OnThinkingDelta("reasoning here")
 	rs.OnTextDelta("response text")
@@ -53,7 +53,7 @@ func TestRunnerSink_ThinkingCaptureEnabled_YieldsThinkingRow(t *testing.T) {
 // captureThinking=false, no thinking row is emitted; text and tool rows are unchanged.
 func TestRunnerSink_ThinkingCaptureDisabled_NoThinkingRow(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 
 	rs.OnThinkingDelta("internal reasoning")
 	rs.OnTextDelta("visible response")
@@ -89,7 +89,7 @@ func TestRunnerSink_ThinkingCaptureDisabled_NoThinkingRow(t *testing.T) {
 // triggers an immediate flush (captureThinking=true).
 func TestRunnerSink_Thinking_4KBFlush(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, true)
+	rs := newRunnerSink(sink, true, nil)
 
 	long := strings.Repeat("t", 5000) // > 4096
 	rs.OnThinkingDelta(long)
@@ -110,7 +110,7 @@ func TestRunnerSink_Thinking_4KBFlush(t *testing.T) {
 // delta does NOT emit any row when captureThinking=false.
 func TestRunnerSink_Thinking_4KBFlush_CaptureDisabled(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, false)
+	rs := newRunnerSink(sink, false, nil)
 
 	long := strings.Repeat("t", 5000)
 	rs.OnThinkingDelta(long)
@@ -124,7 +124,7 @@ func TestRunnerSink_Thinking_4KBFlush_CaptureDisabled(t *testing.T) {
 // thinkBuf before buf, regardless of arrival order.
 func TestRunnerSink_ThinkingFlushedBeforeText(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, true)
+	rs := newRunnerSink(sink, true, nil)
 
 	// text arrives first, thinking second — flush order must still be think → text
 	rs.OnTextDelta("text first")
@@ -147,7 +147,7 @@ func TestRunnerSink_ThinkingFlushedBeforeText(t *testing.T) {
 // call is a no-op and produces no row even after flush.
 func TestRunnerSink_EmptyThinkingDelta_Ignored(t *testing.T) {
 	sink := &recordingSink{}
-	rs := newRunnerSink(sink, true)
+	rs := newRunnerSink(sink, true, nil)
 
 	rs.OnThinkingDelta("")
 	rs.OnUsage(provider.Usage{})

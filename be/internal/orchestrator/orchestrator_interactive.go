@@ -97,7 +97,7 @@ func (o *Orchestrator) buildInteractiveLaunch(
 			ModelConfigs:    modelConfigs,
 			APIModelConfigs: apiModelConfigs,
 			BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
-				return buildAPIProvider(ctx, tmplPool, o.clock, providerName, projectID)
+				return service.BuildAPIProvider(ctx, tmplPool, o.clock, providerName, projectID)
 			},
 			OnSessionRegister: func(sid string, s *spawner.Spawner) {
 				o.mu.Lock()

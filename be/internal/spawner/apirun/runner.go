@@ -2,8 +2,6 @@ package apirun
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"time"
 
 	"be/internal/logger"
@@ -38,6 +36,10 @@ type Config struct {
 	Deadline         time.Time
 	ReasoningEffort  string
 	CaptureThinking  bool
+	// Stream receives raw text/thinking deltas as they arrive, before the
+	// runner sink's chunked buffering. Nil for autonomous agents (Run); a
+	// console chat engine (Conversation) passes a live consumer.
+	Stream StreamHook
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner
@@ -86,151 +88,7 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 		},
 	}
 
-	for turn := 0; turn < r.cfg.MaxIterations; turn++ {
-		if ctx.Err() != nil {
-			proc.SetFinalStatus("CANCELLED")
-			return
-		}
-		if !r.cfg.Deadline.IsZero() && !time.Now().Before(r.cfg.Deadline) {
-			r.fail(proc, fmt.Sprintf("deadline exceeded (%s)", r.cfg.Deadline.Format(time.RFC3339)))
-			return
-		}
-
-		sink := newRunnerSink(r.cfg.Sink, r.cfg.CaptureThinking)
-		req := provider.Request{
-			System:           r.cfg.System,
-			Messages:         msgs,
-			Tools:            r.cfg.Tools,
-			MaxTokens:        r.cfg.MaxTokens,
-			ToolChoice:       "auto",
-			CacheBreakpoints: r.cfg.CacheBreakpoints,
-			Model:            r.cfg.Model,
-			ReasoningEffort:  r.cfg.ReasoningEffort,
-		}
-		resp, err := r.cfg.Provider.Run(ctx, req, sink)
-		sink.close()
-		if err != nil {
-			status, msg, class := classifyProviderError(ctx, err)
-			r.cfg.Sink.TrackMessage(msg, "system")
-			if class == RetryClassRateLimit {
-				proc.SetFinalStatus("RATE_LIMITED")
-				return
-			}
-			if r.cfg.ErrorSvc != nil && status == "FAIL" {
-				r.cfg.ErrorSvc.RecordError(proc.ProjectID(), "agent", proc.SessionID(), msg)
-			}
-			proc.SetFinalStatus(status)
-			return
-		}
-
-		r.updateContext(ctx, proc, resp.Usage)
-
-		switch resp.StopReason {
-		case "end_turn":
-			proc.SetFinalStatus("PASS")
-			return
-		case "max_tokens", "stop_sequence":
-			r.fail(proc, fmt.Sprintf("stop_reason=%s", resp.StopReason))
-			return
-		case "tool_use":
-			toolResults, terminate := r.dispatchTools(ctx, proc, resp.Content)
-			if terminate {
-				return
-			}
-			if len(toolResults) == 0 {
-				r.fail(proc, "tool_use stop_reason but no tool_use blocks in response")
-				return
-			}
-			// Do NOT filter resp.Content — thinking blocks must ride along for required API replay.
-			msgs = append(msgs,
-				provider.Message{Role: "assistant", Content: resp.Content},
-				provider.Message{Role: "user", Content: toolResults},
-			)
-			continue
-		default:
-			r.fail(proc, fmt.Sprintf("unexpected stop_reason=%q", resp.StopReason))
-			return
-		}
-	}
-
-	r.fail(proc, fmt.Sprintf("max iterations %d reached", r.cfg.MaxIterations))
-}
-
-// dispatchTools iterates tool_use blocks in resp.Content sequentially. It
-// returns the assembled tool_result blocks plus a terminate signal when a
-// handler emits a TerminalSignal (FAIL/CONTINUE/CALLBACK). Sequential
-// dispatch only in v1 — TODO(parallel): the for-range loop below is the
-// natural slot for parallel dispatch.
-func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []provider.ContentBlock) ([]provider.ContentBlock, bool) {
-	results := []provider.ContentBlock{}
-	for _, block := range content {
-		if block.Type != "tool_use" {
-			continue
-		}
-		handler, ok := r.cfg.Handlers[block.ToolName]
-		if !ok {
-			msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
-			r.cfg.Sink.TrackMessage(msg, "error")
-			results = append(results, provider.ContentBlock{
-				Type:      "tool_result",
-				ToolUseID: block.ToolUseID,
-				Output:    msg,
-				IsError:   true,
-			})
-			continue
-		}
-
-		var (
-			out   string
-			media []provider.MediaBlock
-			isErr bool
-			terr  error
-		)
-		if mh, ok := handler.(MediaToolHandler); ok {
-			out, media, isErr, terr = mh.InvokeMedia(ctx, r.cfg.Env, block.Input)
-		} else {
-			out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
-		}
-		r.cfg.Sink.CloseToolSpan(block.ToolUseID)
-
-		var ts TerminalSignal
-		if errors.As(terr, &ts) {
-			proc.SetFinalStatus(ts.Status)
-			if ts.Status == "CALLBACK" {
-				proc.SetCallbackLevel(ts.Level)
-			}
-			return nil, true
-		}
-		if terr != nil {
-			out = terr.Error()
-			isErr = true
-			media = nil
-		}
-		category := "tool"
-		if isErr {
-			category = "error"
-		}
-		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), category)
-		results = append(results, provider.ContentBlock{
-			Type:        "tool_result",
-			ToolUseID:   block.ToolUseID,
-			Output:      out,
-			IsError:     isErr,
-			OutputMedia: media,
-		})
-	}
-	return results, false
-}
-
-func formatToolResult(name, out string, isErr bool) string {
-	const maxOut = 2048
-	if isErr {
-		return fmt.Sprintf("%s: %s", name, out)
-	}
-	if len(out) > maxOut {
-		out = out[:maxOut]
-	}
-	return fmt.Sprintf("[%s] → %s", name, out)
+	r.runTurns(ctx, proc, msgs)
 }
 
 // updateContext computes the percentage of context window remaining from the

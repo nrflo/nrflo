@@ -46,6 +46,10 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 			writeError(w, http.StatusNotFound, "project not found")
 			return
 		}
+		if errors.Is(err, service.ErrAPIModeDisabled) {
+			writeError(w, http.StatusBadRequest, "api mode is disabled")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

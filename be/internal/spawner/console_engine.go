@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"be/internal/clock"
+	"be/internal/db"
 	ptyPkg "be/internal/pty"
+	"be/internal/spawner/apirun"
+	"be/internal/spawner/apirun/provider"
 )
 
 // ConsoleEngine drives a human-attended console session for one CLI provider
@@ -49,6 +53,9 @@ type EngineSpec struct {
 	Sandbox         string // e.g. "workspace-write"; engine-specific default when empty
 	MCPServerPath   string
 	MCPEnv          map[string]string
+	// APIProvider is "anthropic" or "openai", resolved from the api_models row
+	// (chat_model_resolver.go). Empty for claude/codex specs.
+	APIProvider string
 }
 
 // EventType identifies the kind of a normalized console event.
@@ -128,15 +135,34 @@ const (
 // ErrTurnActive is returned by SendUserTurn when a turn is already in flight.
 var ErrTurnActive = fmt.Errorf("console engine: turn already active")
 
+// ErrEngineStopped is returned by SendUserTurn when the engine is stopping or
+// already stopped, so a message racing Close/StopAll is rejected instead of
+// starting a turn against a torn-down event channel.
+var ErrEngineStopped = fmt.Errorf("console engine: stopped")
+
 // EngineDeps bundles what GetConsoleEngine needs to construct any engine.
 // PTY is the exported concrete *pty.Manager so callers outside this package
 // can pass one; claudeEngine wraps it internally via wrapPtyManager. codex
 // ignores PTY/Hub/NrfloPath — its transport is app-server JSON-RPC, not a PTY.
+// claude/codex both ignore API — it is the api engine's tool profile only.
 type EngineDeps struct {
 	Sink      Sink
 	PTY       *ptyPkg.Manager
 	Hub       *ConsoleHub
 	NrfloPath string
+	API       APIEngineDeps
+}
+
+// APIEngineDeps carries the api console engine's tool profile, injected by
+// console.ChatService (spawner must not import console — console imports
+// spawner — so these are plain apirun types, not console.Deps/Registry
+// built in-package).
+type APIEngineDeps struct {
+	Pool     *db.Pool
+	Clock    clock.Clock
+	Tools    []provider.ToolSpec
+	Handlers apirun.Registry
+	ToolEnv  apirun.ToolEnv
 }
 
 // GetConsoleEngine returns the ConsoleEngine for a --cli name. Mirrors
@@ -150,6 +176,8 @@ func GetConsoleEngine(name string, deps EngineDeps) (ConsoleEngine, error) {
 		return newCodexEngine(deps.Sink), nil
 	case "claude":
 		return newClaudeEngine(deps), nil
+	case "api":
+		return newAPIConsoleEngine(deps), nil
 	default:
 		return nil, fmt.Errorf("unknown console engine: %s", name)
 	}

@@ -151,7 +151,7 @@ func (o *Orchestrator) runLoop(
 		APIModelConfigs:           apiModelConfigs,
 		ErrorSvc:                  o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
-			return buildAPIProvider(ctx, pool, o.clock, providerName, projectID)
+			return service.BuildAPIProvider(ctx, pool, o.clock, providerName, projectID)
 		},
 		AgentSvc:           apiAgentSvc,
 		FindingsSvc:        findingsSvc,

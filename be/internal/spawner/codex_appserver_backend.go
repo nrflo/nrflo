@@ -10,9 +10,6 @@ import (
 	"time"
 
 	"be/internal/logger"
-	"be/internal/model"
-	"be/internal/repo"
-	"be/internal/ws"
 )
 
 // codexAppServerBackend drives `codex app-server` (newline-delimited JSON-RPC
@@ -138,12 +135,7 @@ func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, p
 	}
 	_ = client.notify("initialized", nil)
 
-	resp, err := client.call(runCtx, "thread/start", map[string]any{
-		"model":          model,
-		"cwd":            proc.workDir,
-		"sandbox":        "danger-full-access",
-		"approvalPolicy": "never",
-	})
+	resp, err := client.call(runCtx, "thread/start", threadStartParams(model, proc.workDir, "danger-full-access", "never"))
 	if err != nil {
 		b.fail(logCtx, proc, "thread/start: "+err.Error())
 		return
@@ -196,7 +188,7 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 			}
 
 		case n := <-client.notifyCh:
-			sig := dispatchAppServerEvent(proc.sessionID, n, sink, maxCtx)
+			sig := dispatchAppServerEvent(proc.sessionID, n, sink, maxCtx, nil)
 			if sig.turnStarted {
 				turnActive = true
 			}
@@ -230,40 +222,6 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 	}
 }
 
-// handleRateLimit mirrors apiBackend.Start's rate-limit dance: broadcast,
-// register a continue stop, persist rate-limit state, wait, and set
-// finalStatus=CONTINUE so monitorAll relaunches (or FAIL when exhausted).
-func (b *codexAppServerBackend) handleRateLimit(proc *processInfo, req SpawnRequest, matched string) {
-	b.s.saveMessages(proc)
-	if !proc.rateLimitConfig.Enabled || proc.rateLimitTotalWait >= proc.rateLimitConfig.MaxWait {
-		proc.finalStatus = "FAIL"
-		b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
-			proc.sessionID, proc.agentID, "fail", "rate_limit_exhausted", proc.modelID)
-		return
-	}
-	upcomingCount := proc.rateLimitRetryCount + 1
-	delay := computeRateLimitDelay(proc.rateLimitConfig, upcomingCount)
-	b.s.broadcast(ws.EventAgentRateLimited, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
-		"session_id":         proc.sessionID,
-		"agent_type":         proc.agentType,
-		"wait_seconds":       int(delay.Seconds()),
-		"total_wait_seconds": int(proc.rateLimitTotalWait.Seconds()) + int(delay.Seconds()),
-		"matched_pattern":    matched,
-		"retry_count":        upcomingCount,
-	})
-	b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
-		proc.sessionID, proc.agentID, "continue", "rate_limit", proc.modelID)
-	if pool := b.s.pool(); pool != nil {
-		sessionRepo := repo.NewAgentSessionRepo(pool, b.s.config.Clock)
-		sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
-		rateLimitUntil := b.s.config.Clock.Now().Add(delay).UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
-		sessionRepo.UpdateRateLimitUntil(proc.sessionID, rateLimitUntil, upcomingCount, "")
-	}
-	proc.rateLimitRetryCount++
-	b.s.waitForRateLimitRetry(context.Background(), proc, req)
-	proc.finalStatus = "CONTINUE"
-}
-
 // fail records a fatal error and marks the process exited-with-failure so
 // handleCompletion classifies it (exit_code → ClassifyExit may reclassify as
 // rate-limit). finalStatus stays "" so the DB result still wins if the agent
@@ -273,6 +231,19 @@ func (b *codexAppServerBackend) fail(logCtx context.Context, proc *processInfo, 
 	proc.waitErr = fmt.Errorf("codex app-server: %s", msg)
 	if b.s.config.ErrorSvc != nil {
 		_ = b.s.config.ErrorSvc.RecordError(proc.projectID, "agent", proc.sessionID, "codex app-server: "+msg)
+	}
+}
+
+// threadStartParams builds a thread/start params object. Shared by the
+// autonomous app-server backend (sandbox="danger-full-access",
+// approvalPolicy="never", unchanged) and the console engine (defaults
+// "workspace-write"/"on-request").
+func threadStartParams(model, cwd, sandbox, approvalPolicy string) map[string]any {
+	return map[string]any{
+		"model":          model,
+		"cwd":            cwd,
+		"sandbox":        sandbox,
+		"approvalPolicy": approvalPolicy,
 	}
 }
 

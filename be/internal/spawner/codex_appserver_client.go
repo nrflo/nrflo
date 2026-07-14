@@ -105,6 +105,11 @@ func newAppServerClient(stdin io.WriteCloser, stdout io.Reader, cmd *exec.Cmd) *
 	return c
 }
 
+// dialAppServer is startAppServer by default; the console engine dials
+// through this var so unit tests can wire a fake app-server over in-memory
+// pipes without exec'ing codex (precedent: console.lookPath, console/driver.go:10).
+var dialAppServer = startAppServer
+
 // startAppServer spawns `codex app-server` with the given env + workDir and
 // returns a wired client. The process is bound to ctx (exec.CommandContext), so
 // cancelling ctx kills it.
@@ -233,6 +238,24 @@ func (c *appServerClient) reply(rawID json.RawMessage, result any) error {
 	default:
 	}
 	return c.enc.Encode(map[string]any{"jsonrpc": "2.0", "id": rawID, "result": result})
+}
+
+// replyError answers a server->client request with a JSON-RPC error instead
+// of a result, so codex is not left blocked on a request the caller does not
+// implement (e.g. a console engine rejecting item/permissions/requestApproval).
+func (c *appServerClient) replyError(rawID json.RawMessage, code int, msg string) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	select {
+	case <-c.closed:
+		return c.err()
+	default:
+	}
+	return c.enc.Encode(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      rawID,
+		"error":   map[string]any{"code": code, "message": msg},
+	})
 }
 
 func (c *appServerClient) write(v any) error {

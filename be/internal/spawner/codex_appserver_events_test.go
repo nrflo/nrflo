@@ -48,7 +48,7 @@ func TestDispatchAppServer_FullTurnFixture(t *testing.T) {
 	sink := &testSink{}
 	var sawTurnStarted, sawTurnCompleted bool
 	for _, n := range notifs {
-		sig := dispatchAppServerEvent("sess-1", n, sink, 200000)
+		sig := dispatchAppServerEvent("sess-1", n, sink, 200000, nil)
 		sawTurnStarted = sawTurnStarted || sig.turnStarted
 		sawTurnCompleted = sawTurnCompleted || sig.turnCompleted
 		if sig.rateLimited {
@@ -115,12 +115,12 @@ func TestDispatchAppServer_RateLimitTyped(t *testing.T) {
 	sink := &testSink{}
 	// Routine usage update: rateLimitReachedType null → NOT rate-limited.
 	clean := rpcEnvelope{Method: "account/rateLimits/updated", Params: json.RawMessage(`{"rateLimits":{"rateLimitReachedType":null,"primary":{"usedPercent":2}}}`)}
-	if dispatchAppServerEvent("s", clean, sink, 200000).rateLimited {
+	if dispatchAppServerEvent("s", clean, sink, 200000, nil).rateLimited {
 		t.Error("usage update wrongly classified as rate-limited")
 	}
 	// Reached: rateLimitReachedType non-null → rate-limited.
 	hit := rpcEnvelope{Method: "account/rateLimits/updated", Params: json.RawMessage(`{"rateLimits":{"rateLimitReachedType":"primary"}}`)}
-	if !dispatchAppServerEvent("s", hit, sink, 200000).rateLimited {
+	if !dispatchAppServerEvent("s", hit, sink, 200000, nil).rateLimited {
 		t.Error("reached limit not classified as rate-limited")
 	}
 }
@@ -128,12 +128,12 @@ func TestDispatchAppServer_RateLimitTyped(t *testing.T) {
 func TestDispatchAppServer_ErrorClassification(t *testing.T) {
 	sink := &testSink{}
 	limit := rpcEnvelope{Method: "error", Params: json.RawMessage(`{"error":{"message":"Rate limit exceeded, try later"}}`)}
-	sig := dispatchAppServerEvent("s", limit, sink, 200000)
+	sig := dispatchAppServerEvent("s", limit, sink, 200000, nil)
 	if !sig.rateLimited {
 		t.Errorf("limit-pattern error not classified as rate-limited: %+v", sig)
 	}
 	boom := rpcEnvelope{Method: "error", Params: json.RawMessage(`{"error":{"message":"internal boom"}}`)}
-	sig = dispatchAppServerEvent("s", boom, sink, 200000)
+	sig = dispatchAppServerEvent("s", boom, sink, 200000, nil)
 	if sig.fatalErr != "internal boom" || sig.rateLimited {
 		t.Errorf("generic error misclassified: %+v", sig)
 	}
@@ -142,7 +142,7 @@ func TestDispatchAppServer_ErrorClassification(t *testing.T) {
 func TestDispatchAppServer_DeltaHeartbeatOnly(t *testing.T) {
 	sink := &testSink{}
 	d := rpcEnvelope{Method: "item/agentMessage/delta", Params: json.RawMessage(`{"itemId":"m1","delta":"hi"}`)}
-	dispatchAppServerEvent("s", d, sink, 200000)
+	dispatchAppServerEvent("s", d, sink, 200000, nil)
 	if len(sink.recordedMsgs) != 0 {
 		t.Errorf("delta should not create a message row, got %+v", sink.recordedMsgs)
 	}
@@ -156,7 +156,7 @@ func TestDispatchAppServer_TokenUsageContextLeft(t *testing.T) {
 	// Multi-turn: total is cumulative (27279), last is current context (9115).
 	// context_left must derive from `last`, not the cumulative `total`.
 	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":27279},"last":{"inputTokens":9115},"modelContextWindow":258400}}`)}
-	dispatchAppServerEvent("s", n, sink, 200000)
+	dispatchAppServerEvent("s", n, sink, 200000, nil)
 	if len(sink.contextUpdates) != 1 {
 		t.Fatalf("expected 1 context update, got %d", len(sink.contextUpdates))
 	}
@@ -170,7 +170,7 @@ func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
 	sink := &testSink{}
 	// No `last` block → fall back to total (single-turn, where they coincide).
 	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":9091},"modelContextWindow":258400}}`)}
-	dispatchAppServerEvent("s", n, sink, 200000)
+	dispatchAppServerEvent("s", n, sink, 200000, nil)
 	if len(sink.contextUpdates) != 1 || sink.contextUpdates[0] < 95 || sink.contextUpdates[0] > 97 {
 		t.Errorf("single-turn fallback context_left = %v, want ~96", sink.contextUpdates)
 	}
@@ -183,7 +183,7 @@ func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
 func TestDispatchAppServer_McpToolCall_InvokeAndResult(t *testing.T) {
 	sink := &testSink{}
 	params := json.RawMessage(`{"item":{"type":"mcpToolCall","id":"i1","server":"nrflo","tool":"emit_findings","status":"completed","arguments":{"key":"summary"},"result":{"content":[{"type":"text","text":"ok: 1 finding"}]}}}`)
-	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000, nil)
 
 	if len(sink.recordedMsgs) != 2 {
 		t.Fatalf("expected 2 rows (invoke + result), got %d: %+v", len(sink.recordedMsgs), sink.recordedMsgs)
@@ -201,7 +201,7 @@ func TestDispatchAppServer_McpToolCall_InvokeAndResult(t *testing.T) {
 func TestDispatchAppServer_McpToolCall_Error(t *testing.T) {
 	sink := &testSink{}
 	params := json.RawMessage(`{"item":{"type":"mcpToolCall","id":"i2","server":"nrflo","tool":"emit_findings","status":"failed","arguments":{"key":"x"},"error":{"message":"schema mismatch"}}}`)
-	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000, nil)
 
 	if len(sink.recordedMsgs) != 2 {
 		t.Fatalf("expected 2 rows (invoke + error), got %d: %+v", len(sink.recordedMsgs), sink.recordedMsgs)

@@ -19,27 +19,37 @@ type appServerSignal struct {
 
 // dispatchAppServerEvent maps ONE app-server notification to Sink calls and
 // returns control hints. maxCtx is the fallback model context window when the
-// event omits modelContextWindow. Every event bumps the stall heartbeat.
-func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx int) appServerSignal {
+// event omits modelContextWindow. Every event bumps the stall heartbeat. emit
+// is an optional normalized-event listener (console sessions); nil reproduces
+// today's autonomous sink-only behavior byte-for-byte — see EventEmitter.emit.
+func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx int, emit EventEmitter) appServerSignal {
 	var sig appServerSignal
 	switch env.Method {
 	case "item/completed":
-		dispatchCompletedItem(sessionID, env.Params, sink)
+		dispatchCompletedItem(sessionID, env.Params, sink, emit)
 	case "item/agentMessage/delta":
 		// Streamed text; the canonical full text arrives via item/completed
-		// (agentMessage). Deltas only keep the heartbeat alive.
+		// (agentMessage). Deltas keep the heartbeat alive and, when a console
+		// emitter is attached, stream live.
 		sink.BumpLastMessage(sessionID)
+		emitTextDeltaEvent(sessionID, env.Params, emit)
+	case "item/reasoning/textDelta", "item/reasoning/summaryTextDelta":
+		sink.BumpLastMessage(sessionID)
+		emitThinkingDeltaEvent(sessionID, env.Params, emit)
 	case "thread/tokenUsage/updated":
-		dispatchTokenUsage(sessionID, env.Params, sink, maxCtx)
+		dispatchTokenUsage(sessionID, env.Params, sink, maxCtx, emit)
 	case "turn/started":
 		sink.BumpLastMessage(sessionID)
 		sig.turnStarted = true
+		emitTurnStartedEvent(sessionID, emit)
 	case "turn/completed":
 		sink.OnTurnComplete(sessionID)
 		sig.turnCompleted = true
 		if msg := turnCompletedError(env.Params); msg != "" {
 			classifyAppServerError(msg, &sig)
+			emitErrorEvent(sessionID, msg, emit)
 		}
+		emitTurnCompletedEvent(sessionID, emit)
 	case "error":
 		var p struct {
 			Error struct {
@@ -48,6 +58,7 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 		}
 		_ = json.Unmarshal(env.Params, &p)
 		classifyAppServerError(p.Error.Message, &sig)
+		emitErrorEvent(sessionID, p.Error.Message, emit)
 	case "account/rateLimits/updated":
 		if rateLimitReached(env.Params) {
 			sig.rateLimited = true
@@ -61,9 +72,15 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 }
 
 // appServerItem is the union of item fields we consume across item types.
+// Content/Summary stay raw because the same field NAME carries different
+// shapes per item type (reasoning: string array; userMessage: input blocks) —
+// a strictly-typed field would make json.Unmarshal fail for the other type and
+// dispatchCompletedItem's error guard would then silently drop the whole item.
 type appServerItem struct {
 	Type             string             `json:"type"`
 	Text             string             `json:"text"`             // agentMessage
+	Content          json.RawMessage    `json:"content"`          // reasoning, userMessage
+	Summary          json.RawMessage    `json:"summary"`          // reasoning
 	Command          string             `json:"command"`          // commandExecution
 	AggregatedOutput string             `json:"aggregatedOutput"` // commandExecution
 	ExitCode         *int               `json:"exitCode"`         // commandExecution
@@ -90,7 +107,7 @@ type mcpToolCallError struct {
 	Message string `json:"message"`
 }
 
-func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink) {
+func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, emit EventEmitter) {
 	var p struct {
 		Item appServerItem `json:"item"`
 	}
@@ -101,14 +118,21 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink) 
 	switch p.Item.Type {
 	case "agentMessage":
 		emitAgentText(sessionID, p.Item.Text, sink)
+		emitCompletedTextEvent(sessionID, p.Item.Text, emit)
+	case "reasoning":
+		sink.BumpLastMessage(sessionID)
+		emitCompletedThinkingEvent(sessionID, p.Item, emit)
 	case "commandExecution":
 		emitMessage(sessionID, formatAppServerCommand(p.Item), "tool", sink)
+		emitToolInvokeEvent(sessionID, "Bash", map[string]any{"command": p.Item.Command}, emit)
+		emitToolResultEvent(sessionID, "Bash", p.Item.AggregatedOutput, p.Item.ExitCode != nil && *p.Item.ExitCode != 0, emit)
 	case "mcpToolCall":
-		emitMcpToolCall(sessionID, p.Item, sink)
+		emitMcpToolCall(sessionID, p.Item, sink, emit)
 	case "webSearch":
 		emitMessage(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", sink)
+		emitToolInvokeEvent(sessionID, "WebSearch", map[string]any{"query": p.Item.Query}, emit)
 	default:
-		// reasoning, userMessage, fileChange summaries, etc. — heartbeat only.
+		// userMessage, fileChange summaries, etc. — heartbeat only.
 		sink.BumpLastMessage(sessionID)
 	}
 }
@@ -118,20 +142,23 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink) 
 // The name is normalized to "mcp__<server>__<tool>" so the same nrflo tool reads
 // identically across providers. item/completed carries both the arguments and
 // the result/error, so both rows come from this one event.
-func emitMcpToolCall(sessionID string, it appServerItem, sink Sink) {
+func emitMcpToolCall(sessionID string, it appServerItem, sink Sink, emit EventEmitter) {
 	name := "mcp__" + it.Server + "__" + it.Tool
 	var args map[string]interface{}
 	if len(it.Arguments) > 0 {
 		_ = json.Unmarshal(it.Arguments, &args)
 	}
 	emitMessage(sessionID, FormatToolDetail(name, args), ToolCategory(name), sink)
+	emitToolInvokeEvent(sessionID, name, args, emit)
 
 	if it.Error != nil && it.Error.Message != "" {
 		emitMessage(sessionID, FormatToolResult(name, it.Error.Message, true), "error", sink)
+		emitToolResultEvent(sessionID, name, it.Error.Message, true, emit)
 		return
 	}
 	if body := mcpResultText(it.Result); body != "" {
 		emitMessage(sessionID, FormatToolResult(name, body, false), "tool", sink)
+		emitToolResultEvent(sessionID, name, body, false, emit)
 	}
 }
 
@@ -174,7 +201,7 @@ func formatAppServerCommand(it appServerItem) string {
 	return "[Bash] " + out
 }
 
-func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, maxCtx int) {
+func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, maxCtx int, emit EventEmitter) {
 	var p struct {
 		TokenUsage struct {
 			// `last` is the most recent model request's tokens = the current
@@ -203,7 +230,9 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 		used = p.TokenUsage.Total.InputTokens // single-turn fallback
 	}
 	if ctxWindow > 0 && used > 0 {
-		sink.UpdateContextLeft(sessionID, ComputeContextLeftPct(used, ctxWindow))
+		pct := ComputeContextLeftPct(used, ctxWindow)
+		sink.UpdateContextLeft(sessionID, pct)
+		emitTokenUsageEvent(sessionID, pct, emit)
 	}
 	sink.BumpLastMessage(sessionID)
 }

@@ -39,6 +39,10 @@ When `Config.APIViaCLI==true` and the `api_models` provider is `anthropic`, `pre
 
 `codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. `appServerArgs()` also passes `-c project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]` so a repo with no `AGENTS.md` still gets its **root** `CLAUDE.md` as the codex project doc; codex walks only cwd's ancestors and spawns always run at `ProjectRoot`, so **nested package `CLAUDE.md`s never reach a codex worker** — it must read them itself. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
 
+## Console Engine
+
+`ConsoleEngine` (`console_engine.go`: `Start`/`SendUserTurn`/`Events`/`ReplyApproval`/`Stop`, via `GetConsoleEngine`) is the human-session driver used by console sessions — it holds no `processInfo`, so it is structurally exempt from the nudge/stall/restart-cap policies rather than opting out via a flag. `codexEngine` (`console_engine_codex.go`) reuses the app-server client + `dispatchAppServerEvent`, defaults to `approvalPolicy=on-request`/`sandbox=workspace-write` (vs. the autonomous backend's `never`/`danger-full-access`), and keeps `appServerArgs()`'s `--disable` delegation flags since app-server children stay invisible to nrflo either way. Mechanics: [REFERENCE.md](REFERENCE.md#console-engine).
+
 ## Host Process Probing
 
 `proc_status.go` wraps `be/internal/proc` for `PidAlive`/`PidMetrics` without a spawner→service import cycle.

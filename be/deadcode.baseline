@@ -9,6 +9,9 @@
 #     db.Open*/*PoolExisting, repo CRUD exercised directly by tests, etc.
 #   * socket / reflection dispatch — reached by name over the unix socket or via
 #     interface dispatch the static call graph cannot see: api.getAgentSession.
+#   * spawner.ConsoleEngine + codexEngine.* — the console-session driver, fully
+#     covered by console_engine_*_test.go; its production caller is the sessions
+#     service, which is not wired to a server entry point yet.
 #
 # `make deadcode` fails only on NEW unreachable funcs (present in the analysis
 # but absent here). When you delete code, also delete its line(s) below.
@@ -75,6 +78,24 @@ be/internal/service TicketService.List
 be/internal/service TicketService.Update
 be/internal/service ValidateProjectScope
 be/internal/socket Server.SocketPath
+be/internal/spawner appServerClient.replyError
+be/internal/spawner codexEngine.emit
+be/internal/spawner codexEngine.Events
+be/internal/spawner codexEngine.Name
+be/internal/spawner codexEngine.onServerRequest
+be/internal/spawner codexEngine.onServerRequestResolved
+be/internal/spawner codexEngine.ReplyApproval
+be/internal/spawner codexEngine.runLoop
+be/internal/spawner codexEngine.SendUserTurn
+be/internal/spawner codexEngine.Start
+be/internal/spawner codexEngine.Stop
+be/internal/spawner commandText
+be/internal/spawner GetConsoleEngine
+be/internal/spawner newCodexEngine
+be/internal/spawner newPendingApprovals
+be/internal/spawner pendingApprovals.drop
+be/internal/spawner pendingApprovals.peek
+be/internal/spawner pendingApprovals.register
 be/internal/spawner PidAlive
 be/internal/spawner PidMetrics
 be/internal/spawner processInfo.appendStderr

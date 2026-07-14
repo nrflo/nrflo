@@ -18,7 +18,7 @@ func TestAppendCodexMCPServer(t *testing.T) {
 	}
 
 	env := nrfloBridgeEnv("sess-1", "wfi-1", "proj-1")
-	if err := appendCodexMCPServer(dir, "/opt/nrflo_server", env); err != nil {
+	if err := appendCodexMCPServer(dir, "/opt/nrflo_server", []string{"agent", "mcp"}, env); err != nil {
 		t.Fatalf("appendCodexMCPServer: %v", err)
 	}
 

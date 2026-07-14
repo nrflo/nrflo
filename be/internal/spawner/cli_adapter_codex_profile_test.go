@@ -228,6 +228,55 @@ func TestCodexAdapter_PrepareInteractive_FailureReturnsError(t *testing.T) {
 	cleanup() // must not panic even on error path
 }
 
+// TestWriteConsoleCodexProfile verifies the console codex driver's profile
+// writer combines the trust/auth/hook-stripping profile with an
+// [mcp_servers.nrflo] table wired to `agent mcp-external` (not `agent mcp` —
+// a console launch is a human session, not a managed one), embedding the
+// bridge env since codex does not forward parent env to MCP subprocesses.
+func TestWriteConsoleCodexProfile(t *testing.T) {
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	codexHome := filepath.Join(fakeHome, ".codex")
+	if err := os.MkdirAll(codexHome, 0o755); err != nil {
+		t.Fatalf("mkdir codex home: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(codexHome, "auth.json"), []byte(`{"token":"sk-test"}`), 0o600); err != nil {
+		t.Fatalf("write user auth: %v", err)
+	}
+
+	dir := t.TempDir()
+	workDir := t.TempDir()
+	env := map[string]string{
+		"NRFLO_SERVER_URL":         "http://127.0.0.1:6587",
+		"NRFLO_PROJECT":            "proj-1",
+		"NRFLO_CONSOLE_TOKEN":      "console-bearer",
+		"NRFLO_CONSOLE_SESSION_ID": "sess-1",
+	}
+	if err := WriteConsoleCodexProfile(dir, workDir, "/opt/nrflo_server", env); err != nil {
+		t.Fatalf("WriteConsoleCodexProfile() error: %v", err)
+	}
+
+	content := readFileString(t, filepath.Join(dir, "config.toml"))
+	resolved, _ := filepath.EvalSymlinks(workDir)
+	for _, want := range []string{
+		fmt.Sprintf("[projects.%q]", resolved),
+		`trust_level = "trusted"`,
+		"[mcp_servers.nrflo]",
+		`command = "/opt/nrflo_server"`,
+		`args = ["agent", "mcp-external"]`,
+		"[mcp_servers.nrflo.env]",
+		`NRFLO_CONSOLE_TOKEN = "console-bearer"`,
+		`NRFLO_CONSOLE_SESSION_ID = "sess-1"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("config.toml missing %q\nfull:\n%s", want, content)
+		}
+	}
+	if got := readFileString(t, filepath.Join(dir, "auth.json")); got != `{"token":"sk-test"}` {
+		t.Errorf("auth.json content mismatch: got %q", got)
+	}
+}
+
 func readFileString(t *testing.T, path string) string {
 	t.Helper()
 	data, err := os.ReadFile(path)

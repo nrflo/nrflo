@@ -73,18 +73,35 @@ func writeCodexSessionProfile(dir string, proc *processInfo) error {
 	if len(proc.apiTools) == 0 {
 		return nil
 	}
-	return appendCodexMCPServer(dir, resolvedNrfloPath(),
+	return appendCodexMCPServer(dir, resolvedNrfloPath(), []string{"agent", "mcp"},
 		nrfloBridgeEnv(proc.sessionID, proc.workflowInstanceID, proc.projectID))
+}
+
+// WriteConsoleCodexProfile writes the per-session CODEX_HOME profile for a
+// `nrflo_server console` codex launch: the same trust/auth/hook-stripping
+// profile writer as a spawned session, with the nrflo MCP server wired to the
+// `agent mcp-external` bridge (not `agent mcp` — a console launch is a human
+// session, not a managed one) so the console driver never duplicates this
+// logic.
+func WriteConsoleCodexProfile(dir, workDir, serverPath string, env map[string]string) error {
+	if err := writeCodexProfileForSession(dir, workDir); err != nil {
+		return err
+	}
+	return appendCodexMCPServer(dir, serverPath, []string{"agent", "mcp-external"}, env)
 }
 
 // appendCodexMCPServer appends an [mcp_servers.nrflo] table (plus an env table)
 // to the per-session CODEX_HOME/config.toml so codex serves the nrflo agent
-// tools to the model over MCP (codex calls the bridge as `serverPath agent mcp`).
+// tools to the model over MCP (codex calls the bridge as `serverPath <args...>`).
 // Codex does not forward parent process env to MCP server subprocesses, so the
 // session env the bridge needs (NRF_SESSION_ID, socket path, …) is embedded here.
-func appendCodexMCPServer(dir, serverPath string, env map[string]string) error {
+func appendCodexMCPServer(dir, serverPath string, args []string, env map[string]string) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\n[mcp_servers.nrflo]\ncommand = %q\nargs = [\"agent\", \"mcp\"]\n", serverPath)
+	quotedArgs := make([]string, len(args))
+	for i, a := range args {
+		quotedArgs[i] = fmt.Sprintf("%q", a)
+	}
+	fmt.Fprintf(&b, "\n[mcp_servers.nrflo]\ncommand = %q\nargs = [%s]\n", serverPath, strings.Join(quotedArgs, ", "))
 	if len(env) > 0 {
 		b.WriteString("\n[mcp_servers.nrflo.env]\n")
 		keys := make([]string, 0, len(env))

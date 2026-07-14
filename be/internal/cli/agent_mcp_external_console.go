@@ -36,6 +36,7 @@ type nrfloHTTPClient struct {
 	sessionProject string // project the session is scoped to; pinned at first open
 	cwdResolved    bool   // cwd→project auto-detect, cached only after a successful lookup
 	cwdProjectID   string
+	ownsSession    bool // true once this client minted the current session — only an owner closes it
 
 	reopenMu sync.Mutex // single-flights the 401 session re-exchange
 }
@@ -149,19 +150,38 @@ func (c *nrfloHTTPClient) openConsoleSession(ctx context.Context) error {
 	}
 	c.mu.Lock()
 	c.sessionID, c.consoleToken, c.sessionProject = res.SessionID, res.Token, project
+	c.ownsSession = true
 	c.mu.Unlock()
 	return nil
 }
 
+// adoptConsoleSession installs a pre-minted console session (from
+// NRFLO_CONSOLE_TOKEN/NRFLO_CONSOLE_SESSION_ID, injected by `nrflo_server
+// console`) without opening a new one. ownsSession stays false: the parent
+// `console` command minted this session and owns its lifecycle, so
+// closeConsoleSession must not close it — unless a later 401 re-exchange
+// replaces it with one this client DID mint (openConsoleSession sets
+// ownsSession=true in that case).
+func (c *nrfloHTTPClient) adoptConsoleSession(sessionID, token, project string) {
+	c.mu.Lock()
+	c.sessionID, c.consoleToken, c.sessionProject = sessionID, token, project
+	c.cwdResolved = true // adopted session already carries a pinned project; skip cwd/listProjects auto-detect
+	c.ownsSession = false
+	c.mu.Unlock()
+}
+
 // closeConsoleSession best-effort closes the console session with its own
-// bearer. It builds its own short-lived context because the stdio loop's
-// parent context is already cancelled by the time shutdown runs this. Errors
-// are ignored: closing is a courtesy, never a reason to block process exit.
+// bearer, but only if this client owns it — an adopted session (see
+// adoptConsoleSession) is closed by its owner (the parent `console` command),
+// not by this bridge. It builds its own short-lived context because the
+// stdio loop's parent context is already cancelled by the time shutdown runs
+// this. Errors are ignored: closing is a courtesy, never a reason to block
+// process exit.
 func (c *nrfloHTTPClient) closeConsoleSession() {
 	c.mu.Lock()
-	sid := c.sessionID
+	sid, owns := c.sessionID, c.ownsSession
 	c.mu.Unlock()
-	if sid == "" {
+	if sid == "" || !owns {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -233,6 +253,9 @@ func (c *nrfloHTTPClient) withSessionRetry(ctx context.Context, call func() erro
 func (c *nrfloHTTPClient) reopenSession(ctx context.Context, staleToken string) error {
 	c.reopenMu.Lock()
 	defer c.reopenMu.Unlock()
+	if c.serviceToken == "" {
+		return fmt.Errorf("console session expired and NRFLO_MCP_TOKEN is not set — cannot re-exchange a fresh session")
+	}
 	c.mu.Lock()
 	current := c.consoleToken
 	c.mu.Unlock()

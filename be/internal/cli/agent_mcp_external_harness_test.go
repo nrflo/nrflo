@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"be/internal/model"
 )
 
 // reqLog captures the Authorization and X-Project headers of one request.
@@ -47,6 +49,7 @@ type fakeConsoleServer struct {
 	projects     []projRoot
 	tools        []consoleTool
 	toolResp     map[string]toolCallResp
+	cliModels    []model.CLIModel
 
 	// unauthorizedRemaining forces the next N console-token-authed requests
 	// (tools/list or tools/call) to fail with 401, regardless of token.
@@ -146,6 +149,12 @@ func (f *fakeConsoleServer) handle(w http.ResponseWriter, r *http.Request) {
 		writeTestJSON(w, http.StatusOK, map[string]any{"output": resp.output, "is_error": resp.isError, "duration_ms": 1})
 	case r.Method == http.MethodGet && r.URL.Path == "/api/v1/projects":
 		writeTestJSON(w, http.StatusOK, map[string]any{"projects": f.projects})
+	case r.Method == http.MethodGet && r.URL.Path == "/api/v1/cli-models":
+		if log.auth != "Bearer "+f.serviceToken {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		writeTestJSON(w, http.StatusOK, f.cliModels)
 	default:
 		http.Error(w, "not found", http.StatusNotFound)
 	}

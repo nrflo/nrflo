@@ -30,9 +30,18 @@ serves — there is no tool list in the bridge itself.
 
 Authentication is a long-lived nrflo service token (Settings → Administration →
 Service Tokens); no agent session is involved. Configuration is via env:
-  NRFLO_MCP_TOKEN  — service token, sent as Authorization: Bearer (required)
+  NRFLO_MCP_TOKEN  — service token, sent as Authorization: Bearer (required
+                     unless a console session is adopted, below)
   NRFLO_PROJECT    — default project; optional, used when cwd auto-detect misses
   NRFLO_SERVER_URL — running server base URL (default http://127.0.0.1:6587)
+
+When NRFLO_CONSOLE_TOKEN and NRFLO_CONSOLE_SESSION_ID are both set (injected by
+'nrflo_server console'), the bridge adopts that pre-minted console session
+instead of opening its own: no session is created or closed by the bridge, and
+NRFLO_PROJECT pins the project with no cwd auto-detect. NRFLO_MCP_TOKEN is
+still honored alongside an adopted session as the fallback for a 401
+re-exchange (the adopted session was swept idle); without it, a 401 surfaces a
+clear error instead of retrying with an empty bearer.
 
 The project is resolved ONCE, at connect time (console sessions are
 project-scoped): the working directory matched against project root paths →
@@ -44,7 +53,10 @@ Register with any MCP client, e.g. Claude Code:
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		token := os.Getenv("NRFLO_MCP_TOKEN")
-		if token == "" {
+		consoleToken := os.Getenv("NRFLO_CONSOLE_TOKEN")
+		consoleSessionID := os.Getenv("NRFLO_CONSOLE_SESSION_ID")
+		adopting := consoleToken != "" && consoleSessionID != ""
+		if !adopting && token == "" {
 			return fmt.Errorf("NRFLO_MCP_TOKEN must be set")
 		}
 		base := os.Getenv("NRFLO_SERVER_URL")
@@ -60,13 +72,17 @@ Register with any MCP client, e.g. Claude Code:
 			// per-request ctx (runMCPStdioLoopWithCancel), not a client deadline.
 			hc: &http.Client{},
 		}
-		openCtx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
-		err := c.openConsoleSession(openCtx)
-		cancel()
-		if err != nil {
-			return err
+		if adopting {
+			c.adoptConsoleSession(consoleSessionID, consoleToken, os.Getenv("NRFLO_PROJECT"))
+		} else {
+			openCtx, cancel := context.WithTimeout(cmd.Context(), 30*time.Second)
+			err := c.openConsoleSession(openCtx)
+			cancel()
+			if err != nil {
+				return err
+			}
 		}
-		defer c.closeConsoleSession()
+		defer c.closeConsoleSession() // no-op when the session was adopted, not owned
 		return runMCPStdioLoopWithCancel(cmd.Context(), os.Stdin, os.Stdout, func(ctx context.Context, req mcpRequest) *mcpResponse {
 			return dispatchExternalMCP(ctx, req, c)
 		})

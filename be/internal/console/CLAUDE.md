@@ -15,3 +15,9 @@ Because those ids are caller-supplied, **every** tool taking an `instance_id` is
 ## Dispatch
 
 `Dispatch(ctx, reg, env, name, args)` (`dispatch.go`) is the one call site `api.handleCallConsoleTool` uses; `ErrToolNotFound` maps to the endpoint's 404. `Specs(reg)` backs the catalogue endpoint, sorted by name.
+
+## Console drivers
+
+`ConsoleDriver` (`driver.go`: `Name`/`Probe`/`Prepare(LaunchInput) (LaunchSpec, func(), error)`) is what `nrflo_server console` (`cli/console.go`) uses to launch a native claude/codex CLI locally as a **human** session — `GetDriver` is the only provider-name switch. The launched CLI reaches nrflo through `agent mcp-external` over a console session the `console` command mints and injects (`NRFLO_CONSOLE_TOKEN`/`NRFLO_CONSOLE_SESSION_ID`). The cc96eed6 managed-session boundary (`--dangerously-skip-permissions`, `--disallowedTools`, a safety-hook `--settings`, `--dangerously-bypass-approvals-and-sandbox`) applies only to spawner-managed sessions and is deliberately absent from every driver here.
+
+`--model` resolves against the `cli_models` registry (`resolveCLIModel`, `cli/console_client.go`): a matching enabled row supplies `mapped_model` **plus `reasoning_effort`/`fallback_models`** — registry ids are many-to-one on `mapped_model` (`codex_gpt55_high`/`_normal` both map to `gpt-5.5`), so dropping effort would silently launch a weaker model than the user named. A row belonging to the other `cli_type`, or a disabled one, errors before launch; an id absent from the registry falls back to the driver's own `adapter.MapModel`/`GetReasoningEffort`. Claude takes effort as `--effort`/`--fallback-model` (as the managed path does); the codex TUI has no effort flag, so it takes `-c model_reasoning_effort="<v>"` (it cannot be appended to the profile `config.toml`, which ends in a `[projects."<dir>"]` table).

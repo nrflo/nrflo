@@ -7,7 +7,8 @@ import (
 )
 
 // TestRegisterServerCommands verifies that RegisterServerCommands registers serve + version + the
-// agent infrastructure parent (record-event/statusline/context-update/mcp), and no client commands.
+// agent infrastructure parent (record-event/statusline/context-update/mcp) + console, and no client
+// commands.
 func TestRegisterServerCommands(t *testing.T) {
 	// Create a fresh root command to avoid init() pollution
 	testRootCmd := &cobra.Command{Use: "nrflo"}
@@ -34,11 +35,12 @@ func TestRegisterServerCommands(t *testing.T) {
 	// Get all registered commands
 	commands := getCommandNames(rootCmd)
 
-	// Expected: serve, version (init()), agent (infra parent)
+	// Expected: serve, version (init()), agent (infra parent), console (native CLI launcher)
 	expectedCommands := map[string]bool{
 		"serve":   true,
 		"version": true,
 		"agent":   true,
+		"console": true,
 	}
 
 	// Verify all expected commands are present
@@ -56,9 +58,9 @@ func TestRegisterServerCommands(t *testing.T) {
 		}
 	}
 
-	// Verify exact count: serve + version + agent = 3
-	if len(commands) != 3 {
-		t.Errorf("RegisterServerCommands: got %d commands, want 3. Commands: %v", len(commands), commands)
+	// Verify exact count: serve + version + agent + console = 4
+	if len(commands) != 4 {
+		t.Errorf("RegisterServerCommands: got %d commands, want 4. Commands: %v", len(commands), commands)
 	}
 
 	// The agent infra parent must expose exactly the infrastructure subcommands.

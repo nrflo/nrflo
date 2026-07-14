@@ -193,6 +193,12 @@ NRFLO ships two binaries:
 
 See the agent authoring docs under [doc/](doc/) (served at /documentation in the web UI).
 
+### Local console (`nrflo_server console`)
+
+`nrflo_server console --cli claude|codex [--model <cli_models id>] [--project <id>] [--server <url>] [--token <service token>]` launches your own claude or codex CLI locally, with the `agent mcp-external` bridge wired in as an MCP server so it can use nrflo tools. The token is a service token from **Settings → Administration → Service Tokens**. The session shows up in the UI as a console session and is closed automatically when the CLI exits.
+
+`--project` falls back to `NRFLO_PROJECT` then to the project whose root contains your working directory; `--server` falls back to `NRFLO_SERVER_URL` then to the local server; `--token` falls back to `NRFLO_MCP_TOKEN`. `--model` takes a `cli_models` registry id and applies its model, reasoning effort and fallback models; an id registered for the other CLI is rejected, and an unregistered id is passed through as a raw model name.
+
 ## Workflows
 
 Workflows are stored in the database and edited through the web UI. A workflow is a sequence of agent layers with validation boundaries. Example configurations:

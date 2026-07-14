@@ -130,13 +130,21 @@ func TestCodexEngine_Approval_ResolvedElsewhereDropsPending(t *testing.T) {
 	_ = waitForEventType(t, eng.Events(), EventApprovalRequest, 2*time.Second)
 
 	f.feed(`{"method":"serverRequest/resolved","params":{"id":300}}`)
-	// Notifications on notifyCh are FIFO behind a single consumer (runLoop):
-	// feed a marker delta right after and wait for it, which guarantees the
-	// resolved notification (enqueued first) was already processed.
-	f.feed(`{"method":"item/agentMessage/delta","params":{"itemId":"marker","delta":"sync-marker"}}`)
-	marker := waitForEventType(t, eng.Events(), EventTextDelta, 2*time.Second)
-	if marker.Text != "sync-marker" {
-		t.Fatalf("sync marker delta = %+v", marker)
+
+	// onServerRequestResolved must emit EventApprovalResolved (deny, with the
+	// "resolved by app-server (timed out)" reason) before dropping the pending
+	// entry — this is the single event pumpChatEvents relies on to resolve the
+	// pending approval and push console_chat.approval_resolved, mirroring the
+	// claude engine's timeout/stop paths.
+	resolved := waitForEventType(t, eng.Events(), EventApprovalResolved, 2*time.Second)
+	if resolved.ApprovalID != "300" {
+		t.Errorf("resolved.ApprovalID = %q, want %q", resolved.ApprovalID, "300")
+	}
+	if resolved.Decision != ApprovalDeny {
+		t.Errorf("resolved.Decision = %q, want %q", resolved.Decision, ApprovalDeny)
+	}
+	if resolved.Text != "resolved by app-server (timed out)" {
+		t.Errorf("resolved.Text = %q, want %q", resolved.Text, "resolved by app-server (timed out)")
 	}
 
 	if err := eng.ReplyApproval("300", ApprovalApprove); err == nil {
@@ -152,5 +160,69 @@ func TestCodexEngine_Approval_ReplyUnknownID(t *testing.T) {
 
 	if err := eng.ReplyApproval("does-not-exist", ApprovalApprove); err == nil {
 		t.Error("expected error for an unknown approval id, got nil")
+	}
+}
+
+// TestCodexEngine_ReplyApproval_EmitsApprovalResolved asserts a successful
+// human-driven ReplyApproval also emits EventApprovalResolved carrying the
+// decision — the same event pumpChatEvents relies on for the
+// onServerRequestResolved (timeout) path, so both settle the pending
+// approval through exactly one event type.
+func TestCodexEngine_ReplyApproval_EmitsApprovalResolved(t *testing.T) {
+	sink := &testSink{}
+	eng, f := startTestCodexEngine(t, sink, EngineSpec{})
+
+	f.feed(`{"id":400,"method":"item/commandExecution/requestApproval","params":{"itemId":"c1","command":"ls","cwd":"/w"}}`)
+	_ = waitForEventType(t, eng.Events(), EventApprovalRequest, 2*time.Second)
+
+	if err := eng.ReplyApproval("400", ApprovalDeny); err != nil {
+		t.Fatalf("ReplyApproval: %v", err)
+	}
+
+	resolved := waitForEventType(t, eng.Events(), EventApprovalResolved, 2*time.Second)
+	if resolved.ApprovalID != "400" {
+		t.Errorf("resolved.ApprovalID = %q, want %q", resolved.ApprovalID, "400")
+	}
+	if resolved.Decision != ApprovalDeny {
+		t.Errorf("resolved.Decision = %q, want %q", resolved.Decision, ApprovalDeny)
+	}
+}
+
+// TestCodexEngine_ResolvedAfterReply_EmitsNothing asserts an approval already
+// settled by ReplyApproval is not re-resolved when the app-server then sends
+// serverRequest/resolved for the same id (which is exactly what it does after a
+// client answers). A second, unconditional deny push would flip an allowed
+// tool's card to "denied — timed out" and audit a resolution that never
+// happened. Same guard covers a resolved id that was never an approval.
+func TestCodexEngine_ResolvedAfterReply_EmitsNothing(t *testing.T) {
+	sink := &testSink{}
+	eng, f := startTestCodexEngine(t, sink, EngineSpec{})
+
+	f.feed(`{"id":500,"method":"item/commandExecution/requestApproval","params":{"itemId":"c1","command":"ls","cwd":"/w"}}`)
+	_ = waitForEventType(t, eng.Events(), EventApprovalRequest, 2*time.Second)
+
+	if err := eng.ReplyApproval("500", ApprovalApprove); err != nil {
+		t.Fatalf("ReplyApproval: %v", err)
+	}
+	resolved := waitForEventType(t, eng.Events(), EventApprovalResolved, 2*time.Second)
+	if resolved.Decision != ApprovalApprove {
+		t.Fatalf("resolved.Decision = %q, want %q", resolved.Decision, ApprovalApprove)
+	}
+
+	// The app-server resolves the id it just got an answer for, plus one it
+	// never issued as an approval. Neither may produce an EventApprovalResolved.
+	f.feed(`{"method":"serverRequest/resolved","params":{"id":500}}`)
+	f.feed(`{"method":"serverRequest/resolved","params":{"id":999}}`)
+
+	deadline := time.After(300 * time.Millisecond)
+	for {
+		select {
+		case ev := <-eng.Events():
+			if ev.Type == EventApprovalResolved {
+				t.Fatalf("second EventApprovalResolved for %q (decision %q) — an already-settled or non-approval id must not re-resolve", ev.ApprovalID, ev.Decision)
+			}
+		case <-deadline:
+			return
+		}
 	}
 }

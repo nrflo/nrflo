@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConnectionsStore } from '../stores/connectionsStore'
-import { ticketKeys, projectWorkflowKeys, dailyStatsKeys } from './useTickets'
-import { chainKeys } from './useChains'
-import { scheduleKeys } from './useScheduledTasks'
 import { runningAgentsKeys } from './useRunningAgents'
-import { errorKeys } from './useErrors'
-import { planKeys } from './usePlan'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
 import { isControlEvent, subscriptionKey } from './useWSProtocol'
+import { useWSSessionChannel, handleSessionScopedEvent, deniedSessionID } from './useWSSessionChannel'
+import { getWebSocketUrl, invalidateAllQueries } from './useWSBootstrap'
 import {
   dispatchV2Event,
   getLastSeq,
@@ -102,6 +99,12 @@ export type WSEventType =
   | 'plan.materialized'
   | 'workflow.plan_waiting'
   | 'test.echo'
+  | 'console_chat.delta'
+  | 'console_chat.thinking'
+  | 'console_chat.turn'
+  | 'console_chat.approval_request'
+  | 'console_chat.approval_resolved'
+  | 'console_chat.error'
 
 export interface WSEvent {
   type: WSEventType
@@ -109,43 +112,33 @@ export interface WSEvent {
   ticket_id: string
   workflow?: string
   timestamp: string
+  session_id?: string
   data?: Record<string, unknown>
 }
 
 interface UseWebSocketOptions {
   enabled?: boolean
   onEvent?: (event: WSEvent) => void
+  onSessionSubscriptionDenied?: (sessionId: string) => void
 }
 
 interface UseWebSocketReturn {
   isConnected: boolean
   subscribe: (ticketId?: string) => void
   unsubscribe: (ticketId?: string) => void
+  subscribeSession: (sessionId: string) => void
+  unsubscribeSession: (sessionId: string) => void
 }
 
 const BASE_RECONNECT_DELAY = 3000 // 3 seconds
 const HEARTBEAT_TIMEOUT = 60_000 // 60 seconds
 const isDev = import.meta.env.DEV
 
-function getWebSocketUrl(): string {
-  const active = useConnectionsStore.getState().active()
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-
-  if (active.isLocal) {
-    return `${protocol}//${window.location.host}/api/v1/ws`
-  }
-
-  const url = new URL(active.baseURL)
-  const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-  const token = active.token ? `?token=${encodeURIComponent(active.token)}` : ''
-  return `${wsProtocol}//${url.host}/api/v1/ws${token}`
-}
-
 // Restore persisted seq state on module load
 restoreSeqs()
 
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
-  const { enabled = true, onEvent } = options
+  const { enabled = true, onEvent, onSessionSubscriptionDenied } = options
   const queryClient = useQueryClient()
   const activeId = useConnectionsStore((s) => s.activeId)
 
@@ -163,6 +156,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   queryClientRef.current = queryClient
   const onEventRef = useRef(onEvent)
   onEventRef.current = onEvent
+  const onSessionSubscriptionDeniedRef = useRef(onSessionSubscriptionDenied)
+  onSessionSubscriptionDeniedRef.current = onSessionSubscriptionDenied
+
+  const { sessionSubscriptionsRef, subscribeSession, unsubscribeSession, resendSessionSubscriptions } = useWSSessionChannel(wsRef)
 
   // Reset heartbeat timer — if no message in HEARTBEAT_TIMEOUT, trigger reconnect
   const resetHeartbeat = useCallback(() => {
@@ -227,6 +224,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       }
     }
 
+    // Ephemeral session-channel events bypass seq/snapshot entirely — see
+    // useWSSessionChannel.ts and the global.running_agents return below.
+    if (event.session_id) {
+      handleSessionScopedEvent(event, qc)
+      return
+    }
+
     // Buffer events that arrive during snapshot
     if (isReceivingSnapshot(event.project_id, event.ticket_id)) {
       bufferEventDuringSnapshot(event.project_id, event.ticket_id, event)
@@ -252,20 +256,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
   // Invalidate all queries on connect/reconnect to catch up on missed events
   const invalidateAll = useCallback(() => {
-    const qc = queryClientRef.current
-    qc.invalidateQueries({ queryKey: ticketKeys.all })
-    qc.invalidateQueries({ queryKey: projectWorkflowKeys.all })
-    qc.invalidateQueries({ queryKey: chainKeys.all })
-    qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['agent-defs'] })
-    qc.invalidateQueries({ queryKey: ['session-messages'] })
-    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
-    qc.invalidateQueries({ queryKey: errorKeys.all })
-    qc.invalidateQueries({ queryKey: scheduleKeys.all })
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-    qc.invalidateQueries({ queryKey: planKeys.all })
+    invalidateAllQueries(queryClientRef.current)
   }, [])
 
   // Build subscribe message with cursor for v2 resume
@@ -316,6 +307,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         ws.send(JSON.stringify(message))
       })
 
+      resendSessionSubscriptions(ws)
+
       const hasAnyCursor = Array.from(subscriptionsRef.current).some((ticketId) => {
         const subKey = subscriptionKey(projectId, ticketId)
         return getLastSeq(subKey) !== undefined
@@ -335,9 +328,11 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         for (const line of lines) {
           const message = JSON.parse(line)
 
-          // Ignore ack messages
+          // Ignore ack messages, except session_subscription_denied
           if (message.type === 'ack') {
             if (isDev) console.debug('[ws] ack:', message.action, message.project_id, message.ticket_id)
+            const denied = deniedSessionID(message)
+            if (denied) onSessionSubscriptionDeniedRef.current?.(denied)
             continue
           }
 
@@ -376,7 +371,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
 
     wsRef.current = ws
-  }, [enabled, handleEvent, invalidateAll, resetHeartbeat, buildSubscribeMessage])
+  }, [enabled, handleEvent, invalidateAll, resetHeartbeat, buildSubscribeMessage, resendSessionSubscriptions])
 
   // Disconnect from WebSocket
   const disconnect = useCallback(() => {
@@ -446,9 +441,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     disconnect()
     resetSeqs()
     subscriptionsRef.current.clear()
+    sessionSubscriptionsRef.current.clear()
     reconnectAttemptsRef.current = 0
     if (enabled) connect()
-  }, [activeId, enabled, disconnect, connect])
+  }, [activeId, enabled, disconnect, connect, sessionSubscriptionsRef])
 
   // Recovery: revive a dead socket immediately on tab focus / browser online, skipping the backoff wait.
   useConnectionRecovery(() => {
@@ -463,5 +459,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     isConnected,
     subscribe,
     unsubscribe,
+    subscribeSession,
+    unsubscribeSession,
   }
 }

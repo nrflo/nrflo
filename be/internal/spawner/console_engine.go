@@ -55,20 +55,27 @@ type EngineSpec struct {
 type EventType string
 
 const (
-	EventTextDelta       EventType = "text_delta"
-	EventText            EventType = "text"
-	EventThinking        EventType = "thinking"
-	EventToolInvoke      EventType = "tool_invoke"
-	EventToolResult      EventType = "tool_result"
-	EventApprovalRequest EventType = "approval_request"
-	EventTurnStarted     EventType = "turn_started"
-	EventTurnCompleted   EventType = "turn_completed"
-	EventTokenUsage      EventType = "token_usage"
-	EventError           EventType = "error"
+	EventTextDelta        EventType = "text_delta"
+	EventText             EventType = "text"
+	EventThinking         EventType = "thinking"
+	EventToolInvoke       EventType = "tool_invoke"
+	EventToolResult       EventType = "tool_result"
+	EventApprovalRequest  EventType = "approval_request"
+	EventApprovalResolved EventType = "approval_resolved"
+	EventTurnStarted      EventType = "turn_started"
+	EventTurnCompleted    EventType = "turn_completed"
+	EventTokenUsage       EventType = "token_usage"
+	EventError            EventType = "error"
 )
 
 // EngineEvent is one normalized event surfaced to a console session,
-// independent of which CLI provider produced it.
+// independent of which CLI provider produced it. Every approval an engine
+// registers via EventApprovalRequest is settled by exactly one
+// EventApprovalResolved (ApprovalID + Decision, reason in Text) — whether the
+// settling path is a human ReplyApproval, a timeout, engine stop/ctx
+// cancellation, or the CLI resolving the request on its own. Consumers may
+// rely on this to clear a pending-approval UI without a separate timeout path
+// of their own.
 type EngineEvent struct {
 	Type           EventType
 	SessionID      string
@@ -79,6 +86,8 @@ type EngineEvent struct {
 	IsError        bool
 	ContextLeftPct int
 	Approval       *ApprovalRequest
+	ApprovalID     string
+	Decision       ApprovalDecision
 }
 
 // EventEmitter delivers one EngineEvent. A nil EventEmitter is valid and

@@ -77,6 +77,12 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
 
 func (f *fakeConsoleEngine) Events() <-chan spawner.EngineEvent { return f.events }
 
+// ReplyApproval mirrors the real engines' contract
+// (console_engine_claude_approval.go, console_engine_codex_approval.go): after
+// successfully forwarding the decision, the engine itself emits
+// EventApprovalResolved — pumpChatEvents is the only thing that resolves the
+// pending approval / pushes console_chat.approval_resolved, never
+// ChatService.ReplyApproval directly.
 func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDecision) error {
 	f.mu.Lock()
 	f.approvals = append(f.approvals, struct {
@@ -84,6 +90,7 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 		decision spawner.ApprovalDecision
 	}{id, decision})
 	f.mu.Unlock()
+	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
 	return nil
 }
 

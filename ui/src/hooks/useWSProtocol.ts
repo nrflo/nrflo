@@ -29,14 +29,19 @@ export interface WSEventV2 {
   protocol_version?: number
   sequence?: number
   entity?: SnapshotEntityType
+  session_id?: string
   data?: Record<string, unknown>
 }
 
-// Subscribe message with optional cursor for v2 replay
+// Subscribe message with optional cursor for v2 replay. project_id/ticket_id
+// are required for 'subscribe'/'unsubscribe'; session_id is required for
+// 'subscribe_session'/'unsubscribe_session' (session channel — ephemeral,
+// authorized server-side, no seq/replay/snapshot; see hooks/CLAUDE.md).
 export interface WSSubscribeMessage {
-  action: 'subscribe' | 'unsubscribe'
-  project_id: string
-  ticket_id: string
+  action: 'subscribe' | 'unsubscribe' | 'subscribe_session' | 'unsubscribe_session'
+  project_id?: string
+  ticket_id?: string
+  session_id?: string
   since_seq?: number
 }
 

@@ -9,12 +9,14 @@ import (
 	"be/internal/ws"
 )
 
-// TestChatSink_UpdateContextLeft_PersistsAndBroadcasts exercises chatSink's
-// direct spawner.Sink implementation (called by a real engine on a context
-// hook, never through pumpChatEvents): it must persist context_left on the
-// agent_sessions row and push an ephemeral agent_context_updated event on the
-// session WS channel.
-func TestChatSink_UpdateContextLeft_PersistsAndBroadcasts(t *testing.T) {
+// TestChatSink_UpdateContextLeft_PersistsWithoutItsOwnBroadcast exercises
+// chatSink's direct spawner.Sink implementation (called by a real engine on a
+// context hook, never through pumpChatEvents): it must persist context_left
+// on the agent_sessions row but must NOT push a WS event itself — that push
+// is owned solely by pumpChatEvents' EventTokenUsage case (chat_events.go),
+// the only path that covers both engines. A push here would double-fire for
+// codex, the only engine that reaches this sink.
+func TestChatSink_UpdateContextLeft_PersistsWithoutItsOwnBroadcast(t *testing.T) {
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
@@ -39,20 +41,19 @@ func TestChatSink_UpdateContextLeft_PersistsAndBroadcasts(t *testing.T) {
 		t.Errorf("ticketID/workflow = %q/%q, want empty (chat sessions are unbound)", ticketID, workflow)
 	}
 
-	ev := waitForSessionEvent(t, ch, ws.EventAgentContextUpdated, 2*time.Second)
-	if ev.SessionID != sid {
-		t.Errorf("event SessionID = %q, want %q", ev.SessionID, sid)
-	}
-	if got := ev.Data["context_left"]; got != float64(42) {
-		t.Errorf("event context_left = %v, want 42", got)
-	}
-
 	row, err := repo.NewAgentSessionRepo(pool, svc.deps.Clock).GetConsoleChat(sid)
 	if err != nil {
 		t.Fatalf("GetConsoleChat: %v", err)
 	}
 	if !row.ContextLeft.Valid || row.ContextLeft.Int64 != 42 {
 		t.Errorf("row.ContextLeft = %+v, want valid 42", row.ContextLeft)
+	}
+
+	select {
+	case msg := <-ch:
+		t.Fatalf("chatSink.UpdateContextLeft must not push its own WS event, got: %s", string(msg))
+	case <-time.After(150 * time.Millisecond):
+		// expected: no push from the sink itself.
 	}
 }
 

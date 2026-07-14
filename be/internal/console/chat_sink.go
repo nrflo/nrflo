@@ -41,20 +41,19 @@ func (s *chatSink) RecordHookMessage(sessionID, content, category, payload strin
 	return s.projectID, "", "", nil
 }
 
-// UpdateContextLeft persists context_left and pushes an ephemeral update on
-// the session channel (not event-logged, same as every other chat push).
+// UpdateContextLeft persists context_left and pushes nothing: the sink only
+// ever sees a codex context update, and pumpChatEvents already pushes that one
+// (spawner.EventTokenUsage), so a push here would double-fire. A claude context
+// update instead arrives over the unix socket, where handler_context.go both
+// fans out on the session channel and forwards to the engine — which the pump
+// then pushes too, so claude's agent.context_updated legitimately arrives twice.
+// Harmless (the value is absolute, and the FE reducer is idempotent), but the
+// pump is NOT the single writer of the context push the way it is for
+// approval_resolved/thinking.
 func (s *chatSink) UpdateContextLeft(sessionID string, pct int) (projectID, ticketID, workflowName string, err error) {
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := s.pool.Exec(`UPDATE agent_sessions SET context_left = ?, updated_at = ? WHERE id = ?`, pct, now, sessionID); err != nil {
 		return "", "", "", err
-	}
-	if s.wsHub != nil {
-		s.wsHub.BroadcastSession(&ws.Event{
-			Type:      ws.EventAgentContextUpdated,
-			ProjectID: s.projectID,
-			SessionID: sessionID,
-			Data:      map[string]interface{}{"session_id": sessionID, "context_left": pct},
-		})
 	}
 	return s.projectID, "", "", nil
 }

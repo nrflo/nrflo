@@ -19,6 +19,7 @@ import {
   FileCode,
   FileInput,
   SlidersHorizontal,
+  Terminal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStatus } from '@/hooks/useTickets'
@@ -204,6 +205,14 @@ export function Sidebar() {
             icon={<SlidersHorizontal className="h-4 w-4" />}
             label="Project Settings"
             active={isActive('/project-settings')}
+          />
+        )}
+        {isAdmin && (
+          <NavItem
+            to="/console"
+            icon={<Terminal className="h-4 w-4" />}
+            label="Console"
+            active={isActive('/console')}
           />
         )}
         {isAdmin && (

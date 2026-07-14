@@ -58,6 +58,33 @@ func (r *AgentSessionRepo) CloseConsoleChat(id string) (int64, error) {
 	return r.closeByKind(id, model.AgentSessionKindConsoleChat)
 }
 
+// ListConsoleChats returns this project's kind='console_chat' sessions, most
+// recently started first. limit<=0 defaults to 50. The kind filter is a
+// security boundary (see closeByKind's doc comment) — never widen it.
+func (r *AgentSessionRepo) ListConsoleChats(projectID string, limit int) ([]*model.AgentSession, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := r.db.Query(`SELECT `+sessionCols+` FROM agent_sessions
+		WHERE kind = ? AND LOWER(project_id) = LOWER(?)
+		ORDER BY started_at DESC LIMIT ?`,
+		model.AgentSessionKindConsoleChat, projectID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.AgentSession
+	for rows.Next() {
+		s, err := scanSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
+}
+
 // ExpireIdleConsoles closes every console session still user_interactive whose
 // updated_at is older than cutoff (RFC3339Nano). Returns the number expired.
 // Restricted to kind='console': chat rows are closed via the chats/{sid}/close

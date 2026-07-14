@@ -144,6 +144,7 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 	if modelID != "" {
 		row.ModelID = sql.NullString{String: modelID, Valid: true}
 	}
+	row.ConsoleEngine = sql.NullString{String: engine, Valid: true}
 	if err := sessionRepo.Create(row); err != nil {
 		return "", fmt.Errorf("create console_chat session: %w", err)
 	}
@@ -202,25 +203,19 @@ func (s *ChatService) SendMessage(sid, text string) error {
 	return nil
 }
 
-// ReplyApproval forwards an already-mapped decision to the engine, then
-// resolves the pending approval and pushes console_chat.approval_resolved.
-// The REST layer maps allow|deny to the spawner.ApprovalDecision wire
-// vocabulary; this method never touches that mapping itself.
+// ReplyApproval forwards an already-mapped decision to the engine. The
+// engine's own EventApprovalResolved (handled once, by pumpChatEvents) is
+// what resolves the pending approval and pushes console_chat.approval_resolved
+// — this method does not duplicate that, since the same resolution can also
+// arrive via a timeout or engine stop that never goes through here. The REST
+// layer maps allow|deny to the spawner.ApprovalDecision wire vocabulary; this
+// method never touches that mapping itself.
 func (s *ChatService) ReplyApproval(sid, approvalID string, decision spawner.ApprovalDecision) error {
 	sess, ok := s.get(sid)
 	if !ok {
 		return ErrChatSessionNotFound
 	}
-	if err := sess.engine.ReplyApproval(approvalID, decision); err != nil {
-		return err
-	}
-	sess.resolvePendingApproval(approvalID)
-	pushSessionEvent(s.deps.WSHub, sid, sess.projectID, ws.EventConsoleChatApprovalResolved, map[string]interface{}{
-		"approval_id": approvalID,
-		"decision":    string(decision),
-	})
-	appendChatAudit(repo.NewAuditRepo(s.deps.Pool, s.deps.Clock), sid, "console_chat.approval_resolved", nil)
-	return nil
+	return sess.engine.ReplyApproval(approvalID, decision)
 }
 
 // Close stops the engine (its Events channel closing ends the event pump)
@@ -248,6 +243,42 @@ func (s *ChatService) get(sid string) (*chatSession, bool) {
 	defer s.mu.Unlock()
 	sess, ok := s.sessions[sid]
 	return sess, ok
+}
+
+// ChatSnapshot is a live chat session's in-memory state: engine identity plus
+// the turn/pending-approval state machine. Returned by Snapshot for the
+// GET .../{sid} detail route so a page reload can restore an in-flight
+// approval card and the turn spinner instead of losing them.
+type ChatSnapshot struct {
+	Engine           string
+	ModelID          string
+	WorkDir          string
+	Turn             string
+	PendingApprovals []*spawner.ApprovalRequest
+}
+
+// Snapshot returns sid's live in-memory state. ok=false means no live engine
+// is registered for sid — a hard-killed server leaves user_interactive rows
+// with no engine, so callers must not assume a DB row implies a snapshot.
+func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ChatSnapshot{}, false
+	}
+	turn, pending := sess.snapshot()
+	return ChatSnapshot{
+		Engine:           sess.EngineName(),
+		ModelID:          sess.ModelID(),
+		WorkDir:          sess.WorkDir(),
+		Turn:             string(turn),
+		PendingApprovals: pending,
+	}, true
+}
+
+// Live reports whether sid has a live engine registered with this service.
+func (s *ChatService) Live(sid string) bool {
+	_, ok := s.get(sid)
+	return ok
 }
 
 // StopAll stops every live chat engine. Called during graceful shutdown,

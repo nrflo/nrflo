@@ -65,10 +65,16 @@ func (p *claudeApprovals) peek(id string) (pendingClaudeApproval, bool) {
 	return pa, ok
 }
 
-func (p *claudeApprovals) drop(id string) {
+// drop removes a pending approval and reports whether it was still there. The
+// bool is what makes resolution exactly-once: RequestApproval's non-reply
+// branches and ReplyApproval race for the same id, and only the one that
+// actually removed it may emit EventApprovalResolved.
+func (p *claudeApprovals) drop(id string) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	_, ok := p.pending[id]
 	delete(p.pending, id)
+	return ok
 }
 
 // RequestApproval registers a pending approval, flushes the transcript tail
@@ -121,15 +127,30 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 	case r := <-reply:
 		return r.wire, r.reason
 	case <-time.After(timeout):
-		e.approvals.drop(id)
-		return "deny", "nrflo: approval timed out"
+		return e.denyUnanswered(sessionID, id, "nrflo: approval timed out", reply)
 	case <-e.stopping:
-		e.approvals.drop(id)
-		return "deny", "nrflo: console session stopped"
+		return e.denyUnanswered(sessionID, id, "nrflo: console session stopped", reply)
 	case <-ctx.Done():
-		e.approvals.drop(id)
-		return "deny", "nrflo: approval request cancelled"
+		return e.denyUnanswered(sessionID, id, "nrflo: approval request cancelled", reply)
 	}
+}
+
+// denyUnanswered is the shared tail of RequestApproval's three non-reply
+// branches. Whoever drops the id owns the resolution: a failed drop means
+// ReplyApproval won the race, and since it buffers its result before dropping,
+// that decision is already sitting on reply — honor it rather than denying a
+// tool the human allowed and emitting a second, contradicting resolution.
+func (e *claudeEngine) denyUnanswered(sessionID, id, reason string, reply chan claudeApprovalResult) (string, string) {
+	if !e.approvals.drop(id) {
+		select {
+		case r := <-reply:
+			return r.wire, r.reason
+		default:
+			return "deny", reason
+		}
+	}
+	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: sessionID, ApprovalID: id, Decision: ApprovalDeny, Text: reason})
+	return "deny", reason
 }
 
 // ReplyApproval answers a pending approval by id, mapping decision to
@@ -156,6 +177,12 @@ func (e *claudeEngine) ReplyApproval(id string, decision ApprovalDecision) error
 	default:
 		return fmt.Errorf("console engine: approval %q already answered or timed out", id)
 	}
-	e.approvals.drop(id)
+	// Drop-wins (see claudeApprovals.drop): if RequestApproval's timeout/stop
+	// branch removed the id first, it already emitted the resolution and this
+	// reply lost the race — say so instead of emitting a contradicting one.
+	if !e.approvals.drop(id) {
+		return fmt.Errorf("console engine: approval %q already resolved", id)
+	}
+	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.sessionID(), ApprovalID: id, Decision: decision, Text: reason})
 	return nil
 }

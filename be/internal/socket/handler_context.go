@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -28,16 +27,10 @@ func (h *Handler) handleAgentContextUpdate(_ context.Context, req Request) Respo
 	if err != nil {
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 	}
-	if projectID != "" {
-		service.BroadcastFromCtx(h.wsHub, ws.EventAgentContextUpdated, service.BroadcastCtx{
-			ProjectID: projectID,
-			TicketID:  ticketID,
-			Workflow:  workflow,
-		}, map[string]interface{}{
-			"session_id":   params.SessionID,
-			"context_left": params.ContextLeft,
-		})
-	}
+	broadcastMessageEvent(h.wsHub, ws.EventAgentContextUpdated, projectID, ticketID, workflow, params.SessionID, map[string]interface{}{
+		"session_id":   params.SessionID,
+		"context_left": params.ContextLeft,
+	})
 	if h.consoleHooks != nil {
 		h.consoleHooks.ConsoleContextLeft(params.SessionID, params.ContextLeft)
 	}

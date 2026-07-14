@@ -7,6 +7,8 @@ interface WebSocketContextValue {
   isConnected: boolean
   subscribe: (ticketId?: string) => void
   unsubscribe: (ticketId?: string) => void
+  subscribeSession: (sessionId: string) => void
+  unsubscribeSession: (sessionId: string) => void
   addEventListener: (fn: (event: WSEvent) => void) => void
   removeEventListener: (fn: (event: WSEvent) => void) => void
 }
@@ -36,7 +38,7 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
     listenersRef.current.forEach((fn) => fn(event))
   }
 
-  const { isConnected, subscribe, unsubscribe } = useWebSocket({ onEvent: handleEvent })
+  const { isConnected, subscribe, unsubscribe, subscribeSession, unsubscribeSession } = useWebSocket({ onEvent: handleEvent })
   const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
   const currentProject = useProjectStore((s) => s.currentProject)
   const activeId = useConnectionsStore((s) => s.activeId)
@@ -60,6 +62,8 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
       isConnected,
       subscribe,
       unsubscribe,
+      subscribeSession,
+      unsubscribeSession,
       addEventListener: (fn: (event: WSEvent) => void) => {
         listenersRef.current.add(fn)
       },
@@ -67,7 +71,7 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
         listenersRef.current.delete(fn)
       },
     }),
-    [isConnected, subscribe, unsubscribe]
+    [isConnected, subscribe, unsubscribe, subscribeSession, unsubscribeSession]
   )
 
   return (

@@ -83,10 +83,15 @@ func (p *pendingApprovals) peek(id string) (pendingApproval, bool) {
 	return pa, ok
 }
 
-func (p *pendingApprovals) drop(id string) {
+// drop removes a pending approval and reports whether it was still there. The
+// bool is what makes resolution idempotent: only the caller that actually
+// removed the entry may emit EventApprovalResolved for it.
+func (p *pendingApprovals) drop(id string) bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	_, ok := p.pending[id]
 	delete(p.pending, id)
+	return ok
 }
 
 // approvalRequestParams is the shared shape of the four approval-shaped
@@ -151,6 +156,12 @@ func (e *codexEngine) onServerRequest(env rpcEnvelope) {
 // onServerRequestResolved handles the `serverRequest/resolved` notification:
 // the server resolved a pending request elsewhere (or it timed out), so drop
 // it from the pending table without replying.
+//
+// Only a drop that actually removed a live entry resolves anything. The server
+// also resolves ids we already answered (ReplyApproval emitted the real
+// decision then) and ids that were never approvals at all; emitting on those
+// would flip an allowed tool's card to "denied — timed out" and audit an
+// approval that never existed.
 func (e *codexEngine) onServerRequestResolved(params json.RawMessage) {
 	var p struct {
 		ID json.RawMessage `json:"id"`
@@ -158,7 +169,12 @@ func (e *codexEngine) onServerRequestResolved(params json.RawMessage) {
 	if json.Unmarshal(params, &p) != nil || len(p.ID) == 0 {
 		return
 	}
-	e.approvals.drop(string(p.ID))
+	id := string(p.ID)
+	if !e.approvals.drop(id) {
+		return
+	}
+	reason := "resolved by app-server (timed out)"
+	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.spec.SessionID, ApprovalID: id, Decision: ApprovalDeny, Text: reason})
 }
 
 // ReplyApproval answers a pending approval by id, mapping decision to the
@@ -187,5 +203,6 @@ func (e *codexEngine) ReplyApproval(id string, decision ApprovalDecision) error 
 		return err
 	}
 	e.approvals.drop(id)
+	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.spec.SessionID, ApprovalID: id, Decision: decision})
 	return nil
 }

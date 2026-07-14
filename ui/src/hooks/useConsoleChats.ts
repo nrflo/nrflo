@@ -1,0 +1,83 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  listConsoleChats,
+  getConsoleChat,
+  getConsoleChatMessages,
+  createConsoleChat,
+  sendConsoleChatMessage,
+  replyConsoleChatApproval,
+  closeConsoleChat,
+} from '@/api/consoleChats'
+import { useProjectStore } from '@/stores/projectStore'
+import type { ApprovalDecision, CreateConsoleChatRequest } from '@/types/consoleChat'
+
+export const consoleChatKeys = {
+  all: ['console-chats'] as const,
+  list: () => [...consoleChatKeys.all, 'list'] as const,
+  detail: (sid: string) => [...consoleChatKeys.all, 'detail', sid] as const,
+}
+
+// GET /console/chats is project-scoped via the X-Project header, so the key
+// carries the project (switching projects must not serve the old one's list
+// from cache) and the query waits for projectsLoaded — firing early would send
+// an empty X-Project and 400.
+export function useConsoleChats() {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: [...consoleChatKeys.list(), project],
+    queryFn: listConsoleChats,
+    enabled: projectsLoaded,
+  })
+}
+
+export function useConsoleChat(sid: string | undefined) {
+  return useQuery({
+    queryKey: consoleChatKeys.detail(sid ?? ''),
+    queryFn: () => getConsoleChat(sid!),
+    enabled: !!sid,
+  })
+}
+
+// History reuses the ['session-messages', sid] key so the WS messages.updated
+// invalidation in useWebSocket/useWSReducer refreshes it for free.
+export function useConsoleChatMessages(sid: string | undefined) {
+  return useQuery({
+    queryKey: ['session-messages', sid],
+    queryFn: () => getConsoleChatMessages(sid!),
+    enabled: !!sid,
+  })
+}
+
+export function useCreateConsoleChat() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (req: CreateConsoleChatRequest) => createConsoleChat(req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.list() })
+    },
+  })
+}
+
+export function useSendConsoleChatMessage() {
+  return useMutation({
+    mutationFn: ({ sid, text }: { sid: string; text: string }) => sendConsoleChatMessage(sid, text),
+  })
+}
+
+export function useReplyApproval() {
+  return useMutation({
+    mutationFn: ({ sid, aid, decision }: { sid: string; aid: string; decision: ApprovalDecision }) =>
+      replyConsoleChatApproval(sid, aid, decision),
+  })
+}
+
+export function useCloseConsoleChat() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sid: string) => closeConsoleChat(sid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.list() })
+    },
+  })
+}

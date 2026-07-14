@@ -83,6 +83,10 @@ All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp
 
 `global.running_agents` is a global broadcast handled as an early return before `dispatchV2Event`.
 
+### Session channel
+
+`subscribeSession(sessionId)`/`unsubscribeSession(sessionId)` (`useWebSocket.ts`, bookkeeping split into `useWSSessionChannel.ts`) join/leave a console-chat session's WS channel — authorized server-side per subscribe (a denied subscribe surfaces via `onSessionSubscriptionDenied`), ephemeral (no seq/replay/snapshot), and early-returned in `handleEvent` before the seq tracker/snapshot buffer via envelope `session_id`. Re-subscription on reconnect happens inside `useWebSocket`'s `onopen`; consumers (`useConsoleChatStream.ts`) must not re-send on their own reconnect detection. Exposed on `WebSocketContext`; delivery is the existing `addEventListener` path (`WebSocketProvider.tsx`), no second socket.
+
 ## Testing
 
 Tests co-located with hook files using `.test.ts` suffix. Run: `make test-ui ARGS="src/hooks/"`

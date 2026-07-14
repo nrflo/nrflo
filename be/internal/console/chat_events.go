@@ -15,10 +15,15 @@ import (
 
 // pumpChatEvents ranges over engine.Events() until the channel closes, mapping
 // each spawner.EngineEvent onto a WS push on the session channel plus an audit
-// row for turn/approval events. EventText/EventThinking/tool events are already
-// persisted by chatSink (the engine's own Sink) and broadcast via
-// chatSink.BroadcastMessagesUpdated, so this pump does not duplicate them —
-// it only reacts to delta/turn/approval/error.
+// row for turn/approval events. EventText/tool events are already persisted by
+// chatSink (the engine's own Sink) and broadcast via
+// chatSink.BroadcastMessagesUpdated, so this pump does not duplicate them.
+// This pump IS the single writer of the thinking/token-usage/approval-resolved
+// session pushes for both engines: EventThinking has no other sink (codex
+// thinking is never persisted; claude thinking is event-only), EventTokenUsage
+// covers claude (whose context update otherwise only reaches the socket path)
+// and codex alike, and EventApprovalResolved is how a human reply, a timeout,
+// or an engine stopping all resolve the same pending-approval id exactly once.
 //
 // The channel closing means the engine's run loop is gone (Stop, or the engine
 // dying on its own — app-server EOF), so the pump ends the turn and calls
@@ -58,7 +63,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			if ev.Approval == nil {
 				continue
 			}
-			sess.addPendingApproval(ev.Approval.ID)
+			sess.addPendingApproval(ev.Approval)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatApprovalRequest, map[string]interface{}{
 				"approval_id": ev.Approval.ID,
 				"kind":        ev.Approval.Kind,
@@ -68,6 +73,29 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			})
 			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.Approval.ID, "command": ev.Approval.Command})
 			appendChatAudit(auditRepo, sess.id, "console_chat.approval_request", meta)
+
+		case spawner.EventApprovalResolved:
+			sess.resolvePendingApproval(ev.ApprovalID)
+			decision := clientDecision(ev.Decision)
+			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatApprovalResolved, map[string]interface{}{
+				"approval_id": ev.ApprovalID,
+				"decision":    decision,
+				"reason":      ev.Text,
+			})
+			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.ApprovalID, "decision": decision})
+			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
+
+		case spawner.EventThinking:
+			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatThinking, map[string]interface{}{
+				"item_id": ev.ItemID,
+				"text":    ev.Text,
+			})
+
+		case spawner.EventTokenUsage:
+			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventAgentContextUpdated, map[string]interface{}{
+				"session_id":   sess.id,
+				"context_left": ev.ContextLeftPct,
+			})
 
 		case spawner.EventError:
 			// Every engine EventError is turn-terminal (codex: turn/completed
@@ -82,6 +110,20 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			})
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 		}
+	}
+}
+
+// clientDecision maps the spawner's engine-facing approval vocabulary onto the
+// two values the REST/WS contract speaks. POST .../approvals/{aid} accepts only
+// "allow"/"deny" (handlers_console_chat.go), so console_chat.approval_resolved
+// must answer in the same vocabulary — pushing the raw spawner value would make
+// an approved tool ("approve") arrive as neither, and render as denied.
+func clientDecision(d spawner.ApprovalDecision) string {
+	switch d {
+	case spawner.ApprovalApprove, spawner.ApprovalApproveForSession:
+		return "allow"
+	default:
+		return "deny"
 	}
 }
 

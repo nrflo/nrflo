@@ -123,9 +123,12 @@ func TestConsoleChat_FullLoop_E2E(t *testing.T) {
 	if apprRR.Code != http.StatusNoContent {
 		t.Fatalf("POST approval status = %d, want 204; body=%s", apprRR.Code, apprRR.Body.String())
 	}
+	// The resolution comes back in the same vocabulary the request went out in:
+	// the route accepts allow/deny, so the WS push says "allow" — not the
+	// engine-facing spawner value ("approve"), which no client understands.
 	resolvedEv := waitForChatWSEvent(t, ch, ws.EventConsoleChatApprovalResolved, 2*time.Second)
-	if resolvedEv.Data["decision"] != string(spawner.ApprovalApprove) {
-		t.Errorf("approval_resolved decision = %v, want approve", resolvedEv.Data["decision"])
+	if resolvedEv.Data["decision"] != "allow" {
+		t.Errorf("approval_resolved decision = %v, want allow", resolvedEv.Data["decision"])
 	}
 
 	// Bearer works against /console/tools while the session is alive.

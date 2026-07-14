@@ -96,6 +96,21 @@ func TestClaudeEngine_Approval_Timeout(t *testing.T) {
 		t.Fatal("timed out waiting for the approval itself to time out")
 	}
 
+	// An unanswered approval must still emit EventApprovalResolved — the
+	// single event pumpChatEvents relies on to resolve the pending approval
+	// and push console_chat.approval_resolved for a client that never sees
+	// the RequestApproval return value directly.
+	resolved := waitForEventType(t, e.Events(), EventApprovalResolved, time.Second)
+	if resolved.ApprovalID != "tu-timeout-1" {
+		t.Errorf("resolved.ApprovalID = %q, want %q", resolved.ApprovalID, "tu-timeout-1")
+	}
+	if resolved.Decision != ApprovalDeny {
+		t.Errorf("resolved.Decision = %q, want %q", resolved.Decision, ApprovalDeny)
+	}
+	if resolved.Text != "nrflo: approval timed out" {
+		t.Errorf("resolved.Text = %q, want %q", resolved.Text, "nrflo: approval timed out")
+	}
+
 	// The pending entry must be cleared on timeout.
 	if err := e.ReplyApproval("tu-timeout-1", ApprovalApprove); err == nil {
 		t.Error("expected ReplyApproval to error after the approval already timed out")

@@ -26,6 +26,7 @@ import { WorkflowChainsPage } from '@/pages/WorkflowChainsPage'
 import { WorkflowChainEditorPage } from '@/pages/WorkflowChainEditorPage'
 import { PythonScriptsPage } from '@/pages/PythonScriptsPage'
 import { ImportSpecPage } from '@/pages/ImportSpecPage'
+import { ConsolePage } from '@/pages/ConsolePage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { AccountPage } from '@/pages/auth/AccountPage'
 import { ForbiddenPage } from '@/pages/ForbiddenPage'
@@ -70,6 +71,7 @@ function AppRoutes() {
               <Route path="errors" element={<ErrorsPage />} />
               <Route path="logs" element={<LogsPage />} />
               {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}
+              <Route path="console" element={<RequireAdmin><ConsolePage /></RequireAdmin>} />
               <Route path="account" element={<AccountPage />} />
               <Route path="settings" element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
               <Route path="project-settings" element={<RequireAdmin><ProjectSettingsPage /></RequireAdmin>} />

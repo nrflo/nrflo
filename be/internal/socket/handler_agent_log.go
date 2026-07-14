@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	"be/internal/logger"
-	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -46,16 +45,10 @@ func (h *Handler) handleAgentLog(ctx context.Context, req Request) Response {
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 	}
 
-	if projectID != "" {
-		service.BroadcastFromCtx(h.wsHub, ws.EventMessagesUpdated, service.BroadcastCtx{
-			ProjectID: projectID,
-			TicketID:  ticketID,
-			Workflow:  workflowName,
-		}, map[string]interface{}{
-			"session_id": params.SessionID,
-			"category":   category,
-		})
-	}
+	broadcastMessageEvent(h.wsHub, ws.EventMessagesUpdated, projectID, ticketID, workflowName, params.SessionID, map[string]interface{}{
+		"session_id": params.SessionID,
+		"category":   category,
+	})
 
 	logFields := []interface{}{"session_id", params.SessionID, "type", category, "message", params.Message}
 	if payloadJSON != "" {

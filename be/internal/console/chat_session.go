@@ -31,7 +31,7 @@ type chatSession struct {
 
 	mu      sync.Mutex
 	turn    turnState
-	pending map[string]bool // pending approval ids
+	pending map[string]*spawner.ApprovalRequest // pending approvals, keyed by approval id
 }
 
 func newChatSession(id, projectID, engineName, modelID, workDir string, engine spawner.ConsoleEngine) *chatSession {
@@ -43,9 +43,14 @@ func newChatSession(id, projectID, engineName, modelID, workDir string, engine s
 		workDir:    workDir,
 		engine:     engine,
 		turn:       turnIdle,
-		pending:    make(map[string]bool),
+		pending:    make(map[string]*spawner.ApprovalRequest),
 	}
 }
+
+// EngineName/ModelID/WorkDir are immutable after construction — no lock needed.
+func (c *chatSession) EngineName() string { return c.engineName }
+func (c *chatSession) ModelID() string    { return c.modelID }
+func (c *chatSession) WorkDir() string    { return c.workDir }
 
 // beginTurn transitions idle->running, or returns spawner.ErrTurnActive when
 // a turn is already in flight.
@@ -67,10 +72,10 @@ func (c *chatSession) endTurn() {
 	c.mu.Unlock()
 }
 
-// addPendingApproval registers id as awaiting a decision.
-func (c *chatSession) addPendingApproval(id string) {
+// addPendingApproval registers req as awaiting a decision.
+func (c *chatSession) addPendingApproval(req *spawner.ApprovalRequest) {
 	c.mu.Lock()
-	c.pending[id] = true
+	c.pending[req.ID] = req
 	c.mu.Unlock()
 }
 
@@ -78,9 +83,23 @@ func (c *chatSession) addPendingApproval(id string) {
 func (c *chatSession) resolvePendingApproval(id string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if !c.pending[id] {
+	if _, ok := c.pending[id]; !ok {
 		return false
 	}
 	delete(c.pending, id)
 	return true
+}
+
+// snapshot returns the current turn state and every pending approval under
+// lock — used by GET /console/chats/{sid} to rehydrate an in-flight approval
+// card after a page reload, since a pending approval otherwise exists only as
+// an ephemeral WS push.
+func (c *chatSession) snapshot() (turnState, []*spawner.ApprovalRequest) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	pending := make([]*spawner.ApprovalRequest, 0, len(c.pending))
+	for _, req := range c.pending {
+		pending = append(pending, req)
+	}
+	return c.turn, pending
 }

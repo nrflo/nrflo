@@ -123,9 +123,11 @@ func TestChatService_ApprovalRequest_ThenReply_ResolvesAndAudits(t *testing.T) {
 		t.Fatalf("ReplyApproval: %v", err)
 	}
 
+	// The engine takes the spawner vocabulary (asserted below), but the push is
+	// normalized to what the client speaks: approve -> "allow".
 	resolvedEv := waitForSessionEvent(t, ch, ws.EventConsoleChatApprovalResolved, 2*time.Second)
-	if resolvedEv.Data["decision"] != string(spawner.ApprovalApprove) {
-		t.Errorf("approval_resolved decision = %v, want %q", resolvedEv.Data["decision"], spawner.ApprovalApprove)
+	if resolvedEv.Data["decision"] != "allow" {
+		t.Errorf("approval_resolved decision = %v, want allow", resolvedEv.Data["decision"])
 	}
 
 	calls := eng.approvalCalls()

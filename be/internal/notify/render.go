@@ -122,15 +122,3 @@ func telegramLink(text, url string) string {
 	r := strings.NewReplacer(`\`, `\\`, `)`, `\)`)
 	return fmt.Sprintf("[%s](%s)", text, r.Replace(url))
 }
-
-func escapeTelegramV2(s string) string {
-	special := `_[]()~>#+-=|{}.!`
-	var b strings.Builder
-	for _, c := range s {
-		if strings.ContainsRune(special, c) {
-			b.WriteRune('\\')
-		}
-		b.WriteRune(c)
-	}
-	return b.String()
-}

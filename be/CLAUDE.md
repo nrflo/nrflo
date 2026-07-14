@@ -105,7 +105,7 @@ The Unix socket uses JSON-RPC line-delimited protocol. Supported methods: `findi
 | Package | Documentation | Key Content |
 |---------|--------------|-------------|
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow |
-| `internal/notify/` | (inline docs) | Dispatcher (ws.Listener): Slack/Telegram/Script transports, async retry queue (backoff 15s/60s/300s), secret masking, error tracking. Script transport runs user-supplied Python via per-project venv with a transient `_notification` agent_session (SDK auth) and a 30s timeout. |
+| `internal/notify/` | (inline docs) | Dispatcher (ws.Listener): Slack/Telegram/Script transports, async retry queue (backoff 15s/60s/300s), secret masking, error tracking. Script transport runs user-supplied Python via per-project venv with a transient `_notification` agent_session (SDK auth) and a 30s timeout. Telegram escapes dynamic values against the full MarkdownV2 special set and falls back to a plaintext resend on an entity-parse 400 so a malformed template still delivers. |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, execution backends (cli_interactive/api/script), `Config.ProjectEnv` |
 | `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, layer aggregation, callback flow, chain runner |

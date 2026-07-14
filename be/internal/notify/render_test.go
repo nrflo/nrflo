@@ -65,7 +65,11 @@ func TestRender_TelegramValueEscaping(t *testing.T) {
 		{"dot", "agent.completed", `agent\.completed`},
 		{"pipe", "low|context", `low\|context`},
 		{"dash", "T-42", `T\-42`},
-		{"all_special", `_[]()~>#+-=|{}.!`, `\_\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!`},
+		{
+			"all_special",
+			"\\*`" + `_[]()~>#+-=|{}.!`,
+			"\\\\" + "\\*" + "\\`" + `\_\[\]\(\)\~\>\#\+\-\=\|\{\}\.\!`,
+		},
 		{"no_special", "normaltext", "normaltext"},
 	}
 	for _, tc := range cases {
@@ -76,6 +80,24 @@ func TestRender_TelegramValueEscaping(t *testing.T) {
 				t.Errorf("Telegram escape %q = %q, want %q", tc.value, got, tc.expected)
 			}
 		})
+	}
+}
+
+func TestRender_TelegramRealisticSummaryEscaping(t *testing.T) {
+	summary := "**Done** implementing `feature` — note a lone * and a lone ` here."
+	data := map[string]interface{}{"workflow_final_result": summary}
+	got := Render(model.ChannelKindTelegram, "${summary}", data)
+	want := "> " + escapeTelegramV2(summary)
+	if got != want {
+		t.Errorf("Render(telegram realistic summary) = %q, want %q", got, want)
+	}
+	// Every '*' and '`' rune in the source must have been individually
+	// escaped — this is the actual bug the ticket fixes.
+	if strings.Count(got, `\*`) != strings.Count(summary, "*") {
+		t.Errorf("not all '*' runes escaped: got %q", got)
+	}
+	if strings.Count(got, "\\`") != strings.Count(summary, "`") {
+		t.Errorf("not all backtick runes escaped: got %q", got)
 	}
 }
 

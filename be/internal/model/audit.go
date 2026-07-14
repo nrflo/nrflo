@@ -17,8 +17,10 @@ type AuditEntry struct {
 
 // AuditFilter restricts audit_log queries.
 type AuditFilter struct {
-	UserID string
-	Action string
-	Since  *time.Time
-	Until  *time.Time
+	UserID       string
+	Action       string
+	ResourceType string
+	ResourceID   string
+	Since        *time.Time
+	Until        *time.Time
 }

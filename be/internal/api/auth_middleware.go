@@ -80,9 +80,16 @@ func (s *Server) requireAuthWith(acceptQueryToken bool, next http.Handler) http.
 			sessRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 			sess, err := sessRepo.GetByToken(token)
 			if err == nil && sess != nil {
-				if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, sess.ProjectID) {
-					writeError(w, http.StatusForbidden, "agent token project mismatch")
-					return
+				// A global-scope console session (kind=console on
+				// service.GlobalProjectID) carries no fixed project, mirroring the
+				// global-service-token exemption above — it may target any project
+				// via X-Project. Project-scoped console sessions keep the strict match.
+				globalConsole := sess.Kind == model.AgentSessionKindConsole && strings.EqualFold(sess.ProjectID, service.GlobalProjectID)
+				if !globalConsole {
+					if hp := r.Header.Get("X-Project"); hp != "" && !strings.EqualFold(hp, sess.ProjectID) {
+						writeError(w, http.StatusForbidden, "agent token project mismatch")
+						return
+					}
 				}
 				ctx := context.WithValue(r.Context(), agentSessionKey, sess)
 				next.ServeHTTP(w, r.WithContext(ctx))

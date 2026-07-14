@@ -54,6 +54,7 @@ Project-scoped runs can loop until stopped (`endless_loop`); `next_workflow_on_s
 
 ## Misc
 
+- `APIWorkflowControl(pool)` (`orchestrator_apirun_control.go`) adapts `ContinueWorkflow`/`FailWorkflow` for callers that pass an `instance_id` as a tool argument (api-mode agents, console tools). Invariant: it rejects an instance whose `project_id` differs from the caller's — both methods resolve the project root and workflow def from the *caller's* `projectID`, so an unguarded foreign id would fail another project's run, or resume its instance in the wrong repo.
 - `RunRequest.ScheduledTaskID` → `workflow_instances.scheduled_task_id` (`scheduler_dispatch.go`).
 - Purge on completion: `maybePurgeTrace` (`orchestrator_purge.go`) runs `service.PurgeService` at terminal paths (after finalize). Invariant: chain steps pass data via instructions + status polling, never prior-instance findings, else purge breaks hand-off.
 - Ticket status: start → `SetInProgress()`, complete → `Close()`, fail/cancel → `Reopen()` (each broadcasts `ws.EventTicketUpdated`); project-scoped runs skip ticket status changes.

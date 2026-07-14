@@ -31,8 +31,10 @@ func (s *Server) handleListAuditLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filter := model.AuditFilter{
-		UserID: r.URL.Query().Get("user_id"),
-		Action: r.URL.Query().Get("action"),
+		UserID:       r.URL.Query().Get("user_id"),
+		Action:       r.URL.Query().Get("action"),
+		ResourceType: r.URL.Query().Get("resource_type"),
+		ResourceID:   r.URL.Query().Get("resource_id"),
 	}
 
 	items, total, err := repo.NewAuditRepo(s.pool, s.clock).List(filter, page, perPage)

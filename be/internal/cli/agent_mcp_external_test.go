@@ -65,7 +65,7 @@ func TestExternalTool_DeepResearch_HappyPath(t *testing.T) {
 				_, _ = w.Write([]byte(`{"state":{"status":"running"}}`))
 				return
 			}
-			_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"FINAL REPORT"}}}`))
+			_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"FINAL REPORT"}}}`))
 		default:
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
 		}
@@ -95,7 +95,7 @@ func TestExternalTool_DeepResearch_PassesContext(t *testing.T) {
 			gotExternalContext, _ = body["external_context"].(string)
 			_, _ = w.Write([]byte(`{"instance_id":"inst-ctx"}`))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
-			_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"R"}}}`))
+			_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"R"}}}`))
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL)
 		}
@@ -120,7 +120,7 @@ func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
 			_, _ = w.Write([]byte(`{"instance_id":"i"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`{"state":{"status":"completed","workflow_findings":{"report":"R"}}}`))
+		_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"R"}}}`))
 	})
 	if _, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"q"}`)); err != nil {
 		t.Fatalf("deep_research: %v", err)
@@ -131,8 +131,10 @@ func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
 }
 
 func TestExtractReport_NestedAndFlatShapes(t *testing.T) {
-	// Real v4 shape: workflow_findings keyed by "<agent_type>:<model_id>".
-	nested := map[string]any{"workflow_findings": map[string]any{
+	// Real v4 shape: the combined "findings" map, keyed by
+	// "<agent_type>:<model_id>". The report is emitted with scope='session', so
+	// it lands here and never in "workflow_findings" (instance-owned only).
+	nested := map[string]any{"findings": map[string]any{
 		"verify_a:claude:sonnet":     map[string]any{"verdicts_a": []any{}},
 		"synthesize:claude:opus_4_8": map[string]any{"report": map[string]any{"summary": "S"}},
 	}}
@@ -141,12 +143,18 @@ func TestExtractReport_NestedAndFlatShapes(t *testing.T) {
 		t.Fatalf("nested shape: out=%q err=%v", out, err)
 	}
 	// Flat shape is still accepted.
-	flat := map[string]any{"workflow_findings": map[string]any{"report": "FLAT"}}
+	flat := map[string]any{"findings": map[string]any{"report": "FLAT"}}
 	if out, err := extractReport(flat, "inst"); err != nil || out != "FLAT" {
 		t.Fatalf("flat shape: out=%q err=%v", out, err)
 	}
+	// A report parked in workflow_findings is NOT where the synthesize agent
+	// writes it; reading that map is the bug this pins.
+	wrongMap := map[string]any{"workflow_findings": map[string]any{"report": "FLAT"}}
+	if _, err := extractReport(wrongMap, "inst"); err == nil {
+		t.Fatal("expected error: report must be read from the combined findings map")
+	}
 	// No report anywhere → error.
-	none := map[string]any{"workflow_findings": map[string]any{"verify_a:claude:sonnet": map[string]any{"verdicts_a": []any{}}}}
+	none := map[string]any{"findings": map[string]any{"verify_a:claude:sonnet": map[string]any{"verdicts_a": []any{}}}}
 	if _, err := extractReport(none, "inst"); err == nil {
 		t.Fatal("expected error when no report finding present")
 	}

@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"be/internal/service"
 )
 
 // nrfloHTTPClient is a thin REST client into a running `nrflo_server serve`,
@@ -166,41 +168,11 @@ func (c *nrfloHTTPClient) stopWorkflow(project, instanceID string) {
 		map[string]any{"instance_id": instanceID}, nil)
 }
 
-// extractReport pulls the `report` finding out of a terminal v4 state.
+// extractReport pulls the `report` finding out of a terminal v4 state. The
+// synthesize agent emits the report with scope='session', so it lands in the
+// state's combined "findings" map — not "workflow_findings", which only holds
+// workflow_instance-owned findings and can never contain it.
 func extractReport(state map[string]any, instanceID string) (string, error) {
-	wf, _ := state["workflow_findings"].(map[string]any)
-	report, ok := findReportFinding(wf)
-	if !ok {
-		return "", fmt.Errorf("deep-research run %s completed but emitted no 'report' finding", instanceID)
-	}
-	if s, isStr := report.(string); isStr {
-		return s, nil
-	}
-	b, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-// findReportFinding locates the synthesize agent's "report" value in the v4
-// workflow_findings map. BuildCombinedFindings keys that map by
-// "<agent_type>[:<model_id>]" → {findingKey: value} (so the report is at
-// workflow_findings["synthesize:claude:opus_4_8"]["report"]), so search the
-// per-agent groups. A flat {report: ...} shape is also accepted.
-func findReportFinding(wf map[string]any) (any, bool) {
-	if wf == nil {
-		return nil, false
-	}
-	if r, ok := wf["report"]; ok {
-		return r, true
-	}
-	for _, group := range wf {
-		if g, ok := group.(map[string]any); ok {
-			if r, ok := g["report"]; ok {
-				return r, true
-			}
-		}
-	}
-	return nil, false
+	combined, _ := state["findings"].(map[string]any)
+	return service.ExtractReport(combined, instanceID)
 }

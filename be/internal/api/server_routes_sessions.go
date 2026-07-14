@@ -12,6 +12,10 @@ import "net/http"
 // console session's own bearer) — the last of which lets a console session
 // close itself, something requireProjectAdmin could never satisfy since a
 // bearer request never populates the user context.
+//
+// The tools catalogue/dispatch routes are `protected` for the same reason:
+// authorization is enforced in-handler by requireConsoleSession (401 unless
+// the bearer resolves to a kind=console agent_sessions row).
 func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http.HandlerFunc)) {
 	// Observer sessions
 	protected("POST /api/v1/observers", s.handleLaunchObserver)
@@ -20,4 +24,8 @@ func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http
 	// Console sessions
 	projectAdmin("POST /api/v1/console/sessions", s.handleCreateConsoleSession)
 	protected("POST /api/v1/console/sessions/{sid}/close", s.handleCloseConsoleSession)
+
+	// Console tools
+	protected("GET /api/v1/console/tools", s.handleListConsoleTools)
+	protected("POST /api/v1/console/tools/{name}/call", s.handleCallConsoleTool)
 }

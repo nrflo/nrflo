@@ -115,6 +115,14 @@ func auditWhere(f model.AuditFilter) (string, []interface{}) {
 		clauses = append(clauses, "action = ?")
 		args = append(args, f.Action)
 	}
+	if f.ResourceType != "" {
+		clauses = append(clauses, "resource_type = ?")
+		args = append(args, f.ResourceType)
+	}
+	if f.ResourceID != "" {
+		clauses = append(clauses, "resource_id = ?")
+		args = append(args, f.ResourceID)
+	}
 	if f.Since != nil {
 		clauses = append(clauses, "created_at >= ?")
 		args = append(args, f.Since.UTC().Format(time.RFC3339Nano))

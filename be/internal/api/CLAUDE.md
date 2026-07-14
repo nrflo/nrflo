@@ -71,3 +71,7 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 ## Console sessions
 
 `POST /api/v1/console/sessions` (`projectAdmin`) mints a `kind='console'` `agent_sessions` row and returns `{session_id, token}` once; `POST .../close` kills the token. That row shape is identical to a project-scoped agent, so `kind` alone excludes console rows from kill/resume, `GetByProjectScope`, `ListFinished` counts, and daily stats. Close authorization + idle sweep: [REFERENCE.md](REFERENCE.md#console-sessions).
+
+#### Console tools
+
+`GET/POST /api/v1/console/tools*` expose a server-owned tool catalogue + dispatcher (`internal/console/`) to a console bearer, authenticated in-handler by `requireConsoleSession`. Mechanics: [REFERENCE.md](REFERENCE.md#console-tools).

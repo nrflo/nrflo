@@ -87,6 +87,7 @@ The Unix socket uses line-delimited JSON-RPC; methods in [internal/socket/CLAUDE
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents |
 | `internal/venv/` | [REFERENCE.md § venv](REFERENCE.md#venv) | Per-project Python venv manager |
 | `internal/spec_import/` | [spec_import/CLAUDE.md](internal/spec_import/CLAUDE.md) | Spec import adapters (GitHub Issue, Jira, Markdown passthrough) |
+| `internal/console/` | [console/CLAUDE.md](internal/console/CLAUDE.md) | Console tool profile + registry |
 
 Per-project env vars: see [internal/service/CLAUDE.md](internal/service/CLAUDE.md).
 Per-project cleanup toggle + retention limit endpoints: [REFERENCE.md § Project settings endpoints](REFERENCE.md#project-settings-endpoints).

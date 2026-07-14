@@ -154,10 +154,17 @@ func codexFeatureState(out, feature string) (string, bool) {
 	return "", false
 }
 
-// disableFeatureFlags returns just the `--disable <feature>` pairs from the
-// production argv (i.e. appServerArgs minus the "app-server" subcommand).
+// disableFeatureFlags returns just the `--disable <feature>` pairs, built
+// directly from codexDisabledFeatures rather than sliced out of
+// appServerArgs() — appServerArgs() now also carries the unrelated -c
+// project-doc override, which `codex features list` does not accept as a
+// feature-gating flag.
 func disableFeatureFlags() []string {
-	return appServerArgs()[1:]
+	args := make([]string, 0, len(codexDisabledFeatures)*2)
+	for _, f := range codexDisabledFeatures {
+		args = append(args, "--disable", f)
+	}
+	return args
 }
 
 // TestNativeOrchestrationCLI_CodexAppServerAcceptsDisableFlags spawns a real

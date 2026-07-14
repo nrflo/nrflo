@@ -84,6 +84,7 @@ func appServerArgs() []string {
 	for _, f := range codexDisabledFeatures {
 		args = append(args, "--disable", f)
 	}
+	args = append(args, codexProjectDocArgs()...)
 	return args
 }
 

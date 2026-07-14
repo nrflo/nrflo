@@ -37,7 +37,7 @@ When `Config.APIViaCLI==true` and the `api_models` provider is `anthropic`, `pre
 
 ### Codex app-server backend
 
-`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
+`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. `appServerArgs()` also passes `-c project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]` so a repo with no `AGENTS.md` still gets its **root** `CLAUDE.md` as the codex project doc; codex walks only cwd's ancestors and spawns always run at `ProjectRoot`, so **nested package `CLAUDE.md`s never reach a codex worker** — it must read them itself. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
 
 ## Host Process Probing
 

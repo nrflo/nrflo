@@ -44,7 +44,10 @@ func TestAppServerArgs_DisablesNativeMultiAgent(t *testing.T) {
 	}
 
 	// Exact ordering/shape guard, matching codexDisabledFeatures declaration order.
-	want := []string{"app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2", "--disable", "enable_fanout"}
+	want := []string{
+		"app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2", "--disable", "enable_fanout",
+		"-c", `project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]`,
+	}
 	if len(args) != len(want) {
 		t.Fatalf("appServerArgs() = %v, want %v", args, want)
 	}
@@ -52,6 +55,50 @@ func TestAppServerArgs_DisablesNativeMultiAgent(t *testing.T) {
 		if args[i] != want[i] {
 			t.Errorf("appServerArgs()[%d] = %q, want %q: %v", i, args[i], want[i], args)
 		}
+	}
+}
+
+// TestAppServerArgs_LoadsClaudeMdFallback asserts the `-c
+// project_doc_fallback_filenames=...` override is a single, unsplit argv
+// element immediately following "-c" — a split/quoted value would be passed
+// to codex as a literal string and silently ignored rather than parsed as a
+// TOML array.
+func TestAppServerArgs_LoadsClaudeMdFallback(t *testing.T) {
+	t.Parallel()
+	args := appServerArgs()
+
+	const wantValue = `project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]`
+	found := false
+	for i, a := range args {
+		if a == "-c" && i+1 < len(args) {
+			if args[i+1] == wantValue {
+				found = true
+			}
+			break
+		}
+	}
+	if !found {
+		t.Errorf("appServerArgs() missing single argv element \"-c\" %q: %v", wantValue, args)
+	}
+}
+
+// TestCodexConfigToml_NoProjectDocKey pins the design decision that
+// project_doc_fallback_filenames is delivered exclusively via the argv -c
+// override (appServerArgs), never written into the per-session config.toml.
+// A future contributor "helpfully" adding it to config.toml would hard-fail
+// every codex spawn with a duplicate-key parse error for any user who already
+// sets this root-scope key in their own ~/.codex/config.toml.
+func TestCodexConfigToml_NoProjectDocKey(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+
+	if err := writeCodexProfileForSession(dir, ""); err != nil {
+		t.Fatalf("writeCodexProfileForSession: %v", err)
+	}
+
+	content := readFileString(t, filepath.Join(dir, "config.toml"))
+	if strings.Contains(content, "project_doc_fallback_filenames") {
+		t.Errorf("config.toml must not contain project_doc_fallback_filenames (must be delivered exclusively via appServerArgs()'s -c override):\n%s", content)
 	}
 }
 

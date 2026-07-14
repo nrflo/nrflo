@@ -37,25 +37,19 @@ func TestAssistantBlocksText(t *testing.T) {
 func TestClaudeTranscriptPath(t *testing.T) {
 	t.Parallel()
 	// CLAUDE_CONFIG_DIR takes precedence and the workdir is dash-encoded.
-	proc := &processInfo{
-		workDir:   "/Users/me/proj/cli_interactive-x",
-		sessionID: "abc-123",
-		env:       []string{"CLAUDE_CONFIG_DIR=/cfg"},
-	}
 	want := filepath.Join("/cfg", "projects", "-Users-me-proj-cli-interactive-x", "abc-123.jsonl")
-	if got := claudeTranscriptPath(proc); got != want {
+	if got := claudeTranscriptPath([]string{"CLAUDE_CONFIG_DIR=/cfg"}, "/Users/me/proj/cli_interactive-x", "abc-123"); got != want {
 		t.Errorf("claudeTranscriptPath = %q, want %q", got, want)
 	}
 
 	// HOME fallback (<home>/.claude) when CLAUDE_CONFIG_DIR is absent.
-	proc2 := &processInfo{workDir: "/a/b", sessionID: "s", env: []string{"HOME=/home/u"}}
 	want2 := filepath.Join("/home/u", ".claude", "projects", "-a-b", "s.jsonl")
-	if got := claudeTranscriptPath(proc2); got != want2 {
+	if got := claudeTranscriptPath([]string{"HOME=/home/u"}, "/a/b", "s"); got != want2 {
 		t.Errorf("claudeTranscriptPath(HOME) = %q, want %q", got, want2)
 	}
 
 	// Missing inputs → "".
-	if got := claudeTranscriptPath(&processInfo{sessionID: "s"}); got != "" {
+	if got := claudeTranscriptPath(nil, "", "s"); got != "" {
 		t.Errorf("claudeTranscriptPath(no workdir) = %q, want empty", got)
 	}
 }
@@ -71,14 +65,13 @@ func TestLastAssistantText(t *testing.T) {
 		`{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"API Error: 529 Overloaded. Try again."}]}}`,
 		`{"type":"system","subtype":"turn_duration"}`,
 	)
-	proc := &processInfo{workDir: workDir, sessionID: sid, env: []string{"CLAUDE_CONFIG_DIR=" + cfg}}
-	if got := lastAssistantText(proc); got != "API Error: 529 Overloaded. Try again." {
+	env := []string{"CLAUDE_CONFIG_DIR=" + cfg}
+	if got := lastAssistantText(env, workDir, sid); got != "API Error: 529 Overloaded. Try again." {
 		t.Errorf("lastAssistantText = %q", got)
 	}
 
 	// Missing transcript → "".
-	missing := &processInfo{workDir: "/no/such", sessionID: "x", env: []string{"CLAUDE_CONFIG_DIR=" + cfg}}
-	if got := lastAssistantText(missing); got != "" {
+	if got := lastAssistantText(env, "/no/such", "x"); got != "" {
 		t.Errorf("lastAssistantText(missing) = %q, want empty", got)
 	}
 }

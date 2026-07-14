@@ -39,7 +39,8 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 
 	switch hookEventName {
 	case "PreToolUse":
-		return h.recordPreToolUse(ctx, req, params.SessionID, event)
+		recorded := h.recordPreToolUse(ctx, req, params.SessionID, event)
+		return h.consolePreToolApproval(ctx, req, params.SessionID, event, recorded)
 	case "PostToolUse":
 		return h.recordPostToolUse(ctx, req, params.SessionID, event)
 	case "PostToolUseFailure":
@@ -93,8 +94,10 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 				logger.Info(ctx, "record_event: SignalSessionReady error (best-effort)", "error", err)
 			}
 		}
+		h.consoleSessionReady(params.SessionID)
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
 	case "Stop":
+		h.consoleTurnEnd(params.SessionID)
 		return h.handleStopHook(ctx, req, params.SessionID)
 	case "SessionEnd":
 		// Predictable per-session noise — ignored. Clean up offset state.

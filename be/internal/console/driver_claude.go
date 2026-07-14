@@ -1,10 +1,8 @@
 package console
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"be/internal/spawner"
 )
@@ -29,17 +27,6 @@ func (d *claudeDriver) Probe() error {
 	return nil
 }
 
-// claudeMCPConfig mirrors the shape `claude --mcp-config <file>` expects.
-type claudeMCPConfig struct {
-	MCPServers map[string]claudeMCPServer `json:"mcpServers"`
-}
-
-type claudeMCPServer struct {
-	Command string            `json:"command"`
-	Args    []string          `json:"args"`
-	Env     map[string]string `json:"env"`
-}
-
 func (d *claudeDriver) Prepare(in LaunchInput) (LaunchSpec, func(), error) {
 	dir, err := os.MkdirTemp("", "nrflo-console-claude-*")
 	if err != nil {
@@ -47,22 +34,8 @@ func (d *claudeDriver) Prepare(in LaunchInput) (LaunchSpec, func(), error) {
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 
-	cfg := claudeMCPConfig{MCPServers: map[string]claudeMCPServer{
-		"nrflo": {
-			Command: in.NrfloPath,
-			Args:    []string{"agent", "mcp-external"},
-			Env:     bridgeEnv(in),
-		},
-	}}
-	// The console bearer goes in this file, never argv — argv is visible to
-	// any local user via `ps`.
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	cfgPath, err := spawner.WriteConsoleClaudeMCPConfig(dir, in.NrfloPath, []string{"agent", "mcp-external"}, bridgeEnv(in))
 	if err != nil {
-		cleanup()
-		return LaunchSpec{}, func() {}, err
-	}
-	cfgPath := filepath.Join(dir, "mcp-config.json")
-	if err := os.WriteFile(cfgPath, data, 0o600); err != nil {
 		cleanup()
 		return LaunchSpec{}, func() {}, err
 	}

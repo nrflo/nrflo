@@ -95,7 +95,16 @@ func TestClaudeDriver_Prepare_ConfigFileContents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read config file: %v", err)
 	}
-	var cfg claudeMCPConfig
+	// consoleClaudeMCPConfig (spawner.WriteConsoleClaudeMCPConfig) is unexported
+	// in the spawner package, so this test decodes into a local struct with the
+	// same JSON shape rather than importing it.
+	var cfg struct {
+		MCPServers map[string]struct {
+			Command string            `json:"command"`
+			Args    []string          `json:"args"`
+			Env     map[string]string `json:"env"`
+		} `json:"mcpServers"`
+	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		t.Fatalf("unmarshal config file: %v", err)
 	}

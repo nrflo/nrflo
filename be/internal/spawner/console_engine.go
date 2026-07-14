@@ -4,11 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	ptyPkg "be/internal/pty"
 )
 
 // ConsoleEngine drives a human-attended console session for one CLI provider
-// (codex today, claude in console-7) over that CLI's structured event
-// protocol instead of a PTY. Unlike the autonomous ExecutionBackend/
+// (codex, claude) over that CLI's own event channel. The two engines share
+// this interface but not the transport: codexEngine speaks app-server
+// JSON-RPC over stdio; claudeEngine drives a PTY + the existing Claude-hooks
+// path (no headless -p/stream-json). Unlike the autonomous ExecutionBackend/
 // processInfo path, an engine holds no processInfo: there is no stall
 // heartbeat, nudge loop, or restart cap to opt out of — those policies live
 // on processInfo/monitorAll and are simply unreachable from an object that
@@ -38,6 +42,7 @@ type EngineSpec struct {
 	WorkDir         string
 	Model           string
 	ReasoningEffort string
+	FallbackModels  string // claude-only: comma-separated --fallback-model chain
 	MaxContext      int
 	Env             []string
 	ApprovalPolicy  string // e.g. "on-request"; engine-specific default when empty
@@ -114,15 +119,28 @@ const (
 // ErrTurnActive is returned by SendUserTurn when a turn is already in flight.
 var ErrTurnActive = fmt.Errorf("console engine: turn already active")
 
+// EngineDeps bundles what GetConsoleEngine needs to construct any engine.
+// PTY is the exported concrete *pty.Manager so callers outside this package
+// can pass one; claudeEngine wraps it internally via wrapPtyManager. codex
+// ignores PTY/Hub/NrfloPath — its transport is app-server JSON-RPC, not a PTY.
+type EngineDeps struct {
+	Sink      Sink
+	PTY       *ptyPkg.Manager
+	Hub       *ConsoleHub
+	NrfloPath string
+}
+
 // GetConsoleEngine returns the ConsoleEngine for a --cli name. Mirrors
 // GetCLIAdapter (cli_adapter.go:233) and console.GetDriver
 // (console/driver.go:62) — the ONE place an engine name is compared;
 // per-engine divergence (approval vocabulary, delta method names, profile
-// writing) lives inside the returned engine.
-func GetConsoleEngine(name string, sink Sink) (ConsoleEngine, error) {
+// writing, transport) lives inside the returned engine.
+func GetConsoleEngine(name string, deps EngineDeps) (ConsoleEngine, error) {
 	switch name {
 	case "codex":
-		return newCodexEngine(sink), nil
+		return newCodexEngine(deps.Sink), nil
+	case "claude":
+		return newClaudeEngine(deps), nil
 	default:
 		return nil, fmt.Errorf("unknown console engine: %s", name)
 	}

@@ -121,7 +121,7 @@ be/internal/service/workflow_chain_test.go	349
 be/internal/service/workflow_defs_next_on_success_test.go	373
 be/internal/service/workflow_derive_test.go	548
 be/internal/service/worktree_test.go	495
-be/internal/socket/handler.go	489
+be/internal/socket/handler.go	465
 be/internal/socket/handler_record_event_test.go	352
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	337

@@ -58,7 +58,7 @@ func (s *Spawner) handleInBandRateLimit(ctx context.Context, proc *processInfo, 
 		return false
 	}
 
-	text := lastAssistantText(proc)
+	text := lastAssistantText(proc.env, proc.workDir, proc.sessionID)
 	if text == "" {
 		return false
 	}
@@ -84,8 +84,8 @@ func (s *Spawner) handleInBandRateLimit(ctx context.Context, proc *processInfo, 
 // agent's Claude transcript, or "" when the transcript is missing/unreadable or
 // has no assistant message yet. Only the tail of the file is read so this stays
 // cheap even for long sessions.
-func lastAssistantText(proc *processInfo) string {
-	path := claudeTranscriptPath(proc)
+func lastAssistantText(env []string, workDir, sessionID string) string {
+	path := claudeTranscriptPath(env, workDir, sessionID)
 	if path == "" {
 		return ""
 	}
@@ -169,14 +169,15 @@ func assistantBlocksText(raw json.RawMessage) string {
 // claudeTranscriptPath reconstructs the path to a Claude session transcript:
 // <config-dir>/projects/<encoded-workdir>/<session-id>.jsonl. The config dir is
 // CLAUDE_CONFIG_DIR from the agent env, else <HOME>/.claude. Returns "" if the
-// inputs needed to build the path are missing.
-func claudeTranscriptPath(proc *processInfo) string {
-	if proc.workDir == "" || proc.sessionID == "" {
+// inputs needed to build the path are missing. proc-free so console engines
+// (no processInfo) can reuse it.
+func claudeTranscriptPath(env []string, workDir, sessionID string) string {
+	if workDir == "" || sessionID == "" {
 		return ""
 	}
-	base := envValue(proc.env, "CLAUDE_CONFIG_DIR")
+	base := envValue(env, "CLAUDE_CONFIG_DIR")
 	if base == "" {
-		home := envValue(proc.env, "HOME")
+		home := envValue(env, "HOME")
 		if home == "" {
 			home, _ = os.UserHomeDir()
 		}
@@ -185,8 +186,8 @@ func claudeTranscriptPath(proc *processInfo) string {
 		}
 		base = filepath.Join(home, ".claude")
 	}
-	encoded := nonAlnum.ReplaceAllString(proc.workDir, "-")
-	return filepath.Join(base, "projects", encoded, proc.sessionID+".jsonl")
+	encoded := nonAlnum.ReplaceAllString(workDir, "-")
+	return filepath.Join(base, "projects", encoded, sessionID+".jsonl")
 }
 
 // envValue returns the value of key in a KEY=VALUE env slice ("" if absent).

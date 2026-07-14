@@ -17,6 +17,8 @@ func init() {
 	agentInfraCmd.AddCommand(agentMCPCmd)
 	agentInfraCmd.AddCommand(agentMCPExternalCmd)
 	agentInfraCmd.AddCommand(agentStatuslineCmd)
+
+	agentRecordEventCmd.Flags().BoolVar(&agentRecordEventConsole, "console", false, "console (human-attended) session hook — blocking PreToolUse approval with a long deadline")
 	agentInfraCmd.AddCommand(agentRecordEventCmd)
 
 	agentContextUpdateCmd.Flags().Float64Var(&agentContextUpdatePctUsed, "pct-used", 0, "Percentage of context used")

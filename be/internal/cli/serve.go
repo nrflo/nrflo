@@ -160,6 +160,7 @@ func setupServer() (*serverComponents, error) {
 	socketServer := socket.NewServerWithListener(pool, httpServer.GetWSHub(), clk, httpServer.GetOrchestrator(), sockListener, sockPath, resolvedDataPath)
 	socketServer.SetWorkflowRunner(newWorkflowRunnerAdapter(httpServer.GetOrchestrator(), pool, clk))
 	socketServer.SetToolDispatcher(httpServer.GetOrchestrator())
+	socketServer.SetConsoleHooks(httpServer.ConsoleHub())
 	if err := socketServer.Start(); err != nil {
 		sockListener.Close()
 		pool.Close()

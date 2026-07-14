@@ -56,6 +56,7 @@ type Server struct {
 	userSvc               *service.UserService
 	rateLimiter           *loginRateLimiter
 	observerSvc           *service.ObserverService
+	consoleHub            *spawner.ConsoleHub
 }
 
 // NewServer creates a new API server.
@@ -181,17 +182,8 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		userSvc:       userSvc,
 		rateLimiter:   newLoginRateLimiter(),
 		observerSvc:   observerSvc,
+		consoleHub:    spawner.NewConsoleHub(),
 	}
-}
-
-// GetWSHub returns the WebSocket hub for external access (e.g., spawner)
-func (s *Server) GetWSHub() *ws.Hub {
-	return s.wsHub
-}
-
-// GetOrchestrator returns the orchestrator for external access (e.g., socket server).
-func (s *Server) GetOrchestrator() *orchestrator.Orchestrator {
-	return s.orchestrator
 }
 
 // Start starts the HTTP server

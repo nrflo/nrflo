@@ -1,0 +1,94 @@
+package spawner
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+// SendUserTurn waits for the TUI to be ready, persists the user turn BEFORE
+// writing it to the PTY (so the transcript tailer's assistant rows cannot
+// land first), writes the body + a submit CR, and marks a turn active. Only
+// the Stop hook (NotifyTurnEnd) clears turnActive, so a mid-turn turn is
+// rejected with ErrTurnActive rather than typed into a busy TUI.
+func (e *claudeEngine) SendUserTurn(ctx context.Context, text string) error {
+	e.mu.Lock()
+	if e.turnActive {
+		e.mu.Unlock()
+		return ErrTurnActive
+	}
+	sess, spec := e.ptySession, e.spec
+	if sess == nil {
+		e.mu.Unlock()
+		return fmt.Errorf("console engine: not started")
+	}
+	e.turnActive = true
+	e.mu.Unlock()
+
+	e.waitUntilReady(ctx)
+
+	if e.sink != nil {
+		emitMessage(spec.SessionID, text, "user_input", e.sink)
+	}
+
+	if _, err := sess.Write([]byte(text)); err != nil {
+		e.mu.Lock()
+		e.turnActive = false
+		e.mu.Unlock()
+		return fmt.Errorf("console engine: write turn: %w", err)
+	}
+	// Gap before the submit CR: coalesced into a single PTY read, the TUI can
+	// swallow the CR and the turn is typed but never sent (deliverPrompt takes
+	// the same 150ms precaution).
+	e.pause(ctx, e.submitDelay)
+	if _, err := sess.Write([]byte("\r")); err != nil {
+		e.mu.Lock()
+		e.turnActive = false
+		e.mu.Unlock()
+		return fmt.Errorf("console engine: submit turn: %w", err)
+	}
+
+	e.emit(EngineEvent{Type: EventTurnStarted, SessionID: spec.SessionID})
+	return nil
+}
+
+// waitUntilReady blocks until SessionStart has signaled TUI-ready (or
+// sessionStartTimeout elapses), then enforces the bootstrap floor — mirrors
+// waitForReady's two-stage strategy (backend_interactive_helpers.go) without
+// depending on a *processInfo. The floor exists to let the TUI finish its
+// initial paint, so it is applied once: later turns land on a TUI that has
+// already completed a turn and would only be delayed for nothing.
+func (e *claudeEngine) waitUntilReady(ctx context.Context) {
+	e.mu.Lock()
+	bootstrapped := e.bootstrapped
+	e.bootstrapped = true
+	e.mu.Unlock()
+	if bootstrapped {
+		return
+	}
+
+	select {
+	case <-e.readyCh:
+	case <-time.After(e.sessionStartTimeout):
+	case <-ctx.Done():
+		return
+	case <-e.stopping:
+		return
+	}
+	e.pause(ctx, e.bootstrapFloor)
+}
+
+// pause sleeps for d, cutting the wait short on ctx cancellation or Stop. A
+// non-positive d (the test default) returns immediately.
+func (e *claudeEngine) pause(ctx context.Context, d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+	case <-ctx.Done():
+	case <-e.stopping:
+	}
+}

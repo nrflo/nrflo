@@ -26,6 +26,25 @@ type ToolDispatcher interface {
 	CallTool(instanceID, sessionID, name string, input json.RawMessage) (output string, media json.RawMessage, isError bool, err error)
 }
 
+// ConsoleHooks routes hook-driven events for `kind='console'` sessions to
+// their live console engine (via spawner.ConsoleHub). Optional, nil-safe —
+// pass nil in tests. Mirrors TerminalSignaler/ToolDispatcher: only
+// primitives/json cross the boundary so the socket package stays free of
+// spawner engine internals. handled=false means "no live console engine for
+// this session" — the caller keeps today's autonomous behavior.
+type ConsoleHooks interface {
+	// ApproveConsoleTool blocks until a human answers a PreToolUse approval
+	// request (or it times out), returning the decision ("allow"/"deny") and
+	// an optional reason to embed in the hookSpecificOutput response.
+	ApproveConsoleTool(ctx context.Context, sessionID, toolName string, toolInput map[string]any, toolUseID string) (decision, reason string, handled bool)
+	// ConsoleTurnEnd notifies the engine that a Stop hook fired.
+	ConsoleTurnEnd(sessionID string) (handled bool)
+	// ConsoleSessionReady notifies the engine that a SessionStart hook fired.
+	ConsoleSessionReady(sessionID string) (handled bool)
+	// ConsoleContextLeft forwards an agent.context_update to the engine.
+	ConsoleContextLeft(sessionID string, pct int) (handled bool)
+}
+
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner
 // after the socket handler has already written the agent result to the DB.
 // The Handler nil-guards before calling — pass nil in tests.

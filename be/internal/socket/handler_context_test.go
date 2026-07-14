@@ -208,3 +208,57 @@ func TestAgentContextUpdateDBPersisted(t *testing.T) {
 		t.Errorf("expected context_left=123 in DB, got: %d", storedContextLeft)
 	}
 }
+
+// TestAgentContextUpdate_NotifiesConsoleHub verifies the handler_context.go
+// extraction additionally calls ConsoleContextLeft when a console engine is
+// registered for the session.
+func TestAgentContextUpdate_NotifiesConsoleHub(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	env.createTicketAndWorkflow(t, "TEST-CONSOLE-CTX")
+
+	var wfiID string
+	if err := env.pool.QueryRow(`SELECT id FROM workflow_instances WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
+		env.project, "TEST-CONSOLE-CTX", "test").Scan(&wfiID); err != nil {
+		t.Fatalf("failed to get workflow instance ID: %v", err)
+	}
+	sessionID := "sess-console-ctx"
+	if _, err := env.pool.Exec(`
+		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 'analyzer', 'analyzer', 'claude-opus-4', 'running', datetime('now'), datetime('now'))
+	`, sessionID, env.project, "TEST-CONSOLE-CTX", wfiID); err != nil {
+		t.Fatalf("failed to insert agent session: %v", err)
+	}
+
+	fake := &fakeConsoleHooks{contextLeftHandled: true}
+	env.handler.consoleHooks = fake
+
+	params := map[string]interface{}{"session_id": sessionID, "context_left": 55}
+	paramsData, _ := json.Marshal(params)
+	req := Request{ID: "req-console-ctx", Method: "agent.context_update", Project: env.project, Params: paramsData}
+
+	resp := env.handler.Handle(req)
+	if resp.Error != nil {
+		t.Fatalf("expected no error, got: %v", resp.Error)
+	}
+
+	fake.mu.Lock()
+	calls := append([]contextLeftCall(nil), fake.contextLeftCalls...)
+	fake.mu.Unlock()
+	if len(calls) != 1 || calls[0].sessionID != sessionID || calls[0].pct != 55 {
+		t.Errorf("ConsoleContextLeft calls = %+v, want [{%s 55}]", calls, sessionID)
+	}
+}
+
+// TestAgentContextUpdate_NilConsoleHooks_NoPanic verifies the nil-safe guard
+// on the newly wired ConsoleHooks path.
+func TestAgentContextUpdate_NilConsoleHooks_NoPanic(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	params := map[string]interface{}{"session_id": "no-such-session", "context_left": 10}
+	paramsData, _ := json.Marshal(params)
+	req := Request{ID: "req-nil-console-ctx", Method: "agent.context_update", Project: env.project, Params: paramsData}
+
+	resp := env.handler.Handle(req)
+	if resp.Error != nil {
+		t.Errorf("nil consoleHooks should not cause an error, got: %v", resp.Error)
+	}
+}

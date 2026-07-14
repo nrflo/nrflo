@@ -9,9 +9,9 @@
 #     db.Open*/*PoolExisting, repo CRUD exercised directly by tests, etc.
 #   * socket / reflection dispatch — reached by name over the unix socket or via
 #     interface dispatch the static call graph cannot see: api.getAgentSession.
-#   * spawner.ConsoleEngine + codexEngine.* — the console-session driver, fully
-#     covered by console_engine_*_test.go; its production caller is the sessions
-#     service, which is not wired to a server entry point yet.
+#   * spawner.ConsoleEngine + codexEngine.*/claudeEngine.* — the console-session
+#     driver, fully covered by console_engine_*_test.go; its production caller
+#     (console-8's session wiring) is not wired to a server entry point yet.
 #
 # `make deadcode` fails only on NEW unreachable funcs (present in the analysis
 # but absent here). When you delete code, also delete its line(s) below.
@@ -79,6 +79,29 @@ be/internal/service TicketService.Update
 be/internal/service ValidateProjectScope
 be/internal/socket Server.SocketPath
 be/internal/spawner appServerClient.replyError
+be/internal/spawner BuildConsoleSettingsJSON
+be/internal/spawner claudeApprovals.drop
+be/internal/spawner claudeApprovals.peek
+be/internal/spawner claudeApprovals.register
+be/internal/spawner claudeEngine.emit
+be/internal/spawner claudeEngine.emitText
+be/internal/spawner claudeEngine.emitThinking
+be/internal/spawner claudeEngine.Events
+be/internal/spawner claudeEngine.ferry
+be/internal/spawner claudeEngine.flushTranscript
+be/internal/spawner claudeEngine.Name
+be/internal/spawner claudeEngine.NotifyContextLeft
+be/internal/spawner claudeEngine.NotifySessionReady
+be/internal/spawner claudeEngine.NotifyTurnEnd
+be/internal/spawner claudeEngine.pause
+be/internal/spawner claudeEngine.processTranscriptLine
+be/internal/spawner claudeEngine.ReplyApproval
+be/internal/spawner claudeEngine.RequestApproval
+be/internal/spawner claudeEngine.SendUserTurn
+be/internal/spawner claudeEngine.Start
+be/internal/spawner claudeEngine.Stop
+be/internal/spawner claudeEngine.tailLoop
+be/internal/spawner claudeEngine.waitUntilReady
 be/internal/spawner codexEngine.emit
 be/internal/spawner codexEngine.Events
 be/internal/spawner codexEngine.Name
@@ -90,7 +113,11 @@ be/internal/spawner codexEngine.SendUserTurn
 be/internal/spawner codexEngine.Start
 be/internal/spawner codexEngine.Stop
 be/internal/spawner commandText
+be/internal/spawner ConsoleHub.Register
+be/internal/spawner ConsoleHub.Unregister
 be/internal/spawner GetConsoleEngine
+be/internal/spawner newClaudeApprovals
+be/internal/spawner newClaudeEngine
 be/internal/spawner newCodexEngine
 be/internal/spawner newPendingApprovals
 be/internal/spawner pendingApprovals.drop

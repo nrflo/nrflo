@@ -11,7 +11,7 @@ Unix socket at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`). Eagerly bound
 Methods by namespace; the full per-method params/behavior table is [REFERENCE.md § Supported Methods](REFERENCE.md#supported-methods) — read it before adding or changing a method:
 
 - `findings.*` / `project_findings.*` — add / add-bulk / get / append / append-bulk / delete, plus `findings.emit` (schema-validated store)
-- `agent.*` — lifecycle (`fail`/`finished`/`continue`/`callback`), `context_update`, `rate_limits_update`, `chain_next_instructions`/`chain_next_ticket`, `consult` (sync api-mode consultant), `record_event` (Claude hook events: tool spans, stop-hook completion enforcement, transcript thinking tail), `log`
+- `agent.*` — lifecycle (`fail`/`finished`/`continue`/`callback`), `context_update`, `rate_limits_update`, `chain_next_instructions`/`chain_next_ticket`, `consult` (sync api-mode consultant), `record_event` (Claude hook events: tool spans, stop-hook completion enforcement, transcript thinking tail; for a `kind='console'` session, `PreToolUse` additionally blocks on a `ConsoleHooks`-routed human approval decision, returned as `permission_decision` in the response), `log`
 - `workflow.*` — skip / continue / fail (session-ownership validated)
 - `ws.broadcast`, `script.context` (script-mode context dict), `artifact.add/list/get`, `tools.list/call` (api-via-cli in-process tool registry via the wired `ToolDispatcher`)
 - `observer.*` — workflow/project/global reads plus feature-gated mutate methods

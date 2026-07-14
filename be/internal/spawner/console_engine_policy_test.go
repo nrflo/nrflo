@@ -72,7 +72,7 @@ func TestDispatchAppServerEvent_NilEmitter_ReasoningDelta(t *testing.T) {
 // TestGetConsoleEngine_Codex asserts the one provider switch returns a codex
 // engine for "codex".
 func TestGetConsoleEngine_Codex(t *testing.T) {
-	eng, err := GetConsoleEngine("codex", &testSink{})
+	eng, err := GetConsoleEngine("codex", EngineDeps{Sink: &testSink{}})
 	if err != nil {
 		t.Fatalf("GetConsoleEngine(codex): %v", err)
 	}
@@ -84,10 +84,25 @@ func TestGetConsoleEngine_Codex(t *testing.T) {
 	}
 }
 
+// TestGetConsoleEngine_Claude asserts the same provider switch returns a
+// claude engine for "claude" (console-7's addition).
+func TestGetConsoleEngine_Claude(t *testing.T) {
+	eng, err := GetConsoleEngine("claude", EngineDeps{Sink: &testSink{}})
+	if err != nil {
+		t.Fatalf("GetConsoleEngine(claude): %v", err)
+	}
+	if eng.Name() != "claude" {
+		t.Errorf("Name() = %q, want claude", eng.Name())
+	}
+	if _, ok := eng.(*claudeEngine); !ok {
+		t.Errorf("GetConsoleEngine(claude) returned %T, want *claudeEngine", eng)
+	}
+}
+
 // TestGetConsoleEngine_Unknown asserts an unregistered engine name errors
 // instead of returning a nil/zero-value engine.
 func TestGetConsoleEngine_Unknown(t *testing.T) {
-	eng, err := GetConsoleEngine("nonexistent", &testSink{})
+	eng, err := GetConsoleEngine("nonexistent", EngineDeps{Sink: &testSink{}})
 	if err == nil {
 		t.Error("expected an error for an unknown console engine name")
 	}

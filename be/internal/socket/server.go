@@ -257,6 +257,7 @@ type Handler struct {
 	signaler           TerminalSignaler     // optional; nil-safe
 	workflowRunner     WorkflowOrchestrator // optional; nil-safe
 	toolDispatcher     ToolDispatcher       // optional; nil-safe
+	consoleHooks       ConsoleHooks         // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
 
@@ -291,4 +292,9 @@ func (s *Server) SetWorkflowRunner(r WorkflowOrchestrator) {
 // SetToolDispatcher wires the MCP tool dispatcher for api-via-cli sessions.
 func (s *Server) SetToolDispatcher(d ToolDispatcher) {
 	s.handler.toolDispatcher = d
+}
+
+// SetConsoleHooks wires the optional console-session hook router.
+func (s *Server) SetConsoleHooks(h ConsoleHooks) {
+	s.handler.consoleHooks = h
 }

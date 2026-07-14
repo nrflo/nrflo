@@ -1,0 +1,231 @@
+package spawner
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"sync"
+	"time"
+
+	ptyPkg "be/internal/pty"
+)
+
+// claudeSessionStartTimeout/claudeBootstrapFloor bound SendUserTurn's wait
+// for the TUI to be ready before writing the turn body: SessionStart (a hook
+// notification relayed by ConsoleHub.ConsoleSessionReady) proves the TUI has
+// begun bootstrapping; the bootstrap floor gives its input loop a moment to
+// finish painting before a submit CR is honored, and so applies only to the
+// FIRST turn. claudeSubmitDelay separates the body write from the submit CR
+// (same 150ms deliverPrompt uses): coalesced into one PTY read, the TUI can
+// swallow the CR and the turn is typed but never submitted. All are
+// injectable engine fields (defaulted in newClaudeEngine) so tests use 0
+// instead of sleeping.
+const (
+	claudeSessionStartTimeout = 20 * time.Second
+	claudeBootstrapFloor      = 1500 * time.Millisecond
+	claudeSubmitDelay         = 150 * time.Millisecond
+)
+
+// claudeEngine drives a human-attended console session over the existing PTY
+// + Claude-hooks path — no headless -p/stream-json, so console sessions stay
+// on subscription pricing. Unlike codexEngine (app-server JSON-RPC) it holds
+// no client connection: the PTY carries bytes the engine drops (claude's
+// heartbeat and turn boundaries come from hooks, not PTY output), and the
+// hooks reach the engine only indirectly, via ConsoleHub notifying the
+// registered consoleTarget methods. Like codexEngine it holds no
+// *processInfo, so it is structurally exempt from the autonomous
+// nudge/stall/restart-cap policies.
+type claudeEngine struct {
+	sink      Sink
+	hub       *ConsoleHub
+	nrfloPath string
+	pty       ptyManagerIface
+
+	mu               sync.Mutex
+	spec             EngineSpec
+	cancel           context.CancelFunc
+	ptySession       ptySessionIface
+	tempDir          string
+	turnActive       bool
+	bootstrapped     bool
+	transcriptOffset int64
+
+	// flushMu serializes flushTranscript (ticker + hook goroutines race).
+	flushMu sync.Mutex
+
+	readyCh   chan struct{}
+	readyOnce sync.Once
+
+	events       chan EngineEvent
+	ferryDone    chan struct{}
+	tailDone     chan struct{}
+	stopping     chan struct{}
+	ferryOnce    sync.Once
+	tailOnce     sync.Once
+	stopOnce     sync.Once
+	stoppingOnce sync.Once
+
+	approvals *claudeApprovals
+
+	// Injectable timeouts (tests override the zero-value defaults below).
+	approvalTimeout     time.Duration
+	sessionStartTimeout time.Duration
+	bootstrapFloor      time.Duration
+	submitDelay         time.Duration
+	tailInterval        time.Duration
+}
+
+// compile-time assertions: claudeEngine must satisfy both ConsoleEngine
+// (the public engine contract) and consoleTarget (the hub-facing surface).
+var (
+	_ ConsoleEngine = (*claudeEngine)(nil)
+	_ consoleTarget = (*claudeEngine)(nil)
+)
+
+func newClaudeEngine(deps EngineDeps) *claudeEngine {
+	return &claudeEngine{
+		sink:                deps.Sink,
+		hub:                 deps.Hub,
+		nrfloPath:           deps.NrfloPath,
+		pty:                 wrapPtyManager(deps.PTY),
+		events:              make(chan EngineEvent, 256),
+		ferryDone:           make(chan struct{}),
+		tailDone:            make(chan struct{}),
+		stopping:            make(chan struct{}),
+		readyCh:             make(chan struct{}),
+		approvals:           newClaudeApprovals(),
+		approvalTimeout:     consoleApprovalTimeout,
+		sessionStartTimeout: claudeSessionStartTimeout,
+		bootstrapFloor:      claudeBootstrapFloor,
+		submitDelay:         claudeSubmitDelay,
+		tailInterval:        claudeTranscriptTailInterval,
+	}
+}
+
+func (e *claudeEngine) Name() string { return "claude" }
+
+// Start writes the per-session --mcp-config file, builds the console argv (no
+// --dangerously-skip-permissions, --disallowedTools, --strict-mcp-config, or
+// safety-hook merge — this is a human session, same boundary the local
+// console driver documents), registers + creates the PTY session under
+// spec.SessionID (also a valid `claude --session-id` value), registers with
+// the Hub, and starts the PTY ferry + transcript tailer goroutines.
+func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
+	if e.pty == nil {
+		return fmt.Errorf("claude console engine: no PTY manager configured")
+	}
+
+	tempDir, err := os.MkdirTemp("", "nrflo-console-claude-engine-"+spec.SessionID+"-*")
+	if err != nil {
+		return fmt.Errorf("claude console engine: mkdir temp: %w", err)
+	}
+
+	mcpPath, err := WriteConsoleClaudeMCPConfig(tempDir, e.nrfloPath, []string{"agent", "mcp-external"}, spec.MCPEnv)
+	if err != nil {
+		_ = os.RemoveAll(tempDir)
+		return fmt.Errorf("claude console engine: write mcp config: %w", err)
+	}
+
+	args := []string{"--session-id", spec.SessionID}
+	if spec.Model != "" {
+		args = append(args, "--model", spec.Model)
+	}
+	if spec.ReasoningEffort != "" {
+		args = append(args, "--effort", spec.ReasoningEffort)
+	}
+	if spec.FallbackModels != "" {
+		args = append(args, "--fallback-model", spec.FallbackModels)
+	}
+	args = append(args, "--settings", BuildConsoleSettingsJSON(e.nrfloPath), "--mcp-config", mcpPath)
+
+	e.pty.RegisterLaunch(spec.SessionID, ptyPkg.Launch{
+		Command: "claude",
+		Args:    args,
+		Env:     spec.Env,
+		Dir:     spec.WorkDir,
+	})
+	sess, err := e.pty.Create(spec.SessionID, spec.WorkDir, spec.Env)
+	if err != nil {
+		_ = os.RemoveAll(tempDir)
+		return fmt.Errorf("claude console engine: create PTY session: %w", err)
+	}
+
+	runCtx, cancel := context.WithCancel(ctx)
+
+	e.mu.Lock()
+	e.spec = spec
+	e.cancel = cancel
+	e.ptySession = sess
+	e.tempDir = tempDir
+	e.mu.Unlock()
+
+	if e.hub != nil {
+		e.hub.Register(spec.SessionID, e)
+	}
+
+	go e.ferry(sess)
+	go e.tailLoop(runCtx)
+
+	return nil
+}
+
+// ferry reads and drops PTY output until the session closes — claude's
+// heartbeat and turn boundaries come from hooks, not PTY bytes.
+func (e *claudeEngine) ferry(sess ptySessionIface) {
+	defer e.ferryOnce.Do(func() { close(e.ferryDone) })
+	buf := make([]byte, 4096)
+	for {
+		if _, err := sess.Read(buf); err != nil {
+			return
+		}
+	}
+}
+
+// Events returns the normalized event channel, closed when Stop completes.
+func (e *claudeEngine) Events() <-chan EngineEvent { return e.events }
+
+// Stop tears down the engine: unregisters from the Hub, cancels the tailer's
+// context, closes the PTY session, waits for the ferry + tailer goroutines to
+// exit, removes the temp dir, and closes Events exactly once. `stopping` is
+// closed BEFORE any of that: RequestApproval and waitUntilReady both select on
+// it, so a blocked approval or a caller that stops draining Events cannot wedge
+// this teardown (same discipline as codexEngine.Stop).
+//
+// cancel is non-nil only once Start has committed to launching the ferry +
+// tailer goroutines, so it also gates the done-channel waits: Stop on an
+// engine whose Start failed (or never ran) would otherwise block forever on
+// channels nobody will close.
+func (e *claudeEngine) Stop() {
+	e.stoppingOnce.Do(func() { close(e.stopping) })
+
+	e.mu.Lock()
+	sessionID := e.spec.SessionID
+	cancel, sess, tempDir := e.cancel, e.ptySession, e.tempDir
+	e.mu.Unlock()
+
+	if e.hub != nil && sessionID != "" {
+		e.hub.Unregister(sessionID)
+	}
+	if cancel != nil {
+		cancel()
+		if sess != nil {
+			_ = sess.Close()
+			<-e.ferryDone
+		}
+		<-e.tailDone
+	}
+	if tempDir != "" {
+		_ = os.RemoveAll(tempDir)
+	}
+	e.stopOnce.Do(func() { close(e.events) })
+}
+
+// emit delivers one EngineEvent to the buffered Events channel, abandoning
+// the send once Stop has begun so a non-draining consumer can never wedge a
+// caller blocked in emit.
+func (e *claudeEngine) emit(ev EngineEvent) {
+	select {
+	case e.events <- ev:
+	case <-e.stopping:
+	}
+}

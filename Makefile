@@ -143,10 +143,10 @@ test-integration: embed-assets
 	$(acquire_be_lock)
 	@cd $(BE_DIR) && $(GO) test -v ./internal/integration/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
-## test-pkg: Run tests for a specific package (usage: make test-pkg PKG=orchestrator)
+## test-pkg: Run tests for a specific package, optionally one test (usage: make test-pkg PKG=orchestrator [RUN=TestName])
 test-pkg: embed-assets
 	$(acquire_be_lock)
-	@cd $(BE_DIR) && $(GO) test -v ./internal/$(PKG)/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
+	@cd $(BE_DIR) && $(GO) test -v $(if $(RUN),-run '$(RUN)') ./internal/$(PKG)/...; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-verbose: Run all backend tests (verbose)
 test-verbose: embed-assets

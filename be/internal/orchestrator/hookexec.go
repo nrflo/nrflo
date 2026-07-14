@@ -14,9 +14,9 @@ import (
 	"github.com/google/uuid"
 
 	"be/internal/db"
+	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
-	"be/internal/spawner"
 )
 
 const (
@@ -85,7 +85,7 @@ func (o *Orchestrator) runHookScript(ctx context.Context, pool *db.Pool, project
 	}
 	defer os.Remove(scriptPath)
 
-	token := spawner.MintSpawnToken()
+	token := id.MintToken()
 	now := o.clock.Now().UTC().Format(time.RFC3339Nano)
 	sess := &model.AgentSession{
 		ID:                 sid,

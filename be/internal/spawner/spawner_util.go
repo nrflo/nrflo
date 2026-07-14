@@ -2,13 +2,9 @@ package spawner
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 
 	"be/internal/db"
 	"be/internal/logger"
@@ -172,21 +168,6 @@ func filterEnv(env []string, name string) []string {
 		}
 	}
 	return out
-}
-
-// MintSpawnToken returns a 32-byte random hex token used as the spawned
-// agent's HTTP API bearer credential. Persisted in agent_sessions.spawn_token
-// and exposed to the agent process via NRFLO_AGENT_TOKEN.
-func MintSpawnToken() string {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		// crypto/rand failure is essentially impossible on supported platforms;
-		// fall back to a UUID so we never panic. Token uniqueness is the only
-		// invariant — uniqueness via UUIDv4 is sufficient.
-		return strings.ReplaceAll(uuid.New().String(), "-", "") +
-			strings.ReplaceAll(uuid.New().String(), "-", "")
-	}
-	return hex.EncodeToString(buf)
 }
 
 func (s *Spawner) maxContextForModel(model string) int {

@@ -157,11 +157,29 @@ func TestValidateResumeSession(t *testing.T) {
 			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionSkipped},
 			wantErr: false,
 		},
+		{
+			// A closed console session is interactive_completed; resuming it would
+			// resurrect its dead bearer token. Only the kind guard blocks it.
+			name: "console session is never resumable",
+			session: &model.AgentSession{
+				ModelID: sql.NullString{String: "claude:sonnet", Valid: true},
+				Status:  model.AgentSessionInteractiveCompleted,
+				Kind:    model.AgentSessionKindConsole,
+			},
+			wantErr:     true,
+			errContains: "kind",
+		},
 	}
 
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			// agent_sessions.kind is NOT NULL DEFAULT 'workflow_agent', so a row
+			// read from the DB always carries a kind; mirror that for fixtures
+			// that don't set one explicitly.
+			if tc.session.Kind == "" {
+				tc.session.Kind = model.AgentSessionKindWorkflowAgent
+			}
 			err := validateResumeSession(tc.session)
 			if tc.wantErr {
 				if err == nil {

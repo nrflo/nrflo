@@ -1,9 +1,7 @@
 package service
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -12,6 +10,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/id"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -144,7 +143,7 @@ func (s *ObserverService) Launch(scope, projectID, workflowID string) (sessionID
 	}
 
 	sessionID = uuid.New().String()
-	spawnToken := mintObserverToken()
+	spawnToken := id.MintToken()
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
 	sessionRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
@@ -183,12 +182,4 @@ func (s *ObserverService) Launch(scope, projectID, workflowID string) (sessionID
 	}
 
 	return sessionID, nil
-}
-
-func mintObserverToken() string {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return uuid.New().String() + uuid.New().String()
-	}
-	return hex.EncodeToString(buf)
 }

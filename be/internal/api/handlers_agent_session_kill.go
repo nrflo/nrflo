@@ -34,6 +34,13 @@ func (s *Server) handleKillAgentSession(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Console/observer sessions have no spawned process behind them: killing one
+	// would report success while leaving the row (and its bearer token) alive.
+	if session.Kind != model.AgentSessionKindWorkflowAgent {
+		writeError(w, http.StatusConflict, "not_killable")
+		return
+	}
+
 	if session.Status != model.AgentSessionRunning && session.Status != model.AgentSessionUserInteractive {
 		writeError(w, http.StatusConflict, "not_alive")
 		return

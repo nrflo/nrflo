@@ -93,6 +93,14 @@ func (s *Server) startRetentionCleanup() {
 		} else if cancelled > 0 {
 			logger.Info(context.Background(), "retention cleanup: plan drafts cancelled", "count", cancelled)
 		}
+
+		// Expire console sessions idle past console_idle_ttl_hours.
+		consoleSvc := service.NewConsoleService(s.pool, s.clock)
+		if expired, err := consoleSvc.SweepIdle(s.clock.Now()); err != nil {
+			logger.Info(context.Background(), "retention cleanup: console idle sweep error", "error", err)
+		} else if expired > 0 {
+			logger.Info(context.Background(), "retention cleanup: console sessions expired", "count", expired)
+		}
 	}
 
 	// Run once immediately on startup

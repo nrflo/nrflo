@@ -30,7 +30,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 
 	kind := session.Kind
 	if kind == "" {
-		kind = "workflow_agent"
+		kind = model.AgentSessionKindWorkflowAgent
 	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
@@ -163,10 +163,12 @@ func (r *AgentSessionRepo) GetByTicket(projectID, ticketID string, phase string)
 	return sessions, nil
 }
 
-// GetByProjectScope retrieves agent sessions for project-scoped workflows (empty ticket_id)
+// GetByProjectScope retrieves agent sessions for project-scoped workflows (empty ticket_id).
+// Console/observer rows also carry an empty ticket_id, so the kind filter is what excludes them.
 func (r *AgentSessionRepo) GetByProjectScope(projectID, phase string) ([]*model.AgentSession, error) {
 	query := `SELECT ` + sessionCols + ` FROM agent_sessions
-		WHERE LOWER(project_id) = LOWER(?) AND (ticket_id = '' OR ticket_id IS NULL)`
+		WHERE LOWER(project_id) = LOWER(?) AND (ticket_id = '' OR ticket_id IS NULL)
+		AND kind = '` + model.AgentSessionKindWorkflowAgent + `'`
 	args := []interface{}{projectID}
 
 	if phase != "" {
@@ -385,7 +387,8 @@ func (r *AgentSessionRepo) ListFinished(f ListFinishedFilter, page, perPage int)
 	if err := r.db.QueryRow(
 		`SELECT COUNT(*) FROM agent_sessions s
 		WHERE LOWER(s.project_id) = LOWER(?)
-		AND s.status NOT IN ('running', 'continued', 'callback', 'user_interactive')`,
+		AND s.status NOT IN ('running', 'continued', 'callback', 'user_interactive')
+		AND s.kind = '`+model.AgentSessionKindWorkflowAgent+`'`,
 		f.ProjectID,
 	).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count agent session logs: %w", err)

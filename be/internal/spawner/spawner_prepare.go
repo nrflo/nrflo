@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
+	"be/internal/id"
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
+	"github.com/google/uuid"
 )
 
 // prepareSpawn does all CLI-agnostic prep work: session/agent IDs, agent-def
@@ -24,7 +24,7 @@ import (
 func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string) (*processInfo, *prepResult, error) {
 	agentID := "spawn-" + uuid.New().String()[:8]
 	sessionID := uuid.New().String()
-	spawnToken := MintSpawnToken()
+	spawnToken := id.MintToken()
 
 	// Parse modelID (cli:model format)
 	cliName, model := parseModelID(modelID)

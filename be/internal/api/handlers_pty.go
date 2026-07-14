@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/id"
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
-	"be/internal/spawner"
 	"be/internal/ws"
 
 	"github.com/gorilla/websocket"
@@ -92,7 +92,7 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 	// take-control resumes mint one here on first attach.
 	sessRepo := repo.NewAgentSessionRepo(s.pool, s.clock)
 	if !session.SpawnToken.Valid || session.SpawnToken.String == "" {
-		token := spawner.MintSpawnToken()
+		token := id.MintToken()
 		if err := sessRepo.UpdateSpawnToken(session.ID, token); err != nil {
 			logger.Warn(context.Background(), "failed to persist spawn_token for pty session", "session_id", session.ID, "error", err)
 		} else {

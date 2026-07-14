@@ -26,7 +26,8 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `chain_preview.go` | `PreviewChain`, custom order validation |
 | `chain_append.go` | Append tickets to running chains |
 | `chain_remove.go` | Remove pending items from running chains |
-| `daily_stats.go` | Daily stats computation |
+| `daily_stats.go` | Daily stats computation (workflow_agent sessions only) |
+| `console.go` | Console session lifecycle: Create (kind='console' row + bearer), Close, SweepIdle (`console_idle_ttl_hours`) |
 | `git.go` | Paginated commit listing and commit detail (os/exec) |
 | `worktree.go` | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup |
 | `system_agent_definition.go` (+ `_read.go`) | System agent definition CRUD (global) |
@@ -45,12 +46,12 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `python_script_validate.go` | `Validate(ctx, code)`: runs `python3` AST parse with 5s timeout; degrades gracefully if python3 absent |
 | `project_env_var.go` | `ProjectEnvVarService`: List/Upsert/Delete; validates name regex, reserved names, 4096-byte value cap |
 | `artifact.go` | `ArtifactService`: StageUpload/ReadUploadMeta/CancelUpload, AttachInputArtifacts (staged→persistent, transactional rollback), List/Get/Open/Delete (broadcasts `artifact.deleted`) |
-| `purge.go` | `PurgeService.PurgeInstanceTraceIfEnabled`: when `purge_on_completion` is set, redacts `agent_sessions` sensitive columns, deletes messages/findings/findings_history/artifacts/errors, clears caller columns. One tx; audits `workflow.purged` + broadcasts `EventWorkflowPurged`; invoked from orchestrator terminal hooks |
+| `purge.go` | `PurgeService.PurgeInstanceTraceIfEnabled`: when `purge_on_completion` is set, redacts `agent_sessions` sensitive columns, deletes messages/findings/findings_history/artifacts/errors, clears caller columns. One tx; audits + broadcasts; invoked from orchestrator terminal hooks |
 | `subworkflow.go` | Sub-workflow guard config keys/defaults (tools_enabled on; depth 3, children 6, invocations 25; project>global) |
 | `plan_auto.go` | `dynamic_workflow_auto_enabled` gate (project>global, default off) + `DynamicWorkflow` name const |
-| `dynamic_seed.go` (+ `_data`/`_prompts_*`/`_planner`/`_schemas.go`) | `EnsureGlobalDynamicWorkflow`: seeds the `dynamic` workflow's fanout_template catalog + workflow-local planner def |
+| `dynamic_seed.go` (+ `_data`/`_prompts_*`/`_planner`/`_schemas.go`) | `EnsureGlobalDynamicWorkflow` — see "Global workflows" below |
 | `plan.go` (+ `plan_revise`/`plan_manifest`/`plan_validate[_refs]`/`plan_schema`/`plan_templates`/`plan_limits`/`plan_materialize`/`plan_status`/`workflow_instance_nodes`.go) | Plan lifecycle: `PlanService` (draft/revise/approve→materialize/cancel/TTL-sweep), manifest v1 types+hash, `ValidatePlanManifest` (one aggregated error), template-library resolution + availability recheck (`PlanTemplate` carries effective `reasoning_effort`+`CLIType`; `EnabledTemplates`/`ValidateTemplatesEnabled` drop a template whose model is disabled, cli binary is absent, or api mode is off), `plan_max_*`/`plan_draft_ttl_min` caps. `Materialize` writes an approved revision's nodes into `workflow_instance_nodes`/`_layer_policies` exactly once (hash-stamped conditional UPDATE); `DerivePlanInstanceStatus`/`IsPlanDriven`/`EffectivePhases` are the orchestrator's plan-boundary primitives — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md). Every `Revise` re-syncs an already plan-suspended instance's status (guarded: never clobbers a run executing static layers), so a poller sees `waiting_input`→`waiting_approval` once questions are answered. Reserved key `_workflow_plan` is server-owned, resolved ahead of `finding_schemas` — see `findings_emit.go` |
-| `workflow_export.go` + `workflow_export_import.go` | `WorkflowExportService`: `Export` builds a v1.0 `types.WorkflowBundle` (strips project_id/workflow_id, dedupes python scripts); `CheckImport` probes ID conflicts; `Import` applies `overwrite`/`rename`/`cancel`; scripts get fresh IDs, `PythonScriptID` remapped before `CreateAgentDef` |
+| `workflow_export.go` + `workflow_export_import.go` | `WorkflowExportService`: `Export` builds a v1.0 `types.WorkflowBundle` (strips project_id/workflow_id, dedupes scripts); `CheckImport` probes ID conflicts; `Import` applies `overwrite`/`rename`/`cancel` |
 
 ## Per-project env vars
 

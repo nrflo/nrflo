@@ -133,7 +133,7 @@ The orchestrator calls `venvMgr.Ensure(ctx, projectID, projectRoot)` once per wo
 | `NRFLO_PROJECT` | Project ID |
 | `NRF_WORKFLOW_INSTANCE_ID` | Workflow instance UUID |
 | `NRF_SESSION_ID` | Agent session UUID |
-| `NRFLO_AGENT_TOKEN` | Per-session bearer token (`MintSpawnToken()`) |
+| `NRFLO_AGENT_TOKEN` | Per-session bearer token (`id.MintToken()`) |
 | `NRF_SPAWNED` | Set to `1` |
 | `NRF_CONTEXT_THRESHOLD` | Context usage threshold % |
 | `NRF_MAX_CONTEXT` | Max context window size in tokens |

@@ -591,6 +591,10 @@ func (s *Server) handleStopWorkflow(w http.ResponseWriter, r *http.Request) {
 // validateResumeSession checks that a session is eligible for resume:
 // must be a Claude CLI agent in a terminal state.
 func validateResumeSession(session *model.AgentSession) error {
+	// Resuming a console row would resurrect its dead bearer token.
+	if session.Kind != model.AgentSessionKindWorkflowAgent {
+		return fmt.Errorf("session kind %q does not support resume", session.Kind)
+	}
 	// Check model_id is valid and indicates a Claude CLI agent.
 	if !session.ModelID.Valid || session.ModelID.String == "" {
 		return fmt.Errorf("session has no model_id, cannot determine CLI type")

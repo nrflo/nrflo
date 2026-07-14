@@ -1,15 +1,15 @@
-package spawner
+package id
 
 import (
 	"strings"
 	"testing"
 )
 
-func TestMintSpawnToken_LengthAndUniqueness(t *testing.T) {
+func TestMintToken_LengthAndUniqueness(t *testing.T) {
 	t.Parallel()
 	seen := make(map[string]struct{}, 100)
 	for i := 0; i < 100; i++ {
-		tok := MintSpawnToken()
+		tok := MintToken()
 		if len(tok) != 64 {
 			t.Fatalf("token length = %d, want 64 (hex of 32 bytes)", len(tok))
 		}

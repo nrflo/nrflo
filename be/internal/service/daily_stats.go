@@ -53,7 +53,7 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 		SELECT COALESCE(SUM(200000 * (100 - context_left) / 100), 0)
 		FROM agent_sessions
 		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) = ?
-		AND status NOT IN ('running', 'continued')`,
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'`,
 		projectID, date,
 	).Scan(&stats.TokensSpent)
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 		SELECT COALESCE(SUM(CAST((julianday(ended_at) - julianday(started_at)) * 86400 AS REAL)), 0)
 		FROM agent_sessions
 		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) = ?
-		AND status NOT IN ('running', 'continued')
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'
 		AND started_at IS NOT NULL AND ended_at IS NOT NULL`,
 		projectID, date,
 	).Scan(&stats.AgentTimeSec)
@@ -155,7 +155,7 @@ func (s *DailyStatsService) GetRange(projectID, rangeType string) (model.DailySt
 		SELECT COALESCE(SUM(200000 * (100 - context_left) / 100), 0)
 		FROM agent_sessions
 		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) >= ? AND date(ended_at) <= ?
-		AND status NOT IN ('running', 'continued')`,
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'`,
 		projectID, fromDate, todayDate,
 	).Scan(&stats.TokensSpent)
 	if err != nil {
@@ -167,7 +167,7 @@ func (s *DailyStatsService) GetRange(projectID, rangeType string) (model.DailySt
 		SELECT COALESCE(SUM(CAST((julianday(ended_at) - julianday(started_at)) * 86400 AS REAL)), 0)
 		FROM agent_sessions
 		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) >= ? AND date(ended_at) <= ?
-		AND status NOT IN ('running', 'continued')
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'
 		AND started_at IS NOT NULL AND ended_at IS NOT NULL`,
 		projectID, fromDate, todayDate,
 	).Scan(&stats.AgentTimeSec)

@@ -54,19 +54,17 @@ Workflow-def / agent-def / import writes are `protected`, but mutating the reser
 
 ### External MCP proxy (`agent mcp-external`)
 
-A **standalone** Claude Code session (not spawned by nrflo) drives the server via `nrflo_server agent mcp-external` (`cli/agent_mcp_external.go`) — a token-authed JSON-RPC stdio MCP server that proxies tool calls to this REST API and holds no orchestrator/DB itself. Auth is a long-lived **service token** (`NRFLO_MCP_TOKEN`, sent `Authorization: Bearer`); base URL `NRFLO_SERVER_URL` (default `http://127.0.0.1:6587`). The target project is resolved per tool call, in order: explicit `project` arg → **cwd auto-detect** (the proxy's working directory matched against project `root_path`s, longest-prefix; `cli/agent_mcp_external_cwd.go`) → `NRFLO_PROJECT` default → the hidden global project. It never errors — project-agnostic tools (`deep_research`) run in the global project from any directory with no config; a project-specific workflow run there just 404s. A **global** token can drive every project; a **project** token only its own. Tools: `deep_research` (runs the global `deep-research` workflow then blocks-polls until terminal and returns `state.workflow_findings.report`; optional `context` arg is forwarded as the run's `external_context` so the scope agent can ground the angles via `${EXTERNAL_CONTEXT}` — empty = project-agnostic web research), `run_workflow`, `get_workflow`, `list_workflows` — thin wrappers over `POST .../workflow/run`, `GET .../workflow?instance_id=`, `GET /api/v1/workflows` — plus `dynamic_workflow`/`revise_plan`/`approve_plan` (plan lifecycle, below; `dynamic_workflow` blocks-polls to the plan boundary and folds the full draft into the returned `state.plan`). Connect: `claude mcp add nrflo --env NRFLO_MCP_TOKEN=… [--env NRFLO_PROJECT=…] -- nrflo_server agent mcp-external`. Deep-research can take minutes, so the MCP tool-call timeout must be raised on the client. A cancelled or timed-out `deep_research` (MCP `notifications/cancelled`, or the proxy's stdin closing because the client killed it) best-effort calls `POST .../workflow/stop` for the in-flight instance so the run doesn't orphan and keep billing — the proxy uses a cancellation-aware stdio loop (`runMCPStdioLoopWithCancel`) that threads a per-request context into the dispatch (the session-bound `agent mcp` bridge keeps the plain `runMCPStdioLoop`).
+A **standalone** Claude Code session (not spawned by nrflo) drives the server via `nrflo_server agent mcp-external` (`cli/agent_mcp_external.go`) — a token-authed JSON-RPC stdio MCP server that proxies tool calls to this REST API. Auth is a long-lived **service token** (`NRFLO_MCP_TOKEN`, sent `Authorization: Bearer`); base URL `NRFLO_SERVER_URL` (default `http://127.0.0.1:6587`). The target project is resolved per tool call, in order: explicit `project` arg → **cwd auto-detect** (the proxy's working directory matched against project `root_path`s, longest-prefix; `cli/agent_mcp_external_cwd.go`) → `NRFLO_PROJECT` default → the hidden global project. It never errors — project-agnostic tools (`deep_research`) run in the global project from any directory with no config; a project-specific workflow run there just 404s. A **global** token can drive every project; a **project** token only its own. Tools: `deep_research` (runs the global `deep-research` workflow then blocks-polls until terminal and returns `state.workflow_findings.report`; optional `context` arg is forwarded as the run's `external_context` so the scope agent can ground the angles via `${EXTERNAL_CONTEXT}` — empty = project-agnostic web research), `run_workflow`, `get_workflow`, `list_workflows` — thin wrappers over `POST .../workflow/run`, `GET .../workflow?instance_id=`, `GET /api/v1/workflows` — plus `dynamic_workflow`/`revise_plan`/`approve_plan` (plan lifecycle, below; `dynamic_workflow` blocks-polls to the plan boundary and folds the full draft into the returned `state.plan`). Connect: `claude mcp add nrflo --env NRFLO_MCP_TOKEN=… [--env NRFLO_PROJECT=…] -- nrflo_server agent mcp-external`. Deep-research can take minutes, so the MCP tool-call timeout must be raised on the client. A cancelled or timed-out `deep_research` (MCP `notifications/cancelled`, or the proxy's stdin closing because the client killed it) best-effort calls `POST .../workflow/stop` for the in-flight instance so the run doesn't orphan and keep billing (`runMCPStdioLoopWithCancel` threads a per-request context into the dispatch; the session-bound `agent mcp` bridge keeps the plain `runMCPStdioLoop`).
 
 ### Login Rate Limiter
 
-`auth_ratelimit.go` implements a per-IP+email token bucket: 5 attempts per 5-minute sliding window. On limit exceeded, returns HTTP 429 with `Retry-After` header (seconds). Keys are `{ip}|{email}`.
+`auth_ratelimit.go`: per-IP+email token bucket, 5 attempts/5min. Over limit → 429 with `Retry-After`. Keys are `{ip}|{email}`.
 
-### --insecure-cookies Flag
-
-`nrflo_server serve --insecure-cookies` passes `dev=true` to `auth.NewManager`, disabling the `Secure` cookie flag. Use for local HTTP development without TLS.
+`serve --insecure-cookies` passes `dev=true` to `auth.NewManager` (drops the `Secure` cookie flag; local HTTP dev).
 
 ### WS / PTY Auth
 
-`GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` are registered via `requireAuthWith(true, ...)`, so the 401 is returned before any WebSocket upgrade handshake. These two endpoints additionally accept a bearer token via the `?token=<bearer>` query parameter as a fallback, because browsers cannot set `Authorization` headers on WebSocket constructors. All other endpoints use `requireAuth` (header-only bearer). PTY upgrade, resize handling, and exit-interactive wiring are in `handlers_pty.go`.
+`GET /api/v1/ws` and `GET /api/v1/pty/{session_id}` use `requireAuthWith(true, ...)`: 401 before the WS upgrade, plus a `?token=<bearer>` query fallback (browsers can't set `Authorization` on WebSocket constructors). All other endpoints use `requireAuth` (header-only). PTY upgrade/resize/exit-interactive live in `handlers_pty.go`.
 
 CORS `Access-Control-Allow-Headers` includes `Authorization` so cross-origin REST preflight succeeds when the UI sends a Bearer token. `Access-Control-Allow-Credentials` is not set.
 
@@ -74,7 +72,7 @@ CORS `Access-Control-Allow-Headers` includes `Authorization` so cross-origin RES
 
 Handlers live in `handlers_*.go` files. For the route table run:
 ```
-grep -rn "protected\|admin(\|mux.HandleFunc" be/internal/api/server.go
+grep -rn "protected\|admin(\|mux.HandleFunc" be/internal/api/server*.go
 ```
 
 Errors are returned as `{"error":"code","message":"..."}` for structured failures, or plain text on framework-level 4xx rejections.
@@ -104,3 +102,9 @@ Approve now materializes in the same request (`PlanService.Approve` → `Materia
 ## Observers
 
 `POST /api/v1/observers` accepts `{scope: "workflow"|"project"|"global", project_id?, workflow_id?}` and returns `{session_id}` (handlers_observer.go:13). Returns 404 when `experimental_observer_enabled=false`. `GET /api/v1/observers` returns active observer sessions filtered by X-Project (handlers_observer.go:57).
+
+## Console sessions
+
+`POST /api/v1/console/sessions` (`projectAdmin`; project from X-Project) creates a `kind='console'` `agent_sessions` row (`status=user_interactive`, `ticket_id=''`, NULL `workflow_instance_id`) and returns `{session_id, token}` once. `POST /api/v1/console/sessions/{sid}/close` (`protected`) authorizes in-handler (admin, OR service principal Global/project-match, OR the session's own bearer) then flips `status=interactive_completed`, killing the token via `GetByToken`'s status filter. Idle rows sweep every 20 min via `ConsoleService.SweepIdle` (`console_idle_ttl_hours`, default 12).
+
+That row shape is identical to a project-scoped agent, so `kind` alone excludes console rows from kill/resume, `GetByProjectScope`, `ListFinished` counts, and daily stats.

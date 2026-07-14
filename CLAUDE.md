@@ -22,6 +22,8 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 **Overflow goes to REFERENCE.md.** When a package CLAUDE.md nears its cap, move flow mechanics into a sibling `REFERENCE.md` (not auto-loaded, uncapped) and keep the invariant + a pointer in CLAUDE.md. Read the REFERENCE.md before changing the flows it documents.
 
+**Populating (one pass, no thrash).** (1) Pick ONE owning package CLAUDE.md per changed area — deepest wins; no behavior change → no doc edit. (2) Add/update ≤3 sentences in the relevant section; anything longer is REFERENCE.md material. (3) Never reword existing unrelated content to free space. (4) Measure `wc -c` once at the END; if over cap, move the largest mechanics paragraph to REFERENCE.md — do not compress wording.
+
 **Hard caps (bytes; enforced by reviewer):**
 
 | File | Cap |
@@ -63,7 +65,7 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 
 | File | Purpose |
 |------|---------|
-| `be/` | Go backend source code (see [be](be/CLAUDE.md)) |
+| `be/` | Go backend (see [be](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui](ui/CLAUDE.md)) |
 | `Makefile` | Build, install, test targets (`make help`) |
 | `doc/` | Agent-authoring docs: common/CLI/Python/API, served at /documentation |
@@ -126,20 +128,18 @@ Rules every change must respect.
 - **Agent session logs + live sessions** → [api](be/internal/api/CLAUDE.md)
 - **Per-project env vars** → [service](be/internal/service/CLAUDE.md)
 - **DB schema, migrations, connection pool** → [db](be/internal/db/CLAUDE.md)
-
-### Observer
 - **Observer agents (experimental)** → [spawner](be/internal/spawner/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
 
 ## Workflows
 
 | Workflow | Phases (by layer) | Use Case |
 |----------|-------------------|----------|
-| `feature` | L0: setup-analyzer -> L1: test-writer -> L2: implementor -> L3: qa-verifier -> L4: doc-updater | New features (full TDD) |
-| `bugfix` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Bug fixes |
-| `hotfix` | L0: implementor | Urgent fixes |
-| `docs` | L0: setup-analyzer -> L1: doc-updater | Documentation only |
-| `refactor` | L0: setup-analyzer -> L1: implementor -> L2: qa-verifier | Code refactoring |
-| `deep-research` (global) | L0: scope -> L1: research -> L2: verify_a/b/c -> L3: synthesize | Multi-source web research, runnable from any project |
+| `feature` | setup-analyzer -> test-writer -> implementor -> qa-verifier -> doc-updater | New features (full TDD) |
+| `bugfix` | setup-analyzer -> implementor -> qa-verifier | Bug fixes |
+| `hotfix` | implementor | Urgent fixes |
+| `docs` | setup-analyzer -> doc-updater | Documentation only |
+| `refactor` | setup-analyzer -> implementor -> qa-verifier | Code refactoring |
+| `deep-research` (global) | scope -> research -> verify_a/b/c -> synthesize | Multi-source web research (any project) |
 | `dynamic` (global) | plan-driven | On-demand multi-agent plan |
 
 ## Building & Installing
@@ -148,4 +148,4 @@ Rules every change must respect.
 
 ### Docker image
 
-`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction); no opencode. Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction). Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.

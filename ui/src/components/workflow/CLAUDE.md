@@ -1,6 +1,6 @@
 # Workflow Components
 
-Workflow visualization and interaction components for ticket and project-scoped workflow views (42 files covering phase timeline, agent display, findings, and workflow definition management).
+Workflow visualization and interaction components for ticket and project-scoped workflow views (42 files covering phase timeline, agent display, findings, and workflow definition management). Deep mechanics: [REFERENCE.md](REFERENCE.md) — read it before changing the phase graph, trace timeline, agent log panel, or agent definition forms.
 
 Top-level rendering component: `PhaseTimeline.tsx` renders workflow metadata badges and hosts `PhaseGraph`. Workflow state flows in from `useWebSocketSubscription`/`useTickets` via props; real-time refresh via `messages.updated` WS events. Shared types: `ui/src/types/workflow.ts`.
 
@@ -8,19 +8,11 @@ Run `ls ui/src/components/workflow/` for the full file list.
 
 ## PhaseGraph
 
-React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama). Implementation under `PhaseGraph/`.
-
-- Shows ALL phases from workflow config upfront: pending (dashed/clock), skipped (faded), running (yellow glow), completed (green/red).
-- Phases ordered by `phase_order` from backend; edges color-coded by source result.
-- Clicking an agent node opens it in `AgentLogPanel` (right-side detail view with message table).
-- Responsive: 220px nodes on mobile (<640px), 300px on desktop; touch/pinch-zoom on mobile via `useIsMobile`.
-- Auto-center toggle (default on): `PhaseGraphControls.tsx` calls `fitView` every 15s; all fit-view paths route through `performFitView` (`fitViewOptions.ts`) via `requestAnimationFrame`.
-- Height clamped to min 140px so the 4-button controls panel stays fully visible on short layouts.
-- `AgentsTable.tsx` provides a flat table view for simplified-graph mode.
+React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); shows all phases upfront with per-status styling. Implementation under `PhaseGraph/`. Details: [REFERENCE.md](REFERENCE.md#phasegraph) — read before changing node states, layout, or fit-view behaviour.
 
 ## Agent Definitions
 
-`AgentDefForm.tsx` (+ `AgentDefEffortField.tsx`, `AgentDefAPIModeFields.tsx`, `AgentDefNodeRoleFields.tsx` sub-fields) edits an `AgentDef`, including its optional `reasoning_effort` (gated Dropdown options shared with the model forms via `src/components/settings/effortOptions.ts`; empty = inherit from the model row). `AgentDefsSection`/`AgentDefCard` accept an optional `project` scope prop (defaults to the active project) so `WorkflowsPage` can manage global (`is_global`) workflow templates in the reserved `__global__` namespace when the viewer is admin.
+`AgentDefForm.tsx` (+ sub-field components) edits an `AgentDef`, including optional `reasoning_effort` and admin-managed global (`__global__`) templates. Details: [REFERENCE.md](REFERENCE.md#agent-definitions) — read before changing the form fields or template scoping.
 
 ## Plan Approval
 
@@ -28,17 +20,11 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama). I
 
 ## Trace
 
-`Trace/` — Gantt-style run timeline (`TraceView`): percentage-positioned divs on a linear time scale (pure math in `timeScale.ts`), one lane per agent with relaunch-chain segments, pixel-bucketed event markers with category filter chips (closed tool spans render as duration bars via `splitSpans`; narrow/overflow spans degrade to dots), child sub-workflow rows with breadcrumb drill-down. `lifecycle` markers (segment-end reasons, rate-limit waits) come from session columns; nudge/stop-block counters render as lane badges. Zoom (`useTraceZoom`, 1–32×): Ctrl/Cmd+wheel anchored at the cursor or ± buttons; zoom widens the inner plot so panning is native horizontal scroll and marker bucketing de-clusters automatically; tick density scales with zoom. Data from `useTrace` (`GET /workflow-instances/{iid}/trace`); no timers — the running edge advances on WS-driven refetches (`dataUpdatedAt`). Clicks open `AgentLogPanel`. Hosted by `TicketTraceSection` (ticket Trace sub-tab) and `ProjectTraceSection` (project runs).
+`Trace/` — Gantt-style run timeline (`TraceView`) with tool-duration spans, lifecycle markers, zoom, and sub-workflow drill-down; data from `useTrace`, hosted by `TicketTraceSection`/`ProjectTraceSection`. Details: [REFERENCE.md](REFERENCE.md#trace) — read before changing timeline math, zoom, or marker bucketing.
 
 ## Agent Log Panel
 
-`AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail`:
-
-- **Multi-agent tabbed view**: when running agents exist, a tab bar shows one tab per running agent; auto-selects first agent when current tab's agent completes.
-- **Selected agent view**: single agent detail with a back button returning to multi-agent view.
-- Collapses to a thin bar (`w-10`) with "Agent Log" label via `PanelShell`/`CollapsedBar`.
-
-`AgentLogDetail` tabs: Messages (timestamp/tool/message table), Context (user prompt + system prompt suffix), Findings (filtered to selected agent via `FindingsPanel`), All Findings (`AllFindingsPanel` across entire workflow).
+`AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail` (Messages / Context / Findings / All Findings tabs), with a multi-agent tabbed view and collapse-to-bar. Details: [REFERENCE.md](REFERENCE.md#agent-log-panel) — read before changing tab selection or panel collapse behaviour.
 
 ## Findings
 

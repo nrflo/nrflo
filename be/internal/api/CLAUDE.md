@@ -29,7 +29,7 @@ Writes on global configuration resources require an admin user (`admin()`); proj
 
 ### External MCP proxy (`agent mcp-external`)
 
-A **standalone** Claude Code session (not spawned by nrflo) drives the server via `nrflo_server agent mcp-external` — a service-token-authed JSON-RPC stdio MCP proxy over this REST API (`cli/agent_mcp_external.go`; token in `NRFLO_MCP_TOKEN`). The target project resolves per tool call (explicit `project` arg → cwd auto-detect → `NRFLO_PROJECT` → hidden global project) and never errors. Mechanics + tool list: [REFERENCE.md](REFERENCE.md#external-mcp-proxy-agent-mcp-external) — read before changing tools, auth, or project resolution.
+Any standalone MCP client (not spawned by nrflo, not Claude-specific) drives the server via `nrflo_server agent mcp-external` — a service-token-authed (`NRFLO_MCP_TOKEN`) dumb JSON-RPC stdio bridge (`cli/agent_mcp_external.go`) that opens a console session at connect and forwards `tools/list`/`tools/call` to `GET/POST /api/v1/console/tools*` with the console bearer, closing the session at disconnect. The tool catalogue is entirely server-owned (the console profile); the bridge contains zero per-tool code. The project resolves once, at session creation (cwd auto-detect → `NRFLO_PROJECT` → hidden global project). Mechanics: [REFERENCE.md](REFERENCE.md#external-mcp-proxy-agent-mcp-external) — read before changing the bridge, auth, or project resolution.
 
 ### Login Rate Limiter
 

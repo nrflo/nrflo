@@ -2,9 +2,9 @@ package cli
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	"be/internal/service"
 )
 
 func TestMatchProjectByCwd(t *testing.T) {
@@ -34,85 +34,54 @@ func TestMatchProjectByCwd(t *testing.T) {
 	}
 }
 
-// cwdTestServer serves GET /api/v1/projects with the given roots and echoes the
-// X-Project header of any /api/v1/workflows call into *sawProject.
-func cwdTestServer(t *testing.T, projects []projRoot, sawProject *string) *nrfloHTTPClient {
-	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/projects":
-			body := `{"projects":[`
-			for i, p := range projects {
-				if i > 0 {
-					body += ","
-				}
-				body += `{"id":"` + p.ID + `","root_path":"` + p.RootPath + `"}`
-			}
-			body += `]}`
-			_, _ = w.Write([]byte(body))
-		case "/api/v1/workflows":
-			*sawProject = r.Header.Get("X-Project")
-			_, _ = w.Write([]byte(`{}`))
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(srv.Close)
-	return &nrfloHTTPClient{base: srv.URL, token: "tok", defaultProject: "envdefault", hc: srv.Client()}
-}
+// The following three tests cover case 2: the project resolved at SESSION
+// CREATION (resolveSessionProject, exercised via openConsoleSession) — cwd
+// match beats NRFLO_PROJECT, no cwd match falls back to NRFLO_PROJECT, and
+// neither set falls back to the hidden global project. Assertions read the
+// X-Project header of the create-session request.
 
-func TestResolveProject_CwdBeatsEnvDefault(t *testing.T) {
+func TestResolveSessionProject_CwdBeatsEnvDefault(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir) // proxy cwd = a project's root_path
-	var saw string
-	c := cwdTestServer(t, []projRoot{{ID: "cwdproj", RootPath: dir}}, &saw)
+	f := newFakeConsoleServer(t)
+	f.projects = []projRoot{{ID: "cwdproj", RootPath: dir}}
+	c := &nrfloHTTPClient{base: f.url(), serviceToken: f.serviceToken, defaultProject: "envdefault", hc: f.srv.Client()}
 
-	if _, err := callExternalTool(context.Background(), c, "list_workflows", nil); err != nil {
-		t.Fatalf("list_workflows: %v", err)
+	if err := c.openConsoleSession(context.Background()); err != nil {
+		t.Fatalf("openConsoleSession: %v", err)
 	}
-	if saw != "cwdproj" {
-		t.Errorf("X-Project = %q, want cwdproj (cwd auto-detect should beat NRFLO_PROJECT=envdefault)", saw)
-	}
-}
-
-func TestResolveProject_ExplicitArgBeatsCwd(t *testing.T) {
-	dir := t.TempDir()
-	t.Chdir(dir)
-	var saw string
-	c := cwdTestServer(t, []projRoot{{ID: "cwdproj", RootPath: dir}}, &saw)
-
-	if _, err := callExternalTool(context.Background(), c, "list_workflows", []byte(`{"project":"explicit"}`)); err != nil {
-		t.Fatalf("list_workflows: %v", err)
-	}
-	if saw != "explicit" {
-		t.Errorf("X-Project = %q, want explicit (arg should beat cwd)", saw)
+	if got := f.createReqs[0].project; got != "cwdproj" {
+		t.Errorf("X-Project = %q, want cwdproj (cwd auto-detect should beat NRFLO_PROJECT=envdefault)", got)
 	}
 }
 
-func TestResolveProject_NoCwdMatchUsesEnvDefault(t *testing.T) {
+func TestResolveSessionProject_NoCwdMatchUsesEnvDefault(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	var saw string
+	f := newFakeConsoleServer(t)
 	// Projects list contains nothing matching the cwd → falls back to NRFLO_PROJECT.
-	c := cwdTestServer(t, []projRoot{{ID: "other", RootPath: "/somewhere/else"}}, &saw)
+	f.projects = []projRoot{{ID: "other", RootPath: "/somewhere/else"}}
+	c := &nrfloHTTPClient{base: f.url(), serviceToken: f.serviceToken, defaultProject: "envdefault", hc: f.srv.Client()}
 
-	if _, err := callExternalTool(context.Background(), c, "list_workflows", nil); err != nil {
-		t.Fatalf("list_workflows: %v", err)
+	if err := c.openConsoleSession(context.Background()); err != nil {
+		t.Fatalf("openConsoleSession: %v", err)
 	}
-	if saw != "envdefault" {
-		t.Errorf("X-Project = %q, want envdefault (no cwd match → NRFLO_PROJECT)", saw)
+	if got := f.createReqs[0].project; got != "envdefault" {
+		t.Errorf("X-Project = %q, want envdefault (no cwd match → NRFLO_PROJECT)", got)
 	}
 }
 
-func TestCwdProject_CachedOncePerProcess(t *testing.T) {
+func TestResolveSessionProject_FallsBackToGlobal(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	var saw string
-	c := cwdTestServer(t, []projRoot{{ID: "cwdproj", RootPath: dir}}, &saw)
-	// Two resolutions; the GET /api/v1/projects lookup must run at most once.
-	a := c.resolveProject(context.Background(), "")
-	b := c.resolveProject(context.Background(), "")
-	if a != "cwdproj" || b != "cwdproj" {
-		t.Fatalf("resolved %q then %q, want cwdproj both", a, b)
+	f := newFakeConsoleServer(t)
+	// No cwd match and no NRFLO_PROJECT default → the hidden global project.
+	c := &nrfloHTTPClient{base: f.url(), serviceToken: f.serviceToken, hc: f.srv.Client()}
+
+	if err := c.openConsoleSession(context.Background()); err != nil {
+		t.Fatalf("openConsoleSession: %v", err)
+	}
+	if got := f.createReqs[0].project; got != service.GlobalProjectID {
+		t.Errorf("X-Project = %q, want %q (global fallback)", got, service.GlobalProjectID)
 	}
 }

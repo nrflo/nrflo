@@ -16,7 +16,7 @@ Files: `plan.go`, `plan_revise.go`, `plan_manifest.go`, `plan_validate.go`/`plan
 
 ## Global Workflow Seeds
 
-`EnsureGlobalDeepResearch(pool, clk, rootPath)` (`deep_research_seed.go` + `_data.go`) idempotently ensures the `__global__` project exists with a `root_path`, then create-if-absent seeds the bundled `deep-research` workflow (`is_global=1`, `callable_as_subworkflow=1`, result key `report`; 6 `cli_interactive` agents, finding schemas, L2 `quorum:2`) via direct SQL at startup — bypassing service-layer model validation since it is shipped data. Caller-context grounding is opt-in via the `mcp-external` `deep_research` `context` arg → `${EXTERNAL_CONTEXT}`.
+`EnsureGlobalDeepResearch(pool, clk, rootPath)` (`deep_research_seed.go` + `_data.go`) idempotently ensures the `__global__` project exists with a `root_path`, then create-if-absent seeds the bundled `deep-research` workflow (`is_global=1`, `callable_as_subworkflow=1`, result key `report`; 6 `cli_interactive` agents, finding schemas, L2 `quorum:2`) via direct SQL at startup — bypassing service-layer model validation since it is shipped data. Caller-context grounding is opt-in via the console `deep_research` tool's `context` arg (`internal/console/tools_deep_research.go`) → `${EXTERNAL_CONTEXT}`.
 
 `EnsureGlobalDynamicWorkflow` (`dynamic_seed.go` + `_data`/`_prompts_*`/`_planner`/`_schemas.go`) seeds the bundled `dynamic` workflow: `callable_as_subworkflow=1`, a 10-def `fanout_template` catalog plus a workflow-local `node_role='planner'` def (`dynamic-planner`) and per-key `finding_schemas`. `agent_definitions.description` is required for `fanout_template` rows; `reasoning_effort` is optional.
 

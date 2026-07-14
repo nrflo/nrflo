@@ -36,7 +36,7 @@ func (s *Server) registerPlanRoutes(protected func(string, http.HandlerFunc)) {
 // revise/approve/cancel are per-instance RUNTIME operations, not __global__
 // definition mutations — unlike workflow/agent-def CRUD, they are not gated by
 // denyNonAdminGlobalWrite (which denies bearer/service principals), so a
-// spawned agent's spawn token or an mcp-external service token can drive a
+// spawned agent's spawn token or a service token can drive a
 // dynamic_workflow/revise_plan/approve_plan run living in the hidden
 // __global__ project. Returns nil (after writing the HTTP response) on any
 // failure. Definition CRUD still calls denyNonAdminGlobalWrite directly.

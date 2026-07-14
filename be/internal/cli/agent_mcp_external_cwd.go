@@ -55,14 +55,16 @@ func matchProjectByCwd(cwd string, projects []projRoot) string {
 	return best
 }
 
-// listProjects fetches the (non-hidden) projects with their root_path. X-Project
-// is empty: the list endpoint is project-agnostic (protected, not projectAdmin),
-// and a service token — global or project-scoped — may read it.
+// listProjects fetches the (non-hidden) projects with their root_path. It uses
+// the SERVICE token (never the console bearer, which may be the stale one being
+// re-exchanged). X-Project is empty: the list endpoint is project-agnostic
+// (protected, not projectAdmin), and a service token — global or project-scoped
+// — may read it.
 func (c *nrfloHTTPClient) listProjects(ctx context.Context) ([]projRoot, error) {
 	var res struct {
 		Projects []projRoot `json:"projects"`
 	}
-	if err := c.do(ctx, "", http.MethodGet, "/api/v1/projects", nil, &res); err != nil {
+	if err := c.doAs(ctx, c.serviceToken, "", http.MethodGet, "/api/v1/projects", nil, &res); err != nil {
 		return nil, err
 	}
 	return res.Projects, nil
@@ -74,11 +76,15 @@ func (c *nrfloHTTPClient) listProjects(ctx context.Context) ([]projRoot, error) 
 // cached, so a transient first-call failure is retried on the next call rather
 // than permanently disabling auto-detect. Best-effort: any failure degrades to
 // "" so resolution falls through to NRFLO_PROJECT / the global home — a bad cwd
-// never produces a wrong match (the prefix check fails closed). The stdio loop
-// handles one request at a time, so no locking is needed.
+// never produces a wrong match (the prefix check fails closed). The cache is
+// mutex-guarded (c.mu); the lock is never held across the HTTP call, so two
+// concurrent first lookups may both run — the result is idempotent.
 func (c *nrfloHTTPClient) cwdProject(ctx context.Context) string {
-	if c.cwdResolved {
-		return c.cwdProjectID
+	c.mu.Lock()
+	resolved, id := c.cwdResolved, c.cwdProjectID
+	c.mu.Unlock()
+	if resolved {
+		return id
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -88,7 +94,9 @@ func (c *nrfloHTTPClient) cwdProject(ctx context.Context) string {
 	if err != nil {
 		return "" // transient (incl. ctx cancel) — do not cache; retry next call
 	}
-	c.cwdProjectID = matchProjectByCwd(cwd, projects) // cache success, incl. legit "no match"
-	c.cwdResolved = true
-	return c.cwdProjectID
+	id = matchProjectByCwd(cwd, projects) // cache success, incl. legit "no match"
+	c.mu.Lock()
+	c.cwdProjectID, c.cwdResolved = id, true
+	c.mu.Unlock()
+	return id
 }

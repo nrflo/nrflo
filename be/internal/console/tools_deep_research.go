@@ -11,9 +11,8 @@ import (
 	"be/internal/spawner/apirun/provider"
 )
 
-// deepResearchPollInterval / deepResearchMaxWait mirror
-// cli/agent_mcp_external_client.go's polling cadence; vars so tests can
-// shrink them.
+// deepResearchPollInterval / deepResearchMaxWait are the tool's own polling
+// cadence and upper bound on a blocking run; vars so tests can shrink them.
 var (
 	deepResearchPollInterval = 3 * time.Second
 	deepResearchMaxWait      = 25 * time.Minute
@@ -23,8 +22,7 @@ var (
 // deep-research workflow in the global project and blocks (client-side
 // polling, not one long request) until it finishes, returning the
 // synthesized `report` finding. On ctx cancellation (client disconnect) it
-// stops the run so it is not orphaned — same semantics as the external MCP
-// bridge's deepResearch.
+// stops the run so it is not orphaned.
 type deepResearchHandler struct{ d Deps }
 
 func (deepResearchHandler) Spec() provider.ToolSpec {

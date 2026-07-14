@@ -7,287 +7,186 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
-
-	"be/internal/service"
 )
 
-// newTestExternalClient returns a client pointed at h, with fast polling.
-func newTestExternalClient(t *testing.T, h http.HandlerFunc) *nrfloHTTPClient {
-	t.Helper()
-	srv := httptest.NewServer(h)
-	t.Cleanup(srv.Close)
-	prevInterval, prevWait := deepResearchPollInterval, deepResearchMaxWait
-	deepResearchPollInterval = time.Millisecond
-	deepResearchMaxWait = 5 * time.Second
-	t.Cleanup(func() { deepResearchPollInterval, deepResearchMaxWait = prevInterval, prevWait })
-	c := &nrfloHTTPClient{base: srv.URL, token: "tok", defaultProject: "p1", hc: srv.Client()}
-	c.cwdResolved = true // disable cwd auto-detect here; exercised in *_cwd_test.go
-	return c
-}
-
 func TestDispatchExternalMCP_Initialize(t *testing.T) {
-	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{defaultProject: "p1"})
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "initialize", ""), &nrfloHTTPClient{})
 	res, ok := resp.Result.(map[string]interface{})
 	if !ok || res["protocolVersion"] != "2024-11-05" {
 		t.Fatalf("unexpected initialize result: %+v", resp)
 	}
 }
 
-func TestDispatchExternalMCP_ToolsList(t *testing.T) {
-	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/list", ""), &nrfloHTTPClient{defaultProject: "p1"})
-	res := resp.Result.(map[string]interface{})
-	tools := res["tools"].([]map[string]interface{})
-	want := map[string]bool{"deep_research": false, "run_workflow": false, "get_workflow": false, "list_workflows": false}
+func TestDispatchExternalMCP_NotificationsInitialized(t *testing.T) {
+	if resp := dispatchExternalMCP(context.Background(), makeMCPReq(nil, "notifications/initialized", ""), &nrfloHTTPClient{}); resp != nil {
+		t.Fatalf("expected nil response for notification, got %+v", resp)
+	}
+}
+
+func TestDispatchExternalMCP_UnknownMethod(t *testing.T) {
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "nope", ""), &nrfloHTTPClient{})
+	if resp.Error == nil || resp.Error.Code != -32601 {
+		t.Fatalf("expected method-not-found error, got %+v", resp)
+	}
+}
+
+// TestDispatchExternalMCP_ToolsList_PassthroughAndSchemaDefault covers case 3:
+// tools/list is a pure passthrough of the server-owned catalogue, and an entry
+// with no schema defaults to {"type":"object"}.
+func TestDispatchExternalMCP_ToolsList_PassthroughAndSchemaDefault(t *testing.T) {
+	f := newFakeConsoleServer(t)
+	f.tools = []consoleTool{
+		{Name: "project_status", Description: "status", InputSchema: json.RawMessage(`{"type":"object","properties":{}}`)},
+		{Name: "artifact_list", Description: "list artifacts"}, // no schema -> defaults
+	}
+	c := f.openedClient(t, "p1")
+
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/list", ""), c)
+	res, ok := resp.Result.(map[string]interface{})
+	if !ok {
+		t.Fatalf("unexpected result shape: %+v", resp)
+	}
+	tools, ok := res["tools"].([]map[string]interface{})
+	if !ok || len(tools) != 2 {
+		t.Fatalf("got tools=%+v, want 2 entries", res["tools"])
+	}
+	byName := map[string]map[string]interface{}{}
 	for _, tl := range tools {
-		want[tl["name"].(string)] = true
+		byName[tl["name"].(string)] = tl
 	}
-	for name, seen := range want {
-		if !seen {
-			t.Errorf("tools/list missing %q", name)
-		}
+	if got := string(byName["project_status"]["inputSchema"].(json.RawMessage)); got != `{"type":"object","properties":{}}` {
+		t.Errorf("project_status inputSchema = %s, want passthrough", got)
 	}
-}
-
-func TestExternalTool_DeepResearch_HappyPath(t *testing.T) {
-	var runs, gets int
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer tok" || r.Header.Get("X-Project") != "p1" {
-			t.Errorf("missing auth/project headers: %v", r.Header)
-		}
-		switch {
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
-			runs++
-			_, _ = w.Write([]byte(`{"instance_id":"inst-1"}`))
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
-			gets++
-			if gets < 2 {
-				_, _ = w.Write([]byte(`{"state":{"status":"running"}}`))
-				return
-			}
-			_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"FINAL REPORT"}}}`))
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL)
-		}
-	})
-
-	out, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"what is X"}`))
-	if err != nil {
-		t.Fatalf("deep_research: %v", err)
+	if got := string(byName["artifact_list"]["inputSchema"].(json.RawMessage)); got != `{"type":"object"}` {
+		t.Errorf(`artifact_list inputSchema default = %s, want {"type":"object"}`, got)
 	}
-	if out != "FINAL REPORT" {
-		t.Errorf("report = %q, want FINAL REPORT", out)
-	}
-	if runs != 1 || gets < 2 {
-		t.Errorf("runs=%d gets=%d, want 1 run + >=2 polls", runs, gets)
+	if len(f.listReqs) != 1 || f.listReqs[0].auth != "Bearer "+f.sessionToken {
+		t.Errorf("tools/list should use the console token, got %+v (session token %q)", f.listReqs, f.sessionToken)
 	}
 }
 
-func TestExternalTool_DeepResearch_PassesContext(t *testing.T) {
-	var gotExternalContext string
-	sawRun := false
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
-			sawRun = true
-			var body map[string]any
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			gotExternalContext, _ = body["external_context"].(string)
-			_, _ = w.Write([]byte(`{"instance_id":"inst-ctx"}`))
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
-			_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"R"}}}`))
-		default:
-			t.Errorf("unexpected %s %s", r.Method, r.URL)
-		}
-	})
-	out, err := callExternalTool(context.Background(), c, "deep_research",
-		json.RawMessage(`{"question":"q","context":"building a Go CLI with cobra; targets macOS musl"}`))
-	if err != nil || out != "R" {
-		t.Fatalf("deep_research = %q err=%v", out, err)
+// TestDispatchExternalMCP_ToolsCall_PassthroughAndArgsDefault covers case 4:
+// request path, raw-args passthrough, and absent arguments defaulting to {}.
+func TestDispatchExternalMCP_ToolsCall_PassthroughAndArgsDefault(t *testing.T) {
+	f := newFakeConsoleServer(t)
+	f.toolResp["project_status"] = toolCallResp{output: "X", isError: false}
+	c := f.openedClient(t, "p1")
+
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/call", `{"name":"project_status","arguments":{"a":1}}`), c)
+	res := resp.Result.(map[string]interface{})
+	content := res["content"].([]map[string]interface{})
+	if content[0]["text"] != "X" {
+		t.Errorf("content text = %v, want X", content[0]["text"])
 	}
-	if !sawRun || !strings.Contains(gotExternalContext, "cobra") {
-		t.Errorf("context not forwarded as external_context; got %q", gotExternalContext)
+	if res["isError"] != false {
+		t.Errorf("isError = %v, want false", res["isError"])
+	}
+	if len(f.callReqs) != 1 {
+		t.Fatalf("call count = %d, want 1", len(f.callReqs))
+	}
+	got := f.callReqs[0]
+	if got.name != "project_status" || string(got.args) != `{"a":1}` {
+		t.Errorf("call req = %+v, want raw args passthrough", got)
+	}
+	if got.auth != "Bearer "+f.sessionToken {
+		t.Errorf("tools/call should use the console token, got %q", got.auth)
+	}
+
+	// Second call with no arguments at all: bridge must send {}.
+	resp2 := dispatchExternalMCP(context.Background(), makeMCPReq(2, "tools/call", `{"name":"project_status"}`), c)
+	if res2 := resp2.Result.(map[string]interface{}); res2["isError"] != false {
+		t.Errorf("second call isError = %v, want false", res2["isError"])
+	}
+	if len(f.callReqs) != 2 || string(f.callReqs[1].args) != "{}" {
+		t.Errorf("absent arguments should be sent as {}, got %q", f.callReqs[len(f.callReqs)-1].args)
 	}
 }
 
-func TestExternalTool_DeepResearch_OmitsEmptyContext(t *testing.T) {
-	hasKey := true
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run") {
-			var body map[string]any
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			_, hasKey = body["external_context"]
-			_, _ = w.Write([]byte(`{"instance_id":"i"}`))
-			return
-		}
-		_, _ = w.Write([]byte(`{"state":{"status":"completed","findings":{"report":"R"}}}`))
-	})
-	if _, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"q"}`)); err != nil {
-		t.Fatalf("deep_research: %v", err)
-	}
-	if hasKey {
-		t.Error("external_context should be omitted when no context is supplied")
-	}
-}
+func TestDispatchExternalMCP_ToolsCall_IsErrorTrue(t *testing.T) {
+	f := newFakeConsoleServer(t)
+	f.toolResp["artifact_list"] = toolCallResp{output: "boom", isError: true}
+	c := f.openedClient(t, "p1")
 
-func TestExtractReport_NestedAndFlatShapes(t *testing.T) {
-	// Real v4 shape: the combined "findings" map, keyed by
-	// "<agent_type>:<model_id>". The report is emitted with scope='session', so
-	// it lands here and never in "workflow_findings" (instance-owned only).
-	nested := map[string]any{"findings": map[string]any{
-		"verify_a:claude:sonnet":     map[string]any{"verdicts_a": []any{}},
-		"synthesize:claude:opus_4_8": map[string]any{"report": map[string]any{"summary": "S"}},
-	}}
-	out, err := extractReport(nested, "inst")
-	if err != nil || !strings.Contains(out, `"summary": "S"`) {
-		t.Fatalf("nested shape: out=%q err=%v", out, err)
-	}
-	// Flat shape is still accepted.
-	flat := map[string]any{"findings": map[string]any{"report": "FLAT"}}
-	if out, err := extractReport(flat, "inst"); err != nil || out != "FLAT" {
-		t.Fatalf("flat shape: out=%q err=%v", out, err)
-	}
-	// A report parked in workflow_findings is NOT where the synthesize agent
-	// writes it; reading that map is the bug this pins.
-	wrongMap := map[string]any{"workflow_findings": map[string]any{"report": "FLAT"}}
-	if _, err := extractReport(wrongMap, "inst"); err == nil {
-		t.Fatal("expected error: report must be read from the combined findings map")
-	}
-	// No report anywhere → error.
-	none := map[string]any{"findings": map[string]any{"verify_a:claude:sonnet": map[string]any{"verdicts_a": []any{}}}}
-	if _, err := extractReport(none, "inst"); err == nil {
-		t.Fatal("expected error when no report finding present")
-	}
-}
-
-func TestDeepResearch_CancelStopsWorkflow(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	var stopped bool
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
-			_, _ = w.Write([]byte(`{"instance_id":"inst-cancel"}`))
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/stop"):
-			var body map[string]any
-			_ = json.NewDecoder(r.Body).Decode(&body)
-			if body["instance_id"] == "inst-cancel" {
-				stopped = true
-			}
-			_, _ = w.Write([]byte(`{"status":"stopping"}`))
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
-			cancel() // caller cancels mid-poll
-			_, _ = w.Write([]byte(`{"state":{"status":"running"}}`))
-		default:
-			t.Errorf("unexpected %s %s", r.Method, r.URL)
-		}
-	})
-	if _, err := c.deepResearch(ctx, "p1", "q", ""); err == nil {
-		t.Fatal("expected a cancellation error")
-	}
-	if !stopped {
-		t.Error("expected workflow/stop to be called for the in-flight instance on cancellation")
-	}
-}
-
-func TestExternalTool_DeepResearch_Failed(t *testing.T) {
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			_, _ = w.Write([]byte(`{"instance_id":"inst-2"}`))
-			return
-		}
-		_, _ = w.Write([]byte(`{"state":{"status":"failed"}}`))
-	})
-	_, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{"question":"q"}`))
-	if err == nil || !strings.Contains(err.Error(), "failed") {
-		t.Fatalf("want failure error, got %v", err)
-	}
-}
-
-func TestExternalTool_RunAndGetAndList(t *testing.T) {
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/workflow/run"):
-			_, _ = w.Write([]byte(`{"instance_id":"inst-9"}`))
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/workflow"):
-			if got := r.URL.Query().Get("instance_id"); got != "inst-9" {
-				t.Errorf("instance_id query = %q", got)
-			}
-			_, _ = w.Write([]byte(`{"state":{"status":"running","current_phase":"L1"}}`))
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/api/v1/workflows"):
-			_, _ = w.Write([]byte(`{"deep-research":{"is_global":true}}`))
-		default:
-			t.Errorf("unexpected %s %s", r.Method, r.URL)
-		}
-	})
-
-	run, err := callExternalTool(context.Background(), c, "run_workflow", json.RawMessage(`{"workflow":"deep-research","instructions":"go"}`))
-	if err != nil || !strings.Contains(run, `"instance_id":"inst-9"`) {
-		t.Fatalf("run_workflow = %q err=%v", run, err)
-	}
-	get, err := callExternalTool(context.Background(), c, "get_workflow", json.RawMessage(`{"instance_id":"inst-9"}`))
-	if err != nil || !strings.Contains(get, `"current_phase": "L1"`) {
-		t.Fatalf("get_workflow = %q err=%v", get, err)
-	}
-	list, err := callExternalTool(context.Background(), c, "list_workflows", nil)
-	if err != nil || !strings.Contains(list, "deep-research") {
-		t.Fatalf("list_workflows = %q err=%v", list, err)
-	}
-}
-
-func TestExternalTool_Validation(t *testing.T) {
-	c := &nrfloHTTPClient{defaultProject: "p1"}
-	if _, err := callExternalTool(context.Background(), c, "deep_research", json.RawMessage(`{}`)); err == nil {
-		t.Error("deep_research without question should error")
-	}
-	if _, err := callExternalTool(context.Background(), c, "run_workflow", json.RawMessage(`{}`)); err == nil {
-		t.Error("run_workflow without workflow should error")
-	}
-	if _, err := callExternalTool(context.Background(), c, "nope", nil); err == nil {
-		t.Error("unknown tool should error")
-	}
-}
-
-func TestExternalTool_PerCallProjectOverridesDefault(t *testing.T) {
-	var sawProject string
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		sawProject = r.Header.Get("X-Project")
-		_, _ = w.Write([]byte(`{"deep-research":{}}`))
-	})
-	// defaultProject is "p1"; the per-call arg must win.
-	if _, err := callExternalTool(context.Background(), c, "list_workflows", json.RawMessage(`{"project":"p2"}`)); err != nil {
-		t.Fatalf("list_workflows: %v", err)
-	}
-	if sawProject != "p2" {
-		t.Errorf("X-Project = %q, want p2 (per-call override)", sawProject)
-	}
-}
-
-func TestResolveProject_FallsBackToGlobal(t *testing.T) {
-	// No arg, no cwd match (cwdResolved pre-set, empty), no NRFLO_PROJECT default →
-	// the hidden global project is the final fallback (never errors).
-	c := &nrfloHTTPClient{}
-	c.cwdResolved = true
-	if got := c.resolveProject(context.Background(), ""); got != service.GlobalProjectID {
-		t.Fatalf("resolveProject fallback = %q, want %q", got, service.GlobalProjectID)
-	}
-	// Explicit arg and NRFLO_PROJECT default still win over the global fallback.
-	if got := c.resolveProject(context.Background(), "explicit"); got != "explicit" {
-		t.Errorf("arg should win: got %q", got)
-	}
-	c2 := &nrfloHTTPClient{defaultProject: "p1"}
-	c2.cwdResolved = true
-	if got := c2.resolveProject(context.Background(), ""); got != "p1" {
-		t.Errorf("NRFLO_PROJECT default should win over global: got %q", got)
-	}
-}
-
-func TestExternalTool_ServerError_IsToolError(t *testing.T) {
-	c := newTestExternalClient(t, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
-	})
-	resp := dispatchExternalMCP(context.Background(), makeMCPReq(7, "tools/call", `{"name":"list_workflows"}`), c)
+	resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/call", `{"name":"artifact_list"}`), c)
 	res := resp.Result.(map[string]interface{})
 	if res["isError"] != true {
-		t.Fatalf("expected isError=true on 403, got %+v", res)
+		t.Errorf("isError = %v, want true", res["isError"])
+	}
+	content := res["content"].([]map[string]interface{})
+	if content[0]["text"] != "boom" {
+		t.Errorf("content text = %v, want boom", content[0]["text"])
+	}
+}
+
+// TestDispatchExternalMCP_ToolsCall_HTTPErrorsBecomeIsError covers case 5:
+// both an unlisted-tool 404 and a server 500 come back as isError:true tool
+// results carrying the server's message, not JSON-RPC errors.
+func TestDispatchExternalMCP_ToolsCall_HTTPErrorsBecomeIsError(t *testing.T) {
+	cases := []struct {
+		name       string
+		setup      func(f *fakeConsoleServer)
+		toolName   string
+		wantSubstr string
+	}{
+		{name: "404 unlisted tool", setup: func(f *fakeConsoleServer) {}, toolName: "unknown_tool", wantSubstr: "unknown tool"},
+		{
+			name:       "500 server error",
+			setup:      func(f *fakeConsoleServer) { f.toolResp["project_status"] = toolCallResp{status: 500, errBody: "boom"} },
+			toolName:   "project_status",
+			wantSubstr: "boom",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFakeConsoleServer(t)
+			tc.setup(f)
+			c := f.openedClient(t, "p1")
+			resp := dispatchExternalMCP(context.Background(), makeMCPReq(1, "tools/call", `{"name":"`+tc.toolName+`"}`), c)
+			if resp.Error != nil {
+				t.Fatalf("expected a tool-result error, not a JSON-RPC error: %+v", resp.Error)
+			}
+			res := resp.Result.(map[string]interface{})
+			if res["isError"] != true {
+				t.Fatalf("isError = %v, want true", res["isError"])
+			}
+			content := res["content"].([]map[string]interface{})
+			text, _ := content[0]["text"].(string)
+			if !strings.Contains(text, tc.wantSubstr) {
+				t.Errorf("error text = %q, want substring %q", text, tc.wantSubstr)
+			}
+		})
+	}
+}
+
+// TestRunE_MissingToken covers case 8: no NRFLO_MCP_TOKEN errors out of RunE
+// before touching stdin/stdout.
+func TestRunE_MissingToken(t *testing.T) {
+	t.Setenv("NRFLO_MCP_TOKEN", "")
+	agentMCPExternalCmd.SetContext(context.Background())
+	t.Cleanup(func() { agentMCPExternalCmd.SetContext(context.TODO()) })
+	if err := agentMCPExternalCmd.RunE(agentMCPExternalCmd, nil); err == nil {
+		t.Fatal("expected an error when NRFLO_MCP_TOKEN is unset")
+	}
+}
+
+// TestRunE_FailingSessionExchangeReturnsStatus covers case 8: a failing
+// session exchange surfaces the HTTP status, not a silent tool-less server.
+func TestRunE_FailingSessionExchangeReturnsStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	t.Setenv("NRFLO_MCP_TOKEN", "tok")
+	t.Setenv("NRFLO_SERVER_URL", srv.URL)
+	t.Setenv("NRFLO_PROJECT", "p1")
+	agentMCPExternalCmd.SetContext(context.Background())
+	t.Cleanup(func() { agentMCPExternalCmd.SetContext(context.TODO()) })
+
+	err := agentMCPExternalCmd.RunE(agentMCPExternalCmd, nil)
+	if err == nil {
+		t.Fatal("expected an error from a failing session exchange")
+	}
+	if !strings.Contains(err.Error(), "500") {
+		t.Errorf("error should surface the HTTP status, got: %v", err)
 	}
 }

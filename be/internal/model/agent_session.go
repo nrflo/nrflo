@@ -27,6 +27,7 @@ const (
 	AgentSessionKindWorkflowAgent = "workflow_agent"
 	AgentSessionKindObserver      = "observer"
 	AgentSessionKindConsole       = "console"
+	AgentSessionKindConsoleChat   = "console_chat"
 )
 
 // AgentSession represents a spawned agent session
@@ -58,7 +59,7 @@ type AgentSession struct {
 	RateLimitRetryCount int                `json:"-"`
 	RateLimitUntilTs    sql.NullString     `json:"-"`
 	LastRetryClass      sql.NullString     `json:"-"`
-	Kind                string             `json:"-"` // "workflow_agent", "observer", or "console"
+	Kind                string             `json:"-"` // "workflow_agent", "observer", "console", or "console_chat"
 	ObserverScope       sql.NullString     `json:"-"` // "workflow", "project", or "global"
 	ObserverWorkflowID  sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
 	CreatedAt           time.Time          `json:"created_at"`

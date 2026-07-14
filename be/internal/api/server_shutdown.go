@@ -11,12 +11,18 @@ import (
 // shutdownCleanup marks all in-flight rows as failed/canceled after the orchestrator
 // has cancelled all run contexts. Passes run in fixed order:
 //
+//  0. console-chat engines (ChatService.StopAll) — stopped before the
+//     agent_sessions sweep below so no engine process (PTY child, app-server
+//     child) outlives the server once its row is marked failed
 //  1. agent_sessions — bearer tokens auto-invalidate once status flips
 //  2. workflow_instances — ticket reopen for ticket-scope rows + EventOrchestrationFailed
 //  3. wfChainRunner (workflow_chain_runs + steps)
 //  4. chainRunner (chain_executions + items + locks)
 //  5. schedule_runs
 func (s *Server) shutdownCleanup(ctx context.Context) {
+	if s.consoleChat != nil {
+		s.consoleChat.StopAll()
+	}
 	s.sweepAgentSessions(ctx)
 	s.sweepWorkflowInstances(ctx)
 	if s.wfChainRunner != nil {

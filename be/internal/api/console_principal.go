@@ -10,14 +10,20 @@ import (
 )
 
 // requireConsoleSession resolves the bearer-authenticated agent session for
-// this request and reports whether it is a console session. getAgentSession
-// is nil both for non-bearer/cookie requests and for a closed session's token
-// (GetByToken's status filter already excludes it, auth_middleware.go:80-90),
-// so this single check yields the required 401 in both cases — mirroring the
-// close route's authorizedForConsoleClose precedent (handlers_console.go:80).
+// this request and reports whether it is a console session (kind='console'
+// or kind='console_chat' — the `agent mcp-external` bridge running inside a
+// chat engine adopts a chat session the same way a human console session
+// does). getAgentSession is nil both for non-bearer/cookie requests and for a
+// closed session's token (GetByToken's status filter already excludes it,
+// auth_middleware.go:80-90), so this single check yields the required 401 in
+// both cases — mirroring the close route's authorizedForConsoleClose
+// precedent (handlers_console.go:80).
 func requireConsoleSession(r *http.Request) (*model.AgentSession, bool) {
 	sess := getAgentSession(r)
-	if sess == nil || sess.Kind != model.AgentSessionKindConsole {
+	if sess == nil {
+		return nil, false
+	}
+	if sess.Kind != model.AgentSessionKindConsole && sess.Kind != model.AgentSessionKindConsoleChat {
 		return nil, false
 	}
 	return sess, true

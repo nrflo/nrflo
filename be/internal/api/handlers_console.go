@@ -76,20 +76,44 @@ func (s *Server) handleCloseConsoleSession(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// authorizedForConsoleClose reports whether the request may close sess: an
-// admin user, a service principal (global or project-matching), or the
-// console session's own bearer.
-func authorizedForConsoleClose(r *http.Request, sess *model.AgentSession) bool {
-	if u := getUser(r); u != nil && u.Role == model.UserRoleAdmin {
+// consolePrincipal is the authenticated identity behind a console request,
+// snapshotted from the request context. The WS session channel needs the same
+// authorization predicate as the REST routes but evaluates it long after the
+// upgrade request is gone, so the predicate takes this instead of *http.Request.
+type consolePrincipal struct {
+	user     *model.User
+	service  *ServicePrincipal
+	ownAgent *model.AgentSession
+}
+
+// consolePrincipalOf snapshots the request's authenticated identity.
+func consolePrincipalOf(r *http.Request) consolePrincipal {
+	return consolePrincipal{
+		user:     getUser(r),
+		service:  getServicePrincipal(r),
+		ownAgent: getAgentSession(r),
+	}
+}
+
+// authorizedForConsoleSession reports whether p may act on sess: an admin
+// user, a service principal (global or project-matching), or the console
+// session's own bearer.
+func authorizedForConsoleSession(p consolePrincipal, sess *model.AgentSession) bool {
+	if p.user != nil && p.user.Role == model.UserRoleAdmin {
 		return true
 	}
-	if sp := getServicePrincipal(r); sp != nil {
-		if sp.Global || strings.EqualFold(sp.ProjectID, sess.ProjectID) {
+	if p.service != nil {
+		if p.service.Global || strings.EqualFold(p.service.ProjectID, sess.ProjectID) {
 			return true
 		}
 	}
-	if own := getAgentSession(r); own != nil && own.ID == sess.ID {
+	if p.ownAgent != nil && p.ownAgent.ID == sess.ID {
 		return true
 	}
 	return false
+}
+
+// authorizedForConsoleClose reports whether the request may close sess.
+func authorizedForConsoleClose(r *http.Request, sess *model.AgentSession) bool {
+	return authorizedForConsoleSession(consolePrincipalOf(r), sess)
 }

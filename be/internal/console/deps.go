@@ -1,6 +1,9 @@
 // Package console builds the server-owned tool profile and dispatcher for
 // console agent_sessions (kind='console'): session-independent, no
-// WorkflowInstanceID, driven over HTTP by GET/POST /api/v1/console/tools.
+// WorkflowInstanceID, driven over HTTP by GET/POST /api/v1/console/tools. It
+// also owns kind='console_chat' session lifecycle (ChatService, chat_*.go):
+// a server-managed spawner.ConsoleEngine per session, reached by the same
+// tool profile through the `agent mcp-external` bridge.
 package console
 
 import (

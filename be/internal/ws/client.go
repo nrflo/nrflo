@@ -32,7 +32,15 @@ type Client struct {
 
 	// Client subscriptions
 	subscriptions map[string]bool
-	mu            sync.Mutex
+	// Session-keyed subscriptions (console-chat channels). Kept separate from
+	// subscriptions: parseSubscriptionKey splits on ':' and would corrupt a
+	// session id containing one (uuid session ids don't, but this keeps the
+	// two subscription kinds from ever being conflated).
+	sessionSubs map[string]bool
+	// sessionAuth gates subscribe_session for this connection (see
+	// Handler.SetSessionAuthorizer). Nil = deny every session subscription.
+	sessionAuth SessionAuthorizer
+	mu          sync.Mutex
 
 	// closed guards the send channel against the close/send race: the hub
 	// closes send on unregister/shutdown while detached goroutines (replay,
@@ -73,10 +81,11 @@ func (c *Client) closeSend() {
 
 // ClientMessage represents a message from the client
 type ClientMessage struct {
-	Action    string `json:"action"` // subscribe, unsubscribe
+	Action    string `json:"action"` // subscribe, unsubscribe, subscribe_session, unsubscribe_session
 	ProjectID string `json:"project_id"`
-	TicketID  string `json:"ticket_id"` // optional, empty = all tickets in project
-	SinceSeq  *int64 `json:"since_seq"` // v2: optional cursor for replay on subscribe
+	TicketID  string `json:"ticket_id"`  // optional, empty = all tickets in project
+	SinceSeq  *int64 `json:"since_seq"`  // v2: optional cursor for replay on subscribe
+	SessionID string `json:"session_id"` // used by subscribe_session/unsubscribe_session
 }
 
 // NewClient creates a new client
@@ -87,6 +96,7 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 		send:          make(chan []byte, 256),
 		id:            uuid.New().String()[:8],
 		subscriptions: make(map[string]bool),
+		sessionSubs:   make(map[string]bool),
 	}
 }
 
@@ -131,6 +141,24 @@ func (c *Client) ReadPump() {
 			if msg.ProjectID != "" {
 				c.hub.Unsubscribe(c, msg.ProjectID, msg.TicketID)
 				c.sendAck("unsubscribed", msg.ProjectID, msg.TicketID)
+			}
+		case "subscribe_session":
+			if msg.SessionID != "" {
+				// A session channel carries the session's live assistant output,
+				// which the REST routes gate behind admin/service-principal/own-
+				// bearer. Deny anything the same predicate would deny — and deny
+				// outright when no authorizer is configured.
+				if c.sessionAuth == nil || !c.sessionAuth(msg.SessionID) {
+					c.sendSessionAck("session_subscription_denied", msg.SessionID)
+					continue
+				}
+				c.hub.SubscribeSession(c, msg.SessionID)
+				c.sendSessionAck("subscribed_session", msg.SessionID)
+			}
+		case "unsubscribe_session":
+			if msg.SessionID != "" {
+				c.hub.UnsubscribeSession(c, msg.SessionID)
+				c.sendSessionAck("unsubscribed_session", msg.SessionID)
 			}
 		case "test":
 			if msg.ProjectID != "" {
@@ -196,6 +224,18 @@ func (c *Client) sendAck(action, projectID, ticketID string) {
 		"action":     action,
 		"project_id": projectID,
 		"ticket_id":  ticketID,
+	}
+	data, _ := json.Marshal(ack)
+	c.trySend(data)
+}
+
+// sendSessionAck sends an acknowledgement for a subscribe_session/
+// unsubscribe_session action.
+func (c *Client) sendSessionAck(action, sessionID string) {
+	ack := map[string]string{
+		"type":       "ack",
+		"action":     action,
+		"session_id": sessionID,
 	}
 	data, _ := json.Marshal(ack)
 	c.trySend(data)

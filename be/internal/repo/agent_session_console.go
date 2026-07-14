@@ -7,9 +7,9 @@ import (
 	"be/internal/model"
 )
 
-// GetConsole returns the session by id, restricted to kind='console'.
-func (r *AgentSessionRepo) GetConsole(id string) (*model.AgentSession, error) {
-	row := r.db.QueryRow(`SELECT `+sessionCols+` FROM agent_sessions WHERE id = ? AND kind = 'console'`, id)
+// getByKind returns the session by id, restricted to the given kind.
+func (r *AgentSessionRepo) getByKind(id, kind string) (*model.AgentSession, error) {
+	row := r.db.QueryRow(`SELECT `+sessionCols+` FROM agent_sessions WHERE id = ? AND kind = ?`, id, kind)
 	s, err := scanSession(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -17,18 +17,18 @@ func (r *AgentSessionRepo) GetConsole(id string) (*model.AgentSession, error) {
 	return s, err
 }
 
-// CloseConsole marks a console session interactive_completed, killing its
-// bearer token via the GetByToken status filter. The kind guard is a security
-// requirement: this must never terminate a workflow-agent session. Returns
-// rows-affected; 0 means already closed or not a console row.
-func (r *AgentSessionRepo) CloseConsole(id string) (int64, error) {
+// closeByKind marks a session interactive_completed, killing its bearer token
+// via the GetByToken status filter. The kind guard is a security requirement:
+// this must never terminate a row of a different kind. Returns rows-affected;
+// 0 means already closed or not a row of this kind.
+func (r *AgentSessionRepo) closeByKind(id, kind string) (int64, error) {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
 		`UPDATE agent_sessions SET status = ?, result = ?, ended_at = ?, updated_at = ?
-		WHERE id = ? AND kind = 'console' AND status = ?`,
+		WHERE id = ? AND kind = ? AND status = ?`,
 		model.AgentSessionInteractiveCompleted,
 		sql.NullString{String: "pass", Valid: true},
-		now, now, id, model.AgentSessionUserInteractive,
+		now, now, id, kind, model.AgentSessionUserInteractive,
 	)
 	if err != nil {
 		return 0, err
@@ -36,8 +36,32 @@ func (r *AgentSessionRepo) CloseConsole(id string) (int64, error) {
 	return result.RowsAffected()
 }
 
+// GetConsole returns the session by id, restricted to kind='console'.
+func (r *AgentSessionRepo) GetConsole(id string) (*model.AgentSession, error) {
+	return r.getByKind(id, model.AgentSessionKindConsole)
+}
+
+// CloseConsole marks a console session interactive_completed. See closeByKind.
+func (r *AgentSessionRepo) CloseConsole(id string) (int64, error) {
+	return r.closeByKind(id, model.AgentSessionKindConsole)
+}
+
+// GetConsoleChat returns the session by id, restricted to kind='console_chat'.
+func (r *AgentSessionRepo) GetConsoleChat(id string) (*model.AgentSession, error) {
+	return r.getByKind(id, model.AgentSessionKindConsoleChat)
+}
+
+// CloseConsoleChat marks a console-chat session interactive_completed. See
+// closeByKind. Chat lifetime is otherwise owned by console.ChatService, not
+// the idle sweep (ExpireIdleConsoles stays restricted to kind='console').
+func (r *AgentSessionRepo) CloseConsoleChat(id string) (int64, error) {
+	return r.closeByKind(id, model.AgentSessionKindConsoleChat)
+}
+
 // ExpireIdleConsoles closes every console session still user_interactive whose
 // updated_at is older than cutoff (RFC3339Nano). Returns the number expired.
+// Restricted to kind='console': chat rows are closed via the chats/{sid}/close
+// route or server shutdown (ChatService.StopAll), never this sweep.
 func (r *AgentSessionRepo) ExpireIdleConsoles(cutoff string) (int64, error) {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(

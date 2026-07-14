@@ -13,118 +13,6 @@ import (
 	"be/internal/repo"
 )
 
-// Event types for WebSocket messages
-const (
-	EventAgentStarted               = "agent.started"
-	EventAgentCompleted             = "agent.completed"
-	EventAgentContinued             = "agent.continued"
-	EventPhaseStarted               = "phase.started"
-	EventPhaseCompleted             = "phase.completed"
-	EventFindingsUpdated            = "findings.updated"
-	EventMessagesUpdated            = "messages.updated"
-	EventWorkflowUpdated            = "workflow.updated"
-	EventWorkflowDefCreated         = "workflow_def.created"
-	EventWorkflowDefUpdated         = "workflow_def.updated"
-	EventWorkflowDefDeleted         = "workflow_def.deleted"
-	EventAgentDefCreated            = "agent_def.created"
-	EventAgentDefUpdated            = "agent_def.updated"
-	EventAgentDefDeleted            = "agent_def.deleted"
-	EventSystemAgentDefCreated      = "system_agent_def.created"
-	EventSystemAgentDefUpdated      = "system_agent_def.updated"
-	EventSystemAgentDefDeleted      = "system_agent_def.deleted"
-	EventTicketUpdated              = "ticket.updated"
-	EventOrchestrationStarted       = "orchestration.started"
-	EventOrchestrationCompleted     = "orchestration.completed"
-	EventOrchestrationFailed        = "orchestration.failed"
-	EventOrchestrationRetried       = "orchestration.retried"
-	EventOrchestrationCallback      = "orchestration.callback"
-	EventChainUpdated               = "chain.updated"
-	EventProjectFindingsUpdated     = "project_findings.updated"
-	EventAgentContextUpdated        = "agent.context_updated"
-	EventAgentTakeControl           = "agent.take_control"
-	EventAgentKilled                = "agent.killed"
-	EventAgentTakeControlRejected   = "agent.take_control_rejected"
-	EventAgentViewerAttached        = "agent.viewer_attached"
-	EventLayerSkipped               = "layer.skipped"
-	EventAgentRetryWaiting          = "agent.retry_waiting"
-	EventAgentStallWaiting          = "agent.stall_waiting"
-	EventAgentStallRestart          = "agent.stall_restart"
-	EventAgentRateLimited           = "agent.rate_limited"
-	EventAgentRateLimitsUpdated     = "agent.rate_limits_updated"
-	EventAgentNudged                = "agent.nudged"
-	EventAgentContextSaving         = "agent.context_saving"
-	EventSkipTagAdded               = "skip_tag.added"
-	EventMergeConflictResolving     = "merge.conflict_resolving"
-	EventMergeConflictResolved      = "merge.conflict_resolved"
-	EventMergeConflictFailed        = "merge.conflict_failed"
-	EventWorkflowInstanceDeleted    = "workflow_instance.deleted"
-	EventWorkflowPurged             = "workflow.purged"
-	EventDefaultTemplateCreated     = "default_template.created"
-	EventDefaultTemplateUpdated     = "default_template.updated"
-	EventDefaultTemplateDeleted     = "default_template.deleted"
-	EventCLIModelCreated            = "cli_model.created"
-	EventCLIModelUpdated            = "cli_model.updated"
-	EventCLIModelDeleted            = "cli_model.deleted"
-	EventAPIModelCreated            = "api_model.created"
-	EventAPIModelUpdated            = "api_model.updated"
-	EventAPIModelDeleted            = "api_model.deleted"
-	EventErrorCreated               = "error.created"
-	EventScheduleCreated            = "schedule.created"
-	EventScheduleDeleted            = "schedule.deleted"
-	EventScheduleTriggered          = "schedule.triggered"
-	EventScheduleUpdated            = "schedule.updated"
-	EventWorkflowPushed             = "workflow.pushed"
-	EventWorkflowPushFailed         = "workflow.push_failed"
-	EventWorkflowFinalizeSucceeded  = "workflow.finalize_succeeded"
-	EventWorkflowFinalizeFailed     = "workflow.finalize_failed"
-	EventWorkflowPaused             = "workflow.paused"
-	EventWorkflowResumed            = "workflow.resumed"
-	EventTestEcho                   = "test.echo"
-	EventNotificationChannelCreated = "notification_channel.created"
-	EventNotificationChannelUpdated = "notification_channel.updated"
-	EventNotificationChannelDeleted = "notification_channel.deleted"
-	EventNotificationDelivered      = "notification.delivered"
-	EventNotificationFailed         = "notification.failed"
-	EventToolDispatched             = "tool.dispatched"
-	EventWorkflowChainCreated       = "chain_def.created"
-	EventWorkflowChainUpdated       = "chain_def.updated"
-	EventWorkflowChainDeleted       = "chain_def.deleted"
-	EventChainRunStarted            = "chain.run_started"
-	EventChainStepStarted           = "chain.step_started"
-	EventChainStepCompleted         = "chain.step_completed"
-	EventChainRunCompleted          = "chain.run_completed"
-	EventChainRunFailed             = "chain.run_failed"
-	EventArtifactCreated            = "artifact.created"
-	EventArtifactDeleted            = "artifact.deleted"
-	EventConsultStarted             = "consult.started"
-	EventConsultAnswered            = "consult.answered"
-	EventConsultFailed              = "consult.failed"
-)
-
-// Event represents a WebSocket event to broadcast
-type Event struct {
-	ProtocolVersion int                    `json:"protocol_version,omitempty"`
-	Type            string                 `json:"type"`
-	ProjectID       string                 `json:"project_id"`
-	TicketID        string                 `json:"ticket_id"`
-	Workflow        string                 `json:"workflow,omitempty"`
-	Timestamp       string                 `json:"timestamp"`
-	Sequence        int64                  `json:"sequence,omitempty"`
-	Entity          string                 `json:"entity,omitempty"`
-	Data            map[string]interface{} `json:"data,omitempty"`
-}
-
-// NewEvent creates a new event. Timestamp is assigned later by Hub.broadcastEvent().
-func NewEvent(eventType, projectID, ticketID, workflow string, data map[string]interface{}) *Event {
-	return &Event{
-		Type:      eventType,
-		ProjectID: projectID,
-		TicketID:  ticketID,
-		Workflow:  workflow,
-		Data:      data,
-	}
-}
-
 // Hub manages WebSocket clients and broadcasts
 type Hub struct {
 	// Clock for timestamp generation
@@ -137,11 +25,19 @@ type Hub struct {
 	// Empty ticketID means subscribed to all tickets in project
 	subscriptions map[string]map[string]map[*Client]bool
 
+	// Session-keyed subscriptions: sessionID -> clients. Used by console-chat
+	// deltas/turn/approval events, which are ephemeral (never event-logged) and
+	// unrelated to the project:ticket subscription scope above.
+	sessionSubs map[string]map[*Client]bool
+
 	// Broadcast channel for events (subscription-scoped)
 	broadcast chan *Event
 
 	// Global broadcast channel (sent to ALL connected clients)
 	globalBroadcast chan *Event
+
+	// Session-scoped broadcast channel (sent only to a session's subscribers)
+	sessionBroadcast chan *Event
 
 	// Register requests from clients
 	register chan *Client
@@ -186,14 +82,16 @@ type SnapshotChunk struct {
 // NewHub creates a new Hub instance
 func NewHub(clk clock.Clock) *Hub {
 	return &Hub{
-		clock:           clk,
-		clients:         make(map[*Client]bool),
-		subscriptions:   make(map[string]map[string]map[*Client]bool),
-		broadcast:       make(chan *Event, 256),
-		globalBroadcast: make(chan *Event, 256),
-		register:        make(chan *Client),
-		unregister:      make(chan *Client),
-		shutdown:        make(chan struct{}),
+		clock:            clk,
+		clients:          make(map[*Client]bool),
+		subscriptions:    make(map[string]map[string]map[*Client]bool),
+		sessionSubs:      make(map[string]map[*Client]bool),
+		broadcast:        make(chan *Event, 256),
+		globalBroadcast:  make(chan *Event, 256),
+		sessionBroadcast: make(chan *Event, 256),
+		register:         make(chan *Client),
+		unregister:       make(chan *Client),
+		shutdown:         make(chan struct{}),
 	}
 }
 
@@ -241,6 +139,9 @@ func (h *Hub) Run() {
 
 		case event := <-h.globalBroadcast:
 			h.broadcastGlobalEvent(event)
+
+		case event := <-h.sessionBroadcast:
+			h.broadcastSessionEvent(event)
 
 		case <-h.shutdown:
 			h.mu.Lock()
@@ -377,6 +278,8 @@ func (h *Hub) removeClientSubscriptions(client *Client) {
 			}
 		}
 	}
+
+	h.removeClientSessionSubscriptions(client)
 }
 
 // broadcastEvent stamps the event timestamp, logs to the durable log (if configured), assigns seq, then sends to clients.

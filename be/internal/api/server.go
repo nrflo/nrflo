@@ -16,6 +16,7 @@ import (
 	"be/internal/chainrunner"
 	"be/internal/clock"
 	"be/internal/config"
+	"be/internal/console"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/notify"
@@ -44,8 +45,9 @@ type Server struct {
 	wfChainRunner         *chainrunner.Runner
 	ptyManager            *ptyPkg.Manager
 	clock                 clock.Clock
-	cliAdapterFunc        func(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool) // nil = buildModelCheckCommand
-	specImportAdapterFunc func(src string) (interface{}, error)                                // injectable for tests; nil = use spec_import.ResolveAdapter
+	cliAdapterFunc        func(cliType, mappedModel, reasoningEffort string) (*exec.Cmd, bool)      // nil = buildModelCheckCommand
+	specImportAdapterFunc func(src string) (interface{}, error)                                     // injectable for tests; nil = use spec_import.ResolveAdapter
+	consoleChatEngineFunc func(name string, deps spawner.EngineDeps) (spawner.ConsoleEngine, error) // injectable for tests; nil = spawner.GetConsoleEngine
 	scheduler             *scheduler.Scheduler
 	notifyWaker           service.NotificationWaker
 	notifyWorker          *notify.Worker
@@ -57,6 +59,7 @@ type Server struct {
 	rateLimiter           *loginRateLimiter
 	observerSvc           *service.ObserverService
 	consoleHub            *spawner.ConsoleHub
+	consoleChat           *console.ChatService
 }
 
 // NewServer creates a new API server.
@@ -163,7 +166,9 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		observerSpawner,
 	)
 
-	return &Server{
+	consoleHub := spawner.NewConsoleHub()
+
+	s := &Server{
 		config:        cfg,
 		dataPath:      dataPath,
 		logsDir:       logsDir,
@@ -182,8 +187,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		userSvc:       userSvc,
 		rateLimiter:   newLoginRateLimiter(),
 		observerSvc:   observerSvc,
-		consoleHub:    spawner.NewConsoleHub(),
+		consoleHub:    consoleHub,
 	}
+
+	s.consoleChat = newConsoleChatService(s, cfg, pool, clk, hub, ptyMgr, consoleHub, errorSvc)
+	return s
 }
 
 // Start starts the HTTP server
@@ -447,8 +455,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	// WebSocket endpoints — gated on session before upgrade.
 	// These use requireAuthWith(true, ...) so browsers can authenticate via
 	// ?token=<bearer> query parameter (WS constructors cannot set headers).
-	wsHandler := ws.NewHandler(s.wsHub)
-	mux.Handle("GET /api/v1/ws", s.requireAuthWith(true, wsHandler))
+	mux.Handle("GET /api/v1/ws", s.requireAuthWith(true, s.newWSHandler()))
 	mux.Handle("GET /api/v1/pty/{session_id}", s.requireAuthWith(true, http.HandlerFunc(s.handlePtyWebSocket)))
 
 	// Documentation

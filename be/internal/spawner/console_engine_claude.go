@@ -170,15 +170,37 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 }
 
 // ferry reads and drops PTY output until the session closes — claude's
-// heartbeat and turn boundaries come from hooks, not PTY bytes.
+// heartbeat and turn boundaries come from hooks, not PTY bytes. A read error
+// while Stop has NOT been requested means the CLI process died on its own:
+// no Stop hook will ever arrive, so a turn in flight would stay pinned
+// forever. Emit an EventError so the consumer can end the turn and surface
+// the death. (It does not close Events: tailLoop is still emitting on its own
+// goroutine; Stop owns that close.)
 func (e *claudeEngine) ferry(sess ptySessionIface) {
 	defer e.ferryOnce.Do(func() { close(e.ferryDone) })
 	buf := make([]byte, 4096)
 	for {
 		if _, err := sess.Read(buf); err != nil {
+			select {
+			case <-e.stopping:
+			default:
+				e.emit(EngineEvent{
+					Type:      EventError,
+					SessionID: e.sessionID(),
+					Text:      "claude console session ended unexpectedly",
+					IsError:   true,
+				})
+			}
 			return
 		}
 	}
+}
+
+// sessionID returns the spec's session id under the lock.
+func (e *claudeEngine) sessionID() string {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.spec.SessionID
 }
 
 // Events returns the normalized event channel, closed when Stop completes.

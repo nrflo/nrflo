@@ -217,6 +217,12 @@ func (e *codexEngine) emit(ev EngineEvent) {
 // or the app-server connection closes. No idle timer, no nudge, no restart
 // cap, no rate-limit dance — see the type doc comment.
 func (e *codexEngine) runLoop(ctx context.Context) {
+	// Registered first, so it runs last: every emit happens on this goroutine,
+	// so once the loop is unwinding nothing can send on events again. Closing
+	// here (not only in Stop) is what Events() promises — "closed when the run
+	// loop exits" — and it is the only way a consumer learns the engine died on
+	// its own (app-server EOF) rather than blocking on a channel forever.
+	defer e.stopOnce.Do(func() { close(e.events) })
 	defer e.loopOnce.Do(func() { close(e.loopDone) })
 	// Once the loop is gone no turn/completed can ever arrive, so a turn left
 	// in flight (connection dropped mid-turn) would otherwise pin turnActive

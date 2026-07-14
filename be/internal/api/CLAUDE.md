@@ -79,3 +79,7 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 #### Console tools
 
 `GET/POST /api/v1/console/tools*` expose a server-owned tool catalogue + dispatcher (`internal/console/`) to a console bearer, authenticated in-handler by `requireConsoleSession`. Mechanics: [REFERENCE.md](REFERENCE.md#console-tools).
+
+#### Console chats
+
+`POST /api/v1/console/chats` (`projectAdmin`, body `{engine, model}`) mints a `kind='console_chat'` session and starts its `console.ChatService`-owned engine; every other route is path-scoped by `{sid}` (never `{id}` — see `server_routes_sessions.go`'s doc comment) and `protected`, authorized in-handler by the same admin/service-principal/own-bearer predicate as console-session close: `POST .../{sid}/messages` (409 on a turn already in flight), `POST .../{sid}/approvals/{aid}` (body `{decision: allow|deny}`), `POST .../{sid}/close`, `GET .../{sid}/messages` (history). Live deltas/turn/approval events stream over the WS session-subscription channel, not these routes — see [ws/CLAUDE.md](../ws/CLAUDE.md).

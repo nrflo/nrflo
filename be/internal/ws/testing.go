@@ -10,6 +10,7 @@ func NewTestClient(hub *Hub, id string) (*Client, chan []byte) {
 		send:          ch,
 		id:            id,
 		subscriptions: make(map[string]bool),
+		sessionSubs:   make(map[string]bool),
 	}
 	return client, ch
 }

@@ -2,20 +2,23 @@ package api
 
 import "net/http"
 
-// registerSessionRoutes registers observer and console session routes.
-// Split out of server.go to keep that file's line count under its baseline.
+// registerSessionRoutes registers observer, console session, and console-chat
+// routes. Split out of server.go to keep that file's line count under its
+// baseline.
 //
-// The close route's path parameter is named {sid}, not {id}: requireProjectAdmin
-// resolves project scope from {id} first, which would misinterpret the session
-// id as a project id. It is registered `protected` instead, with an in-handler
-// authorization check (admin user, matching/global service principal, or the
-// console session's own bearer) — the last of which lets a console session
-// close itself, something requireProjectAdmin could never satisfy since a
-// bearer request never populates the user context.
+// Every {sid}-scoped route below is registered `protected`, not
+// `projectAdmin`: requireProjectAdmin resolves project scope from {id} first,
+// which would misinterpret the session id as a project id. Authorization is
+// instead enforced in-handler (admin user, matching/global service
+// principal, or the session's own bearer — authorizedForConsoleClose,
+// handlers_console.go:80) — the last of which lets a session close/drive
+// itself, something requireProjectAdmin could never satisfy since a bearer
+// request never populates the user context.
 //
 // The tools catalogue/dispatch routes are `protected` for the same reason:
 // authorization is enforced in-handler by requireConsoleSession (401 unless
-// the bearer resolves to a kind=console agent_sessions row).
+// the bearer resolves to a kind=console or kind=console_chat agent_sessions
+// row).
 func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http.HandlerFunc)) {
 	// Observer sessions
 	protected("POST /api/v1/observers", s.handleLaunchObserver)
@@ -28,4 +31,11 @@ func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http
 	// Console tools
 	protected("GET /api/v1/console/tools", s.handleListConsoleTools)
 	protected("POST /api/v1/console/tools/{name}/call", s.handleCallConsoleTool)
+
+	// Console chats: server-managed console-chat sessions (kind='console_chat').
+	projectAdmin("POST /api/v1/console/chats", s.handleCreateConsoleChat)
+	protected("POST /api/v1/console/chats/{sid}/messages", s.handleConsoleChatMessage)
+	protected("POST /api/v1/console/chats/{sid}/approvals/{aid}", s.handleConsoleChatApproval)
+	protected("POST /api/v1/console/chats/{sid}/close", s.handleCloseConsoleChat)
+	protected("GET /api/v1/console/chats/{sid}/messages", s.handleGetConsoleChatMessages)
 }

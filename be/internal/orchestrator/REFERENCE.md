@@ -1,0 +1,41 @@
+# Orchestrator Reference
+
+Deep mechanics for this package. The auto-loaded map lives in [CLAUDE.md](CLAUDE.md); read this file when changing the flows below.
+
+## Callback Plan Engine
+
+All callbacks from a settled layer are collected and processed through the plan engine (`orchestrator_callback_plan.go`): decompose each `CallbackError` into a `decomposedRequest`, merge via `mergeCallbackPlans` (whole-layer wins over per-agent, max resumeLayer), reset affected sessions once (`ResetAgentSessionsInWorkflow`), then `runLoop` drains `plan.steps[callbackPlanIdx]` via `spawnPhases` before forward iteration (non-whole-layer steps fail the workflow if they return a callback), resuming at `plan.resumeLayer` once drained. Cap: `maxCallbacks = 10` cumulative agent spawns per run (whole-layer counts len(phases), per-agent counts len(nodes)); exceeding it fails the workflow. Subset/chain plan steps cannot themselves emit callbacks (v1).
+
+## Sub-Workflow Runner
+
+`subworkflow_runner.go` + `subworkflow_child_start.go`: `StartSubworkflow`/`StartDynamicWorkflow` (`dynamic_workflow.go`) share `startChildRun` — callable_as_subworkflow/purge/pause checks, depth/children caps (`service/subworkflow.go`), the persisted invocation budget (`subworkflow_starts`, atomic across pause/continue/retry), a concurrency slot, detached `o.Start`, and the watcher. Sub-runs never fire next-on-success. The watcher (`subworkflow_watch.go`) stops children (`Stop`, cancelling any live draft plan) only when the parent is TERMINAL — a plan-suspended child is polled via `watchPlanSuspendedChild` instead (pause/plan-approve re-arm via `rearmSubworkflowWatcher`). `GetSubworkflow` returns an `apirun.SubworkflowState` (running/waiting/plan-status — with `Plan`/`Revision`/`Questions`/completed/failed); `assertChildOwnership` (shared with `RevisePlan`/`ApprovePlan`) enforces that only the matching `parent_instance_id` caller may read/drive a child. Exposed via `Config.Subworkflows` as `run_subworkflow`/`get_subworkflow`/`dynamic_workflow`/`revise_plan`/`approve_plan`.
+
+## Git Worktree Lifecycle
+
+When `use_git_worktrees=true` and `default_branch` configured: **setup** (`setupWorktree()`) — project scope returns early, ticket scope creates a branch + worktree under `/tmp/nrflo/worktrees/`; **success** — removes worktree, merges into `default_branch` (up to 5 retries; conflicts trigger `attemptConflictResolution()`, `orchestrator_merge_resolve.go`, else manual resolution), deletes branch; **push after merge** via `pushIfEnabled()` (logged + broadcast, never fails the workflow); **failure/cancellation** force-removes worktree and branch without merging.
+
+## Take-Control (Interactive Session)
+
+`TakeControl(...)` sends `RequestTakeControl` to the active spawner (kills the agent, status `user_interactive`, closes a readiness channel); the HTTP handler waits on `WaitTakeControlReady` (10s) to avoid a PTY race. `CompleteInteractive(sessionID)` → `interactive_completed` (result=pass), workflow advances; `KillInteractive(sessionID)` closes the PTY, marks the session failed (user_killed), folded as an agent failure in aggregation. Only for `SupportsResume()` agents (Claude CLI); project-scoped via `TakeControlProject`. `runState.spawners` maps sessionID→Spawner (`OnSessionRegister/Unregister`, `orchestrator.go`).
+
+## Interactive Start & Plan Mode
+
+Mutually exclusive modes (400 if both set): `interactive=true`, `plan_mode=true` (unrelated to the plan lifecycle/materialization boundary, despite the shared name). Both create a `user_interactive` session for the L0 agent and register a wait channel + PTY command before `runLoop` starts. Interactive mode: `runLoop` blocks until PTY completes, then skips L0, starts from L1. Plan mode: blocks until PTY completes, reads the plan file (`plan_reader.go`), stores it as a `user_instructions` finding, executes all layers from L0.
+
+## Finalize Slots
+
+On terminal status, `runFinalize` (`finalize.go`) runs the outcome-selected slot in the **project root** (never a worktree), 5s timeout, never changing workflow status. Source: `RunRequest.Finalize{Success,Failure}{Command,ScriptID}` (both empty = no-op). Command slot: `sh -c` with outcome env (`NRF_WORKFLOW_STATUS`/`_RESULT`/`_FINAL_RESULT`/`NRF_FAILURE_REASON`) on `loadProjectEnv`; script slot: per-project venv via a transient `_finalize` session. Persists a `_finalize` finding + broadcasts finalize events. Wired into success + `markFailed` tail (skipped for `reasonCancelled`; `forceStopInstance` bypasses `markFailed`, so force-stop never finalizes).
+
+## Pause Slots
+
+`workflow_layer_policies.pause_after=true` pauses `runLoop` after that layer (even when skipped): status `waiting`, removed from `o.runs`, `_pause` finding (`{paused_after_layer,resume_layer,event,timestamp}`) + `EventWorkflowPaused`. Hook slot mechanics mirror Finalize Slots (`RunRequest.PauseEvent{Command,ScriptID}`; env adds `NRF_PAUSED_AFTER_LAYER`/`NRF_NEXT_LAYER`). Resume: `ContinueWorkflow` (`continue.go`) validates `status=waiting`, re-launches `runLoop` at `resume_layer`, optionally appending instructions to the `user_instructions` finding. Fail: `FailWorkflow` (`fail.go`) — running → `rs.failReason` + `cancel()`; waiting → `markFailed` directly.
+
+## Plan Boundary & Materialization
+
+When a plan-driven workflow (`service.IsPlanDriven`) exhausts its static layers, `reloadPlanLayers` (`plan_boundary.go`) checks the plan head: approved → idempotent `Materialize` splices nodes via `service.EffectivePhases` and the loop continues; no head/empty draft → `draftPlanAndProceed` self-drafts inline (blocking `PlanService.Revise{Revision:0}`), then auto-approves (`RunRequest.PlanAutoApprove && service.DynamicAutoEnabled`) or suspends via `DerivePlanInstanceStatus` (`planning`/`waiting_input`/`waiting_approval`); an existing draft suspends; cancelled → `markFailed`. `continue.go`/retry rebuild `layerGroups` from materialized nodes (read, never re-create). `ResumeAfterPlanApproval` (`plan_resume.go`) relaunches `runLoop` at the first materialized layer. Not pause_after — no `_pause` finding; plan statuses are non-terminal to `GetSubworkflow`, keeping plan-driven defs callable.
+
+## Endless Loop / Next-on-Success / Concurrent Guard
+
+- `RunRequest.EndlessLoop=true` (project-scoped) persists as `endless_loop=1`. After `markCompleted`, `maybeRestartEndlessLoop` re-reads the instance, exits if `StopEndlessLoopAfterIteration=true`, else broadcasts `endless_loop_iterating=true` and spawns a fresh detached `Start()`. Failure, `Stop()`, and callback errors terminate the loop.
+- `workflow_definitions.next_workflow_on_success`: after `markCompleted`, `maybeStartNextOnSuccess` (guards: `ctx.Err() != nil`, `finalResult == ""`, `ChainDepth >= 10` → skip) spawns detached `o.Start(context.Background(), nextReq)` with `ScopeType="project"`, `Instructions=finalResult`, `ChainDepth+1`.
+- `HasRunningTicketWorkflows(projectID)` checks `o.runs` for active ticket-scoped instances; `Start()` errors (unless `Force=true`) when `!project.UseGitWorktrees` and one is already running for the ticket. HTTP maps this to 409; frontend shows "Proceed Anyway".

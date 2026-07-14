@@ -20,6 +20,8 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 **One canonical location per concept.** Cross-reference, don't duplicate. When a paragraph would appear in two CLAUDE.md files, keep the deepest copy and link from the others.
 
+**Overflow goes to REFERENCE.md.** When a package CLAUDE.md nears its cap, move flow mechanics into a sibling `REFERENCE.md` (not auto-loaded, uncapped) and keep the invariant + a pointer in CLAUDE.md. Read the REFERENCE.md before changing the flows it documents.
+
 **Hard caps (bytes; enforced by reviewer):**
 
 | File | Cap |
@@ -39,11 +41,11 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 ### 2. Layer-Based Phase Execution
 
-Agents are grouped by `layer` number; same-layer agents run concurrently, layers execute in ascending order. See [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md).
+Agents are grouped by `layer` number; same-layer agents run concurrently, layers execute in ascending order. See [orchestrator](be/internal/orchestrator/CLAUDE.md).
 
 ### 3. State is Stored in Database Tables
 
-Workflow runtime state lives in `workflow_instances`/`agent_sessions`; phases derive at read time. See [db/CLAUDE.md](be/internal/db/CLAUDE.md).
+Workflow runtime state lives in `workflow_instances`/`agent_sessions`; phases derive at read time. See [db](be/internal/db/CLAUDE.md).
 
 ### 4. Test suites must complete in under 60 seconds
 
@@ -51,7 +53,7 @@ Workflow runtime state lives in `workflow_instances`/`agent_sessions`; phases de
 
 ### 5. Keep Source Files Under 300 Lines
 
-Split files over 300 lines into sub-files (code and docs); `.go`/`.ts`/`.tsx` enforced in CI via `make filesize` against the shrink-only `filesize.baseline` — see [be/CLAUDE.md](be/CLAUDE.md).
+Split files over 300 lines into sub-files (code and docs); `.go`/`.ts`/`.tsx` enforced in CI via `make filesize` against the shrink-only `filesize.baseline` — see [be](be/CLAUDE.md).
 
 ### 6. Polymorphism lives in the implementation, not the call site
 
@@ -61,8 +63,8 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 
 | File | Purpose |
 |------|---------|
-| `be/` | Go backend source code (see [be/CLAUDE.md](be/CLAUDE.md)) |
-| `ui/` | React web interface (see [ui/CLAUDE.md](ui/CLAUDE.md)) |
+| `be/` | Go backend source code (see [be](be/CLAUDE.md)) |
+| `ui/` | React web interface (see [ui](ui/CLAUDE.md)) |
 | `Makefile` | Build, install, test targets (`make help`) |
 | `doc/` | Agent-authoring docs: common/CLI/Python/API, served at /documentation |
 
@@ -71,62 +73,62 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 Rules every change must respect.
 
 - **Server-only**: `nrflo_server` is the only user-facing command; all management goes through the web UI.
-- **Single binary**: `nrflo_server` — server + agent subcommands (`mcp`, `record-event`, `statusline`, `context-update`, `mcp-external`); see [be/CLAUDE.md](be/CLAUDE.md). No separate `nrflo` CLI.
+- **Single binary**: `nrflo_server` — server + agent subcommands (`mcp`, `record-event`, `statusline`, `context-update`, `mcp-external`); see [be](be/CLAUDE.md). No separate `nrflo` CLI.
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
 - **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or `X-Project` for HTTP).
 - **Service layer**: business logic stays in `be/internal/service/`.
 - **WebSocket-only realtime**: the UI never polls; all live updates flow through `/api/v1/ws`.
 - **Agents identify via env**: spawner sets `NRF_SESSION_ID` + `NRF_WORKFLOW_INSTANCE_ID`.
-- **Spawned agents authenticate via per-session bearer token `NRFLO_AGENT_TOKEN`**: see [api/CLAUDE.md](be/internal/api/CLAUDE.md).
-- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` Claude, `nrflo/*` codex) served by the `agent mcp` bridge. See [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md).
-- **API mode is a runtime admin toggle** (`api_mode_enabled`); see [api/CLAUDE.md](be/internal/api/CLAUDE.md).
+- **Spawned agents authenticate via per-session bearer token `NRFLO_AGENT_TOKEN`**: see [api](be/internal/api/CLAUDE.md).
+- **Agents drive nrflo via MCP tools** (`mcp__nrflo__*` Claude, `nrflo/*` codex) served by the `agent mcp` bridge. See [spawner](be/internal/spawner/CLAUDE.md).
+- **API mode is a runtime admin toggle** (`api_mode_enabled`); see [api](be/internal/api/CLAUDE.md).
 
 ## Feature Index
 
 ### Workflow execution
-- **Layer execution, aggregation, callbacks** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Manual restart, retry-failed, orchestration entry points** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Low-context relaunch** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
-- **Stall detection / stall timeouts / restart cap** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
-- **Take-control / resume-session / exit-interactive / PTY relay** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Interactive start & plan mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Endless loop mode** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Merge conflict auto-resolution / push-after-merge** → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md)
-- **Plan lifecycle & sub/dynamic workflows** (planner, revise/approve, self-drafting boundary, `run_subworkflow`/`dynamic_workflow`) → [orchestrator/CLAUDE.md](be/internal/orchestrator/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md)
+- **Layer execution, aggregation, callbacks** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
+- **Manual restart, retry-failed, orchestration entry points** → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **Low-context relaunch** → [spawner](be/internal/spawner/CLAUDE.md)
+- **Stall detection / stall timeouts / restart cap** → [spawner](be/internal/spawner/CLAUDE.md)
+- **Take-control / resume-session / exit-interactive / PTY relay** → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **Interactive start & plan mode** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
+- **Endless loop mode** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
+- **Merge conflict auto-resolution / push-after-merge** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
+- **Plan lifecycle & sub/dynamic workflows** (planner, revise/approve, self-drafting boundary, `run_subworkflow`/`dynamic_workflow`) → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [service](be/internal/service/CLAUDE.md)
 
 ### Agents, templates, and configuration
-- **Workflow / agent / system-agent definitions** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [doc/](doc/)
-- **Default templates** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **CLI models registry / supported models** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
+- **Workflow / agent / system-agent definitions** → [spawner](be/internal/spawner/CLAUDE.md) + [service](be/internal/service/CLAUDE.md) + [doc/](doc/)
+- **Default templates** → [service](be/internal/service/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **CLI models registry / supported models** → [spawner](be/internal/spawner/CLAUDE.md)
 
 ### Execution backends (`execution_mode`)
-- **`api` — in-process Anthropic runner** → [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
-- **`cli_interactive` backend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
-- **`script` — Python scriptBackend** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md)
+- **`api` — in-process Anthropic runner** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
+- **`cli_interactive` backend** → [spawner](be/internal/spawner/CLAUDE.md)
+- **`script` — Python scriptBackend** → [spawner](be/internal/spawner/CLAUDE.md)
 - **Per-project venv** → [venv/](be/internal/venv/)
-- **Python tools (api-mode only)** → [spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md)
-- **Python SDK + `script.context` socket method** → [sdk/python/CLAUDE.md](be/internal/sdk/python/CLAUDE.md) + [socket/CLAUDE.md](be/internal/socket/CLAUDE.md)
+- **Python tools (api-mode only)** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
+- **Python SDK + `script.context` socket method** → [sdk/python](be/internal/sdk/python/CLAUDE.md) + [socket](be/internal/socket/CLAUDE.md)
 - **Provider capability matrix** → [capabilities.md](capabilities.md)
 
 ### Project-scoped & scheduled work
-- **Project-scoped workflows** → [service/CLAUDE.md](be/internal/service/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Scheduled tasks** → [scheduler/CLAUDE.md](be/internal/scheduler/CLAUDE.md)
-- **Workflow chains and chain runs** → [be/CLAUDE.md](be/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Run trace timeline** (`GET /workflow-instances/{iid}/trace` + Trace UI tab) → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
+- **Project-scoped workflows** → [service](be/internal/service/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **Scheduled tasks** → [scheduler](be/internal/scheduler/CLAUDE.md)
+- **Workflow chains and chain runs** → [be](be/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **Run trace timeline** (`GET /workflow-instances/{iid}/trace` + Trace UI tab) → [service](be/internal/service/CLAUDE.md)
 
 ### Auth & administration
-- **Auth + sessions + login rate limit** → [auth/CLAUDE.md](be/internal/auth/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Route list, audit-log + user CRUD** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Service tokens** (long-lived project or global bearer tokens) → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Auth + sessions + login rate limit** → [auth](be/internal/auth/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
+- **Route list, audit-log + user CRUD** → [api](be/internal/api/CLAUDE.md)
+- **Service tokens** (long-lived project or global bearer tokens) → [api](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
 - **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
-- **Agent session logs + live sessions** → [api/CLAUDE.md](be/internal/api/CLAUDE.md)
-- **Per-project env vars** → [service/CLAUDE.md](be/internal/service/CLAUDE.md)
-- **DB schema, migrations, connection pool** → [db/CLAUDE.md](be/internal/db/CLAUDE.md)
+- **Agent session logs + live sessions** → [api](be/internal/api/CLAUDE.md)
+- **Per-project env vars** → [service](be/internal/service/CLAUDE.md)
+- **DB schema, migrations, connection pool** → [db](be/internal/db/CLAUDE.md)
 
 ### Observer
-- **Observer agents (experimental)** → [spawner/CLAUDE.md](be/internal/spawner/CLAUDE.md) + [api/CLAUDE.md](be/internal/api/CLAUDE.md)
+- **Observer agents (experimental)** → [spawner](be/internal/spawner/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
 
 ## Workflows
 

@@ -12,7 +12,7 @@ func RegisterServerCommands() {
 	// forwarders) the spawner invokes as short-lived `nrflo_server agent <cmd>`
 	// processes that connect back to the running server over the Unix socket.
 	rootCmd.AddCommand(agentInfraCmd)
-	// console launches a native claude/codex CLI locally, as a human session
+	// console opens the native TUI for a server-owned provider conversation
 	// wired to this server over the mcp-external bridge.
 	rootCmd.AddCommand(consoleCmd)
 }

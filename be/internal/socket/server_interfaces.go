@@ -45,6 +45,11 @@ type ConsoleHooks interface {
 	ConsoleContextLeft(sessionID string, pct int) (handled bool)
 }
 
+// ConsoleChatCreator mints a server-owned chat for the trusted local TUI.
+type ConsoleChatCreator interface {
+	CreateAuthenticated(engine, modelID, projectID string) (sessionID, token string, err error)
+}
+
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner
 // after the socket handler has already written the agent result to the DB.
 // The Handler nil-guards before calling — pass nil in tests.

@@ -74,6 +74,51 @@ func TestHandleConsoleChatApproval_Deny_MapsToApprovalDeny(t *testing.T) {
 	}
 }
 
+func TestHandleInterruptConsoleChat_ActiveTurn_Returns202(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-interrupt")
+	adminID := createTestUser(t, s, "chat-interrupt@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+	sid, eng := createChatSession(t, s, factory, "proj-chat-interrupt", cookie)
+	eng.mu.Lock()
+	eng.turnActive = true
+	eng.mu.Unlock()
+
+	chain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleInterruptConsoleChat)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/console/chats/"+sid+"/interrupt", nil)
+	req.SetPathValue("sid", sid)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", rr.Code, rr.Body.String())
+	}
+	eng.mu.Lock()
+	active := eng.turnActive
+	eng.mu.Unlock()
+	if active {
+		t.Fatal("turn still active after interrupt")
+	}
+}
+
+func TestHandleInterruptConsoleChat_Idle_Returns409(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-interrupt-idle")
+	adminID := createTestUser(t, s, "chat-interrupt-idle@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+	sid, _ := createChatSession(t, s, factory, "proj-chat-interrupt-idle", cookie)
+
+	chain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleInterruptConsoleChat)))
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/console/chats/"+sid+"/interrupt", nil)
+	req.SetPathValue("sid", sid)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestHandleCloseConsoleChat_StopsEngineAndKillsToken(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-close")

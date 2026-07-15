@@ -186,3 +186,25 @@ func (s *Server) handleCloseConsoleChat(w http.ResponseWriter, r *http.Request) 
 	appendAudit(s, r, "console_chat.closed", "agent_session", sess.ID, "{}")
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// handleInterruptConsoleChat cancels the active turn but keeps the engine and
+// conversation alive. POST /api/v1/console/chats/{sid}/interrupt
+func (s *Server) handleInterruptConsoleChat(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.loadConsoleChatSession(w, r)
+	if !ok {
+		return
+	}
+	if err := s.consoleChat.Interrupt(r.Context(), sess.ID); err != nil {
+		switch {
+		case errors.Is(err, spawner.ErrNoActiveTurn):
+			writeError(w, http.StatusConflict, "no active turn")
+		case errors.Is(err, console.ErrChatSessionNotFound):
+			writeError(w, http.StatusNotFound, "console chat session not found")
+		default:
+			writeError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	appendAudit(s, r, "console_chat.interrupted", "agent_session", sess.ID, "{}")
+	w.WriteHeader(http.StatusAccepted)
+}

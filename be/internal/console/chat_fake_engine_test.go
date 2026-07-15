@@ -26,6 +26,7 @@ type fakeConsoleEngine struct {
 	startSpec  spawner.EngineSpec
 	started    bool
 	stopped    bool
+	turnActive bool
 	turns      []string
 	sendErr    error // consumed once by the next SendUserTurn call
 	approvals  []fakeApprovalCall
@@ -95,6 +96,7 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
 		return err
 	}
 	f.turns = append(f.turns, text)
+	f.turnActive = true
 	return nil
 }
 
@@ -116,6 +118,16 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 	f.approvals = append(f.approvals, fakeApprovalCall{id: id, decision: decision})
 	f.mu.Unlock()
 	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
+	return nil
+}
+
+func (f *fakeConsoleEngine) InterruptTurn(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.turnActive {
+		return spawner.ErrNoActiveTurn
+	}
+	f.turnActive = false
 	return nil
 }
 

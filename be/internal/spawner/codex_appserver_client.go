@@ -107,7 +107,7 @@ func newAppServerClient(stdin io.WriteCloser, stdout io.Reader, cmd *exec.Cmd) *
 
 // dialAppServer is startAppServer by default; the console engine dials
 // through this var so unit tests can wire a fake app-server over in-memory
-// pipes without exec'ing codex (precedent: console.lookPath, console/driver.go:10).
+// pipes without exec'ing codex.
 var dialAppServer = startAppServer
 
 // startAppServer spawns `codex app-server` with the given env + workDir and

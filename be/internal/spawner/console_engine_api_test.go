@@ -58,6 +58,19 @@ type fakeAPIProviderCalls struct {
 	n  int
 }
 
+type blockingAPIProvider struct{ started chan struct{} }
+
+func (p *blockingAPIProvider) Name() string          { return "blocking" }
+func (p *blockingAPIProvider) MaxContext(string) int { return 1000 }
+func (p *blockingAPIProvider) Run(ctx context.Context, _ provider.Request, _ provider.EventSink) (*provider.FinalResponse, error) {
+	select {
+	case p.started <- struct{}{}:
+	default:
+	}
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
 func (c *fakeAPIProviderCalls) count() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -190,6 +203,35 @@ func TestAPIConsoleEngine_HappyPath_EmitsTurnLifecycleAndKeepsEventsOpen(t *test
 		}
 	default:
 		// no buffered event pending, channel is simply empty — expected.
+	}
+}
+
+func TestAPIConsoleEngine_InterruptTurn_CancelsOnlyActiveTurn(t *testing.T) {
+	pool, clk := newAPIEngineTestPool(t)
+	if err := service.NewGlobalSettingsService(pool, clk).Set("api_mode_enabled", "true"); err != nil {
+		t.Fatalf("seed api_mode_enabled: %v", err)
+	}
+	prov := &blockingAPIProvider{started: make(chan struct{}, 1)}
+	installFakeAPIProvider(t, prov, nil)
+	eng := newAPIConsoleEngine(EngineDeps{Sink: &testSink{}, API: APIEngineDeps{Pool: pool, Clock: clk}})
+	if err := eng.Start(context.Background(), apiTestSpec("sess-interrupt")); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(eng.Stop)
+	if err := eng.SendUserTurn(context.Background(), "wait"); err != nil {
+		t.Fatalf("SendUserTurn: %v", err)
+	}
+	select {
+	case <-prov.started:
+	case <-time.After(2 * time.Second):
+		t.Fatal("provider did not start")
+	}
+	if err := eng.InterruptTurn(context.Background()); err != nil {
+		t.Fatalf("InterruptTurn: %v", err)
+	}
+	_ = waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)
+	if err := eng.SendUserTurn(context.Background(), "next"); err != nil {
+		t.Fatalf("next SendUserTurn: %v", err)
 	}
 }
 

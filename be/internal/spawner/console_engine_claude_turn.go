@@ -52,6 +52,25 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, text string) error {
 	return nil
 }
 
+// InterruptTurn sends Ctrl+C to Claude's PTY. The Stop hook remains the owner
+// of the idle transition and EventTurnCompleted emission.
+func (e *claudeEngine) InterruptTurn(_ context.Context) error {
+	e.mu.Lock()
+	if !e.turnActive {
+		e.mu.Unlock()
+		return ErrNoActiveTurn
+	}
+	sess := e.ptySession
+	e.mu.Unlock()
+	if sess == nil {
+		return ErrEngineStopped
+	}
+	if _, err := sess.Write([]byte{0x03}); err != nil {
+		return fmt.Errorf("console engine: interrupt claude turn: %w", err)
+	}
+	return nil
+}
+
 // waitUntilReady blocks until SessionStart has signaled TUI-ready (or
 // sessionStartTimeout elapses), then enforces the bootstrap floor — mirrors
 // waitForReady's two-stage strategy (backend_interactive_helpers.go) without

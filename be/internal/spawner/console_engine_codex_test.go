@@ -135,7 +135,7 @@ func TestCodexEngine_SendUserTurn_WireAndPersistence(t *testing.T) {
 	paramsCh := make(chan json.RawMessage, 1)
 	f.setOverride("turn/start", func(f *fakeAppServer, env rpcEnvelope) {
 		paramsCh <- env.Params
-		f.replyResult(*env.ID, `{}`)
+		f.replyResult(*env.ID, `{"turn":{"id":"turn-wire-1"}}`)
 	})
 
 	if err := eng.SendUserTurn(context.Background(), "hello codex"); err != nil {

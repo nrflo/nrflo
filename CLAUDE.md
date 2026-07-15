@@ -59,7 +59,7 @@ When you find yourself writing `if x.Name() == "foo"` at a call site holding a p
 
 Rules every change must respect.
 
-- **Server-only**: `nrflo_server` is the only user-facing command; management goes through the web UI, except `nrflo_server console`, which launches a native claude/codex CLI locally with nrflo tools attached.
+- **Server-only**: `nrflo_server` is the only user-facing command; management goes through the web UI, except `nrflo_server console`, which opens the native TUI for a server-owned Claude/Codex/API conversation.
 - **Single binary**: `nrflo_server` — server + agent subcommands (`mcp`, `record-event`, `statusline`, `context-update`, `mcp-external`) + `console`; see [be](be/CLAUDE.md). No separate `nrflo` CLI.
 - **Single global SQLite DB**: `~/.nrflo/nrflo.data` (override with `NRFLO_HOME`); migrations auto-run on startup.
 - **Project scope from env**: every API call resolves the project from `NRFLO_PROJECT` (or `X-Project` for HTTP).

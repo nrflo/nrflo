@@ -131,14 +131,6 @@ func (c *nrfloHTTPClient) sessionProjectID() string {
 	return c.sessionProject
 }
 
-// sessionTicket returns the current ticket the server accepted for this session
-// from the git-branch hint ("" when the branch was not a known ticket).
-func (c *nrfloHTTPClient) sessionTicket() string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.sessionTicketID
-}
-
 // openConsoleSession exchanges the SERVICE token for a console session:
 // POST /api/v1/console/sessions. The project is resolved on the first open and
 // reused verbatim by any later re-exchange, so a connection never silently

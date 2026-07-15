@@ -35,7 +35,8 @@ Contents: [Supported Methods](#supported-methods) · [Observer Authorization](#o
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
 | `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
-| `console.session` | Mint a `kind='console'` session over the trusted socket (filesystem access = auth), returning `{session_id, token, project_id, ticket_id}`. Used by `nrflo_server console`/`agent mcp-external` against a LOCAL server so no service token is needed. Params: `{project?, cwd?, ticket_id?}`; project resolves explicit-hint → `cwd` matched against project `root_path`s → global; `ticket_id` (git branch) validated + dropped when unknown. Unknown explicit project → not-found error |
+| `console.session` | Mint a `kind='console'` tool session over the trusted socket for a local `agent mcp-external`. Params: `{project?, cwd?, ticket_id?}`; project resolves explicit hint → cwd match → global |
+| `console.chat` | Start a server-owned `console_chat` engine and return its session-scoped bearer to the native TUI. Params: `{project?, cwd?, engine, model?}`; same project resolution as `console.session` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 | `script.context` | Return 20-key auto-injectable dict for script-mode session (incl. `node_id`, `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`, `external_id`, `external_context`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |
@@ -90,7 +91,8 @@ After the DB write and WS broadcast, `agent.fail`, `agent.finished`, `agent.cont
 
 | File | Purpose |
 |------|---------|
-| `server.go` | Socket listener, connection handling, `Handler` struct, dispatcher setters (`SetWorkflowRunner`/`SetToolDispatcher`) |
+| `server.go` | Socket listener, connection handling, and `Handler` struct |
+| `server_setters.go` | Optional workflow/tool/console dependency wiring |
 | `server_interfaces.go` | `WorkflowOrchestrator`, `ToolDispatcher`, `TerminalSignaler` interfaces (json/primitives only; keeps socket free of apirun imports) |
 | `handler.go` | Request routing and method dispatch |
 | `handler_findings.go` | `findings.*` handlers (add/add-bulk/get/append/append-bulk/delete) |

@@ -117,6 +117,24 @@ func TestClaudeEngine_SendUserTurn_NotStarted_Errors(t *testing.T) {
 	}
 }
 
+func TestClaudeEngine_InterruptTurn_WritesCtrlC(t *testing.T) {
+	e, mgr := startTestClaudeEngine(t, &testSink{}, nil, EngineSpec{SessionID: "sess-interrupt-claude"})
+	e.NotifySessionReady()
+	if err := e.SendUserTurn(context.Background(), "work"); err != nil {
+		t.Fatalf("SendUserTurn: %v", err)
+	}
+	if err := e.InterruptTurn(context.Background()); err != nil {
+		t.Fatalf("InterruptTurn: %v", err)
+	}
+	sess := mgr.sessions[e.spec.SessionID]
+	sess.mu.Lock()
+	written := append([]byte{}, sess.writtenBytes...)
+	sess.mu.Unlock()
+	if len(written) == 0 || written[len(written)-1] != 0x03 {
+		t.Fatalf("last PTY byte = %v, want Ctrl+C", written)
+	}
+}
+
 // TestClaudeEngine_SendUserTurn_AlreadyReady_WritesPromptly asserts that once
 // SessionStart has already fired, SendUserTurn does not wait out the full
 // sessionStartTimeout before writing.

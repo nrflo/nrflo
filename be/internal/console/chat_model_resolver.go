@@ -14,7 +14,7 @@ import (
 // cli_models and api_models are separate tables whose ids collide (both seed
 // "sonnet"/"haiku"), so resolution must diverge by engine — this is the one
 // legitimate switch beyond spawner.GetConsoleEngine (modelResolverFor below),
-// the same factory shape as GetConsoleEngine/console.GetDriver.
+// the same factory shape as GetConsoleEngine.
 type chatModelResolver interface {
 	Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID string) error
 }

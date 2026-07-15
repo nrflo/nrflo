@@ -17,6 +17,14 @@ type consoleSessionMint struct {
 	TicketID  string `json:"ticket_id"`
 }
 
+type consoleChatMint struct {
+	SessionID string `json:"session_id"`
+	Token     string `json:"token"`
+	ProjectID string `json:"project_id"`
+	Engine    string `json:"engine"`
+	Model     string `json:"model"`
+}
+
 // isLocalServer reports whether serverURL points at a loopback server — the
 // only case where the Unix socket (and thus token-less local auth) is reachable.
 // A parse failure or unknown host is treated as remote (fail closed to the
@@ -50,6 +58,20 @@ func mintConsoleSessionOverSocket(projectHint, ticketHint string) (consoleSessio
 	params := map[string]string{"project": projectHint, "cwd": cwd, "ticket_id": ticketHint}
 	if err := c.ExecuteAndUnmarshal("console.session", params, &res); err != nil {
 		return consoleSessionMint{}, fmt.Errorf("mint console session over socket: %w", err)
+	}
+	return res, nil
+}
+
+func mintConsoleChatOverSocket(projectHint, engine, model string) (consoleChatMint, error) {
+	cwd, _ := os.Getwd()
+	c := client.New(projectHint)
+	if !c.IsServerRunning() {
+		return consoleChatMint{}, client.ServerNotRunningError()
+	}
+	var res consoleChatMint
+	params := map[string]string{"project": projectHint, "cwd": cwd, "engine": engine, "model": model}
+	if err := c.ExecuteAndUnmarshal("console.chat", params, &res); err != nil {
+		return consoleChatMint{}, fmt.Errorf("start console chat over socket: %w", err)
 	}
 	return res, nil
 }

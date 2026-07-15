@@ -11,6 +11,15 @@ import (
 	"be/internal/types"
 )
 
+type fakeConsoleChatCreator struct {
+	engine, model, project string
+}
+
+func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, project string) (string, string, error) {
+	f.engine, f.model, f.project = engine, model, project
+	return "chat-session-1", "chat-token-1", nil
+}
+
 // mintConsole calls console.session over the handler and returns the decoded
 // reply plus the raw response.
 func mintConsole(t *testing.T, env *handlerTestEnv, params map[string]string) (map[string]string, Response) {
@@ -131,3 +140,28 @@ func TestConsoleSession_UnknownAction(t *testing.T) {
 		t.Fatalf("expected -32601 method not found, got %+v", resp.Error)
 	}
 }
+
+func TestConsoleChat_MintsScopedBearer(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{
+		"project": env.project, "engine": "codex", "model": "codex_gpt_high",
+	})
+	resp := env.handler.Handle(Request{ID: "chat-1", Method: "console.chat", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	var result map[string]string
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("decode result: %v", err)
+	}
+	if result["session_id"] != "chat-session-1" || result["token"] != "chat-token-1" {
+		t.Fatalf("result = %+v", result)
+	}
+	if creator.engine != "codex" || creator.model != "codex_gpt_high" || creator.project != env.project {
+		t.Fatalf("creator args = engine=%q model=%q project=%q", creator.engine, creator.model, creator.project)
+	}
+}
+
+var _ ConsoleChatCreator = (*fakeConsoleChatCreator)(nil)

@@ -19,11 +19,12 @@ type fakeConsoleEngine struct {
 
 	events chan spawner.EngineEvent
 
-	mu        sync.Mutex
-	startSpec spawner.EngineSpec
-	stopped   bool
-	turns     []string
-	approvals []struct {
+	mu         sync.Mutex
+	startSpec  spawner.EngineSpec
+	stopped    bool
+	turnActive bool
+	turns      []string
+	approvals  []struct {
 		id       string
 		decision spawner.ApprovalDecision
 	}
@@ -71,6 +72,7 @@ func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) er
 func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
 	f.mu.Lock()
 	f.turns = append(f.turns, text)
+	f.turnActive = true
 	f.mu.Unlock()
 	return nil
 }
@@ -91,6 +93,16 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 	}{id, decision})
 	f.mu.Unlock()
 	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
+	return nil
+}
+
+func (f *fakeConsoleEngine) InterruptTurn(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.turnActive {
+		return spawner.ErrNoActiveTurn
+	}
+	f.turnActive = false
 	return nil
 }
 

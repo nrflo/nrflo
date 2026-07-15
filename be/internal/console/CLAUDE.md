@@ -10,7 +10,7 @@ Because those ids are caller-supplied, **every** tool taking an `instance_id` is
 
 ## Current Ticket
 
-`ticket_current` returns the ticket the session is working on, read from `agent_sessions.ticket_id` for `env.SessionID` (full ticket when set, `{"current_ticket":null}` otherwise — never an error). That column is stamped at session open from the caller's git branch: both openers (`cli/console.go`, `cli/agent_mcp_external_console.go`'s `openConsoleSession`) send the branch as a candidate `ticket_id`; the endpoint validates it against the project and drops an unknown id silently (nrflo names a ticket's branch/worktree after the ticket id, so the branch *is* the id). `nrflo_server console` additionally injects an opening system-prompt hint for the current ticket — claude only (`driver_claude.go` `--append-system-prompt`); codex has no such channel (`driver_codex.go`) and relies on `ticket_current`.
+`ticket_current` returns the ticket the session is working on, read from `agent_sessions.ticket_id` for `env.SessionID` (full ticket when set, `{"current_ticket":null}` otherwise — never an error). `agent mcp-external` stamps that column from its git branch when it opens a standalone console tool session; console-chat sessions are project-scoped but have no implicit ticket.
 
 ## ArtifactSvc Nil in ToolEnv
 
@@ -20,15 +20,11 @@ Because those ids are caller-supplied, **every** tool taking an `instance_id` is
 
 `Dispatch(ctx, reg, env, name, args)` (`dispatch.go`) is the one call site `api.handleCallConsoleTool` uses; `ErrToolNotFound` maps to the endpoint's 404. `Specs(reg)` backs the catalogue endpoint, sorted by name.
 
-## Console drivers
-
-`ConsoleDriver` (`driver.go`: `Name`/`Probe`/`Prepare(LaunchInput) (LaunchSpec, func(), error)`) is what `nrflo_server console` (`cli/console.go`) uses to launch a native claude/codex CLI locally as a **human** session — `GetDriver` is the only provider-name switch. The launched CLI reaches nrflo through `agent mcp-external` over a console session the `console` command mints and injects (`NRFLO_CONSOLE_TOKEN`/`NRFLO_CONSOLE_SESSION_ID`). Auth splits on server locality: a LOCAL (loopback) server mints the session over the trusted Unix socket (`console.session`, no token — filesystem access to `$NRFLO_HOME` is the authorization); a remote `--server` still requires a service token (`--token`/`NRFLO_MCP_TOKEN`). `bridgeEnv` forwards `NRFLO_SOCKET`/`NRFLO_HOME` so a token-less bridge can re-mint over the socket if its adopted session is swept idle. The cc96eed6 managed-session boundary (`--dangerously-skip-permissions`, `--disallowedTools`, a safety-hook `--settings`, `--dangerously-bypass-approvals-and-sandbox`) applies only to spawner-managed sessions and is deliberately absent from every driver here.
-
-`--model` resolves against the `cli_models` registry, which supplies `reasoning_effort`/`fallback_models` alongside `mapped_model`: [REFERENCE.md](REFERENCE.md#console-driver-model-resolution).
-
 ## Console chat sessions
 
 `ChatService` (`chat_service.go` + `chat_session.go`/`chat_spec.go`/`chat_sink.go`/`chat_events.go`) owns `kind='console_chat'` `agent_sessions` lifecycle: it mints the row + bearer token, builds a `spawner.EngineSpec`, starts a `spawner.ConsoleEngine` (via an injectable factory defaulting to `spawner.GetConsoleEngine`), tracks the turn state machine (a second message while a turn is in flight is rejected without an engine round-trip), and pumps `EngineEvent`s onto the session's WS channel (`hub.BroadcastSession`, see [ws/CLAUDE.md](../ws/CLAUDE.md)). Tools reach the server the same way a human console session's do: the engine's `--mcp-config`/profile already points at `agent mcp-external`, which adopts this pre-minted session from `NRFLO_CONSOLE_TOKEN`/`NRFLO_CONSOLE_SESSION_ID` and proxies to the same `console.BuildRegistry`+`NewToolEnv` tool routes (`requireConsoleSession` accepts both `console` and `console_chat` kinds). Engines hold no `processInfo`, so stall/nudge/restart are structurally unreachable — this is not a kind check anywhere in the spawner/orchestrator.
+
+`nrflo_server console` is a thin native client in `internal/consoleui`: local creation uses trusted socket method `console.chat` and receives the new chat's scoped bearer, while remote creation uses the service-token HTTP route. Both then use the same REST history/actions and WS session channel as the web console; `Interrupt` cancels only the active provider turn and preserves the conversation.
 
 The third engine, `api`, has no CLI/PTY: `ChatDeps.Tools` injects the console tool profile (`BuildRegistry`/`Specs`/`NewToolEnv`) into `spawner.EngineDeps.API` unconditionally in `Create`, so claude/codex simply ignore it. Model ids resolve per-engine via `chat_model_resolver.go`'s `modelResolverFor(engine)` — `cli_models` and `api_models` are separate tables whose ids collide (both seed `sonnet`/`haiku`), so the wrong table would silently mismatch. The api engine has no native file/bash tools and registers no approvals.
 

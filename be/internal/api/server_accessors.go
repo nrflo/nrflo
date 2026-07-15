@@ -1,6 +1,7 @@
 package api
 
 import (
+	"be/internal/console"
 	"be/internal/orchestrator"
 	"be/internal/spawner"
 	"be/internal/ws"
@@ -13,6 +14,10 @@ import (
 func (s *Server) GetWSHub() *ws.Hub {
 	return s.wsHub
 }
+
+// ConsoleChat returns the server-owned chat lifecycle service for trusted
+// local socket wiring.
+func (s *Server) ConsoleChat() *console.ChatService { return s.consoleChat }
 
 // GetOrchestrator returns the orchestrator for external access (e.g., socket server).
 func (s *Server) GetOrchestrator() *orchestrator.Orchestrator {

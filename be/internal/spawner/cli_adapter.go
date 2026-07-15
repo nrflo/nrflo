@@ -105,7 +105,7 @@ type CLIAdapter interface {
 	// PrepareUserSession builds the pty.Launch (argv + env overrides + dir) for
 	// a human-driven PTY session (orchestrator interactive/plan pre-step,
 	// take-control resume) and returns a cleanup func that must run after the
-	// PTY session exits. Mirrors console.ConsoleDriver.Prepare's contract but
+	// PTY session exits. Mirrors the console engine preparation contract but
 	// stays on the CLIAdapter registry and returns the PTY manager's own input
 	// type. Returns an error when the adapter cannot host the requested mode.
 	PrepareUserSession(opts UserSessionOptions) (pty.Launch, func(), error)

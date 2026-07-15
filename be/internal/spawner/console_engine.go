@@ -34,6 +34,9 @@ type ConsoleEngine interface {
 	Events() <-chan EngineEvent
 	// ReplyApproval answers a pending approval request by id.
 	ReplyApproval(id string, decision ApprovalDecision) error
+	// InterruptTurn cancels the active turn without closing the conversation.
+	// Returns ErrNoActiveTurn when the engine is idle.
+	InterruptTurn(ctx context.Context) error
 	// Stop tears down the engine: cancels the run context, closes the
 	// underlying client/process, and closes the Events channel.
 	Stop()
@@ -140,6 +143,9 @@ var ErrTurnActive = fmt.Errorf("console engine: turn already active")
 // starting a turn against a torn-down event channel.
 var ErrEngineStopped = fmt.Errorf("console engine: stopped")
 
+// ErrNoActiveTurn is returned when interruption is requested while idle.
+var ErrNoActiveTurn = fmt.Errorf("console engine: no active turn")
+
 // EngineDeps bundles what GetConsoleEngine needs to construct any engine.
 // PTY is the exported concrete *pty.Manager so callers outside this package
 // can pass one; claudeEngine wraps it internally via wrapPtyManager. codex
@@ -165,9 +171,8 @@ type APIEngineDeps struct {
 	ToolEnv  apirun.ToolEnv
 }
 
-// GetConsoleEngine returns the ConsoleEngine for a --cli name. Mirrors
-// GetCLIAdapter (cli_adapter.go:233) and console.GetDriver
-// (console/driver.go:62) — the ONE place an engine name is compared;
+// GetConsoleEngine returns the ConsoleEngine for an engine name. It is the
+// one place a console engine name is compared;
 // per-engine divergence (approval vocabulary, delta method names, profile
 // writing, transport) lives inside the returned engine.
 func GetConsoleEngine(name string, deps EngineDeps) (ConsoleEngine, error) {

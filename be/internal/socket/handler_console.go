@@ -20,10 +20,48 @@ func (h *Handler) handleConsole(ctx context.Context, req Request, action string)
 	switch action {
 	case "session":
 		return h.handleConsoleSession(ctx, req)
+	case "chat":
+		return h.handleConsoleChat(ctx, req)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "console."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("console."+action))
 	}
+}
+
+func (h *Handler) handleConsoleChat(ctx context.Context, req Request) Response {
+	if h.consoleChat == nil {
+		return MakeErrorResponse(req.ID, NewInternalError("console chat service unavailable"))
+	}
+	var params struct {
+		Project string `json:"project"`
+		Cwd     string `json:"cwd"`
+		Engine  string `json:"engine"`
+		Model   string `json:"model"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+	}
+	engine := strings.TrimSpace(params.Engine)
+	modelID := strings.TrimSpace(params.Model)
+	if engine == "" {
+		return MakeErrorResponse(req.ID, NewValidationError("engine is required"))
+	}
+	projectID := h.resolveConsoleProject(ctx, strings.TrimSpace(params.Project), params.Cwd)
+	sid, token, err := h.consoleChat.CreateAuthenticated(engine, modelID, projectID)
+	if err != nil {
+		if errors.Is(err, service.ErrConsoleProjectNotFound) {
+			return MakeErrorResponse(req.ID, NewNotFoundError("project not found: "+projectID))
+		}
+		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+	}
+	logger.Info(ctx, "console chat minted over socket", "session_id", sid, "project", projectID, "engine", engine)
+	return MakeResponse(req.ID, map[string]string{
+		"session_id": sid,
+		"token":      token,
+		"project_id": projectID,
+		"engine":     engine,
+		"model":      modelID,
+	})
 }
 
 // handleConsoleSession mints a kind='console' agent_sessions row and returns its

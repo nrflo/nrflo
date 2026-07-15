@@ -21,8 +21,7 @@ type consoleClaudeMCPServer struct {
 // console launch needs to reach nrflo's tool bridge: a single "nrflo" server
 // entry invoking serverPath with args, with env embedded (bearer token never
 // in argv — argv is visible to any local user via `ps`). Sibling of
-// WriteConsoleCodexProfile; used by both the console claude driver
-// (console/driver_claude.go) and the claude console engine.
+// WriteConsoleCodexProfile; used by the Claude console engine.
 func WriteConsoleClaudeMCPConfig(dir, serverPath string, args []string, env map[string]string) (string, error) {
 	cfg := consoleClaudeMCPConfig{MCPServers: map[string]consoleClaudeMCPServer{
 		"nrflo": {

@@ -26,6 +26,7 @@ cd "$ROOT"
 # sorted by path. Shared by both modes so the two paths produce identical counts.
 snapshot() {
 	git ls-files "*.go" "*.ts" "*.tsx" | while IFS= read -r f; do
+		[ -f "$f" ] || continue # deleted paths remain in the index until commit
 		n=$(wc -l < "$f" | tr -d ' ')   # strip BSD wc's leading spaces
 		if [ "$n" -gt "$LIMIT" ]; then
 			printf '%s\t%s\n' "$f" "$n"

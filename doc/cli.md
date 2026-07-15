@@ -90,12 +90,11 @@ Codex agents use adapter-specific context tracking (JSON-RPC token usage) instea
 
 ## Local console (`nrflo_server console`)
 
-This manual covers spawned, `cli_interactive` agents. A human driving their
-own claude/codex CLI locally against a running server is a different surface:
-`nrflo_server console --cli claude|codex [--model ...]` — same flags as
-described in the root [README.md](../README.md#local-console-nrflo_server-console).
-The console tool profile the launched CLI sees over MCP is
-`be/internal/console` (see its CLAUDE.md), not this doc.
+This manual covers spawned, `cli_interactive` agents. The human console is a
+different surface: `nrflo_server console --engine claude|codex|api [--model ...]`
+opens a native TUI while `nrflo_server serve` owns the provider conversation.
+See the root [README.md](../README.md#local-console-nrflo_server-console); the
+server uses the `be/internal/console` tool profile, not this agent contract.
 
 ---
 

@@ -1,6 +1,6 @@
 # Claude Code Instructions for nrflo Backend
 
-Go backend for nrflo. Single binary: `nrflo_server`. It provides the HTTP API + WebSocket for the web UI, a Unix socket for agent communication, and hosts the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). Agents themselves drive nrflo (findings, lifecycle, artifacts, …) via MCP tools served by the `agent mcp` bridge — there is no separate `nrflo` CLI. Any standalone (non-spawned) MCP client drives nrflo via the token-authed `agent mcp-external` bridge, which opens a console session at connect (project fixed for the connection) and proxies `tools/list`/`tools/call` to the server-owned console tool catalogue — see [internal/api/CLAUDE.md](internal/api/CLAUDE.md). `nrflo_server console` launches a native claude/codex CLI locally with that same bridge injected as an MCP server, over a console session the command mints and owns — see [internal/console/CLAUDE.md](internal/console/CLAUDE.md#console-drivers). Deep mechanics (filesize gate, serve flags, .env, auth chain, DB test pattern): [REFERENCE.md](REFERENCE.md).
+Go backend for nrflo. Single binary: `nrflo_server`. It provides the HTTP API + WebSocket for the web UI, a Unix socket for agent communication, and hosts the agent infrastructure subcommands the spawner invokes (`nrflo_server agent {mcp,record-event,statusline,context-update}`). Agents themselves drive nrflo (findings, lifecycle, artifacts, …) via MCP tools served by the `agent mcp` bridge — there is no separate `nrflo` CLI. Any standalone (non-spawned) MCP client drives nrflo via the token-authed `agent mcp-external` bridge, which opens a console session at connect (project fixed for the connection) and proxies `tools/list`/`tools/call` to the server-owned console tool catalogue — see [internal/api/CLAUDE.md](internal/api/CLAUDE.md). `nrflo_server console` opens the native `internal/consoleui` TUI against a server-owned `console_chat` engine. Deep mechanics (filesize gate, serve flags, .env, auth chain, DB test pattern): [REFERENCE.md](REFERENCE.md).
 
 ## Project Structure
 
@@ -8,7 +8,7 @@ Entry point: `be/cmd/server/main.go` (calls `cli.RegisterServerCommands()`).
 
 Top-level packages under `be/internal/`:
 
-- `cli/` — Cobra commands: serve + the agent infra subcommands (mcp, record-event, statusline, context-update) + `console` (launches claude/codex locally with the mcp-external bridge injected)
+- `cli/` — Cobra commands: serve + agent infrastructure subcommands + `console` (native TUI for server-owned Claude/Codex/API conversations)
 - `spawner/` — Agent spawner, execution backends (cli_interactive/api/script), low-context save, template engine
 - `proc/` — Host process probing (no circular deps)
 - `scheduler/` — Cron-driven scheduled task runner
@@ -88,6 +88,7 @@ The Unix socket uses line-delimited JSON-RPC; methods in [internal/socket/CLAUDE
 | `internal/venv/` | [REFERENCE.md § venv](REFERENCE.md#venv) | Per-project Python venv manager |
 | `internal/spec_import/` | [spec_import/CLAUDE.md](internal/spec_import/CLAUDE.md) | Spec import adapters (GitHub Issue, Jira, Markdown passthrough) |
 | `internal/console/` | [console/CLAUDE.md](internal/console/CLAUDE.md) | Console tool profile + registry |
+| `internal/consoleui/` | [consoleui/CLAUDE.md](internal/consoleui/CLAUDE.md) | Native console TUI + REST/WebSocket client |
 
 Per-project env vars: see [internal/service/CLAUDE.md](internal/service/CLAUDE.md).
 Per-project cleanup toggle + retention limit endpoints: [REFERENCE.md § Project settings endpoints](REFERENCE.md#project-settings-endpoints).

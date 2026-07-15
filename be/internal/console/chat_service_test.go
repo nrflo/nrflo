@@ -109,6 +109,22 @@ func TestChatService_Create_MintsSessionAndStartsEngine(t *testing.T) {
 	}
 }
 
+func TestChatService_CreateAuthenticated_ReturnsOwnBearer(t *testing.T) {
+	t.Parallel()
+	svc, pool, _, _ := newChatTestService(t)
+	sid, token, err := svc.CreateAuthenticated("codex", "", chatTestProjectID)
+	if err != nil {
+		t.Fatalf("CreateAuthenticated: %v", err)
+	}
+	row, err := repo.NewAgentSessionRepo(pool, clock.Real()).GetConsoleChat(sid)
+	if err != nil || row == nil {
+		t.Fatalf("GetConsoleChat: row=%v err=%v", row, err)
+	}
+	if token == "" || token != row.SpawnToken.String {
+		t.Fatalf("returned bearer does not match session bearer")
+	}
+}
+
 // TestChatService_Create_InjectsAPIToolProfileUnconditionally verifies
 // ChatDeps.Tools is built into EngineDeps.API regardless of engine name (Rule
 // 6: no engine-name check at this call site) — the fake engine here is

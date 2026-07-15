@@ -78,11 +78,10 @@ func writeCodexSessionProfile(dir string, proc *processInfo) error {
 }
 
 // WriteConsoleCodexProfile writes the per-session CODEX_HOME profile for a
-// `nrflo_server console` codex launch: the same trust/auth/hook-stripping
-// profile writer as a spawned session, with the nrflo MCP server wired to the
-// `agent mcp-external` bridge (not `agent mcp` — a console launch is a human
-// session, not a managed one) so the console driver never duplicates this
-// logic.
+// server-owned Codex console engine: the same trust/auth/hook-stripping profile
+// writer as a spawned session, with the nrflo MCP server wired to the
+// `agent mcp-external` bridge (not `agent mcp` — a console chat is a human
+// session, not a managed one).
 func WriteConsoleCodexProfile(dir, workDir, serverPath string, env map[string]string) error {
 	if err := writeCodexProfileForSession(dir, workDir); err != nil {
 		return err

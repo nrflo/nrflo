@@ -106,8 +106,8 @@ func (e *claudeEngine) Name() string { return "claude" }
 
 // Start writes the per-session --mcp-config file, builds the console argv (no
 // --dangerously-skip-permissions, --disallowedTools, --strict-mcp-config, or
-// safety-hook merge — this is a human session, same boundary the local
-// console driver documents), registers + creates the PTY session under
+// safety-hook merge — this is a human-driven console conversation), registers
+// + creates the PTY session under
 // spec.SessionID (also a valid `claude --session-id` value), registers with
 // the Hub, and starts the PTY ferry + transcript tailer goroutines.
 func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {

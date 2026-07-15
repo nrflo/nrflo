@@ -16,7 +16,7 @@ import (
 // findings, project/ticket, web_search/web_fetch, deep_research).
 const consoleAPISystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, and research topics via web_search/web_fetch. You have NO file, edit, or shell/bash tools: you cannot read or write files on the user's machine and cannot execute commands. Use the tools available to you to answer the user's requests.`
 
-// newConsoleAPIProvider is a test seam (same idiom as console/driver.go's
+// newConsoleAPIProvider is a test seam (the same package-level factory idiom as
 // lookPath/dialAppServer) so tests can inject a fake provider without a
 // network call or real credentials.
 var newConsoleAPIProvider = service.BuildAPIProvider
@@ -37,6 +37,7 @@ type apiConsoleEngine struct {
 	cancel            context.CancelFunc
 	runCtx            context.Context
 	turnActive        bool
+	turnCancel        context.CancelFunc
 	stopped           bool
 	lastTurnStatus    string
 	lastCallbackLevel int
@@ -132,6 +133,8 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error 
 		return fmt.Errorf("api console engine: not started")
 	}
 	e.turnActive = true
+	turnCtx, turnCancel := context.WithCancel(runCtx)
+	e.turnCancel = turnCancel
 	e.turnWG.Add(1)
 	e.mu.Unlock()
 
@@ -141,19 +144,36 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error 
 	go func() {
 		defer e.turnWG.Done()
 		proc := &apiEngineProcState{e: e}
-		status := conv.SendTurn(runCtx, proc, text)
+		status := conv.SendTurn(turnCtx, proc, text)
 
 		e.mu.Lock()
 		e.turnActive = false
+		e.turnCancel = nil
 		e.mu.Unlock()
 
 		if status == "PASS" {
 			e.emit(EngineEvent{Type: EventTurnCompleted, SessionID: spec.SessionID})
 			return
 		}
+		if status == "CANCELLED" {
+			e.emit(EngineEvent{Type: EventTurnCompleted, SessionID: spec.SessionID})
+			return
+		}
 		e.emit(EngineEvent{Type: EventError, SessionID: spec.SessionID, Text: fmt.Sprintf("turn ended: %s", status), IsError: true})
 	}()
 
+	return nil
+}
+
+// InterruptTurn cancels only the current Conversation.SendTurn call; the
+// session-level context and accumulated conversation remain live.
+func (e *apiConsoleEngine) InterruptTurn(_ context.Context) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if !e.turnActive || e.turnCancel == nil {
+		return ErrNoActiveTurn
+	}
+	e.turnCancel()
 	return nil
 }
 

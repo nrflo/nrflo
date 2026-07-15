@@ -34,6 +34,7 @@ type codexEngine struct {
 	client     *appServerClient
 	profileDir string
 	threadID   string
+	turnID     string
 	turnActive bool
 
 	events       chan EngineEvent
@@ -58,8 +59,8 @@ func newCodexEngine(sink Sink) *codexEngine {
 
 func (e *codexEngine) Name() string { return "codex" }
 
-// Start writes the per-session CODEX_HOME profile (same writer the console
-// driver uses, WriteConsoleCodexProfile), dials the app-server, and performs
+// Start writes the per-session CODEX_HOME profile with
+// WriteConsoleCodexProfile, dials the app-server, and performs
 // the initialize/initialized/thread/start handshake before launching the
 // event loop. Spawn/handshake failures return an error synchronously — there
 // is no goroutine-then-DB-result path here, since a console session has no
@@ -151,6 +152,7 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 		return fmt.Errorf("console engine: not started")
 	}
 	e.turnActive = true
+	e.turnID = ""
 	e.mu.Unlock()
 
 	// Persist the user row BEFORE issuing turn/start: the agent rows this turn
@@ -159,12 +161,27 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 	// it answers.
 	emitMessage(spec.SessionID, text, "user_input", e.sink)
 
-	if _, err := client.call(ctx, "turn/start", turnStartParams(threadID, text, spec.ReasoningEffort, spec.Model)); err != nil {
+	resp, err := client.call(ctx, "turn/start", turnStartParams(threadID, text, spec.ReasoningEffort, spec.Model))
+	if err != nil {
 		e.mu.Lock()
 		e.turnActive = false
 		e.mu.Unlock()
 		return fmt.Errorf("console engine: turn/start: %w", err)
 	}
+	var started struct {
+		Turn struct {
+			ID string `json:"id"`
+		} `json:"turn"`
+	}
+	if json.Unmarshal(resp, &started) != nil || started.Turn.ID == "" {
+		e.mu.Lock()
+		e.turnActive = false
+		e.mu.Unlock()
+		return fmt.Errorf("console engine: turn/start: empty turn id")
+	}
+	e.mu.Lock()
+	e.turnID = started.Turn.ID
+	e.mu.Unlock()
 	return nil
 }
 
@@ -230,6 +247,7 @@ func (e *codexEngine) runLoop(ctx context.Context) {
 	defer func() {
 		e.mu.Lock()
 		e.turnActive = false
+		e.turnID = ""
 		e.mu.Unlock()
 	}()
 
@@ -258,6 +276,7 @@ func (e *codexEngine) runLoop(ctx context.Context) {
 			}
 			if sig.turnCompleted {
 				e.turnActive = false
+				e.turnID = ""
 			}
 			e.mu.Unlock()
 		}

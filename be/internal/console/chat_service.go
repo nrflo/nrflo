@@ -90,16 +90,28 @@ func (s *ChatService) SetEngineFactory(f func(name string, deps spawner.EngineDe
 // against this row. A failed Start closes it again rather than leaving an open
 // session with no engine.
 func (s *ChatService) Create(engine, modelID, projectID string) (sessionID string, err error) {
+	sessionID, _, err = s.create(engine, modelID, projectID)
+	return sessionID, err
+}
+
+// CreateAuthenticated is the trusted-local variant used by the Unix socket.
+// It returns the session bearer so a native TUI can drive only the chat it
+// just created. HTTP callers use Create and never receive this credential.
+func (s *ChatService) CreateAuthenticated(engine, modelID, projectID string) (sessionID, token string, err error) {
+	return s.create(engine, modelID, projectID)
+}
+
+func (s *ChatService) create(engine, modelID, projectID string) (sessionID, token string, err error) {
 	exists, err := repo.NewProjectRepo(s.deps.Pool, s.deps.Clock).Exists(projectID)
 	if err != nil {
-		return "", fmt.Errorf("check project: %w", err)
+		return "", "", fmt.Errorf("check project: %w", err)
 	}
 	if !exists {
-		return "", service.ErrConsoleProjectNotFound
+		return "", "", service.ErrConsoleProjectNotFound
 	}
 
 	sessionID = uuid.New().String()
-	token := id.MintToken()
+	token = id.MintToken()
 
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
 		SessionID:  sessionID,
@@ -110,7 +122,7 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 		ServerURL:  s.deps.ServerURL,
 	})
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	sink := &chatSink{
@@ -127,7 +139,7 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 	// ignore EngineDeps.API.
 	reg, err := BuildRegistry(s.deps.Tools)
 	if err != nil {
-		return "", fmt.Errorf("build console tool registry: %w", err)
+		return "", "", fmt.Errorf("build console tool registry: %w", err)
 	}
 
 	eng, err := s.engineFactory(engine, spawner.EngineDeps{
@@ -144,7 +156,7 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 		},
 	})
 	if err != nil {
-		return "", fmt.Errorf("build console engine: %w", err)
+		return "", "", fmt.Errorf("build console engine: %w", err)
 	}
 
 	sessionRepo := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock)
@@ -166,13 +178,13 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 	}
 	row.ConsoleEngine = sql.NullString{String: engine, Valid: true}
 	if err := sessionRepo.Create(row); err != nil {
-		return "", fmt.Errorf("create console_chat session: %w", err)
+		return "", "", fmt.Errorf("create console_chat session: %w", err)
 	}
 
 	if err := eng.Start(context.Background(), spec); err != nil {
 		eng.Stop()
 		_, _ = sessionRepo.CloseConsoleChat(sessionID)
-		return "", fmt.Errorf("start console engine: %w", err)
+		return "", "", fmt.Errorf("start console engine: %w", err)
 	}
 
 	sess := newChatSession(sessionID, projectID, engine, modelID, spec.WorkDir, eng)
@@ -182,7 +194,7 @@ func (s *ChatService) Create(engine, modelID, projectID string) (sessionID strin
 
 	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sessionID) })
 
-	return sessionID, nil
+	return sessionID, token, nil
 }
 
 // engineExited tears the session down after its engine's event channel closed
@@ -236,6 +248,15 @@ func (s *ChatService) ReplyApproval(sid, approvalID string, decision spawner.App
 		return ErrChatSessionNotFound
 	}
 	return sess.engine.ReplyApproval(approvalID, decision)
+}
+
+// Interrupt cancels the active turn without closing the chat session.
+func (s *ChatService) Interrupt(ctx context.Context, sid string) error {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ErrChatSessionNotFound
+	}
+	return sess.engine.InterruptTurn(ctx)
 }
 
 // Close stops the engine (its Events channel closing ends the event pump)

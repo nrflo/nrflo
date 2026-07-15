@@ -82,7 +82,7 @@ func chatEnv(sessionID, projectID string) []string {
 
 // chatMCPEnv builds the env the injected `agent mcp-external` bridge needs to
 // adopt this pre-minted chat session instead of exchanging its own — the same
-// shape console/driver.go's bridgeEnv uses for a human console session.
+// shape the external MCP bridge uses for an adopted console session.
 func chatMCPEnv(serverURL, projectID, sessionID, spawnToken string) map[string]string {
 	return map[string]string{
 		"NRFLO_SERVER_URL":         serverURL,

@@ -258,6 +258,7 @@ type Handler struct {
 	workflowRunner     WorkflowOrchestrator // optional; nil-safe
 	toolDispatcher     ToolDispatcher       // optional; nil-safe
 	consoleHooks       ConsoleHooks         // optional; nil-safe
+	consoleChat        ConsoleChatCreator   // optional; trusted local TUI mint
 	pool               *db.Pool
 	clk                clock.Clock
 
@@ -282,19 +283,4 @@ func NewHandler(pool *db.Pool, hub *ws.Hub, clk clock.Clock, signaler TerminalSi
 		clk:                clk,
 		thinkingOffsets:    make(map[string]int64),
 	}
-}
-
-// SetWorkflowRunner wires an optional orchestrator for observer trigger/retry methods.
-func (s *Server) SetWorkflowRunner(r WorkflowOrchestrator) {
-	s.handler.workflowRunner = r
-}
-
-// SetToolDispatcher wires the MCP tool dispatcher for api-via-cli sessions.
-func (s *Server) SetToolDispatcher(d ToolDispatcher) {
-	s.handler.toolDispatcher = d
-}
-
-// SetConsoleHooks wires the optional console-session hook router.
-func (s *Server) SetConsoleHooks(h ConsoleHooks) {
-	s.handler.consoleHooks = h
 }

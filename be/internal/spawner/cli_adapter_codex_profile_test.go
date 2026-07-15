@@ -228,10 +228,10 @@ func TestCodexAdapter_PrepareInteractive_FailureReturnsError(t *testing.T) {
 	cleanup() // must not panic even on error path
 }
 
-// TestWriteConsoleCodexProfile verifies the console codex driver's profile
+// TestWriteConsoleCodexProfile verifies the Codex console engine's profile
 // writer combines the trust/auth/hook-stripping profile with an
 // [mcp_servers.nrflo] table wired to `agent mcp-external` (not `agent mcp` —
-// a console launch is a human session, not a managed one), embedding the
+// a console chat is a human session, not a managed one), embedding the
 // bridge env since codex does not forward parent env to MCP subprocesses.
 func TestWriteConsoleCodexProfile(t *testing.T) {
 	fakeHome := t.TempDir()

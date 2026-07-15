@@ -195,9 +195,9 @@ See the agent authoring docs under [doc/](doc/) (served at /documentation in the
 
 ### Local console (`nrflo_server console`)
 
-`nrflo_server console --cli claude|codex [--model <cli_models id>] [--project <id>] [--server <url>] [--token <service token>]` launches your own claude or codex CLI locally, with the `agent mcp-external` bridge wired in as an MCP server so it can use nrflo tools. The token is a service token from **Settings → Administration → Service Tokens**. The session shows up in the UI as a console session and is closed automatically when the CLI exits.
+`nrflo_server console --engine claude|codex|api [--model <registry id>] [--project <id>] [--server <url>] [--token <service token>]` opens a native terminal UI while the running server owns the provider conversation. It streams Markdown and thinking, shows tool approvals, and interrupts the active turn with Ctrl+C without discarding conversation context; the chat is also visible in the web console and closes when the TUI exits.
 
-`--project` falls back to `NRFLO_PROJECT` then to the project whose root contains your working directory; `--server` falls back to `NRFLO_SERVER_URL` then to the local server; `--token` falls back to `NRFLO_MCP_TOKEN`. `--model` takes a `cli_models` registry id and applies its model, reasoning effort and fallback models; an id registered for the other CLI is rejected, and an unregistered id is passed through as a raw model name.
+Local use needs no token because the trusted Unix socket returns a bearer scoped to the newly created chat. Remote use requires a service token from **Settings → Administration → Service Tokens**; project and server flags fall back to `NRFLO_PROJECT`/cwd detection and `NRFLO_SERVER_URL` respectively. Claude/Codex model ids resolve through `cli_models`, while `api` resolves through `api_models`.
 
 ## Workflows
 

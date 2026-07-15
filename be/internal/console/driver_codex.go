@@ -62,6 +62,12 @@ func (d *codexDriver) Prepare(in LaunchInput) (LaunchSpec, func(), error) {
 	if effort != "" {
 		argv = append(argv, "-c", fmt.Sprintf("model_reasoning_effort=%q", effort))
 	}
+	// No opening ticket hint here (unlike claudeDriver): the codex TUI has no
+	// system-prompt-append, and its only extra-instruction channel is a project
+	// doc in the cwd (project_doc_fallback_filenames), which we must not write
+	// into the user's repo. The model gets the current ticket from the
+	// ticket_current tool instead (in.CurrentTicket is still surfaced on stderr
+	// by the console command).
 
 	return LaunchSpec{
 		Argv: argv,

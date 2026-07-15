@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"be/internal/service"
 )
 
 // seedTicket inserts a ticket with an explicit status/issue_type into projectID.
@@ -189,6 +191,56 @@ func TestTicketGet_CrossProjectIsolation(t *testing.T) {
 	out, isErr, _ := invoke(t, reg, toolEnv, "ticket_get", `{"ticket_id":"T-foreign"}`)
 	if !isErr {
 		t.Errorf("ticket_get on a foreign-project ticket should error, got out=%s", out)
+	}
+}
+
+func TestTicketCurrent_ReturnsStampedTicket(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	// Mint a real console session row carrying the current ticket.
+	sid, _, err := service.NewConsoleService(env.pool, env.clk).CreateSession(testProjectID, testTicketID)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	reg, err := BuildRegistry(env.deps)
+	if err != nil {
+		t.Fatalf("BuildRegistry: %v", err)
+	}
+	toolEnv := NewToolEnv(env.deps, sid, testProjectID)
+
+	out, isErr, err := invoke(t, reg, toolEnv, "ticket_current", `{}`)
+	if err != nil || isErr {
+		t.Fatalf("ticket_current err=%v isErr=%v out=%s", err, isErr, out)
+	}
+	var resp struct {
+		CurrentTicket map[string]interface{} `json:"current_ticket"`
+	}
+	if jerr := json.Unmarshal([]byte(out), &resp); jerr != nil {
+		t.Fatalf("output does not unmarshal: %v (out=%s)", jerr, out)
+	}
+	if resp.CurrentTicket == nil || resp.CurrentTicket["id"] != testTicketID {
+		t.Errorf("current_ticket = %v, want ticket %q", resp.CurrentTicket, testTicketID)
+	}
+}
+
+func TestTicketCurrent_NoTicket_ReturnsNull(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	// A session with no stamped ticket.
+	sid, _, err := service.NewConsoleService(env.pool, env.clk).CreateSession(testProjectID, "")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	reg, err := BuildRegistry(env.deps)
+	if err != nil {
+		t.Fatalf("BuildRegistry: %v", err)
+	}
+	toolEnv := NewToolEnv(env.deps, sid, testProjectID)
+
+	out, isErr, err := invoke(t, reg, toolEnv, "ticket_current", `{}`)
+	if err != nil || isErr {
+		t.Fatalf("ticket_current err=%v isErr=%v out=%s", err, isErr, out)
+	}
+	if out != `{"current_ticket":null}` {
+		t.Errorf("out = %s, want {\"current_ticket\":null}", out)
 	}
 }
 

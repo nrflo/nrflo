@@ -32,6 +32,7 @@ var wantConsoleOnly = []string{
 	"project_status",
 	"ticket_list",
 	"ticket_get",
+	"ticket_current",
 	"artifact_list",
 	"artifact_get",
 	"deep_research",

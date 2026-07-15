@@ -30,13 +30,14 @@ type nrfloHTTPClient struct {
 	defaultProject string // NRFLO_PROJECT; falls back to cwd match, then the global project
 	hc             *http.Client
 
-	mu             sync.Mutex // guards the session + cwd-cache fields below
-	consoleToken   string     // console session bearer — used for tools/list and tools/call
-	sessionID      string
-	sessionProject string // project the session is scoped to; pinned at first open
-	cwdResolved    bool   // cwd→project auto-detect, cached only after a successful lookup
-	cwdProjectID   string
-	ownsSession    bool // true once this client minted the current session — only an owner closes it
+	mu              sync.Mutex // guards the session + cwd-cache fields below
+	consoleToken    string     // console session bearer — used for tools/list and tools/call
+	sessionID       string
+	sessionProject  string // project the session is scoped to; pinned at first open
+	sessionTicketID string // current ticket accepted by the server from the git-branch hint ("" when none)
+	cwdResolved     bool   // cwd→project auto-detect, cached only after a successful lookup
+	cwdProjectID    string
+	ownsSession     bool // true once this client minted the current session — only an owner closes it
 
 	reopenMu sync.Mutex // single-flights the 401 session re-exchange
 }
@@ -130,6 +131,14 @@ func (c *nrfloHTTPClient) sessionProjectID() string {
 	return c.sessionProject
 }
 
+// sessionTicket returns the current ticket the server accepted for this session
+// from the git-branch hint ("" when the branch was not a known ticket).
+func (c *nrfloHTTPClient) sessionTicket() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.sessionTicketID
+}
+
 // openConsoleSession exchanges the SERVICE token for a console session:
 // POST /api/v1/console/sessions. The project is resolved on the first open and
 // reused verbatim by any later re-exchange, so a connection never silently
@@ -144,12 +153,17 @@ func (c *nrfloHTTPClient) openConsoleSession(ctx context.Context) error {
 	var res struct {
 		SessionID string `json:"session_id"`
 		Token     string `json:"token"`
+		TicketID  string `json:"ticket_id"`
 	}
-	if err := c.doAs(ctx, c.serviceToken, project, http.MethodPost, "/api/v1/console/sessions", nil, &res); err != nil {
+	// Candidate current ticket from the git branch; server validates and echoes
+	// back the accepted id ("" when the branch is not a known ticket).
+	body := map[string]string{"ticket_id": gitTicketHint()}
+	if err := c.doAs(ctx, c.serviceToken, project, http.MethodPost, "/api/v1/console/sessions", body, &res); err != nil {
 		return fmt.Errorf("open console session for project %q: %w", project, err)
 	}
 	c.mu.Lock()
 	c.sessionID, c.consoleToken, c.sessionProject = res.SessionID, res.Token, project
+	c.sessionTicketID = res.TicketID
 	c.ownsSession = true
 	c.mu.Unlock()
 	return nil

@@ -11,11 +11,11 @@ func TestConsoleSweepIdle_DefaultTTL(t *testing.T) {
 	t.Parallel()
 	pool, svc, clk := setupConsoleServiceTestEnv(t)
 
-	staleID, _, err := svc.CreateSession("proj1")
+	staleID, _, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession stale: %v", err)
 	}
-	freshID, _, err := svc.CreateSession("proj1")
+	freshID, _, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession fresh: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestConsoleSweepIdle_CustomTTLViaConfig(t *testing.T) {
 		t.Fatalf("SetConfig: %v", err)
 	}
 
-	sessionID, _, err := svc.CreateSession("proj1")
+	sessionID, _, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}

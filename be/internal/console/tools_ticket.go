@@ -143,3 +143,44 @@ func (h ticketGetHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input 
 	}
 	return string(b), false, nil
 }
+
+// ticketCurrentHandler implements ticket_current: the ticket the session is
+// working on, detected from the caller's git branch at session open and stamped
+// on the session row (agent_sessions.ticket_id). Returns the full ticket when
+// set, or {"current_ticket":null} when the session has none (branch was not a
+// known ticket, or the caller passed none) — never an error, so the model can
+// branch on the null and fall back to ticket_list.
+type ticketCurrentHandler struct{ d Deps }
+
+func (ticketCurrentHandler) Spec() provider.ToolSpec {
+	return provider.ToolSpec{
+		Name:        "ticket_current",
+		Description: "Return the ticket this session is working on (detected from the caller's git branch at launch), or null when there is none. Prefer its id as workflow_run's ticket_id unless the user names another; fall back to ticket_list when null.",
+		InputSchema: json.RawMessage(`{"type":"object","additionalProperties":false}`),
+	}
+}
+
+func (h ticketCurrentHandler) Invoke(ctx context.Context, env apirun.ToolEnv, _ json.RawMessage) (string, bool, error) {
+	if h.d.Pool == nil {
+		return missingService("pool")
+	}
+	none := `{"current_ticket":null}`
+	sess, err := repo.NewAgentSessionRepo(h.d.Pool, h.d.Clock).Get(env.SessionID)
+	if err != nil || sess == nil || sess.TicketID == "" {
+		return none, false, nil
+	}
+	if h.d.TicketSvc == nil {
+		return missingService("ticket")
+	}
+	// Stamped id may have been closed/deleted since launch — degrade to the bare id.
+	ticket, gerr := h.d.TicketSvc.Get(env.ProjectID, sess.TicketID)
+	if gerr != nil {
+		b, _ := json.Marshal(map[string]string{"current_ticket": sess.TicketID})
+		return string(b), false, nil
+	}
+	b, err := json.Marshal(map[string]interface{}{"current_ticket": ticket})
+	if err != nil {
+		return err.Error(), true, nil
+	}
+	return string(b), false, nil
+}

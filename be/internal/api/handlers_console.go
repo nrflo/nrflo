@@ -20,8 +20,22 @@ func (s *Server) handleCreateConsoleSession(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Optional current-ticket hint (e.g. the caller's git branch). Validated
+	// against the project; an unknown id is silently dropped, never an error —
+	// the session simply has no current ticket (silent fallback).
+	var body struct {
+		TicketID string `json:"ticket_id"`
+	}
+	_ = readJSON(r, &body)
+	ticketID := strings.TrimSpace(body.TicketID)
+	if ticketID != "" {
+		if _, gerr := s.ticketService().Get(projectID, ticketID); gerr != nil {
+			ticketID = ""
+		}
+	}
+
 	consoleSvc := service.NewConsoleService(s.pool, s.clock)
-	sessionID, token, err := consoleSvc.CreateSession(projectID)
+	sessionID, token, err := consoleSvc.CreateSession(projectID, ticketID)
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			writeError(w, http.StatusNotFound, "project not found")
@@ -36,6 +50,7 @@ func (s *Server) handleCreateConsoleSession(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusCreated, map[string]string{
 		"session_id": sessionID,
 		"token":      token,
+		"ticket_id":  ticketID,
 	})
 }
 

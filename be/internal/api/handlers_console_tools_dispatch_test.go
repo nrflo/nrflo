@@ -37,6 +37,7 @@ var toolArgsForDispatchTest = map[string]string{
 	"project_status":               `{}`,
 	"ticket_list":                  `{}`,
 	"ticket_get":                   `{"ticket_id":"t-nope"}`,
+	"ticket_current":               `{}`,
 	"artifact_list":                `{"instance_id":"wfi-nope"}`,
 	"artifact_get":                 `{"instance_id":"wfi-nope","name":"n"}`,
 	"deep_research":                `{"question":"q"}`,

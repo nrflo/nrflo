@@ -178,6 +178,7 @@ func runConsole(ctx context.Context) (int, error) {
 		FallbackModels:  fallbacks,
 		WorkDir:         workDir,
 		NrfloPath:       nrfloPath,
+		CurrentTicket:   client.sessionTicket(),
 	})
 	if err != nil {
 		return -1, err
@@ -185,6 +186,9 @@ func runConsole(ctx context.Context) (int, error) {
 	defer cleanup()
 
 	fmt.Fprintf(os.Stderr, "nrflo console: session %s, project %s, cli %s\n", sessionID, project, consoleCLIFlag)
+	if ticket := client.sessionTicket(); ticket != "" {
+		fmt.Fprintf(os.Stderr, "nrflo console: current ticket %s (from git branch)\n", ticket)
+	}
 
 	cmd := buildConsoleCmd(spec)
 	return runConsoleChild(cmd)

@@ -17,7 +17,7 @@ func TestConsoleToken_PassesBeforeClose_401sAfterClose(t *testing.T) {
 	seedConsoleProject(t, s, "proj-console-gate")
 
 	consoleSvc := service.NewConsoleService(s.pool, s.clock)
-	sessionID, token, err := consoleSvc.CreateSession("proj-console-gate")
+	sessionID, token, err := consoleSvc.CreateSession("proj-console-gate", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestHandleCloseConsoleSession_OwnBearer_Returns204(t *testing.T) {
 	s := newServerWithAuth(t)
 	seedConsoleProject(t, s, "proj-console-close-own")
 	consoleSvc := service.NewConsoleService(s.pool, s.clock)
-	sessionID, token, err := consoleSvc.CreateSession("proj-console-close-own")
+	sessionID, token, err := consoleSvc.CreateSession("proj-console-close-own", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestHandleCloseConsoleSession_Admin_Returns204(t *testing.T) {
 	cookie := injectSession(t, s, adminID)
 
 	consoleSvc := service.NewConsoleService(s.pool, s.clock)
-	sessionID, _, err := consoleSvc.CreateSession("proj-console-close-admin")
+	sessionID, _, err := consoleSvc.CreateSession("proj-console-close-admin", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestHandleCloseConsoleSession_NonAdminForeignProject_Returns403(t *testing.
 	s := newServerWithAuth(t)
 	seedConsoleProject(t, s, "proj-console-close-foreign")
 	consoleSvc := service.NewConsoleService(s.pool, s.clock)
-	sessionID, _, err := consoleSvc.CreateSession("proj-console-close-foreign")
+	sessionID, _, err := consoleSvc.CreateSession("proj-console-close-foreign", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}

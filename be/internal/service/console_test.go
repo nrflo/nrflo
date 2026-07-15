@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -51,7 +52,7 @@ func TestConsoleCreateSession_RowShape(t *testing.T) {
 	t.Parallel()
 	pool, svc, _ := setupConsoleServiceTestEnv(t)
 
-	sessionID, token, err := svc.CreateSession("proj1")
+	sessionID, token, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -89,15 +90,40 @@ func TestConsoleCreateSession_RowShape(t *testing.T) {
 	}
 }
 
+func TestConsoleCreateSession_StoresTicketID(t *testing.T) {
+	t.Parallel()
+	pool, svc, _ := setupConsoleServiceTestEnv(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	if _, err := pool.Exec(
+		`INSERT INTO tickets (id, project_id, title, created_at, updated_at, created_by) VALUES (?,?,?,?,?,'test')`,
+		"NRF-42", "proj1", "T", now, now); err != nil {
+		t.Fatalf("insert ticket: %v", err)
+	}
+
+	sessionID, _, err := svc.CreateSession("proj1", "NRF-42")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	var ticketID string
+	if err := pool.QueryRow(`SELECT ticket_id FROM agent_sessions WHERE id = ?`, sessionID).Scan(&ticketID); err != nil {
+		t.Fatalf("query ticket_id: %v", err)
+	}
+	// agent_sessions lowercases ticket_id on write (repo convention; all reads
+	// use LOWER()), so compare case-insensitively.
+	if !strings.EqualFold(ticketID, "NRF-42") {
+		t.Errorf("ticket_id = %q, want NRF-42 (case-insensitive)", ticketID)
+	}
+}
+
 func TestConsoleCreateSession_TokensDistinctPerCall(t *testing.T) {
 	t.Parallel()
 	_, svc, _ := setupConsoleServiceTestEnv(t)
 
-	_, tok1, err := svc.CreateSession("proj1")
+	_, tok1, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession 1: %v", err)
 	}
-	_, tok2, err := svc.CreateSession("proj1")
+	_, tok2, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession 2: %v", err)
 	}
@@ -110,7 +136,7 @@ func TestConsoleCreateSession_UnknownProjectErrors(t *testing.T) {
 	t.Parallel()
 	_, svc, _ := setupConsoleServiceTestEnv(t)
 
-	_, _, err := svc.CreateSession("no-such-project")
+	_, _, err := svc.CreateSession("no-such-project", "")
 	if err == nil {
 		t.Fatalf("expected error for unknown project")
 	}
@@ -120,7 +146,7 @@ func TestConsoleCloseSession_FlipsStatusAndIsIdempotent(t *testing.T) {
 	t.Parallel()
 	pool, svc, _ := setupConsoleServiceTestEnv(t)
 
-	sessionID, _, err := svc.CreateSession("proj1")
+	sessionID, _, err := svc.CreateSession("proj1", "")
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}

@@ -58,6 +58,12 @@ func (d *claudeDriver) Prepare(in LaunchInput) (LaunchSpec, func(), error) {
 	if in.FallbackModels != "" {
 		argv = append(argv, "--fallback-model", in.FallbackModels)
 	}
+	// Proactively tell the model which ticket the worktree belongs to, so it
+	// defaults workflow_run's ticket_id without a ticket_current round-trip.
+	// --append-system-prompt adds to (never replaces) claude's own prompt.
+	if hint := ticketHint(in.CurrentTicket); hint != "" {
+		argv = append(argv, "--append-system-prompt", hint)
+	}
 
 	return LaunchSpec{
 		Argv: argv,

@@ -31,6 +31,11 @@ type LaunchInput struct {
 	FallbackModels  string
 	WorkDir         string
 	NrfloPath       string
+	// CurrentTicket is the ticket the session is working on, detected from the
+	// caller's git branch and validated server-side ("" when none). Drivers
+	// inject it as an opening system-prompt hint so the model defaults
+	// workflow_run's ticket_id to it without being asked.
+	CurrentTicket string
 }
 
 // LaunchSpec is what the console command execs: argv[0] plus its arguments,
@@ -68,6 +73,18 @@ func GetDriver(name string) (ConsoleDriver, error) {
 	default:
 		return nil, fmt.Errorf("unknown CLI: %s", name)
 	}
+}
+
+// ticketHint renders the opening system-prompt line for a detected current
+// ticket, or "" when there is none. Shared so every driver phrases it
+// identically; each driver decides how (or whether) to inject it.
+func ticketHint(ticketID string) string {
+	if ticketID == "" {
+		return ""
+	}
+	return fmt.Sprintf("You are working in the git worktree for nrflo ticket %q. "+
+		"Use it as workflow_run's ticket_id unless the user names a different ticket; "+
+		"call ticket_get for its details or ticket_current to re-check.", ticketID)
 }
 
 // bridgeEnv builds the env vars the injected `agent mcp-external` bridge

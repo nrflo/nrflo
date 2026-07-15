@@ -44,8 +44,11 @@ func NewConsoleService(pool *db.Pool, clk clock.Clock) *ConsoleService {
 
 // CreateSession validates the project exists and inserts a kind='console'
 // agent_sessions row with a freshly minted bearer token. Returns the session
-// id and the token (exposed to the caller exactly once).
-func (s *ConsoleService) CreateSession(projectID string) (sessionID, token string, err error) {
+// id and the token (exposed to the caller exactly once). ticketID is stored
+// verbatim as the session's "current ticket" (read back by the ticket_current
+// tool); callers validate it against the project first and pass "" when the
+// caller has no ticket context — CreateSession trusts it and does not re-check.
+func (s *ConsoleService) CreateSession(projectID, ticketID string) (sessionID, token string, err error) {
 	projectRepo := repo.NewProjectRepo(s.pool, s.clock)
 	exists, err := projectRepo.Exists(projectID)
 	if err != nil {
@@ -63,7 +66,7 @@ func (s *ConsoleService) CreateSession(projectID string) (sessionID, token strin
 	sess := &model.AgentSession{
 		ID:         sessionID,
 		ProjectID:  projectID,
-		TicketID:   "",
+		TicketID:   ticketID,
 		Phase:      "console",
 		NodeID:     "console",
 		AgentType:  "console",

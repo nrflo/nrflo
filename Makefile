@@ -44,8 +44,14 @@ $(EMBED_GITKEEP):
 ## build: Build the server binary (dev, includes UI)
 build: build-server
 
+# ui/node_modules is absent in fresh git worktrees; bootstrap on demand so
+# build-ui / test-ui never need a manual `npm ci` first.
+$(UI_DIR)/node_modules: $(UI_DIR)/package-lock.json
+	cd $(UI_DIR) && $(NPM) ci
+	@touch $@
+
 ## build-ui: Build UI and copy dist to embed directory
-build-ui:
+build-ui: $(UI_DIR)/node_modules
 	cd $(UI_DIR) && $(NPM) run build
 	rm -rf $(STATIC_DIR)
 	cp -r $(UI_DIR)/dist $(STATIC_DIR)
@@ -129,7 +135,7 @@ test-smoke: embed-assets
 	@cd $(BE_DIR) && $(GO) test -tags smoke ./cmd -count=1; RC=$$?; rmdir $(BE_LOCK) 2>/dev/null || true; exit $$RC
 
 ## test-ui: Run frontend tests (60s wall-time constraint; skipped on CI runners). Use ARGS= for path filter.
-test-ui:
+test-ui: $(UI_DIR)/node_modules
 	$(acquire_ui_lock)
 	@START=$$(date +%s); \
 	cd $(UI_DIR) && NODE_OPTIONS="$${NODE_OPTIONS:+$$NODE_OPTIONS }--no-experimental-webstorage" npx vitest run $(ARGS); \
@@ -181,6 +187,10 @@ GOLANGCI_VERSION ?= v2.12.2
 BE_BIN     := $(BE_DIR)/bin
 GOLANGCI   := $(BE_BIN)/golangci-lint
 DEADCODE   := $(BE_BIN)/deadcode
+# Per-checkout lint cache: the default user-wide cache replays stale
+# diagnostics from deleted sibling worktrees (phantom errcheck/unparam hits
+# against ../../<worktree>/...). be/bin is already gitignored.
+GOLANGCI_ENV := GOLANGCI_LINT_CACHE=$(CURDIR)/$(BE_BIN)/.golangci-cache
 
 $(GOLANGCI):
 	@mkdir -p $(BE_BIN)
@@ -194,15 +204,15 @@ $(DEADCODE):
 
 ## lint: Run golangci-lint over the backend (cleanup gate; enforces gofmt)
 lint: embed-assets $(GOLANGCI)
-	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) run ./...
+	cd $(BE_DIR) && $(GOLANGCI_ENV) $(CURDIR)/$(GOLANGCI) run ./...
 
 ## lint-fix: golangci-lint formatters + autofix
 lint-fix: embed-assets $(GOLANGCI)
-	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) fmt ./... && $(CURDIR)/$(GOLANGCI) run --fix ./...
+	cd $(BE_DIR) && $(GOLANGCI_ENV) $(CURDIR)/$(GOLANGCI) fmt ./... && $(GOLANGCI_ENV) $(CURDIR)/$(GOLANGCI) run --fix ./...
 
 ## lint-pkg: Lint one package (usage: make lint-pkg PKG=orchestrator)
 lint-pkg: embed-assets $(GOLANGCI)
-	cd $(BE_DIR) && $(CURDIR)/$(GOLANGCI) run ./internal/$(PKG)/...
+	cd $(BE_DIR) && $(GOLANGCI_ENV) $(CURDIR)/$(GOLANGCI) run ./internal/$(PKG)/...
 
 ## deadcode: Report unreachable funcs; fails on NEW dead code vs deadcode.baseline
 deadcode: embed-assets $(DEADCODE)

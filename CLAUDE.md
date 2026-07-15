@@ -24,7 +24,7 @@ CLAUDE.md is auto-loaded into every agent's context window. It is documentation,
 
 **Populating (one pass, no thrash).** (1) Pick ONE owning package CLAUDE.md per changed area — deepest wins; no behavior change → no doc edit. (2) Add/update ≤3 sentences in the relevant section; anything longer is REFERENCE.md material. (3) Never reword existing unrelated content to free space. (4) Measure `wc -c` once at the END; if over cap, move the largest mechanics paragraph to REFERENCE.md — do not compress wording.
 
-**Hard caps** (bytes, enforced by reviewer + `check_caps.sh`): root 10240; be/, ui/, package 12288 (spawner 15360); leaf 6144. Banned content (box diagrams, copied signatures, long payload samples, per-test/per-endpoint inventories, duplicated matrices) and the **one-pass populate procedure**: [REFERENCE.md](REFERENCE.md#doc-authoring-full-rule-1) — read it before editing any CLAUDE.md.
+**Hard caps** (bytes, enforced by reviewer + `.claude/skills/finalize/check_caps.sh`): root 10240; be/, ui/, package 12288 (spawner 15360); leaf 6144. Banned content (box diagrams, copied signatures, long payload samples, per-test/per-endpoint inventories, duplicated matrices) and the **one-pass populate procedure**: [REFERENCE.md](REFERENCE.md#doc-authoring-full-rule-1) — read it before editing any CLAUDE.md.
 
 ### 2. Layer-Based Phase Execution
 

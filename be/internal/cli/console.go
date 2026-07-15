@@ -43,12 +43,14 @@ safety-hook --settings injection (claude), no
 --dangerously-bypass-approvals-and-sandbox (codex). Native delegation and the
 CLI's own approval/sandbox prompts stay exactly as they are for you normally.
 
-Requires a service token (Settings → Administration → Service Tokens), via
---token or NRFLO_MCP_TOKEN. The project resolves from --project, else
-NRFLO_PROJECT, else the working directory matched against project root paths,
-else the hidden global project; the server from --server, else NRFLO_SERVER_URL,
-else the local default. The console session is closed automatically when the
-CLI exits.
+A LOCAL server (the default, or any loopback --server) needs no token: the
+console session is minted over the trusted Unix socket, since filesystem access
+to $NRFLO_HOME is already the authorization. A REMOTE --server requires a
+service token (Settings → Administration → Service Tokens) via --token or
+NRFLO_MCP_TOKEN. The project resolves from --project, else NRFLO_PROJECT, else
+the working directory matched against project root paths, else the hidden global
+project; the server from --server, else NRFLO_SERVER_URL, else the local
+default. The console session is closed automatically when the CLI exits.
 
 --model takes a cli_models registry id: its mapped_model, reasoning_effort and
 fallback_models all apply. An id registered for the other --cli errors out; an
@@ -87,9 +89,6 @@ func runConsole(ctx context.Context) (int, error) {
 	if token == "" {
 		token = os.Getenv("NRFLO_MCP_TOKEN")
 	}
-	if token == "" {
-		return -1, fmt.Errorf("service token required: pass --token or set NRFLO_MCP_TOKEN (Settings → Administration → Service Tokens)")
-	}
 
 	drv, err := console.GetDriver(consoleCLIFlag)
 	if err != nil {
@@ -114,9 +113,19 @@ func runConsole(ctx context.Context) (int, error) {
 	if projectFlag == "" {
 		projectFlag = os.Getenv("NRFLO_PROJECT")
 	}
+	server = strings.TrimRight(server, "/")
+
+	// Auth: an explicit service token drives the HTTP flow (local or remote).
+	// With no token, a LOCAL server is reached over the trusted Unix socket
+	// (filesystem access to $NRFLO_HOME IS the authorization) — no token needed.
+	// A remote server with no token cannot be authenticated.
+	useSocket := token == "" && isLocalServer(server)
+	if token == "" && !useSocket {
+		return -1, fmt.Errorf("service token required for a remote server (%s): pass --token or set NRFLO_MCP_TOKEN (Settings → Administration → Service Tokens)", server)
+	}
 
 	client := &nrfloHTTPClient{
-		base:           strings.TrimRight(server, "/"),
+		base:           server,
 		serviceToken:   token,
 		defaultProject: projectFlag,
 		hc:             &http.Client{},
@@ -130,11 +139,19 @@ func runConsole(ctx context.Context) (int, error) {
 		client.mu.Unlock()
 	}
 
-	openCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	err = client.openConsoleSession(openCtx)
-	cancel()
-	if err != nil {
-		return -1, err
+	if useSocket {
+		mint, mErr := mintConsoleSessionOverSocket(projectFlag, gitTicketHint())
+		if mErr != nil {
+			return -1, mErr
+		}
+		client.installConsoleSession(mint.SessionID, mint.Token, mint.ProjectID, mint.TicketID)
+	} else {
+		openCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		err = client.openConsoleSession(openCtx)
+		cancel()
+		if err != nil {
+			return -1, err
+		}
 	}
 	defer client.closeConsoleSession()
 

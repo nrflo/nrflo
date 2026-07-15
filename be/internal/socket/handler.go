@@ -58,6 +58,8 @@ func (h *Handler) Handle(req Request) Response {
 		return h.handleArtifact(ctx, req, action)
 	case "observer":
 		return h.handleObserver(ctx, req, action)
+	case "console":
+		return h.handleConsole(ctx, req, action)
 	case "tools":
 		return h.handleTools(req, action)
 	default:

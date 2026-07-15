@@ -10,9 +10,11 @@ import (
 )
 
 // resolveCLIModel resolves a --model flag value (a cli_models registry id,
-// case-insensitive) against GET /api/v1/cli-models — a `protected` route, so
-// the console command's service token works. The caller skips this entirely
-// for an empty --model ("omit the flag, let the CLI use its own default").
+// case-insensitive) against GET /api/v1/cli-models — a `protected` route. It
+// runs after the session is open, so `do` uses the console session bearer
+// (which satisfies requireAuth), falling back to the service token; either way
+// no token is required beyond what opened the session. The caller skips this
+// entirely for an empty --model ("omit the flag, let the CLI use its own default").
 //
 // Three outcomes:
 //   - a matching enabled row for cliType -> that row; its mapped_model,
@@ -28,7 +30,7 @@ import (
 // err is also returned for a registry-fetch transport/decode failure.
 func (c *nrfloHTTPClient) resolveCLIModel(ctx context.Context, cliType, id string) (*model.CLIModel, error) {
 	var models []model.CLIModel
-	if err := c.doAs(ctx, c.serviceToken, "", http.MethodGet, "/api/v1/cli-models", nil, &models); err != nil {
+	if err := c.do(ctx, "", http.MethodGet, "/api/v1/cli-models", nil, &models); err != nil {
 		return nil, fmt.Errorf("fetch cli-models registry: %w", err)
 	}
 	for i := range models {

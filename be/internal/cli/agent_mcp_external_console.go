@@ -184,6 +184,19 @@ func (c *nrfloHTTPClient) adoptConsoleSession(sessionID, token, project string) 
 	c.mu.Unlock()
 }
 
+// installConsoleSession installs a session this client OWNS — minted over the
+// local Unix socket by `nrflo_server console` (or re-minted there after an idle
+// sweep). Unlike adoptConsoleSession, ownsSession is true, so closeConsoleSession
+// closes it on exit; the project is pinned and cwd auto-detect is skipped.
+func (c *nrfloHTTPClient) installConsoleSession(sessionID, token, project, ticket string) {
+	c.mu.Lock()
+	c.sessionID, c.consoleToken, c.sessionProject = sessionID, token, project
+	c.sessionTicketID = ticket
+	c.cwdResolved, c.cwdProjectID = true, project
+	c.ownsSession = true
+	c.mu.Unlock()
+}
+
 // closeConsoleSession best-effort closes the console session with its own
 // bearer, but only if this client owns it — an adopted session (see
 // adoptConsoleSession) is closed by its owner (the parent `console` command),
@@ -267,14 +280,21 @@ func (c *nrfloHTTPClient) withSessionRetry(ctx context.Context, call func() erro
 func (c *nrfloHTTPClient) reopenSession(ctx context.Context, staleToken string) error {
 	c.reopenMu.Lock()
 	defer c.reopenMu.Unlock()
-	if c.serviceToken == "" {
-		return fmt.Errorf("console session expired and NRFLO_MCP_TOKEN is not set — cannot re-exchange a fresh session")
-	}
 	c.mu.Lock()
 	current := c.consoleToken
 	c.mu.Unlock()
 	if current != staleToken {
 		return nil // another goroutine already re-exchanged — retry with its token
+	}
+	if c.serviceToken == "" {
+		// Token-less local session (nrflo_server console over the socket): re-mint
+		// over the same trusted socket instead of erroring on the missing token.
+		mint, err := mintConsoleSessionOverSocket(c.sessionProjectID(), gitTicketHint())
+		if err != nil {
+			return fmt.Errorf("console session expired and re-mint over socket failed: %w", err)
+		}
+		c.installConsoleSession(mint.SessionID, mint.Token, mint.ProjectID, mint.TicketID)
+		return nil
 	}
 	return c.openConsoleSession(ctx)
 }

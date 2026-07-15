@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -100,6 +101,13 @@ func bridgeEnv(in LaunchInput) map[string]string {
 	}
 	if in.ServiceToken != "" {
 		env["NRFLO_MCP_TOKEN"] = in.ServiceToken
+	}
+	// Propagate the socket/home location so a token-less bridge can re-mint its
+	// console session over the local socket if the adopted one is swept idle.
+	for _, k := range []string{"NRFLO_SOCKET", "NRFLO_HOME"} {
+		if v := os.Getenv(k); v != "" {
+			env[k] = v
+		}
 	}
 	return env
 }

@@ -150,7 +150,10 @@ func (f *fakeConsoleServer) handle(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodGet && r.URL.Path == "/api/v1/projects":
 		writeTestJSON(w, http.StatusOK, map[string]any{"projects": f.projects})
 	case r.Method == http.MethodGet && r.URL.Path == "/api/v1/cli-models":
-		if log.auth != "Bearer "+f.serviceToken {
+		// `protected` route: the real requireAuth accepts either the service
+		// token or the (user_interactive) console session bearer. The console
+		// command sends the session bearer once the session is open.
+		if log.auth != "Bearer "+f.serviceToken && (f.sessionToken == "" || log.auth != "Bearer "+f.sessionToken) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

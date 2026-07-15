@@ -35,6 +35,7 @@ Contents: [Supported Methods](#supported-methods) · [Observer Authorization](#o
 | `workflow.skip` | Add skip tag to workflow instance; validates against workflow groups |
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
 | `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
+| `console.session` | Mint a `kind='console'` session over the trusted socket (filesystem access = auth), returning `{session_id, token, project_id, ticket_id}`. Used by `nrflo_server console`/`agent mcp-external` against a LOCAL server so no service token is needed. Params: `{project?, cwd?, ticket_id?}`; project resolves explicit-hint → `cwd` matched against project `root_path`s → global; `ticket_id` (git branch) validated + dropped when unknown. Unknown explicit project → not-found error |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 | `script.context` | Return 20-key auto-injectable dict for script-mode session (incl. `node_id`, `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`, `external_id`, `external_context`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |

@@ -66,6 +66,11 @@ func (s *WorktreeService) Setup(projectRoot, defaultBranch, branchName string) (
 	if err != nil {
 		return "", fmt.Errorf("worktree setup: failed to resolve path: %w", err)
 	}
+
+	// Gitignored agent-context files (CLAUDE.md/AGENTS.md/.claude) are absent
+	// from the checkout; seed them so worktree agents see what root agents see.
+	seedAgentContext(projectRoot, absPath)
+
 	return absPath, nil
 }
 

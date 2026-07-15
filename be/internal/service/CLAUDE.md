@@ -29,7 +29,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `daily_stats.go` | Daily stats computation (workflow_agent sessions only) |
 | `console.go` | Console session lifecycle: Create (kind='console' row + bearer), Close, SweepIdle (`console_idle_ttl_hours`) |
 | `git.go` | Paginated commit listing and commit detail (os/exec) |
-| `worktree.go` | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup |
+| `worktree.go` (+ `_context.go`) | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup; Setup seeds untracked/gitignored agent context into the worktree (CLAUDE.md/AGENTS.md copied, `.claude` dirs symlinked, any depth, absent-only) |
 | `system_agent_definition.go` (+ `_read.go`) | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
 | `cli_model.go` + `model_reasoning.go` + `cli_availability.go` | CLI model CRUD; exported effort validators `ValidateReasoningEffort`/`ValidateAPIReasoningEffort` (reused by the spawner at spawn time): `xhigh` only for claude-opus-4-7/4-8 or claude-sonnet-5, `ultra` only for codex gpt-5.6-sol/terra (rejected for API models); `normalizeFallbackModels` caps `fallback_models` at 3; readonly rows only accept `reasoning_effort`/`fallback_models` updates. `CLIAvailable(cliType)`: memoized, injectable-`lookPath` PATH probe — hides a read_only row's templates when its binary is absent |

@@ -38,8 +38,10 @@ logs/
 .AppleDouble
 .LSOverride
 
-# Claude Code
-.claude/
+# Claude Code — local state stays ignored; skills are versioned so spawned
+# agents get them in worktrees (committed docs reference SKILL.md scripts).
+.claude/*
+!.claude/skills/
 
 # Editor directories and files
 .vscode/*

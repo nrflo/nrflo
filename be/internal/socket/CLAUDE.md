@@ -13,7 +13,7 @@ Methods by namespace; the full per-method params/behavior table is [REFERENCE.md
 - `findings.*` / `project_findings.*` — add / add-bulk / get / append / append-bulk / delete, plus `findings.emit` (schema-validated store)
 - `agent.*` — lifecycle (`fail`/`finished`/`continue`/`callback`), `context_update`, `rate_limits_update`, `chain_next_instructions`/`chain_next_ticket`, `consult` (sync api-mode consultant), `record_event` (Claude hook events: tool spans, stop-hook completion enforcement, transcript thinking tail; for a `kind='console'` session, `PreToolUse` additionally blocks on a `ConsoleHooks`-routed human approval decision, returned as `permission_decision` in the response), `log`
 - `workflow.*` — skip / continue / fail (session-ownership validated)
-- `console.session` — mint a `kind='console'` tool session over the socket for a tokenless local `agent mcp-external`; `console.chat` starts a server-owned chat engine and returns its scoped bearer for the native TUI. Both resolve project explicit-hint → `cwd` → global
+- `console.session` — mint a local tool session; `console.catalog` discovers available engines/models and live chats; `console.chat` starts a chat; `console.attach` returns an existing live chat's unchanged scoped bearer. All resolve project explicit-hint → `cwd` → global
 - `ws.broadcast`, `script.context` (script-mode context dict), `artifact.add/list/get`, `tools.list/call` (api-via-cli in-process tool registry via the wired `ToolDispatcher`)
 - `observer.*` — workflow/project/global reads plus feature-gated mutate methods
 

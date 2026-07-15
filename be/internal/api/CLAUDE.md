@@ -82,4 +82,4 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 
 #### Console chats
 
-`POST /api/v1/console/chats` (`projectAdmin`, body `{engine, model}`) mints a `kind='console_chat'` session and starts its `console.ChatService`-owned engine; the trusted socket's `console.chat` method performs the same creation and returns only that chat's bearer for a local TUI. Path-scoped routes cover messages/history, approval, active-turn interruption, detail, and close; all use the same admin/service-principal/own-bearer predicate. Live deltas/turn/approval events stream over the WS session-subscription channel — see [ws/CLAUDE.md](../ws/CLAUDE.md).
+`GET /api/v1/console/catalog` discovers enabled engines/models and live resumable chats; `POST /api/v1/console/chats` starts a `ChatService`-owned engine. Path-scoped routes cover paginated history, approval, interruption, reconnect detail (including bounded in-flight output), and close under the shared chat authorization predicate. Live events stream over the WS session channel — see [ws/CLAUDE.md](../ws/CLAUDE.md).

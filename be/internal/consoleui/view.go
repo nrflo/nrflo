@@ -33,7 +33,13 @@ func (m *model) View() tea.View {
 	if len(m.approvals) > 0 {
 		sections = append(sections, m.approvalView())
 	}
-	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.footer())
+	composer := m.input.View()
+	if m.searchMode {
+		composer = m.search.View()
+	} else if m.copyMode {
+		composer = "copy mode · navigate with arrows/j/k · y copies visible text · ctrl+p loads older"
+	}
+	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.footer())
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
@@ -58,12 +64,18 @@ func (m *model) header() string {
 }
 
 func (m *model) footer() string {
-	help := "enter send · shift+enter/ctrl+j newline · ctrl+d quit"
+	help := "enter send · ctrl+f search · ctrl+g copy mode · ctrl+d detach · ctrl+x close"
 	if m.status == "running" {
-		help = "working… · ctrl+c interrupt · ctrl+d quit"
+		help = "working… · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
 	}
 	if m.lastErr != "" {
 		return errorStyle.Render(" " + truncate(m.lastErr, max(20, m.width-2)))
+	}
+	if m.notice != "" {
+		return mutedStyle.Render(" " + m.notice)
+	}
+	if m.searchStatus != "" {
+		return mutedStyle.Render(" " + m.searchStatus + " · F3/Shift+F3 next/previous")
 	}
 	return mutedStyle.Render(" " + help)
 }
@@ -101,7 +113,13 @@ func (m *model) refreshTranscript() {
 	if m.historyDirty || m.renderedWidth != contentWidth {
 		history := make([]string, 0, len(m.messages))
 		for _, message := range m.messages {
-			history = append(history, renderMessage(message, contentWidth))
+			key := renderCacheKey(message, contentWidth)
+			rendered, ok := m.renderCache[key]
+			if !ok {
+				rendered = renderMessage(message, contentWidth)
+				m.renderCache[key] = rendered
+			}
+			history = append(history, rendered)
 		}
 		m.renderedHistory = strings.Join(history, "\n\n")
 		m.renderedWidth = contentWidth
@@ -120,6 +138,9 @@ func (m *model) refreshTranscript() {
 		parts = append(parts, mutedStyle.Italic(true).Render("thinking · "+m.thinking))
 	}
 	m.viewport.SetContent(strings.Join(parts, "\n\n"))
+	if m.searchStatus != "" {
+		m.applySearch()
+	}
 	if atBottom || len(m.messages) <= 1 {
 		m.viewport.GotoBottom()
 	}

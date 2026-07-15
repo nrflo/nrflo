@@ -37,6 +37,8 @@ Contents: [Supported Methods](#supported-methods) · [Observer Authorization](#o
 | `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
 | `console.session` | Mint a `kind='console'` tool session over the trusted socket for a local `agent mcp-external`. Params: `{project?, cwd?, ticket_id?}`; project resolves explicit hint → cwd match → global |
 | `console.chat` | Start a server-owned `console_chat` engine and return its session-scoped bearer to the native TUI. Params: `{project?, cwd?, engine, model?}`; same project resolution as `console.session` |
+| `console.catalog` | Return the resolved project, server-enabled engine/model options, and live resumable chats. Params: `{project?, cwd?}` |
+| `console.attach` | Return an existing live chat's unchanged scoped bearer after project validation; never rotates the token because the engine's MCP bridge shares it. Params: `{project?, cwd?, session_id}` |
 | `ws.broadcast` | Broadcast event to WebSocket hub |
 | `script.context` | Return 20-key auto-injectable dict for script-mode session (incl. `node_id`, `seed_findings`, `workflow_status`, `workflow_result`, `workflow_final_result`, `failure_reason`, `external_id`, `external_context`). Params: `{session_id}` |
 | `artifact.add` | Upload artifact inline (base64); max 32 MiB; broadcasts `artifact.created`. Params: `{session_id, name, content_b64, content_type?}` |

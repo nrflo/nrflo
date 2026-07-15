@@ -12,6 +12,13 @@ type ChatSnapshot struct {
 	WorkDir          string
 	Turn             string
 	PendingApprovals []*spawner.ApprovalRequest
+	LiveItems        []ChatLiveItem
+	Thinking         ChatLiveItem
+}
+
+type ChatLiveItem struct {
+	ID   string
+	Text string
 }
 
 // Snapshot returns sid's live in-memory state. ok=false means no live engine
@@ -22,13 +29,15 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 	if !ok {
 		return ChatSnapshot{}, false
 	}
-	turn, pending := sess.snapshot()
+	state := sess.snapshot()
 	return ChatSnapshot{
 		Engine:           sess.EngineName(),
 		ModelID:          sess.ModelID(),
 		WorkDir:          sess.WorkDir(),
-		Turn:             string(turn),
-		PendingApprovals: pending,
+		Turn:             string(state.Turn),
+		PendingApprovals: state.Pending,
+		LiveItems:        state.Live,
+		Thinking:         state.Thinking,
 	}, true
 }
 

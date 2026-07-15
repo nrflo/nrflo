@@ -91,10 +91,10 @@ Codex agents use adapter-specific context tracking (JSON-RPC token usage) instea
 ## Local console (`nrflo_server console`)
 
 This manual covers spawned, `cli_interactive` agents. The human console is a
-different surface: `nrflo_server console --engine claude|codex|api [--model ...]`
-opens a native TUI while `nrflo_server serve` owns the provider conversation.
-See the root [README.md](../README.md#local-console-nrflo_server-console); the
-server uses the `be/internal/console` tool profile, not this agent contract.
+different surface: `nrflo_server console` opens the server-driven resume/model
+picker, while `--engine ... [--model ...]` starts directly and `--resume ...`
+reattaches a live chat. Ctrl+D detaches without stopping the provider; see the
+root [README.md](../README.md#local-console-nrflo_server-console).
 
 ---
 

@@ -1,6 +1,10 @@
 package consoleui
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"be/internal/types"
+)
 
 type Config struct {
 	BaseURL string
@@ -20,6 +24,13 @@ type ChatDetail struct {
 	ContextLeft      *int       `json:"context_left"`
 	Live             bool       `json:"live"`
 	PendingApprovals []Approval `json:"pending_approvals"`
+	LiveItems        []LiveItem `json:"live_items"`
+	Thinking         *LiveItem  `json:"thinking,omitempty"`
+}
+
+type LiveItem struct {
+	ID   string `json:"item_id"`
+	Text string `json:"text"`
 }
 
 type Approval struct {
@@ -36,6 +47,19 @@ type Message struct {
 	Payload   string `json:"payload,omitempty"`
 	CreatedAt string `json:"created_at"`
 }
+
+type MessagePage struct {
+	Messages []Message `json:"messages"`
+	Total    int       `json:"total"`
+}
+
+type Selection struct {
+	ResumeID string
+	Engine   string
+	Model    string
+}
+
+type Catalog = types.ConsoleCatalog
 
 type Event struct {
 	Type      string                     `json:"type"`

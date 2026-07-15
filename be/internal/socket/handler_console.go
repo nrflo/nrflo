@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 
+	"be/internal/console"
 	"be/internal/logger"
 	"be/internal/service"
 )
@@ -22,10 +23,69 @@ func (h *Handler) handleConsole(ctx context.Context, req Request, action string)
 		return h.handleConsoleSession(ctx, req)
 	case "chat":
 		return h.handleConsoleChat(ctx, req)
+	case "attach":
+		return h.handleConsoleAttach(ctx, req)
+	case "catalog":
+		return h.handleConsoleCatalog(ctx, req)
 	default:
 		logger.Warn(ctx, "unknown socket method", "method", "console."+action)
 		return MakeErrorResponse(req.ID, NewMethodNotFoundError("console."+action))
 	}
+}
+
+func (h *Handler) handleConsoleCatalog(ctx context.Context, req Request) Response {
+	if h.consoleChat == nil {
+		return MakeErrorResponse(req.ID, NewInternalError("console chat service unavailable"))
+	}
+	var params struct {
+		Project string `json:"project"`
+		Cwd     string `json:"cwd"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+	}
+	projectID := h.resolveConsoleProject(ctx, strings.TrimSpace(params.Project), params.Cwd)
+	catalog, err := h.consoleChat.Catalog(projectID)
+	if err != nil {
+		if errors.Is(err, service.ErrConsoleProjectNotFound) {
+			return MakeErrorResponse(req.ID, NewNotFoundError("project not found: "+projectID))
+		}
+		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+	}
+	return MakeResponse(req.ID, catalog)
+}
+
+func (h *Handler) handleConsoleAttach(ctx context.Context, req Request) Response {
+	if h.consoleChat == nil {
+		return MakeErrorResponse(req.ID, NewInternalError("console chat service unavailable"))
+	}
+	var params struct {
+		Project   string `json:"project"`
+		Cwd       string `json:"cwd"`
+		SessionID string `json:"session_id"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
+	}
+	sid := strings.TrimSpace(params.SessionID)
+	if sid == "" {
+		return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
+	}
+	projectID := h.resolveConsoleProject(ctx, strings.TrimSpace(params.Project), params.Cwd)
+	token, err := h.consoleChat.AttachAuthenticated(sid, projectID)
+	if err != nil {
+		switch {
+		case errors.Is(err, console.ErrChatSessionNotFound):
+			return MakeErrorResponse(req.ID, NewNotFoundError("live console chat not found: "+sid))
+		case errors.Is(err, console.ErrChatProjectMismatch):
+			return MakeErrorResponse(req.ID, NewValidationError("console chat belongs to another project"))
+		default:
+			return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
+		}
+	}
+	return MakeResponse(req.ID, map[string]string{
+		"session_id": sid, "token": token, "project_id": projectID,
+	})
 }
 
 func (h *Handler) handleConsoleChat(ctx context.Context, req Request) Response {

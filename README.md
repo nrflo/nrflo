@@ -195,9 +195,9 @@ See the agent authoring docs under [doc/](doc/) (served at /documentation in the
 
 ### Local console (`nrflo_server console`)
 
-`nrflo_server console --engine claude|codex|api [--model <registry id>] [--project <id>] [--server <url>] [--token <service token>]` opens a native terminal UI while the running server owns the provider conversation. It streams Markdown and thinking, shows tool approvals, and interrupts the active turn with Ctrl+C without discarding conversation context; the chat is also visible in the web console and closes when the TUI exits.
+`nrflo_server console [--project <id>] [--server <url>] [--token <service token>]` opens a native terminal picker populated from the server's enabled engines/models and live chats. Choose a new Claude, Codex, or API conversation, or resume one with its existing provider context; scripts can bypass the picker with `--engine ... [--model ...]`, and `--resume <session-id>` attaches directly.
 
-Local use needs no token because the trusted Unix socket returns a bearer scoped to the newly created chat. Remote use requires a service token from **Settings → Administration → Service Tokens**; project and server flags fall back to `NRFLO_PROJECT`/cwd detection and `NRFLO_SERVER_URL` respectively. Claude/Codex model ids resolve through `cli_models`, while `api` resolves through `api_models`.
+Local use needs no token because the trusted Unix socket returns a bearer scoped to the selected chat. Remote use requires a service token from **Settings → Administration → Service Tokens**; project and server flags fall back to `NRFLO_PROJECT`/cwd detection and `NRFLO_SERVER_URL`. Ctrl+D detaches so the server-owned conversation can be resumed, while Ctrl+X explicitly closes it; Ctrl+F searches, Ctrl+G enters copy/navigation mode, and reconnects reconcile persisted history plus in-flight output and approvals.
 
 ## Workflows
 

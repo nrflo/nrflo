@@ -3,6 +3,8 @@ package socket
 import (
 	"context"
 	"encoding/json"
+
+	"be/internal/types"
 )
 
 // WorkflowOrchestrator enables observer agents to trigger and retry workflows via the socket.
@@ -48,6 +50,8 @@ type ConsoleHooks interface {
 // ConsoleChatCreator mints a server-owned chat for the trusted local TUI.
 type ConsoleChatCreator interface {
 	CreateAuthenticated(engine, modelID, projectID string) (sessionID, token string, err error)
+	AttachAuthenticated(sessionID, projectID string) (token string, err error)
+	Catalog(projectID string) (types.ConsoleCatalog, error)
 }
 
 // TerminalSignaler dispatches a best-effort kill signal to an active spawner

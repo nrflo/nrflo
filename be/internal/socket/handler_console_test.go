@@ -12,12 +12,25 @@ import (
 )
 
 type fakeConsoleChatCreator struct {
-	engine, model, project string
+	engine, model, project, attached string
 }
 
 func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, project string) (string, string, error) {
 	f.engine, f.model, f.project = engine, model, project
 	return "chat-session-1", "chat-token-1", nil
+}
+
+func (f *fakeConsoleChatCreator) AttachAuthenticated(sessionID, project string) (string, error) {
+	f.attached, f.project = sessionID, project
+	return "chat-token-1", nil
+}
+
+func (f *fakeConsoleChatCreator) Catalog(project string) (types.ConsoleCatalog, error) {
+	f.project = project
+	return types.ConsoleCatalog{
+		ProjectID: project,
+		Engines:   []types.ConsoleEngineOption{{ID: "codex", DisplayName: "Codex", Enabled: true}},
+	}, nil
 }
 
 // mintConsole calls console.session over the handler and returns the decoded
@@ -161,6 +174,42 @@ func TestConsoleChat_MintsScopedBearer(t *testing.T) {
 	}
 	if creator.engine != "codex" || creator.model != "codex_gpt_high" || creator.project != env.project {
 		t.Fatalf("creator args = engine=%q model=%q project=%q", creator.engine, creator.model, creator.project)
+	}
+}
+
+func TestConsoleCatalog_ResolvesProject(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{"project": env.project})
+	resp := env.handler.Handle(Request{ID: "catalog-1", Method: "console.catalog", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	var result types.ConsoleCatalog
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("decode result: %v", err)
+	}
+	if result.ProjectID != env.project || len(result.Engines) != 1 || creator.project != env.project {
+		t.Fatalf("catalog = %+v creator.project=%q", result, creator.project)
+	}
+}
+
+func TestConsoleAttach_ReturnsExistingScopedBearer(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{"project": env.project, "session_id": "chat-live-1"})
+	resp := env.handler.Handle(Request{ID: "attach-1", Method: "console.attach", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	var result map[string]string
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		t.Fatalf("decode result: %v", err)
+	}
+	if result["token"] != "chat-token-1" || creator.attached != "chat-live-1" {
+		t.Fatalf("result=%+v attached=%q", result, creator.attached)
 	}
 }
 

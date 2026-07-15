@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
@@ -20,6 +21,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case streamUpdate:
 		m.applyStream(msg)
 		commands = append(commands, waitForStream(m.events))
+		if msg.Connected != nil && *msg.Connected {
+			commands = append(commands, m.syncState())
+		}
 		if needsHistory(msg.Events) {
 			commands = append(commands, m.loadHistory())
 		}
@@ -27,11 +31,14 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			m.messages = msg.messages
-			m.deltas = make(map[string]string)
-			m.deltaOrder = nil
-			m.historyDirty = true
-			m.refreshTranscript()
+			m.applyHistory(msg.page, msg.prepend, msg.offset)
+		}
+	case syncMsg:
+		if msg.err != nil {
+			m.lastErr = msg.err.Error()
+		} else {
+			m.applySync(msg.detail, msg.page)
+			m.lastErr = ""
 		}
 	case actionMsg:
 		if msg.err != nil {
@@ -43,25 +50,79 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 					m.historyDirty = true
 					m.refreshTranscript()
 				}
+				commands = append(commands, m.loadHistory())
 			}
 		} else {
 			m.lastErr = ""
+			if msg.action == "close" {
+				return m, tea.Quit
+			}
 			if msg.action == "approval" && len(m.approvals) > 0 {
 				m.approvals = m.approvals[1:]
 			}
 		}
 	}
 
+	_, keyMessage := message.(tea.KeyPressMsg)
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(message)
-	commands = append(commands, cmd)
-	m.input, cmd = m.input.Update(message)
-	commands = append(commands, cmd)
+	if m.searchMode {
+		m.search, cmd = m.search.Update(message)
+		commands = append(commands, cmd)
+		if !keyMessage {
+			m.viewport, cmd = m.viewport.Update(message)
+			commands = append(commands, cmd)
+		}
+	} else if m.copyMode {
+		m.viewport, cmd = m.viewport.Update(message)
+		commands = append(commands, cmd)
+	} else {
+		m.input, cmd = m.input.Update(message)
+		commands = append(commands, cmd)
+		if !keyMessage {
+			m.viewport, cmd = m.viewport.Update(message)
+			commands = append(commands, cmd)
+		}
+	}
 	return m, tea.Batch(commands...)
 }
 
 func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	m.notice = ""
 	key := msg.Keystroke()
+	if m.searchMode {
+		switch key {
+		case "esc":
+			m.searchMode = false
+			m.search.Blur()
+			m.input.Focus()
+			return nil, true
+		case "enter":
+			m.applySearch()
+			m.searchMode = false
+			m.search.Blur()
+			m.input.Focus()
+			return nil, true
+		}
+		return nil, false
+	}
+	if m.copyMode {
+		switch key {
+		case "esc", "ctrl+g":
+			m.copyMode = false
+			m.input.Focus()
+			return nil, true
+		case "y":
+			m.copyMode = false
+			m.input.Focus()
+			m.notice = "copied visible transcript"
+			return tea.Raw(ansi.SetSystemClipboard(m.visibleTranscript())), true
+		case "ctrl+p":
+			if m.historyOffset > 0 {
+				return m.loadOlder(), true
+			}
+		}
+		return nil, false
+	}
 	if len(m.approvals) > 0 {
 		switch key {
 		case "y":
@@ -73,6 +134,25 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		}
 	}
 	switch key {
+	case "ctrl+f":
+		m.searchMode = true
+		m.input.Blur()
+		m.search.Focus()
+		return nil, true
+	case "ctrl+g":
+		m.copyMode = true
+		m.input.Blur()
+		return nil, true
+	case "f3":
+		if m.searchStatus != "" {
+			m.viewport.HighlightNext()
+			return nil, true
+		}
+	case "shift+f3":
+		if m.searchStatus != "" {
+			m.viewport.HighlightPrevious()
+			return nil, true
+		}
 	case "ctrl+c":
 		if m.status == "running" {
 			return action("interrupt", func() error { return m.client.Interrupt(m.ctx) }), true
@@ -80,14 +160,15 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return tea.Quit, true
 	case "ctrl+d":
 		return tea.Quit, true
+	case "ctrl+x":
+		return action("close", func() error { return m.client.Close(m.ctx) }), true
 	case "enter":
 		text := strings.TrimSpace(m.input.Value())
 		if text == "" {
 			return nil, true
 		}
 		m.input.Reset()
-		m.messages = append(m.messages, Message{Content: text, Category: "user_input"})
-		m.historyDirty = true
+		m.appendOptimisticMessage(Message{Content: text, Category: "user_input"})
 		m.status = "running"
 		m.refreshTranscript()
 		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
@@ -113,17 +194,14 @@ func (m *model) applyStream(update streamUpdate) {
 		switch event.Type {
 		case "console_chat.delta":
 			id := eventString(event, "item_id")
-			if _, exists := m.deltas[id]; !exists {
-				m.deltaOrder = append(m.deltaOrder, id)
-			}
-			m.deltas[id] += eventString(event, "text")
+			m.appendDelta(id, eventString(event, "text"))
 		case "console_chat.thinking":
 			id := eventString(event, "item_id")
 			if id != m.thinkingID {
 				m.thinkingID = id
 				m.thinking = ""
 			}
-			m.thinking += eventString(event, "text")
+			m.thinking = trimDeltaTail(m.thinking + eventString(event, "text"))
 		case "console_chat.turn":
 			m.status = eventString(event, "state")
 			if m.status == "idle" {

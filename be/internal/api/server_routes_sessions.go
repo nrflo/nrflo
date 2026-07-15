@@ -33,6 +33,7 @@ func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http
 	protected("POST /api/v1/console/tools/{name}/call", s.handleCallConsoleTool)
 
 	// Console chats: server-managed console-chat sessions (kind='console_chat').
+	projectAdmin("GET /api/v1/console/catalog", s.handleGetConsoleCatalog)
 	projectAdmin("POST /api/v1/console/chats", s.handleCreateConsoleChat)
 	projectAdmin("GET /api/v1/console/chats", s.handleListConsoleChats)
 	protected("GET /api/v1/console/chats/{sid}", s.handleGetConsoleChat)

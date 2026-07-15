@@ -6,20 +6,23 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/textarea"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 )
 
 type model struct {
-	ctx        context.Context
-	client     *Client
-	events     <-chan streamUpdate
-	detail     ChatDetail
-	messages   []Message
-	deltas     map[string]string
-	deltaOrder []string
-	thinking   string
-	thinkingID string
+	ctx           context.Context
+	client        *Client
+	events        <-chan streamUpdate
+	detail        ChatDetail
+	messages      []Message
+	historyOffset int
+	historyTotal  int
+	deltas        map[string]string
+	deltaOrder    []string
+	thinking      string
+	thinkingID    string
 
 	approvals       []Approval
 	connected       bool
@@ -31,14 +34,28 @@ type model struct {
 	historyDirty    bool
 	renderedHistory string
 	renderedWidth   int
+	renderCache     map[string]string
+	copyMode        bool
+	searchMode      bool
+	searchStatus    string
+	notice          string
 
 	input    textarea.Model
+	search   textinput.Model
 	viewport viewport.Model
 }
 
 type historyMsg struct {
-	messages []Message
-	err      error
+	page    MessagePage
+	prepend bool
+	offset  int
+	err     error
+}
+
+type syncMsg struct {
+	detail ChatDetail
+	page   MessagePage
+	err    error
 }
 
 type actionMsg struct {
@@ -54,7 +71,7 @@ func Run(ctx context.Context, cfg Config) error {
 		cancel()
 		return fmt.Errorf("load console chat: %w", err)
 	}
-	messages, err := client.Messages(loadCtx)
+	page, err := client.TailMessages(loadCtx, historyPageSize)
 	cancel()
 	if err != nil {
 		return fmt.Errorf("load console history: %w", err)
@@ -67,15 +84,21 @@ func Run(ctx context.Context, cfg Config) error {
 	input.CharLimit = 64 * 1024
 	input.KeyMap.InsertNewline.SetKeys("shift+enter", "alt+enter", "ctrl+j")
 	input.Focus()
+	search := textinput.New()
+	search.Prompt = "/"
+	search.Placeholder = "search transcript"
 	streamCtx, stopStream := context.WithCancel(ctx)
 	defer stopStream()
 
 	m := &model{
 		ctx: ctx, client: client, events: client.Stream(streamCtx), detail: detail,
-		messages: messages, approvals: detail.PendingApprovals,
-		deltas: make(map[string]string), connected: false,
-		status: detail.Turn, input: input, viewport: viewport.New(), historyDirty: true,
+		messages: page.Messages, historyOffset: max(0, page.Total-len(page.Messages)), historyTotal: page.Total,
+		approvals: detail.PendingApprovals,
+		deltas:    make(map[string]string), connected: false,
+		status: detail.Turn, input: input, search: search, viewport: viewport.New(), historyDirty: true,
+		renderCache: make(map[string]string),
 	}
+	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))
 	_, err = program.Run()
 	if err == tea.ErrInterrupted {
@@ -100,8 +123,28 @@ func waitForStream(events <-chan streamUpdate) tea.Cmd {
 
 func (m *model) loadHistory() tea.Cmd {
 	return func() tea.Msg {
-		messages, err := m.client.Messages(m.ctx)
-		return historyMsg{messages: messages, err: err}
+		page, err := m.client.TailMessages(m.ctx, historyWindowSize)
+		return historyMsg{page: page, err: err}
+	}
+}
+
+func (m *model) loadOlder() tea.Cmd {
+	offset := max(0, m.historyOffset-historyPageSize)
+	limit := m.historyOffset - offset
+	return func() tea.Msg {
+		page, err := m.client.MessagesPage(m.ctx, limit, offset)
+		return historyMsg{page: page, prepend: true, offset: offset, err: err}
+	}
+}
+
+func (m *model) syncState() tea.Cmd {
+	return func() tea.Msg {
+		page, err := m.client.TailMessages(m.ctx, historyWindowSize)
+		if err != nil {
+			return syncMsg{err: err}
+		}
+		detail, err := m.client.Detail(m.ctx)
+		return syncMsg{detail: detail, page: page, err: err}
 	}
 }
 

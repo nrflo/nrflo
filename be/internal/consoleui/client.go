@@ -46,12 +46,28 @@ func (c *Client) Detail(ctx context.Context) (ChatDetail, error) {
 	return result, err
 }
 
-func (c *Client) Messages(ctx context.Context) ([]Message, error) {
-	var result struct {
-		Messages []Message `json:"messages"`
+func (c *Client) Catalog(ctx context.Context) (Catalog, error) {
+	var result Catalog
+	err := c.do(ctx, http.MethodGet, "/api/v1/console/catalog", nil, &result)
+	return result, err
+}
+
+func (c *Client) MessagesPage(ctx context.Context, limit, offset int) (MessagePage, error) {
+	var result MessagePage
+	path := fmt.Sprintf("%s?limit=%d&offset=%d", c.chatPath("messages"), limit, offset)
+	err := c.do(ctx, http.MethodGet, path, nil, &result)
+	return result, err
+}
+
+func (c *Client) TailMessages(ctx context.Context, limit int) (MessagePage, error) {
+	page, err := c.MessagesPage(ctx, 1, 0)
+	if err != nil || page.Total <= limit {
+		if err != nil {
+			return MessagePage{}, err
+		}
+		return c.MessagesPage(ctx, max(1, limit), 0)
 	}
-	err := c.do(ctx, http.MethodGet, c.chatPath("messages"), nil, &result)
-	return result.Messages, err
+	return c.MessagesPage(ctx, limit, page.Total-limit)
 }
 
 func (c *Client) Send(ctx context.Context, text string) error {

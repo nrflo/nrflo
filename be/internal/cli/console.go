@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -21,6 +22,7 @@ var (
 	consoleProjectFlag string
 	consoleServerFlag  string
 	consoleTokenFlag   string
+	consoleResumeFlag  string
 )
 
 var consoleCmd = &cobra.Command{
@@ -36,13 +38,26 @@ returns its scoped bearer. A remote server requires a service token via
 --token or NRFLO_MCP_TOKEN. Project resolution is --project, NRFLO_PROJECT,
 the working directory's registered project, then the global project.
 
+With no engine/model flags, the server supplies a searchable picker of live
+chats and enabled models. Ctrl+D detaches for later resume; Ctrl+X closes the
+server-owned conversation.
+
 Examples:
   nrflo_server console
   nrflo_server console --engine codex --model codex_gpt55_high
+  nrflo_server console --resume <session-id>
   nrflo_server console --engine api --model sonnet --token <token>`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		return runConsole(cmd.Context())
+		if consoleResumeFlag != "" && (cmd.Flags().Changed("engine") || cmd.Flags().Changed("model")) {
+			return fmt.Errorf("--resume cannot be combined with --engine or --model")
+		}
+		choose := consoleResumeFlag == "" && !cmd.Flags().Changed("engine") && !cmd.Flags().Changed("model")
+		err := runConsole(cmd.Context(), choose)
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
 	},
 }
 
@@ -52,9 +67,10 @@ func init() {
 	consoleCmd.Flags().StringVar(&consoleProjectFlag, "project", "", "project id (default: NRFLO_PROJECT, cwd match, then global)")
 	consoleCmd.Flags().StringVar(&consoleServerFlag, "server", "", "nrflo_server base URL (default: NRFLO_SERVER_URL, then "+defaultConsoleServer+")")
 	consoleCmd.Flags().StringVar(&consoleTokenFlag, "token", "", "remote service token (default: NRFLO_MCP_TOKEN)")
+	consoleCmd.Flags().StringVar(&consoleResumeFlag, "resume", "", "resume a live console chat by session id")
 }
 
-func runConsole(ctx context.Context) error {
+func runConsole(ctx context.Context, choose bool) error {
 	server := firstNonempty(consoleServerFlag, os.Getenv("NRFLO_SERVER_URL"), defaultConsoleServer)
 	server = strings.TrimRight(server, "/")
 	projectHint := firstNonempty(consoleProjectFlag, os.Getenv("NRFLO_PROJECT"))
@@ -64,9 +80,39 @@ func runConsole(ctx context.Context) error {
 		return fmt.Errorf("service token required for remote server %s: pass --token or set NRFLO_MCP_TOKEN", server)
 	}
 
+	selection := consoleui.Selection{ResumeID: consoleResumeFlag, Engine: consoleEngineFlag, Model: consoleModelFlag}
 	var sessionID, projectID, bearer string
+	if choose {
+		var catalog consoleui.Catalog
+		var err error
+		if useSocket {
+			catalog, err = consoleCatalogOverSocket(projectHint)
+		} else {
+			resolver := newConsoleProjectResolver(server, token, projectHint)
+			resolveCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			projectID = resolver.resolveSessionProject(resolveCtx)
+			cancel()
+			client := consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID})
+			catalog, err = client.Catalog(ctx)
+		}
+		if err != nil {
+			return fmt.Errorf("discover console options: %w", err)
+		}
+		projectID = catalog.ProjectID
+		selection, err = consoleui.Select(ctx, catalog)
+		if err != nil {
+			return err
+		}
+	}
 	if useSocket {
-		mint, err := mintConsoleChatOverSocket(projectHint, consoleEngineFlag, consoleModelFlag)
+		var mint consoleChatMint
+		var err error
+		socketProject := firstNonempty(projectID, projectHint)
+		if selection.ResumeID != "" {
+			mint, err = attachConsoleChatOverSocket(socketProject, selection.ResumeID)
+		} else {
+			mint, err = mintConsoleChatOverSocket(socketProject, selection.Engine, selection.Model)
+		}
 		if err != nil {
 			return err
 		}
@@ -76,24 +122,22 @@ func runConsole(ctx context.Context) error {
 		resolveCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		projectID = resolver.resolveSessionProject(resolveCtx)
 		cancel()
-		client := consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID})
-		createCtx, createCancel := context.WithTimeout(ctx, 30*time.Second)
-		var err error
-		sessionID, err = client.Create(createCtx, consoleEngineFlag, consoleModelFlag)
-		createCancel()
-		if err != nil {
-			return fmt.Errorf("start console chat for project %q: %w", projectID, err)
+		if selection.ResumeID != "" {
+			sessionID = selection.ResumeID
+		} else {
+			client := consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID})
+			createCtx, createCancel := context.WithTimeout(ctx, 30*time.Second)
+			var err error
+			sessionID, err = client.Create(createCtx, selection.Engine, selection.Model)
+			createCancel()
+			if err != nil {
+				return fmt.Errorf("start console chat for project %q: %w", projectID, err)
+			}
 		}
 		bearer = token
 	}
 
 	cfg := consoleui.Config{BaseURL: server, Token: bearer, Project: projectID, Session: sessionID}
-	client := consoleui.NewClient(cfg)
-	defer func() {
-		closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = client.Close(closeCtx)
-	}()
 	if err := consoleui.Run(ctx, cfg); err != nil {
 		return err
 	}

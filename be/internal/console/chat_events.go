@@ -46,6 +46,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 	for ev := range sess.engine.Events() {
 		switch ev.Type {
 		case spawner.EventTextDelta:
+			sess.appendLive(ev.ItemID, ev.Text)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatDelta, map[string]interface{}{
 				"item_id": ev.ItemID,
 				"text":    ev.Text,
@@ -56,6 +57,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 
 		case spawner.EventTurnCompleted:
 			sess.endTurn()
+			sess.clearLive()
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 			appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
 
@@ -86,6 +88,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
 
 		case spawner.EventThinking:
+			sess.appendThinking(ev.ItemID, ev.Text)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatThinking, map[string]interface{}{
 				"item_id": ev.ItemID,
 				"text":    ev.Text,
@@ -104,6 +107,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			// so the state machine cannot stay pinned "running" against an engine
 			// that will never report turn/completed.
 			sess.endTurn()
+			sess.clearLive()
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatError, map[string]interface{}{
 				"text":     ev.Text,
 				"is_error": ev.IsError,

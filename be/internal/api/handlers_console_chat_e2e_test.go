@@ -35,9 +35,9 @@ func waitForChatWSEvent(t *testing.T, ch <-chan []byte, wantType string, timeout
 }
 
 // TestConsoleChat_FullLoop_E2E exercises acceptance case 1: create -> message
-// -> live delta (WS only, never agent_messages) -> assistant text persisted +
-// messages.updated -> GET history -> approval request/resolve -> close kills
-// the bearer (401 on /console/tools) and stops the engine.
+// -> live delta -> reconnect/subscription recovery -> interrupt -> assistant
+// history -> approval -> close. It uses the fake provider but the real chat
+// service, REST handlers, session hub, persistence, and auth predicates.
 func TestConsoleChat_FullLoop_E2E(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	go s.wsHub.Run()
@@ -77,6 +77,43 @@ func TestConsoleChat_FullLoop_E2E(t *testing.T) {
 	}
 	if count, err := repo.NewAgentMessageRepo(s.pool, s.clock).CountBySession(sid); err != nil || count != 0 {
 		t.Fatalf("agent_messages after delta: count=%d err=%v, want 0", count, err)
+	}
+
+	// A newly attached subscriber receives subsequent events, while the detail
+	// snapshot carries the partial text emitted before it subscribed.
+	reconnected, reconnectCh := ws.NewTestClient(s.wsHub, "e2e-reconnected")
+	s.wsHub.Register(reconnected)
+	s.wsHub.SubscribeSession(reconnected, sid)
+	detailChain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleGetConsoleChat)))
+	detailReq := getChatReq(sid)
+	detailReq.AddCookie(cookie)
+	detailRR := httptest.NewRecorder()
+	detailChain.ServeHTTP(detailRR, detailReq)
+	if detailRR.Code != http.StatusOK || !json.Valid(detailRR.Body.Bytes()) {
+		t.Fatalf("reconnect detail status=%d body=%s", detailRR.Code, detailRR.Body.String())
+	}
+	var reconnectDetail struct {
+		LiveItems []struct {
+			Text string `json:"text"`
+		} `json:"live_items"`
+	}
+	if err := json.Unmarshal(detailRR.Body.Bytes(), &reconnectDetail); err != nil {
+		t.Fatalf("unmarshal reconnect detail: %v", err)
+	}
+	if len(reconnectDetail.LiveItems) != 1 || reconnectDetail.LiveItems[0].Text != "partial " {
+		t.Fatalf("reconnect live items = %+v, want prior partial output", reconnectDetail.LiveItems)
+	}
+	eng.emit(spawner.EngineEvent{Type: spawner.EventTextDelta, SessionID: sid, ItemID: "answer", Text: "continued"})
+	waitForChatWSEvent(t, reconnectCh, ws.EventConsoleChatDelta, 2*time.Second)
+
+	interruptChain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleInterruptConsoleChat)))
+	interruptReq := httptest.NewRequest(http.MethodPost, "/api/v1/console/chats/"+sid+"/interrupt", nil)
+	interruptReq.SetPathValue("sid", sid)
+	interruptReq.AddCookie(cookie)
+	interruptRR := httptest.NewRecorder()
+	interruptChain.ServeHTTP(interruptRR, interruptReq)
+	if interruptRR.Code != http.StatusAccepted {
+		t.Fatalf("POST interrupt status = %d, want 202; body=%s", interruptRR.Code, interruptRR.Body.String())
 	}
 
 	// Sink-level assistant text: persisted + messages.updated pushed.

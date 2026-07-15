@@ -145,6 +145,10 @@ func TestHandleGetConsoleChat_Detail_ReturnsRunningTurnAndPendingApproval(t *tes
 		Approval:  &spawner.ApprovalRequest{ID: "appr-detail-1", Kind: "commandExecution", Command: "rm -rf /tmp/x", Cwd: "/work", Reason: "destructive"},
 	})
 	waitForWSEventType(t, ch, ws.EventConsoleChatApprovalRequest, 2*time.Second)
+	eng.emit(spawner.EngineEvent{Type: spawner.EventTextDelta, SessionID: sid, ItemID: "answer-1", Text: "recoverable partial"})
+	waitForWSEventType(t, ch, ws.EventConsoleChatDelta, 2*time.Second)
+	eng.emit(spawner.EngineEvent{Type: spawner.EventThinking, SessionID: sid, ItemID: "think-1", Text: "considering"})
+	waitForWSEventType(t, ch, ws.EventConsoleChatThinking, 2*time.Second)
 
 	chain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleGetConsoleChat)))
 	req := getChatReq(sid)
@@ -159,6 +163,8 @@ func TestHandleGetConsoleChat_Detail_ReturnsRunningTurnAndPendingApproval(t *tes
 		Live             bool                      `json:"live"`
 		Turn             string                    `json:"turn"`
 		PendingApprovals []consoleChatApprovalItem `json:"pending_approvals"`
+		LiveItems        []map[string]string       `json:"live_items"`
+		Thinking         map[string]string         `json:"thinking"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal: %v", err)
@@ -174,5 +180,11 @@ func TestHandleGetConsoleChat_Detail_ReturnsRunningTurnAndPendingApproval(t *tes
 	}
 	if body.PendingApprovals[0].Command != "rm -rf /tmp/x" {
 		t.Errorf("PendingApprovals[0].Command = %q, want %q", body.PendingApprovals[0].Command, "rm -rf /tmp/x")
+	}
+	if len(body.LiveItems) != 1 || body.LiveItems[0]["text"] != "recoverable partial" {
+		t.Fatalf("LiveItems = %+v", body.LiveItems)
+	}
+	if body.Thinking["text"] != "considering" {
+		t.Fatalf("Thinking = %+v", body.Thinking)
 	}
 }

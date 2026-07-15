@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"be/internal/client"
+	"be/internal/types"
 )
 
 // consoleSessionMint is the socket console.session reply: a freshly minted
@@ -74,4 +75,34 @@ func mintConsoleChatOverSocket(projectHint, engine, model string) (consoleChatMi
 		return consoleChatMint{}, fmt.Errorf("start console chat over socket: %w", err)
 	}
 	return res, nil
+}
+
+func consoleCatalogOverSocket(projectHint string) (types.ConsoleCatalog, error) {
+	cwd, _ := os.Getwd()
+	c := client.New(projectHint)
+	if !c.IsServerRunning() {
+		return types.ConsoleCatalog{}, client.ServerNotRunningError()
+	}
+	var result types.ConsoleCatalog
+	if err := c.ExecuteAndUnmarshal("console.catalog", map[string]string{
+		"project": projectHint, "cwd": cwd,
+	}, &result); err != nil {
+		return types.ConsoleCatalog{}, fmt.Errorf("discover console options over socket: %w", err)
+	}
+	return result, nil
+}
+
+func attachConsoleChatOverSocket(projectHint, sessionID string) (consoleChatMint, error) {
+	cwd, _ := os.Getwd()
+	c := client.New(projectHint)
+	if !c.IsServerRunning() {
+		return consoleChatMint{}, client.ServerNotRunningError()
+	}
+	var result consoleChatMint
+	if err := c.ExecuteAndUnmarshal("console.attach", map[string]string{
+		"project": projectHint, "cwd": cwd, "session_id": sessionID,
+	}, &result); err != nil {
+		return consoleChatMint{}, fmt.Errorf("attach console chat over socket: %w", err)
+	}
+	return result, nil
 }

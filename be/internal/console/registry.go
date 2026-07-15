@@ -56,6 +56,8 @@ func BuildRegistry(d Deps) (apirun.Registry, error) {
 	reg["workflow_list"] = workflowListHandler{d: d}
 	reg["project_list"] = projectListHandler{d: d}
 	reg["project_status"] = projectStatusHandler{d: d}
+	reg["ticket_list"] = ticketListHandler{d: d}
+	reg["ticket_get"] = ticketGetHandler{d: d}
 	reg["artifact_list"] = artifactListHandler{d: d}
 	reg["artifact_get"] = artifactGetHandler{d: d}
 	reg["deep_research"] = deepResearchHandler{d: d}

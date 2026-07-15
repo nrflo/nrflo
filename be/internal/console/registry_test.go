@@ -30,6 +30,8 @@ var wantConsoleOnly = []string{
 	"workflow_list",
 	"project_list",
 	"project_status",
+	"ticket_list",
+	"ticket_get",
 	"artifact_list",
 	"artifact_get",
 	"deep_research",

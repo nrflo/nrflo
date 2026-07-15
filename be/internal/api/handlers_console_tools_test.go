@@ -111,7 +111,7 @@ var wantReusedBuiltinsForTest = []string{
 
 var wantConsoleOnlyForTest = []string{
 	"workflow_run", "workflow_stop", "workflow_retry_failed", "workflow_get", "workflow_list",
-	"project_list", "project_status", "artifact_list", "artifact_get", "deep_research",
+	"project_list", "project_status", "ticket_list", "ticket_get", "artifact_list", "artifact_get", "deep_research",
 }
 
 func TestHandleListConsoleTools_NoAuth_Returns401(t *testing.T) {

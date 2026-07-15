@@ -1,6 +1,6 @@
 ---
 name: do-release
-description: Cut a new nrflo release. Bumps VERSION, generates human-readable release notes from git log, tags, pushes, monitors the GoReleaser and Docker CI runs, then replaces the GitHub Release body with the synthesized notes. Accepts one SemVer bump argument: `patch` (+0.0.1), `minor` (+0.1.0), `major` (+1.0.0).
+description: "Cut a new nrflo release. Bumps VERSION, generates human-readable release notes from git log, tags, pushes, monitors the GoReleaser and Docker CI runs, then replaces the GitHub Release body with the synthesized notes. Accepts one SemVer bump argument: `patch` (+0.0.1), `minor` (+0.1.0), `major` (+1.0.0)."
 ---
 
 # /do-release

@@ -26,7 +26,7 @@ Migrations are forward-only SQL files in `migrations/`, embedded via `//go:embed
 
 The clock abstraction (`internal/clock`) drives all `created_at`/`updated_at` timestamp writes in repo constructors; pass `clock.Real()` in production and `clock.NewTest(t)` in tests.
 
-Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agent_sessions → workflow_instances, workflow_instances → tickets). See the migration files for per-table FK details.
+Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agent_sessions → workflow_instances; workflow_instances → workflows via `(def_project_id, workflow_id)` and → projects via `project_id`, migration `000165` — def semantics in [service/CLAUDE.md](../service/CLAUDE.md#global-workflows)). See the migration files for per-table FK details.
 
 `agent_sessions.node_id` is execution identity (which slot in the run — session dedupe, retry target, callback scope, trace lane layering); `agent_sessions.agent_type` stays template identity (which `agent_definitions` row — model/tag/prompt resolution). They are equal for every static workflow today. `agent_definitions.node_role` (`static`|`planner`|`fanout_template`) marks defs that must never auto-execute as a phase, alongside `consultant`.
 

@@ -22,7 +22,7 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 	return &WorkflowInstanceRepo{pool: pool, clock: clk}
 }
 
-const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
+const wfiCols = `id, project_id, def_project_id, ticket_id, workflow_id, scope_type, status,
 	skip_tags, retry_count, parent_session, worktree_path, branch_name,
 	endless_loop, stop_endless_loop_after_iteration, purge_on_completion, launch_depth, parent_instance_id, subworkflow_depth, subworkflow_starts, plan_auto_approve, created_at, updated_at, scheduled_task_id,
 	external_id, external_context`
@@ -30,9 +30,9 @@ const wfiCols = `id, project_id, ticket_id, workflow_id, scope_type, status,
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
 	var createdAt, updatedAt string
-	var scheduledTaskID, externalID, externalContext sql.NullString
+	var defProjectID, scheduledTaskID, externalID, externalContext sql.NullString
 	err := scanner.Scan(
-		&wi.ID, &wi.ProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
+		&wi.ID, &wi.ProjectID, &defProjectID, &wi.TicketID, &wi.WorkflowID, &wi.ScopeType,
 		&wi.Status, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
 		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &wi.PurgeOnCompletion, &wi.LaunchDepth, &wi.ParentInstanceID, &wi.SubworkflowDepth, &wi.SubworkflowStarts, &wi.PlanAutoApprove, &createdAt, &updatedAt,
@@ -44,6 +44,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 	if wi.ScopeType == "" {
 		wi.ScopeType = "ticket"
 	}
+	wi.DefProjectID = defProjectID.String
 	wi.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	wi.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 	wi.ScheduledTaskID = scheduledTaskID.String
@@ -60,11 +61,14 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 	if wi.ScopeType == "" {
 		wi.ScopeType = "ticket"
 	}
+	if wi.DefProjectID == "" {
+		wi.DefProjectID = wi.ProjectID
+	}
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.TicketID),
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.DefProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.SkipTags, wi.RetryCount, wi.ParentSession,
 		wi.WorktreePath, wi.BranchName,

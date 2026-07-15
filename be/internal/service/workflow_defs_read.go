@@ -120,5 +120,6 @@ func (s *WorkflowService) GetWorkflowDef(projectID, workflowID string) (*Workflo
 	}
 
 	wf := buildWorkflowDef(m, agentDefs)
+	wf.defProjectID = defProjectID
 	return &wf, nil
 }

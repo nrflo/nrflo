@@ -50,6 +50,7 @@ func IsPlanSuspended(status WorkflowInstanceStatus) bool {
 type WorkflowInstance struct {
 	ID                            string                 `json:"id"`
 	ProjectID                     string                 `json:"project_id"`
+	DefProjectID                  string                 `json:"-"` // project the workflow definition resolved under (GlobalProjectID for global defs); carries the workflows FK
 	TicketID                      string                 `json:"ticket_id"`
 	WorkflowID                    string                 `json:"workflow_id"`
 	ScopeType                     string                 `json:"scope_type"` // "ticket" or "project"

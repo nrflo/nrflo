@@ -56,6 +56,11 @@ type WorkflowDef struct {
 	ObserverProvider        *string               `json:"-"`
 	ObserverModel           *string               `json:"-"`
 	FindingSchemas          []types.FindingSchema `json:"finding_schemas"`
+
+	// defProjectID is the project the definition row was found under
+	// (GlobalProjectID when resolved via the global fallback). Set by
+	// GetWorkflowDef; consumed by buildWorkflowInstance for the workflows FK.
+	defProjectID string
 }
 
 // MarshalJSON serializes WorkflowDef with parsed phases

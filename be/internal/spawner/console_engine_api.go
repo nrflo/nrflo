@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"be/internal/service"
 	"be/internal/spawner/apirun"
@@ -47,14 +48,19 @@ type apiConsoleEngine struct {
 	stopping     chan struct{}
 	stopOnce     sync.Once
 	stoppingOnce sync.Once
+
+	// rateLimitBackoff drives the bounded in-turn retry after a RATE_LIMITED
+	// turn (one entry per retry). Injectable so tests use tiny delays.
+	rateLimitBackoff []time.Duration
 }
 
 func newAPIConsoleEngine(deps EngineDeps) *apiConsoleEngine {
 	return &apiConsoleEngine{
-		sink:     deps.Sink,
-		api:      deps.API,
-		events:   make(chan EngineEvent, 256),
-		stopping: make(chan struct{}),
+		sink:             deps.Sink,
+		api:              deps.API,
+		events:           make(chan EngineEvent, 256),
+		stopping:         make(chan struct{}),
+		rateLimitBackoff: []time.Duration{30 * time.Second, 60 * time.Second},
 	}
 }
 
@@ -145,6 +151,27 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error 
 		defer e.turnWG.Done()
 		proc := &apiEngineProcState{e: e}
 		status := conv.SendTurn(turnCtx, proc, text)
+
+		// Bounded in-turn retry on rate limits: unlike autonomous api agents
+		// (which relaunch via the spawner's backoff dance), a console chat
+		// has no relauncher — without this a 429 just ends the turn with an
+		// error. The user text is already in the history, so retries resume
+		// rather than re-send.
+		for i := 0; status == "RATE_LIMITED" && i < len(e.rateLimitBackoff); i++ {
+			delay := e.rateLimitBackoff[i]
+			emitMessage(spec.SessionID, fmt.Sprintf("provider rate-limited — retrying in %s (attempt %d/%d)", delay, i+1, len(e.rateLimitBackoff)), "system", e.sink)
+			timer := time.NewTimer(delay)
+			select {
+			case <-timer.C:
+				status = conv.ResumeTurn(turnCtx, proc)
+			case <-turnCtx.Done():
+				timer.Stop()
+				status = "CANCELLED"
+			case <-e.stopping:
+				timer.Stop()
+				status = "CANCELLED"
+			}
+		}
 
 		e.mu.Lock()
 		e.turnActive = false

@@ -32,8 +32,10 @@ type StreamHook interface {
 type Conversation struct {
 	cfg Config
 
-	mu   sync.Mutex
-	msgs []provider.Message
+	mu           sync.Mutex
+	msgs         []provider.Message
+	contextLeft  int  // last % reported via ctxCaptureProc
+	contextKnown bool // false until a turn reports usage (reset on compaction)
 }
 
 // NewConversation constructs a Conversation from cfg, applying the same
@@ -46,8 +48,13 @@ func NewConversation(cfg Config) *Conversation {
 // SendTurn appends text as a user message, runs the shared tool-use loop
 // (outside of any lock, so a concurrent Stop can still proceed), stores the
 // resulting history, and returns the terminal status of THIS turn (PASS on
-// end_turn / FAIL / RATE_LIMITED / CANCELLED).
+// end_turn / FAIL / RATE_LIMITED / CANCELLED). When the previous turn left
+// the context window nearly full, the history is compacted first
+// (conversation_compact.go).
 func (c *Conversation) SendTurn(ctx context.Context, proc ProcState, text string) string {
+	capture := ctxCaptureProc{ProcState: proc, c: c}
+	c.maybeCompact(ctx, capture)
+
 	c.mu.Lock()
 	msgs := append(append([]provider.Message{}, c.msgs...), provider.Message{
 		Role:    "user",
@@ -55,6 +62,21 @@ func (c *Conversation) SendTurn(ctx context.Context, proc ProcState, text string
 	})
 	c.mu.Unlock()
 
+	return c.run(ctx, capture, msgs)
+}
+
+// ResumeTurn re-runs the tool-use loop on the stored history without
+// appending a new user message — the retry path after a RATE_LIMITED turn
+// (the user text of the failed turn is already in the history).
+func (c *Conversation) ResumeTurn(ctx context.Context, proc ProcState) string {
+	c.mu.Lock()
+	msgs := append([]provider.Message{}, c.msgs...)
+	c.mu.Unlock()
+
+	return c.run(ctx, ctxCaptureProc{ProcState: proc, c: c}, msgs)
+}
+
+func (c *Conversation) run(ctx context.Context, proc ProcState, msgs []provider.Message) string {
 	r := &Runner{cfg: c.cfg}
 	newMsgs, status := r.runTurns(ctx, proc, msgs)
 

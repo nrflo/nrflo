@@ -9,7 +9,6 @@ import (
 
 	"be/internal/id"
 	"be/internal/logger"
-	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"github.com/google/uuid"
@@ -318,6 +317,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 	}
 
+	nativeToolsCSV, sandbox := nativeSpawnFields(agentDef, adapter.Name())
 	opts := SpawnOptions{
 		Model:                    model,
 		SessionID:                sessionID,
@@ -332,6 +332,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		SystemPromptOverrideFile: systemPromptOverrideFilePath,
 		MCPConfigJSON:            mcpConfigJSON,
 		AllowedToolsCSV:          allowedToolsCSV,
+		NativeToolsCSV:           nativeToolsCSV,
+		Sandbox:                  sandbox,
 		Env:                      s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
 	}
 
@@ -342,24 +344,4 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	prep.systemPromptOverrideFile = systemPromptOverrideFilePath
 	proc.env = opts.Env
 	return proc, prep, nil
-}
-
-// resolveReasoningEffort resolves the winning reasoning_effort override with
-// precedence def-level override > AgentConfig-carried override > the model
-// row's own effort (rowEffort). The AgentConfig fallback exists because a
-// global workflow's agent def is invisible to the spawner (loadAgentDefinition
-// has no __global__ fallback — see orchestrator/plan_boundary.go), so a
-// materialized plan node's override must also travel via
-// s.config.Agents[agentType].ReasoningEffort. Mirrors the executionMode
-// fallback shape above (agentDef != nil check, else config.Agents lookup).
-func (s *Spawner) resolveReasoningEffort(agentDef *model.AgentDefinition, agentType, rowEffort string) string {
-	if agentDef != nil && agentDef.ReasoningEffort != nil {
-		return *agentDef.ReasoningEffort
-	}
-	if agentDef == nil {
-		if agentCfg, ok := s.config.Agents[agentType]; ok && agentCfg.ReasoningEffort != nil {
-			return *agentCfg.ReasoningEffort
-		}
-	}
-	return rowEffort
 }

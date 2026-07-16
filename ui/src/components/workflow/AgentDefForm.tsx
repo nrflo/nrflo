@@ -9,8 +9,10 @@ import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
 import { AgentDefEffortField } from './AgentDefEffortField'
 import { AgentDefToolsField } from './AgentDefToolsField'
+import { AgentDefNativeToolsField } from './AgentDefNativeToolsField'
+import { AgentDefSandboxField } from './AgentDefSandboxField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
-import { useModelOptions } from '@/hooks/useModels'
+import { useModelOptions, useModels } from '@/hooks/useModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
@@ -44,6 +46,8 @@ export function AgentDefForm({
   )
   const [pythonScriptId, setPythonScriptId] = useState(initial?.python_script_id || '')
   const [tools, setTools] = useState(initial?.tools || '')
+  const [nativeTools, setNativeTools] = useState(initial?.native_tools || '')
+  const [sandbox, setSandbox] = useState<string>(initial?.sandbox || '')
   const [apiMaxIterations, setApiMaxIterations] = useState<number | ''>(initial?.api_max_iterations ?? '')
   const [apiMaxTokens, setApiMaxTokens] = useState<number | ''>(initial?.api_max_tokens ?? '')
   const [validationCommands, setValidationCommands] = useState<string[]>(() => {
@@ -58,16 +62,35 @@ export function AgentDefForm({
   const apiModelOptions = useModelOptions('api')
   const activeModelOptions = executionMode === 'api' ? apiModelOptions : modelOptions
   const apiModeEnabled = useAPIModeEnabled()
+  const { data: allModels = [] } = useModels()
+  const providerOf = (modelID: string) => allModels.find((row) => row.id === modelID)?.provider
+  const provider = providerOf(model)
+  // Backend hard-rejects native_tools/sandbox that don't match the def's
+  // provider/mode, so clear them whenever the model or mode moves away.
+  const clearNativeFieldsFor = (nextModel: string, nextMode: ExecutionMode) => {
+    const nextProvider = nextMode === 'cli_interactive' ? providerOf(nextModel) : undefined
+    if (nextProvider !== 'anthropic') setNativeTools('')
+    if (nextProvider !== 'openai') setSandbox('')
+  }
+  const handleModelChange = (nextModel: string) => {
+    clearNativeFieldsFor(nextModel, executionMode)
+    setModel(nextModel)
+  }
   const handleExecutionModeChange = (v: string) => {
     const next = v as ExecutionMode
     if (next !== 'script') setPythonScriptId('')
+    let nextModel = model
     if (next !== 'script') {
       const options = next === 'api' ? apiModelOptions : modelOptions
       const values = options.flatMap((group) => group.options.map((option) => option.value))
-      if (!values.includes(model)) setModel(values[0] ?? '')
+      if (!values.includes(model)) {
+        nextModel = values[0] ?? ''
+        setModel(nextModel)
+      }
       setLowConsumptionModel('')
       setReasoningEffort('')
     }
+    clearNativeFieldsFor(nextModel, next)
     setExecutionMode(next)
   }
   const handleConsultantChange = (checked: boolean) => {
@@ -97,7 +120,7 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -134,7 +157,7 @@ export function AgentDefForm({
         {executionMode !== 'script' && (
           <div className="flex-1">
             <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-            <Dropdown value={model} onChange={setModel} options={activeModelOptions} />
+            <Dropdown value={model} onChange={handleModelChange} options={activeModelOptions} />
           </div>
         )}
         <AgentDefEffortField executionMode={executionMode} model={model} value={reasoningEffort} onChange={setReasoningEffort} />
@@ -190,6 +213,12 @@ export function AgentDefForm({
       )}
       {executionMode !== 'script' && (
         <AgentDefToolsField value={tools} onChange={setTools} executionMode={executionMode} />
+      )}
+      {executionMode === 'cli_interactive' && provider === 'anthropic' && (
+        <AgentDefNativeToolsField value={nativeTools} onChange={setNativeTools} />
+      )}
+      {executionMode === 'cli_interactive' && provider === 'openai' && (
+        <AgentDefSandboxField value={sandbox} onChange={setSandbox} />
       )}
       {executionMode === 'api' && (
         <AgentDefAPIModeFields apiMaxIterations={apiMaxIterations} setApiMaxIterations={setApiMaxIterations} apiMaxTokens={apiMaxTokens} setApiMaxTokens={setApiMaxTokens} />

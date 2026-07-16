@@ -37,6 +37,10 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 `codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. `appServerArgs()` also passes `-c project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]` so a repo with no `AGENTS.md` still gets its **root** `CLAUDE.md` as the codex project doc; codex walks only cwd's ancestors and spawns always run at `ProjectRoot`, so **nested package `CLAUDE.md`s never reach a codex worker** — it must read them itself. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
 
+## Native Tool Restriction
+
+Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` → `--tools`; the `none` sentinel maps to `--tools ""` (MCP-only agent), empty = unrestricted. Agent-def `sandbox` (codex-only) rides `SpawnOptions.Sandbox` into the app-server thread/start sandbox param, empty → danger-full-access. Constants (`model.Sandbox*`, `model.NativeToolsNone`) live in `be/internal/model`; per-adapter resolution is `nativeSpawnFields` (`spawner_prepare_native.go`), nil-def (global workflows) = unrestricted.
+
 ## Console Engine
 
 `ConsoleEngine` (`console_engine.go`, via `GetConsoleEngine`) is the provider-agnostic conversation driver used by console chats; `InterruptTurn` cancels only the active turn and preserves the engine's conversation. Engine death remains observable through `Events()`, so `console.ChatService` cannot leave a dead turn pinned; engines hold no `processInfo`, making nudge/stall/restart policies structurally unreachable. Codex uses app-server, Claude uses the PTY + hooks path, and `apiConsoleEngine` uses an in-process `apirun.Conversation`; mechanics: [REFERENCE.md](REFERENCE.md#console-engine).

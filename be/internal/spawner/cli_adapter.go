@@ -156,7 +156,7 @@ type InteractiveSpawnOptions struct {
 	CodexHome                string // CODEX_HOME dir path; Codex only — ignored by other adapters
 	Prompt                   string // initial user prompt; Codex passes this as argv positional, others ignore
 	ResumeSessionID          string // when set, CLI resumes this session; Claude: --resume <id>; Codex: `resume <id>` subcommand
-	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools
+	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools; model.NativeToolsNone → --tools ""
 	MCPConfigJSON            string // Claude only / ignored by non-Claude adapters: JSON passed to --mcp-config (always paired with --strict-mcp-config)
 	AllowedToolsCSV          string // Claude only / ignored by non-Claude adapters: comma-separated tool patterns for --allowedTools
 }
@@ -215,9 +215,10 @@ type SpawnOptions struct {
 	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
 	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
 	SystemPromptOverrideFile string // Path to system prompt override file (--system-prompt-file; Claude only)
-	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools
+	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools; model.NativeToolsNone → --tools ""
 	MCPConfigJSON            string // Claude only / ignored by non-Claude adapters: JSON passed to --mcp-config (always paired with --strict-mcp-config)
 	AllowedToolsCSV          string // Claude only / ignored by non-Claude adapters: comma-separated tool patterns for --allowedTools
+	Sandbox                  string // codex app-server only: thread/start sandbox param; "" = danger-full-access
 }
 
 // GetCLIAdapter returns the appropriate adapter for a CLI name

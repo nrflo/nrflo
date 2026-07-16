@@ -15,6 +15,8 @@ type AgentDefCreateRequest struct {
 	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
 	ExecutionMode          string    `json:"execution_mode,omitempty"`
 	Tools                  string    `json:"tools,omitempty"`
+	NativeTools            string    `json:"native_tools,omitempty"`
+	Sandbox                string    `json:"sandbox,omitempty"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`
@@ -39,6 +41,8 @@ type AgentDefUpdateRequest struct {
 	LowConsumptionModel    *string   `json:"low_consumption_model,omitempty"`
 	ExecutionMode          *string   `json:"execution_mode,omitempty"`
 	Tools                  *string   `json:"tools,omitempty"`
+	NativeTools            *string   `json:"native_tools,omitempty"`
+	Sandbox                *string   `json:"sandbox,omitempty"`
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`

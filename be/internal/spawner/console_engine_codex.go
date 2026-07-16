@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"sync"
+
+	"be/internal/model"
 )
 
 // codexEngine drives `codex app-server` for a human console session, reusing
@@ -67,7 +69,7 @@ func (e *codexEngine) Name() string { return "codex" }
 // DB-driven completion.
 func (e *codexEngine) Start(ctx context.Context, spec EngineSpec) error {
 	if spec.Sandbox == "" {
-		spec.Sandbox = "workspace-write"
+		spec.Sandbox = model.SandboxWorkspaceWrite
 	}
 	if spec.ApprovalPolicy == "" {
 		spec.ApprovalPolicy = "on-request"

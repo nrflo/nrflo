@@ -21,6 +21,8 @@ type AgentDefUpdateFields struct {
 	LowConsumptionModel    *string
 	ExecutionMode          *string
 	Tools                  *string
+	NativeTools            *string
+	Sandbox                *string
 	APIMaxIterations       *int
 	APIMaxTokens           *int
 	PythonScriptID         *string
@@ -86,6 +88,14 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.Tools != nil {
 		updates = append(updates, "tools = ?")
 		args = append(args, *fields.Tools)
+	}
+	if fields.NativeTools != nil {
+		updates = append(updates, "native_tools = ?")
+		args = append(args, *fields.NativeTools)
+	}
+	if fields.Sandbox != nil {
+		updates = append(updates, "sandbox = ?")
+		args = append(args, *fields.Sandbox)
 	}
 	if fields.APIMaxIterations != nil {
 		updates = append(updates, "api_max_iterations = ?")

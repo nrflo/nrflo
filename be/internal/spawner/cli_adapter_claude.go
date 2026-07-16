@@ -3,6 +3,8 @@ package spawner
 import (
 	"os/exec"
 	"time"
+
+	"be/internal/model"
 )
 
 // ClaudeAdapter implements CLIAdapter for Claude Code CLI
@@ -71,7 +73,11 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 	if opts.SystemPromptFile != "" {
 		args = append(args, "--append-system-prompt-file", opts.SystemPromptFile)
 	}
-	if opts.NativeToolsCSV != "" {
+	if opts.NativeToolsCSV == model.NativeToolsNone {
+		// Sentinel: disable every native tool (MCP-only agent). The CLI treats
+		// an empty --tools value as "no built-in tools".
+		args = append(args, "--tools", "")
+	} else if opts.NativeToolsCSV != "" {
 		args = append(args, "--tools", opts.NativeToolsCSV)
 	}
 	if opts.MCPConfigJSON != "" {

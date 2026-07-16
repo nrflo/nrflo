@@ -189,6 +189,8 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				LowConsumptionModel:    agent.LowConsumptionModel,
 				ExecutionMode:          agent.ExecutionMode,
 				Tools:                  agent.Tools,
+				NativeTools:            agent.NativeTools,
+				Sandbox:                agent.Sandbox,
 				APIMaxIterations:       agent.APIMaxIterations,
 				APIMaxTokens:           agent.APIMaxTokens,
 				PythonScriptID:         scriptID,

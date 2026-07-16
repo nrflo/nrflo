@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"be/internal/model"
 	"be/internal/pty"
 )
 
@@ -38,7 +39,7 @@ func (a *CodexAdapter) PrepareUserSession(opts UserSessionOptions) (pty.Launch, 
 		args = append(args, "-c", fmt.Sprintf("model_reasoning_effort=%q", opts.ReasoningEffort))
 	}
 	if opts.PlanMode {
-		args = append(args, "--sandbox", "read-only", "--ask-for-approval", "on-request")
+		args = append(args, "--sandbox", model.SandboxReadOnly, "--ask-for-approval", "on-request")
 	} else {
 		args = append(args, "--dangerously-bypass-approvals-and-sandbox")
 	}

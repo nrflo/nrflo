@@ -12,7 +12,7 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 ## Agent Definitions
 
-`AgentDefForm.tsx` (+ sub-field components) edits an `AgentDef`, including optional `reasoning_effort` and admin-managed global (`__global__`) templates. Details: [REFERENCE.md](REFERENCE.md#agent-definitions) — read before changing the form fields or template scoping.
+`AgentDefForm.tsx` (+ sub-field components) edits an `AgentDef`, including optional `reasoning_effort` and admin-managed global (`__global__`) templates. `native_tools` (anthropic CLI defs) and `sandbox` (openai CLI defs) render provider-gated and are auto-cleared when the model/mode moves away, since the backend hard-rejects mismatches. Details: [REFERENCE.md](REFERENCE.md#agent-definitions) — read before changing the form fields or template scoping.
 
 ## Plan Approval
 

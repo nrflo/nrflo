@@ -19,6 +19,8 @@ type AgentDefinition struct {
 	Layer                  int       `json:"layer"`
 	ExecutionMode          string    `json:"execution_mode"`
 	Tools                  string    `json:"tools"`
+	NativeTools            string    `json:"native_tools"` // claude cli_interactive only: CSV → --tools; "" = unrestricted, NativeToolsNone = disable all
+	Sandbox                string    `json:"sandbox"`      // codex cli_interactive only: thread/start sandbox; "" = danger-full-access
 	APIMaxIterations       *int      `json:"api_max_iterations,omitempty"`
 	APIMaxTokens           *int      `json:"api_max_tokens,omitempty"`
 	PythonScriptID         *string   `json:"python_script_id,omitempty"`

@@ -16,6 +16,8 @@ export interface AgentDef {
   low_consumption_model?: string
   execution_mode: 'cli_interactive' | 'api' | 'script'
   tools: string
+  native_tools: string
+  sandbox: '' | 'read-only' | 'workspace-write' | 'danger-full-access'
   api_max_iterations?: number
   api_max_tokens?: number
   python_script_id?: string
@@ -40,6 +42,8 @@ export interface AgentDefCreateRequest {
   low_consumption_model?: string
   execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
+  native_tools?: string
+  sandbox?: '' | 'read-only' | 'workspace-write' | 'danger-full-access'
   api_max_iterations?: number
   api_max_tokens?: number
   python_script_id?: string
@@ -61,6 +65,8 @@ export interface AgentDefUpdateRequest {
   low_consumption_model?: string
   execution_mode?: 'cli_interactive' | 'api' | 'script'
   tools?: string
+  native_tools?: string
+  sandbox?: '' | 'read-only' | 'workspace-write' | 'danger-full-access'
   api_max_iterations?: number
   api_max_tokens?: number
   python_script_id?: string

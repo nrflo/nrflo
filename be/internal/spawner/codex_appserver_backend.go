@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"be/internal/logger"
+	"be/internal/model"
 )
 
 // codexAppServerBackend drives `codex app-server` (newline-delimited JSON-RPC
@@ -118,7 +119,7 @@ const appServerClientName = "nrflo"
 
 // run drives the JSON-RPC session: handshake → thread/start → turn/start →
 // event loop. It always closes proc.doneCh and cleans up the profile dir.
-func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, prep *prepResult, client *appServerClient, model, effort string) {
+func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, prep *prepResult, client *appServerClient, cliModel, effort string) {
 	defer close(proc.doneCh)
 	defer client.close()
 	defer os.RemoveAll(b.profileDir)
@@ -135,7 +136,7 @@ func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, p
 	}
 	_ = client.notify("initialized", nil)
 
-	resp, err := client.call(runCtx, "thread/start", threadStartParams(model, proc.workDir, "danger-full-access", "never"))
+	resp, err := client.call(runCtx, "thread/start", threadStartParams(cliModel, proc.workDir, effectiveSpawnSandbox(prep.opts.Sandbox), "never"))
 	if err != nil {
 		b.fail(logCtx, proc, "thread/start: "+err.Error())
 		return
@@ -152,7 +153,7 @@ func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, p
 		return
 	}
 
-	if _, err := client.call(runCtx, "turn/start", turnStartParams(threadID, prep.prompt, effort, model)); err != nil {
+	if _, err := client.call(runCtx, "turn/start", turnStartParams(threadID, prep.prompt, effort, cliModel)); err != nil {
 		b.fail(logCtx, proc, "turn/start: "+err.Error())
 		return
 	}
@@ -234,10 +235,19 @@ func (b *codexAppServerBackend) fail(logCtx context.Context, proc *processInfo, 
 	}
 }
 
+// effectiveSpawnSandbox maps an empty per-def sandbox to the autonomous
+// spawn default (danger-full-access).
+func effectiveSpawnSandbox(s string) string {
+	if s == "" {
+		return model.SandboxDangerFullAccess
+	}
+	return s
+}
+
 // threadStartParams builds a thread/start params object. Shared by the
-// autonomous app-server backend (sandbox="danger-full-access",
-// approvalPolicy="never", unchanged) and the console engine (defaults
-// "workspace-write"/"on-request").
+// autonomous app-server backend (sandbox from the agent def's sandbox field,
+// empty → danger-full-access; approvalPolicy always "never") and the console
+// engine (defaults "workspace-write"/"on-request").
 func threadStartParams(model, cwd, sandbox, approvalPolicy string) map[string]any {
 	return map[string]any{
 		"model":          model,

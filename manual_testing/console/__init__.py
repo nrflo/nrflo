@@ -9,6 +9,7 @@ from . import (
     C03_api_chat_roundtrip,
     C04_claude_chat_tools,
     C05_openai_api_chat_roundtrip,
+    C06_api_native_tools,
 )
 
 ALL_SCENARIOS = [
@@ -17,4 +18,5 @@ ALL_SCENARIOS = [
     C03_api_chat_roundtrip.run,
     C04_claude_chat_tools.run,
     C05_openai_api_chat_roundtrip.run,
+    C06_api_native_tools.run,
 ]

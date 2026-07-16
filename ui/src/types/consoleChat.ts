@@ -51,7 +51,46 @@ export interface ConsoleChatMessagesResponse {
   total: number
 }
 
-export type ApprovalDecision = 'allow' | 'deny'
+// allow_for_session remembers the tool for the rest of the chat: codex maps
+// it natively (acceptForSession); the claude engine keeps a server-side
+// per-tool allowlist. Resolved WS pushes normalize it back to 'allow'.
+export type ApprovalDecision = 'allow' | 'allow_for_session' | 'deny'
+
+// GET /console/catalog — server-owned engine/model discovery + live
+// resumable chats (be/internal/types/console.go). The same source the
+// native TUI picker uses; `models` is null when an engine has no registry
+// rows (Go nil slice).
+export interface ConsoleModelOption {
+  id: string
+  display_name: string
+  provider?: string
+  mapped_model?: string
+  reasoning_effort?: string
+}
+
+export interface ConsoleEngineOption {
+  id: string
+  display_name: string
+  enabled: boolean
+  disabled_reason?: string
+  requires_model: boolean
+  models: ConsoleModelOption[] | null
+}
+
+export interface ConsoleSessionOption {
+  session_id: string
+  engine: string
+  model?: string
+  status: string
+  started_at?: string
+  context_left?: number
+}
+
+export interface ConsoleCatalog {
+  project_id: string
+  engines: ConsoleEngineOption[]
+  sessions: ConsoleSessionOption[]
+}
 
 // WS session-channel payload shapes (be/internal/console/chat_events.go)
 export interface ConsoleChatDeltaPayload {
@@ -72,7 +111,9 @@ export type ConsoleChatApprovalRequestPayload = PendingApproval
 
 export interface ConsoleChatApprovalResolvedPayload {
   approval_id: string
-  decision: ApprovalDecision
+  // Resolutions are pushed in the normalized allow/deny vocabulary — the
+  // pump maps approve_for_session down to 'allow' (chat_events.go).
+  decision: 'allow' | 'deny'
   reason?: string
 }
 

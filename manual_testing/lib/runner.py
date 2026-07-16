@@ -70,8 +70,13 @@ def run_all(
     timeout: float | None = None,
     results_path: str | None = None,
     api_credentials: str = "anthropic",
+    extra_env: dict[str, str] | None = None,
 ) -> int:
     """Run `scenarios` for one provider on one fresh server.
+
+    `extra_env` is merged into the server process env on top of whatever the
+    mode-specific credential sourcing below adds (console folder: best-effort
+    OAuth token so its api-engine scenario can run under a CLI-mode folder).
 
     Returns 0 (all PASS/SKIP), 1 (any FAIL), 2 (fatal interruption)."""
     if timeout is not None:
@@ -91,7 +96,7 @@ def run_all(
         scenarios = filtered
 
     label = f"{provider}/{mode}"
-    extra_env: dict[str, str] = {}
+    server_env: dict[str, str] = dict(extra_env or {})
     if mode == "api":
         # api-mode runs in-process — no CLI binary needed. Source credentials
         # for the chosen provider family and SKIP the whole folder cleanly when
@@ -104,7 +109,7 @@ def run_all(
                 if results_path:
                     _write_results(results_path, [], skipped_reason=reason)
                 return 0
-            extra_env["OPENAI_API_KEY"] = key
+            server_env["OPENAI_API_KEY"] = key
             _say(label, f"resolved OpenAI API key ({reason})")
         else:
             from .credentials import probe_oauth_token
@@ -114,7 +119,7 @@ def run_all(
                 if results_path:
                     _write_results(results_path, [], skipped_reason=reason)
                 return 0
-            extra_env["ANTHROPIC_OAUTH_TOKEN"] = tok
+            server_env["ANTHROPIC_OAUTH_TOKEN"] = tok
             _say(label, f"resolved Anthropic OAuth token ({reason})")
     else:
         bin_path = shutil.which(binary)
@@ -129,7 +134,7 @@ def run_all(
 
     boot_start = time.monotonic()
     _say(label, "booting nrflo_server …")
-    srv = server_mod.start_server(cli_label=f"{provider}-{mode}", extra_env=extra_env)
+    srv = server_mod.start_server(cli_label=f"{provider}-{mode}", extra_env=server_env)
     _say(label, f"server ready in {time.monotonic() - boot_start:.2f}s "
                 f"at {srv.base_url} (NRFLO_HOME={srv.home})")
 

@@ -25,6 +25,8 @@ type fakeConsoleHooks struct {
 
 	contextLeftHandled bool
 	contextLeftCalls   []contextLeftCall
+
+	sessionLive bool
 }
 
 type approveCall struct {
@@ -63,6 +65,12 @@ func (f *fakeConsoleHooks) ConsoleContextLeft(sessionID string, pct int) bool {
 	defer f.mu.Unlock()
 	f.contextLeftCalls = append(f.contextLeftCalls, contextLeftCall{sessionID, pct})
 	return f.contextLeftHandled
+}
+
+func (f *fakeConsoleHooks) ConsoleSessionLive(string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.sessionLive
 }
 
 // TestRecordEvent_PreToolUse_ConsoleApprovalHandled_AddsPermissionDecision
@@ -245,5 +253,46 @@ func TestRecordEvent_SessionStart_NotifiesConsoleHub(t *testing.T) {
 	fake.mu.Unlock()
 	if len(calls) != 1 || calls[0] != sessionID {
 		t.Errorf("ConsoleSessionReady calls = %v, want [%s]", calls, sessionID)
+	}
+}
+
+// TestRecordEvent_UserPromptSubmit_ConsoleSessionLive_SkipsUserInputRow
+// verifies the hook echo of a console user turn is NOT persisted when a live
+// console engine owns the session (SendUserTurn already wrote the user_input
+// row), and IS persisted for sessions with no live engine.
+func TestRecordEvent_UserPromptSubmit_ConsoleSessionLive_SkipsUserInputRow(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	env.createTicketAndWorkflow(t, "CONSOLE-UPS-1")
+	wfiID := queryWFIID(t, env, "CONSOLE-UPS-1")
+	sessionID := "sess-console-ups-1"
+	insertAgentSession(t, env, "CONSOLE-UPS-1", sessionID, wfiID)
+
+	fake := &fakeConsoleHooks{sessionLive: true}
+	env.handler.consoleHooks = fake
+
+	req := buildRecordEventReq(t, "req-console-ups-1", sessionID, map[string]interface{}{
+		"hook_event_name": "UserPromptSubmit",
+		"prompt":          "hello there",
+	})
+	resp := env.handler.Handle(req)
+	if resp.Error != nil {
+		t.Fatalf("expected no error, got: %v", resp.Error)
+	}
+	if n := countAgentMessages(t, env, sessionID); n != 0 {
+		t.Errorf("agent_messages count = %d, want 0 (engine owns the user_input row)", n)
+	}
+
+	fake.mu.Lock()
+	fake.sessionLive = false
+	fake.mu.Unlock()
+	resp = env.handler.Handle(buildRecordEventReq(t, "req-console-ups-2", sessionID, map[string]interface{}{
+		"hook_event_name": "UserPromptSubmit",
+		"prompt":          "hello again",
+	}))
+	if resp.Error != nil {
+		t.Fatalf("expected no error, got: %v", resp.Error)
+	}
+	if n := countAgentMessages(t, env, sessionID); n != 1 {
+		t.Errorf("agent_messages count = %d, want 1 (no live engine -> hook records)", n)
 	}
 }

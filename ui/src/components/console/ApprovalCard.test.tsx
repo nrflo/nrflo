@@ -45,6 +45,16 @@ describe('ApprovalCard', () => {
     expect(mutate).toHaveBeenCalledWith({ sid: 'sid-1', aid: 'a1', decision: 'allow' })
   })
 
+  it('calls the mutation with allow_for_session when Always allow is clicked', async () => {
+    const mutate = mockMutation()
+    const user = userEvent.setup()
+    renderWithQuery(<ApprovalCard sid="sid-1" approval={approval} />)
+
+    await user.click(screen.getByRole('button', { name: 'Always allow' }))
+
+    expect(mutate).toHaveBeenCalledWith({ sid: 'sid-1', aid: 'a1', decision: 'allow_for_session' })
+  })
+
   it('calls the mutation with deny when Deny is clicked', async () => {
     const mutate = mockMutation()
     const user = userEvent.setup()

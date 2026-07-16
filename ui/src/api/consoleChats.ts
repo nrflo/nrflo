@@ -1,6 +1,7 @@
 import { apiGet, apiPost, ApiError } from './client'
 import type {
   ApprovalDecision,
+  ConsoleCatalog,
   ConsoleChatDetail,
   ConsoleChatListResponse,
   ConsoleChatMessagesResponse,
@@ -14,6 +15,10 @@ export class TurnActiveError extends Error {
     super('a turn is already running')
     this.name = 'TurnActiveError'
   }
+}
+
+export async function getConsoleCatalog(): Promise<ConsoleCatalog> {
+  return apiGet<ConsoleCatalog>('/api/v1/console/catalog')
 }
 
 export async function listConsoleChats(): Promise<ConsoleChatSummary[]> {
@@ -50,4 +55,15 @@ export async function replyConsoleChatApproval(sid: string, aid: string, decisio
 
 export async function closeConsoleChat(sid: string): Promise<void> {
   await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/close`)
+}
+
+// Interrupt cancels the active turn but keeps the engine + conversation
+// alive. A 409 means the turn already ended — benign, swallowed here.
+export async function interruptConsoleChat(sid: string): Promise<void> {
+  try {
+    await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/interrupt`)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) return
+    throw e
+  }
 }

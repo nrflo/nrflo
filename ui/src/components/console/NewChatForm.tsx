@@ -2,52 +2,53 @@ import { useState } from 'react'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { Button } from '@/components/ui/Button'
-import { useCLIModels } from '@/hooks/useCLIModels'
-import { useAPIModels } from '@/hooks/useAPIModels'
-import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
-import { useCreateConsoleChat } from '@/hooks/useConsoleChats'
+import { useConsoleCatalog, useCreateConsoleChat } from '@/hooks/useConsoleChats'
 import { useProjectStore } from '@/stores/projectStore'
 
 interface NewChatFormProps {
   onCreated: (sid: string) => void
 }
 
-const BASE_ENGINE_OPTIONS = [
-  { value: 'claude', label: 'Claude' },
-  { value: 'codex', label: 'Codex' },
-]
-
-const API_ENGINE_OPTION = { value: 'api', label: 'API (direct)' }
-
-// Engine picker, model picker filtered to the chosen engine's registry +
-// enabled rows (the BE rejects a model for the other engine or a disabled one
-// at create time, so filtering client-side avoids a guaranteed 500 — for the
-// 'api' engine the registry is api_models instead of cli_models), project
-// picker, and a read-only workdir line — project.root_path is exactly what
-// buildChatEngineSpec uses as the engine WorkDir.
+// Server-driven picker over GET /console/catalog — the same discovery
+// surface the native TUI uses. Engine availability (codex missing on the
+// server, API mode off) arrives as enabled/disabled_reason instead of being
+// re-derived client-side; each engine carries its own registry's models
+// (cli_models vs api_models — colliding id namespaces). CLI engines accept
+// an empty model (engine default); the api engine requires one
+// (requires_model). The read-only workdir line shows project.root_path —
+// exactly what buildChatEngineSpec uses as the engine WorkDir.
 export function NewChatForm({ onCreated }: NewChatFormProps) {
   const projects = useProjectStore((s) => s.projects)
   const currentProject = useProjectStore((s) => s.currentProject)
   const setCurrentProject = useProjectStore((s) => s.setCurrentProject)
-  const { data: cliModels = [] } = useCLIModels()
-  const { data: apiModels = [] } = useAPIModels()
-  const apiModeEnabled = useAPIModeEnabled()
+  const { data: catalog } = useConsoleCatalog()
   const createMutation = useCreateConsoleChat()
 
   const [engine, setEngine] = useState('claude')
   const [model, setModel] = useState('')
 
-  if (!apiModeEnabled && engine === 'api') {
-    setEngine('claude')
+  const engines = catalog?.engines ?? []
+  const selectedEngine = engines.find((e) => e.id === engine)
+
+  // If the chosen engine turns disabled under us (e.g. API mode flipped
+  // off), snap to the first enabled one.
+  const firstEnabled = engines.find((e) => e.enabled)
+  if (selectedEngine && !selectedEngine.enabled && firstEnabled) {
+    setEngine(firstEnabled.id)
     setModel('')
   }
 
-  const engineOptions = apiModeEnabled ? [...BASE_ENGINE_OPTIONS, API_ENGINE_OPTION] : BASE_ENGINE_OPTIONS
+  const engineOptions = engines.map((e) => ({
+    value: e.id,
+    label: e.display_name,
+    disabled: !e.enabled,
+    tooltip: e.enabled ? undefined : e.disabled_reason,
+  }))
 
-  const modelOptions =
-    engine === 'api'
-      ? apiModels.filter((m) => m.enabled).map((m) => ({ value: m.id, label: m.display_name }))
-      : cliModels.filter((m) => m.enabled && m.cli_type === engine).map((m) => ({ value: m.id, label: m.display_name }))
+  const modelOptions = (selectedEngine?.models ?? []).map((m) => ({
+    value: m.id,
+    label: m.display_name,
+  }))
 
   const project = projects.find((p) => p.id === currentProject)
 
@@ -56,8 +57,11 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
     setModel('')
   }
 
+  const canCreate =
+    !!selectedEngine?.enabled && (!!model || !selectedEngine.requires_model)
+
   const handleCreate = async () => {
-    if (!model) return
+    if (!canCreate) return
     const resp = await createMutation.mutateAsync({ engine, model })
     onCreated(resp.session_id)
   }
@@ -74,7 +78,7 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
           value={model}
           onChange={setModel}
           options={modelOptions}
-          placeholder="Select a model…"
+          placeholder={selectedEngine?.requires_model ? 'Select a model…' : 'Engine default'}
           disabled={modelOptions.length === 0}
         />
       </div>
@@ -88,7 +92,7 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
         <ProjectSelect value={currentProject} onChange={setCurrentProject} projects={projects} />
       </div>
       {project?.root_path && <div className="text-xs text-muted-foreground">Workdir: {project.root_path}</div>}
-      <Button onClick={handleCreate} disabled={!model || createMutation.isPending}>
+      <Button onClick={handleCreate} disabled={!canCreate || createMutation.isPending}>
         {createMutation.isPending ? 'Starting…' : 'New chat'}
       </Button>
     </div>

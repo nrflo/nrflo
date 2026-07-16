@@ -9,11 +9,13 @@ interface ApprovalCardProps {
   resolved?: ResolvedApproval
 }
 
-// Inline card: kind + command/patch preview + cwd + reason, Allow/Deny
-// buttons, and terminal states driven by console_chat.approval_resolved —
-// 'Allowed' / 'Denied' / 'Denied — timed out'. The BE emits a resolved push
-// with decision+reason for the timeout/engine-stop paths too, so this must
-// never be left spinning once resolved is set.
+// Inline card: kind + command/patch preview + cwd + reason, Allow /
+// Always allow (allow_for_session — the engine remembers the tool for the
+// rest of the chat) / Deny buttons, and terminal states driven by
+// console_chat.approval_resolved — 'Allowed' / 'Denied' / 'Denied — timed
+// out'. The BE emits a resolved push with decision+reason for the
+// timeout/engine-stop paths too, so this must never be left spinning once
+// resolved is set.
 export function ApprovalCard({ sid, approval, resolved }: ApprovalCardProps) {
   const replyMutation = useReplyApproval()
 
@@ -41,6 +43,15 @@ export function ApprovalCard({ sid, approval, resolved }: ApprovalCardProps) {
             onClick={() => replyMutation.mutate({ sid, aid: approval.approval_id, decision: 'allow' })}
           >
             Allow
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={replyMutation.isPending}
+            title="Allow this tool for the rest of the chat"
+            onClick={() => replyMutation.mutate({ sid, aid: approval.approval_id, decision: 'allow_for_session' })}
+          >
+            Always allow
           </Button>
           <Button
             size="sm"

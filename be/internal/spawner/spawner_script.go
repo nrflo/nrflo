@@ -108,7 +108,7 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 	}
 
 	extID, extCtx, _ := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
-	env := append(filterEnv(os.Environ(), "CLAUDECODE"),
+	env := append(HostEnvWithoutClaudeMarkers(),
 		fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 		fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 		fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),

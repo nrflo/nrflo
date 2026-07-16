@@ -88,7 +88,7 @@ func (m *model) approvalView() string {
 	}
 	text := lipgloss.NewStyle().Bold(true).Foreground(warn).Render("Approval required") +
 		"  " + truncate(detail, max(20, m.width-28)) + "  " +
-		lipgloss.NewStyle().Bold(true).Render("[y] allow  [n] deny")
+		lipgloss.NewStyle().Bold(true).Render("[y] allow  [a] always  [n] deny")
 	return approvalBox.Width(max(1, m.width-2)).Render(text)
 }
 

@@ -145,10 +145,12 @@ func (s *Server) handleConsoleChatApproval(w http.ResponseWriter, r *http.Reques
 	switch body.Decision {
 	case "allow":
 		decision = spawner.ApprovalApprove
+	case "allow_for_session":
+		decision = spawner.ApprovalApproveForSession
 	case "deny":
 		decision = spawner.ApprovalDeny
 	default:
-		writeError(w, http.StatusBadRequest, "decision must be allow or deny")
+		writeError(w, http.StatusBadRequest, "decision must be allow, allow_for_session, or deny")
 		return
 	}
 

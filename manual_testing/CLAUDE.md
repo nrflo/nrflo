@@ -10,7 +10,7 @@ Per-provider Python harness that exercises the full path "real REST API → real
 
 ## Layout
 
-One folder per provider (`engine`, `claude`, `codex`, `python`, `api`, `openai_api`) plus shared `lib/`; `suite.md` is the canonical scenario catalogue and `run_suite.py` runs all folders concurrently with isolated `NRFLO_HOME`/`NRFLO_SOCKET`. Full tree + per-file roles: [REFERENCE.md](REFERENCE.md#layout) — read before adding files or folders.
+One folder per provider (`engine`, `claude`, `codex`, `python`, `api`, `openai_api`) plus the engine-scoped `console` folder (console-chat surface) and shared `lib/`; `suite.md` is the canonical scenario catalogue and `run_suite.py` runs all folders concurrently with isolated `NRFLO_HOME`/`NRFLO_SOCKET`. Full tree + per-file roles: [REFERENCE.md](REFERENCE.md#layout) — read before adding files or folders.
 
 Folder applicability is recorded in `suite.md` and verified by file presence in each folder. Cross-provider gates (`if ctx.provider == …`) are forbidden inside scenarios — divergent behaviour belongs in a per-provider folder.
 
@@ -43,6 +43,7 @@ python3 manual_testing/claude/test.py --only=s05 --parallel=1
 python3 manual_testing/python/test.py --only=P01
 python3 manual_testing/api/test.py --only=A01 --parallel=1
 python3 manual_testing/openai_api/test.py --only=O01 --parallel=1
+python3 manual_testing/console/test.py --only=C01 --parallel=1
 ```
 
 Each provider subprocess creates `/tmp/nrflo-manual-<provider>-<mode>-XXXX/` with the SQLite DB, per-scenario project roots, and `server.log`. The orchestrator collects results under `/tmp/nrflo-suite-<ts>/`. Directories are kept on exit.

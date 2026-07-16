@@ -191,16 +191,18 @@ func (h *PythonToolHandler) resolveScript() ([]byte, error) {
 }
 
 // buildEnv assembles the child process environment, mirroring
-// spawner.prepareScriptSpawn: the server env (minus CLAUDECODE) is inherited so
-// the python SDK can be imported (NRFLO_SDK_DIR) and the agent socket resolved
-// (NRFLO_SOCKET / NRFLO_HOME / HOME), including NRF_EXTERNAL_ID /
-// NRF_EXTERNAL_CONTEXT. nrflo-controlled identity vars override any inherited
-// collisions; projectEnv trails so project-supplied values win.
+// spawner.prepareScriptSpawn: the server env (minus the nested-Claude markers
+// CLAUDECODE/CLAUDE_CODE_*, same rule as spawner.HostEnvWithoutClaudeMarkers —
+// not imported here to avoid a package cycle) is inherited so the python SDK
+// can be imported (NRFLO_SDK_DIR) and the agent socket resolved (NRFLO_SOCKET
+// / NRFLO_HOME / HOME), including NRF_EXTERNAL_ID / NRF_EXTERNAL_CONTEXT.
+// nrflo-controlled identity vars override any inherited collisions;
+// projectEnv trails so project-supplied values win.
 func (h *PythonToolHandler) buildEnv(ctx context.Context, env apirun.ToolEnv) []string {
 	base := os.Environ()
 	e := make([]string, 0, len(base)+8)
 	for _, kv := range base {
-		if !strings.HasPrefix(kv, "CLAUDECODE=") {
+		if !strings.HasPrefix(kv, "CLAUDECODE=") && !strings.HasPrefix(kv, "CLAUDE_CODE_") {
 			e = append(e, kv)
 		}
 	}

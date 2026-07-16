@@ -45,6 +45,13 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 	case "PostToolUseFailure":
 		return h.recordPostToolFailure(ctx, req, params.SessionID, event)
 	case "UserPromptSubmit":
+		// A live console engine already persisted this user turn itself
+		// (claudeEngine.SendUserTurn writes the user_input row before typing
+		// the prompt into the PTY) — recording the hook echo would double
+		// every user message in a console chat.
+		if h.consoleHooks != nil && h.consoleHooks.ConsoleSessionLive(params.SessionID) {
+			return MakeResponse(req.ID, map[string]interface{}{"recorded": false})
+		}
 		return h.recordSimpleEvent(ctx, req, params.SessionID, asString(event["prompt"]), "user_input")
 	case "UserPromptExpansion":
 		cmd := asString(event["command_name"])

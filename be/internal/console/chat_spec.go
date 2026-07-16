@@ -69,12 +69,14 @@ func resolveNrfloPath() string {
 
 // chatEnv builds the process env for the console-chat CLI: the running
 // server's own env (so its hooks resolve the same NRFLO_SOCKET/NRFLO_HOME)
+// minus nested-Claude markers (a server started from inside a Claude Code
+// session would otherwise mark the console CLI as a child session, which
+// suppresses its transcript JSONL — the claude engine's only text source),
 // plus session identity. Claude's hooks shell out to `nrflo_server agent
 // record-event --console` (spawner/hooks_settings_console.go), which needs
 // NRF_SESSION_ID and the socket vars to reach back into this server.
 func chatEnv(sessionID, projectID string) []string {
-	env := append([]string{}, os.Environ()...)
-	return append(env,
+	return append(spawner.HostEnvWithoutClaudeMarkers(),
 		"NRF_SESSION_ID="+sessionID,
 		"NRFLO_PROJECT="+projectID,
 	)

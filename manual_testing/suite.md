@@ -111,6 +111,21 @@ Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
 | O01 | gpt54_high api_models row has reasoning_effort='high'; agent completes with result=pass |
 | O02 | openai api-mode rate-limit detection: mock 429 → agent.rate_limited WS + DB cols |
 
+## Console-chat scenarios (C-prefix)
+
+Exercise the server-owned console surface (`POST /api/v1/console/chats` +
+catalog/list/detail/messages/close) end-to-end with real engines. The
+folder is engine-scoped, not provider-scoped: one scenario per engine,
+each gating on its own binary/credentials (C02 SKIPs without `codex` on
+PATH, C03 SKIPs without an Anthropic OAuth token).
+
+| ID  | Description |
+|-----|-------------|
+| C01 | claude console-chat roundtrip: catalog engines, create, list live, message → assistant reply → turn idle, resumable in catalog, close → interactive_completed |
+| C02 | codex console-chat roundtrip (same lifecycle on the app-server engine) |
+| C03 | api console-chat roundtrip (in-process apirun engine; api_mode_enabled toggle) |
+| C04 | console MCP tool dispatch: model calls ticket_list through the adopted mcp-external bridge and echoes a seeded ticket id |
+
 ## Folder applicability
 
 | Folder        | Members |
@@ -121,6 +136,7 @@ Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
 | `python/`     | P01..P20 |
 | `api/`        | A01..A13 |
 | `openai_api/` | A01, A02, A03, A06 (provider-agnostic, reused) + O01, O02 |
+| `console/`    | C01..C04 |
 
 `s05` and `s35` are the only scenarios with provider-specific
 implementations:

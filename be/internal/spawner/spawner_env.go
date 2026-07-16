@@ -3,7 +3,6 @@ package spawner
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"be/internal/logger"
 	"be/internal/repo"
@@ -43,7 +42,7 @@ func mergeExtraVars(base, extra map[string]string) map[string]string {
 
 // buildCLIAgentEnv assembles the environment slice for CLI-mode agent processes.
 func (s *Spawner) buildCLIAgentEnv(ctx context.Context, projectID, wfiID, sessionID, spawnToken string, effectiveThreshold, maxContext int, cliStageDir, extID, extCtx string) []string {
-	return append(append(filterEnv(os.Environ(), "CLAUDECODE"),
+	return append(append(HostEnvWithoutClaudeMarkers(),
 		fmt.Sprintf("NRFLO_PROJECT=%s", projectID),
 		fmt.Sprintf("NRF_WORKFLOW_INSTANCE_ID=%s", wfiID),
 		fmt.Sprintf("NRF_SESSION_ID=%s", sessionID),

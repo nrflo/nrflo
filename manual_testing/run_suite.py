@@ -56,6 +56,10 @@ PROVIDERS: list[tuple[str, str]] = [
     # Responses endpoint; binary is unused. SKIPs when neither
     # OPENAI_API_KEY nor CODEX_API_KEY is set.
     ("openai_api", "python3"),
+    # `console` exercises kind='console_chat' sessions (server-owned
+    # console engines). Boots under claude; the codex/api scenarios gate
+    # on their own binary/credentials inside the folder.
+    ("console", "claude"),
 ]
 
 
@@ -336,11 +340,11 @@ def write_capabilities(
 
 
 def _sid_sort_key(sid: str) -> tuple[int, int]:
-    """Sort s* before P* before A* before O*; numeric within each prefix."""
+    """Sort s* before P* before A* before O* before C*; numeric within each prefix."""
     if not sid:
         return (9, 9999)
     prefix = sid[0].lower()
-    rank = {"s": 0, "p": 1, "a": 2, "o": 3}.get(prefix, 4)
+    rank = {"s": 0, "p": 1, "a": 2, "o": 3, "c": 4}.get(prefix, 5)
     try:
         n = int(sid[1:])
     except ValueError:
@@ -358,14 +362,15 @@ def _load_suite_descriptions() -> dict[str, str]:
         return out
     for line in text.splitlines():
         if not (line.startswith("| s") or line.startswith("| P")
-                or line.startswith("| A") or line.startswith("| O")):
+                or line.startswith("| A") or line.startswith("| O")
+                or line.startswith("| C")):
             continue
         parts = [p.strip() for p in line.strip("|").split("|")]
         if len(parts) < 2:
             continue
         sid = parts[0]
         desc = parts[1]
-        if sid.startswith(("s", "P", "A", "O")) and any(c.isdigit() for c in sid):
+        if sid.startswith(("s", "P", "A", "O", "C")) and any(c.isdigit() for c in sid):
             out[sid] = desc
     return out
 

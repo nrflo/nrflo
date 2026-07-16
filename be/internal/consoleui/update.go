@@ -128,6 +128,9 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		case "y":
 			approval := m.approvals[0]
 			return action("approval", func() error { return m.client.Approve(m.ctx, approval.ID, "allow") }), true
+		case "a":
+			approval := m.approvals[0]
+			return action("approval", func() error { return m.client.Approve(m.ctx, approval.ID, "allow_for_session") }), true
 		case "n":
 			approval := m.approvals[0]
 			return action("approval", func() error { return m.client.Approve(m.ctx, approval.ID, "deny") }), true

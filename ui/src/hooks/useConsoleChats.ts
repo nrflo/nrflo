@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  getConsoleCatalog,
   listConsoleChats,
   getConsoleChat,
   getConsoleChatMessages,
@@ -7,6 +8,7 @@ import {
   sendConsoleChatMessage,
   replyConsoleChatApproval,
   closeConsoleChat,
+  interruptConsoleChat,
 } from '@/api/consoleChats'
 import { useProjectStore } from '@/stores/projectStore'
 import type { ApprovalDecision, CreateConsoleChatRequest } from '@/types/consoleChat'
@@ -15,6 +17,20 @@ export const consoleChatKeys = {
   all: ['console-chats'] as const,
   list: () => [...consoleChatKeys.all, 'list'] as const,
   detail: (sid: string) => [...consoleChatKeys.all, 'detail', sid] as const,
+  catalog: () => [...consoleChatKeys.all, 'catalog'] as const,
+}
+
+// GET /console/catalog is project-scoped (X-Project) like the list below,
+// so the key carries the project and the query waits for projectsLoaded.
+// This is the same server-owned discovery surface the native TUI uses.
+export function useConsoleCatalog() {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: [...consoleChatKeys.catalog(), project],
+    queryFn: getConsoleCatalog,
+    enabled: projectsLoaded,
+  })
 }
 
 // GET /console/chats is project-scoped via the X-Project header, so the key
@@ -69,6 +85,12 @@ export function useReplyApproval() {
   return useMutation({
     mutationFn: ({ sid, aid, decision }: { sid: string; aid: string; decision: ApprovalDecision }) =>
       replyConsoleChatApproval(sid, aid, decision),
+  })
+}
+
+export function useInterruptConsoleChat() {
+  return useMutation({
+    mutationFn: (sid: string) => interruptConsoleChat(sid),
   })
 }
 

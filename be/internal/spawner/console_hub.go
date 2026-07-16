@@ -84,6 +84,14 @@ func (h *ConsoleHub) ConsoleSessionReady(sessionID string) (handled bool) {
 	return true
 }
 
+// ConsoleSessionLive reports whether a live engine is registered for
+// sessionID (see socket.ConsoleHooks — used to suppress hook-side writes the
+// engine already owns).
+func (h *ConsoleHub) ConsoleSessionLive(sessionID string) bool {
+	_, ok := h.get(sessionID)
+	return ok
+}
+
 // ConsoleContextLeft forwards a context_update to the live engine (if any).
 func (h *ConsoleHub) ConsoleContextLeft(sessionID string, pct int) (handled bool) {
 	t, ok := h.get(sessionID)

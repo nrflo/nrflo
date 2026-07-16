@@ -186,6 +186,12 @@ func claudeTranscriptPath(env []string, workDir, sessionID string) string {
 		}
 		base = filepath.Join(home, ".claude")
 	}
+	// claude derives the project dir from its resolved cwd (getcwd follows
+	// symlinks — /var/folders → /private/var/folders on macOS), so resolve
+	// before encoding or the path misses for any symlinked workdir.
+	if resolved, err := filepath.EvalSymlinks(workDir); err == nil {
+		workDir = resolved
+	}
 	encoded := nonAlnum.ReplaceAllString(workDir, "-")
 	return filepath.Join(base, "projects", encoded, sessionID+".jsonl")
 }

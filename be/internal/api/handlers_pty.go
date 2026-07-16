@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/spawner"
 	"be/internal/ws"
 
 	"github.com/gorilla/websocket"
@@ -272,8 +272,9 @@ func (s *Server) completePtyInteractive(session *model.AgentSession, workflowNam
 // Uses the full server env (matching the normal spawner) to avoid missing vars
 // that Claude needs to start, plus nrflo-specific vars and TERM override.
 func buildPtyEnv(session *model.AgentSession, _ *model.Project) []string {
-	// Start with full server env, filtering out CLAUDECODE
-	env := filterEnv(os.Environ(), "CLAUDECODE")
+	// Start with full server env, minus the nested-Claude markers
+	// (CLAUDE_CODE_CHILD_SESSION et al. suppress transcript writes).
+	env := spawner.HostEnvWithoutClaudeMarkers()
 
 	// Ensure TERM is set for PTY
 	env = setEnv(env, "TERM", "xterm-256color")
@@ -287,18 +288,6 @@ func buildPtyEnv(session *model.AgentSession, _ *model.Project) []string {
 	}
 
 	return env
-}
-
-// filterEnv returns a copy of env with the named variable removed.
-func filterEnv(env []string, name string) []string {
-	prefix := name + "="
-	out := make([]string, 0, len(env))
-	for _, e := range env {
-		if !strings.HasPrefix(e, prefix) {
-			out = append(out, e)
-		}
-	}
-	return out
 }
 
 // setEnv sets or replaces a variable in the env slice.

@@ -124,9 +124,11 @@ func TestClaudeEngine_ReplyApproval_UnknownID_Errors(t *testing.T) {
 	}
 }
 
-// TestClaudeEngine_ReplyApproval_ApproveForSession_ErrorsAndLeavesRetryable
-// covers claude's PreToolUse hook having no approve_for_session equivalent.
-func TestClaudeEngine_ReplyApproval_ApproveForSession_ErrorsAndLeavesRetryable(t *testing.T) {
+// TestClaudeEngine_ReplyApproval_ApproveForSession_AllowsAndRemembersTool
+// covers the session-scoped allowlist: approve_for_session resolves the
+// pending approval as allow AND auto-allows later requests for the same tool
+// without emitting a new EventApprovalRequest, while other tools still ask.
+func TestClaudeEngine_ReplyApproval_ApproveForSession_AllowsAndRemembersTool(t *testing.T) {
 	sink := &testSink{}
 	hub := NewConsoleHub()
 	e, _ := startTestClaudeEngine(t, sink, hub, EngineSpec{})
@@ -134,21 +136,49 @@ func TestClaudeEngine_ReplyApproval_ApproveForSession_ErrorsAndLeavesRetryable(t
 	resCh := requestApprovalViaHub(hub, e.spec.SessionID, "Write", "tu-afs-1", map[string]any{})
 	_ = waitForEventType(t, e.Events(), EventApprovalRequest, time.Second)
 
-	if err := e.ReplyApproval("tu-afs-1", ApprovalApproveForSession); err == nil {
-		t.Fatal("expected ReplyApproval to error for approve_for_session")
+	if err := e.ReplyApproval("tu-afs-1", ApprovalApproveForSession); err != nil {
+		t.Fatalf("ReplyApproval(approve_for_session): %v", err)
 	}
-	// The id must still be retryable after the rejected decision.
-	if err := e.ReplyApproval("tu-afs-1", ApprovalApprove); err != nil {
-		t.Fatalf("retry ReplyApproval after a rejected decision: %v", err)
+	resolved := waitForEventType(t, e.Events(), EventApprovalResolved, time.Second)
+	if resolved.Decision != ApprovalApproveForSession {
+		t.Errorf("resolved.Decision = %q, want approve_for_session", resolved.Decision)
 	}
-
 	select {
 	case res := <-resCh:
 		if res.decision != "allow" {
 			t.Errorf("decision = %q, want allow", res.decision)
 		}
 	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for the retried approval to resolve")
+		t.Fatal("timed out waiting for the approval to resolve")
+	}
+
+	// Same tool again: auto-allowed, no human round-trip, no approval request.
+	res2 := requestApprovalViaHub(hub, e.spec.SessionID, "Write", "tu-afs-2", map[string]any{})
+	select {
+	case res := <-res2:
+		if res.decision != "allow" {
+			t.Errorf("second decision = %q, want allow", res.decision)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the auto-allowed approval")
+	}
+	if err := e.ReplyApproval("tu-afs-2", ApprovalApprove); err == nil {
+		t.Error("expected no pending approval for an auto-allowed tool")
+	}
+
+	// A different tool still asks.
+	res3 := requestApprovalViaHub(hub, e.spec.SessionID, "Bash", "tu-afs-3", map[string]any{"command": "ls"})
+	_ = waitForEventType(t, e.Events(), EventApprovalRequest, time.Second)
+	if err := e.ReplyApproval("tu-afs-3", ApprovalDeny); err != nil {
+		t.Fatalf("ReplyApproval(deny) for the other tool: %v", err)
+	}
+	select {
+	case res := <-res3:
+		if res.decision != "deny" {
+			t.Errorf("other-tool decision = %q, want deny", res.decision)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for the other tool's approval")
 	}
 }
 

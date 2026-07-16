@@ -3,6 +3,7 @@ package spawner
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -158,14 +159,21 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	return nil
 }
 
-// filterEnv returns a copy of env with the named variable removed.
-func filterEnv(env []string, name string) []string {
-	prefix := name + "="
-	out := make([]string, 0, len(env))
-	for _, e := range env {
-		if !strings.HasPrefix(e, prefix) {
-			out = append(out, e)
+// HostEnvWithoutClaudeMarkers returns os.Environ() minus the nested-Claude
+// markers (CLAUDECODE, CLAUDE_CODE_*). A child claude CLI that inherits a
+// parent Claude Code session's markers treats itself as a nested child
+// session — most damagingly CLAUDE_CODE_CHILD_SESSION, which makes claude
+// ≥2.1 skip writing the project transcript JSONL that the console engine
+// tailer and the resume-based context save read (verified against 2.1.211).
+// Every spawned CLI env must start from this, never raw os.Environ().
+func HostEnvWithoutClaudeMarkers() []string {
+	hostEnv := os.Environ()
+	out := make([]string, 0, len(hostEnv))
+	for _, e := range hostEnv {
+		if strings.HasPrefix(e, "CLAUDECODE=") || strings.HasPrefix(e, "CLAUDE_CODE_") {
+			continue
 		}
+		out = append(out, e)
 	}
 	return out
 }

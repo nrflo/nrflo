@@ -18,13 +18,16 @@ const consoleApprovalTimeout = 600 * time.Second
 // permissionDecision wire vocabulary (verified against the installed CLI,
 // 2.1.209): approve->allow, deny->deny, abort->deny (with a distinct reason —
 // there is no separate "abort the turn" primitive on this hook).
-// approve_for_session has no validated claude PreToolUse equivalent and is
-// intentionally absent: ReplyApproval returns an error for it and leaves the
-// id retryable.
+// approve_for_session also wires to "allow": claude has no native PreToolUse
+// equivalent, so the session-scoped memory lives here — ReplyApproval records
+// the tool name and RequestApproval auto-allows that tool for the rest of the
+// engine's life (coarser than codex's native acceptForSession: it is keyed by
+// tool name, so approving one Bash command approves Bash entirely).
 var claudeDecisionWire = map[ApprovalDecision]string{
-	ApprovalApprove: "allow",
-	ApprovalDeny:    "deny",
-	ApprovalAbort:   "deny",
+	ApprovalApprove:           "allow",
+	ApprovalApproveForSession: "allow",
+	ApprovalDeny:              "deny",
+	ApprovalAbort:             "deny",
 }
 
 // claudeApprovalResult is what ReplyApproval hands back to the RequestApproval
@@ -36,18 +39,41 @@ type claudeApprovalResult struct {
 }
 
 type pendingClaudeApproval struct {
-	reply chan claudeApprovalResult
+	reply    chan claudeApprovalResult
+	toolName string
 }
 
 // claudeApprovals is a mutex-guarded id->pendingClaudeApproval table, mirroring
-// codexEngine's pendingApprovals (console_engine_codex_approval.go).
+// codexEngine's pendingApprovals (console_engine_codex_approval.go), plus the
+// session-scoped allowlist backing approve_for_session.
 type claudeApprovals struct {
 	mu      sync.Mutex
 	pending map[string]pendingClaudeApproval
+	allowed map[string]bool // tool name -> approved for the whole session
 }
 
 func newClaudeApprovals() *claudeApprovals {
-	return &claudeApprovals{pending: make(map[string]pendingClaudeApproval)}
+	return &claudeApprovals{
+		pending: make(map[string]pendingClaudeApproval),
+		allowed: make(map[string]bool),
+	}
+}
+
+// allowForSession records toolName as session-approved; subsequent
+// RequestApproval calls for it auto-allow without a human round-trip.
+func (p *claudeApprovals) allowForSession(toolName string) {
+	if toolName == "" {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.allowed[toolName] = true
+}
+
+func (p *claudeApprovals) allowedForSession(toolName string) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return toolName != "" && p.allowed[toolName]
 }
 
 func (p *claudeApprovals) register(id string, pa pendingClaudeApproval) {
@@ -97,12 +123,19 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 		ToolInput: toolInput,
 	})
 
+	// A tool the human already approved for the whole session skips the
+	// request/reply round-trip entirely — no EventApprovalRequest, so no
+	// resolution to emit either.
+	if e.approvals.allowedForSession(toolName) {
+		return "allow", "nrflo: approved for session"
+	}
+
 	id := toolUseID
 	if id == "" {
 		id = fmt.Sprintf("%s-%d", sessionID, time.Now().UnixNano())
 	}
 	reply := make(chan claudeApprovalResult, 1)
-	e.approvals.register(id, pendingClaudeApproval{reply: reply})
+	e.approvals.register(id, pendingClaudeApproval{reply: reply, toolName: toolName})
 
 	raw, _ := json.Marshal(toolInput)
 	e.emit(EngineEvent{
@@ -166,7 +199,10 @@ func (e *claudeEngine) ReplyApproval(id string, decision ApprovalDecision) error
 	}
 	wire, ok := claudeDecisionWire[decision]
 	if !ok {
-		return fmt.Errorf("console engine: decision %q has no claude PreToolUse equivalent (approve_for_session is unsupported)", decision)
+		return fmt.Errorf("console engine: decision %q has no claude PreToolUse equivalent", decision)
+	}
+	if decision == ApprovalApproveForSession {
+		e.approvals.allowForSession(pa.toolName)
 	}
 	reason := ""
 	if decision == ApprovalAbort {

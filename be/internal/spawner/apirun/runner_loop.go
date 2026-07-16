@@ -4,10 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"be/internal/spawner/apirun/provider"
 )
+
+// maxParallelToolDispatch bounds how many tool_use blocks of one assistant
+// turn run concurrently. Providers rarely emit more than a handful of
+// parallel calls; the cap keeps a pathological turn from fanning out
+// unbounded python subprocesses / consultant spawns.
+const maxParallelToolDispatch = 4
 
 // runTurns drives the shared tool-use loop starting from msgs until a
 // terminal status is reached, returning the accumulated message history
@@ -92,70 +99,112 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 	return msgs, "FAIL"
 }
 
-// dispatchTools iterates tool_use blocks in resp.Content sequentially. It
-// returns the assembled tool_result blocks plus the terminal status a handler
-// signaled via TerminalSignal (empty when no handler terminated the loop).
-// Sequential dispatch only in v1 — TODO(parallel): the for-range loop below is
-// the natural slot for parallel dispatch.
+// toolOutcome is one tool_use block's dispatch result: either a terminal
+// signal (result unused) or an assembled tool_result block.
+type toolOutcome struct {
+	terminal *TerminalSignal
+	result   provider.ContentBlock
+}
+
+// dispatchTools dispatches the tool_use blocks in resp.Content — concurrently
+// (capped at maxParallelToolDispatch) when the model requested more than one —
+// and assembles tool_result blocks in the original block order, which is also
+// the order results are replayed to the provider. It returns the results plus
+// the terminal status a handler signaled via TerminalSignal (empty when no
+// handler terminated the loop); with parallel dispatch every block still runs
+// to completion, and the first terminal signal in block order wins.
 func (r *Runner) dispatchTools(ctx context.Context, proc ProcState, content []provider.ContentBlock) ([]provider.ContentBlock, string) {
-	results := []provider.ContentBlock{}
+	calls := make([]provider.ContentBlock, 0, len(content))
 	for _, block := range content {
-		if block.Type != "tool_use" {
-			continue
+		if block.Type == "tool_use" {
+			calls = append(calls, block)
 		}
-		handler, ok := r.cfg.Handlers[block.ToolName]
-		if !ok {
-			msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
-			r.cfg.Sink.TrackMessage(msg, "error")
-			results = append(results, provider.ContentBlock{
-				Type:      "tool_result",
-				ToolUseID: block.ToolUseID,
-				Output:    msg,
-				IsError:   true,
-			})
-			continue
-		}
+	}
 
-		var (
-			out   string
-			media []provider.MediaBlock
-			isErr bool
-			terr  error
-		)
-		if mh, ok := handler.(MediaToolHandler); ok {
-			out, media, isErr, terr = mh.InvokeMedia(ctx, r.cfg.Env, block.Input)
-		} else {
-			out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
+	outcomes := make([]toolOutcome, len(calls))
+	if len(calls) <= 1 {
+		for i, block := range calls {
+			outcomes[i] = r.invokeTool(ctx, block)
 		}
-		r.cfg.Sink.CloseToolSpan(block.ToolUseID)
+	} else {
+		sem := make(chan struct{}, maxParallelToolDispatch)
+		var wg sync.WaitGroup
+		for i, block := range calls {
+			wg.Add(1)
+			go func(i int, block provider.ContentBlock) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				outcomes[i] = r.invokeTool(ctx, block)
+			}(i, block)
+		}
+		wg.Wait()
+	}
 
-		var ts TerminalSignal
-		if errors.As(terr, &ts) {
-			proc.SetFinalStatus(ts.Status)
-			if ts.Status == "CALLBACK" {
-				proc.SetCallbackLevel(ts.Level)
+	results := make([]provider.ContentBlock, 0, len(calls))
+	for _, oc := range outcomes {
+		if oc.terminal != nil {
+			proc.SetFinalStatus(oc.terminal.Status)
+			if oc.terminal.Status == "CALLBACK" {
+				proc.SetCallbackLevel(oc.terminal.Level)
 			}
-			return nil, ts.Status
+			return nil, oc.terminal.Status
 		}
-		if terr != nil {
-			out = terr.Error()
-			isErr = true
-			media = nil
-		}
-		category := "tool"
-		if isErr {
-			category = "error"
-		}
-		r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), category)
-		results = append(results, provider.ContentBlock{
-			Type:        "tool_result",
-			ToolUseID:   block.ToolUseID,
-			Output:      out,
-			IsError:     isErr,
-			OutputMedia: media,
-		})
+		results = append(results, oc.result)
 	}
 	return results, ""
+}
+
+// invokeTool runs one tool_use block through its handler and returns the
+// outcome. Sink calls (TrackMessage/CloseToolSpan) happen here, from the
+// dispatching goroutine — MessageSink implementations are concurrency-safe.
+func (r *Runner) invokeTool(ctx context.Context, block provider.ContentBlock) toolOutcome {
+	handler, ok := r.cfg.Handlers[block.ToolName]
+	if !ok {
+		msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
+		r.cfg.Sink.TrackMessage(msg, "error")
+		return toolOutcome{result: provider.ContentBlock{
+			Type:      "tool_result",
+			ToolUseID: block.ToolUseID,
+			Output:    msg,
+			IsError:   true,
+		}}
+	}
+
+	var (
+		out   string
+		media []provider.MediaBlock
+		isErr bool
+		terr  error
+	)
+	if mh, ok := handler.(MediaToolHandler); ok {
+		out, media, isErr, terr = mh.InvokeMedia(ctx, r.cfg.Env, block.Input)
+	} else {
+		out, isErr, terr = handler.Invoke(ctx, r.cfg.Env, block.Input)
+	}
+	r.cfg.Sink.CloseToolSpan(block.ToolUseID)
+
+	var ts TerminalSignal
+	if errors.As(terr, &ts) {
+		return toolOutcome{terminal: &ts}
+	}
+	if terr != nil {
+		out = terr.Error()
+		isErr = true
+		media = nil
+	}
+	category := "tool"
+	if isErr {
+		category = "error"
+	}
+	r.cfg.Sink.TrackMessage(formatToolResult(block.ToolName, out, isErr), category)
+	return toolOutcome{result: provider.ContentBlock{
+		Type:        "tool_result",
+		ToolUseID:   block.ToolUseID,
+		Output:      out,
+		IsError:     isErr,
+		OutputMedia: media,
+	}}
 }
 
 func formatToolResult(name, out string, isErr bool) string {

@@ -3,7 +3,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
-import { useConsoleChat, useSendConsoleChatMessage, useCloseConsoleChat } from '@/hooks/useConsoleChats'
+import {
+  useConsoleChat,
+  useSendConsoleChatMessage,
+  useCloseConsoleChat,
+  useInterruptConsoleChat,
+} from '@/hooks/useConsoleChats'
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
 import { TurnActiveError } from '@/api/consoleChats'
 import { ChatMessageList } from './ChatMessageList'
@@ -11,16 +16,20 @@ import { ChatMessageList } from './ChatMessageList'
 interface ChatViewProps {
   sid: string
   onClosed: () => void
+  onDetach: () => void
 }
 
 // Transcript + composer + header. Composer disables while turn==='running'
-// (the BE 409s a second message) and shows a streaming indicator. Auto-scroll
-// on new items.
-export function ChatView({ sid, onClosed }: ChatViewProps) {
+// (the BE 409s a second message) and swaps Send for Stop (POST /interrupt —
+// cancels the turn, keeps the engine alive). Detach deselects the chat and
+// leaves the engine running for a later resume; Close tears it down.
+// Auto-scroll on new items.
+export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
   const { data: detail } = useConsoleChat(sid)
   const stream = useConsoleChatStream(sid)
   const sendMutation = useSendConsoleChatMessage()
   const closeMutation = useCloseConsoleChat()
+  const interruptMutation = useInterruptConsoleChat()
   const [text, setText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +59,14 @@ export function ChatView({ sid, onClosed }: ChatViewProps) {
     onClosed()
   }
 
+  const handleInterrupt = async () => {
+    try {
+      await interruptMutation.mutateAsync(sid)
+    } catch {
+      toast.error('Failed to interrupt the turn.')
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -64,6 +81,14 @@ export function ChatView({ sid, onClosed }: ChatViewProps) {
           {stream.contextLeft != null && (
             <span className="text-xs text-muted-foreground">Context left: {stream.contextLeft}%</span>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDetach}
+            title="Leave the chat running and return to the list"
+          >
+            Detach
+          </Button>
           <Button variant="outline" size="sm" onClick={handleClose} disabled={closeMutation.isPending}>
             Close
           </Button>
@@ -102,9 +127,15 @@ export function ChatView({ sid, onClosed }: ChatViewProps) {
             disabled={isRunning}
             className="min-h-[44px]"
           />
-          <Button onClick={handleSend} disabled={isRunning || !text.trim() || sendMutation.isPending}>
-            {isRunning ? <Spinner size="sm" /> : 'Send'}
-          </Button>
+          {isRunning ? (
+            <Button variant="destructive" onClick={handleInterrupt} disabled={interruptMutation.isPending}>
+              {interruptMutation.isPending ? <Spinner size="sm" /> : 'Stop'}
+            </Button>
+          ) : (
+            <Button onClick={handleSend} disabled={!text.trim() || sendMutation.isPending}>
+              Send
+            </Button>
+          )}
         </div>
       </div>
     </div>

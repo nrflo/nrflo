@@ -77,7 +77,7 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 	promptFile.Close()
 
 	// Build env.
-	env := append(filterEnv(os.Environ(), "CLAUDECODE"),
+	env := append(HostEnvWithoutClaudeMarkers(),
 		fmt.Sprintf("NRFLO_PROJECT=%s", req.ProjectID),
 		fmt.Sprintf("NRF_SESSION_ID=%s", req.SessionID),
 		fmt.Sprintf("NRFLO_AGENT_TOKEN=%s", req.SpawnToken),

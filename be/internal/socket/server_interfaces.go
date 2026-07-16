@@ -45,6 +45,11 @@ type ConsoleHooks interface {
 	ConsoleSessionReady(sessionID string) (handled bool)
 	// ConsoleContextLeft forwards an agent.context_update to the engine.
 	ConsoleContextLeft(sessionID string, pct int) (handled bool)
+	// ConsoleSessionLive reports whether a live console engine is registered
+	// for the session — used to skip hook-side writes the engine already owns
+	// (SendUserTurn persists user_input before the CLI echoes it back through
+	// the UserPromptSubmit hook).
+	ConsoleSessionLive(sessionID string) bool
 }
 
 // ConsoleChatCreator mints a server-owned chat for the trusted local TUI.

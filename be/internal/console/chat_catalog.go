@@ -84,6 +84,7 @@ func cliEngineOption(id, name string, models []*model.CLIModel) types.ConsoleEng
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: result.Brand,
 			MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
+			SupportedEfforts: item.SupportedEfforts,
 		})
 	}
 	return result
@@ -102,6 +103,7 @@ func apiEngineOption(enabled bool, models []*model.APIModel) types.ConsoleEngine
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: brandOf(item.Provider),
 			Provider: item.Provider, MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
+			SupportedEfforts: item.SupportedEfforts,
 		})
 	}
 	if enabled && len(result.Models) == 0 {

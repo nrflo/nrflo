@@ -176,9 +176,9 @@ func TestHandleCreateAPIModel_InvalidReasoningEffort(t *testing.T) {
 	assertErrorContains(t, rr, "must be one of low, medium, high, xhigh, max")
 }
 
-func TestHandleCreateAPIModel_XhighOnNonOpus47(t *testing.T) {
+func TestHandleCreateAPIModel_EffortOutsideSupported(t *testing.T) {
 	s := newAPIModelsServer(t)
-	body := `{"id":"xhigh-sonnet","provider":"anthropic","display_name":"Bad","mapped_model":"claude-sonnet-4-5","reasoning_effort":"xhigh"}`
+	body := `{"id":"xhigh-sonnet","provider":"anthropic","display_name":"Bad","mapped_model":"claude-sonnet-4-5","reasoning_effort":"xhigh","supported_efforts":["low","medium","high"]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/api-models", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateAPIModel(rr, req)
@@ -186,7 +186,7 @@ func TestHandleCreateAPIModel_XhighOnNonOpus47(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
 	}
-	assertErrorContains(t, rr, "only supported on Anthropic Opus 4.7")
+	assertErrorContains(t, rr, "is not supported by this model")
 }
 
 func TestHandleCreateAPIModel_Valid_WithWSBroadcast(t *testing.T) {

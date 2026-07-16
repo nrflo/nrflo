@@ -89,19 +89,19 @@ func (s *ChatService) SetEngineFactory(f func(name string, deps spawner.EngineDe
 // tools/list through `agent mcp-external`, a SessionStart hook — authenticates
 // against this row. A failed Start closes it again rather than leaving an open
 // session with no engine.
-func (s *ChatService) Create(engine, modelID, projectID string) (sessionID string, err error) {
-	sessionID, _, err = s.create(engine, modelID, projectID)
+func (s *ChatService) Create(engine, modelID, effort, projectID string) (sessionID string, err error) {
+	sessionID, _, err = s.create(engine, modelID, effort, projectID)
 	return sessionID, err
 }
 
 // CreateAuthenticated is the trusted-local variant used by the Unix socket.
 // It returns the session bearer so a native TUI can drive only the chat it
 // just created. HTTP callers use Create and never receive this credential.
-func (s *ChatService) CreateAuthenticated(engine, modelID, projectID string) (sessionID, token string, err error) {
-	return s.create(engine, modelID, projectID)
+func (s *ChatService) CreateAuthenticated(engine, modelID, effort, projectID string) (sessionID, token string, err error) {
+	return s.create(engine, modelID, effort, projectID)
 }
 
-func (s *ChatService) create(engine, modelID, projectID string) (sessionID, token string, err error) {
+func (s *ChatService) create(engine, modelID, effort, projectID string) (sessionID, token string, err error) {
 	exists, err := repo.NewProjectRepo(s.deps.Pool, s.deps.Clock).Exists(projectID)
 	if err != nil {
 		return "", "", fmt.Errorf("check project: %w", err)
@@ -114,12 +114,13 @@ func (s *ChatService) create(engine, modelID, projectID string) (sessionID, toke
 	token = id.MintToken()
 
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
-		SessionID:  sessionID,
-		ProjectID:  projectID,
-		Engine:     engine,
-		ModelID:    modelID,
-		SpawnToken: token,
-		ServerURL:  s.deps.ServerURL,
+		SessionID:       sessionID,
+		ProjectID:       projectID,
+		Engine:          engine,
+		ModelID:         modelID,
+		ReasoningEffort: effort,
+		SpawnToken:      token,
+		ServerURL:       s.deps.ServerURL,
 	})
 	if err != nil {
 		return "", "", err

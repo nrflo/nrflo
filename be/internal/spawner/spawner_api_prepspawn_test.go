@@ -98,7 +98,7 @@ func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 			return mock.New(), nil
 		},
 		APIModelConfigs: map[string]APIModelConfig{
-			"gpt53_codex_high": {Provider: "openai", MappedModel: "gpt-5.3-codex", ReasoningEffort: "high", ContextLength: 200000},
+			"gpt53_codex_high": {Provider: "openai", MappedModel: "gpt-5.3-codex", ReasoningEffort: "high", ContextLength: 200000, SupportedEfforts: []string{"low", "medium", "high"}},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -224,10 +224,11 @@ func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 		},
 		APIModelConfigs: map[string]APIModelConfig{
 			"sonnet": {
-				Provider:        "anthropic",
-				MappedModel:     "claude-sonnet-4-6",
-				ContextLength:   200000,
-				ReasoningEffort: "high",
+				Provider:         "anthropic",
+				MappedModel:      "claude-sonnet-4-6",
+				ContextLength:    200000,
+				ReasoningEffort:  "high",
+				SupportedEfforts: []string{"low", "medium", "high", "xhigh"},
 			},
 		},
 		AgentSvc: &noopAgentSvc{},

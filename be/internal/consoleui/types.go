@@ -58,6 +58,9 @@ type Selection struct {
 	ResumeID string
 	Engine   string
 	Model    string
+	// Effort is a create-time reasoning-effort override; "" inherits the
+	// model row's configured effort.
+	Effort string
 }
 
 type Catalog = types.ConsoleCatalog

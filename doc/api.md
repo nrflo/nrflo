@@ -71,8 +71,10 @@ The `model` field on an agent definition must be the `id` of a row in the
 | `gpt53_codex_low` | `gpt-5.3-codex` | low |
 
 The `reasoning_effort` column is threaded into the OpenAI Responses request
-(`be/internal/spawner/apirun/provider/openai/translate.go:28`). Custom rows
-can be added via **Settings → Administration → API Models**.
+(`be/internal/spawner/apirun/provider/openai/translate.go:28`). Each row also
+carries `supported_efforts` — the JSON list of levels the underlying model
+accepts (source of truth for effort validation and pickers). Custom rows can
+be added via **Settings → Administration → API Models**.
 
 ---
 

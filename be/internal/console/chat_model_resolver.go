@@ -15,8 +15,10 @@ import (
 // "sonnet"/"haiku"), so resolution must diverge by engine — this is the one
 // legitimate switch beyond spawner.GetConsoleEngine (modelResolverFor below),
 // the same factory shape as GetConsoleEngine.
+// effort is an optional create-time override; when the model resolves to a
+// registry row it must be allowed by the row's supported_efforts.
 type chatModelResolver interface {
-	Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID string) error
+	Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error
 }
 
 // modelResolverFor is the one place a console-chat engine name selects a
@@ -34,10 +36,12 @@ func modelResolverFor(engine string) chatModelResolver {
 // exists but belongs to another engine, or is disabled, is an error.
 type cliModelResolver struct{ engine string }
 
-func (r cliModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID string) error {
+func (r cliModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error {
 	row, err := service.NewCLIModelService(pool, clk).Get(modelID)
 	if err != nil {
-		// Unknown id: keep spec.Model as the raw value, no effort/fallback.
+		// Unknown id: keep spec.Model as the raw value, no fallback; an
+		// effort override passes through for the CLI itself to validate.
+		spec.ReasoningEffort = effort
 		return nil
 	}
 	if row.CLIType != r.engine {
@@ -46,8 +50,14 @@ func (r cliModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.
 	if !row.Enabled {
 		return fmt.Errorf("model %q is disabled in the cli_models registry", modelID)
 	}
+	if err := service.ValidateEffortAllowed(effort, row.SupportedEfforts); err != nil {
+		return err
+	}
 	spec.Model = row.MappedModel
 	spec.ReasoningEffort = row.ReasoningEffort
+	if effort != "" {
+		spec.ReasoningEffort = effort
+	}
 	spec.FallbackModels = row.FallbackModels
 	spec.MaxContext = row.ContextLength
 	return nil
@@ -59,7 +69,7 @@ func (r cliModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.
 // call cannot pass a raw model name through without a resolved provider.
 type apiModelResolver struct{}
 
-func (apiModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID string) error {
+func (apiModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error {
 	row, err := service.NewAPIModelService(pool, clk).Get(modelID)
 	if err != nil {
 		return fmt.Errorf("model %q not found in api_models registry", modelID)
@@ -67,9 +77,15 @@ func (apiModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.En
 	if !row.Enabled {
 		return fmt.Errorf("model %q is disabled in the api_models registry", modelID)
 	}
+	if err := service.ValidateEffortAllowed(effort, row.SupportedEfforts); err != nil {
+		return err
+	}
 	spec.Model = row.MappedModel
 	spec.APIProvider = row.Provider
 	spec.ReasoningEffort = row.ReasoningEffort
+	if effort != "" {
+		spec.ReasoningEffort = effort
+	}
 	spec.MaxContext = row.ContextLength
 	return nil
 }

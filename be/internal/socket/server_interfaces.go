@@ -55,7 +55,7 @@ type ConsoleHooks interface {
 
 // ConsoleChatCreator mints a server-owned chat for the trusted local TUI.
 type ConsoleChatCreator interface {
-	CreateAuthenticated(engine, modelID, projectID string) (sessionID, token string, err error)
+	CreateAuthenticated(engine, modelID, effort, projectID string) (sessionID, token string, err error)
 	AttachAuthenticated(sessionID, projectID string) (token string, err error)
 	Catalog(projectID string) (types.ConsoleCatalog, error)
 }

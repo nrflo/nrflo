@@ -12,32 +12,27 @@ import (
 
 func TestCLIModel_CreateReasoningEffort(t *testing.T) {
 	t.Parallel()
+	// Capability is driven solely by the row's supported_efforts list, not the
+	// mapped_model name. An empty list + a non-empty effort defaults the list to
+	// [effort]; an effort outside the list is a membership error.
 	tests := []struct {
-		name        string
-		cliType     string
-		mappedModel string
-		effort      string
-		wantErr     string // substring; "" means success expected
+		name      string
+		cliType   string
+		supported []string
+		effort    string
+		wantErr   string // substring; "" means success expected
 	}{
-		{name: "empty effort claude sonnet", cliType: "claude", mappedModel: "claude-sonnet-4-5", effort: ""},
-		{name: "low effort claude sonnet", cliType: "claude", mappedModel: "claude-sonnet-4-5", effort: "low"},
-		{name: "medium effort claude opus 4.6", cliType: "claude", mappedModel: "claude-opus-4-6", effort: "medium"},
-		{name: "high effort claude opus 4.7", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "high"},
-		{name: "max effort claude sonnet", cliType: "claude", mappedModel: "claude-sonnet-4-5", effort: "max"},
-		{name: "xhigh effort claude opus 4.7", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "xhigh"},
-		{name: "xhigh effort claude opus 4.7 1M", cliType: "claude", mappedModel: "claude-opus-4-7[1m]", effort: "xhigh"},
-		{name: "xhigh effort codex ok", cliType: "codex", mappedModel: "gpt-5.3-codex", effort: "xhigh"},
-		{name: "ultra effort codex sol ok", cliType: "codex", mappedModel: "gpt-5.6-sol", effort: "ultra"},
-		{name: "ultra effort codex terra ok", cliType: "codex", mappedModel: "gpt-5.6-terra", effort: "ultra"},
+		{name: "empty effort no list", cliType: "claude", effort: ""},
+		{name: "low defaults list to [low]", cliType: "claude", effort: "low"},
+		{name: "high in list", cliType: "claude", supported: []string{"low", "medium", "high"}, effort: "high"},
+		{name: "xhigh in list", cliType: "claude", supported: []string{"low", "high", "xhigh"}, effort: "xhigh"},
+		{name: "ultra in codex list", cliType: "codex", supported: []string{"low", "ultra"}, effort: "ultra"},
 
-		{name: "nonsense rejected", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "nonsense", wantErr: "must be one of low, medium, high, xhigh, max, ultra"},
-		{name: "uppercase rejected", cliType: "claude", mappedModel: "claude-opus-4-7", effort: "HIGH", wantErr: "invalid reasoning_effort"},
-		{name: "xhigh on sonnet rejected", cliType: "claude", mappedModel: "claude-sonnet-4-5", effort: "xhigh", wantErr: "only supported on Opus 4.7"},
-		{name: "xhigh on opus 4.6 rejected", cliType: "claude", mappedModel: "claude-opus-4-6", effort: "xhigh", wantErr: "only supported on Opus 4.7"},
-		{name: "xhigh on opus 4.6 1M rejected", cliType: "claude", mappedModel: "claude-opus-4-6[1m]", effort: "xhigh", wantErr: "only supported on Opus 4.7"},
-		{name: "ultra on codex luna rejected", cliType: "codex", mappedModel: "gpt-5.6-luna", effort: "ultra", wantErr: "only supported on Codex GPT-5.6 Sol/Terra"},
-		{name: "ultra on codex gpt-5.5 rejected", cliType: "codex", mappedModel: "gpt-5.5", effort: "ultra", wantErr: "only supported on Codex GPT-5.6 Sol/Terra"},
-		{name: "ultra on claude rejected", cliType: "claude", mappedModel: "claude-opus-4-8", effort: "ultra", wantErr: "only supported on Codex GPT-5.6 Sol/Terra"},
+		{name: "nonsense rejected", cliType: "claude", effort: "nonsense", wantErr: "must be one of low, medium, high, xhigh, max, ultra"},
+		{name: "uppercase rejected", cliType: "claude", effort: "HIGH", wantErr: "invalid reasoning_effort"},
+		{name: "xhigh outside list rejected", cliType: "claude", supported: []string{"low", "medium", "high"}, effort: "xhigh", wantErr: "is not supported by this model"},
+		{name: "ultra outside list rejected", cliType: "codex", supported: []string{"low", "medium", "high", "xhigh"}, effort: "ultra", wantErr: "is not supported by this model"},
+		{name: "invalid supported entry rejected", cliType: "claude", supported: []string{"low", "bogus"}, effort: "low", wantErr: "invalid supported_efforts entry"},
 	}
 
 	for i, tt := range tests {
@@ -46,11 +41,12 @@ func TestCLIModel_CreateReasoningEffort(t *testing.T) {
 			defer cleanup()
 
 			req := types.CLIModelCreateRequest{
-				ID:              fmt.Sprintf("re-test-%d", i),
-				CLIType:         tt.cliType,
-				DisplayName:     "RE Test",
-				MappedModel:     tt.mappedModel,
-				ReasoningEffort: tt.effort,
+				ID:               fmt.Sprintf("re-test-%d", i),
+				CLIType:          tt.cliType,
+				DisplayName:      "RE Test",
+				MappedModel:      "some-model",
+				ReasoningEffort:  tt.effort,
+				SupportedEfforts: tt.supported,
 			}
 			m, err := svc.Create(req)
 			if tt.wantErr == "" {
@@ -69,6 +65,58 @@ func TestCLIModel_CreateReasoningEffort(t *testing.T) {
 				t.Errorf("error = %q, want to contain %q", err.Error(), tt.wantErr)
 			}
 		})
+	}
+}
+
+// TestCLIModel_CreateSupportedEfforts_NormalizesAndSorts verifies an explicit
+// supported_efforts list is deduped and sorted weakest→strongest.
+func TestCLIModel_CreateSupportedEfforts_NormalizesAndSorts(t *testing.T) {
+	t.Parallel()
+	svc, cleanup := setupCLIModelTestEnv(t)
+	defer cleanup()
+
+	m, err := svc.Create(types.CLIModelCreateRequest{
+		ID:               "norm-cli",
+		CLIType:          "claude",
+		DisplayName:      "Norm",
+		MappedModel:      "some-model",
+		SupportedEfforts: []string{"high", "low", "high"},
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if got := fmt.Sprintf("%v", m.SupportedEfforts); got != "[low high]" {
+		t.Errorf("SupportedEfforts = %v, want [low high]", m.SupportedEfforts)
+	}
+	got, err := svc.Get("norm-cli")
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if fmt.Sprintf("%v", got.SupportedEfforts) != "[low high]" {
+		t.Errorf("persisted SupportedEfforts = %v, want [low high]", got.SupportedEfforts)
+	}
+}
+
+// TestCLIModel_CreateDefaultsSupportedToEffort verifies that when the request
+// omits supported_efforts but sets reasoning_effort, the list defaults to
+// [reasoning_effort].
+func TestCLIModel_CreateDefaultsSupportedToEffort(t *testing.T) {
+	t.Parallel()
+	svc, cleanup := setupCLIModelTestEnv(t)
+	defer cleanup()
+
+	m, err := svc.Create(types.CLIModelCreateRequest{
+		ID:              "default-cli",
+		CLIType:         "claude",
+		DisplayName:     "Default",
+		MappedModel:     "some-model",
+		ReasoningEffort: "high",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if fmt.Sprintf("%v", m.SupportedEfforts) != "[high]" {
+		t.Errorf("SupportedEfforts = %v, want [high]", m.SupportedEfforts)
 	}
 }
 
@@ -125,41 +173,34 @@ func TestCLIModel_UpdateReasoningEffort_InvalidValue(t *testing.T) {
 	}
 }
 
-func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
+func TestCLIModel_UpdateSupportedEfforts_InvalidatesStoredXhigh(t *testing.T) {
 	t.Parallel()
-	// User stored xhigh on a user-owned Opus-4.7 row, then changes mapped_model to sonnet
-	// without clearing effort. Overlay logic must reject the Update.
+	// User stored xhigh (in the row's supported list), then shrinks the list to
+	// drop xhigh without clearing effort. The Update must be rejected.
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
-	// Create a user-owned Opus-4.7 row (read_only rows block mapped_model edits).
 	if _, err := svc.Create(types.CLIModelCreateRequest{
-		ID:          "user-opus",
-		CLIType:     "claude",
-		DisplayName: "User Opus",
-		MappedModel: "claude-opus-4-7",
+		ID:               "user-opus",
+		CLIType:          "claude",
+		DisplayName:      "User Opus",
+		MappedModel:      "some-model",
+		ReasoningEffort:  "xhigh",
+		SupportedEfforts: []string{"low", "medium", "high", "xhigh"},
 	}); err != nil {
 		t.Fatalf("Create user-owned row: %v", err)
 	}
 
-	// First set xhigh on the user-owned row (valid).
-	xhigh := "xhigh"
-	if _, err := svc.Update("user-opus", types.CLIModelUpdateRequest{
-		ReasoningEffort: &xhigh,
-	}); err != nil {
-		t.Fatalf("initial Update: %v", err)
-	}
-
-	// Now try to switch mapped_model to a non-Opus-4.7 value without touching effort.
-	newMapped := "claude-sonnet-4-5"
+	// Now shrink the supported list so xhigh is no longer offered.
+	shrunk := []string{"low", "medium", "high"}
 	_, err := svc.Update("user-opus", types.CLIModelUpdateRequest{
-		MappedModel: &newMapped,
+		SupportedEfforts: &shrunk,
 	})
 	if err == nil {
-		t.Fatal("expected error: overlay logic must reject xhigh + non-Opus-4.7 combination, got nil")
+		t.Fatal("expected error: stored xhigh no longer in supported list, got nil")
 	}
-	if !strings.Contains(err.Error(), "only supported on Opus 4.7") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "only supported on Opus 4.7")
+	if !strings.Contains(err.Error(), "is not supported by this model") {
+		t.Errorf("error = %q, want to contain %q", err.Error(), "is not supported by this model")
 	}
 
 	// Verify state was not mutated.
@@ -167,52 +208,45 @@ func TestCLIModel_UpdateMappedModel_InvalidatesStoredXhigh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after failed Update: %v", err)
 	}
-	if got.MappedModel != "claude-opus-4-7" {
-		t.Errorf("MappedModel = %q after failed Update, want %q (unchanged)", got.MappedModel, "claude-opus-4-7")
-	}
 	if got.ReasoningEffort != "xhigh" {
 		t.Errorf("ReasoningEffort = %q after failed Update, want %q (unchanged)", got.ReasoningEffort, "xhigh")
 	}
+	if fmt.Sprintf("%v", got.SupportedEfforts) != "[low medium high xhigh]" {
+		t.Errorf("SupportedEfforts = %v after failed Update, want unchanged", got.SupportedEfforts)
+	}
 }
 
-func TestCLIModel_UpdateMappedModel_AndClearEffort(t *testing.T) {
+func TestCLIModel_UpdateSupportedEfforts_AndClearEffort(t *testing.T) {
 	t.Parallel()
-	// Switching mapped_model to non-Opus-4.7 WHILE also clearing effort must succeed.
-	// Uses a user-owned row because read_only rows block mapped_model edits.
+	// Shrinking the supported list WHILE also clearing effort must succeed.
 	svc, cleanup := setupCLIModelTestEnv(t)
 	defer cleanup()
 
 	if _, err := svc.Create(types.CLIModelCreateRequest{
-		ID:          "user-opus-2",
-		CLIType:     "claude",
-		DisplayName: "User Opus 2",
-		MappedModel: "claude-opus-4-7",
+		ID:               "user-opus-2",
+		CLIType:          "claude",
+		DisplayName:      "User Opus 2",
+		MappedModel:      "some-model",
+		ReasoningEffort:  "xhigh",
+		SupportedEfforts: []string{"low", "medium", "high", "xhigh"},
 	}); err != nil {
 		t.Fatalf("Create user-owned row: %v", err)
 	}
 
-	// Seed xhigh.
-	xhigh := "xhigh"
-	if _, err := svc.Update("user-opus-2", types.CLIModelUpdateRequest{
-		ReasoningEffort: &xhigh,
-	}); err != nil {
-		t.Fatalf("initial Update: %v", err)
-	}
-
-	// Switch mapped_model AND clear effort in same request.
-	newMapped := "claude-sonnet-4-5"
+	// Shrink list AND clear effort in same request.
+	shrunk := []string{"low", "medium", "high"}
 	empty := ""
 	updated, err := svc.Update("user-opus-2", types.CLIModelUpdateRequest{
-		MappedModel:     &newMapped,
-		ReasoningEffort: &empty,
+		SupportedEfforts: &shrunk,
+		ReasoningEffort:  &empty,
 	})
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if updated.MappedModel != "claude-sonnet-4-5" {
-		t.Errorf("MappedModel = %q, want %q", updated.MappedModel, "claude-sonnet-4-5")
-	}
 	if updated.ReasoningEffort != "" {
 		t.Errorf("ReasoningEffort = %q, want empty", updated.ReasoningEffort)
+	}
+	if fmt.Sprintf("%v", updated.SupportedEfforts) != "[low medium high]" {
+		t.Errorf("SupportedEfforts = %v, want [low medium high]", updated.SupportedEfforts)
 	}
 }

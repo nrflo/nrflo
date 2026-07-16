@@ -2,7 +2,6 @@ package consoleui
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
@@ -114,10 +113,10 @@ func apiTypeItem(engine types.ConsoleEngineOption, models []types.ConsoleModelOp
 	}
 }
 
-// modelItems groups registry rows that map to the same underlying model
-// (differing only by reasoning effort) into one branch with an effort
-// level; single-variant models stay leaves. First-seen (newest-first)
-// group order is preserved.
+// modelItems groups registry rows by underlying model. A group whose rows
+// carry supported_efforts becomes one branch with an effort level (its
+// per-effort preset rows collapse into it); rows without capability data
+// stay plain leaves. First-seen (newest-first) group order is preserved.
 func modelItems(engineID string, models []types.ConsoleModelOption) []list.Item {
 	var order []string
 	groups := map[string][]types.ConsoleModelOption{}
@@ -134,27 +133,54 @@ func modelItems(engineID string, models []types.ConsoleModelOption) []list.Item 
 	items := make([]list.Item, 0, len(order))
 	for _, key := range order {
 		variants := groups[key]
-		if len(variants) == 1 {
-			items = append(items, modelItem(engineID, variants[0], variants[0].DisplayName))
+		if len(variants[0].SupportedEfforts) == 0 {
+			for _, variant := range variants {
+				items = append(items, modelItem(engineID, variant, variant.DisplayName, ""))
+			}
 			continue
 		}
-		sort.SliceStable(variants, func(i, j int) bool {
-			return effortRank(variants[i].ReasoningEffort) < effortRank(variants[j].ReasoningEffort)
-		})
-		children := make([]list.Item, len(variants))
-		for i, variant := range variants {
-			children[i] = modelItem(engineID, variant, effortTitle(variant))
-		}
-		base := baseDisplayName(variants[0])
-		items = append(items, selectionItem{
-			title: base, detail: fmt.Sprintf("%s · %d efforts", key, len(variants)),
-			children: children, crumb: base,
-		})
+		items = append(items, effortGroupItem(engineID, key, variants))
 	}
 	return items
 }
 
-func modelItem(engineID string, model types.ConsoleModelOption, title string) selectionItem {
+// effortGroupItem builds a model branch whose children are the effort
+// levels: "Default" (the newest row, no override) plus one child per
+// supported effort. An effort matching an existing preset row selects that
+// row directly; anything else selects the newest row with a create-time
+// override.
+func effortGroupItem(engineID, mapped string, variants []types.ConsoleModelOption) selectionItem {
+	rep := variants[0]
+	defaultDetail := "provider default"
+	if rep.ReasoningEffort != "" {
+		defaultDetail = rep.ReasoningEffort
+	}
+	children := make([]list.Item, 0, len(rep.SupportedEfforts)+1)
+	children = append(children, selectionItem{
+		selection: Selection{Engine: engineID, Model: rep.ID},
+		title:     "Default", detail: defaultDetail,
+	})
+	for _, effort := range rep.SupportedEfforts {
+		row, override := rep, effort
+		for _, variant := range variants {
+			if variant.ReasoningEffort == effort {
+				row, override = variant, ""
+				break
+			}
+		}
+		children = append(children, selectionItem{
+			selection: Selection{Engine: engineID, Model: row.ID, Effort: override},
+			title:     effortTitle(effort), detail: mapped,
+		})
+	}
+	base := baseDisplayName(rep)
+	return selectionItem{
+		title: base, detail: fmt.Sprintf("%s · %d efforts", mapped, len(rep.SupportedEfforts)),
+		children: children, crumb: base,
+	}
+}
+
+func modelItem(engineID string, model types.ConsoleModelOption, title, effort string) selectionItem {
 	detail := model.MappedModel
 	if detail == "" {
 		detail = model.Provider
@@ -163,30 +189,14 @@ func modelItem(engineID string, model types.ConsoleModelOption, title string) se
 		detail = strings.TrimSpace(detail + " · " + model.ReasoningEffort)
 	}
 	return selectionItem{
-		selection: Selection{Engine: engineID, Model: model.ID},
+		selection: Selection{Engine: engineID, Model: model.ID, Effort: effort},
 		title:     title, detail: detail,
 	}
 }
 
-func effortRank(effort string) int {
-	switch effort {
-	case "high":
-		return 0
-	case "medium":
-		return 1
-	case "low":
-		return 2
-	}
-	return 3
-}
-
-// effortTitle labels an effort leaf ("High"); rows without an effort keep
-// their display name.
-func effortTitle(model types.ConsoleModelOption) string {
-	if model.ReasoningEffort == "" {
-		return model.DisplayName
-	}
-	return strings.ToUpper(model.ReasoningEffort[:1]) + model.ReasoningEffort[1:]
+// effortTitle labels an effort child ("High").
+func effortTitle(effort string) string {
+	return strings.ToUpper(effort[:1]) + effort[1:]
 }
 
 // baseDisplayName strips a trailing "(<effort>)" qualifier from a variant's

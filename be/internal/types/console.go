@@ -23,12 +23,15 @@ type ConsoleEngineOption struct {
 }
 
 type ConsoleModelOption struct {
-	ID              string `json:"id"`
-	DisplayName     string `json:"display_name"`
-	Brand           string `json:"brand,omitempty"`
-	Provider        string `json:"provider,omitempty"`
-	MappedModel     string `json:"mapped_model,omitempty"`
-	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+	ID          string `json:"id"`
+	DisplayName string `json:"display_name"`
+	Brand       string `json:"brand,omitempty"`
+	Provider    string `json:"provider,omitempty"`
+	MappedModel string `json:"mapped_model,omitempty"`
+	// ReasoningEffort is the row's configured (default) effort; create-time
+	// overrides must come from SupportedEfforts.
+	ReasoningEffort  string   `json:"reasoning_effort,omitempty"`
+	SupportedEfforts []string `json:"supported_efforts,omitempty"`
 }
 
 type ConsoleSessionOption struct {

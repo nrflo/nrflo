@@ -52,9 +52,9 @@ func TestHandleCreateCLIModel_InvalidReasoningEffort(t *testing.T) {
 	assertErrorContains(t, rr, "must be one of low, medium, high, xhigh, max")
 }
 
-func TestHandleCreateCLIModel_XhighOnNonOpus47Claude(t *testing.T) {
+func TestHandleCreateCLIModel_EffortOutsideSupported(t *testing.T) {
 	s := newCLIModelsServer(t)
-	body := `{"id":"xhigh-sonnet","cli_type":"claude","display_name":"Bad","mapped_model":"claude-sonnet-4-5","reasoning_effort":"xhigh"}`
+	body := `{"id":"xhigh-sonnet","cli_type":"claude","display_name":"Bad","mapped_model":"claude-sonnet-4-5","reasoning_effort":"xhigh","supported_efforts":["low","medium","high"]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateCLIModel(rr, req)
@@ -62,7 +62,7 @@ func TestHandleCreateCLIModel_XhighOnNonOpus47Claude(t *testing.T) {
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
 	}
-	assertErrorContains(t, rr, "only supported on Opus 4.7")
+	assertErrorContains(t, rr, "is not supported by this model")
 }
 
 func TestHandleCreateCLIModel_XhighOnOpus47_Succeeds(t *testing.T) {
@@ -167,12 +167,11 @@ func TestHandleUpdateCLIModel_ClearEffort_Succeeds(t *testing.T) {
 	}
 }
 
-func TestHandleUpdateCLIModel_MappedModelChange_RejectsIncompatibleStoredXhigh(t *testing.T) {
-	// Pre-condition: create a user-owned opus_4_7 row (read_only rows now block mapped_model edits)
-	// store xhigh on it, then PATCH to change mapped_model only — overlay logic must catch
-	// the now-invalid combination.
+func TestHandleUpdateCLIModel_ShrinkSupported_RejectsStoredXhigh(t *testing.T) {
+	// Create a user-owned row carrying xhigh in its supported list, then PATCH the
+	// list to drop xhigh without clearing effort — the Update must be rejected.
 	s := newCLIModelsServer(t)
-	createBody := `{"id":"user-opus","cli_type":"claude","display_name":"User Opus","mapped_model":"claude-opus-4-7"}`
+	createBody := `{"id":"user-opus","cli_type":"claude","display_name":"User Opus","mapped_model":"some-model","reasoning_effort":"xhigh","supported_efforts":["low","medium","high","xhigh"]}`
 	reqC := httptest.NewRequest(http.MethodPost, "/api/v1/cli-models", strings.NewReader(createBody))
 	rrC := httptest.NewRecorder()
 	s.handleCreateCLIModel(rrC, reqC)
@@ -180,25 +179,16 @@ func TestHandleUpdateCLIModel_MappedModelChange_RejectsIncompatibleStoredXhigh(t
 		t.Fatalf("setup create status = %d, want 201; body: %s", rrC.Code, rrC.Body.String())
 	}
 
-	setXhigh := `{"reasoning_effort":"xhigh"}`
-	req1 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-opus", strings.NewReader(setXhigh))
-	req1.SetPathValue("id", "user-opus")
-	rr1 := httptest.NewRecorder()
-	s.handleUpdateCLIModel(rr1, req1)
-	if rr1.Code != http.StatusOK {
-		t.Fatalf("setup PATCH status = %d, want 200; body: %s", rr1.Code, rr1.Body.String())
-	}
-
-	// Now attempt to flip the model without clearing effort.
-	changeModel := `{"mapped_model":"claude-sonnet-4-5"}`
-	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-opus", strings.NewReader(changeModel))
+	// Shrink the supported list so xhigh is no longer offered.
+	shrink := `{"supported_efforts":["low","medium","high"]}`
+	req2 := httptest.NewRequest(http.MethodPatch, "/api/v1/cli-models/user-opus", strings.NewReader(shrink))
 	req2.SetPathValue("id", "user-opus")
 	rr2 := httptest.NewRecorder()
 	s.handleUpdateCLIModel(rr2, req2)
 	if rr2.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400; body: %s", rr2.Code, rr2.Body.String())
 	}
-	assertErrorContains(t, rr2, "only supported on Opus 4.7")
+	assertErrorContains(t, rr2, "is not supported by this model")
 }
 
 // --- Update: read_only guard (only reasoning_effort editable on built-in rows) ---

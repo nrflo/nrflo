@@ -46,7 +46,7 @@ func TestPrepareSpawn_API_ReasoningEffort_DefOverrideReachesPrepResult(t *testin
 			return mock.New(), nil
 		},
 		APIModelConfigs: map[string]APIModelConfig{
-			"opus48": {Provider: "anthropic", MappedModel: "claude-opus-4-8", ContextLength: 200000},
+			"opus48": {Provider: "anthropic", MappedModel: "claude-opus-4-8", ContextLength: 200000, SupportedEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
@@ -65,8 +65,8 @@ func TestPrepareSpawn_API_ReasoningEffort_DefOverrideReachesPrepResult(t *testin
 }
 
 // TestPrepareSpawn_API_ReasoningEffort_IllegalOverrideFailsSpawn verifies an
-// api-mode def override illegal for its provider (xhigh is anthropic-only)
-// fails the spawn.
+// api-mode def override absent from the model row's supported_efforts fails
+// the spawn.
 func TestPrepareSpawn_API_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
@@ -92,7 +92,7 @@ func TestPrepareSpawn_API_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T
 			return mock.New(), nil
 		},
 		APIModelConfigs: map[string]APIModelConfig{
-			"gpt56": {Provider: "openai", MappedModel: "gpt-5.6-sol", ContextLength: 372000},
+			"gpt56": {Provider: "openai", MappedModel: "gpt-5.6-sol", ContextLength: 372000, SupportedEfforts: []string{"low", "medium", "high"}},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},

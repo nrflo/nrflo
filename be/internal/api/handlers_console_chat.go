@@ -24,8 +24,9 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 	}
 
 	var body struct {
-		Engine string `json:"engine"`
-		Model  string `json:"model"`
+		Engine          string `json:"engine"`
+		Model           string `json:"model"`
+		ReasoningEffort string `json:"reasoning_effort"`
 	}
 	raw, _ := io.ReadAll(r.Body)
 	r.Body.Close() //nolint:errcheck
@@ -40,7 +41,7 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, projectID)
+	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, body.ReasoningEffort, projectID)
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			writeError(w, http.StatusNotFound, "project not found")

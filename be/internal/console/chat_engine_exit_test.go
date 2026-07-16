@@ -18,7 +18,7 @@ func TestChatService_EngineError_UnpinsTurnState(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -49,7 +49,7 @@ func TestChatService_EngineExit_ClosesSessionAndKillsToken(t *testing.T) {
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestChatService_TurnStarted_PushesRunningState(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

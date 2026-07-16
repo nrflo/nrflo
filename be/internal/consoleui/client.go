@@ -26,12 +26,12 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
-func (c *Client) Create(ctx context.Context, engine, model string) (string, error) {
+func (c *Client) Create(ctx context.Context, engine, model, effort string) (string, error) {
 	var response struct {
 		SessionID string `json:"session_id"`
 	}
 	err := c.do(ctx, http.MethodPost, "/api/v1/console/chats", map[string]string{
-		"engine": engine, "model": model,
+		"engine": engine, "model": model, "reasoning_effort": effort,
 	}, &response)
 	if err != nil {
 		return "", err

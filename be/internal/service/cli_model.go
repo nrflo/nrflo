@@ -54,7 +54,7 @@ func NewCLIModelService(pool *db.Pool, clk clock.Clock) *CLIModelService {
 // List retrieves all CLI models ordered by id
 func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, supported_efforts, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		ORDER BY id`)
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *CLIModelService) List() ([]*model.CLIModel, error) {
 // ListEnabled retrieves only enabled CLI models ordered by id
 func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, supported_efforts, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE enabled = 1
 		ORDER BY id`)
@@ -98,16 +98,16 @@ func (s *CLIModelService) ListEnabled() ([]*model.CLIModel, error) {
 
 // Get retrieves a single CLI model by id (case-insensitive)
 func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
-	var createdAt, updatedAt string
+	var createdAt, updatedAt, supportedRaw string
 	var readOnly, enabled int
 	m := &model.CLIModel{}
 
 	err := s.pool.QueryRow(`
-		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, cli_type, display_name, mapped_model, reasoning_effort, supported_efforts, fallback_models, context_length, read_only, enabled, created_at, updated_at
 		FROM cli_models
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
+		&m.ReasoningEffort, &supportedRaw, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -117,6 +117,7 @@ func (s *CLIModelService) Get(id string) (*model.CLIModel, error) {
 		return nil, err
 	}
 
+	m.SupportedEfforts = parseSupportedEfforts(supportedRaw)
 	m.ReadOnly = readOnly == 1
 	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
@@ -138,8 +139,9 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	if !validCLITypes[req.CLIType] {
 		return nil, fmt.Errorf("invalid cli_type: must be one of claude, codex")
 	}
-	if err := ValidateReasoningEffort(req.CLIType, req.MappedModel, req.ReasoningEffort); err != nil {
-		return nil, err
+	supportedEfforts, effErr := resolveCreateEfforts(req.SupportedEfforts, req.ReasoningEffort)
+	if effErr != nil {
+		return nil, effErr
 	}
 	fallbackModels, fbErr := normalizeFallbackModels(req.CLIType, req.FallbackModels)
 	if fbErr != nil {
@@ -155,9 +157,9 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 	id := strings.ToLower(req.ID)
 
 	_, err := s.pool.Exec(`
-		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, fallback_models, context_length, read_only, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, fallbackModels, contextLength, now, now,
+		INSERT INTO cli_models (id, cli_type, display_name, mapped_model, reasoning_effort, supported_efforts, fallback_models, context_length, read_only, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+		id, req.CLIType, req.DisplayName, req.MappedModel, req.ReasoningEffort, marshalSupportedEfforts(supportedEfforts), fallbackModels, contextLength, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -168,17 +170,18 @@ func (s *CLIModelService) Create(req types.CLIModelCreateRequest) (*model.CLIMod
 
 	ts, _ := time.Parse(time.RFC3339Nano, now)
 	return &model.CLIModel{
-		ID:              id,
-		CLIType:         req.CLIType,
-		DisplayName:     req.DisplayName,
-		MappedModel:     req.MappedModel,
-		ReasoningEffort: req.ReasoningEffort,
-		FallbackModels:  fallbackModels,
-		ContextLength:   contextLength,
-		ReadOnly:        false,
-		Enabled:         true,
-		CreatedAt:       ts,
-		UpdatedAt:       ts,
+		ID:               id,
+		CLIType:          req.CLIType,
+		DisplayName:      req.DisplayName,
+		MappedModel:      req.MappedModel,
+		ReasoningEffort:  req.ReasoningEffort,
+		SupportedEfforts: supportedEfforts,
+		FallbackModels:   fallbackModels,
+		ContextLength:    contextLength,
+		ReadOnly:         false,
+		Enabled:          true,
+		CreatedAt:        ts,
+		UpdatedAt:        ts,
 	}, nil
 }
 
@@ -190,21 +193,28 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 	}
 
 	if current.ReadOnly {
-		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil {
+		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil || req.SupportedEfforts != nil {
 			return nil, fmt.Errorf("only reasoning_effort and fallback_models can be updated on built-in models")
 		}
 	}
 
-	if req.ReasoningEffort != nil || req.MappedModel != nil {
-		mappedModel := current.MappedModel
-		if req.MappedModel != nil {
-			mappedModel = *req.MappedModel
+	var normalizedSupported []string
+	if req.SupportedEfforts != nil {
+		normalizedSupported, err = NormalizeSupportedEfforts(*req.SupportedEfforts)
+		if err != nil {
+			return nil, err
 		}
+	}
+	if req.ReasoningEffort != nil || req.SupportedEfforts != nil || req.MappedModel != nil {
 		effort := current.ReasoningEffort
 		if req.ReasoningEffort != nil {
 			effort = *req.ReasoningEffort
 		}
-		if err := ValidateReasoningEffort(current.CLIType, mappedModel, effort); err != nil {
+		supported := current.SupportedEfforts
+		if req.SupportedEfforts != nil {
+			supported = normalizedSupported
+		}
+		if err := ValidateEffortAllowed(effort, supported); err != nil {
 			return nil, err
 		}
 	}
@@ -231,6 +241,10 @@ func (s *CLIModelService) Update(id string, req types.CLIModelUpdateRequest) (*m
 	if req.ReasoningEffort != nil {
 		updates = append(updates, "reasoning_effort = ?")
 		args = append(args, *req.ReasoningEffort)
+	}
+	if req.SupportedEfforts != nil {
+		updates = append(updates, "supported_efforts = ?")
+		args = append(args, marshalSupportedEfforts(normalizedSupported))
 	}
 	if req.FallbackModels != nil {
 		updates = append(updates, "fallback_models = ?")
@@ -369,26 +383,4 @@ func (s *CLIModelService) ModelInUseCheck(id string) error {
 		}
 	}
 	return fmt.Errorf("model is in use by: %s", strings.Join(parts, ", "))
-}
-
-// scanCLIModel scans a row into a CLIModel
-func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
-	m := &model.CLIModel{}
-	var createdAt, updatedAt string
-	var readOnly, enabled int
-
-	err := rows.Scan(
-		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
-		&createdAt, &updatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	m.ReadOnly = readOnly == 1
-	m.Enabled = enabled == 1
-	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	return m, nil
 }

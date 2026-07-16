@@ -41,10 +41,11 @@ func (o *Orchestrator) loadAPIModelConfigs(pool *db.Pool) (map[string]spawner.AP
 	configs := make(map[string]spawner.APIModelConfig, len(models))
 	for _, m := range models {
 		configs[m.ID] = spawner.APIModelConfig{
-			Provider:        m.Provider,
-			MappedModel:     m.MappedModel,
-			ContextLength:   m.ContextLength,
-			ReasoningEffort: m.ReasoningEffort,
+			Provider:         m.Provider,
+			MappedModel:      m.MappedModel,
+			ContextLength:    m.ContextLength,
+			ReasoningEffort:  m.ReasoningEffort,
+			SupportedEfforts: m.SupportedEfforts,
 		}
 	}
 	return configs, nil

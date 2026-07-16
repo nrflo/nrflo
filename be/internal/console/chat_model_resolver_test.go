@@ -22,11 +22,11 @@ func TestModelResolverFor_SonnetCollision(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 
 	cliSpec := &spawner.EngineSpec{}
-	if err := modelResolverFor("claude").Resolve(pool, clk, cliSpec, "sonnet"); err != nil {
+	if err := modelResolverFor("claude").Resolve(pool, clk, cliSpec, "sonnet", ""); err != nil {
 		t.Fatalf("cli resolver for sonnet (before disabling api_models row): %v", err)
 	}
 	apiSpec := &spawner.EngineSpec{}
-	if err := modelResolverFor("api").Resolve(pool, clk, apiSpec, "sonnet"); err != nil {
+	if err := modelResolverFor("api").Resolve(pool, clk, apiSpec, "sonnet", ""); err != nil {
 		t.Fatalf("api resolver for sonnet (before disabling api_models row): %v", err)
 	}
 	if apiSpec.APIProvider != "anthropic" {
@@ -43,7 +43,7 @@ func TestModelResolverFor_SonnetCollision(t *testing.T) {
 
 	// The cli resolver must be unaffected — it never touches api_models.
 	cliSpecAfter := &spawner.EngineSpec{}
-	if err := modelResolverFor("claude").Resolve(pool, clk, cliSpecAfter, "sonnet"); err != nil {
+	if err := modelResolverFor("claude").Resolve(pool, clk, cliSpecAfter, "sonnet", ""); err != nil {
 		t.Fatalf("cli resolver for sonnet (after disabling api_models row): %v", err)
 	}
 	if cliSpecAfter.Model != cliSpec.Model {
@@ -53,7 +53,7 @@ func TestModelResolverFor_SonnetCollision(t *testing.T) {
 
 	// The api resolver must now error — proving it read api_models, not the
 	// still-enabled cli_models row for the same id.
-	if err := modelResolverFor("api").Resolve(pool, clk, &spawner.EngineSpec{}, "sonnet"); err == nil {
+	if err := modelResolverFor("api").Resolve(pool, clk, &spawner.EngineSpec{}, "sonnet", ""); err == nil {
 		t.Error("api resolver for sonnet (after disabling api_models row): want error, got nil — it must be reading api_models, not cli_models")
 	}
 }
@@ -66,7 +66,7 @@ func TestModelResolverFor_HaikuCollision(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 
 	apiSpec := &spawner.EngineSpec{}
-	if err := modelResolverFor("api").Resolve(pool, clk, apiSpec, "haiku"); err != nil {
+	if err := modelResolverFor("api").Resolve(pool, clk, apiSpec, "haiku", ""); err != nil {
 		t.Fatalf("api resolver for haiku (before disabling cli_models row): %v", err)
 	}
 
@@ -76,12 +76,12 @@ func TestModelResolverFor_HaikuCollision(t *testing.T) {
 		t.Fatalf("disable cli_models haiku: %v", err)
 	}
 
-	if err := modelResolverFor("claude").Resolve(pool, clk, &spawner.EngineSpec{}, "haiku"); err == nil {
+	if err := modelResolverFor("claude").Resolve(pool, clk, &spawner.EngineSpec{}, "haiku", ""); err == nil {
 		t.Error("cli resolver for haiku (after disabling cli_models row): want error, got nil")
 	}
 
 	apiSpecAfter := &spawner.EngineSpec{}
-	if err := modelResolverFor("api").Resolve(pool, clk, apiSpecAfter, "haiku"); err != nil {
+	if err := modelResolverFor("api").Resolve(pool, clk, apiSpecAfter, "haiku", ""); err != nil {
 		t.Fatalf("api resolver for haiku (after disabling cli_models row): want success (unaffected), got error: %v", err)
 	}
 	if apiSpecAfter.Model != apiSpec.Model {
@@ -98,7 +98,7 @@ func TestAPIModelResolver_UnknownID_Errors(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 
 	spec := &spawner.EngineSpec{}
-	err := modelResolverFor("api").Resolve(pool, clk, spec, "no-such-api-model")
+	err := modelResolverFor("api").Resolve(pool, clk, spec, "no-such-api-model", "")
 	if err == nil {
 		t.Fatal("api resolver for unknown id: want error, got nil")
 	}
@@ -123,7 +123,7 @@ func TestAPIModelResolver_DisabledID_Errors(t *testing.T) {
 	}
 
 	spec := &spawner.EngineSpec{}
-	err := modelResolverFor("api").Resolve(pool, clk, spec, "custom-disabled")
+	err := modelResolverFor("api").Resolve(pool, clk, spec, "custom-disabled", "")
 	if err == nil {
 		t.Fatal("api resolver for disabled id: want error, got nil")
 	}
@@ -144,7 +144,7 @@ func TestAPIModelResolver_KnownEnabled_ResolvesReasoningEffortAndContext(t *test
 	}
 
 	spec := &spawner.EngineSpec{}
-	if err := modelResolverFor("api").Resolve(pool, clk, spec, "custom-reasoning"); err != nil {
+	if err := modelResolverFor("api").Resolve(pool, clk, spec, "custom-reasoning", ""); err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
 	if spec.Model != "gpt-5.5" {
@@ -161,6 +161,38 @@ func TestAPIModelResolver_KnownEnabled_ResolvesReasoningEffortAndContext(t *test
 	}
 }
 
+// TestResolver_EffortOverride: a create-time effort override wins over the
+// row's configured effort when the row's supported_efforts allow it, and is
+// rejected otherwise — for both resolver strategies.
+func TestResolver_EffortOverride(t *testing.T) {
+	t.Parallel()
+	pool, clk := newSpecTestPool(t)
+
+	// Seeded api "haiku" row: supported_efforts ["low","medium","high"].
+	spec := &spawner.EngineSpec{}
+	if err := modelResolverFor("api").Resolve(pool, clk, spec, "haiku", "high"); err != nil {
+		t.Fatalf("api resolver with allowed override: %v", err)
+	}
+	if spec.ReasoningEffort != "high" {
+		t.Errorf("ReasoningEffort = %q, want override high", spec.ReasoningEffort)
+	}
+	if err := modelResolverFor("api").Resolve(pool, clk, &spawner.EngineSpec{}, "haiku", "ultra"); err == nil {
+		t.Error("api resolver with unsupported override: want error, got nil")
+	}
+
+	// Seeded cli "sonnet" row: supported_efforts include max.
+	cliSpec := &spawner.EngineSpec{}
+	if err := modelResolverFor("claude").Resolve(pool, clk, cliSpec, "sonnet", "max"); err != nil {
+		t.Fatalf("cli resolver with allowed override: %v", err)
+	}
+	if cliSpec.ReasoningEffort != "max" {
+		t.Errorf("cli ReasoningEffort = %q, want override max", cliSpec.ReasoningEffort)
+	}
+	if err := modelResolverFor("claude").Resolve(pool, clk, &spawner.EngineSpec{}, "sonnet", "ultra"); err == nil {
+		t.Error("cli resolver with unsupported override: want error, got nil")
+	}
+}
+
 // TestCLIModelResolver_UnknownID_PassesThroughRaw verifies the cli resolver's
 // distinct behavior from the api resolver: an unknown id is not an error, it
 // passes through as a raw model name (already covered end-to-end by
@@ -171,7 +203,7 @@ func TestCLIModelResolver_UnknownID_PassesThroughRaw(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 
 	spec := &spawner.EngineSpec{Model: "unused"}
-	if err := modelResolverFor("claude").Resolve(pool, clk, spec, "totally-unknown-id"); err != nil {
+	if err := modelResolverFor("claude").Resolve(pool, clk, spec, "totally-unknown-id", ""); err != nil {
 		t.Fatalf("cli resolver for unknown id: %v", err)
 	}
 	if spec.Model != "unused" {

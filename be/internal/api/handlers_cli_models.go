@@ -9,6 +9,17 @@ import (
 	"be/internal/ws"
 )
 
+// isEffortValidationErr reports whether err is a reasoning_effort /
+// supported_efforts validation failure (400), as produced by the model CRUD
+// via service.ValidateEffortAllowed / NormalizeSupportedEfforts.
+func isEffortValidationErr(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "invalid reasoning_effort") ||
+		strings.Contains(msg, "is not supported by this model") ||
+		strings.Contains(msg, "does not support effort selection") ||
+		strings.Contains(msg, "invalid supported_efforts")
+}
+
 // handleListCLIModels returns all CLI models
 func (s *Server) handleListCLIModels(w http.ResponseWriter, r *http.Request) {
 	svc := service.NewCLIModelService(s.pool, s.clock)
@@ -40,8 +51,7 @@ func (s *Server) handleCreateCLIModel(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.Contains(err.Error(), "required") ||
 			strings.Contains(err.Error(), "invalid cli_type") ||
-			strings.Contains(err.Error(), "invalid reasoning_effort") ||
-			strings.Contains(err.Error(), "only supported on Opus 4.7") {
+			isEffortValidationErr(err) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -96,8 +106,7 @@ func (s *Server) handleUpdateCLIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "invalid reasoning_effort") ||
-			strings.Contains(err.Error(), "only supported on Opus 4.7") ||
+		if isEffortValidationErr(err) ||
 			strings.Contains(err.Error(), "can be updated on built-in models") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

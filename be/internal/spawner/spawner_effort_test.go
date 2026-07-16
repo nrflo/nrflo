@@ -72,7 +72,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_DefOverrideReachesSpawnOptions(t *test
 	insertCLIAgentDefWithEffort(t, env, "impl", "opus48", "xhigh")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"opus48": {CLIType: "claude", MappedModel: "claude-opus-4-8"},
+		"opus48": {CLIType: "claude", MappedModel: "claude-opus-4-8", SupportedEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -102,7 +102,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_CodexDefOverrideReachesSpawnOptions(t 
 	insertCLIAgentDefWithEffort(t, env, "impl", "codexsol", "ultra")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"codexsol": {CLIType: "codex", MappedModel: "gpt-5.6-sol"},
+		"codexsol": {CLIType: "codex", MappedModel: "gpt-5.6-sol", SupportedEfforts: []string{"low", "medium", "high", "ultra"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -128,7 +128,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_RowFallbackWhenNoOverride(t *testing.T
 	insertCLIAgentDefWithEffort(t, env, "impl", "sonnet", "")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"sonnet": {CLIType: "claude", MappedModel: "claude-sonnet-5", ReasoningEffort: "medium"},
+		"sonnet": {CLIType: "claude", MappedModel: "claude-sonnet-5", ReasoningEffort: "medium", SupportedEfforts: []string{"low", "medium", "high", "xhigh"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -153,11 +153,11 @@ func TestPrepareSpawn_CLI_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	// "xhigh" is claude-opus-4-7/4-8/sonnet-5 only; "haiku" doesn't qualify.
+	// "xhigh" is not in this model row's supported_efforts, so the override is illegal.
 	insertCLIAgentDefWithEffort(t, env, "impl", "haiku", "xhigh")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"haiku": {CLIType: "claude", MappedModel: "haiku"},
+		"haiku": {CLIType: "claude", MappedModel: "haiku", SupportedEfforts: []string{"low", "medium", "high"}},
 	}, nil)
 
 	_, _, err := sp.prepareSpawn(context.Background(), SpawnRequest{

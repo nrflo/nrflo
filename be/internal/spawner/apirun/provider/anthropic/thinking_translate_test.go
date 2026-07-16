@@ -21,6 +21,7 @@ func TestThinkingBudget_MappingTable(t *testing.T) {
 		{"medium", 8192},
 		{"high", 16384},
 		{"xhigh", 24576},
+		{"max", 32768},
 		{"unknown-non-empty", 8192}, // falls through to medium default
 		{"extreme", 8192},           // unknown non-empty → medium
 	}

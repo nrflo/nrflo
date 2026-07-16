@@ -114,20 +114,44 @@ define acquire_ui_lock
 	fi
 endef
 
+# wall_cap_start / wall_cap_check: the 60s local wall cap (skipped on CI).
+# Start snapshots the 1-min loadavg; an over-cap run on a machine that was
+# already busy before the suite launched (start load >= half the cores)
+# degrades to a warning instead of failing — external load, not a suite
+# regression. Both messages carry start/end load so the cap is diagnosable.
+# Every line ends in `\` so both snippets inline into one recipe shell.
+define wall_cap_start
+	START=$$(date +%s); \
+	STARTLOAD=$$(sysctl -n vm.loadavg 2>/dev/null | awk '{print $$2}'); \
+	[ -n "$$STARTLOAD" ] || STARTLOAD=$$(cut -d' ' -f1 /proc/loadavg 2>/dev/null || echo 0)
+endef
+
+define wall_cap_check
+	ELAPSED=$$(( $$(date +%s) - $$START )); \
+	if [ -z "$$CI" ] && [ "$$ELAPSED" -gt 60 ]; then \
+		NOWLOAD=$$(sysctl -n vm.loadavg 2>/dev/null | awk '{print $$2}'); \
+		[ -n "$$NOWLOAD" ] || NOWLOAD=$$(cut -d' ' -f1 /proc/loadavg 2>/dev/null || echo 0); \
+		CORES=$$(sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo 8); \
+		WAIVE_AT=$$(( CORES / 2 )); \
+		echo ""; \
+		if [ "$${STARTLOAD%%.*}" -ge "$$WAIVE_AT" ]; then \
+			echo "WARNING: suite took $${ELAPSED}s (cap 60s) on an already-loaded machine (1-min load $$STARTLOAD at start, $$NOWLOAD now; waiver at >=$$WAIVE_AT on $$CORES cores) — cap waived, re-run on a quiet machine to enforce it."; \
+		else \
+			echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 60 SECONDS (1-min load $$STARTLOAD at start, $$NOWLOAD now). ANALYZE AND FIX."; \
+			exit 1; \
+		fi; \
+	fi; \
+	exit $$RC
+endef
+
 ## test: Run backend tests (60s wall-time constraint; skipped on CI runners, which are ~4x slower)
 test: embed-assets
 	$(acquire_be_lock)
-	@START=$$(date +%s); \
+	@$(wall_cap_start); \
 	cd $(BE_DIR) && $(GO) test -p 6 ./internal/... ./cmd -count=1; \
 	RC=$$?; \
 	rmdir $(BE_LOCK) 2>/dev/null || true; \
-	ELAPSED=$$(( $$(date +%s) - $$START )); \
-	if [ -z "$$CI" ] && [ "$$ELAPSED" -gt 60 ]; then \
-		echo ""; \
-		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 60 SECONDS. ANALYZE AND FIX."; \
-		exit 1; \
-	fi; \
-	exit $$RC
+	$(wall_cap_check)
 
 ## test-smoke: Run slow real-binary/build smoke tests outside the fast suite
 test-smoke: embed-assets
@@ -137,17 +161,11 @@ test-smoke: embed-assets
 ## test-ui: Run frontend tests (60s wall-time constraint; skipped on CI runners). Use ARGS= for path filter.
 test-ui: $(UI_DIR)/node_modules
 	$(acquire_ui_lock)
-	@START=$$(date +%s); \
+	@$(wall_cap_start); \
 	cd $(UI_DIR) && NODE_OPTIONS="$${NODE_OPTIONS:+$$NODE_OPTIONS }--no-experimental-webstorage" npx vitest run $(ARGS); \
 	RC=$$?; \
 	rmdir $(UI_LOCK) 2>/dev/null || true; \
-	ELAPSED=$$(( $$(date +%s) - $$START )); \
-	if [ -z "$$CI" ] && [ "$$ELAPSED" -gt 60 ]; then \
-		echo ""; \
-		echo "CRITICAL: TEST SUITE TOOK $${ELAPSED}s, MUST BE UNDER 60 SECONDS. ANALYZE AND FIX."; \
-		exit 1; \
-	fi; \
-	exit $$RC
+	$(wall_cap_check)
 
 ## test-integration: Run integration tests (verbose)
 test-integration: embed-assets

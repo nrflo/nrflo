@@ -36,7 +36,7 @@ func TestChatService_TextDelta_PushesWSOnly_NoAgentMessageRow(t *testing.T) {
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestChatSink_AssistantText_PersistsAndBroadcastsMessagesUpdated(t *testing.
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestChatService_ApprovalRequest_ThenReply_ResolvesAndAudits(t *testing.T) {
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", chatTestProjectID)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

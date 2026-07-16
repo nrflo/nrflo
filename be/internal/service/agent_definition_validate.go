@@ -95,11 +95,11 @@ func validateDescription(nodeRole, description string) error {
 	return nil
 }
 
-// validateDefReasoningEffort resolves the (cli_type, mapped_model) or
-// (provider, mapped_model) for a def's model+execution_mode and delegates to
-// the shared ValidateReasoningEffort/ValidateAPIReasoningEffort validators.
-// nil effort is always valid (inherit from the model row). A model row that
-// no longer exists is left to the caller's own model validation.
+// validateDefReasoningEffort loads the def's model row (api or cli, per
+// execution_mode) and validates the effort override against the row's
+// supported_efforts list. nil effort is always valid (inherit from the model
+// row). A model row that no longer exists is left to the caller's own model
+// validation.
 func validateDefReasoningEffort(cliSvc *CLIModelService, apiSvc *APIModelService, executionMode, modelName string, effort *string) error {
 	if effort == nil {
 		return nil
@@ -109,13 +109,13 @@ func validateDefReasoningEffort(cliSvc *CLIModelService, apiSvc *APIModelService
 		if err != nil {
 			return nil
 		}
-		return ValidateAPIReasoningEffort(am.Provider, am.MappedModel, *effort)
+		return ValidateEffortAllowed(*effort, am.SupportedEfforts)
 	}
 	cm, err := cliSvc.Get(modelName)
 	if err != nil {
 		return nil
 	}
-	return ValidateReasoningEffort(cm.CLIType, cm.MappedModel, *effort)
+	return ValidateEffortAllowed(*effort, cm.SupportedEfforts)
 }
 
 // validateConsultantAndNodeRole re-validates the consultant+execution_mode+node_role

@@ -26,9 +26,12 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
 
   const [engine, setEngine] = useState('claude')
   const [model, setModel] = useState('')
+  const [effort, setEffort] = useState('')
 
   const engines = catalog?.engines ?? []
   const selectedEngine = engines.find((e) => e.id === engine)
+  const selectedModel = selectedEngine?.models?.find((m) => m.id === model)
+  const supportedEfforts = selectedModel?.supported_efforts ?? []
 
   // If the chosen engine turns disabled under us (e.g. API mode flipped
   // off), snap to the first enabled one.
@@ -55,14 +58,29 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
   const handleEngineChange = (value: string) => {
     setEngine(value)
     setModel('')
+    setEffort('')
   }
+
+  const handleModelChange = (value: string) => {
+    setModel(value)
+    setEffort('')
+  }
+
+  const effortOptions = [
+    { value: '', label: selectedModel?.reasoning_effort ? `Default (${selectedModel.reasoning_effort})` : 'Default' },
+    ...supportedEfforts.map((e) => ({ value: e, label: e.charAt(0).toUpperCase() + e.slice(1) })),
+  ]
 
   const canCreate =
     !!selectedEngine?.enabled && (!!model || !selectedEngine.requires_model)
 
   const handleCreate = async () => {
     if (!canCreate) return
-    const resp = await createMutation.mutateAsync({ engine, model })
+    const resp = await createMutation.mutateAsync({
+      engine,
+      model,
+      ...(effort ? { reasoning_effort: effort } : {}),
+    })
     onCreated(resp.session_id)
   }
 
@@ -76,12 +94,18 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Model</label>
         <Dropdown
           value={model}
-          onChange={setModel}
+          onChange={handleModelChange}
           options={modelOptions}
           placeholder={selectedEngine?.requires_model ? 'Select a model…' : 'Engine default'}
           disabled={modelOptions.length === 0}
         />
       </div>
+      {supportedEfforts.length > 0 && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Reasoning effort</label>
+          <Dropdown value={effort} onChange={setEffort} options={effortOptions} />
+        </div>
+      )}
       {engine === 'api' && (
         <div className="text-xs text-muted-foreground">
           No file/edit/bash tools — nrflo control + web research only; use a CLI engine for local coding.

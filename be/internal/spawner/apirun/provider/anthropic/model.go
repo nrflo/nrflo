@@ -57,6 +57,8 @@ func effortParam(effort string) sdk.OutputConfigEffort {
 		return sdk.OutputConfigEffortHigh
 	case "xhigh":
 		return sdk.OutputConfigEffortXhigh
+	case "max":
+		return sdk.OutputConfigEffortMax
 	default:
 		return sdk.OutputConfigEffortMedium
 	}

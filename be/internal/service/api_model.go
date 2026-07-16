@@ -31,7 +31,7 @@ func NewAPIModelService(pool *db.Pool, clk clock.Clock) *APIModelService {
 // List retrieves all API models ordered by id
 func (s *APIModelService) List() ([]*model.APIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, provider, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, provider, display_name, mapped_model, reasoning_effort, supported_efforts, context_length, read_only, enabled, created_at, updated_at
 		FROM api_models
 		ORDER BY id`)
 	if err != nil {
@@ -53,7 +53,7 @@ func (s *APIModelService) List() ([]*model.APIModel, error) {
 // ListEnabled retrieves only enabled API models ordered by id
 func (s *APIModelService) ListEnabled() ([]*model.APIModel, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, provider, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, provider, display_name, mapped_model, reasoning_effort, supported_efforts, context_length, read_only, enabled, created_at, updated_at
 		FROM api_models
 		WHERE enabled = 1
 		ORDER BY id`)
@@ -75,16 +75,16 @@ func (s *APIModelService) ListEnabled() ([]*model.APIModel, error) {
 
 // Get retrieves a single API model by id (case-insensitive)
 func (s *APIModelService) Get(id string) (*model.APIModel, error) {
-	var createdAt, updatedAt string
+	var createdAt, updatedAt, supportedRaw string
 	var readOnly, enabled int
 	m := &model.APIModel{}
 
 	err := s.pool.QueryRow(`
-		SELECT id, provider, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at
+		SELECT id, provider, display_name, mapped_model, reasoning_effort, supported_efforts, context_length, read_only, enabled, created_at, updated_at
 		FROM api_models
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&m.ID, &m.Provider, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
+		&m.ReasoningEffort, &supportedRaw, &m.ContextLength, &readOnly, &enabled,
 		&createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
@@ -94,6 +94,7 @@ func (s *APIModelService) Get(id string) (*model.APIModel, error) {
 		return nil, err
 	}
 
+	m.SupportedEfforts = parseSupportedEfforts(supportedRaw)
 	m.ReadOnly = readOnly == 1
 	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
@@ -115,8 +116,9 @@ func (s *APIModelService) Create(req types.APIModelCreateRequest) (*model.APIMod
 	if !validAPIProviders[req.Provider] {
 		return nil, fmt.Errorf("invalid provider: must be one of anthropic, openai")
 	}
-	if err := ValidateAPIReasoningEffort(req.Provider, req.MappedModel, req.ReasoningEffort); err != nil {
-		return nil, err
+	supportedEfforts, effErr := resolveCreateEfforts(req.SupportedEfforts, req.ReasoningEffort)
+	if effErr != nil {
+		return nil, effErr
 	}
 
 	contextLength := req.ContextLength
@@ -128,9 +130,9 @@ func (s *APIModelService) Create(req types.APIModelCreateRequest) (*model.APIMod
 	id := strings.ToLower(req.ID)
 
 	_, err := s.pool.Exec(`
-		INSERT INTO api_models (id, provider, display_name, mapped_model, reasoning_effort, context_length, read_only, enabled, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?, ?)`,
-		id, req.Provider, req.DisplayName, req.MappedModel, req.ReasoningEffort, contextLength, now, now,
+		INSERT INTO api_models (id, provider, display_name, mapped_model, reasoning_effort, supported_efforts, context_length, read_only, enabled, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?)`,
+		id, req.Provider, req.DisplayName, req.MappedModel, req.ReasoningEffort, marshalSupportedEfforts(supportedEfforts), contextLength, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") {
@@ -141,16 +143,17 @@ func (s *APIModelService) Create(req types.APIModelCreateRequest) (*model.APIMod
 
 	ts, _ := time.Parse(time.RFC3339Nano, now)
 	return &model.APIModel{
-		ID:              id,
-		Provider:        req.Provider,
-		DisplayName:     req.DisplayName,
-		MappedModel:     req.MappedModel,
-		ReasoningEffort: req.ReasoningEffort,
-		ContextLength:   contextLength,
-		ReadOnly:        false,
-		Enabled:         true,
-		CreatedAt:       ts,
-		UpdatedAt:       ts,
+		ID:               id,
+		Provider:         req.Provider,
+		DisplayName:      req.DisplayName,
+		MappedModel:      req.MappedModel,
+		ReasoningEffort:  req.ReasoningEffort,
+		SupportedEfforts: supportedEfforts,
+		ContextLength:    contextLength,
+		ReadOnly:         false,
+		Enabled:          true,
+		CreatedAt:        ts,
+		UpdatedAt:        ts,
 	}, nil
 }
 
@@ -162,21 +165,28 @@ func (s *APIModelService) Update(id string, req types.APIModelUpdateRequest) (*m
 	}
 
 	if current.ReadOnly {
-		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil {
+		if req.DisplayName != nil || req.MappedModel != nil || req.ContextLength != nil || req.Enabled != nil || req.SupportedEfforts != nil {
 			return nil, fmt.Errorf("only reasoning_effort can be updated on built-in models")
 		}
 	}
 
-	if req.ReasoningEffort != nil || req.MappedModel != nil {
-		mappedModel := current.MappedModel
-		if req.MappedModel != nil {
-			mappedModel = *req.MappedModel
+	var normalizedSupported []string
+	if req.SupportedEfforts != nil {
+		normalizedSupported, err = NormalizeSupportedEfforts(*req.SupportedEfforts)
+		if err != nil {
+			return nil, err
 		}
+	}
+	if req.ReasoningEffort != nil || req.SupportedEfforts != nil || req.MappedModel != nil {
 		effort := current.ReasoningEffort
 		if req.ReasoningEffort != nil {
 			effort = *req.ReasoningEffort
 		}
-		if err := ValidateAPIReasoningEffort(current.Provider, mappedModel, effort); err != nil {
+		supported := current.SupportedEfforts
+		if req.SupportedEfforts != nil {
+			supported = normalizedSupported
+		}
+		if err := ValidateEffortAllowed(effort, supported); err != nil {
 			return nil, err
 		}
 	}
@@ -195,6 +205,10 @@ func (s *APIModelService) Update(id string, req types.APIModelUpdateRequest) (*m
 	if req.ReasoningEffort != nil {
 		updates = append(updates, "reasoning_effort = ?")
 		args = append(args, *req.ReasoningEffort)
+	}
+	if req.SupportedEfforts != nil {
+		updates = append(updates, "supported_efforts = ?")
+		args = append(args, marshalSupportedEfforts(normalizedSupported))
 	}
 	if req.ContextLength != nil {
 		updates = append(updates, "context_length = ?")
@@ -329,26 +343,4 @@ func (s *APIModelService) ModelInUseCheck(id string) error {
 		}
 	}
 	return fmt.Errorf("model is in use by: %s", strings.Join(parts, ", "))
-}
-
-// scanAPIModel scans a row into an APIModel
-func scanAPIModel(rows *sql.Rows) (*model.APIModel, error) {
-	m := &model.APIModel{}
-	var createdAt, updatedAt string
-	var readOnly, enabled int
-
-	err := rows.Scan(
-		&m.ID, &m.Provider, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &m.ContextLength, &readOnly, &enabled,
-		&createdAt, &updatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	m.ReadOnly = readOnly == 1
-	m.Enabled = enabled == 1
-	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	return m, nil
 }

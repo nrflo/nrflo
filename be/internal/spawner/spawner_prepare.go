@@ -185,7 +185,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		prep.apiProvider = apiProv
 		apiEffort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
-		if err := service.ValidateAPIReasoningEffort(am.Provider, am.MappedModel, apiEffort); err != nil {
+		if err := service.ValidateEffortAllowed(apiEffort, am.SupportedEfforts); err != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", err)
 		}
 		prep.apiReasoningEffort = apiEffort
@@ -292,17 +292,16 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// temp files (Claude only — adapter.SupportsSystemPromptFile()).
 	suffixFilePath, systemPromptOverrideFilePath := writeSuffixAndOverrideFiles(suffix, systemPromptOverride, adapter)
 
-	// DB-sourced mapped model + reasoning effort
-	var mappedModel, cliType, reasoningEffort, fallbackModels string
-	if cfg, ok := s.config.ModelConfigs[model]; ok {
-		mappedModel = cfg.MappedModel
-		cliType = cfg.CLIType
-		reasoningEffort = cfg.ReasoningEffort
-		fallbackModels = cfg.FallbackModels
-	}
-	reasoningEffort = s.resolveReasoningEffort(agentDef, req.AgentType, reasoningEffort)
-	if err := service.ValidateReasoningEffort(cliType, mappedModel, reasoningEffort); err != nil {
-		return nil, nil, fmt.Errorf("cli mode: %w", err)
+	// DB-sourced mapped model + reasoning effort. A model absent from
+	// ModelConfigs has no capability list, so its effort skips validation.
+	cfg, modelFound := s.config.ModelConfigs[model]
+	mappedModel := cfg.MappedModel
+	fallbackModels := cfg.FallbackModels
+	reasoningEffort := s.resolveReasoningEffort(agentDef, req.AgentType, cfg.ReasoningEffort)
+	if modelFound {
+		if err := service.ValidateEffortAllowed(reasoningEffort, cfg.SupportedEfforts); err != nil {
+			return nil, nil, fmt.Errorf("cli mode: %w", err)
+		}
 	}
 
 	cliStageDir, _ := EnsureStageDir(req.ProjectID, wfiID)

@@ -115,7 +115,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	}
 
 	effort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
-	if err := service.ValidateAPIReasoningEffort(am.Provider, am.MappedModel, effort); err != nil {
+	if err := service.ValidateEffortAllowed(effort, am.SupportedEfforts); err != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: %w", err)
 	}
 

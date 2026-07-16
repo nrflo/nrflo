@@ -223,13 +223,15 @@ func TestCLIModel_UpdateUserRow_AllFields_Succeeds(t *testing.T) {
 	newModel := "claude-opus-4-7"
 	newCtx := 500000
 	effort := "xhigh"
+	supported := []string{"low", "medium", "high", "xhigh"}
 	disabled := false
 	updated, err := svc.Update("user-all", types.CLIModelUpdateRequest{
-		DisplayName:     &newName,
-		MappedModel:     &newModel,
-		ContextLength:   &newCtx,
-		ReasoningEffort: &effort,
-		Enabled:         &disabled,
+		DisplayName:      &newName,
+		MappedModel:      &newModel,
+		ContextLength:    &newCtx,
+		ReasoningEffort:  &effort,
+		SupportedEfforts: &supported,
+		Enabled:          &disabled,
 	})
 	if err != nil {
 		t.Fatalf("Update user row with all fields: %v", err)

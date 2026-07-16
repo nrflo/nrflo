@@ -40,6 +40,9 @@ export interface ConsoleChatListResponse {
 export interface CreateConsoleChatRequest {
   engine: string
   model: string
+  // Optional create-time effort override; must be in the model's
+  // supported_efforts.
+  reasoning_effort?: string
 }
 
 export interface CreateConsoleChatResponse {
@@ -70,7 +73,10 @@ export interface ConsoleModelOption {
   brand?: string
   provider?: string
   mapped_model?: string
+  // Row's configured (default) effort; create-time overrides must come
+  // from supported_efforts.
   reasoning_effort?: string
+  supported_efforts?: string[]
 }
 
 export interface ConsoleEngineOption {

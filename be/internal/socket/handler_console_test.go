@@ -15,7 +15,7 @@ type fakeConsoleChatCreator struct {
 	engine, model, project, attached string
 }
 
-func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, project string) (string, string, error) {
+func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project string) (string, string, error) {
 	f.engine, f.model, f.project = engine, model, project
 	return "chat-session-1", "chat-token-1", nil
 }

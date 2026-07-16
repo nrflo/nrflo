@@ -155,6 +155,42 @@ describe('NewChatForm (catalog-driven)', () => {
     expect(onCreated).toHaveBeenCalledWith('sid-x')
   })
 
+  it('offers a reasoning-effort select from supported_efforts and passes the override on create', async () => {
+    const { mutateAsync } = setup({
+      engines: [
+        engineOption(),
+        engineOption({
+          id: 'api',
+          display_name: 'Direct API',
+          requires_model: true,
+          models: [
+            {
+              id: 'api-sonnet',
+              display_name: 'Sonnet (API)',
+              supported_efforts: ['low', 'medium', 'high', 'max'],
+            },
+          ],
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderWithQuery(<NewChatForm onCreated={vi.fn()} />)
+
+    // No effort select until a model with supported_efforts is picked.
+    expect(screen.queryByText('Reasoning effort')).not.toBeInTheDocument()
+
+    await openEngineDropdown(user)
+    await user.click(screen.getByText('Direct API'))
+    await user.click(screen.getByRole('button', { name: /Select a model…/ }))
+    await user.click(screen.getByText('Sonnet (API)'))
+
+    await user.click(screen.getByRole('button', { name: 'Default' }))
+    await user.click(screen.getByText('Max'))
+    await user.click(screen.getByRole('button', { name: 'New chat' }))
+
+    expect(mutateAsync).toHaveBeenCalledWith({ engine: 'api', model: 'api-sonnet', reasoning_effort: 'max' })
+  })
+
   it('clears the selected model when switching engines, even when ids collide across registries', async () => {
     setup({
       engines: [

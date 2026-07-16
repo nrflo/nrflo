@@ -111,7 +111,7 @@ func runConsole(ctx context.Context, choose bool) error {
 		if selection.ResumeID != "" {
 			mint, err = attachConsoleChatOverSocket(socketProject, selection.ResumeID)
 		} else {
-			mint, err = mintConsoleChatOverSocket(socketProject, selection.Engine, selection.Model)
+			mint, err = mintConsoleChatOverSocket(socketProject, selection.Engine, selection.Model, selection.Effort)
 		}
 		if err != nil {
 			return err
@@ -128,7 +128,7 @@ func runConsole(ctx context.Context, choose bool) error {
 			client := consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID})
 			createCtx, createCancel := context.WithTimeout(ctx, 30*time.Second)
 			var err error
-			sessionID, err = client.Create(createCtx, selection.Engine, selection.Model)
+			sessionID, err = client.Create(createCtx, selection.Engine, selection.Model, selection.Effort)
 			createCancel()
 			if err != nil {
 				return fmt.Errorf("start console chat for project %q: %w", projectID, err)

@@ -16,20 +16,22 @@ import (
 // ModelConfig holds DB-sourced model configuration for the spawner.
 // Zero values mean "not configured" — adapters fall back to their hardcoded methods.
 type ModelConfig struct {
-	CLIType         string // "claude", "codex"
-	MappedModel     string // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
-	ReasoningEffort string // "", "low", "medium", "high", "xhigh", "max", "ultra" (ultra: codex gpt-5.6 only)
-	FallbackModels  string // claude only: comma-separated --fallback-model chain (≤3)
-	ContextLength   int    // 200000, 1000000
+	CLIType          string   // "claude", "codex"
+	MappedModel      string   // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
+	ReasoningEffort  string   // "", "low", "medium", "high", "xhigh", "max", "ultra" (ultra: codex gpt-5.6 only)
+	FallbackModels   string   // claude only: comma-separated --fallback-model chain (≤3)
+	ContextLength    int      // 200000, 1000000
+	SupportedEfforts []string // effort levels this model accepts (cli_models.supported_efforts)
 }
 
 // APIModelConfig holds DB-sourced configuration for an API-mode model row.
 // Sourced from the api_models table, keyed by row id.
 type APIModelConfig struct {
-	Provider        string // "anthropic", "openai"
-	MappedModel     string // actual provider model ID, e.g. "claude-opus-4-7"
-	ContextLength   int    // max input context window in tokens
-	ReasoningEffort string // "", "low", "medium", "high", "xhigh"
+	Provider         string   // "anthropic", "openai"
+	MappedModel      string   // actual provider model ID, e.g. "claude-opus-4-7"
+	ContextLength    int      // max input context window in tokens
+	ReasoningEffort  string   // "", "low", "medium", "high", "xhigh", "max"
+	SupportedEfforts []string // effort levels this model accepts (api_models.supported_efforts)
 }
 
 // Config holds the spawner configuration

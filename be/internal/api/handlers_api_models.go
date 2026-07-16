@@ -40,8 +40,7 @@ func (s *Server) handleCreateAPIModel(w http.ResponseWriter, r *http.Request) {
 		}
 		if strings.Contains(err.Error(), "required") ||
 			strings.Contains(err.Error(), "invalid provider") ||
-			strings.Contains(err.Error(), "invalid reasoning_effort") ||
-			strings.Contains(err.Error(), "only supported on Anthropic Opus 4.7") {
+			isEffortValidationErr(err) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -96,8 +95,7 @@ func (s *Server) handleUpdateAPIModel(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
-		if strings.Contains(err.Error(), "invalid reasoning_effort") ||
-			strings.Contains(err.Error(), "only supported on Anthropic Opus 4.7") ||
+		if isEffortValidationErr(err) ||
 			strings.Contains(err.Error(), "only reasoning_effort can be updated on built-in models") {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return

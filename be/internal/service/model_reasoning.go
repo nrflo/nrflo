@@ -2,67 +2,53 @@ package service
 
 import (
 	"fmt"
+	"slices"
+	"sort"
 	"strings"
 )
 
-var validReasoningEfforts = map[string]bool{
-	"":       true,
-	"low":    true,
-	"medium": true,
-	"high":   true,
-	"xhigh":  true,
-	"max":    true,
-	"ultra":  true,
+// effortRank orders levels weakest→strongest; it also defines the global
+// effort enum. Per-model capability lives in the model row's
+// supported_efforts JSON column (migration 000166), not in code.
+var effortRank = map[string]int{
+	"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4, "ultra": 5,
 }
 
-// ValidateReasoningEffort checks that effort is one of the allowed levels and
-// enforces the per-model restrictions: "xhigh" only with Claude Opus 4.7/4.8
-// or Sonnet 5, "ultra" only with codex GPT-5.6 Sol/Terra. Exported so the
-// spawner can re-validate a def-level override against the model row at
-// spawn time, reusing the same gating rules instead of duplicating them.
-func ValidateReasoningEffort(cliType, mappedModel, effort string) error {
-	if !validReasoningEfforts[effort] {
+// ValidateEffortAllowed checks a reasoning-effort value against a model
+// row's supported_efforts list. "" always passes — it means "inherit the
+// row/provider default". Exported so the spawner and the console chat
+// resolver re-validate def-level/create-time overrides against the model
+// row with the same rule the registry CRUD uses.
+func ValidateEffortAllowed(effort string, supported []string) error {
+	if effort == "" {
+		return nil
+	}
+	if _, ok := effortRank[effort]; !ok {
 		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max, ultra", effort)
 	}
-	if effort == "xhigh" && cliType == "claude" && !supportsXHighEffort(mappedModel) {
-		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Opus 4.7/4.8 or Sonnet 5 Claude models")
-	}
-	if effort == "ultra" && (cliType != "codex" || !supportsUltraEffort(mappedModel)) {
-		return fmt.Errorf("reasoning_effort 'ultra' is only supported on Codex GPT-5.6 Sol/Terra models")
-	}
-	return nil
-}
-
-// ValidateAPIReasoningEffort checks that effort is one of the allowed levels and
-// enforces that "xhigh" is only used with Anthropic Opus 4.7/4.8 or Sonnet 5
-// models. "ultra" is a codex-CLI-only effort and is rejected for API models.
-// Exported for the same spawn-time re-validation reason as ValidateReasoningEffort.
-func ValidateAPIReasoningEffort(provider, mappedModel, effort string) error {
-	if !validReasoningEfforts[effort] {
-		return fmt.Errorf("invalid reasoning_effort %q: must be one of low, medium, high, xhigh, max", effort)
-	}
-	if effort == "xhigh" && (provider != "anthropic" || !supportsXHighEffort(mappedModel)) {
-		return fmt.Errorf("reasoning_effort 'xhigh' is only supported on Anthropic Opus 4.7/4.8 or Sonnet 5 models")
-	}
-	if effort == "ultra" {
-		return fmt.Errorf("reasoning_effort 'ultra' is not supported for API models")
+	if !slices.Contains(supported, effort) {
+		if len(supported) == 0 {
+			return fmt.Errorf("reasoning_effort %q: this model does not support effort selection", effort)
+		}
+		return fmt.Errorf("reasoning_effort %q is not supported by this model (supported: %s)", effort, strings.Join(supported, ", "))
 	}
 	return nil
 }
 
-// supportsXHighEffort reports whether mappedModel supports the "xhigh"
-// reasoning effort (Opus 4.7, Opus 4.8, and Sonnet 5). Shared by the CLI and
-// API model reasoning-effort validators.
-func supportsXHighEffort(mappedModel string) bool {
-	return strings.HasPrefix(mappedModel, "claude-opus-4-7") ||
-		strings.HasPrefix(mappedModel, "claude-opus-4-8") ||
-		strings.HasPrefix(mappedModel, "claude-sonnet-5")
-}
-
-// supportsUltraEffort reports whether mappedModel supports the "ultra"
-// reasoning effort (codex GPT-5.6 Sol/Terra only; Luna's catalog tops out at
-// "max", and pre-5.6 models 400 on it at the provider).
-func supportsUltraEffort(mappedModel string) bool {
-	return strings.HasPrefix(mappedModel, "gpt-5.6-sol") ||
-		strings.HasPrefix(mappedModel, "gpt-5.6-terra")
+// NormalizeSupportedEfforts validates and sorts a supported_efforts list
+// weakest→strongest, dropping duplicates. Used by the cli/api model CRUD.
+func NormalizeSupportedEfforts(efforts []string) ([]string, error) {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(efforts))
+	for _, e := range efforts {
+		if _, ok := effortRank[e]; !ok {
+			return nil, fmt.Errorf("invalid supported_efforts entry %q: must be one of low, medium, high, xhigh, max, ultra", e)
+		}
+		if !seen[e] {
+			seen[e] = true
+			out = append(out, e)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return effortRank[out[i]] < effortRank[out[j]] })
+	return out, nil
 }

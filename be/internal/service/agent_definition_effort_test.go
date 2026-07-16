@@ -8,10 +8,9 @@ import (
 
 // TestCreateAgentDef_ReasoningEffort_ValidationMatrix exercises
 // validateDefReasoningEffort (service/agent_definition_validate.go) through
-// CreateAgentDef for every model-family gate in service/model_reasoning.go:
-// "xhigh" is claude-only (Opus 4.7/4.8, Sonnet 5), "ultra" is codex-only
-// (GPT-5.6 Sol/Terra), and the API variant additionally rejects "ultra"
-// outright and gates "xhigh" on provider=anthropic.
+// CreateAgentDef against each model row's supported_efforts list: an effort
+// outside the row's list is rejected, one inside it is accepted. No API row is
+// seeded with "ultra", so "ultra" on an api def is always a membership error.
 func TestCreateAgentDef_ReasoningEffort_ValidationMatrix(t *testing.T) {
 	t.Parallel()
 	svc, settingsSvc, wfID := setupAgentDefAPIModeEnv(t)
@@ -31,7 +30,8 @@ func TestCreateAgentDef_ReasoningEffort_ValidationMatrix(t *testing.T) {
 		{"ultra on codex terra row accepted", "cli_interactive", "codex_gpt56_terra_high", strPtr("ultra"), false},
 		{"xhigh on claude haiku rejected", "cli_interactive", "haiku", strPtr("xhigh"), true},
 		{"xhigh on claude opus_4_8 accepted", "cli_interactive", "opus_4_8", strPtr("xhigh"), false},
-		{"xhigh on api openai rejected", "api", "gpt56_sol_high", strPtr("xhigh"), true},
+		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt56_sol_high", strPtr("xhigh"), false},
+		{"max on api openai gpt-5.4 rejected", "api", "gpt54_high", strPtr("max"), true},
 		{"ultra on api def rejected regardless of model", "api", "opus_4_8", strPtr("ultra"), true},
 		{"xhigh on api anthropic opus accepted", "api", "opus_4_8", strPtr("xhigh"), false},
 		{"nil reasoning_effort accepted (inherit)", "cli_interactive", "sonnet", nil, false},

@@ -24,6 +24,8 @@ func thinkingBudget(effort string) int {
 		return 16384
 	case "xhigh":
 		return 24576
+	case "max":
+		return 32768
 	default:
 		return 8192 // unknown non-empty → medium
 	}

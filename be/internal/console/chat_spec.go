@@ -12,12 +12,13 @@ import (
 
 // chatSpecParams bundles what buildChatEngineSpec needs beyond the DB pool.
 type chatSpecParams struct {
-	SessionID  string
-	ProjectID  string
-	Engine     string // "claude" | "codex" | "api"
-	ModelID    string // cli_models/api_models registry id, a raw model name, or ""
-	SpawnToken string
-	ServerURL  string // loopback base, e.g. http://127.0.0.1:6587
+	SessionID       string
+	ProjectID       string
+	Engine          string // "claude" | "codex" | "api"
+	ModelID         string // cli_models/api_models registry id, a raw model name, or ""
+	ReasoningEffort string // optional override; must be in the row's supported_efforts
+	SpawnToken      string
+	ServerURL       string // loopback base, e.g. http://127.0.0.1:6587
 }
 
 // buildChatEngineSpec resolves the project workdir and (when ModelID names
@@ -46,10 +47,13 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 	}
 
 	if p.ModelID == "" {
+		// Engine-default model: the effort override passes through for the
+		// engine/provider to validate.
+		spec.ReasoningEffort = p.ReasoningEffort
 		return spec, nil
 	}
 
-	if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID); err != nil {
+	if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID, p.ReasoningEffort); err != nil {
 		return spawner.EngineSpec{}, err
 	}
 

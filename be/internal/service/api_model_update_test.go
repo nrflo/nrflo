@@ -128,22 +128,22 @@ func TestAPIModel_UpdateReasoningEffort_XhighOnAnthropicSonnet5_Allowed(t *testi
 	}
 }
 
-func TestAPIModel_UpdateReasoningEffort_XhighOnOpenAI_Rejected(t *testing.T) {
+func TestAPIModel_UpdateReasoningEffort_UnsupportedOnOpenAI_Rejected(t *testing.T) {
 	t.Parallel()
 	svc, cleanup := setupAPIModelTestEnv(t)
 	defer cleanup()
 
-	// Current implementation restricts xhigh to anthropic+opus-4.7 only;
-	// openai models are also rejected.
-	effort := "xhigh"
+	// gpt54_high is seeded with supported_efforts [low,medium,high,xhigh]; it has
+	// no "max", so requesting max on this read_only row is a membership error.
+	effort := "max"
 	_, err := svc.Update("gpt54_high", types.APIModelUpdateRequest{
 		ReasoningEffort: &effort,
 	})
 	if err == nil {
-		t.Fatal("expected error for xhigh on openai model, got nil")
+		t.Fatal("expected error for max on gpt54_high, got nil")
 	}
-	if !strings.Contains(err.Error(), "only supported on Anthropic Opus 4.7") {
-		t.Errorf("error = %q, want to contain 'only supported on Anthropic Opus 4.7'", err.Error())
+	if !strings.Contains(err.Error(), "is not supported by this model") {
+		t.Errorf("error = %q, want to contain 'is not supported by this model'", err.Error())
 	}
 }
 

@@ -17,42 +17,46 @@ type DefaultTemplateUpdateRequest struct {
 
 // CLIModelCreateRequest is the request for creating a CLI model
 type CLIModelCreateRequest struct {
-	ID              string `json:"id"`
-	CLIType         string `json:"cli_type"`
-	DisplayName     string `json:"display_name"`
-	MappedModel     string `json:"mapped_model"`
-	ReasoningEffort string `json:"reasoning_effort"`
-	FallbackModels  string `json:"fallback_models"`
-	ContextLength   int    `json:"context_length"`
+	ID               string   `json:"id"`
+	CLIType          string   `json:"cli_type"`
+	DisplayName      string   `json:"display_name"`
+	MappedModel      string   `json:"mapped_model"`
+	ReasoningEffort  string   `json:"reasoning_effort"`
+	SupportedEfforts []string `json:"supported_efforts"`
+	FallbackModels   string   `json:"fallback_models"`
+	ContextLength    int      `json:"context_length"`
 }
 
 // CLIModelUpdateRequest is the request for updating a CLI model
 type CLIModelUpdateRequest struct {
-	DisplayName     *string `json:"display_name,omitempty"`
-	MappedModel     *string `json:"mapped_model,omitempty"`
-	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
-	FallbackModels  *string `json:"fallback_models,omitempty"`
-	ContextLength   *int    `json:"context_length,omitempty"`
-	Enabled         *bool   `json:"enabled,omitempty"`
+	DisplayName      *string   `json:"display_name,omitempty"`
+	MappedModel      *string   `json:"mapped_model,omitempty"`
+	ReasoningEffort  *string   `json:"reasoning_effort,omitempty"`
+	SupportedEfforts *[]string `json:"supported_efforts,omitempty"`
+	FallbackModels   *string   `json:"fallback_models,omitempty"`
+	ContextLength    *int      `json:"context_length,omitempty"`
+	Enabled          *bool     `json:"enabled,omitempty"`
 }
 
 // APIModelCreateRequest is the request for creating an API model
 type APIModelCreateRequest struct {
-	ID              string `json:"id"`
-	Provider        string `json:"provider"`
-	DisplayName     string `json:"display_name"`
-	MappedModel     string `json:"mapped_model"`
-	ReasoningEffort string `json:"reasoning_effort"`
-	ContextLength   int    `json:"context_length"`
+	ID               string   `json:"id"`
+	Provider         string   `json:"provider"`
+	DisplayName      string   `json:"display_name"`
+	MappedModel      string   `json:"mapped_model"`
+	ReasoningEffort  string   `json:"reasoning_effort"`
+	SupportedEfforts []string `json:"supported_efforts"`
+	ContextLength    int      `json:"context_length"`
 }
 
 // APIModelUpdateRequest is the request for updating an API model
 type APIModelUpdateRequest struct {
-	DisplayName     *string `json:"display_name,omitempty"`
-	MappedModel     *string `json:"mapped_model,omitempty"`
-	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
-	ContextLength   *int    `json:"context_length,omitempty"`
-	Enabled         *bool   `json:"enabled,omitempty"`
+	DisplayName      *string   `json:"display_name,omitempty"`
+	MappedModel      *string   `json:"mapped_model,omitempty"`
+	ReasoningEffort  *string   `json:"reasoning_effort,omitempty"`
+	SupportedEfforts *[]string `json:"supported_efforts,omitempty"`
+	ContextLength    *int      `json:"context_length,omitempty"`
+	Enabled          *bool     `json:"enabled,omitempty"`
 }
 
 // InputArtifactRef references a staged upload to attach to a workflow run.

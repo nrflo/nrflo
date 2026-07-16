@@ -22,6 +22,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const apiNativeToolsMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ api_native_tools_enabled: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   const systemPromptOverrideMutation = useMutation({
     mutationFn: (val: boolean) => updateGlobalSettings({ claude_system_prompt_override_enabled: val }),
     onSuccess: () => {
@@ -106,6 +113,22 @@ export function GlobalSettingsSection() {
                 checked={settings.api_mode_enabled}
                 onChange={(val) => apiModeMutation.mutate(val)}
                 disabled={apiModeMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">API native file/shell tools</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Gives API-mode agents and console chats read_file/edit_file/bash, jailed to the
+                  working directory; edit_file/bash in console chats require your approval. The
+                  server executes model-authored shell commands — leave off unless you need it
+                </p>
+              </div>
+              <Toggle
+                checked={settings.api_native_tools_enabled}
+                onChange={(val) => apiNativeToolsMutation.mutate(val)}
+                disabled={apiNativeToolsMutation.isPending}
               />
             </div>
             <div className="border-t border-border" />

@@ -23,8 +23,9 @@ const consoleAPISystem = `You are nrflo's console assistant, reached over a dire
 var newConsoleAPIProvider = service.BuildAPIProvider
 
 // apiConsoleEngine drives an in-process apirun.Conversation for a human
-// console chat session: no CLI process, no PTY, no approvals (there are no
-// native file/bash tools to approve in v1). Like codexEngine/claudeEngine it
+// console chat session: no CLI process, no PTY. Approvals exist only for the
+// gated native fs tools (console_engine_api_approval.go); every other
+// console-profile tool dispatches unprompted. Like codexEngine/claudeEngine it
 // holds no processInfo, so it is structurally exempt from the autonomous
 // nudge/stall/restart-cap policies — that requirement is structural, not a
 // flag, the same as the other two engines.
@@ -52,6 +53,11 @@ type apiConsoleEngine struct {
 	// rateLimitBackoff drives the bounded in-turn retry after a RATE_LIMITED
 	// turn (one entry per retry). Injectable so tests use tiny delays.
 	rateLimitBackoff []time.Duration
+
+	// approvals gates the mutating native fs tools (edit_file/bash) behind a
+	// human decision; approvalTimeout is injectable for tests.
+	approvals       *apiEngineApprovals
+	approvalTimeout time.Duration
 }
 
 func newAPIConsoleEngine(deps EngineDeps) *apiConsoleEngine {
@@ -61,6 +67,8 @@ func newAPIConsoleEngine(deps EngineDeps) *apiConsoleEngine {
 		events:           make(chan EngineEvent, 256),
 		stopping:         make(chan struct{}),
 		rateLimitBackoff: []time.Duration{30 * time.Second, 60 * time.Second},
+		approvals:        newAPIEngineApprovals(),
+		approvalTimeout:  consoleApprovalTimeout,
 	}
 }
 
@@ -91,14 +99,26 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 	e.cancel = cancel
 	e.mu.Unlock()
 
+	// Native fs tools (read_file/edit_file/bash) join the console profile
+	// when the api_native_tools_enabled global setting is on and the chat has
+	// a workdir; the mutating ones are approval-gated
+	// (console_engine_api_approval.go). The system prompt swaps to the
+	// variant that stops claiming "no local tools".
+	system, tools, handlers, env := consoleAPISystem, e.api.Tools, e.api.Handlers, e.api.ToolEnv
+	if spec.WorkDir != "" && apiNativeToolsEnabled(e.api.Pool, e.api.Clock) {
+		tools, handlers = e.withFSTools(tools, handlers)
+		env.WorkDir = spec.WorkDir
+		system = consoleAPIFSSystem
+	}
+
 	e.conv = apirun.NewConversation(apirun.Config{
 		Provider: prov,
 		Sink:     &apiEngineSink{sessionID: spec.SessionID, sink: e.sink, pool: e.api.Pool, clock: e.api.Clock},
 		AgentSvc: e.sink,
-		System:   consoleAPISystem,
-		Tools:    e.api.Tools,
-		Handlers: e.api.Handlers,
-		Env:      e.api.ToolEnv,
+		System:   system,
+		Tools:    tools,
+		Handlers: handlers,
+		Env:      env,
 		// Prompt caching mirrors the autonomous api backend (backend.go): one
 		// marker on the system block (also caches tool definitions) plus a
 		// sliding marker on the conversation tail each turn.
@@ -206,12 +226,6 @@ func (e *apiConsoleEngine) InterruptTurn(_ context.Context) error {
 
 // Events returns the normalized event channel, closed when Stop completes.
 func (e *apiConsoleEngine) Events() <-chan EngineEvent { return e.events }
-
-// ReplyApproval always errors: v1 has no native file/bash tools, so the
-// engine never registers an approval request in the first place.
-func (e *apiConsoleEngine) ReplyApproval(id string, decision ApprovalDecision) error {
-	return fmt.Errorf("api console engine: no approvals")
-}
 
 // Stop cancels runCtx, waits for any in-flight turn goroutine to finish, and
 // closes Events exactly once. `stopping` is closed BEFORE waiting so emit can

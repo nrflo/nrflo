@@ -79,7 +79,7 @@ func (s *Spawner) attachNrfloToolRegistry(
 	if agentDef != nil && strings.TrimSpace(agentDef.Tools) != "" {
 		toolsCSV = agentDef.Tools
 	}
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true, false)
 	if regErr != nil {
 		return regErr
 	}

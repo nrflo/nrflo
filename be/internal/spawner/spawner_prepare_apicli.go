@@ -38,7 +38,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 
 	// Build tool registry: honor the tools field but force the lifecycle
 	// baseline — api-via-cli completes over the socket like a CLI agent.
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", true)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", true, false)
 	if regErr != nil {
 		return nil, nil, regErr
 	}

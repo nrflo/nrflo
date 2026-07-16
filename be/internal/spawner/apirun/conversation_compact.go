@@ -24,12 +24,12 @@ const compactSystem = `You are a conversation summarizer. Produce a dense, factu
 // no live consumer.
 type nullEventSink struct{}
 
-func (nullEventSink) OnTextDelta(string)                 {}
-func (nullEventSink) OnThinkingDelta(string)             {}
-func (nullEventSink) OnToolUseStart(string, string)      {}
-func (nullEventSink) OnToolUseInputDelta(string, string) {}
+func (nullEventSink) OnTextDelta(string)                    {}
+func (nullEventSink) OnThinkingDelta(string)                {}
+func (nullEventSink) OnToolUseStart(string, string)         {}
+func (nullEventSink) OnToolUseInputDelta(string, string)    {}
 func (nullEventSink) OnToolUseStop(string, json.RawMessage) {}
-func (nullEventSink) OnUsage(provider.Usage)             {}
+func (nullEventSink) OnUsage(provider.Usage)                {}
 
 // ctxCaptureProc tees SetContextLeft into the Conversation so it knows how
 // much window the previous turn left without owning usage accounting itself.

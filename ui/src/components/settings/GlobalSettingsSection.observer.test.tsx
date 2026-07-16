@@ -53,7 +53,7 @@ describe('GlobalSettingsSection — observer settings', () => {
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
     // api_mode[0], system_prompt_override[1], low_consumption[2], context_save[3], simplified_graph[4], experimental[5], api_via_cli[6], observer_mode[7]
-    expect(toggles[7]).toHaveAttribute('aria-checked', 'false')
+    expect(toggles[8]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Observer mode')).toBeInTheDocument()
   })
 
@@ -71,7 +71,7 @@ describe('GlobalSettingsSection — observer settings', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[7])
+    await user.click(toggles[8])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental_observer_enabled: true })
@@ -85,7 +85,7 @@ describe('GlobalSettingsSection — observer settings', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[7])
+    await user.click(toggles[8])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental_observer_enabled: false })

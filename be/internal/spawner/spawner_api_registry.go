@@ -3,6 +3,8 @@ package spawner
 import (
 	"fmt"
 
+	"be/internal/clock"
+	"be/internal/db"
 	"be/internal/model"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
@@ -22,6 +24,13 @@ import (
 // strip an agent's ability to signal completion or record findings. Pure
 // in-process api agents leave it false (they auto-PASS on end_turn and may be
 // intentionally text-only).
+//
+// includeFS additionally offers the native filesystem/shell tools
+// (tools_builtin.FSTools — read_file/edit_file/bash, jailed to the workdir).
+// Only the pure in-process api branch passes true, and only when the
+// `api_native_tools_enabled` global setting is on: CLI-backed agents have
+// their CLI's own native tools, so granting a second bash over MCP would be
+// redundant surface.
 func (s *Spawner) buildAPIRegistry(
 	req SpawnRequest,
 	wfiID string,
@@ -29,6 +38,7 @@ func (s *Spawner) buildAPIRegistry(
 	proc *processInfo,
 	toolsCSVOverride string,
 	forceBaseline bool,
+	includeFS bool,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
 	toolsCSV := toolsCSVOverride
 	if toolsCSV == "" {
@@ -41,7 +51,14 @@ func (s *Spawner) buildAPIRegistry(
 
 	pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
 
-	specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, tools_builtin.Builtins(), pythonHandlers)
+	builtins := tools_builtin.Builtins()
+	if includeFS && proc.workDir != "" && apiNativeToolsEnabled(s.config.Pool, s.config.Clock) {
+		for name, handler := range tools_builtin.FSTools() {
+			builtins[name] = handler
+		}
+	}
+
+	specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, builtins, pythonHandlers)
 	if regErr != nil {
 		return nil, nil, apirun.ToolEnv{}, fmt.Errorf("api mode: %w", regErr)
 	}
@@ -90,9 +107,18 @@ func (s *Spawner) buildAPIRegistry(
 		ChainRun:           service.NewWorkflowChainRunService(s.config.Pool, s.config.Clock),
 		Subworkflows:       s.config.Subworkflows,
 		Heartbeat:          func() { s.BumpLastMessage(proc.sessionID) },
+		WorkDir:            proc.workDir,
 	}
 
 	return specs, handlers, toolEnv, nil
+}
+
+// apiNativeToolsEnabled reads the `api_native_tools_enabled` global setting
+// (default off): whether in-process api agents/chats may use the native
+// read_file/edit_file/bash tools.
+func apiNativeToolsEnabled(pool *db.Pool, clk clock.Clock) bool {
+	v, _ := service.NewGlobalSettingsService(pool, clk).Get("api_native_tools_enabled")
+	return v == "true"
 }
 
 // stripTool removes a tool by name from both the handler registry and the spec

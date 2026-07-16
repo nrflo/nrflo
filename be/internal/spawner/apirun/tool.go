@@ -130,6 +130,10 @@ type ToolEnv struct {
 	// Heartbeat bumps the calling agent's lastMessageTime so stall detection does
 	// not kill it during a long blocking tool call. Nil-safe.
 	Heartbeat func()
+	// WorkDir is the agent/chat working directory the native fs tools
+	// (read_file/edit_file/bash, tools_builtin/fs*.go) are jailed to. Empty
+	// means no filesystem access — those tools error.
+	WorkDir string
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

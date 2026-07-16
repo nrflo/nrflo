@@ -14,6 +14,7 @@ vi.mock('@/api/settings', async (importOriginal) => {
 function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
   return {
     api_mode_enabled: false,
+    api_native_tools_enabled: false,
     claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
     context_save_via_agent: false,
@@ -31,15 +32,15 @@ describe('GlobalSettingsSection', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    // toggles[0]=api_mode, [1]=system_prompt_override, [2]=low_consumption
-    expect(toggles[2]).toHaveAttribute('aria-checked', 'false')
+    // toggles[0]=api_mode, [1]=api_native_tools, [2]=system_prompt_override, [3]=low_consumption
+    expect(toggles[3]).toHaveAttribute('aria-checked', 'false')
   })
 
   it('renders toggle reflecting server state (true)', async () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ low_consumption_mode: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[2]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[3]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('shows loading state while fetching', () => {
@@ -71,8 +72,8 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    // toggles[2] = low_consumption ([0]=api_mode, [1]=system_prompt_override)
-    await user.click(toggles[2])
+    // toggles[3] = low_consumption ([0]=api_mode, [1]=system_prompt_override)
+    await user.click(toggles[3])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: true })
@@ -86,7 +87,7 @@ describe('GlobalSettingsSection', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[2])
+    await user.click(toggles[3])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ low_consumption_mode: false })

@@ -35,7 +35,6 @@ var wantConsoleOnly = []string{
 	"ticket_current",
 	"artifact_list",
 	"artifact_get",
-	"deep_research",
 }
 
 // wantExcluded lists session-bound / lifecycle tools that must never appear

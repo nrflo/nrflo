@@ -15,7 +15,7 @@ import (
 // table because they call a real network provider (tools_web) — no real
 // network is allowed in tests (root CLAUDE.md rule 4). With no orchestrator
 // wired (test servers never set s.orchestrator), workflow_run/stop/
-// retry_failed/deep_research short-circuit on their own missingService(...)
+// retry_failed short-circuit on their own missingService(...)
 // check before touching the DB or network, so they stay in this table.
 var toolArgsForDispatchTest = map[string]string{
 	"project_findings_add":         `{"key":"k","value":"v"}`,
@@ -40,7 +40,6 @@ var toolArgsForDispatchTest = map[string]string{
 	"ticket_current":               `{}`,
 	"artifact_list":                `{"instance_id":"wfi-nope"}`,
 	"artifact_get":                 `{"instance_id":"wfi-nope","name":"n"}`,
-	"deep_research":                `{"question":"q"}`,
 }
 
 func TestHandleCallConsoleTool_EveryListedTool_DispatchesNon404(t *testing.T) {

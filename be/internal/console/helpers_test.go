@@ -108,14 +108,13 @@ func invoke(t *testing.T, reg apirun.Registry, env apirun.ToolEnv, name string, 
 
 // fakeOrchestrator implements console.Orchestrator, recording calls.
 type fakeOrchestrator struct {
-	startProjectID       string
-	startTicketID        string
-	startWorkflow        string
-	startInstructions    string
-	startExternalContext string
-	startScopeType       string
-	startInstanceID      string
-	startErr             error
+	startProjectID    string
+	startTicketID     string
+	startWorkflow     string
+	startInstructions string
+	startScopeType    string
+	startInstanceID   string
+	startErr          error
 
 	stopTicketProjectID  string
 	stopTicketTicketID   string
@@ -134,15 +133,10 @@ type fakeOrchestrator struct {
 }
 
 func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error) {
-	return f.StartWorkflowWithContext(ctx, projectID, ticketID, workflowName, instructions, "", scopeType)
-}
-
-func (f *fakeOrchestrator) StartWorkflowWithContext(ctx context.Context, projectID, ticketID, workflowName, instructions, externalContext, scopeType string) (string, error) {
 	f.startProjectID = projectID
 	f.startTicketID = ticketID
 	f.startWorkflow = workflowName
 	f.startInstructions = instructions
-	f.startExternalContext = externalContext
 	f.startScopeType = scopeType
 	if f.startErr != nil {
 		return "", f.startErr

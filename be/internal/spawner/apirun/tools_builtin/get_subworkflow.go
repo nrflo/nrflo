@@ -27,7 +27,7 @@ func (getSubworkflowHandler) Spec() provider.ToolSpec {
 "type":"object",
 "properties":{
  "instance_id":{"type":"string","description":"Instance id returned by run_subworkflow or dynamic_workflow"},
- "result_key":{"type":"string","description":"Finding key holding the result (default workflow_final_result; deep-research emits 'report')"},
+ "result_key":{"type":"string","description":"Finding key holding the result (default workflow_final_result)"},
  "wait_sec":{"type":"integer","description":"Optionally block up to this many seconds (max 240) waiting for completion or a plan-boundary status"}
 },
 "required":["instance_id"],

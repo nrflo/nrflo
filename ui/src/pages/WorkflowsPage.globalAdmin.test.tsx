@@ -65,7 +65,7 @@ function renderPage() {
 describe('WorkflowsPage global workflows — admin visibility', () => {
   const defs: Record<string, WorkflowDefSummary> = {
     feature: { description: 'Local feature', scope_type: 'project', phases: [] },
-    'deep-research': { description: 'Global research', scope_type: 'project', is_global: true, phases: [] },
+    'global-research': { description: 'Global research', scope_type: 'project', is_global: true, phases: [] },
   }
 
   beforeEach(() => {
@@ -78,19 +78,19 @@ describe('WorkflowsPage global workflows — admin visibility', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('feature')).toBeInTheDocument())
-    expect(screen.queryByText('deep-research')).not.toBeInTheDocument()
+    expect(screen.queryByText('global-research')).not.toBeInTheDocument()
   })
 
   it('admin: global definitions render with a Global badge, and its agent-def CRUD is scoped to __global__', async () => {
     mockUseIsAdmin.mockReturnValue(true)
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('deep-research')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('global-research')).toBeInTheDocument())
     expect(screen.getByText('Global')).toBeInTheDocument()
 
-    screen.getByText('deep-research').click()
+    screen.getByText('global-research').click()
     await waitFor(() =>
-      expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('deep-research', '__global__')
+      expect(agentDefsApi.listAgentDefs).toHaveBeenCalledWith('global-research', '__global__')
     )
   })
 
@@ -98,7 +98,7 @@ describe('WorkflowsPage global workflows — admin visibility', () => {
     mockUseIsAdmin.mockReturnValue(true)
     renderPage()
 
-    await waitFor(() => expect(screen.getByText('deep-research')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('global-research')).toBeInTheDocument())
     // Only the local 'feature' card exposes these — the global card must not add its own.
     expect(screen.getAllByTitle('Export workflow')).toHaveLength(1)
     expect(screen.getAllByTitle('Edit workflow')).toHaveLength(1)

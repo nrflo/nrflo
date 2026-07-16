@@ -41,8 +41,7 @@ func seedChildInstance(t *testing.T, env *testEnv, wfiID, parentID, status strin
 }
 
 // GetSubworkflow must read the result from session scope (the scope
-// emit_findings actually writes) — regression heir of the deep-research
-// workflow_instance-scope misread.
+// emit_findings actually writes), not workflow_instance scope.
 func TestGetSubworkflow_ReadsSessionScopedResult(t *testing.T) {
 	env := newTestEnv(t)
 	wfiID := env.initProjectWorkflow(t, "test")

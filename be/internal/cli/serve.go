@@ -144,15 +144,12 @@ func setupServer() (*serverComponents, error) {
 	httpServer := api.NewServer(cfg, resolvedDataPath, logsDir, pool, insecureCookies)
 
 	clk := clock.Real()
-	// Seed the hidden, runnable global project + bundled deep-research workflow
+	// Seed the hidden, runnable global project + bundled dynamic workflow
 	// (best-effort, idempotent). The global project hosts project-agnostic tool
 	// runs, rooted at a scratch dir under the data directory.
 	globalRoot := filepath.Join(dataDir, "global")
 	if err := os.MkdirAll(globalRoot, 0o755); err != nil {
 		logger.Warn(context.Background(), "failed to create global project dir", "path", globalRoot, "error", err)
-	}
-	if err := service.EnsureGlobalDeepResearch(pool, clk, globalRoot); err != nil {
-		logger.Warn(context.Background(), "deep-research seed failed", "error", err)
 	}
 	if err := service.EnsureGlobalDynamicWorkflow(pool, clk, globalRoot); err != nil {
 		logger.Warn(context.Background(), "dynamic workflow seed failed", "error", err)

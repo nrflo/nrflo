@@ -83,7 +83,6 @@ Feature → owning-doc routing table: [REFERENCE.md](REFERENCE.md#feature-index)
 | `hotfix` | implementor | Urgent fixes |
 | `docs` | setup-analyzer -> doc-updater | Documentation only |
 | `refactor` | setup-analyzer -> implementor -> qa-verifier | Code refactoring |
-| `deep-research` (global) | scope -> research -> verify_a/b/c -> synthesize | Multi-source web research (any project) |
 | `dynamic` (global) | plan-driven | On-demand multi-agent plan |
 
 ## Building & Installing

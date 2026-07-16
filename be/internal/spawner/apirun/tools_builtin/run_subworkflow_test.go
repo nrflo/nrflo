@@ -47,7 +47,7 @@ func (s stubSubworkflows) ApprovePlan(ctx context.Context, callerID, projectID, 
 func TestRunSubworkflow_AsyncStart(t *testing.T) {
 	r := stubSubworkflows{
 		start: func(_ context.Context, parentID, _, workflow, instructions string) (string, error) {
-			if parentID != "wfi-parent" || workflow != "deep-research" || instructions != "q" {
+			if parentID != "wfi-parent" || workflow != "research-wf" || instructions != "q" {
 				t.Errorf("unexpected start args: %s %s %s", parentID, workflow, instructions)
 			}
 			return "child-1", nil
@@ -55,7 +55,7 @@ func TestRunSubworkflow_AsyncStart(t *testing.T) {
 	}
 	out, isErr, err := runSubworkflowHandler{}.Invoke(context.Background(),
 		apirun.ToolEnv{WorkflowInstanceID: "wfi-parent", Subworkflows: r},
-		json.RawMessage(`{"workflow":"deep-research","instructions":"q"}`))
+		json.RawMessage(`{"workflow":"research-wf","instructions":"q"}`))
 	if err != nil || isErr {
 		t.Fatalf("Invoke: %q isErr=%v err=%v", out, isErr, err)
 	}
@@ -84,7 +84,7 @@ func TestRunSubworkflow_BoundedWaitReturnsResult(t *testing.T) {
 	}
 	out, isErr, err := runSubworkflowHandler{}.Invoke(context.Background(),
 		apirun.ToolEnv{WorkflowInstanceID: "p", Subworkflows: r},
-		json.RawMessage(`{"workflow":"deep-research","instructions":"q","result_key":"report","wait_sec":5}`))
+		json.RawMessage(`{"workflow":"research-wf","instructions":"q","result_key":"report","wait_sec":5}`))
 	if err != nil || isErr {
 		t.Fatalf("Invoke: %q isErr=%v err=%v", out, isErr, err)
 	}

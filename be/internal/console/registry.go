@@ -61,7 +61,6 @@ func BuildRegistry(d Deps) (apirun.Registry, error) {
 	reg["ticket_current"] = ticketCurrentHandler{d: d}
 	reg["artifact_list"] = artifactListHandler{d: d}
 	reg["artifact_get"] = artifactGetHandler{d: d}
-	reg["deep_research"] = deepResearchHandler{d: d}
 
 	return reg, nil
 }

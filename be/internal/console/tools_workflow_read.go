@@ -61,7 +61,7 @@ type workflowListHandler struct{ d Deps }
 func (workflowListHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_list",
-		Description: "List the project's selectable workflow definitions (includes global definitions like deep-research).",
+		Description: "List the project's selectable workflow definitions (includes global definitions).",
 		InputSchema: json.RawMessage(`{"type":"object","additionalProperties":false}`),
 	}
 }

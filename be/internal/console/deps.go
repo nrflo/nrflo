@@ -23,7 +23,6 @@ import (
 // orchestrator_stoppage.go).
 type Orchestrator interface {
 	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error)
-	StartWorkflowWithContext(ctx context.Context, projectID, ticketID, workflowName, instructions, externalContext, scopeType string) (string, error)
 	StopByTicket(projectID, ticketID, workflowName, instanceID string) error
 	StopByProject(projectID, workflowName, instanceID string) error
 	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error

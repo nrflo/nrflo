@@ -24,9 +24,9 @@ func TestProjectList_ExcludesGlobalNamespace(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 	clk := clock.Real()
 
-	// Seeds the hidden __global__ namespace row + the deep-research definition.
-	if err := EnsureGlobalDeepResearch(pool, clk, t.TempDir()); err != nil {
-		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
+	// Seeds the hidden __global__ namespace row + the dynamic definition.
+	if err := EnsureGlobalDynamicWorkflow(pool, clk, t.TempDir()); err != nil {
+		t.Fatalf("EnsureGlobalDynamicWorkflow: %v", err)
 	}
 	now := "2026-01-01T00:00:00Z"
 	if _, err := pool.Exec(`INSERT INTO projects (id, name, root_path, created_at, updated_at) VALUES ('real','Real',NULL,?,?)`, now, now); err != nil {

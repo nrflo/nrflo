@@ -54,7 +54,7 @@ describe('WorkflowsPage global workflows', () => {
   it('hides global (is_global) definitions from the management list', async () => {
     const defs: Record<string, WorkflowDefSummary> = {
       feature: { description: 'Local feature', scope_type: 'project', phases: [] },
-      'deep-research': { description: 'Global research', scope_type: 'project', is_global: true, phases: [] },
+      'global-research': { description: 'Global research', scope_type: 'project', is_global: true, phases: [] },
     }
     vi.mocked(workflowsApi.listWorkflowDefs).mockResolvedValue(defs)
 
@@ -62,6 +62,6 @@ describe('WorkflowsPage global workflows', () => {
 
     await waitFor(() => expect(screen.getByText('feature')).toBeInTheDocument())
     // The global definition must not be editable/deletable here.
-    expect(screen.queryByText('deep-research')).not.toBeInTheDocument()
+    expect(screen.queryByText('global-research')).not.toBeInTheDocument()
   })
 })

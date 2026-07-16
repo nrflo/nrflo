@@ -61,7 +61,7 @@ func idKey(id interface{}) string {
 // runMCPStdioLoopWithCancel is a newline-delimited JSON-RPC 2.0 loop that threads
 // a per-request context into fn and honors MCP `notifications/cancelled` (and
 // stdin EOF) by cancelling the matching in-flight request's context. The external
-// proxy uses it so a cancelled/timed-out blocking tool call (deep_research) can
+// proxy uses it so a cancelled/timed-out blocking tool call can
 // stop its server-side run instead of orphaning it. Requests are dispatched in
 // their own goroutines (the read loop never blocks, so a cancellation arriving
 // mid-call is always processed); writes are serialized.

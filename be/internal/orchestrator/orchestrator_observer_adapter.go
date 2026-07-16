@@ -18,24 +18,6 @@ func (o *Orchestrator) StartWorkflow(ctx context.Context, projectID, ticketID, w
 	return result.InstanceID, nil
 }
 
-// StartWorkflowWithContext extends StartWorkflow with ExternalContext,
-// threading a caller-supplied context blob into the run's ${EXTERNAL_CONTEXT}
-// template var. Used by the console deep_research tool.
-func (o *Orchestrator) StartWorkflowWithContext(ctx context.Context, projectID, ticketID, workflowName, instructions, externalContext, scopeType string) (string, error) {
-	result, err := o.Start(ctx, RunRequest{
-		ProjectID:       projectID,
-		TicketID:        ticketID,
-		WorkflowName:    workflowName,
-		Instructions:    instructions,
-		ExternalContext: externalContext,
-		ScopeType:       scopeType,
-	})
-	if err != nil {
-		return "", err
-	}
-	return result.InstanceID, nil
-}
-
 // RetryFailed implements socket.WorkflowOrchestrator.RetryFailed.
 func (o *Orchestrator) RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error {
 	return o.RetryFailedAgent(ctx, projectID, ticketID, workflowName, sessionID)

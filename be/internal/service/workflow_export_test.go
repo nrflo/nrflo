@@ -228,11 +228,11 @@ func TestExport_ExcludesGlobalWorkflows(t *testing.T) {
 	env := setupExportImportEnv(t)
 	env.createSimpleWorkflow(t, "wf-local")
 
-	// Seed the bundled global deep-research; ListWorkflowDefs("proj1") now unions
-	// it in, but export-all must skip it (it isn't owned by proj1 — fetching it
-	// under proj1 would error, and a global def must not be copied into a bundle).
-	if err := EnsureGlobalDeepResearch(env.pool, clock.Real(), t.TempDir()); err != nil {
-		t.Fatalf("EnsureGlobalDeepResearch: %v", err)
+	// Seed the bundled global dynamic workflow; ListWorkflowDefs("proj1") now
+	// unions it in, but export-all must skip it (it isn't owned by proj1 — fetching
+	// it under proj1 would error, and a global def must not be copied into a bundle).
+	if err := EnsureGlobalDynamicWorkflow(env.pool, clock.Real(), t.TempDir()); err != nil {
+		t.Fatalf("EnsureGlobalDynamicWorkflow: %v", err)
 	}
 
 	bundle, err := env.exportSvc.Export(env.projectID, nil)

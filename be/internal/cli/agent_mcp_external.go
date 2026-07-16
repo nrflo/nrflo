@@ -67,7 +67,7 @@ Register with any MCP client, e.g. Claude Code:
 			base:           strings.TrimRight(base, "/"),
 			serviceToken:   token,
 			defaultProject: os.Getenv("NRFLO_PROJECT"),
-			// No client-side Timeout: console tool calls (e.g. deep_research) can
+			// No client-side Timeout: long-running console tool calls can
 			// block server-side for up to 25 minutes; cancellation comes from the
 			// per-request ctx (runMCPStdioLoopWithCancel), not a client deadline.
 			hc: &http.Client{},

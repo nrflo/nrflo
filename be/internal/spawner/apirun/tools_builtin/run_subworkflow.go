@@ -28,13 +28,13 @@ type runSubworkflowHandler struct{}
 func (runSubworkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "run_subworkflow",
-		Description: "Start a callable multi-agent workflow (e.g. deep-research) as a sub-workflow with the given instructions. Returns {instance_id, status} immediately; poll with get_subworkflow. Set wait_sec to also wait inline up to that many seconds for the result.",
+		Description: "Start a callable multi-agent workflow as a sub-workflow with the given instructions. Returns {instance_id, status} immediately; poll with get_subworkflow. Set wait_sec to also wait inline up to that many seconds for the result.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
  "workflow":{"type":"string","description":"Name of a workflow flagged callable_as_subworkflow"},
  "instructions":{"type":"string","description":"Instructions / question for the sub-workflow"},
- "result_key":{"type":"string","description":"Finding key holding the result (default workflow_final_result; deep-research emits 'report')"},
+ "result_key":{"type":"string","description":"Finding key holding the result (default workflow_final_result)"},
  "wait_sec":{"type":"integer","description":"Optionally block up to this many seconds (max 240) waiting for completion"}
 },
 "required":["workflow","instructions"],

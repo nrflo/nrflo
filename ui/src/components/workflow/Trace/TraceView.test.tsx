@@ -52,7 +52,7 @@ function makeTrace(overrides: Partial<WorkflowTraceResponse> = {}): WorkflowTrac
       },
     ],
     children: [
-      { instance_id: 'wfi-child', workflow: 'deep-research', status: 'active', started_at: '2025-01-01T00:01:30Z', parent_session_id: 's2' },
+      { instance_id: 'wfi-child', workflow: 'global-research', status: 'active', started_at: '2025-01-01T00:01:30Z', parent_session_id: 's2' },
     ],
     truncated: false,
     ...overrides,
@@ -105,7 +105,7 @@ describe('TraceView', () => {
   it('clicking a child row pushes onto the breadcrumb and loads the child trace', () => {
     const childTrace = makeTrace({
       instance_id: 'wfi-child',
-      workflow: 'deep-research',
+      workflow: 'global-research',
       lanes: [],
       children: [],
     })
@@ -117,7 +117,7 @@ describe('TraceView', () => {
     renderWithQuery(<TraceView instanceId="wfi-1" />)
 
     expect(screen.queryByTestId('trace-breadcrumb')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('open trace of deep-research'))
+    fireEvent.click(screen.getByLabelText('open trace of global-research'))
     expect(screen.getByTestId('trace-breadcrumb')).toBeInTheDocument()
     expect(mockUseTrace).toHaveBeenLastCalledWith('wfi-child')
   })

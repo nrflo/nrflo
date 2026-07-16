@@ -14,7 +14,7 @@ import (
 // consoleAPISystem is the system prompt for the api console engine: an
 // nrflo-control + web-research assistant with no native file/edit/bash tools
 // — its only capabilities are the console tool profile (workflow control,
-// findings, project/ticket, web_search/web_fetch, deep_research).
+// findings, project/ticket, web_search/web_fetch).
 const consoleAPISystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, and research topics via web_search/web_fetch. You have NO file, edit, or shell/bash tools: you cannot read or write files on the user's machine and cannot execute commands. Use the tools available to you to answer the user's requests.`
 
 // newConsoleAPIProvider is a test seam (the same package-level factory idiom as

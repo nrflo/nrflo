@@ -15,7 +15,7 @@ const DynamicWorkflowAutoEnabledKey = "dynamic_workflow_auto_enabled"
 
 // DynamicWorkflow is the bundled, plan-driven global workflow that backs the
 // dynamic_workflow/revise_plan/approve_plan tools when no specific workflow is
-// named — seeded by EnsureGlobalDynamicWorkflow next to DeepResearchWorkflow.
+// named — seeded by EnsureGlobalDynamicWorkflow.
 const DynamicWorkflow = "dynamic"
 
 // DynamicAutoEnabled reports whether mode=auto is permitted for a project: the

@@ -62,7 +62,7 @@ func TestWorkflowRun_ProjectScoped_NoTicketID(t *testing.T) {
 	}
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
-	_, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"deep-research"}`)
+	_, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"some-project-wf"}`)
 	if err != nil || isErr {
 		t.Fatalf("err=%v isErr=%v", err, isErr)
 	}

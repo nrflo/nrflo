@@ -9,16 +9,17 @@ import (
 	"be/internal/db"
 )
 
-// EnsureGlobalDynamicWorkflow idempotently create-if-absent seeds the bundled
-// `dynamic` workflow under GlobalProjectID: a plan-driven workflow (a
+// EnsureGlobalDynamicWorkflow idempotently seeds the reserved GlobalProjectID
+// and the bundled `dynamic` workflow: a plan-driven workflow (a
 // node_role='fanout_template' template catalog plus one workflow-local
 // node_role='planner' override — zero node_role='static' defs, so zero
 // executable phases) that backs the dynamic_workflow/revise_plan/approve_plan
-// tools when no specific workflow is named. Mirrors EnsureGlobalDeepResearch
-// exactly (direct SQL, bypasses the agent-def service layer's model
-// validation since it's shipped data); assumes the caller has already ensured
-// the global project exists (EnsureGlobalDeepResearch runs first at startup —
-// see cli/serve.go). Safe and cheap to call on every startup.
+// tools when no specific workflow is named. The global project is a HIDDEN,
+// RUNNABLE home for project-agnostic ("global") tools: ensured to exist with
+// a non-empty root_path (backfilled even on existing installs) so the
+// orchestrator can execute there when no real project is in scope. Writes via
+// direct SQL on purpose (shipped definition data, no agent-def service-layer
+// model validation). Safe and cheap to call on every startup.
 func EnsureGlobalDynamicWorkflow(pool *db.Pool, clk clock.Clock, rootPath string) error {
 	now := clk.Now().UTC().Format(time.RFC3339Nano)
 
@@ -26,6 +27,11 @@ func EnsureGlobalDynamicWorkflow(pool *db.Pool, clk clock.Clock, rootPath string
 		`INSERT OR IGNORE INTO projects (id, name, root_path, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
 		GlobalProjectID, "Global Workflows", rootPath, now, now); err != nil {
 		return fmt.Errorf("dynamic workflow seed: project: %w", err)
+	}
+	if _, err := pool.Exec(
+		`UPDATE projects SET root_path = ?, updated_at = ? WHERE id = ? AND (root_path IS NULL OR root_path = '')`,
+		rootPath, now, GlobalProjectID); err != nil {
+		return fmt.Errorf("dynamic workflow seed: project root: %w", err)
 	}
 
 	var existing string

@@ -5,19 +5,31 @@ import (
 	"errors"
 	"strings"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 )
 
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
+	wasRunning := m.status == "running"
 	var commands []tea.Cmd
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.resize(msg.Width, msg.Height)
 	case tea.KeyPressMsg:
 		if cmd, handled := m.handleKey(msg); handled {
+			return m, tea.Batch(cmd, m.tickOnRunning(wasRunning))
+		}
+	case spinner.TickMsg:
+		// The tick chain lives only while a turn runs; it restarts on the
+		// next idle→running transition via tickOnRunning.
+		if m.status == "running" {
+			var cmd tea.Cmd
+			m.spin, cmd = m.spin.Update(msg)
+			m.refreshTranscript()
 			return m, cmd
 		}
+		return m, nil
 	case streamUpdate:
 		m.applyStream(msg)
 		commands = append(commands, waitForStream(m.events))
@@ -63,6 +75,8 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	commands = append(commands, m.tickOnRunning(wasRunning))
+
 	_, keyMessage := message.(tea.KeyPressMsg)
 	var cmd tea.Cmd
 	if m.searchMode {
@@ -84,6 +98,15 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, tea.Batch(commands...)
+}
+
+// tickOnRunning starts the spinner tick chain when this message flipped the
+// turn to running (send, stream event, or reconnect sync).
+func (m *model) tickOnRunning(wasRunning bool) tea.Cmd {
+	if !wasRunning && m.status == "running" {
+		return m.spin.Tick
+	}
+	return nil
 }
 
 func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {

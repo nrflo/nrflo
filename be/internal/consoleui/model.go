@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
@@ -43,6 +44,7 @@ type model struct {
 	input    textarea.Model
 	search   textinput.Model
 	viewport viewport.Model
+	spin     spinner.Model
 }
 
 type historyMsg struct {
@@ -97,6 +99,7 @@ func Run(ctx context.Context, cfg Config) error {
 		deltas:    make(map[string]string), connected: false,
 		status: detail.Turn, input: input, search: search, viewport: viewport.New(), historyDirty: true,
 		renderCache: make(map[string]string),
+		spin:        spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
 	}
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))
@@ -108,7 +111,11 @@ func Run(ctx context.Context, cfg Config) error {
 }
 
 func (m *model) Init() tea.Cmd {
-	return tea.Batch(m.input.Focus(), waitForStream(m.events))
+	commands := []tea.Cmd{m.input.Focus(), waitForStream(m.events)}
+	if m.status == "running" { // resumed mid-turn — animate immediately
+		commands = append(commands, m.spin.Tick)
+	}
+	return tea.Batch(commands...)
 }
 
 func waitForStream(events <-chan streamUpdate) tea.Cmd {

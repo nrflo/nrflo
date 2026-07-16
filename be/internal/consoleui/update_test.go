@@ -3,7 +3,11 @@ package consoleui
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
+
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/viewport"
 )
 
 func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
@@ -27,6 +31,36 @@ func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
 	}
 	if len(m.detail.SessionApprovals) != 1 || m.detail.SessionApprovals[0] != "bash" {
 		t.Fatalf("session approvals = %+v", m.detail.SessionApprovals)
+	}
+}
+
+// TestWorkingIndicator: a running turn renders an animated "working…" line
+// at the transcript tail, and the tick chain starts exactly on the
+// idle→running transition.
+func TestWorkingIndicator(t *testing.T) {
+	m := &model{
+		detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{},
+		renderCache: map[string]string{}, viewport: viewport.New(),
+		spin: spinner.New(spinner.WithSpinner(spinner.MiniDot)),
+	}
+	m.width, m.height, m.ready = 80, 24, true
+	m.applyStream(streamUpdate{Events: []Event{
+		event("console_chat.turn", "s1", map[string]any{"state": "running"}),
+	}})
+	if !strings.Contains(m.viewport.GetContent(), "working…") {
+		t.Fatalf("running transcript = %q, want working indicator", m.viewport.GetContent())
+	}
+	if m.tickOnRunning(false) == nil {
+		t.Fatal("idle→running must start the spinner tick chain")
+	}
+	if m.tickOnRunning(true) != nil {
+		t.Fatal("already-running must not fork a second tick chain")
+	}
+	m.applyStream(streamUpdate{Events: []Event{
+		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),
+	}})
+	if strings.Contains(m.viewport.GetContent(), "working…") {
+		t.Fatal("idle transcript must drop the working indicator")
 	}
 }
 

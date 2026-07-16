@@ -2,6 +2,7 @@ package consoleui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
@@ -99,9 +100,7 @@ func cliTypeItem(engine types.ConsoleEngineOption) selectionItem {
 			title:     "Default", detail: "provider default model",
 		})
 	}
-	for _, model := range engine.Models {
-		children = append(children, modelItem(engine.ID, model))
-	}
+	children = append(children, modelItems(engine.ID, engine.Models)...)
 	return selectionItem{
 		title: "CLI", detail: fmt.Sprintf("%s · %d models", engine.DisplayName, len(engine.Models)),
 		children: children, crumb: "CLI",
@@ -109,17 +108,53 @@ func cliTypeItem(engine types.ConsoleEngineOption) selectionItem {
 }
 
 func apiTypeItem(engine types.ConsoleEngineOption, models []types.ConsoleModelOption) selectionItem {
-	children := make([]list.Item, 0, len(models))
-	for _, model := range models {
-		children = append(children, modelItem(engine.ID, model))
-	}
 	return selectionItem{
 		title: "Direct API", detail: fmt.Sprintf("%d models", len(models)),
-		children: children, crumb: "API",
+		children: modelItems(engine.ID, models), crumb: "API",
 	}
 }
 
-func modelItem(engineID string, model types.ConsoleModelOption) selectionItem {
+// modelItems groups registry rows that map to the same underlying model
+// (differing only by reasoning effort) into one branch with an effort
+// level; single-variant models stay leaves. First-seen (newest-first)
+// group order is preserved.
+func modelItems(engineID string, models []types.ConsoleModelOption) []list.Item {
+	var order []string
+	groups := map[string][]types.ConsoleModelOption{}
+	for _, model := range models {
+		key := model.MappedModel
+		if key == "" {
+			key = model.ID
+		}
+		if _, ok := groups[key]; !ok {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], model)
+	}
+	items := make([]list.Item, 0, len(order))
+	for _, key := range order {
+		variants := groups[key]
+		if len(variants) == 1 {
+			items = append(items, modelItem(engineID, variants[0], variants[0].DisplayName))
+			continue
+		}
+		sort.SliceStable(variants, func(i, j int) bool {
+			return effortRank(variants[i].ReasoningEffort) < effortRank(variants[j].ReasoningEffort)
+		})
+		children := make([]list.Item, len(variants))
+		for i, variant := range variants {
+			children[i] = modelItem(engineID, variant, effortTitle(variant))
+		}
+		base := baseDisplayName(variants[0])
+		items = append(items, selectionItem{
+			title: base, detail: fmt.Sprintf("%s · %d efforts", key, len(variants)),
+			children: children, crumb: base,
+		})
+	}
+	return items
+}
+
+func modelItem(engineID string, model types.ConsoleModelOption, title string) selectionItem {
 	detail := model.MappedModel
 	if detail == "" {
 		detail = model.Provider
@@ -129,8 +164,43 @@ func modelItem(engineID string, model types.ConsoleModelOption) selectionItem {
 	}
 	return selectionItem{
 		selection: Selection{Engine: engineID, Model: model.ID},
-		title:     model.DisplayName, detail: detail,
+		title:     title, detail: detail,
 	}
+}
+
+func effortRank(effort string) int {
+	switch effort {
+	case "high":
+		return 0
+	case "medium":
+		return 1
+	case "low":
+		return 2
+	}
+	return 3
+}
+
+// effortTitle labels an effort leaf ("High"); rows without an effort keep
+// their display name.
+func effortTitle(model types.ConsoleModelOption) string {
+	if model.ReasoningEffort == "" {
+		return model.DisplayName
+	}
+	return strings.ToUpper(model.ReasoningEffort[:1]) + model.ReasoningEffort[1:]
+}
+
+// baseDisplayName strips a trailing "(<effort>)" qualifier from a variant's
+// display name ("GPT-5.4 (High)" → "GPT-5.4"); other parentheticals stay.
+func baseDisplayName(model types.ConsoleModelOption) string {
+	name := strings.TrimSpace(model.DisplayName)
+	if model.ReasoningEffort == "" {
+		return name
+	}
+	suffix := "(" + strings.ToLower(model.ReasoningEffort) + ")"
+	if lower := strings.ToLower(name); strings.HasSuffix(lower, suffix) {
+		return strings.TrimSpace(name[:len(name)-len(suffix)])
+	}
+	return name
 }
 
 func toListItems(items []selectionItem) []list.Item {

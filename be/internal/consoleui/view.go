@@ -141,6 +141,9 @@ func (m *model) refreshTranscript() {
 	if m.thinking != "" {
 		parts = append(parts, mutedStyle.Italic(true).Render("thinking · "+m.thinking))
 	}
+	if m.status == "running" {
+		parts = append(parts, m.spin.View()+mutedStyle.Render(" working…"))
+	}
 	m.viewport.SetContent(strings.Join(parts, "\n\n"))
 	if m.searchStatus != "" {
 		m.applySearch()

@@ -71,6 +71,36 @@ func TestSelectionItemsGroupBrandThenType(t *testing.T) {
 	}
 }
 
+// TestModelItemsGroupEfforts: registry rows sharing a mapped_model collapse
+// into one branch with an effort level (high → medium → low), while
+// single-variant models stay leaves.
+func TestModelItemsGroupEfforts(t *testing.T) {
+	items := modelItems("api", []types.ConsoleModelOption{
+		{ID: "gpt54_low", DisplayName: "GPT-5.4 (Low)", MappedModel: "gpt-5.4", ReasoningEffort: "low"},
+		{ID: "sonnet", DisplayName: "Sonnet", MappedModel: "claude-sonnet-5"},
+		{ID: "gpt54_high", DisplayName: "GPT-5.4 (High)", MappedModel: "gpt-5.4", ReasoningEffort: "high"},
+	})
+	if len(items) != 2 {
+		t.Fatalf("item count = %d, want grouped gpt-5.4 + sonnet leaf", len(items))
+	}
+	group := items[0].(selectionItem)
+	if group.title != "GPT-5.4" || len(group.children) != 2 {
+		t.Fatalf("group = %+v, want GPT-5.4 with 2 efforts", group)
+	}
+	high := group.children[0].(selectionItem)
+	low := group.children[1].(selectionItem)
+	if high.title != "High" || high.selection != (Selection{Engine: "api", Model: "gpt54_high"}) {
+		t.Fatalf("first effort = %+v, want High/gpt54_high", high)
+	}
+	if low.title != "Low" || low.selection != (Selection{Engine: "api", Model: "gpt54_low"}) {
+		t.Fatalf("second effort = %+v, want Low/gpt54_low", low)
+	}
+	leaf := items[1].(selectionItem)
+	if leaf.title != "Sonnet" || len(leaf.children) != 0 || leaf.selection != (Selection{Engine: "api", Model: "sonnet"}) {
+		t.Fatalf("leaf = %+v", leaf)
+	}
+}
+
 // TestSelectionModelPushPop drives push/pop directly: descending into a
 // branch swaps the list to its children and extends the title; pop restores
 // the parent level and cursor, and returns false at the root.

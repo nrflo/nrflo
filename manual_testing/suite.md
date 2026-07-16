@@ -124,7 +124,8 @@ PATH, C03 SKIPs without an Anthropic OAuth token).
 | C01 | claude console-chat roundtrip: catalog engines, create, list live, message → assistant reply → turn idle, resumable in catalog, close → interactive_completed |
 | C02 | codex console-chat roundtrip (same lifecycle on the app-server engine) |
 | C03 | api console-chat roundtrip (in-process apirun engine; api_mode_enabled toggle) |
-| C04 | console MCP tool dispatch: model calls ticket_list through the adopted mcp-external bridge and echoes a seeded ticket id |
+| C04 | console MCP tool dispatch: model calls ticket_list through the adopted mcp-external bridge and echoes a seeded ticket id (approvals answered with allow_for_session) |
+| C05 | openai api console-chat roundtrip (in-process apirun on a provider='openai' api_models row; SKIPs without an OpenAI key) |
 
 ## Folder applicability
 
@@ -136,7 +137,7 @@ PATH, C03 SKIPs without an Anthropic OAuth token).
 | `python/`     | P01..P20 |
 | `api/`        | A01..A13 |
 | `openai_api/` | A01, A02, A03, A06 (provider-agnostic, reused) + O01, O02 |
-| `console/`    | C01..C04 |
+| `console/`    | C01..C05 |
 
 `s05` and `s35` are the only scenarios with provider-specific
 implementations:

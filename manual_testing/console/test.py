@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from lib.credentials import probe_oauth_token  # noqa: E402
+from lib.credentials import probe_oauth_token, probe_openai_key  # noqa: E402
 from lib.runner import run_all  # noqa: E402
 
 from console import ALL_SCENARIOS  # noqa: E402
@@ -40,6 +40,9 @@ def main() -> int:
     tok, _reason = probe_oauth_token()
     if tok:
         extra_env["ANTHROPIC_OAUTH_TOKEN"] = tok
+    key, _reason = probe_openai_key()
+    if key:
+        extra_env["OPENAI_API_KEY"] = key
 
     return run_all(
         scenarios=ALL_SCENARIOS,

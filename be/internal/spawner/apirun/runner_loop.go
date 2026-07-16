@@ -25,6 +25,7 @@ const maxParallelToolDispatch = 4
 // assistant's content is appended to msgs before returning "PASS" so a
 // Conversation can replay it in the next turn's request.
 func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.Message) ([]provider.Message, string) {
+	pctLeft, pctKnown := 0, false
 	for turn := 0; turn < r.cfg.MaxIterations; turn++ {
 		if ctx.Err() != nil {
 			proc.SetFinalStatus("CANCELLED")
@@ -33,6 +34,12 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 		if !r.cfg.Deadline.IsZero() && !time.Now().Before(r.cfg.Deadline) {
 			r.fail(proc, fmt.Sprintf("deadline exceeded (%s)", r.cfg.Deadline.Format(time.RFC3339)))
 			return msgs, "FAIL"
+		}
+		if pctKnown {
+			var compacted bool
+			if msgs, compacted = r.maybeCompactInLoop(ctx, proc, msgs, pctLeft); compacted {
+				pctKnown = false // stale until the next turn reports fresh usage
+			}
 		}
 
 		sink := newRunnerSink(r.cfg.Sink, r.cfg.CaptureThinking, r.cfg.Stream)
@@ -62,7 +69,9 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 			return msgs, status
 		}
 
-		r.updateContext(ctx, proc, resp.Usage)
+		if pct, ok := r.updateContext(ctx, proc, resp.Usage); ok {
+			pctLeft, pctKnown = pct, true
+		}
 
 		switch resp.StopReason {
 		case "end_turn":

@@ -100,18 +100,25 @@ func (c *Conversation) maybeCompact(ctx context.Context, proc ProcState) {
 // summarize runs one tool-less provider call over the history plus a
 // summarize instruction and returns the concatenated text blocks.
 func (c *Conversation) summarize(ctx context.Context, msgs []provider.Message) (string, error) {
+	return summarizeHistory(ctx, c.cfg, msgs)
+}
+
+// summarizeHistory is the shared summarize call behind both compaction paths:
+// Conversation.maybeCompact (pre-turn) and Runner.maybeCompactInLoop
+// (mid-loop, runner_compact.go).
+func summarizeHistory(ctx context.Context, cfg Config, msgs []provider.Message) (string, error) {
 	req := provider.Request{
 		System: compactSystem,
 		Messages: append(append([]provider.Message{}, msgs...), provider.Message{
 			Role:    "user",
 			Content: []provider.ContentBlock{{Type: "text", Text: "Summarize the conversation above now."}},
 		}),
-		MaxTokens:       c.cfg.MaxTokens,
+		MaxTokens:       cfg.MaxTokens,
 		ToolChoice:      "auto",
-		Model:           c.cfg.Model,
-		ReasoningEffort: c.cfg.ReasoningEffort,
+		Model:           cfg.Model,
+		ReasoningEffort: cfg.ReasoningEffort,
 	}
-	resp, err := c.cfg.Provider.Run(ctx, req, nullEventSink{})
+	resp, err := cfg.Provider.Run(ctx, req, nullEventSink{})
 	if err != nil {
 		return "", err
 	}

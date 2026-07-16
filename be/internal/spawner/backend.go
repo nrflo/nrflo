@@ -157,6 +157,10 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		Deadline:        prep.apiDeadline,
 		ReasoningEffort: prep.apiReasoningEffort,
 		CaptureThinking: prep.apiCaptureThinking,
+		// In-loop compaction fires just above the low-context kill threshold,
+		// so a long run compacts in-process instead of the kill+saver+relaunch
+		// dance (which stays as the fallback when compaction fails).
+		CompactPct: proc.restartThreshold + 5,
 	})
 
 	doneCh := proc.doneCh

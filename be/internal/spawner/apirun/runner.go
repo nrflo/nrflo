@@ -36,6 +36,12 @@ type Config struct {
 	Deadline         time.Time
 	ReasoningEffort  string
 	CaptureThinking  bool
+	// CompactPct is the in-loop compaction threshold: when a turn reports
+	// context-left at or below this %, runTurns summarizes the history before
+	// the next request (runner_compact.go). 0 applies compactThresholdPct.
+	// The spawner passes restartThreshold+5 for autonomous agents so an
+	// in-process compaction preempts the kill+saver+relaunch dance.
+	CompactPct int
 	// Stream receives raw text/thinking deltas as they arrive, before the
 	// runner sink's chunked buffering. Nil for autonomous agents (Run); a
 	// console chat engine (Conversation) passes a live consumer.
@@ -60,6 +66,9 @@ func NewRunner(cfg Config) *Runner {
 	}
 	if cfg.MaxContext <= 0 {
 		cfg.MaxContext = 200000
+	}
+	if cfg.CompactPct <= 0 {
+		cfg.CompactPct = compactThresholdPct
 	}
 	return &Runner{cfg: cfg}
 }
@@ -95,11 +104,13 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 // turn's Usage and writes it to proc + AgentSvc so monitorAll observes the
 // same low-context threshold path used by CLI agents. It also emits a
 // structured per-turn usage line (the only place cache_read/cache_creation are
-// surfaced — they are otherwise summed away into the context-left %).
-func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.Usage) {
+// surfaced — they are otherwise summed away into the context-left %). Returns
+// (pct, true) when a percentage was computed — runTurns feeds it into the
+// in-loop compaction check.
+func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.Usage) (int, bool) {
 	total := u.InputTokens + u.CacheReadTokens + u.CacheCreationTokens
 	if total <= 0 {
-		return
+		return 0, false
 	}
 	// cache_read = reused prefix, cache_creation = fresh write, input = uncached.
 	// cache_hit_pct is the share of billed input served from cache this turn.
@@ -118,7 +129,7 @@ func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.U
 		"cache_hit_pct", 100*u.CacheReadTokens/total,
 	)
 	if r.cfg.MaxContext <= 0 {
-		return
+		return 0, false
 	}
 	pct := 100 - (100*total)/r.cfg.MaxContext
 	if pct < 0 {
@@ -131,6 +142,7 @@ func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.U
 	if r.cfg.AgentSvc != nil {
 		r.cfg.AgentSvc.UpdateContextLeft(proc.SessionID(), pct)
 	}
+	return pct, true
 }
 
 // fail emits a system message and marks the proc as FAIL. Also records the

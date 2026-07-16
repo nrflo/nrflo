@@ -69,7 +69,7 @@ func (s *ModelService) modelReferences(id, mode string) ([]string, error) {
 	var sysWhere string
 	switch mode {
 	case "cli":
-		sysWhere = "execution_mode = 'cli' AND LOWER(model) = LOWER(?)"
+		sysWhere = "execution_mode != 'api' AND LOWER(model) = LOWER(?)"
 	case "api":
 		sysWhere = "execution_mode = 'api' AND LOWER(model) = LOWER(?)"
 	default:

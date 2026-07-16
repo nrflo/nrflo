@@ -26,7 +26,7 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 		"opus-4-7-1m":   "anthropic|claude-opus-4-7[1m]|claude-opus-4-7[1m]|1000000|1000000|claude-opus-4-7|",
 		"opus-4-8":      "anthropic|claude-opus-4-8|claude-opus-4-8|200000|1000000||",
 		"opus-4-8-1m":   "anthropic|claude-opus-4-8[1m]|claude-opus-4-8[1m]|1000000|1000000|claude-opus-4-8|",
-		"gpt-5.2":       "openai|gpt-5.2|gpt-5.2|200000|400000||medium",
+		"gpt-5.2":       "openai||gpt-5.2|200000|400000||medium",
 		"gpt-5.3-codex": "openai||gpt-5.3-codex|200000|400000||high",
 		"gpt-5.4":       "openai|gpt-5.4|gpt-5.4|200000|1050000||medium",
 		"gpt-5.4-mini":  "openai|gpt-5.4-mini|gpt-5.4-mini|200000|400000||medium",

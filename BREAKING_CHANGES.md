@@ -125,7 +125,7 @@ must use the new ID and move any effort encoded in the old ID into the agent's
 | `haiku` | `haiku-4-5` | existing override/default |
 | `opus_4_6`, `opus_4_7`, `opus_4_8` | `opus-4-6`, `opus-4-7`, `opus-4-8` | existing override/default |
 | `opus_4_6_1m`, `opus_4_7_1m`, `opus_4_8_1m` | `opus-4-6-1m`, `opus-4-7-1m`, `opus-4-8-1m` | existing override/default |
-| CLI `codex_gpt_normal`, `codex_gpt_high` | `gpt-5.2` | `high` |
+| CLI `codex_gpt_normal`, `codex_gpt_high` | `gpt-5.4` | `high` |
 | API `gpt53_codex_low|medium|high` | `gpt-5.3-codex` | suffix value |
 | `codex_gpt54_normal`, `codex_gpt54_high` | `gpt-5.4` | `medium`, `high` |
 | `gpt54_low|medium|high` | `gpt-5.4` | suffix value |
@@ -138,9 +138,9 @@ must use the new ID and move any effort encoded in the old ID into the agent's
 | `codex_gpt56_terra_normal`, `codex_gpt56_terra_high` | `gpt-5.6-terra` | `medium`, `high` |
 | `codex_gpt56_luna_low` | `gpt-5.6-luna` | `low` |
 
-`gpt-5.3-codex` remains available for API mode but is no longer available for
-CLI mode; use `gpt-5.2` for CLI callers. `gpt-5.5-mini` is disabled; use
-`gpt-5.6-luna` with effort `low`.
+`gpt-5.3-codex` and `gpt-5.2` remain available for API mode but not for CLI
+mode (the Codex CLI does not run either); use `gpt-5.4` for CLI callers.
+`gpt-5.5-mini` is disabled; use `gpt-5.6-luna` with effort `low`.
 
 ### Changed inherited defaults
 

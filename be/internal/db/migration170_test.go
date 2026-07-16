@@ -4,8 +4,6 @@ import (
 	"database/sql"
 	"path/filepath"
 	"testing"
-
-	"github.com/golang-migrate/migrate/v4"
 )
 
 func TestMigration170_RewritesRemovedCLIModelReferences(t *testing.T) {
@@ -21,8 +19,10 @@ func TestMigration170_RewritesRemovedCLIModelReferences(t *testing.T) {
 	}
 
 	seedMigration170References(t, sqlDB)
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		t.Fatalf("migrate remaining: %v", err)
+	// Pinned below 000172 (which rewrites gpt-5.2 CLI refs onward) so these
+	// assertions keep checking 000170's own rewrites.
+	if err := m.Migrate(171); err != nil {
+		t.Fatalf("migrate to 171: %v", err)
 	}
 
 	assertDefinitionRewrite(t, sqlDB, "cli-53", "gpt-5.2", "high", "gpt-5.2")

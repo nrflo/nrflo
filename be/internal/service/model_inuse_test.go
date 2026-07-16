@@ -114,6 +114,24 @@ func TestModelClearCLIBlockedByCLIDefLowConsumption(t *testing.T) {
 	}
 }
 
+func TestModelClearCLIBlockedByCLISystemDef(t *testing.T) {
+	t.Parallel()
+	svc := setupModelService(t)
+	seedDualModeModel(t, svc, "clear-cli-sys")
+	now := svc.clock.Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
+	// System defs store 'cli_interactive' (migration 000105), not 'cli'.
+	if _, err := svc.pool.Exec(
+		`INSERT INTO system_agent_definitions (id, model, role, execution_mode, created_at, updated_at)
+		 VALUES ('sys-clear-cli', 'clear-cli-sys', 'sys-clear', 'cli_interactive', ?, ?)`, now, now); err != nil {
+		t.Fatalf("seed system def: %v", err)
+	}
+
+	empty := ""
+	if _, err := svc.Update("clear-cli-sys", types.ModelUpdateRequest{CLIModel: &empty}); err == nil {
+		t.Fatal("clearing cli_model succeeded despite cli-mode system def ref")
+	}
+}
+
 func TestModelClearAPIBlockedByAPIDef(t *testing.T) {
 	t.Parallel()
 	svc := setupModelService(t)

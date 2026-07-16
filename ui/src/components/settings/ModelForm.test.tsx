@@ -33,6 +33,25 @@ describe('ModelForm', () => {
     expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ cli_efforts: ['low', 'high'] }))
   })
 
+  it('resets default_effort when the chosen effort is unchecked from a mode', async () => {
+    const user = userEvent.setup()
+    const { props } = renderForm({
+      api_model: 'custom-api',
+      cli_efforts: ['low', 'high'],
+      api_efforts: ['low', 'high'],
+      default_effort: 'high',
+    })
+    const cli = screen.getByText('CLI').closest('fieldset')!
+    await user.click(within(cli).getByRole('button', { name: 'high' }))
+    expect(props.setFormData).toHaveBeenCalledWith(
+      expect.objectContaining({ cli_efforts: ['low'], default_effort: '' }),
+    )
+    // No stale 'high' default is ever submitted.
+    expect(props.setFormData).not.toHaveBeenCalledWith(
+      expect.objectContaining({ default_effort: 'high' }),
+    )
+  })
+
   it('locks built-in fields while leaving default effort and fallback editable', () => {
     const props = {
       formData: { ...emptyModelForm, id: 'sonnet-5', display_name: 'Sonnet', cli_model: 'sonnet', cli_efforts: ['high'] },

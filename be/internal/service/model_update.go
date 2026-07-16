@@ -49,6 +49,16 @@ func (s *ModelService) Update(id string, req types.ModelUpdateRequest) (*model.M
 	if err := validateDefaultEffort(defaultEffort, cliModel, apiModel, cliEfforts, apiEfforts); err != nil {
 		return nil, err
 	}
+	if req.CLIModel != nil && *req.CLIModel == "" && current.CLIModel != "" {
+		if err := s.ModelInUseCheckForMode(id, "cli"); err != nil {
+			return nil, err
+		}
+	}
+	if req.APIModel != nil && *req.APIModel == "" && current.APIModel != "" {
+		if err := s.ModelInUseCheckForMode(id, "api"); err != nil {
+			return nil, err
+		}
+	}
 
 	updates := []string{}
 	args := []any{}
@@ -128,46 +138,4 @@ func (s *ModelService) Delete(id string) error {
 	}
 	_, err = s.pool.Exec("DELETE FROM models WHERE LOWER(id) = LOWER(?)", id)
 	return err
-}
-
-func (s *ModelService) ModelInUseCheck(id string) error {
-	type usage struct{ project, workflow, agent string }
-	usages := []usage{}
-	rows, err := s.pool.Query(`SELECT project_id, workflow_id, id FROM agent_definitions
-		WHERE LOWER(model) = LOWER(?) OR LOWER(low_consumption_model) = LOWER(?)`, id, id)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var u usage
-		if err := rows.Scan(&u.project, &u.workflow, &u.agent); err != nil {
-			return err
-		}
-		usages = append(usages, u)
-	}
-	sysRows, err := s.pool.Query("SELECT id FROM system_agent_definitions WHERE LOWER(model) = LOWER(?)", id)
-	if err != nil {
-		return err
-	}
-	defer sysRows.Close()
-	for sysRows.Next() {
-		var agent string
-		if err := sysRows.Scan(&agent); err != nil {
-			return err
-		}
-		usages = append(usages, usage{project: "system", agent: agent})
-	}
-	if len(usages) == 0 {
-		return nil
-	}
-	parts := make([]string, len(usages))
-	for i, u := range usages {
-		if u.workflow != "" {
-			parts[i] = u.project + "/" + u.workflow + "/" + u.agent
-		} else {
-			parts[i] = u.project + "/" + u.agent
-		}
-	}
-	return fmt.Errorf("model is in use by: %s", strings.Join(parts, ", "))
 }

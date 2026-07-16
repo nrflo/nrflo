@@ -31,7 +31,7 @@ Selection precedence in `startBackend`: `api` → `script` → `cli_interactive`
 
 ### api-via-cli hybrid
 
-When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped; `proc.apiViaCLI=true` forces agent-based context save. OpenAI models stay on the in-process runner.
+When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Because the CLI picks its context window from the `--model` string (not `proc.maxContext`), the `APIModel` gets a `[1m]` suffix when `APIContext` is 1M and exceeds `CLIContext`, so the real window matches the reported one. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped; `proc.apiViaCLI=true` forces agent-based context save. OpenAI models stay on the in-process runner.
 
 ### Codex app-server backend
 

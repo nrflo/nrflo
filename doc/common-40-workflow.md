@@ -26,7 +26,7 @@ Configured via the agent form on the **Workflows** page.
 |-------|------|---------|-------------|
 | `id` | string | Required | Agent type identifier (e.g., `setup-analyzer`, `implementor`) |
 | `layer` | int | `0` | Phase execution layer (>=0). Same-layer agents run concurrently; layers execute in ascending order |
-| `model` | string | `sonnet` | Model to use (see [cli.md](cli.md) for model table) |
+| `model` | string | `sonnet-5` | Model to use (see [cli.md](cli.md) for model table) |
 | `timeout` | int | `20` | Max execution time in minutes |
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
 | `restart_threshold` | int | `25` | Percentage of context remaining that triggers low-context save |

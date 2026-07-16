@@ -18,6 +18,24 @@ import (
 // ErrAPIModeDisabled is returned when execution_mode="api" is used but api_mode_enabled is not set.
 var ErrAPIModeDisabled = errors.New("api mode disabled")
 
+// ErrValidation marks user-input validation failures (bad model, effort,
+// execution_mode, node_role, layer, …) so API handlers can map them to HTTP 400
+// via errors.Is(err, ErrValidation) instead of falling through to 500.
+var ErrValidation = errors.New("validation")
+
+// validationErr wraps a validation message while unwrapping to ErrValidation.
+// The message text is left exactly as callers wrote it, so tests that assert on
+// message content keep passing.
+type validationErr struct{ msg string }
+
+func (e *validationErr) Error() string { return e.msg }
+func (e *validationErr) Unwrap() error { return ErrValidation }
+
+// validationErrorf builds a user-input validation error tagged with ErrValidation.
+func validationErrorf(format string, a ...any) error {
+	return &validationErr{msg: fmt.Sprintf(format, a...)}
+}
+
 // AgentDefinitionService handles agent definition business logic
 type AgentDefinitionService struct {
 	clock            clock.Clock
@@ -34,7 +52,7 @@ func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, modelSvc *ModelSe
 // CreateAgentDef creates a new agent definition
 func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, req *types.AgentDefCreateRequest) (*model.AgentDefinition, error) {
 	if req.ID == "" {
-		return nil, fmt.Errorf("agent id is required")
+		return nil, validationErrorf("agent id is required")
 	}
 
 	// Determine execution mode early so we can skip prompt requirement for scripts.
@@ -43,7 +61,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		executionMode = "cli_interactive"
 	}
 	if executionMode != "cli_interactive" && executionMode != "api" && executionMode != "script" {
-		return nil, fmt.Errorf("invalid execution_mode: %q", executionMode)
+		return nil, validationErrorf("invalid execution_mode: %q", executionMode)
 	}
 	if executionMode == "api" {
 		settingsSvc := NewGlobalSettingsService(s.pool, s.clock)
@@ -54,7 +72,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	}
 
 	if req.Consultant && executionMode != "api" {
-		return nil, fmt.Errorf("consultant agent requires execution_mode=api")
+		return nil, validationErrorf("consultant agent requires execution_mode=api")
 	}
 
 	nodeRole, err0 := validateNodeRole(req.NodeRole, req.Consultant, req.Tools)
@@ -66,7 +84,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	}
 
 	if executionMode != "script" && req.Prompt == "" {
-		return nil, fmt.Errorf("prompt is required")
+		return nil, validationErrorf("prompt is required")
 	}
 
 	// Script mode: enforce coupling rules.
@@ -75,7 +93,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 			return nil, err
 		}
 	} else if req.PythonScriptID != nil {
-		return nil, fmt.Errorf("python_script_id_requires_script_mode")
+		return nil, validationErrorf("python_script_id_requires_script_mode")
 	}
 
 	// Verify workflow exists and get groups for tag validation
@@ -104,7 +122,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 			return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
 		}
 		if !valid {
-			return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+			return nil, validationErrorf("invalid low_consumption_model: %q", lcModel)
 		}
 	}
 
@@ -140,7 +158,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 			return nil, fmt.Errorf("failed to validate model: %w", err)
 		}
 		if !valid {
-			return nil, fmt.Errorf("invalid model: %q", modelName)
+			return nil, validationErrorf("invalid model: %q", modelName)
 		}
 	}
 
@@ -241,7 +259,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 				return fmt.Errorf("failed to validate model: %w", vErr)
 			}
 			if !valid {
-				return fmt.Errorf("invalid model: %q", *req.Model)
+				return validationErrorf("invalid model: %q", *req.Model)
 			}
 		}
 		updates = append(updates, "model = ?")
@@ -324,7 +342,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 					return fmt.Errorf("failed to validate low_consumption_model: %w", vErr)
 				}
 				if !valid {
-					return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
+					return validationErrorf("invalid low_consumption_model: %q", lcModel)
 				}
 			}
 		}
@@ -334,7 +352,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 	if req.ExecutionMode != nil {
 		mode := *req.ExecutionMode
 		if mode != "cli_interactive" && mode != "api" && mode != "script" {
-			return fmt.Errorf("invalid execution_mode: %q", mode)
+			return validationErrorf("invalid execution_mode: %q", mode)
 		}
 		if mode == "api" {
 			settingsSvc := NewGlobalSettingsService(s.pool, s.clock)
@@ -372,7 +390,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			return fmt.Errorf("failed to load agent definition: %w", queryErr)
 		}
 		if currentMode != "script" {
-			return fmt.Errorf("python_script_id_requires_script_mode")
+			return validationErrorf("python_script_id_requires_script_mode")
 		}
 		if s.pythonScriptRepo != nil {
 			script, err := s.pythonScriptRepo.Get(projectID, *req.PythonScriptID)
@@ -380,7 +398,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 				return fmt.Errorf("python_script_not_found: %s", *req.PythonScriptID)
 			}
 			if script.Kind == "tool" {
-				return fmt.Errorf("python_script_kind_mismatch")
+				return validationErrorf("python_script_kind_mismatch")
 			}
 		}
 	}

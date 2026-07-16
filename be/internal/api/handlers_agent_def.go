@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 
@@ -81,23 +80,7 @@ func (s *Server) handleCreateAgentDef(w http.ResponseWriter, r *http.Request) {
 
 	def, err := svc.CreateAgentDef(projectID, workflowID, &req)
 	if err != nil {
-		if errors.Is(err, service.ErrAPIModeDisabled) {
-			writeError(w, http.StatusBadRequest, "api_mode_disabled")
-			return
-		}
-		if strings.Contains(err.Error(), "already exists") {
-			writeError(w, http.StatusConflict, err.Error())
-			return
-		}
-		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if isLayerValidationError(err) {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeServiceError(w, err)
 		return
 	}
 
@@ -163,19 +146,7 @@ func (s *Server) handleUpdateAgentDef(w http.ResponseWriter, r *http.Request) {
 	svc := s.agentDefinitionService()
 
 	if err := svc.UpdateAgentDef(projectID, workflowID, id, &req); err != nil {
-		if errors.Is(err, service.ErrAPIModeDisabled) {
-			writeError(w, http.StatusBadRequest, "api_mode_disabled")
-			return
-		}
-		if strings.Contains(err.Error(), "not found") {
-			writeError(w, http.StatusNotFound, err.Error())
-			return
-		}
-		if isLayerValidationError(err) {
-			writeError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeServiceError(w, err)
 		return
 	}
 

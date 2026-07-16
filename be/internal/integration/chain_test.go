@@ -936,12 +936,12 @@ func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
 		t.Fatalf("expected 2 items, got %d", len(retrieved.Items))
 	}
 
-	// Verify token calculations
-	// TK-A: 200000*(100-60)/100 + 200000*(100-40)/100 = 80000 + 120000 = 200000
-	// TK-B: 200000*(100-75)/100 = 50000
+	// Verify token calculations (per-model cli_context: sonnet-5=1000000, opus-4-7=200000)
+	// TK-A: 1000000*(100-60)/100 + 200000*(100-40)/100 = 400000 + 120000 = 520000
+	// TK-B: 1000000*(100-75)/100 = 250000
 	expectedTokens := map[string]int64{
-		"tk-a": 200000,
-		"tk-b": 50000,
+		"tk-a": 520000,
+		"tk-b": 250000,
 	}
 
 	for _, item := range retrieved.Items {
@@ -1044,8 +1044,8 @@ func TestChainItemTokensUsed_RunningAgentsExcluded(t *testing.T) {
 		t.Fatalf("GetChainWithItems failed: %v", err)
 	}
 
-	// Only the completed agent should be counted: 200000*(100-50)/100 = 100000
-	expectedTokens := int64(100000)
+	// Only the completed agent should be counted: sonnet-5 cli_context 1000000*(100-50)/100 = 500000
+	expectedTokens := int64(500000)
 	if retrieved.Items[0].TotalTokensUsed != expectedTokens {
 		t.Errorf("expected total_tokens_used %d (excluding running/continued), got %d",
 			expectedTokens, retrieved.Items[0].TotalTokensUsed)
@@ -1098,8 +1098,8 @@ func TestChainItemTokensUsed_NullContextLeftExcluded(t *testing.T) {
 		t.Fatalf("GetChainWithItems failed: %v", err)
 	}
 
-	// Only the agent with context_left=80 should be counted: 200000*(100-80)/100 = 40000
-	expectedTokens := int64(40000)
+	// Only the agent with context_left=80 counts: sonnet-5 cli_context 1000000*(100-80)/100 = 200000
+	expectedTokens := int64(200000)
 	if retrieved.Items[0].TotalTokensUsed != expectedTokens {
 		t.Errorf("expected total_tokens_used %d (excluding NULL context_left), got %d",
 			expectedTokens, retrieved.Items[0].TotalTokensUsed)
@@ -1126,7 +1126,7 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	// TK-F: context_left=0 (fully consumed) → 200000 tokens
+	// TK-F: context_left=0 (fully consumed) → sonnet-5 cli_context 1000000 tokens
 	wfiF := "wfi-tkf-001"
 	env.InitWorkflowWithID(t, "TK-F", wfiF)
 	insertSessionWithContextLeft(t, env, "sess-tkf-1", "TK-F", wfiF,
@@ -1165,8 +1165,8 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 	}
 
 	expectedTokens := map[string]int64{
-		"tk-f": 200000, // context_left=0 → 200000*(100-0)/100 = 200000
-		"tk-g": 0,      // context_left=100 → 200000*(100-100)/100 = 0
+		"tk-f": 1000000, // context_left=0 → sonnet-5 1000000*(100-0)/100 = 1000000
+		"tk-g": 0,       // context_left=100 → 1000000*(100-100)/100 = 0
 	}
 
 	for _, item := range retrieved.Items {
@@ -1233,12 +1233,12 @@ func TestChainItemTokensUsed_JSONOmitsZero(t *testing.T) {
 		t.Fatalf("failed to unmarshal JSON: %v", err)
 	}
 
-	// Should include total_tokens_used (100000) since it's non-zero
+	// Should include total_tokens_used (sonnet-5 1000000*(100-50)/100 = 500000) since it's non-zero
 	tokensUsed, ok := jsonMap["total_tokens_used"].(float64)
 	if !ok {
 		t.Fatalf("expected total_tokens_used in JSON, got %v", jsonMap)
 	}
-	if int64(tokensUsed) != 100000 {
-		t.Errorf("expected total_tokens_used 100000 in JSON, got %v", tokensUsed)
+	if int64(tokensUsed) != 500000 {
+		t.Errorf("expected total_tokens_used 500000 in JSON, got %v", tokensUsed)
 	}
 }

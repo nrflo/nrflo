@@ -14,6 +14,7 @@ import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import { traceKeys } from './useTrace'
 import { planKeys } from './usePlan'
+import { defRegistryHandlers, type WSEventHandler } from './useWSReducerDefs'
 import type { WSEventType } from './useWebSocket'
 import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
@@ -123,19 +124,13 @@ function invalidateWorkflow(
   }
 }
 
-type EventHandler = (
-  event: WSEventV2,
-  qc: QueryClient,
-  isProjectScope: boolean,
-) => void
-
 // Handler map per event type.
 // For v2, the server includes full state in workflow.updated events,
 // so most entity events still invalidate — the key change is that we
 // track seq for cursor resume and can skip duplicates.
 // Deterministic setQueryData patches will be added incrementally
 // as the server enriches event payloads with full entity data.
-const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
+const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   'agent.started': (event, qc, isProjectScope) => {
     if (isProjectScope) {
       qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
@@ -438,37 +433,7 @@ const eventHandlers: Partial<Record<WSEventType, EventHandler>> = {
     invalidateWorkflow(event, qc, isProjectScope)
   },
 
-  'workflow_def.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
-  },
-  'workflow_def.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
-  },
-  'workflow_def.deleted': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['workflow-layer-policies'] })
-  },
-
-  'agent_def.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['agent-defs'] })
-  },
-  'agent_def.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['agent-defs'] })
-  },
-  'agent_def.deleted': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['workflow-defs'] })
-    qc.invalidateQueries({ queryKey: ['workflows', 'defs'] })
-    qc.invalidateQueries({ queryKey: ['agent-defs'] })
-  },
+  ...defRegistryHandlers,
 
   'orchestration.started': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)

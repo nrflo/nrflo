@@ -16,7 +16,7 @@ Contents: [PhaseGraph](#phasegraph) · [Agent Definitions](#agent-definitions) �
 
 ## Agent Definitions
 
-`AgentDefForm.tsx` (+ `AgentDefEffortField.tsx`, `AgentDefAPIModeFields.tsx`, `AgentDefNodeRoleFields.tsx` sub-fields) edits an `AgentDef`, including its optional `reasoning_effort` (gated Dropdown options shared with the model forms via `src/components/settings/effortOptions.ts`; empty = inherit from the model row). `AgentDefsSection`/`AgentDefCard` accept an optional `project` scope prop (defaults to the active project) so `WorkflowsPage` can manage global (`is_global`) workflow templates in the reserved `__global__` namespace when the viewer is admin.
+`AgentDefForm.tsx` (+ `AgentDefEffortField.tsx`, `AgentDefAPIModeFields.tsx`, `AgentDefNodeRoleFields.tsx` sub-fields) edits an `AgentDef`, including its optional `reasoning_effort` (Dropdown options read from the selected model row's per-mode effort list — `cli_efforts` or `api_efforts` by execution mode; empty = inherit from the row's `default_effort`). `AgentDefsSection`/`AgentDefCard` accept an optional `project` scope prop (defaults to the active project) so `WorkflowsPage` can manage global (`is_global`) workflow templates in the reserved `__global__` namespace when the viewer is admin.
 
 ## Trace
 

@@ -43,6 +43,7 @@ export type WSEventType =
   | 'agent_def.created'
   | 'agent_def.updated'
   | 'agent_def.deleted'
+  | 'model.created' | 'model.updated' | 'model.deleted'
   | 'orchestration.started'
   | 'orchestration.completed'
   | 'orchestration.failed'

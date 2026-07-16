@@ -8,7 +8,7 @@ import (
 // FindReportFinding locates the synthesize agent's "report" value in a v4
 // workflow_findings map. BuildCombinedFindings keys that map by
 // "<agent_type>[:<model_id>]" → {findingKey: value} (so the report is at
-// combined["synthesize:claude:opus_4_8"]["report"]), so search the per-agent
+// combined["synthesize:claude:opus-4-8"]["report"]), so search the per-agent
 // groups. A flat {report: ...} shape is also accepted.
 func FindReportFinding(combined map[string]any) (any, bool) {
 	if combined == nil {

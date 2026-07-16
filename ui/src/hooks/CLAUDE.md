@@ -9,7 +9,7 @@ Custom React hooks for data fetching, WebSocket communication, and shared UI log
 - Query keys are defined in `src/hooks/useTickets.ts` — invalidate appropriately on mutations.
 - Projects are loaded from API on startup (see `projectStore.ts`).
 
-TanStack Query hooks export a `*Keys` factory + one hook per query/mutation. WS-driven invalidations live in `useWSReducer.ts`.
+TanStack Query hooks export a `*Keys` factory + one hook per query/mutation. WS-driven invalidations live in `useWSReducer.ts` (definition/registry events split into `useWSReducerDefs.ts`).
 
 `useModels` owns the unified global model query/mutations; `useModelOptions(mode)` filters enabled rows by non-empty `cli_model`/`api_model`, and model effort selectors read the corresponding row effort list instead of applying client-side name gates.
 

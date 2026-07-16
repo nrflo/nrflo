@@ -6,6 +6,13 @@ import type { ModelFormData } from './modelFormData'
 
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']
 
+// Valid default-effort options: intersection of the enabled modes' effort lists.
+function validEfforts(data: ModelFormData): string[] {
+  return data.cli_model && data.api_model
+    ? data.cli_efforts.filter((effort) => data.api_efforts.includes(effort))
+    : data.cli_model ? data.cli_efforts : data.api_efforts
+}
+
 function EffortMultiSelect({
   label, values, onChange, disabled,
 }: { label: string; values: string[]; onChange: (values: string[]) => void; disabled?: boolean }) {
@@ -46,11 +53,19 @@ interface Props {
 
 export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, isCreate, readOnly }: Props) {
   const locked = !!readOnly && !isCreate
-  const defaultEfforts = formData.cli_model && formData.api_model
-    ? formData.cli_efforts.filter((effort) => formData.api_efforts.includes(effort))
-    : formData.cli_model ? formData.cli_efforts : formData.api_efforts
+  const defaultEfforts = validEfforts(formData)
   const valid = formData.id.trim() && formData.display_name.trim() &&
     (formData.cli_model.trim() || formData.api_model.trim())
+
+  // Funnel all edits: if a change narrows the valid effort set past the current
+  // default_effort, reset it to '' so a stale value is never submitted.
+  const update = (patch: Partial<ModelFormData>) => {
+    const next = { ...formData, ...patch }
+    if (next.default_effort && !validEfforts(next).includes(next.default_effort)) {
+      next.default_effort = ''
+    }
+    setFormData(next)
+  }
 
   return (
     <div className={`space-y-4 ${isCreate ? 'rounded-lg border border-primary bg-muted/30 p-4' : ''}`}>
@@ -62,7 +77,7 @@ export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, i
       <div className="grid grid-cols-3 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">ID</label>
-          <Input value={formData.id} disabled={!isCreate} onChange={(e) => setFormData({ ...formData, id: e.target.value })} />
+          <Input value={formData.id} disabled={!isCreate} onChange={(e) => update({ id: e.target.value })} />
         </div>
         <div>
           <label className="text-sm font-medium text-muted-foreground">Provider</label>
@@ -70,29 +85,29 @@ export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, i
         </div>
         <div>
           <label className="text-sm font-medium text-muted-foreground">Display Name</label>
-          <Input value={formData.display_name} disabled={locked} onChange={(e) => setFormData({ ...formData, display_name: e.target.value })} />
+          <Input value={formData.display_name} disabled={locked} onChange={(e) => update({ display_name: e.target.value })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <ModeFields mode="CLI" model={formData.cli_model} context={formData.cli_context} efforts={formData.cli_efforts} disabled={locked}
-          onModel={(value) => setFormData({ ...formData, cli_model: value })}
-          onContext={(value) => setFormData({ ...formData, cli_context: value })}
-          onEfforts={(value) => setFormData({ ...formData, cli_efforts: value })} />
+          onModel={(value) => update({ cli_model: value })}
+          onContext={(value) => update({ cli_context: value })}
+          onEfforts={(value) => update({ cli_efforts: value })} />
         <ModeFields mode="Direct API" model={formData.api_model} context={formData.api_context} efforts={formData.api_efforts} disabled={locked}
-          onModel={(value) => setFormData({ ...formData, api_model: value })}
-          onContext={(value) => setFormData({ ...formData, api_context: value })}
-          onEfforts={(value) => setFormData({ ...formData, api_efforts: value })} />
+          onModel={(value) => update({ api_model: value })}
+          onContext={(value) => update({ api_context: value })}
+          onEfforts={(value) => update({ api_efforts: value })} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Default Effort</label>
-          <Dropdown value={formData.default_effort} onChange={(value) => setFormData({ ...formData, default_effort: value })}
+          <Dropdown value={formData.default_effort} onChange={(value) => update({ default_effort: value })}
             options={[{ value: '', label: 'Provider default' }, ...defaultEfforts.map((value) => ({ value, label: value }))]} />
         </div>
         {formData.provider === 'anthropic' && (
           <div>
             <label className="text-sm font-medium text-muted-foreground">CLI Fallback Models</label>
-            <Input value={formData.fallback_models} onChange={(e) => setFormData({ ...formData, fallback_models: e.target.value })} placeholder="model-a, model-b" />
+            <Input value={formData.fallback_models} onChange={(e) => update({ fallback_models: e.target.value })} placeholder="model-a, model-b" />
           </div>
         )}
       </div>

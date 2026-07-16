@@ -11,7 +11,7 @@ func validateLayerConfig(phases []PhaseDef) error {
 	// Validate layer values
 	for _, p := range phases {
 		if p.Layer < 0 {
-			return fmt.Errorf("agent '%s': layer must be >= 0, got %d", p.Agent, p.Layer)
+			return validationErrorf("agent '%s': layer must be >= 0, got %d", p.Agent, p.Layer)
 		}
 	}
 

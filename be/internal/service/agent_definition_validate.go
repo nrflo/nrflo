@@ -13,19 +13,19 @@ import (
 // empty/nil, script must belong to the given project.
 func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScriptID *string, prompt, tools string, apiMaxIterations, apiMaxTokens *int) error {
 	if pythonScriptID == nil {
-		return fmt.Errorf("python_script_id_required")
+		return validationErrorf("python_script_id_required")
 	}
 	if prompt != "" {
-		return fmt.Errorf("script_mode_no_prompt")
+		return validationErrorf("script_mode_no_prompt")
 	}
 	if tools != "" {
-		return fmt.Errorf("script_mode_no_tools")
+		return validationErrorf("script_mode_no_tools")
 	}
 	if apiMaxIterations != nil {
-		return fmt.Errorf("script_mode_no_api_max_iterations")
+		return validationErrorf("script_mode_no_api_max_iterations")
 	}
 	if apiMaxTokens != nil {
-		return fmt.Errorf("script_mode_no_api_max_tokens")
+		return validationErrorf("script_mode_no_api_max_tokens")
 	}
 	if s.pythonScriptRepo != nil {
 		script, err := s.pythonScriptRepo.Get(projectID, *pythonScriptID)
@@ -33,7 +33,7 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 			return fmt.Errorf("python_script_not_found: %s", *pythonScriptID)
 		}
 		if script.Kind == "tool" {
-			return fmt.Errorf("python_script_kind_mismatch")
+			return validationErrorf("python_script_kind_mismatch")
 		}
 	}
 	return nil
@@ -42,21 +42,21 @@ func (s *AgentDefinitionService) validateScriptMode(projectID string, pythonScri
 // validateExecutionMode validates a system_agent_definitions execution_mode value.
 func validateExecutionMode(mode string) error {
 	if mode != "cli_interactive" && mode != "api" {
-		return fmt.Errorf("invalid execution_mode: must be 'cli_interactive' or 'api'")
+		return validationErrorf("invalid execution_mode: must be 'cli_interactive' or 'api'")
 	}
 	return nil
 }
 
 func validateValidationCommands(cmds []string) error {
 	if len(cmds) > 20 {
-		return fmt.Errorf("validation_commands: too many entries (max 20)")
+		return validationErrorf("validation_commands: too many entries (max 20)")
 	}
 	for _, cmd := range cmds {
 		if strings.TrimSpace(cmd) == "" {
-			return fmt.Errorf("validation_commands: empty or whitespace-only entry")
+			return validationErrorf("validation_commands: empty or whitespace-only entry")
 		}
 		if len(cmd) > 1024 {
-			return fmt.Errorf("validation_commands: entry exceeds 1024 bytes")
+			return validationErrorf("validation_commands: entry exceeds 1024 bytes")
 		}
 	}
 	return nil
@@ -74,13 +74,13 @@ func validateNodeRole(role string, consultant bool, toolsCSV string) (string, er
 	switch role {
 	case "static", "planner", "fanout_template":
 	default:
-		return "", fmt.Errorf("invalid node_role: %q", role)
+		return "", validationErrorf("invalid node_role: %q", role)
 	}
 	if consultant && role != "static" {
-		return "", fmt.Errorf("consultant agent requires node_role=static")
+		return "", validationErrorf("consultant agent requires node_role=static")
 	}
 	if role == "planner" && !csvGrantsTool(toolsCSV, "emit_findings") {
-		return "", fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
+		return "", validationErrorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 	return role, nil
 }
@@ -90,7 +90,7 @@ func validateNodeRole(role string, consultant bool, toolsCSV string) (string, er
 // a template, so an undescribed template is effectively unusable.
 func validateDescription(nodeRole, description string) error {
 	if nodeRole == "fanout_template" && strings.TrimSpace(description) == "" {
-		return fmt.Errorf("fanout_template agent requires a non-empty description")
+		return validationErrorf("fanout_template agent requires a non-empty description")
 	}
 	return nil
 }
@@ -116,9 +116,18 @@ func validateDefReasoningEffort(modelSvc *ModelService, executionMode, modelName
 		return nil
 	}
 	if executionMode == "api" {
-		return ValidateEffortAllowed(*effort, m.APIEfforts)
+		return wrapValidation(ValidateEffortAllowed(*effort, m.APIEfforts))
 	}
-	return ValidateEffortAllowed(*effort, m.CLIEfforts)
+	return wrapValidation(ValidateEffortAllowed(*effort, m.CLIEfforts))
+}
+
+// wrapValidation tags a non-nil error as ErrValidation while preserving its
+// message, so effort errors from ValidateEffortAllowed map to HTTP 400.
+func wrapValidation(err error) error {
+	if err == nil {
+		return nil
+	}
+	return validationErrorf("%s", err.Error())
 }
 
 // validateConsultantAndNodeRole re-validates the consultant+execution_mode+node_role
@@ -126,7 +135,7 @@ func validateDefReasoningEffort(modelSvc *ModelService, executionMode, modelName
 // update), so a PATCH that omits a field cannot violate the invariant.
 func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, toolsCSV, description string) error {
 	if consultant && executionMode != "api" {
-		return fmt.Errorf("consultant agent requires execution_mode=api")
+		return validationErrorf("consultant agent requires execution_mode=api")
 	}
 	if _, err := validateNodeRole(nodeRole, consultant, toolsCSV); err != nil {
 		return err
@@ -199,7 +208,7 @@ func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, work
 			return fmt.Errorf("failed to validate model: %w", err)
 		}
 		if !valid {
-			return fmt.Errorf("invalid model: %q", effectiveModel)
+			return validationErrorf("invalid model: %q", effectiveModel)
 		}
 	}
 	return validateDefReasoningEffort(s.modelSvc, effectiveMode, effectiveModel, effectiveEffort)
@@ -227,7 +236,7 @@ func (s *SystemAgentDefinitionService) revalidatePlannerTools(id string, req *ty
 		effectiveTools = *req.Tools
 	}
 	if effectiveRole == "planner" && !csvGrantsTool(effectiveTools, "emit_findings") {
-		return fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
+		return validationErrorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 	return nil
 }

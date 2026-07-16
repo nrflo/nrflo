@@ -56,7 +56,7 @@ func validateTagInGroups(tag, groupsStr string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("tag '%s' is not in workflow groups %v", tag, groups)
+	return validationErrorf("tag '%s' is not in workflow groups %v", tag, groups)
 }
 
 // validatePolicyNotViolatedByLayerChange returns an error if reducing agentCount in
@@ -72,7 +72,7 @@ func (s *AgentDefinitionService) validatePolicyNotViolatedByLayerChange(projectI
 			continue
 		}
 		if err := ValidateLayerPolicy(row.PassPolicy, remainingCount); err != nil {
-			return fmt.Errorf("layer %d has policy %q but would have only %d agent(s): %w", layer, row.PassPolicy, remainingCount, err)
+			return validationErrorf("layer %d has policy %q but would have only %d agent(s): %s", layer, row.PassPolicy, remainingCount, err.Error())
 		}
 	}
 	return nil

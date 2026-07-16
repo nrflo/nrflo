@@ -27,7 +27,7 @@ func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock, modelSvc *M
 // Create creates a new system agent definition
 func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateRequest) (*model.SystemAgentDefinition, error) {
 	if req.ID == "" {
-		return nil, fmt.Errorf("agent id is required")
+		return nil, validationErrorf("agent id is required")
 	}
 
 	modelName := req.Model
@@ -52,7 +52,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 			return nil, fmt.Errorf("failed to validate model: %w", err)
 		}
 		if !valid {
-			return nil, fmt.Errorf("invalid model: %q", modelName)
+			return nil, validationErrorf("invalid model: %q", modelName)
 		}
 	}
 
@@ -62,7 +62,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		role = id
 	}
 	if role == "planner" && !csvGrantsTool(req.Tools, "emit_findings") {
-		return nil, fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
+		return nil, validationErrorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 
 	if err := validateDefReasoningEffort(s.modelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
@@ -150,7 +150,7 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 					return fmt.Errorf("failed to validate model: %w", vErr)
 				}
 				if !valid {
-					return fmt.Errorf("invalid model: %q", *req.Model)
+					return validationErrorf("invalid model: %q", *req.Model)
 				}
 			}
 		}

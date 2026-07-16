@@ -105,6 +105,9 @@ brew install nrflo
 
 To upgrade:
 
+Review [Breaking Changes and Migration Guides](BREAKING_CHANGES.md) before
+upgrading across releases that change external contracts.
+
 ```bash
 brew update && brew upgrade nrflo
 ```

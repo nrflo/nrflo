@@ -24,6 +24,7 @@ type ChatDetail struct {
 	ContextLeft      *int       `json:"context_left"`
 	Live             bool       `json:"live"`
 	PendingApprovals []Approval `json:"pending_approvals"`
+	SessionApprovals []string   `json:"session_approvals"`
 	LiveItems        []LiveItem `json:"live_items"`
 	Thinking         *LiveItem  `json:"thinking,omitempty"`
 }
@@ -82,6 +83,12 @@ func eventString(ev Event, key string) string {
 
 func eventInt(ev Event, key string) int {
 	var value int
+	_ = json.Unmarshal(ev.Data[key], &value)
+	return value
+}
+
+func eventStrings(ev Event, key string) []string {
+	var value []string
 	_ = json.Unmarshal(ev.Data[key], &value)
 	return value
 }

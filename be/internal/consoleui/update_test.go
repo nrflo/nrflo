@@ -14,6 +14,7 @@ func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
 		event("console_chat.approval_request", "s1", map[string]any{"approval_id": "a1", "command": "make test"}),
 		event("agent.context_updated", "s1", map[string]any{"context_left": 73}),
 		event("console_chat.turn", "s1", map[string]any{"state": "running"}),
+		event("console_chat.session_approvals", "s1", map[string]any{"tools": []string{"bash"}}),
 	}})
 	if m.deltas["answer"] != "hello" || len(m.deltaOrder) != 1 {
 		t.Fatalf("deltas = %+v order=%+v", m.deltas, m.deltaOrder)
@@ -23,6 +24,9 @@ func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
 	}
 	if m.detail.ContextLeft == nil || *m.detail.ContextLeft != 73 || m.status != "running" {
 		t.Fatalf("context=%v status=%q", m.detail.ContextLeft, m.status)
+	}
+	if len(m.detail.SessionApprovals) != 1 || m.detail.SessionApprovals[0] != "bash" {
+		t.Fatalf("session approvals = %+v", m.detail.SessionApprovals)
 	}
 }
 

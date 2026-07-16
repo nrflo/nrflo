@@ -76,6 +76,20 @@ func (p *claudeApprovals) allowedForSession(toolName string) bool {
 	return toolName != "" && p.allowed[toolName]
 }
 
+// listAllowed returns the session-approved tool names, sorted.
+func (p *claudeApprovals) listAllowed() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return sortedKeys(p.allowed)
+}
+
+// revoke removes toolName from the session allowlist (idempotent).
+func (p *claudeApprovals) revoke(toolName string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.allowed, toolName)
+}
+
 func (p *claudeApprovals) register(id string, pa pendingClaudeApproval) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -101,6 +115,15 @@ func (p *claudeApprovals) drop(id string) bool {
 	_, ok := p.pending[id]
 	delete(p.pending, id)
 	return ok
+}
+
+// SessionApprovals / RevokeSessionApproval expose the allowlist to the chat
+// service (ConsoleEngine interface).
+func (e *claudeEngine) SessionApprovals() []string { return e.approvals.listAllowed() }
+
+func (e *claudeEngine) RevokeSessionApproval(tool string) error {
+	e.approvals.revoke(tool)
+	return nil
 }
 
 // RequestApproval registers a pending approval, flushes the transcript tail

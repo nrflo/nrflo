@@ -167,6 +167,34 @@ func (s *Server) handleConsoleChatApproval(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleRevokeConsoleChatSessionApproval removes one tool from the chat's
+// approve_for_session allowlist so its next use asks the human again.
+// DELETE /api/v1/console/chats/{sid}/session-approvals/{tool}
+func (s *Server) handleRevokeConsoleChatSessionApproval(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.loadConsoleChatSession(w, r)
+	if !ok {
+		return
+	}
+	tool := r.PathValue("tool")
+	if tool == "" {
+		writeError(w, http.StatusBadRequest, "tool required")
+		return
+	}
+
+	if err := s.consoleChat.RevokeSessionApproval(sess.ID, tool); err != nil {
+		if errors.Is(err, console.ErrChatSessionNotFound) {
+			writeError(w, http.StatusNotFound, "console chat session not found")
+			return
+		}
+		// The codex engine cannot revoke (its allowlist is the app-server's).
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	appendAudit(s, r, "console_chat.session_approval_revoked", "agent_session", sess.ID, "{}")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleCloseConsoleChat closes a console-chat session, killing its bearer
 // token via CloseConsoleChat's status filter.
 // POST /api/v1/console/chats/{sid}/close

@@ -31,6 +31,9 @@ type fakeConsoleEngine struct {
 	sendErr    error // consumed once by the next SendUserTurn call
 	approvals  []fakeApprovalCall
 	approveErr error // consumed once by the next ReplyApproval call
+
+	sessionAllowed []string // returned by SessionApprovals
+	revoked        []string // tools passed to RevokeSessionApproval
 }
 
 type fakeApprovalCall struct {
@@ -118,6 +121,30 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 	f.approvals = append(f.approvals, fakeApprovalCall{id: id, decision: decision})
 	f.mu.Unlock()
 	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
+	return nil
+}
+
+func (f *fakeConsoleEngine) SessionApprovals() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, len(f.sessionAllowed))
+	copy(out, f.sessionAllowed)
+	return out
+}
+
+// RevokeSessionApproval records the tool and drops it from sessionAllowed,
+// mirroring the claude/api engines' idempotent revoke.
+func (f *fakeConsoleEngine) RevokeSessionApproval(tool string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.revoked = append(f.revoked, tool)
+	kept := f.sessionAllowed[:0]
+	for _, t := range f.sessionAllowed {
+		if t != tool {
+			kept = append(kept, t)
+		}
+	}
+	f.sessionAllowed = kept
 	return nil
 }
 

@@ -28,6 +28,8 @@ type fakeConsoleEngine struct {
 		id       string
 		decision spawner.ApprovalDecision
 	}
+	sessionAllowed []string // returned by SessionApprovals
+	revoked        []string // tools passed to RevokeSessionApproval
 }
 
 func newFakeConsoleEngine(sink spawner.Sink) *fakeConsoleEngine {
@@ -104,6 +106,36 @@ func (f *fakeConsoleEngine) InterruptTurn(context.Context) error {
 	}
 	f.turnActive = false
 	return nil
+}
+
+func (f *fakeConsoleEngine) SessionApprovals() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, len(f.sessionAllowed))
+	copy(out, f.sessionAllowed)
+	return out
+}
+
+// RevokeSessionApproval records the tool and drops it from sessionAllowed,
+// mirroring the claude/api engines' idempotent revoke.
+func (f *fakeConsoleEngine) RevokeSessionApproval(tool string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.revoked = append(f.revoked, tool)
+	kept := f.sessionAllowed[:0]
+	for _, t := range f.sessionAllowed {
+		if t != tool {
+			kept = append(kept, t)
+		}
+	}
+	f.sessionAllowed = kept
+	return nil
+}
+
+func (f *fakeConsoleEngine) setSessionAllowed(tools ...string) {
+	f.mu.Lock()
+	f.sessionAllowed = tools
+	f.mu.Unlock()
 }
 
 func (f *fakeConsoleEngine) Stop() {

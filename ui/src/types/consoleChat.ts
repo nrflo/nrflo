@@ -27,6 +27,10 @@ export interface ConsoleChatDetail extends ConsoleChatSummary {
   turn?: 'idle' | 'running'
   work_dir?: string
   pending_approvals?: PendingApproval[]
+  // Tools auto-allowed by allow_for_session decisions (claude/api engines'
+  // server-side allowlist; codex resolves acceptForSession natively and
+  // reports none). Revocable via DELETE .../session-approvals/{tool}.
+  session_approvals?: string[]
 }
 
 export interface ConsoleChatListResponse {
@@ -120,4 +124,10 @@ export interface ConsoleChatApprovalResolvedPayload {
 export interface ConsoleChatErrorPayload {
   text: string
   is_error: boolean
+}
+
+// Full session-approved tool list, pushed whenever it changes
+// (approve_for_session resolution or a revoke).
+export interface ConsoleChatSessionApprovalsPayload {
+  tools: string[]
 }

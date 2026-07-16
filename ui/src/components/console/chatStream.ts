@@ -8,6 +8,7 @@ import type {
   ConsoleChatApprovalResolvedPayload,
   ConsoleChatDeltaPayload,
   ConsoleChatErrorPayload,
+  ConsoleChatSessionApprovalsPayload,
   ConsoleChatThinkingPayload,
   ConsoleChatTurnPayload,
   PendingApproval,
@@ -33,6 +34,9 @@ export interface SessionStreamState {
   // the card needs the request row kept around to render its terminal state.
   approvals: PendingApproval[]
   resolvedApprovals: Map<string, ResolvedApproval>
+  // Live session-approved tool list — null until the first push arrives, so
+  // a consumer can prefer the detail snapshot's seed until then.
+  sessionApprovals: string[] | null
   contextLeft?: number
   errors: ConsoleChatErrorPayload[]
 }
@@ -45,6 +49,7 @@ export function initialSessionStreamState(): SessionStreamState {
     turnLive: false,
     approvals: [],
     resolvedApprovals: new Map(),
+    sessionApprovals: null,
     errors: [],
   }
 }
@@ -84,6 +89,11 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
     case 'console_chat.error': {
       const err = data as ConsoleChatErrorPayload
       return { ...state, errors: [...state.errors, err] }
+    }
+    case 'console_chat.session_approvals': {
+      // Always the full list (never a delta) — see chat_events.go.
+      const { tools } = data as ConsoleChatSessionApprovalsPayload
+      return { ...state, sessionApprovals: tools ?? [] }
     }
     case 'agent.context_updated': {
       // Pushed on the session channel too (pumpChatEvents, EventTokenUsage) —

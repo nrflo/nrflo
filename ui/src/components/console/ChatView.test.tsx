@@ -14,6 +14,7 @@ vi.mock('@/hooks/useConsoleChats', async (importOriginal) => {
     useSendConsoleChatMessage: vi.fn(),
     useCloseConsoleChat: vi.fn(),
     useInterruptConsoleChat: vi.fn(),
+    useRevokeSessionApproval: vi.fn(),
   }
 })
 
@@ -21,12 +22,13 @@ vi.mock('@/hooks/useConsoleChatStream', () => ({
   useConsoleChatStream: vi.fn(),
 }))
 
-function makeStream(turn: 'idle' | 'running', transcript: unknown[] = []) {
+function makeStream(turn: 'idle' | 'running', transcript: unknown[] = [], sessionApprovals: string[] = []) {
   return {
     transcript,
     turn,
     approvals: [],
     resolvedApprovals: new Map(),
+    sessionApprovals,
     thinking: [],
     errors: [],
     contextLeft: undefined,
@@ -43,6 +45,7 @@ function setup(turn: 'idle' | 'running') {
   const send = vi.fn().mockResolvedValue(undefined)
   const close = vi.fn().mockResolvedValue(undefined)
   const interrupt = vi.fn().mockResolvedValue(undefined)
+  const revoke = vi.fn().mockResolvedValue(undefined)
   vi.mocked(useConsoleChats.useConsoleChat).mockReturnValue({
     data: { session_id: 's1', engine: 'claude', model: 'sonnet' },
   } as ReturnType<typeof useConsoleChats.useConsoleChat>)
@@ -52,9 +55,11 @@ function setup(turn: 'idle' | 'running') {
     mutation(close) as ReturnType<typeof useConsoleChats.useCloseConsoleChat>)
   vi.mocked(useConsoleChats.useInterruptConsoleChat).mockReturnValue(
     mutation(interrupt) as ReturnType<typeof useConsoleChats.useInterruptConsoleChat>)
+  vi.mocked(useConsoleChats.useRevokeSessionApproval).mockReturnValue(
+    mutation(revoke) as ReturnType<typeof useConsoleChats.useRevokeSessionApproval>)
   vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
     makeStream(turn) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
-  return { send, close, interrupt }
+  return { send, close, interrupt, revoke }
 }
 
 describe('ChatView turn controls', () => {
@@ -96,6 +101,21 @@ describe('ChatView turn controls', () => {
 
     await user.type(box, '{Escape}')
     expect(screen.getByText(/nothing relevant/)).toBeInTheDocument()
+  })
+
+  it('lists always-allowed tools as chips and revokes on ×', async () => {
+    const { revoke } = setup('idle')
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', [], ['bash', 'edit_file']) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    const user = userEvent.setup()
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+
+    expect(screen.getByText('Always allowed:')).toBeInTheDocument()
+    expect(screen.getByText('bash')).toBeInTheDocument()
+    expect(screen.getByText('edit_file')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Revoke bash' }))
+    expect(revoke).toHaveBeenCalledWith({ sid: 's1', tool: 'bash' })
   })
 
   it('Detach deselects without closing; Close tears the chat down', async () => {

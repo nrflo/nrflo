@@ -12,6 +12,7 @@ type ChatSnapshot struct {
 	WorkDir          string
 	Turn             string
 	PendingApprovals []*spawner.ApprovalRequest
+	SessionApprovals []string
 	LiveItems        []ChatLiveItem
 	Thinking         ChatLiveItem
 }
@@ -36,9 +37,26 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		WorkDir:          sess.WorkDir(),
 		Turn:             string(state.Turn),
 		PendingApprovals: state.Pending,
+		SessionApprovals: sess.engine.SessionApprovals(),
 		LiveItems:        state.Live,
 		Thinking:         state.Thinking,
 	}, true
+}
+
+// RevokeSessionApproval removes one tool from sid's session allowlist (so its
+// next use asks the human again) and pushes the updated list on the session
+// channel — the additive counterpart is pushed by pumpChatEvents when an
+// approve_for_session decision resolves.
+func (s *ChatService) RevokeSessionApproval(sid, tool string) error {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ErrChatSessionNotFound
+	}
+	if err := sess.engine.RevokeSessionApproval(tool); err != nil {
+		return err
+	}
+	pushSessionApprovals(s.deps.WSHub, sess)
+	return nil
 }
 
 // Live reports whether sid has a live engine registered with this service.

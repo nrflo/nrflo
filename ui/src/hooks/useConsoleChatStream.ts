@@ -56,11 +56,16 @@ export function useConsoleChatStream(sid: string | undefined) {
 
   const contextLeft = stream.contextLeft ?? detailQuery.data?.context_left
 
+  // Detail seeds the session-approved tool list on reload; the live push
+  // (always the full list) takes over once any arrives.
+  const sessionApprovals = stream.sessionApprovals ?? detailQuery.data?.session_approvals ?? []
+
   return {
     transcript,
     turn,
     approvals,
     resolvedApprovals: stream.resolvedApprovals,
+    sessionApprovals,
     thinking: stream.thinking,
     errors: stream.errors,
     contextLeft,

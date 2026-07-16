@@ -84,6 +84,9 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 				"decision":    decision,
 				"reason":      ev.Text,
 			})
+			if ev.Decision == spawner.ApprovalApproveForSession {
+				pushSessionApprovals(wsHub, sess)
+			}
 			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.ApprovalID, "decision": decision})
 			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
 
@@ -129,6 +132,19 @@ func clientDecision(d spawner.ApprovalDecision) string {
 	default:
 		return "deny"
 	}
+}
+
+// pushSessionApprovals pushes the engine's current session-approved tool list
+// — sent whenever the list changes (approve_for_session resolution, revoke),
+// always as the full list so consumers never have to merge deltas.
+func pushSessionApprovals(wsHub *ws.Hub, sess *chatSession) {
+	tools := sess.engine.SessionApprovals()
+	if tools == nil {
+		tools = []string{}
+	}
+	pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatSessionApprovals, map[string]interface{}{
+		"tools": tools,
+	})
 }
 
 // pushSessionEvent is a nil-safe helper for a session-channel WS push.

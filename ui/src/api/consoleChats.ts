@@ -1,4 +1,4 @@
-import { apiGet, apiPost, ApiError } from './client'
+import { apiGet, apiPost, apiDelete, ApiError } from './client'
 import type {
   ApprovalDecision,
   ConsoleCatalog,
@@ -51,6 +51,13 @@ export async function sendConsoleChatMessage(sid: string, text: string): Promise
 
 export async function replyConsoleChatApproval(sid: string, aid: string, decision: ApprovalDecision): Promise<void> {
   await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/approvals/${encodeURIComponent(aid)}`, { decision })
+}
+
+// Revoke one tool's allow_for_session grant so its next use asks again.
+export async function revokeConsoleChatSessionApproval(sid: string, tool: string): Promise<void> {
+  await apiDelete<void>(
+    `/api/v1/console/chats/${encodeURIComponent(sid)}/session-approvals/${encodeURIComponent(tool)}`
+  )
 }
 
 export async function closeConsoleChat(sid: string): Promise<void> {

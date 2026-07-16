@@ -177,6 +177,14 @@ func (e *codexEngine) onServerRequestResolved(params json.RawMessage) {
 	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.spec.SessionID, ApprovalID: id, Decision: ApprovalDeny, Text: reason})
 }
 
+// SessionApprovals: codex resolves acceptForSession inside the app-server —
+// there is no server-side allowlist to enumerate or revoke here.
+func (e *codexEngine) SessionApprovals() []string { return nil }
+
+func (e *codexEngine) RevokeSessionApproval(string) error {
+	return fmt.Errorf("console engine: codex session approvals live in the app-server and cannot be revoked")
+}
+
 // ReplyApproval answers a pending approval by id, mapping decision to the
 // wire vocabulary for that request's method.
 //

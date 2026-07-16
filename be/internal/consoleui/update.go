@@ -219,6 +219,9 @@ func (m *model) applyStream(update streamUpdate) {
 			})
 		case "console_chat.approval_resolved":
 			m.removeApproval(eventString(event, "approval_id"))
+		case "console_chat.session_approvals":
+			// Always the full list (never a delta) — see console/chat_events.go.
+			m.detail.SessionApprovals = eventStrings(event, "tools")
 		case "console_chat.error":
 			m.lastErr = eventString(event, "text")
 		case "agent.context_updated":

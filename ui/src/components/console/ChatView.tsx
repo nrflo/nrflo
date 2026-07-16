@@ -9,6 +9,7 @@ import {
   useSendConsoleChatMessage,
   useCloseConsoleChat,
   useInterruptConsoleChat,
+  useRevokeSessionApproval,
 } from '@/hooks/useConsoleChats'
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
 import { TurnActiveError } from '@/api/consoleChats'
@@ -35,6 +36,7 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
   const sendMutation = useSendConsoleChatMessage()
   const closeMutation = useCloseConsoleChat()
   const interruptMutation = useInterruptConsoleChat()
+  const revokeMutation = useRevokeSessionApproval()
   const [text, setText] = useState('')
   const [showTerminal, setShowTerminal] = useState(false)
   const [search, setSearch] = useState('')
@@ -88,6 +90,14 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
       await interruptMutation.mutateAsync(sid)
     } catch {
       toast.error('Failed to interrupt the turn.')
+    }
+  }
+
+  const handleRevoke = async (tool: string) => {
+    try {
+      await revokeMutation.mutateAsync({ sid, tool })
+    } catch {
+      toast.error(`Failed to revoke ${tool}.`)
     }
   }
 
@@ -145,6 +155,31 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
           </Button>
         </div>
       </div>
+
+      {stream.sessionApprovals.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-4 py-1.5">
+          <span className="text-xs text-muted-foreground">Always allowed:</span>
+          {stream.sessionApprovals.map((tool) => (
+            <span
+              key={tool}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs"
+            >
+              {tool}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => handleRevoke(tool)}
+                disabled={revokeMutation.isPending}
+                aria-label={`Revoke ${tool}`}
+                title="Ask again before the next use"
+              >
+                ×
+              </Button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {showTerminal && canAttachTerminal && (
         <div className="h-80 shrink-0 border-b border-border bg-black">

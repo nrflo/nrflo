@@ -112,6 +112,11 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 		resp["turn"] = snap.Turn
 		resp["work_dir"] = snap.WorkDir
 		resp["pending_approvals"] = approvals
+		sessionApprovals := snap.SessionApprovals
+		if sessionApprovals == nil {
+			sessionApprovals = []string{}
+		}
+		resp["session_approvals"] = sessionApprovals
 		liveItems := make([]map[string]string, 0, len(snap.LiveItems))
 		for _, item := range snap.LiveItems {
 			liveItems = append(liveItems, map[string]string{"item_id": item.ID, "text": item.Text})

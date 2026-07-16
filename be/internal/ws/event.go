@@ -92,6 +92,7 @@ const (
 	EventConsoleChatApprovalResolved = "console_chat.approval_resolved"
 	EventConsoleChatError            = "console_chat.error"
 	EventConsoleChatThinking         = "console_chat.thinking"
+	EventConsoleChatSessionApprovals = "console_chat.session_approvals"
 )
 
 // Event represents a WebSocket event to broadcast

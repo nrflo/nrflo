@@ -9,6 +9,7 @@ import {
   replyConsoleChatApproval,
   closeConsoleChat,
   interruptConsoleChat,
+  revokeConsoleChatSessionApproval,
 } from '@/api/consoleChats'
 import { useProjectStore } from '@/stores/projectStore'
 import type { ApprovalDecision, CreateConsoleChatRequest } from '@/types/consoleChat'
@@ -91,6 +92,19 @@ export function useReplyApproval() {
 export function useInterruptConsoleChat() {
   return useMutation({
     mutationFn: (sid: string) => interruptConsoleChat(sid),
+  })
+}
+
+// Revoking also arrives as a console_chat.session_approvals push; the detail
+// invalidation keeps a reload-seeded list in sync for tabs without the
+// session channel open.
+export function useRevokeSessionApproval() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sid, tool }: { sid: string; tool: string }) => revokeConsoleChatSessionApproval(sid, tool),
+    onSuccess: (_data, { sid }) => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.detail(sid) })
+    },
   })
 }
 

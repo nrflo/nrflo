@@ -70,6 +70,29 @@ func (p *apiEngineApprovals) allowedForSession(toolName string) bool {
 	return toolName != "" && p.allowed[toolName]
 }
 
+// listAllowed returns the session-approved tool names, sorted.
+func (p *apiEngineApprovals) listAllowed() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return sortedKeys(p.allowed)
+}
+
+// revoke removes toolName from the session allowlist (idempotent).
+func (p *apiEngineApprovals) revoke(toolName string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.allowed, toolName)
+}
+
+// SessionApprovals / RevokeSessionApproval expose the allowlist to the chat
+// service (ConsoleEngine interface).
+func (e *apiConsoleEngine) SessionApprovals() []string { return e.approvals.listAllowed() }
+
+func (e *apiConsoleEngine) RevokeSessionApproval(tool string) error {
+	e.approvals.revoke(tool)
+	return nil
+}
+
 // consoleAPIFSSystem replaces consoleAPISystem's "no local tools" paragraph
 // when the native fs tools are injected (api_native_tools_enabled).
 const consoleAPIFSSystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, research topics via web_search/web_fetch, and work on files in the session's working directory via read_file, edit_file, and bash (one-shot shell; edit_file/bash require the user's approval). Use the tools available to you to answer the user's requests.`

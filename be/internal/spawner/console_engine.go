@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -34,12 +35,34 @@ type ConsoleEngine interface {
 	Events() <-chan EngineEvent
 	// ReplyApproval answers a pending approval request by id.
 	ReplyApproval(id string, decision ApprovalDecision) error
+	// SessionApprovals lists the tool names auto-allowed for the rest of the
+	// session by approve_for_session decisions. Engines whose session scope
+	// lives outside the server (codex acceptForSession) report none.
+	SessionApprovals() []string
+	// RevokeSessionApproval removes one tool from the session allowlist, so
+	// its next use asks the human again. Errors when the engine cannot
+	// revoke (codex — the allowlist is the app-server's).
+	RevokeSessionApproval(tool string) error
 	// InterruptTurn cancels the active turn without closing the conversation.
 	// Returns ErrNoActiveTurn when the engine is idle.
 	InterruptTurn(ctx context.Context) error
 	// Stop tears down the engine: cancels the run context, closes the
 	// underlying client/process, and closes the Events channel.
 	Stop()
+}
+
+// sortedKeys returns m's keys in sorted order — the stable shape both
+// session-allowlist implementations return from listAllowed.
+func sortedKeys(m map[string]bool) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // EngineSpec carries the per-session parameters an engine needs to start.

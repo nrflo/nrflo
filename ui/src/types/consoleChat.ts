@@ -67,6 +67,7 @@ export type ApprovalDecision = 'allow' | 'allow_for_session' | 'deny'
 export interface ConsoleModelOption {
   id: string
   display_name: string
+  brand?: string
   provider?: string
   mapped_model?: string
   reasoning_effort?: string
@@ -75,6 +76,8 @@ export interface ConsoleModelOption {
 export interface ConsoleEngineOption {
   id: string
   display_name: string
+  kind: 'cli' | 'api'
+  brand?: string
   enabled: boolean
   disabled_reason?: string
   requires_model: boolean

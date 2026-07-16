@@ -3,24 +3,38 @@ package consoleui
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 )
 
+const selectRootTitle = "nrflo console · resume or start"
+
+// selectionItem is one row of the drill-down picker. Leaves carry a
+// Selection; branches carry children the picker descends into on enter
+// (esc walks back up).
 type selectionItem struct {
 	selection Selection
 	title     string
 	detail    string
+	children  []list.Item
+	crumb     string // breadcrumb segment shown in the list title while inside
 }
 
 func (i selectionItem) Title() string       { return i.title }
 func (i selectionItem) Description() string { return i.detail }
 func (i selectionItem) FilterValue() string { return i.title + " " + i.detail }
 
+// levelFrame snapshots one picker level so esc can restore it exactly.
+type levelFrame struct {
+	items []list.Item
+	title string
+	index int
+}
+
 type selectionModel struct {
 	list      list.Model
+	stack     []levelFrame
 	selected  Selection
 	cancelled bool
 }
@@ -32,7 +46,7 @@ func Select(ctx context.Context, catalog Catalog) (Selection, error) {
 	}
 	delegate := list.NewDefaultDelegate()
 	model := &selectionModel{list: list.New(items, delegate, 80, 24)}
-	model.list.Title = "nrflo console · resume or start"
+	model.list.Title = selectRootTitle
 	program := tea.NewProgram(model, tea.WithContext(ctx))
 	result, err := program.Run()
 	if err != nil {
@@ -45,55 +59,28 @@ func Select(ctx context.Context, catalog Catalog) (Selection, error) {
 	return final.selected, nil
 }
 
-func selectionItems(catalog Catalog) []list.Item {
-	items := make([]list.Item, 0, len(catalog.Sessions)+16)
-	for _, session := range catalog.Sessions {
-		model := session.Model
-		if model == "" {
-			model = "default"
-		}
-		detail := fmt.Sprintf("%s / %s", session.Engine, model)
-		if session.ContextLeft != nil {
-			detail += fmt.Sprintf(" · context %d%%", *session.ContextLeft)
-		}
-		items = append(items, selectionItem{
-			selection: Selection{ResumeID: session.SessionID},
-			title:     "Resume " + shortSessionID(session.SessionID), detail: detail,
-		})
-	}
-	for _, engine := range catalog.Engines {
-		if !engine.Enabled {
-			continue
-		}
-		if !engine.RequiresModel {
-			items = append(items, selectionItem{
-				selection: Selection{Engine: engine.ID},
-				title:     "New " + engine.DisplayName, detail: "provider default model",
-			})
-		}
-		for _, model := range engine.Models {
-			detail := model.Provider
-			if detail == "" {
-				detail = model.MappedModel
-			}
-			if model.ReasoningEffort != "" {
-				detail = strings.TrimSpace(detail + " · " + model.ReasoningEffort)
-			}
-			items = append(items, selectionItem{
-				selection: Selection{Engine: engine.ID, Model: model.ID},
-				title:     fmt.Sprintf("New %s · %s", engine.DisplayName, model.DisplayName),
-				detail:    detail,
-			})
-		}
-	}
-	return items
+// push descends into a branch item, snapshotting the current level.
+func (m *selectionModel) push(item selectionItem) tea.Cmd {
+	m.stack = append(m.stack, levelFrame{items: m.list.Items(), title: m.list.Title, index: m.list.Index()})
+	m.list.ResetFilter()
+	cmd := m.list.SetItems(item.children)
+	m.list.Select(0)
+	m.list.Title = m.list.Title + " · " + item.crumb
+	return cmd
 }
 
-func shortSessionID(id string) string {
-	if len(id) <= 12 {
-		return id
+// pop restores the parent level; returns false at the root.
+func (m *selectionModel) pop() (tea.Cmd, bool) {
+	if len(m.stack) == 0 {
+		return nil, false
 	}
-	return id[:12]
+	frame := m.stack[len(m.stack)-1]
+	m.stack = m.stack[:len(m.stack)-1]
+	m.list.ResetFilter()
+	cmd := m.list.SetItems(frame.items)
+	m.list.Select(frame.index)
+	m.list.Title = frame.title
+	return cmd, true
 }
 
 func (m *selectionModel) Init() tea.Cmd { return nil }
@@ -109,12 +96,18 @@ func (m *selectionModel) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "esc":
 			if m.list.FilterState() != list.Filtering {
+				if cmd, ok := m.pop(); ok {
+					return m, cmd
+				}
 				m.cancelled = true
 				return m, tea.Quit
 			}
 		case "enter":
 			if m.list.FilterState() != list.Filtering {
 				if item, ok := m.list.SelectedItem().(selectionItem); ok {
+					if len(item.children) > 0 {
+						return m, m.push(item)
+					}
 					m.selected = item.selection
 					return m, tea.Quit
 				}

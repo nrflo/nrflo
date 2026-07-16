@@ -3,6 +3,7 @@ package console
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"be/internal/model"
@@ -53,33 +54,54 @@ func (s *ChatService) Catalog(projectID string) (types.ConsoleCatalog, error) {
 	return types.ConsoleCatalog{ProjectID: projectID, Engines: engines, Sessions: sessions}, nil
 }
 
+// brandOf maps a cli_type or api provider onto the model-family grouping key
+// pickers drill down by: claude/anthropic → "claude", codex/openai → "gpt".
+func brandOf(provider string) string {
+	switch provider {
+	case "claude", "anthropic":
+		return "claude"
+	case "codex", "openai":
+		return "gpt"
+	}
+	return provider
+}
+
 func cliEngineOption(id, name string, models []*model.CLIModel) types.ConsoleEngineOption {
-	result := types.ConsoleEngineOption{ID: id, DisplayName: name, Enabled: service.CLIAvailable(id)}
+	result := types.ConsoleEngineOption{
+		ID: id, DisplayName: name, Kind: "cli", Brand: brandOf(id), Enabled: service.CLIAvailable(id),
+	}
 	if !result.Enabled {
 		result.DisabledReason = id + " CLI is not installed on the server"
 	}
+	own := make([]*model.CLIModel, 0, len(models))
 	for _, item := range models {
 		if item.CLIType == id {
-			result.Models = append(result.Models, types.ConsoleModelOption{
-				ID: item.ID, DisplayName: item.DisplayName, MappedModel: item.MappedModel,
-				ReasoningEffort: item.ReasoningEffort,
-			})
+			own = append(own, item)
 		}
+	}
+	sort.SliceStable(own, func(i, j int) bool { return own[i].CreatedAt.After(own[j].CreatedAt) })
+	for _, item := range own {
+		result.Models = append(result.Models, types.ConsoleModelOption{
+			ID: item.ID, DisplayName: item.DisplayName, Brand: result.Brand,
+			MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
+		})
 	}
 	return result
 }
 
 func apiEngineOption(enabled bool, models []*model.APIModel) types.ConsoleEngineOption {
 	result := types.ConsoleEngineOption{
-		ID: "api", DisplayName: "Direct API", Enabled: enabled, RequiresModel: true,
+		ID: "api", DisplayName: "Direct API", Kind: "api", Enabled: enabled, RequiresModel: true,
 	}
 	if !enabled {
 		result.DisabledReason = "API mode is disabled"
 	}
-	for _, item := range models {
+	sorted := append([]*model.APIModel(nil), models...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].CreatedAt.After(sorted[j].CreatedAt) })
+	for _, item := range sorted {
 		result.Models = append(result.Models, types.ConsoleModelOption{
-			ID: item.ID, DisplayName: item.DisplayName, Provider: item.Provider,
-			MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
+			ID: item.ID, DisplayName: item.DisplayName, Brand: brandOf(item.Provider),
+			Provider: item.Provider, MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
 		})
 	}
 	if enabled && len(result.Models) == 0 {

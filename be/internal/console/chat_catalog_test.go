@@ -16,12 +16,29 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}
+	// Newest-added models sort first; seeded rows share a timestamp, so bump one.
+	mustExec(t, pool, `UPDATE api_models SET created_at = '2099-01-01T00:00:00Z' WHERE id = 'haiku'`)
 	catalog, err := svc.Catalog(chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Catalog: %v", err)
 	}
 	if len(catalog.Engines) != 3 || len(catalog.Sessions) != 1 || catalog.Sessions[0].SessionID != sid {
 		t.Fatalf("catalog = %+v", catalog)
+	}
+	claude, api := catalog.Engines[0], catalog.Engines[2]
+	if claude.Kind != "cli" || claude.Brand != "claude" {
+		t.Fatalf("claude engine kind/brand = %q/%q", claude.Kind, claude.Brand)
+	}
+	if api.Kind != "api" || api.Brand != "" {
+		t.Fatalf("api engine kind/brand = %q/%q", api.Kind, api.Brand)
+	}
+	if len(api.Models) == 0 || api.Models[0].ID != "haiku" || api.Models[0].Brand != "claude" {
+		t.Fatalf("api models[0] = %+v, want newest-added haiku with brand claude", api.Models)
+	}
+	for _, m := range api.Models {
+		if m.Provider == "openai" && m.Brand != "gpt" {
+			t.Fatalf("openai model %q brand = %q, want gpt", m.ID, m.Brand)
+		}
 	}
 	attached, err := svc.AttachAuthenticated(sid, chatTestProjectID)
 	if err != nil || attached != token {

@@ -23,6 +23,8 @@ function engineOption(overrides: Partial<ConsoleEngineOption> = {}): ConsoleEngi
   return {
     id: 'claude',
     display_name: 'Claude',
+    kind: 'cli',
+    brand: 'claude',
     enabled: true,
     requires_model: false,
     models: [{ id: 'sonnet', display_name: 'Sonnet (CLI)' }],

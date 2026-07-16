@@ -120,7 +120,7 @@ func TestUpdateWorkflowDef_ObserverProviderModel(t *testing.T) {
 
 	if err := svc.UpdateWorkflowDef("proj1", "wf-upd-pm", &types.WorkflowDefUpdateRequest{
 		ObserverProvider: strPtr("codex"),
-		ObserverModel:    strPtr("codex_gpt_high"),
+		ObserverModel:    strPtr("gpt-5.3-codex"),
 	}); err != nil {
 		t.Fatalf("UpdateWorkflowDef: %v", err)
 	}
@@ -132,8 +132,8 @@ func TestUpdateWorkflowDef_ObserverProviderModel(t *testing.T) {
 	if wf.ObserverProvider == nil || *wf.ObserverProvider != "codex" {
 		t.Errorf("ObserverProvider = %v, want codex", wf.ObserverProvider)
 	}
-	if wf.ObserverModel == nil || *wf.ObserverModel != "codex_gpt_high" {
-		t.Errorf("ObserverModel = %v, want codex_gpt_high", wf.ObserverModel)
+	if wf.ObserverModel == nil || *wf.ObserverModel != "gpt-5.3-codex" {
+		t.Errorf("ObserverModel = %v, want gpt-5.3-codex", wf.ObserverModel)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestListWorkflowDefs_ObserverFields(t *testing.T) {
 		ID:               "wf-list-obs",
 		ObserverContext:  "list-ctx",
 		ObserverProvider: strPtr("claude"),
-		ObserverModel:    strPtr("opus"),
+		ObserverModel:    strPtr("opus-4-7"),
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
 	}
@@ -198,8 +198,8 @@ func TestListWorkflowDefs_ObserverFields(t *testing.T) {
 	if wf.ObserverProvider == nil || *wf.ObserverProvider != "claude" {
 		t.Errorf("ObserverProvider = %v, want claude", wf.ObserverProvider)
 	}
-	if wf.ObserverModel == nil || *wf.ObserverModel != "opus" {
-		t.Errorf("ObserverModel = %v, want opus", wf.ObserverModel)
+	if wf.ObserverModel == nil || *wf.ObserverModel != "opus-4-7" {
+		t.Errorf("ObserverModel = %v, want opus-4-7", wf.ObserverModel)
 	}
 }
 
@@ -212,7 +212,7 @@ func TestWorkflowDefMarshalJSON_ObserverFields(t *testing.T) {
 		ID:               "wf-json-obs",
 		ObserverContext:  "json-ctx",
 		ObserverProvider: strPtr("claude"),
-		ObserverModel:    strPtr("sonnet"),
+		ObserverModel:    strPtr("sonnet-5"),
 	}); err != nil {
 		t.Fatalf("CreateWorkflowDef: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestWorkflowDefMarshalJSON_ObserverFields(t *testing.T) {
 		t.Fatalf("MarshalJSON: %v", err)
 	}
 	s := string(data)
-	for _, want := range []string{`"observer_context":"json-ctx"`, `"observer_provider":"claude"`, `"observer_model":"sonnet"`} {
+	for _, want := range []string{`"observer_context":"json-ctx"`, `"observer_provider":"claude"`, `"observer_model":"sonnet-5"`} {
 		found := false
 		for i := 0; i <= len(s)-len(want); i++ {
 			if s[i:i+len(want)] == want {

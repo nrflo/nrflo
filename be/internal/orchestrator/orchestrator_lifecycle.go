@@ -14,35 +14,37 @@ import (
 	"be/internal/ws"
 )
 
-// loadModelConfigs loads CLI model configs from the database and builds a map
-// suitable for spawner.Config.ModelConfigs. Called once at workflow start.
+// loadModelConfigs loads the enabled unified model registry once per run.
 func (o *Orchestrator) loadModelConfigs(pool *db.Pool) (map[string]spawner.ModelConfig, error) {
-	cliModelSvc := service.NewCLIModelService(pool, o.clock)
-	models, err := cliModelSvc.ListEnabled()
+	modelSvc := service.NewModelService(pool, o.clock)
+	models, err := modelSvc.ListEnabled()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load CLI model configs: %w", err)
+		return nil, fmt.Errorf("failed to load model configs: %w", err)
 	}
 	configs := make(map[string]spawner.ModelConfig, len(models))
 	for _, m := range models {
 		configs[m.ID] = spawner.ModelConfig{
-			CLIType:          m.CLIType,
-			MappedModel:      m.MappedModel,
-			ReasoningEffort:  m.ReasoningEffort,
-			FallbackModels:   m.FallbackModels,
-			ContextLength:    m.ContextLength,
-			SupportedEfforts: m.SupportedEfforts,
+			Provider:       m.Provider,
+			CLIModel:       m.CLIModel,
+			CLIContext:     m.CLIContext,
+			CLIEfforts:     m.CLIEfforts,
+			APIModel:       m.APIModel,
+			APIContext:     m.APIContext,
+			APIEfforts:     m.APIEfforts,
+			FallbackModels: m.FallbackModels,
+			DefaultEffort:  m.DefaultEffort,
 		}
 	}
 	return configs, nil
 }
 
-// cliNameFromModelConfigs resolves the CLI name for a model using DB configs,
-// falling back to spawner.DefaultCLIForModel if not found.
+// cliNameFromModelConfigs derives the CLI from the registry provider. Unknown
+// raw model strings retain the Claude passthrough default.
 func cliNameFromModelConfigs(modelConfigs map[string]spawner.ModelConfig, model string) string {
-	if mc, ok := modelConfigs[model]; ok && mc.CLIType != "" {
-		return mc.CLIType
+	if mc, ok := modelConfigs[model]; ok && mc.Provider == "openai" {
+		return "codex"
 	}
-	return spawner.DefaultCLIForModel(model)
+	return "claude"
 }
 
 // setupWorktree creates a git worktree for a workflow run if the project has

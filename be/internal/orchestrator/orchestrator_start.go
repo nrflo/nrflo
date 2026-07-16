@@ -176,15 +176,8 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Read consumption-mode and stall-timeout settings (once at workflow start)
 	lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
 
-	// Load CLI model configs from DB (once at workflow start)
+	// Load the unified model registry once at workflow start.
 	modelConfigs, err := o.loadModelConfigs(pool)
-	if err != nil {
-		pool.Close()
-		return nil, err
-	}
-
-	// Load API model configs from DB (once at workflow start)
-	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -266,7 +259,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	// Setup interactive/plan pre-step if requested
 	var pre *interactivePreStep
 	if req.Interactive || req.PlanMode {
-		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
+		pre, err = o.setupInteractivePreStep(req, wi, svcWf, svcAgents, spawnWorkflows, spawnAgents, projectRoot, modelConfigs, claudeSettingsJSON)
 		if err != nil {
 			cancel()
 			o.mu.Lock()
@@ -278,7 +271,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	status := "started"
 	sessionID := ""

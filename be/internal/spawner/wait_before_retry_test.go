@@ -22,7 +22,7 @@ func TestWaitBeforeRetry_CancelledContext_ReturnsFalse(t *testing.T) {
 	proc := &processInfo{
 		agentType:        "implementor",
 		sessionID:        "sess-cancel",
-		modelID:          "claude:sonnet",
+		modelID:          "claude:sonnet-5",
 		projectID:        "proj-1",
 		ticketID:         "ticket-1",
 		workflowName:     "feature",
@@ -62,7 +62,7 @@ func TestWaitBeforeRetry_BroadcastEvent_AllFields(t *testing.T) {
 	proc := &processInfo{
 		agentType:        "implementor",
 		sessionID:        "sess-retry-event",
-		modelID:          "claude:sonnet",
+		modelID:          "claude:sonnet-5",
 		projectID:        "proj-retry",
 		ticketID:         "ticket-retry",
 		workflowName:     "feature",
@@ -85,7 +85,7 @@ func TestWaitBeforeRetry_BroadcastEvent_AllFields(t *testing.T) {
 		}
 		retryAssertStringField(t, event.Data, "agent_type", "implementor")
 		retryAssertStringField(t, event.Data, "session_id", "sess-retry-event")
-		retryAssertStringField(t, event.Data, "model_id", "claude:sonnet")
+		retryAssertStringField(t, event.Data, "model_id", "claude:sonnet-5")
 		retryAssertIntField(t, event.Data, "delay_seconds", 15)
 		retryAssertIntField(t, event.Data, "fail_restart_count", 1)
 		retryAssertIntField(t, event.Data, "max_fail_restarts", 3)
@@ -103,7 +103,7 @@ func TestWaitBeforeRetry_NoHub_CancelledContext(t *testing.T) {
 	proc := &processInfo{
 		agentType:        "implementor",
 		sessionID:        "sess-no-hub",
-		modelID:          "claude:haiku",
+		modelID:          "claude:haiku-4-5",
 		projectID:        "proj-1",
 		ticketID:         "ticket-1",
 		workflowName:     "feature",

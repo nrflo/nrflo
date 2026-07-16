@@ -80,5 +80,6 @@ Features are documented where their primary component or hook lives:
 - Workflow visualization, phase graph, findings, agent panels → [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)
 - WebSocket protocol v2, event types, subscription patterns → [hooks/CLAUDE.md](src/hooks/CLAUDE.md)
 - REST API modules and client conventions → [api/CLAUDE.md](src/api/CLAUDE.md)
+- Unified model administration and mode-aware agent model/effort selectors → `src/components/settings/ModelsList.tsx`, `ModelForm.tsx`, and `src/hooks/useModels.ts`
 - Page routes, ticket tabs, project workflows layout → [pages/CLAUDE.md](src/pages/CLAUDE.md)
 - Shared TypeScript types → [types/CLAUDE.md](src/types/CLAUDE.md)

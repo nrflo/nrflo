@@ -19,8 +19,7 @@ Write operations on global configuration resources require admin role (`admin`):
 - `GET|POST|PATCH|DELETE /api/v1/users/{...}` (all user management)
 - `GET /api/v1/audit-log`
 - `POST|PATCH|DELETE /api/v1/system-agents/{...}`
-- `POST|PATCH|DELETE /api/v1/cli-models/{...}`
-- `POST|PATCH|DELETE /api/v1/api-models/{...}`
+- `POST|PATCH|DELETE /api/v1/models/{...}`
 - `POST|PATCH|DELETE /api/v1/default-templates/{...}` (including `/restore`)
 - `POST|PATCH|DELETE /api/v1/scheduled-tasks/{...}`
 - `PATCH /api/v1/settings`

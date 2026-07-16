@@ -11,11 +11,11 @@ import (
 var injectablePlaceholderRe = regexp.MustCompile(`\$\{[^}]+\}`)
 
 // systemPromptOverrideFor returns the expanded system-prompt injectable when the model
-// has CLIType=="claude" and the global claude_system_prompt_override_enabled setting is
+// belongs to Anthropic, supports CLI mode, and the global claude_system_prompt_override_enabled setting is
 // on; returns "" otherwise. The setting is read freshly from the pool at spawn time.
 func (s *Spawner) systemPromptOverrideFor(model string, vars map[string]string) string {
 	cfg, ok := s.config.ModelConfigs[model]
-	if !ok || cfg.CLIType != "claude" {
+	if !ok || cfg.Provider != "anthropic" || cfg.CLIModel == "" {
 		return ""
 	}
 	pool := s.pool()

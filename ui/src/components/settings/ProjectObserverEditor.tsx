@@ -1,6 +1,6 @@
 import { Textarea } from '@/components/ui/Textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { useCLIModels } from '@/hooks/useCLIModels'
+import { cliTypeForProvider, useModels } from '@/hooks/useModels'
 
 export interface ObserverFormState {
   systemContext: string
@@ -18,15 +18,15 @@ export function ProjectObserverEditor({
   onChange: (next: ObserverFormState) => void
   serverError?: string | null
 }) {
-  const { data: models = [] } = useCLIModels()
+  const { data: models = [] } = useModels()
 
-  const providerOptions = Array.from(new Set(models.filter(m => m.enabled).map(m => m.cli_type))).map(t => ({
+  const providerOptions = Array.from(new Set(models.filter(m => m.enabled && m.cli_model).map(m => cliTypeForProvider(m.provider)))).map(t => ({
     value: t,
     label: t.charAt(0).toUpperCase() + t.slice(1),
   }))
 
   const modelOptions = models
-    .filter(m => m.enabled && (!value.provider || m.cli_type === value.provider))
+    .filter(m => m.enabled && m.cli_model && (!value.provider || cliTypeForProvider(m.provider) === value.provider))
     .map(m => ({ value: m.id, label: m.display_name }))
 
   return (

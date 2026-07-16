@@ -206,7 +206,7 @@ func insertRUISession(t *testing.T, env *spawnerTestEnv, wfiID, ticketID, sessio
 		INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type,
 			 model_id, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 'phase1', 'test-agent', 'claude:sonnet', 'running',
+		VALUES (?, ?, ?, ?, 'phase1', 'test-agent', 'claude:sonnet-5', 'running',
 		        datetime('now'), datetime('now'))`,
 		sessionID, env.project, ticketID, wfiID)
 	if err != nil {
@@ -222,7 +222,7 @@ func newRUIProc(projectID, ticketID, sessionID string) *processInfo {
 		ticketID:        ticketID,
 		agentType:       "test-agent",
 		workflowName:    "test",
-		modelID:         "claude:sonnet",
+		modelID:         "claude:sonnet-5",
 		pendingMessages: make([]repo.MessageEntry, 0),
 	}
 }

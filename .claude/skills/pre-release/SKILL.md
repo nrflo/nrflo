@@ -59,10 +59,11 @@ If any check fails (excluding the missing-provider-binary warnings), stop and te
 
 While the suite runs (or just before launching it), invoke the `model-audit`
 skill (`.claude/skills/model-audit/SKILL.md`): it diffs the
-cli_models/api_models registry — models and `supported_efforts` — against the
-live codex app-server matrix, the claude CLI effort enum, and the provider
-docs. Include its verdict line in the final report. Drift does **not** fail
-pre-release; it's release-notes material and a prompt for a seeds migration.
+unified `models` registry — per-mode model IDs, contexts, effort lists, and
+defaults — against the live codex app-server matrix, the claude CLI effort
+enum, and the provider docs. Include its verdict line in the final report.
+Drift does **not** fail pre-release; it's release-notes material and a prompt
+for a seeds migration.
 
 ## Step 2 — Run the suite
 

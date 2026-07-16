@@ -29,9 +29,9 @@ func TestCompletedWorkflowStats(t *testing.T) {
 	//   context_left=25 → 200000*(100-25)/100 = 150000 tokens used
 	//   Total expected: 230000
 	insertSessionWithContextLeft(t, env, "cs-sess-1", "CS-1", wfiID,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 60)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 60)
 	insertSessionWithContextLeft(t, env, "cs-sess-2", "CS-1", wfiID,
-		"builder", "implementor", "claude:opus", "completed", "pass", 25)
+		"builder", "implementor", "claude:opus-4-7", "completed", "pass", 25)
 
 	// Mark the workflow instance as completed (simulating orchestrator behavior)
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -118,13 +118,13 @@ func TestCompletedWorkflowTokensBoundary(t *testing.T) {
 
 	// context_left=0 → 200000*(100-0)/100 = 200000 tokens
 	insertSessionWithContextLeft(t, env, "cs3-sess-1", "CS-3", wfiID,
-		"analyzer", "agent-fully-consumed", "claude:sonnet", "completed", "pass", 0)
+		"analyzer", "agent-fully-consumed", "claude:sonnet-5", "completed", "pass", 0)
 	// context_left=100 → 200000*(100-100)/100 = 0 tokens
 	insertSessionWithContextLeft(t, env, "cs3-sess-2", "CS-3", wfiID,
-		"builder", "agent-no-consumption", "claude:opus", "completed", "pass", 100)
+		"builder", "agent-no-consumption", "claude:opus-4-7", "completed", "pass", 100)
 	// NULL context_left (using insertCompletedSession which sets context_left=NULL)
 	insertCompletedSession(t, env, "cs3-sess-3", "CS-3", wfiID,
-		"analyzer", "agent-null-context", "claude:haiku", "completed", "pass")
+		"analyzer", "agent-null-context", "claude:haiku-4-5", "completed", "pass")
 
 	// Mark workflow completed
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -192,8 +192,8 @@ func TestCompletedWorkflowDuration(t *testing.T) {
 }
 
 // TestCompletedWorkflowStats_PerModelContext verifies that total_tokens_used uses
-// the per-model context_length from cli_models instead of the hardcoded 200000 default.
-// opus_4_7_1m has context_length=1000000; two sessions at context_left=50 each
+// the per-model CLI context from models instead of the hardcoded 200000 default.
+// opus-4-7-1m has cli_context=1000000; two sessions at context_left=50 each
 // should yield 1000000 * (100-50)/100 * 2 = 1_000_000.
 func TestCompletedWorkflowStats_PerModelContext(t *testing.T) {
 	env := NewTestEnv(t)
@@ -204,9 +204,9 @@ func TestCompletedWorkflowStats_PerModelContext(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CS-6", "test")
 
 	insertSessionWithContextLeft(t, env, "cs6-sess-1", "CS-6", wfiID,
-		"analyzer", "setup-analyzer", "opus_4_7_1m", "completed", "pass", 50)
+		"analyzer", "setup-analyzer", "opus-4-7-1m", "completed", "pass", 50)
 	insertSessionWithContextLeft(t, env, "cs6-sess-2", "CS-6", wfiID,
-		"builder", "implementor", "opus_4_7_1m", "completed", "pass", 50)
+		"builder", "implementor", "opus-4-7-1m", "completed", "pass", 50)
 
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
 	if err := wfiRepo.UpdateStatus(wfiID, model.WorkflowInstanceCompleted); err != nil {

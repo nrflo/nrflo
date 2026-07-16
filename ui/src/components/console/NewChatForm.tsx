@@ -12,8 +12,8 @@ interface NewChatFormProps {
 // Server-driven picker over GET /console/catalog — the same discovery
 // surface the native TUI uses. Engine availability (codex missing on the
 // server, API mode off) arrives as enabled/disabled_reason instead of being
-// re-derived client-side; each engine carries its own registry's models
-// (cli_models vs api_models — colliding id namespaces). CLI engines accept
+// re-derived client-side; each engine carries the unified rows that support
+// its mode, with mode-specific mapped model and effort fields. CLI engines accept
 // an empty model (engine default); the api engine requires one
 // (requires_model). The read-only workdir line shows project.root_path —
 // exactly what buildChatEngineSpec uses as the engine WorkDir.

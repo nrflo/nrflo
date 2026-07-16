@@ -39,7 +39,7 @@ const (
 	testWFIID      = "wfi-bt"
 	testSessionID  = "sess-bt"
 	testAgentType  = "implementor"
-	testModelID    = "claude:opus_4_7"
+	testModelID    = "claude:opus-4-7"
 	testInstanceID = testWFIID
 )
 

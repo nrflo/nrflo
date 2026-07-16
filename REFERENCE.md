@@ -51,7 +51,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 ### Agents, templates, and configuration
 - **Workflow / agent / system-agent definitions** → [spawner](be/internal/spawner/CLAUDE.md) + [service](be/internal/service/CLAUDE.md) + [doc/](doc/)
 - **Default templates** → [service](be/internal/service/CLAUDE.md) + [api](be/internal/api/CLAUDE.md)
-- **CLI models registry / supported models** → [spawner](be/internal/spawner/CLAUDE.md)
+- **Unified model registry / per-mode models, contexts, and efforts** → [service](be/internal/service/CLAUDE.md) + [spawner](be/internal/spawner/CLAUDE.md)
 
 ### Execution backends (`execution_mode`)
 - **`api` — in-process Anthropic runner** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)

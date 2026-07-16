@@ -136,7 +136,7 @@ func TestPrepareSpawn_PythonBuiltinCollision_ReturnsError(t *testing.T) {
 
 	if _, err := env.database.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, tools, created_at, updated_at)
-		VALUES ('impl', ?, 'feature', 'sonnet', 20, '# test', 'api', '*', ?, ?)`,
+		VALUES ('impl', ?, 'feature', 'sonnet-5', 20, '# test', 'api', '*', ?, ?)`,
 		env.projectID, now, now,
 	); err != nil {
 		t.Fatalf("insert agent_definition: %v", err)
@@ -151,9 +151,9 @@ func TestPrepareSpawn_PythonBuiltinCollision_ReturnsError(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet":   {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
-			"opus_4_8": {Provider: "anthropic", MappedModel: "claude-opus-4-8", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
+			"opus-4-8": {Provider: "anthropic", APIModel: "claude-opus-4-8", APIContext: 200000},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {

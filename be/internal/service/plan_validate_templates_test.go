@@ -32,9 +32,9 @@ func TestValidatePlanManifest_TemplateModelDisabled(t *testing.T) {
 	t.Parallel()
 	pool, projectID, workflowID := setupPlanValidateEnv(t)
 
-	insertFanoutTemplate(t, pool, projectID, workflowID, "disabled-cli", "sonnet", "cli_interactive")
-	if _, err := pool.Exec(`UPDATE cli_models SET enabled = 0 WHERE id = 'sonnet'`); err != nil {
-		t.Fatalf("disable cli model: %v", err)
+	insertFanoutTemplate(t, pool, projectID, workflowID, "disabled-cli", "sonnet-5", "cli_interactive")
+	if _, err := pool.Exec(`UPDATE models SET enabled = 0 WHERE id = 'sonnet-5'`); err != nil {
+		t.Fatalf("disable model: %v", err)
 	}
 
 	m := baseValidManifest("disabled-cli")
@@ -49,19 +49,19 @@ func TestValidatePlanManifest_TemplateModelDisabled(t *testing.T) {
 	if !strings.Contains(msg, "cli_interactive") {
 		t.Fatalf("expected error to name the execution mode, got: %v", msg)
 	}
-	if !strings.Contains(msg, `"sonnet"`) {
+	if !strings.Contains(msg, `"sonnet-5"`) {
 		t.Fatalf("expected error to name the model id, got: %v", msg)
 	}
 }
 
-// Same as above but for an api-mode template whose api_models row is disabled.
+// Same as above but for an API-mode template whose unified model row is disabled.
 func TestValidatePlanManifest_APITemplateModelDisabled(t *testing.T) {
 	t.Parallel()
 	pool, projectID, workflowID := setupPlanValidateEnv(t)
 
-	insertFanoutTemplate(t, pool, projectID, workflowID, "disabled-api", "sonnet", "api")
-	if _, err := pool.Exec(`UPDATE api_models SET enabled = 0 WHERE id = 'sonnet'`); err != nil {
-		t.Fatalf("disable api model: %v", err)
+	insertFanoutTemplate(t, pool, projectID, workflowID, "disabled-api", "sonnet-5", "api")
+	if _, err := pool.Exec(`UPDATE models SET enabled = 0 WHERE id = 'sonnet-5'`); err != nil {
+		t.Fatalf("disable model: %v", err)
 	}
 
 	m := baseValidManifest("disabled-api")
@@ -76,7 +76,7 @@ func TestValidatePlanManifest_APITemplateModelDisabled(t *testing.T) {
 	if !strings.Contains(msg, "api") {
 		t.Fatalf("expected error to name the execution mode, got: %v", msg)
 	}
-	if !strings.Contains(msg, `"sonnet"`) {
+	if !strings.Contains(msg, `"sonnet-5"`) {
 		t.Fatalf("expected error to name the model id, got: %v", msg)
 	}
 }

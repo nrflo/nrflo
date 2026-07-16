@@ -11,7 +11,7 @@ func insertTestSession(t *testing.T, env *TestEnv, sessionID, ticketID string) {
 	env.CreateTicket(t, ticketID, "ticket-"+ticketID)
 	env.InitWorkflow(t, ticketID)
 	wfiID := env.GetWorkflowInstanceID(t, ticketID, "test")
-	env.InsertAgentSession(t, sessionID, ticketID, wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, sessionID, ticketID, wfiID, "analyzer", "analyzer", "sonnet-5")
 }
 
 func TestSessionMessages_InsertAndRetrieve(t *testing.T) {

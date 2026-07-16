@@ -129,7 +129,7 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	// Command that exits with code 0
 	cmd := exec.Command("true")
@@ -141,7 +141,7 @@ func TestHandleCompletion_ExitZeroNoExplicitCompletion(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -189,7 +189,7 @@ func TestHandleCompletion_ExitZeroPreservesExplicitPassReason(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	// Simulate `nrflo agent finished` having stored explicit pass + reason.
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -206,7 +206,7 @@ func TestHandleCompletion_ExitZeroPreservesExplicitPassReason(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -247,7 +247,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "fail", "explicit"); err != nil {
@@ -263,7 +263,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -307,7 +307,7 @@ func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "continue", "explicit"); err != nil {
@@ -323,7 +323,7 @@ func TestHandleCompletion_ExitZeroWithExplicitContinue(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -367,7 +367,7 @@ func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	// Command that exits with non-zero code
 	cmd := exec.Command("false")
@@ -377,7 +377,7 @@ func TestHandleCompletion_NonZeroExitCode(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -421,7 +421,7 @@ func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	cmd := exec.Command("true")
 	if err := cmd.Run(); err != nil {
@@ -433,7 +433,7 @@ func TestHandleCompletion_EndedAtTimestamp(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

@@ -15,11 +15,12 @@ vi.mock('@/stores/projectStore', () => ({
   ),
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useCLIModels: () => ({
+vi.mock('@/hooks/useModels', () => ({
+  cliTypeForProvider: (provider: string) => provider === 'anthropic' ? 'claude' : 'codex',
+  useModels: () => ({
     data: [
-      { id: 'claude-sonnet', cli_type: 'claude', display_name: 'Claude Sonnet', enabled: true },
-      { id: 'codex-mini', cli_type: 'codex', display_name: 'Codex Mini', enabled: true },
+      { id: 'sonnet-5', provider: 'anthropic', cli_model: 'claude-sonnet-5', display_name: 'Claude Sonnet', enabled: true },
+      { id: 'gpt-5.4-mini', provider: 'openai', cli_model: 'gpt-5.4-mini', display_name: 'Codex Mini', enabled: true },
     ],
   }),
 }))
@@ -115,7 +116,7 @@ describe('WorkflowDefForm — observer fields', () => {
         id: 'my-flow',
         observer_context: 'Watch carefully',
         observer_provider: 'claude',
-        observer_model: 'claude-sonnet',
+        observer_model: 'sonnet-5',
       },
     })
 
@@ -154,7 +155,7 @@ describe('WorkflowDefForm — observer fields', () => {
     await user.click(screen.getByRole('button', { name: /submit/i }))
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ observer_provider: 'claude', observer_model: 'claude-sonnet' })
+      expect.objectContaining({ observer_provider: 'claude', observer_model: 'sonnet-5' })
     )
   })
 
@@ -163,7 +164,7 @@ describe('WorkflowDefForm — observer fields', () => {
     const onSubmit = vi.fn()
     renderForm({
       isCreate: false,
-      initial: { id: 'my-flow', observer_provider: 'claude', observer_model: 'claude-sonnet' },
+      initial: { id: 'my-flow', observer_provider: 'claude', observer_model: 'sonnet-5' },
       onSubmit,
     })
 

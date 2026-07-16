@@ -16,13 +16,13 @@ import (
 
 // addFanoutTemplate inserts a fanout_template agent definition into
 // workflowID, making service.IsPlanDriven true for it. Column defaults
-// (model='sonnet', execution_mode='cli_interactive', consultant=0) apply.
+// (model='sonnet-5', execution_mode='cli_interactive', consultant=0) apply.
 func addFanoutTemplate(t *testing.T, env *testEnv, workflowID, templateID string) {
 	t.Helper()
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	_, err := env.pool.Exec(
-		`INSERT INTO agent_definitions (id, project_id, workflow_id, node_role, created_at, updated_at)
-		 VALUES (?, ?, ?, 'fanout_template', ?, ?)`,
+		`INSERT INTO agent_definitions (id, project_id, workflow_id, node_role, model, created_at, updated_at)
+		 VALUES (?, ?, ?, 'fanout_template', 'sonnet-5', ?, ?)`,
 		templateID, env.project, workflowID, now, now)
 	if err != nil {
 		t.Fatalf("insert fanout_template def %s: %v", templateID, err)

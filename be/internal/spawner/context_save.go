@@ -131,7 +131,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 	}
 
 	// Load system agent definition, preferring a backend-specific variant.
-	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewAPIModelService(pool, s.config.Clock))
+	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewModelService(pool, s.config.Clock))
 	sysDef, err := svc.GetForBackend("context-saver", backendName)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -190,7 +190,6 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		ModelConfigs:       s.config.ModelConfigs,
 		ErrorSvc:           s.config.ErrorSvc,
 		BuildAPIProvider:   s.config.BuildAPIProvider,
-		APIModelConfigs:    s.config.APIModelConfigs,
 		AgentSvc:           s.config.AgentSvc,
 		FindingsSvc:        s.config.FindingsSvc,
 		ProjectFindingsSvc: s.config.ProjectFindingsSvc,

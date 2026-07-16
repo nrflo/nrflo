@@ -28,7 +28,7 @@ func setupEffectiveModeFixture(t *testing.T) *logFixture {
 	f := setupLogFixture(t)
 	mustExecLog(t, f.db, `INSERT INTO agent_definitions
 		(id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at)
-		VALUES ('agent-api', 'log-proj', 'log-wf', 'sonnet', 20, '', 0, 'api', datetime('now'), datetime('now'))`)
+		VALUES ('agent-api', 'log-proj', 'log-wf', 'sonnet-5', 20, '', 0, 'api', datetime('now'), datetime('now'))`)
 	return f
 }
 

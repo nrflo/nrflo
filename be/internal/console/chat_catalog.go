@@ -29,13 +29,9 @@ func (s *ChatService) Catalog(projectID string) (types.ConsoleCatalog, error) {
 	if !exists {
 		return types.ConsoleCatalog{}, service.ErrConsoleProjectNotFound
 	}
-	cliModels, err := service.NewCLIModelService(s.deps.Pool, s.deps.Clock).ListEnabled()
+	models, err := service.NewModelService(s.deps.Pool, s.deps.Clock).ListEnabled()
 	if err != nil {
-		return types.ConsoleCatalog{}, fmt.Errorf("list console CLI models: %w", err)
-	}
-	apiModels, err := service.NewAPIModelService(s.deps.Pool, s.deps.Clock).ListEnabled()
-	if err != nil {
-		return types.ConsoleCatalog{}, fmt.Errorf("list console API models: %w", err)
+		return types.ConsoleCatalog{}, fmt.Errorf("list console models: %w", err)
 	}
 	apiMode, err := service.NewGlobalSettingsService(s.deps.Pool, s.deps.Clock).Get("api_mode_enabled")
 	if err != nil {
@@ -43,9 +39,9 @@ func (s *ChatService) Catalog(projectID string) (types.ConsoleCatalog, error) {
 	}
 
 	engines := []types.ConsoleEngineOption{
-		cliEngineOption("claude", "Claude", cliModels),
-		cliEngineOption("codex", "Codex", cliModels),
-		apiEngineOption(apiMode == "true", apiModels),
+		cliEngineOption("claude", "Claude", models),
+		cliEngineOption("codex", "Codex", models),
+		apiEngineOption(apiMode == "true", models),
 	}
 	sessions, err := s.catalogSessions(projectID)
 	if err != nil {
@@ -66,16 +62,16 @@ func brandOf(provider string) string {
 	return provider
 }
 
-func cliEngineOption(id, name string, models []*model.CLIModel) types.ConsoleEngineOption {
+func cliEngineOption(id, name string, models []*model.Model) types.ConsoleEngineOption {
 	result := types.ConsoleEngineOption{
 		ID: id, DisplayName: name, Kind: "cli", Brand: brandOf(id), Enabled: service.CLIAvailable(id),
 	}
 	if !result.Enabled {
 		result.DisabledReason = id + " CLI is not installed on the server"
 	}
-	own := make([]*model.CLIModel, 0, len(models))
+	own := make([]*model.Model, 0, len(models))
 	for _, item := range models {
-		if item.CLIType == id {
+		if item.CLIModel != "" && cliEngineForProvider(item.Provider) == id {
 			own = append(own, item)
 		}
 	}
@@ -83,27 +79,32 @@ func cliEngineOption(id, name string, models []*model.CLIModel) types.ConsoleEng
 	for _, item := range own {
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: result.Brand,
-			MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
-			SupportedEfforts: item.SupportedEfforts,
+			Provider: item.Provider, MappedModel: item.CLIModel, ReasoningEffort: item.DefaultEffort,
+			SupportedEfforts: item.CLIEfforts,
 		})
 	}
 	return result
 }
 
-func apiEngineOption(enabled bool, models []*model.APIModel) types.ConsoleEngineOption {
+func apiEngineOption(enabled bool, models []*model.Model) types.ConsoleEngineOption {
 	result := types.ConsoleEngineOption{
 		ID: "api", DisplayName: "Direct API", Kind: "api", Enabled: enabled, RequiresModel: true,
 	}
 	if !enabled {
 		result.DisabledReason = "API mode is disabled"
 	}
-	sorted := append([]*model.APIModel(nil), models...)
+	sorted := make([]*model.Model, 0, len(models))
+	for _, item := range models {
+		if item.APIModel != "" {
+			sorted = append(sorted, item)
+		}
+	}
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].CreatedAt.After(sorted[j].CreatedAt) })
 	for _, item := range sorted {
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: brandOf(item.Provider),
-			Provider: item.Provider, MappedModel: item.MappedModel, ReasoningEffort: item.ReasoningEffort,
-			SupportedEfforts: item.SupportedEfforts,
+			Provider: item.Provider, MappedModel: item.APIModel, ReasoningEffort: item.DefaultEffort,
+			SupportedEfforts: item.APIEfforts,
 		})
 	}
 	if enabled && len(result.Models) == 0 {
@@ -111,6 +112,17 @@ func apiEngineOption(enabled bool, models []*model.APIModel) types.ConsoleEngine
 		result.DisabledReason = "no enabled API models"
 	}
 	return result
+}
+
+func cliEngineForProvider(provider string) string {
+	switch provider {
+	case "anthropic":
+		return "claude"
+	case "openai":
+		return "codex"
+	default:
+		return ""
+	}
 }
 
 func (s *ChatService) catalogSessions(projectID string) ([]types.ConsoleSessionOption, error) {

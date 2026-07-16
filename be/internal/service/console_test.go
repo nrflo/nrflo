@@ -188,7 +188,7 @@ func TestConsoleCloseSession_WorkflowAgentSessionErrors(t *testing.T) {
 	}
 	if _, err := pool.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, created_at, updated_at)
-		VALUES ('wf-agent-1', 'proj1', '', 'wfi-1', 'p', 'a', 'sonnet', 'user_interactive', 'workflow_agent', ?, ?)`, now, now); err != nil {
+		VALUES ('wf-agent-1', 'proj1', '', 'wfi-1', 'p', 'a', 'sonnet-5', 'user_interactive', 'workflow_agent', ?, ?)`, now, now); err != nil {
 		t.Fatalf("insert workflow agent session: %v", err)
 	}
 

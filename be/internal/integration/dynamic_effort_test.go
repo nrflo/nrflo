@@ -12,7 +12,7 @@ import (
 
 // TestPlanMaterialize_ReasoningEffort_DistinctOverridesPerTemplate is the
 // DYNWF-8 acceptance test: two fanout_template agent definitions bound to
-// the SAME cli_models row ("sonnet") but with different reasoning_effort
+// the same unified model row ("sonnet-5") but with different reasoning_effort
 // overrides are both referenced by a materialized plan; each materialized
 // node's resolved SpawnerAgentConfig (service.LoadMaterializedAgentConfigs
 // -- the exact call orchestrator.materializeAndSplice/runLoop/plan_boundary.go
@@ -40,7 +40,7 @@ func TestPlanMaterialize_ReasoningEffort_DistinctOverridesPerTemplate(t *testing
 		Layer:           0,
 		NodeRole:        "fanout_template",
 		Description:     "high-effort worker template",
-		Model:           "sonnet",
+		Model:           "sonnet-5",
 		ExecutionMode:   "cli_interactive",
 		ReasoningEffort: &highEffort,
 	}); err != nil {
@@ -52,7 +52,7 @@ func TestPlanMaterialize_ReasoningEffort_DistinctOverridesPerTemplate(t *testing
 		Layer:           0,
 		NodeRole:        "fanout_template",
 		Description:     "low-effort worker template",
-		Model:           "sonnet",
+		Model:           "sonnet-5",
 		ExecutionMode:   "cli_interactive",
 		ReasoningEffort: &lowEffort,
 	}); err != nil {
@@ -114,7 +114,7 @@ func TestPlanMaterialize_ReasoningEffort_DistinctOverridesPerTemplate(t *testing
 		t.Fatal("LoadMaterializedAgentConfigs missing worker-low")
 	}
 
-	if highCfg.Model != "sonnet" || lowCfg.Model != "sonnet" {
+	if highCfg.Model != "sonnet-5" || lowCfg.Model != "sonnet-5" {
 		t.Fatalf("both templates must resolve the same model row: worker-high.Model=%q worker-low.Model=%q", highCfg.Model, lowCfg.Model)
 	}
 	if highCfg.ReasoningEffort == nil || *highCfg.ReasoningEffort != "high" {

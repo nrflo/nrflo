@@ -54,7 +54,7 @@ func TestWorkflowContinueSocket_OwnerSession_CallsRunner(t *testing.T) {
 	env.CreateTicket(t, "WC-1", "continue ticket")
 	env.InitWorkflow(t, "WC-1")
 	wfiID := env.GetWorkflowInstanceID(t, "WC-1", "test")
-	env.InsertAgentSession(t, "sess-wc-1", "WC-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wc-1", "WC-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	runner := &fakeSocketWorkflowRunner{}
 	env.Server.SetWorkflowRunner(runner)
@@ -86,7 +86,7 @@ func TestWorkflowContinueSocket_WrongSession_ValidationError(t *testing.T) {
 	env.CreateTicket(t, "WC-2a", "ticket one")
 	env.InitWorkflow(t, "WC-2a")
 	wfi1 := env.GetWorkflowInstanceID(t, "WC-2a", "test")
-	env.InsertAgentSession(t, "sess-wc-2a", "WC-2a", wfi1, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wc-2a", "WC-2a", wfi1, "analyzer", "analyzer", "sonnet-5")
 
 	env.CreateTicket(t, "WC-2b", "ticket two")
 	env.InitWorkflow(t, "WC-2b")
@@ -107,7 +107,7 @@ func TestWorkflowContinueSocket_NilRunner_InternalError(t *testing.T) {
 	env.CreateTicket(t, "WC-3", "nil runner")
 	env.InitWorkflow(t, "WC-3")
 	wfiID := env.GetWorkflowInstanceID(t, "WC-3", "test")
-	env.InsertAgentSession(t, "sess-wc-3", "WC-3", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wc-3", "WC-3", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Intentionally do NOT set a workflow runner
 
@@ -122,7 +122,7 @@ func TestWorkflowFailSocket_OwnerSession_CallsRunner(t *testing.T) {
 	env.CreateTicket(t, "WF-1", "fail ticket")
 	env.InitWorkflow(t, "WF-1")
 	wfiID := env.GetWorkflowInstanceID(t, "WF-1", "test")
-	env.InsertAgentSession(t, "sess-wf-1", "WF-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wf-1", "WF-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	runner := &fakeSocketWorkflowRunner{}
 	env.Server.SetWorkflowRunner(runner)
@@ -153,7 +153,7 @@ func TestWorkflowFailSocket_MissingReason_ValidationError(t *testing.T) {
 	env.CreateTicket(t, "WF-2", "missing reason")
 	env.InitWorkflow(t, "WF-2")
 	wfiID := env.GetWorkflowInstanceID(t, "WF-2", "test")
-	env.InsertAgentSession(t, "sess-wf-2", "WF-2", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wf-2", "WF-2", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	runner := &fakeSocketWorkflowRunner{}
 	env.Server.SetWorkflowRunner(runner)
@@ -171,7 +171,7 @@ func TestWorkflowFailSocket_WrongSession_ValidationError(t *testing.T) {
 	env.CreateTicket(t, "WF-3a", "ticket one")
 	env.InitWorkflow(t, "WF-3a")
 	wfi1 := env.GetWorkflowInstanceID(t, "WF-3a", "test")
-	env.InsertAgentSession(t, "sess-wf-3a", "WF-3a", wfi1, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-wf-3a", "WF-3a", wfi1, "analyzer", "analyzer", "sonnet-5")
 
 	env.CreateTicket(t, "WF-3b", "ticket two")
 	env.InitWorkflow(t, "WF-3b")

@@ -49,7 +49,7 @@ func newResumeTestServer(t *testing.T) (*Server, string) {
 
 // insertResumeTestSession inserts the minimal DB records needed to test
 // handleResumeSession and handleResumeSessionProject.
-// modelID is the raw string stored in agent_sessions.model_id (e.g. "claude:sonnet").
+// modelID is the raw string stored in agent_sessions.model_id (e.g. "claude:sonnet-5").
 // Pass an empty string to insert a NULL model_id.
 func insertResumeTestSession(t *testing.T, dbPath, sessionID, projectID string, status model.AgentSessionStatus, modelID string) {
 	t.Helper()
@@ -141,7 +141,7 @@ func TestHandleResumeSession_SessionNotFound(t *testing.T) {
 
 func TestHandleResumeSession_WrongProject(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-wp-rs", "proj-rs-correct", model.AgentSessionCompleted, "claude:sonnet")
+	insertResumeTestSession(t, dbPath, "sess-wp-rs", "proj-rs-correct", model.AgentSessionCompleted, "claude:sonnet-5")
 
 	req := httptest.NewRequest(http.MethodPost,
 		withProject("/api/v1/tickets/TKT-1/workflow/resume-session", "proj-rs-wrong"),
@@ -157,7 +157,7 @@ func TestHandleResumeSession_WrongProject(t *testing.T) {
 
 func TestHandleResumeSession_NonClaudeSession(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-nc-rs", "proj-rs-nc", model.AgentSessionCompleted, "codex:codex_gpt_high")
+	insertResumeTestSession(t, dbPath, "sess-nc-rs", "proj-rs-nc", model.AgentSessionCompleted, "codex:gpt-5.3-codex")
 
 	req := httptest.NewRequest(http.MethodPost,
 		withProject("/api/v1/tickets/TKT-1/workflow/resume-session", "proj-rs-nc"),
@@ -173,7 +173,7 @@ func TestHandleResumeSession_NonClaudeSession(t *testing.T) {
 
 func TestHandleResumeSession_RunningSession(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-run-rs", "proj-rs-run", model.AgentSessionRunning, "claude:sonnet")
+	insertResumeTestSession(t, dbPath, "sess-run-rs", "proj-rs-run", model.AgentSessionRunning, "claude:sonnet-5")
 
 	req := httptest.NewRequest(http.MethodPost,
 		withProject("/api/v1/tickets/TKT-1/workflow/resume-session", "proj-rs-run"),
@@ -189,7 +189,7 @@ func TestHandleResumeSession_RunningSession(t *testing.T) {
 
 func TestHandleResumeSession_HappyPath(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-happy-rs", "proj-rs-happy", model.AgentSessionCompleted, "claude:sonnet")
+	insertResumeTestSession(t, dbPath, "sess-happy-rs", "proj-rs-happy", model.AgentSessionCompleted, "claude:sonnet-5")
 
 	req := httptest.NewRequest(http.MethodPost,
 		withProject("/api/v1/tickets/TKT-1/workflow/resume-session", "proj-rs-happy"),

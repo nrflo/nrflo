@@ -553,20 +553,13 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
 	admin("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
 
-	// CLI models (global) — writes are admin-only
-	protected("GET /api/v1/cli-models", s.handleListCLIModels)
-	admin("POST /api/v1/cli-models", s.handleCreateCLIModel)
-	protected("GET /api/v1/cli-models/{id}", s.handleGetCLIModel)
-	admin("PATCH /api/v1/cli-models/{id}", s.handleUpdateCLIModel)
-	admin("DELETE /api/v1/cli-models/{id}", s.handleDeleteCLIModel)
-	protected("POST /api/v1/cli-models/{id}/test", s.handleTestCLIModel)
-
-	// API models (global) — writes are admin-only
-	protected("GET /api/v1/api-models", s.handleListAPIModels)
-	admin("POST /api/v1/api-models", s.handleCreateAPIModel)
-	protected("GET /api/v1/api-models/{id}", s.handleGetAPIModel)
-	admin("PATCH /api/v1/api-models/{id}", s.handleUpdateAPIModel)
-	admin("DELETE /api/v1/api-models/{id}", s.handleDeleteAPIModel)
+	// Models (global) — writes are admin-only
+	protected("GET /api/v1/models", s.handleListModels)
+	admin("POST /api/v1/models", s.handleCreateModel)
+	protected("GET /api/v1/models/{id}", s.handleGetModel)
+	admin("PATCH /api/v1/models/{id}", s.handleUpdateModel)
+	admin("DELETE /api/v1/models/{id}", s.handleDeleteModel)
+	protected("POST /api/v1/models/{id}/test", s.handleTestModel)
 
 	// Notification variables (global, no project scope)
 	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)

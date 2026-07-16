@@ -26,7 +26,7 @@ func TestBroadcastFromCtx_BuildsExpectedEvent(t *testing.T) {
 		TicketID:  "T-1",
 		Workflow:  "feature",
 		AgentType: "implementor",
-		ModelID:   "claude:opus",
+		ModelID:   "claude:opus-4-7",
 	}
 	data := map[string]interface{}{
 		"agent_type": bc.AgentType,

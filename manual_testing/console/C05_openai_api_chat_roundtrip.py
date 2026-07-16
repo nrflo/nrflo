@@ -1,7 +1,7 @@
 """C05 — direct-API console-chat roundtrip on an OpenAI model.
 
 Same lifecycle as C03, but the engine='api' chat resolves an
-`api_models` row with provider='openai', so apirun talks to the OpenAI
+unified model row with provider='openai', so apirun talks to the OpenAI
 Responses endpoint instead of Anthropic. SKIPs when no OpenAI key was
 reachable at server boot (test.py injects OPENAI_API_KEY via run_all's
 extra_env when lib/credentials can resolve one).
@@ -13,7 +13,7 @@ from lib import console as con
 from lib.credentials import probe_openai_key
 from lib.runtime import Ctx, Result, make_project
 
-OPENAI_MODEL = "gpt54_low"  # api_models registry id, provider='openai'
+OPENAI_MODEL = "gpt-5.4"
 
 
 def run(ctx: Ctx) -> Result:

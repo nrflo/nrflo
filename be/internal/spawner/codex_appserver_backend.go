@@ -54,6 +54,15 @@ func (b *codexAppServerBackend) NaturalExitGrace() time.Duration { return 2 * ti
 // an error so the spawn fails loudly; handshake/runtime failures are handled
 // inside the goroutine (proc.waitErr → handleCompletion).
 func (b *codexAppServerBackend) Start(ctx context.Context, proc *processInfo, prep *prepResult) error {
+	model := prep.opts.MappedModel
+	if model == "" {
+		return fmt.Errorf("codex app-server: mapped model is required")
+	}
+	effort := prep.opts.ReasoningEffort
+	if effort == "" {
+		return fmt.Errorf("codex app-server: reasoning effort is required")
+	}
+
 	profileDir, err := os.MkdirTemp("", "nrflo-codex-as-"+proc.sessionID+"-*")
 	if err != nil {
 		return fmt.Errorf("codex app-server: mkdir profile: %w", err)
@@ -63,15 +72,6 @@ func (b *codexAppServerBackend) Start(ctx context.Context, proc *processInfo, pr
 		return fmt.Errorf("codex app-server: write profile: %w", err)
 	}
 	b.profileDir = profileDir
-
-	model := prep.opts.MappedModel
-	if model == "" {
-		model = (&CodexAdapter{}).MapModel(prep.opts.Model)
-	}
-	effort := prep.opts.ReasoningEffort
-	if effort == "" {
-		effort = (&CodexAdapter{}).GetReasoningEffort(prep.opts.Model)
-	}
 
 	env := removeEnvKey(prep.opts.Env, "CODEX_HOME=")
 	env = append(env, "CODEX_HOME="+profileDir)

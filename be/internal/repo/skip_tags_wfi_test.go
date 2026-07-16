@@ -30,7 +30,7 @@ func TestAgentDefinitionTagCreateAndGet(t *testing.T) {
 		t.Run("tag="+tc.tag, func(t *testing.T) {
 			def := &model.AgentDefinition{
 				ID: tc.defID, ProjectID: "proj", WorkflowID: "wf",
-				Model: "sonnet", Timeout: 20, Prompt: "prompt", Tag: tc.tag,
+				Model: "sonnet-5", Timeout: 20, Prompt: "prompt", Tag: tc.tag,
 			}
 			if err := agentRepo.Create(def); err != nil {
 				t.Fatalf("Create: %v", err)
@@ -55,7 +55,7 @@ func TestAgentDefinitionTagUpdate(t *testing.T) {
 
 	def := &model.AgentDefinition{
 		ID: "agent-upd-tag", ProjectID: "proj", WorkflowID: "wf",
-		Model: "sonnet", Timeout: 20, Prompt: "prompt", Tag: "",
+		Model: "sonnet-5", Timeout: 20, Prompt: "prompt", Tag: "",
 	}
 	if err := agentRepo.Create(def); err != nil {
 		t.Fatalf("Create: %v", err)
@@ -89,8 +89,8 @@ func TestAgentDefinitionTagInList(t *testing.T) {
 	agentRepo := NewAgentDefinitionRepo(pool, clock.Real())
 
 	for _, d := range []*model.AgentDefinition{
-		{ID: "ag-list-1", ProjectID: "proj", WorkflowID: "wf", Model: "sonnet", Timeout: 20, Prompt: "p", Tag: "be"},
-		{ID: "ag-list-2", ProjectID: "proj", WorkflowID: "wf", Model: "haiku", Timeout: 10, Prompt: "p", Tag: ""},
+		{ID: "ag-list-1", ProjectID: "proj", WorkflowID: "wf", Model: "sonnet-5", Timeout: 20, Prompt: "p", Tag: "be"},
+		{ID: "ag-list-2", ProjectID: "proj", WorkflowID: "wf", Model: "haiku-4-5", Timeout: 10, Prompt: "p", Tag: ""},
 	} {
 		if err := agentRepo.Create(d); err != nil {
 			t.Fatalf("Create %s: %v", d.ID, err)
@@ -124,7 +124,7 @@ func TestAgentDefinitionTagDefaultEmpty(t *testing.T) {
 	seedWorkflowPool(t, pool, "proj", "wf")
 
 	_, err := pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, created_at, updated_at)
-		VALUES ('ag-no-tag', 'proj', 'wf', 'sonnet', 20, 'p', datetime('now'), datetime('now'))`)
+		VALUES ('ag-no-tag', 'proj', 'wf', 'sonnet-5', 20, 'p', datetime('now'), datetime('now'))`)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}

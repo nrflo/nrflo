@@ -150,7 +150,7 @@ func TestMigration030RepoRoundTrips(t *testing.T) {
 			ID:         "ag-tag-it",
 			ProjectID:  env.ProjectID,
 			WorkflowID: "test",
-			Model:      "sonnet",
+			Model:      "sonnet-5",
 			Timeout:    20,
 			Prompt:     "prompt",
 			Tag:        "be",

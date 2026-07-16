@@ -43,7 +43,7 @@ func TestDynamicWorkflow_RevisePlanApprovePlan_MaterializesViaTool(t *testing.T)
 		Layer:         0,
 		NodeRole:      "fanout_template",
 		Description:   "worker template",
-		Model:         "sonnet",
+		Model:         "sonnet-5",
 		ExecutionMode: "cli_interactive",
 	}); err != nil {
 		t.Fatalf("create fanout_template def: %v", err)

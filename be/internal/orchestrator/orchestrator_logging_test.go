@@ -267,7 +267,7 @@ func TestRetryFailedAgent_LogsRetryAttempt(t *testing.T) {
 	_, err = env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, result, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-	`, sessionID, env.project, "LOG-6", wfiID, "analyzer", "analyzer", "claude:sonnet", "failed", "fail")
+	`, sessionID, env.project, "LOG-6", wfiID, "analyzer", "analyzer", "claude:sonnet-5", "failed", "fail")
 	if err != nil {
 		t.Fatalf("failed to create agent session: %v", err)
 	}

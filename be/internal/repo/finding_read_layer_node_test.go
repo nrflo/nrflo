@@ -41,7 +41,7 @@ func insertLayerAgentDef(t *testing.T, pool *db.Pool, id string, layer, consulta
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := pool.Exec(`
 		INSERT INTO agent_definitions (id, project_id, workflow_id, layer, model, prompt, tag, low_consumption_model, tools, consultant, node_role, created_at, updated_at)
-		VALUES (?, 'proj-ln', 'wf-ln', ?, 'sonnet', '', '', '', '', ?, ?, ?, ?)`,
+		VALUES (?, 'proj-ln', 'wf-ln', ?, 'sonnet-5', '', '', '', '', ?, ?, ?, ?)`,
 		id, layer, consultant, nodeRole, now, now)
 	if err != nil {
 		t.Fatalf("insertLayerAgentDef(%s): %v", id, err)

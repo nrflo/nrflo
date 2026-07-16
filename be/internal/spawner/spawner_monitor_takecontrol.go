@@ -38,8 +38,8 @@ func (s *Spawner) registerTakeControlResumeLaunch(proc *processInfo) {
 	_, rawModel := parseModelID(proc.modelID)
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[rawModel]; ok {
-		mappedModel = cfg.MappedModel
-		reasoningEffort = cfg.ReasoningEffort
+		mappedModel = cfg.CLIModel
+		reasoningEffort = cfg.DefaultEffort
 	}
 	if mappedModel == "" {
 		mappedModel = proc.adapter.MapModel(rawModel)

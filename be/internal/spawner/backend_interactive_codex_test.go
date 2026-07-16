@@ -45,7 +45,7 @@ func TestInteractiveBackend_CodexBuildsProfile(t *testing.T) {
 	proc := &processInfo{sessionID: sessionID, doneCh: make(chan struct{})}
 	prep := &prepResult{
 		prompt: "test prompt",
-		opts:   SpawnOptions{Model: "codex_gpt_normal", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/tmp"},
 	}
 
 	// Snapshot dirs before Start so we can identify the newly created one,
@@ -122,12 +122,12 @@ func TestInteractiveBackend_ClaudeUnaffected_NoCodexHome(t *testing.T) {
 	sessionID := "sess-claude-nohome"
 	proc := &processInfo{
 		sessionID: sessionID,
-		modelID:   "claude:sonnet",
+		modelID:   "claude:sonnet-5",
 		doneCh:    make(chan struct{}),
 	}
 	prep := &prepResult{
 		prompt: "test prompt",
-		opts:   SpawnOptions{Model: "sonnet", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "sonnet-5", WorkDir: "/tmp"},
 	}
 
 	t.Cleanup(func() {
@@ -181,7 +181,7 @@ func TestInteractiveBackend_CodexProfileFailureFallsThrough(t *testing.T) {
 	proc := &processInfo{sessionID: sessionID, doneCh: make(chan struct{})}
 	prep := &prepResult{
 		prompt: "test prompt",
-		opts:   SpawnOptions{Model: "codex_gpt_normal", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/tmp"},
 	}
 
 	t.Cleanup(func() {
@@ -211,7 +211,7 @@ func TestInteractiveBackend_CodexCleanup_OnPTYCreateError(t *testing.T) {
 	proc := &processInfo{sessionID: sessionID, doneCh: make(chan struct{})}
 	prep := &prepResult{
 		prompt: "test",
-		opts:   SpawnOptions{Model: "codex_gpt_normal", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/tmp"},
 	}
 
 	// Snapshot before to detect only dirs created by this call.
@@ -244,7 +244,7 @@ func TestInteractiveBackend_CodexDirNameContainsSessionID(t *testing.T) {
 	proc := &processInfo{sessionID: sessionID, doneCh: make(chan struct{})}
 	prep := &prepResult{
 		prompt: "test",
-		opts:   SpawnOptions{Model: "codex_gpt_normal", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "gpt-5.3-codex", WorkDir: "/tmp"},
 	}
 
 	pattern := filepath.Join(os.TempDir(), "nrflo-codex-"+sessionID+"-*")

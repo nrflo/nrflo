@@ -14,7 +14,7 @@ func insertConsoleChatSessionRow(t *testing.T, database *db.DB, id, token string
 	updated := updatedAt.UTC().Format(time.RFC3339Nano)
 	_, err := database.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, spawn_token, created_at, updated_at)
-		VALUES (?, 'proj', '', NULL, 'console_chat', 'console_chat', 'sonnet', ?, 'console_chat', ?, ?, ?)`,
+		VALUES (?, 'proj', '', NULL, 'console_chat', 'console_chat', 'sonnet-5', ?, 'console_chat', ?, ?, ?)`,
 		id, status, token, updated, updated)
 	if err != nil {
 		t.Fatalf("insert console_chat session %s: %v", id, err)

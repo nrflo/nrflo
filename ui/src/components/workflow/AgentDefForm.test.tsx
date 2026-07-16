@@ -7,25 +7,21 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'haiku', label: 'Claude: Haiku' },
-      { value: 'opus', label: 'Claude: Opus' },
-      { value: 'opus_1m', label: 'Claude: Opus 1M' },
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'haiku-4-5', label: 'Anthropic: Haiku' },
+      { value: 'opus-4-8', label: 'Anthropic: Opus' },
+      { value: 'opus-4-8-1m', label: 'Anthropic: Opus 1M' },
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
-    { label: 'Codex', options: [
-      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
-      { value: 'codex_gpt_normal', label: 'Codex: GPT (Normal)' },
-      { value: 'codex_gpt54_high', label: 'Codex: GPT-54 (High)' },
-      { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
+    { label: 'OpenAI', options: [
+      { value: 'gpt-5.3-codex', label: 'OpenAI: GPT 5.3 Codex' },
+      { value: 'gpt-5.4', label: 'OpenAI: GPT 5.4' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 // Mock MarkdownEditor to avoid CodeMirror dependencies
 vi.mock('@/components/ui/MarkdownEditor', () => ({
@@ -81,7 +77,7 @@ function getRestartInput() {
 
 describe('AgentDefForm', () => {
   describe('model dropdown', () => {
-    it('renders model dropdown with exactly 9 options', async () => {
+    it('renders every mode-supported model option', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
@@ -94,7 +90,7 @@ describe('AgentDefForm', () => {
       // Each option is rendered as a div with the label text inside the dropdown menu
       const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
       const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
-      expect(optionDivs).toHaveLength(8)
+      expect(optionDivs).toHaveLength(6)
     })
 
     it('contains all model options', async () => {
@@ -105,24 +101,24 @@ describe('AgentDefForm', () => {
 
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)'])
+      expect(optionTexts).toEqual(['Anthropic: Haiku', 'Anthropic: Opus', 'Anthropic: Opus 1M', 'Anthropic: Sonnet', 'OpenAI: GPT 5.3 Codex', 'OpenAI: GPT 5.4'])
     })
 
     it('defaults to sonnet', () => {
       renderForm({ isCreate: true })
 
       const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('Claude: Sonnet')
+      expect(dropdownBtn.textContent).toContain('Anthropic: Sonnet')
     })
 
     it('uses initial model value when provided', () => {
       renderForm({
         isCreate: false,
-        initial: { model: 'opus' },
+        initial: { model: 'opus-4-8' },
       })
 
       const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('Claude: Opus')
+      expect(dropdownBtn.textContent).toContain('Anthropic: Opus')
     })
 
     it('allows changing model selection', async () => {
@@ -133,14 +129,14 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'Codex: GPT (High)')
+      await selectDropdownOption(user, getModelDropdownButton(), 'OpenAI: GPT 5.3 Codex')
 
       const submitButton = screen.getByRole('button', { name: /create/i })
       await user.click(submitButton)
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'codex_gpt_high',
+          model: 'gpt-5.3-codex',
         })
       )
     })
@@ -164,7 +160,7 @@ describe('AgentDefForm', () => {
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'setup-analyzer')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'You are a setup analyzer...')
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Anthropic: Opus')
 
       const timeoutInput = getTimeoutInput()
       await user.clear(timeoutInput)
@@ -179,7 +175,7 @@ describe('AgentDefForm', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         id: 'setup-analyzer',
         layer: 0,
-        model: 'opus',
+        model: 'opus-4-8',
         timeout: 30,
         prompt: 'You are a setup analyzer...',
         restart_threshold: 20,
@@ -188,8 +184,9 @@ describe('AgentDefForm', () => {
         low_consumption_model: undefined,
         execution_mode: 'cli_interactive',
         tools: '',
-        api_max_iterations: undefined,
+        api_max_iterations: undefined, api_max_tokens: undefined,
         validation_commands: [],
+        consultant: undefined, node_role: undefined, description: undefined,
         reasoning_effort: null,
       })
     })
@@ -212,7 +209,7 @@ describe('AgentDefForm', () => {
 
       expect(onSubmit).toHaveBeenCalledWith({
         layer: 0,
-        model: 'sonnet',
+        model: 'sonnet-5',
         timeout: 20,
         prompt: 'New prompt',
         restart_threshold: undefined,
@@ -221,8 +218,9 @@ describe('AgentDefForm', () => {
         low_consumption_model: undefined,
         execution_mode: 'cli_interactive',
         tools: '',
-        api_max_iterations: undefined,
+        api_max_iterations: undefined, api_max_tokens: undefined,
         validation_commands: [],
+        consultant: undefined, node_role: undefined, description: undefined,
         reasoning_effort: null,
       })
     })
@@ -314,14 +312,14 @@ describe('AgentDefForm', () => {
         isCreate: false,
         initial: {
           id: 'test-agent',
-          model: 'haiku',
+          model: 'haiku-4-5',
           timeout: 45,
           restart_threshold: 30,
           prompt: 'Initial prompt',
         },
       })
 
-      expect(getModelDropdownButton().textContent).toContain('Claude: Haiku')
+      expect(getModelDropdownButton().textContent).toContain('Anthropic: Haiku')
       expect(getTimeoutInput()).toHaveValue(45)
       expect(getRestartInput()).toHaveValue(30)
       expect(screen.getByPlaceholderText(/agent prompt template/i)).toHaveValue('Initial prompt')
@@ -354,25 +352,25 @@ describe('AgentDefForm', () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Opus')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Anthropic: Opus')
 
-      expect(getModelDropdownButton().textContent).toContain('Claude: Opus')
+      expect(getModelDropdownButton().textContent).toContain('Anthropic: Opus')
     })
 
     it('sonnet option exists and is selectable', () => {
       renderForm({ isCreate: true })
 
       // sonnet is the default, so it's already selected
-      expect(getModelDropdownButton().textContent).toContain('Claude: Sonnet')
+      expect(getModelDropdownButton().textContent).toContain('Anthropic: Sonnet')
     })
 
     it('haiku option exists and is selectable', async () => {
       const user = userEvent.setup()
       renderForm({ isCreate: true })
 
-      await selectDropdownOption(user, getModelDropdownButton(), 'Claude: Haiku')
+      await selectDropdownOption(user, getModelDropdownButton(), 'Anthropic: Haiku')
 
-      expect(getModelDropdownButton().textContent).toContain('Claude: Haiku')
+      expect(getModelDropdownButton().textContent).toContain('Anthropic: Haiku')
     })
 
     it('no extra model options exist', async () => {
@@ -385,8 +383,8 @@ describe('AgentDefForm', () => {
       const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
       const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
 
-      expect(optionTexts).toHaveLength(8)
-      expect(optionTexts).toEqual(['Claude: Haiku', 'Claude: Opus', 'Claude: Opus 1M', 'Claude: Sonnet', 'Codex: GPT (High)', 'Codex: GPT (Normal)', 'Codex: GPT-54 (High)', 'Codex: GPT-54 (Normal)'])
+      expect(optionTexts).toHaveLength(6)
+      expect(optionTexts).toEqual(['Anthropic: Haiku', 'Anthropic: Opus', 'Anthropic: Opus 1M', 'Anthropic: Sonnet', 'OpenAI: GPT 5.3 Codex', 'OpenAI: GPT 5.4'])
     })
   })
 
@@ -537,8 +535,8 @@ describe('AgentDefForm', () => {
     ]
 
     it.each([
-      ['claude', 'sonnet'],
-      ['codex', 'codex_gpt_high'],
+      ['claude', 'sonnet-5'],
+      ['codex', 'gpt-5.3-codex'],
     ])('shows same execution mode options for %s (%s)', async (_, model) => {
       const user = userEvent.setup()
       renderForm({ isCreate: false, initial: { model, prompt: 'test' } })

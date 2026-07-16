@@ -125,7 +125,7 @@ def run(ctx: Ctx) -> Result:
         client.create_workflow(pid, wid, scope_type="project")
         client.create_agent_def(
             pid, wid, "main",
-            model="haiku", layer=0, timeout=60, prompt=PROMPT,
+            model="haiku-4-5", layer=0, timeout=60, prompt=PROMPT,
             tools="agent_finished",
         )
 

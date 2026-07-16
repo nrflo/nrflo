@@ -37,7 +37,7 @@ func TestAgentSessionCRUDWithoutRawOutput(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CRUD-1", "test")
 
 	// Create a session via InsertAgentSession helper
-	env.InsertAgentSession(t, "sess-crud-1", "CRUD-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-crud-1", "CRUD-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Verify creation via service layer
 	session, err := env.AgentSvc.GetSessionByID("sess-crud-1")
@@ -62,7 +62,7 @@ func TestAgentSessionCRUDWithoutRawOutput(t *testing.T) {
 		WorkflowInstanceID: wfiID,
 		Phase:              "builder",
 		AgentType:          "builder",
-		ModelID:            sql.NullString{String: "claude:opus", Valid: true},
+		ModelID:            sql.NullString{String: "claude:opus-4-7", Valid: true},
 		Status:             model.AgentSessionRunning,
 		PID:                sql.NullInt64{Int64: 12345, Valid: true},
 		ContextLeft:        sql.NullInt64{Int64: 75, Valid: true},
@@ -98,7 +98,7 @@ func TestAgentSessionMarshalJSONWithoutRawOutputSize(t *testing.T) {
 	env.InitWorkflow(t, "JSON-1")
 	wfiID := env.GetWorkflowInstanceID(t, "JSON-1", "test")
 
-	env.InsertAgentSession(t, "sess-json-1", "JSON-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-json-1", "JSON-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Retrieve session
 	session, err := env.AgentSvc.GetSessionByID("sess-json-1")
@@ -145,7 +145,7 @@ func TestServiceScanSessionJoinedWithoutRawOutput(t *testing.T) {
 	env.InitWorkflow(t, "JOIN-1")
 	wfiID := env.GetWorkflowInstanceID(t, "JOIN-1", "test")
 
-	env.InsertAgentSession(t, "sess-join-1", "JOIN-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-join-1", "JOIN-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Use GetRecentSessions which performs JOIN with workflow_instances
 	sessions, err := env.AgentSvc.GetRecentSessions(env.ProjectID, 10)
@@ -192,7 +192,7 @@ func TestGetSessionByIDWithoutRawOutput(t *testing.T) {
 	env.InitWorkflow(t, "GETID-1")
 	wfiID := env.GetWorkflowInstanceID(t, "GETID-1", "test")
 
-	env.InsertAgentSession(t, "sess-getid-1", "GETID-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-getid-1", "GETID-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// GetSessionByID uses JOIN query
 	session, err := env.AgentSvc.GetSessionByID("sess-getid-1")
@@ -216,7 +216,7 @@ func TestSpawnerMessageHandlingWithoutRawOutput(t *testing.T) {
 	env.InitWorkflow(t, "MSG-1")
 	wfiID := env.GetWorkflowInstanceID(t, "MSG-1", "test")
 
-	env.InsertAgentSession(t, "sess-msg-1", "MSG-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-msg-1", "MSG-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Insert messages into agent_messages table directly (simulating spawner flush)
 	_, err := env.Pool.Exec(`
@@ -263,7 +263,7 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "E2E-1", "test")
 
 	// Create analyzer session
-	env.InsertAgentSession(t, "sess-e2e-analyzer", "E2E-1", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-e2e-analyzer", "E2E-1", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Update findings via socket
 	env.MustExecute(t, "findings.add", map[string]interface{}{
@@ -280,7 +280,7 @@ func TestEndToEndWorkflowWithoutRawOutput(t *testing.T) {
 	}
 
 	// Create and complete builder session
-	env.InsertAgentSession(t, "sess-e2e-builder", "E2E-1", wfiID, "builder", "builder", "opus_4_7")
+	env.InsertAgentSession(t, "sess-e2e-builder", "E2E-1", wfiID, "builder", "builder", "opus-4-7")
 
 	_, err = env.Pool.Exec(`UPDATE agent_sessions SET result = 'pass', status = 'completed', ended_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, "sess-e2e-builder")
 	if err != nil {

@@ -72,7 +72,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_DefOverrideReachesSpawnOptions(t *test
 	insertCLIAgentDefWithEffort(t, env, "impl", "opus48", "xhigh")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"opus48": {CLIType: "claude", MappedModel: "claude-opus-4-8", SupportedEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
+		"opus48": {Provider: "anthropic", CLIModel: "claude-opus-4-8", CLIEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -91,8 +91,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_DefOverrideReachesSpawnOptions(t *test
 // reaches SpawnOptions.ReasoningEffort via the same CLI-mode tail (codex and
 // claude share prepareSpawn's cli branch — only the MCP wiring diverges by
 // adapter). This is the field codexAppServerBackend.Start reads into
-// turnStartParams' `effort` instead of falling back to
-// CodexAdapter.GetReasoningEffort's default.
+// turnStartParams' registry-supplied `effort`.
 func TestPrepareSpawn_CLI_ReasoningEffort_CodexDefOverrideReachesSpawnOptions(t *testing.T) {
 	t.Parallel()
 	ensureTmpNrfloDir(t)
@@ -102,7 +101,7 @@ func TestPrepareSpawn_CLI_ReasoningEffort_CodexDefOverrideReachesSpawnOptions(t 
 	insertCLIAgentDefWithEffort(t, env, "impl", "codexsol", "ultra")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"codexsol": {CLIType: "codex", MappedModel: "gpt-5.6-sol", SupportedEfforts: []string{"low", "medium", "high", "ultra"}},
+		"codexsol": {Provider: "openai", CLIModel: "gpt-5.6-sol", CLIEfforts: []string{"low", "medium", "high", "ultra"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -125,15 +124,15 @@ func TestPrepareSpawn_CLI_ReasoningEffort_RowFallbackWhenNoOverride(t *testing.T
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertCLIAgentDefWithEffort(t, env, "impl", "sonnet", "")
+	insertCLIAgentDefWithEffort(t, env, "impl", "sonnet-5", "")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"sonnet": {CLIType: "claude", MappedModel: "claude-sonnet-5", ReasoningEffort: "medium", SupportedEfforts: []string{"low", "medium", "high", "xhigh"}},
+		"sonnet-5": {Provider: "anthropic", CLIModel: "claude-sonnet-5", DefaultEffort: "medium", CLIEfforts: []string{"low", "medium", "high", "xhigh"}},
 	}, nil)
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
 		AgentType: "impl", ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}
@@ -154,17 +153,17 @@ func TestPrepareSpawn_CLI_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T
 	defer env.cleanup()
 
 	// "xhigh" is not in this model row's supported_efforts, so the override is illegal.
-	insertCLIAgentDefWithEffort(t, env, "impl", "haiku", "xhigh")
+	insertCLIAgentDefWithEffort(t, env, "impl", "haiku-4-5", "xhigh")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"haiku": {CLIType: "claude", MappedModel: "haiku", SupportedEfforts: []string{"low", "medium", "high"}},
+		"haiku-4-5": {Provider: "anthropic", CLIModel: "haiku-4-5", CLIEfforts: []string{"low", "medium", "high"}},
 	}, nil)
 
 	_, _, err := sp.prepareSpawn(context.Background(), SpawnRequest{
 		AgentType: "impl", ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID,
-	}, "claude:haiku", "impl", env.wfiID)
+	}, "claude:haiku-4-5", "impl", env.wfiID)
 	if err == nil {
-		t.Fatal("prepareSpawn() = nil error; want error for an xhigh override on a haiku model row")
+		t.Fatal("prepareSpawn() = nil error; want error for an xhigh override on a haiku-4-5 model row")
 	}
 	if !strings.Contains(err.Error(), "xhigh") {
 		t.Errorf("error = %q, want it to name the invalid effort", err.Error())

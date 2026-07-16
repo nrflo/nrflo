@@ -896,15 +896,15 @@ func TestChainItemTokensUsed_WithCompletedWorkflow(t *testing.T) {
 	wfiA := "wfi-tka-001"
 	env.InitWorkflowWithID(t, "TK-A", wfiA)
 	insertSessionWithContextLeft(t, env, "sess-tka-1", "TK-A", wfiA,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 60)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 60)
 	insertSessionWithContextLeft(t, env, "sess-tka-2", "TK-A", wfiA,
-		"builder", "implementor", "claude:opus", "completed", "pass", 40)
+		"builder", "implementor", "claude:opus-4-7", "completed", "pass", 40)
 
 	// TK-B: 1 agent with context_left 75
 	wfiB := "wfi-tkb-001"
 	env.InitWorkflowWithID(t, "TK-B", wfiB)
 	insertSessionWithContextLeft(t, env, "sess-tkb-1", "TK-B", wfiB,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 75)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 75)
 
 	// Link workflow instances to chain items
 	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
@@ -1018,15 +1018,15 @@ func TestChainItemTokensUsed_RunningAgentsExcluded(t *testing.T) {
 
 	// Insert 1 completed agent with context_left=50
 	insertSessionWithContextLeft(t, env, "sess-tkd-1", "TK-D", wfiD,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 50)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 50)
 
 	// Insert 1 running agent with context_left=30 (should be excluded)
 	insertSessionWithContextLeft(t, env, "sess-tkd-2", "TK-D", wfiD,
-		"builder", "implementor", "claude:opus", "running", "", 30)
+		"builder", "implementor", "claude:opus-4-7", "running", "", 30)
 
 	// Insert 1 continued agent with context_left=20 (should be excluded)
 	insertSessionWithContextLeft(t, env, "sess-tkd-3", "TK-D", wfiD,
-		"verifier", "qa-verifier", "claude:sonnet", "continued", "", 20)
+		"verifier", "qa-verifier", "claude:sonnet-5", "continued", "", 20)
 
 	// Link workflow instance to chain item
 	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
@@ -1076,11 +1076,11 @@ func TestChainItemTokensUsed_NullContextLeftExcluded(t *testing.T) {
 
 	// Insert 1 completed agent with context_left=80
 	insertSessionWithContextLeft(t, env, "sess-tke-1", "TK-E", wfiE,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 80)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 80)
 
 	// Insert 1 completed agent with NULL context_left (should be excluded)
 	insertCompletedSession(t, env, "sess-tke-2", "TK-E", wfiE,
-		"builder", "implementor", "claude:opus", "completed", "pass")
+		"builder", "implementor", "claude:opus-4-7", "completed", "pass")
 
 	// Link workflow instance to chain item
 	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
@@ -1130,13 +1130,13 @@ func TestChainItemTokensUsed_BoundaryValues(t *testing.T) {
 	wfiF := "wfi-tkf-001"
 	env.InitWorkflowWithID(t, "TK-F", wfiF)
 	insertSessionWithContextLeft(t, env, "sess-tkf-1", "TK-F", wfiF,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 0)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 0)
 
 	// TK-G: context_left=100 (no consumption) → 0 tokens
 	wfiG := "wfi-tkg-001"
 	env.InitWorkflowWithID(t, "TK-G", wfiG)
 	insertSessionWithContextLeft(t, env, "sess-tkg-1", "TK-G", wfiG,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 100)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 100)
 
 	// Link workflow instances to chain items
 	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())
@@ -1204,7 +1204,7 @@ func TestChainItemTokensUsed_JSONOmitsZero(t *testing.T) {
 	wfiH := "wfi-tkh-001"
 	env.InitWorkflowWithID(t, "TK-H", wfiH)
 	insertSessionWithContextLeft(t, env, "sess-tkh-1", "TK-H", wfiH,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 50)
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 50)
 
 	// Link workflow instance to chain item
 	itemRepo := repo.NewChainItemRepo(env.Pool, clock.Real())

@@ -134,19 +134,19 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	findings1 := map[string]interface{}{
 		"to_resume": "implementor progress",
 	}
-	env.createContinuedSessionForAgent(t, session1, findings1, "implementor", "claude:opus", env.phase)
+	env.createContinuedSessionForAgent(t, session1, findings1, "implementor", "claude:opus-4-7", env.phase)
 
 	session2 := uuid.New().String()
 	findings2 := map[string]interface{}{
 		"to_resume": "test-writer progress",
 	}
-	env.createContinuedSessionForAgent(t, session2, findings2, "test-writer", "claude:sonnet", env.phase)
+	env.createContinuedSessionForAgent(t, session2, findings2, "test-writer", "claude:sonnet-5", env.phase)
 
 	session3 := uuid.New().String()
 	findings3 := map[string]interface{}{
 		"to_resume": "same agent different model",
 	}
-	env.createContinuedSessionForAgent(t, session3, findings3, env.agentType, "claude:haiku", env.phase)
+	env.createContinuedSessionForAgent(t, session3, findings3, env.agentType, "claude:haiku-4-5", env.phase)
 
 	session4 := uuid.New().String()
 	findings4 := map[string]interface{}{
@@ -155,17 +155,17 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	env.createContinuedSessionForAgent(t, session4, findings4, env.agentType, env.modelID, "different-phase")
 
 	// Verify each agent/model/phase combination gets the correct data
-	data, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "implementor", "claude:opus", env.phase, "")
+	data, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "implementor", "claude:opus-4-7", env.phase, "")
 	if data != "implementor progress" {
 		t.Errorf("implementor should get its own data, got %q", data)
 	}
 
-	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "test-writer", "claude:sonnet", env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "test-writer", "claude:sonnet-5", env.phase, "")
 	if data != "test-writer progress" {
 		t.Errorf("test-writer should get its own data, got %q", data)
 	}
 
-	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku", env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku-4-5", env.phase, "")
 	if data != "same agent different model" {
 		t.Errorf("different model should get its own data, got %q", data)
 	}
@@ -213,7 +213,7 @@ func setupE2ETestEnv(t *testing.T) *e2eTestEnv {
 	workflowID := "feature"
 	wfiID := uuid.New().String()
 	agentType := "test-agent"
-	modelID := "claude:sonnet"
+	modelID := "claude:sonnet-5"
 	phase := "test-phase"
 
 	// Create project

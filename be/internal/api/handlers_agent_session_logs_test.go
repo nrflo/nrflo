@@ -30,7 +30,7 @@ func newASLogsServer(t *testing.T) (*Server, *db.Pool) {
 		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, created_at, updated_at) VALUES ('test-wfi', 'test-proj', '', 'test-wf', 'active', 'project', datetime('now'), datetime('now'))`,
 		`INSERT INTO scheduled_tasks (id, project_id, name, cron_expression, created_at, updated_at) VALUES ('test-sched', 'test-proj', 'Sched', '0 * * * *', datetime('now'), datetime('now'))`,
 		`INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, status, scope_type, scheduled_task_id, created_at, updated_at) VALUES ('test-wfi-sched', 'test-proj', '', 'test-wf', 'completed', 'project', 'test-sched', datetime('now'), datetime('now'))`,
-		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at) VALUES ('agent-api', 'test-proj', 'test-wf', 'sonnet', 20, '', 0, 'api', datetime('now'), datetime('now'))`,
+		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at) VALUES ('agent-api', 'test-proj', 'test-wf', 'sonnet-5', 20, '', 0, 'api', datetime('now'), datetime('now'))`,
 	} {
 		if _, err := pool.Exec(q); err != nil {
 			t.Fatalf("seed: %v", err)

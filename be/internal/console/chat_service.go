@@ -77,7 +77,7 @@ func (s *ChatService) SetEngineFactory(f func(name string, deps spawner.EngineDe
 	s.engineFactory = f
 }
 
-// Create validates the project, resolves the cli_models row (if any), mints a
+// Create validates the project, resolves the selected models row (if any), mints a
 // kind='console_chat' agent_sessions row with a bearer spawn token, starts the
 // engine, and launches its event pump. Mirrors
 // service.ConsoleService.CreateSession (project Exists check, uuid id,

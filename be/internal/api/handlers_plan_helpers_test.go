@@ -61,7 +61,7 @@ func seedPlanInstance(t *testing.T, s *Server, projectID, instanceID string) {
 
 	if _, err := s.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, node_role, consultant, model, execution_mode, created_at, updated_at)
-		 VALUES ('tmpl1', ?, 'wf-test', 'fanout_template', 0, 'sonnet', 'cli_interactive', ?, ?)`,
+		 VALUES ('tmpl1', ?, 'wf-test', 'fanout_template', 0, 'sonnet-5', 'cli_interactive', ?, ?)`,
 		projectID, now, now,
 	); err != nil {
 		t.Fatalf("seed agent definition for project %q: %v", projectID, err)

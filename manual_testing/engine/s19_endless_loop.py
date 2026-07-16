@@ -24,7 +24,7 @@ from lib.runtime import (
 )
 
 
-# Per-provider model overrides; empty = use the runner default (e.g. haiku).
+# Per-provider model overrides; empty = use the runner default (e.g. haiku-4-5).
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
 

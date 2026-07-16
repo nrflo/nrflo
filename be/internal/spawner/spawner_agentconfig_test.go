@@ -28,7 +28,7 @@ func TestAgentConfigPrecedence_AgentDefWinsOverConfigAgents(t *testing.T) {
 	_, err := env.database.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, created_at, updated_at)
-		VALUES ('implementor', ?, 'feature', 'sonnet', 20, '# Implement the feature', 'api', ?, ?)`,
+		VALUES ('implementor', ?, 'feature', 'sonnet-5', 20, '# Implement the feature', 'api', ?, ?)`,
 		env.projectID, now, now,
 	)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestAgentConfigPrecedence_AgentDefWinsOverConfigAgents(t *testing.T) {
 		},
 		Agents: map[string]AgentConfig{
 			"implementor": {
-				Model:         "sonnet",
+				Model:         "sonnet-5",
 				ExecutionMode: "cli", // conflicts with agentDef execution_mode="api"
 			},
 		},
@@ -93,7 +93,7 @@ func TestAgentConfigPrecedence_FallsBackToConfigWhenNoAgentDef(t *testing.T) {
 	if _, err := env.database.Exec(
 		`INSERT INTO system_agent_definitions
 			(id, role, model, timeout, prompt, tools, execution_mode, created_at, updated_at)
-		VALUES ('my-agent', 'my-agent', 'sonnet', 20, '# Test prompt', '', 'cli_interactive', ?, ?)`,
+		VALUES ('my-agent', 'my-agent', 'sonnet-5', 20, '# Test prompt', '', 'cli_interactive', ?, ?)`,
 		now, now,
 	); err != nil {
 		t.Fatalf("insert system_agent_definitions: %v", err)
@@ -114,7 +114,7 @@ func TestAgentConfigPrecedence_FallsBackToConfigWhenNoAgentDef(t *testing.T) {
 		},
 		Agents: map[string]AgentConfig{
 			"my-agent": {
-				Model:         "sonnet",
+				Model:         "sonnet-5",
 				ExecutionMode: "api", // no agentDef → this should be used
 			},
 		},

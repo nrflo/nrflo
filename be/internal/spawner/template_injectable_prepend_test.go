@@ -16,12 +16,12 @@ func TestLoadTemplate_LowContextPrepended(t *testing.T) {
 
 	wfiID := env.getWfiID(t, ticketID)
 	createContinuedSessionInEnv(t, env, ticketID, wfiID,
-		"analyzer", "claude:sonnet", "test-phase", "low_context",
+		"analyzer", "claude:sonnet-5", "test-phase", "low_context",
 		map[string]interface{}{"to_resume": "saved progress data"})
 
 	sp := env.newSpawner()
 	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
+		"p", "c", "test", "claude:sonnet-5", "test-phase", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -54,12 +54,12 @@ func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 
 			wfiID := env.getWfiID(t, ticketID)
 			createContinuedSessionInEnv(t, env, ticketID, wfiID,
-				"analyzer", "claude:sonnet", "test-phase", reason,
+				"analyzer", "claude:sonnet-5", "test-phase", reason,
 				map[string]interface{}{})
 
 			sp := env.newSpawner()
 			result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-				"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
+				"p", "c", "test", "claude:sonnet-5", "test-phase", "", nil, 0)
 			if err != nil {
 				t.Fatalf("loadTemplate failed: %v", err)
 			}
@@ -90,12 +90,12 @@ func TestLoadTemplate_PrependOrdering(t *testing.T) {
 		},
 	})
 	createContinuedSessionInEnv(t, env, ticketID, wfiID,
-		"analyzer", "claude:sonnet", "test-phase", "low_context",
+		"analyzer", "claude:sonnet-5", "test-phase", "low_context",
 		map[string]interface{}{"to_resume": "saved state"})
 
 	sp := env.newSpawner()
 	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "test-phase", "", nil, 0)
+		"p", "c", "test", "claude:sonnet-5", "test-phase", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

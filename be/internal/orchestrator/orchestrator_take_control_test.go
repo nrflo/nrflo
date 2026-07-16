@@ -239,7 +239,7 @@ func insertRunningSession(t *testing.T, env *testEnv, wfiID, ticketID, sessionID
 			?, ?, ?, ?,
 			?, ?, ?, ?, ?)`,
 		sessionID, env.project, ticketID, wfiID, "test-phase", "test-agent",
-		sql.NullString{String: "claude:sonnet", Valid: true},
+		sql.NullString{String: "claude:sonnet-5", Valid: true},
 		"running",
 		sql.NullString{}, sql.NullString{}, sql.NullInt64{},
 		sql.NullInt64{}, sql.NullString{}, sql.NullString{}, sql.NullString{},

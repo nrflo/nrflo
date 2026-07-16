@@ -7,7 +7,7 @@ Deep mechanics for this package. The auto-loaded map lives in [CLAUDE.md](CLAUDE
 Files: `plan.go`, `plan_revise.go`, `plan_manifest.go`, `plan_validate.go`/`plan_validate_refs.go`, `plan_schema.go`, `plan_templates.go`, `plan_limits.go`, `plan_materialize.go`, `plan_status.go`, `workflow_instance_nodes.go`.
 
 - `PlanService`: draft/revise/approve→materialize/cancel/TTL-sweep; manifest v1 types + hash; `ValidatePlanManifest` returns one aggregated error.
-- Template library resolution + availability recheck: `PlanTemplate` carries effective `reasoning_effort` + `CLIType`; `EnabledTemplates`/`ValidateTemplatesEnabled` drop a template whose model row is disabled, whose CLI binary is absent (`CLIAvailable`), or when api mode is off.
+- Template library resolution + availability recheck: `PlanTemplate` carries effective `reasoning_effort` plus a CLI type derived from the model provider; `EnabledTemplates`/`ValidateTemplatesEnabled` drop a template when its selected registry mode is unavailable/disabled, its CLI binary is absent (`CLIAvailable`), or api mode is off.
 - Caps from config KV: `plan_max_layers`, `plan_max_nodes`, `plan_max_instruction_bytes`, `plan_draft_ttl_min` (project > global).
 - `Materialize` writes an approved revision's nodes into `workflow_instance_nodes`/`workflow_instance_layer_policies` exactly once (hash-stamped conditional UPDATE — idempotent across continue/retry/restart).
 - `DerivePlanInstanceStatus`/`IsPlanDriven`/`EffectivePhases` are the orchestrator's plan-boundary primitives — see [orchestrator/REFERENCE.md](../orchestrator/REFERENCE.md).

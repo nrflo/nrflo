@@ -8,24 +8,22 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'opus', label: 'Claude: Opus' },
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'opus-4-8', label: 'Anthropic: Opus' },
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
   return {
     id: 'test-agent',
     project_id: 'test-project',
     workflow_id: 'feature',
-    model: 'sonnet',
+    model: 'sonnet-5',
     timeout: 20,
     prompt: 'Test prompt',
     created_at: '2026-01-01T00:00:00Z',
@@ -101,7 +99,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       render(
         <AgentDefForm
           isCreate={true}
-          initial={{ id: 'new-agent', model: 'sonnet', timeout: 20, prompt: 'Test prompt' }}
+          initial={{ id: 'new-agent', model: 'sonnet-5', timeout: 20, prompt: 'Test prompt' }}
           onSubmit={onSubmit}
           onCancel={vi.fn()}
         />

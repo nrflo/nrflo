@@ -2,6 +2,7 @@ package console
 
 import (
 	"fmt"
+	"strings"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -11,12 +12,8 @@ import (
 
 // chatModelResolver resolves a chat session's model id into spec.Model plus
 // any engine-specific extras (reasoning effort, context length, provider).
-// cli_models and api_models are separate tables whose ids collide (both seed
-// "sonnet"/"haiku"), so resolution must diverge by engine — this is the one
-// legitimate switch beyond spawner.GetConsoleEngine (modelResolverFor below),
-// the same factory shape as GetConsoleEngine.
 // effort is an optional create-time override; when the model resolves to a
-// registry row it must be allowed by the row's supported_efforts.
+// registry row it must be allowed by the selected mode's effort list.
 type chatModelResolver interface {
 	Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error
 }
@@ -30,62 +27,66 @@ func modelResolverFor(engine string) chatModelResolver {
 	return cliModelResolver{engine: engine}
 }
 
-// cliModelResolver mirrors buildChatEngineSpec's original cli_models lookup:
-// an id absent from the registry passes through raw — still a legal CLI
-// model name, mirroring cli/console_client.go's resolveCLIModel. A row that
-// exists but belongs to another engine, or is disabled, is an error.
+// cliModelResolver permits raw CLI model names but validates registered rows
+// against the provider-derived engine and CLI-mode configuration.
 type cliModelResolver struct{ engine string }
 
 func (r cliModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error {
-	row, err := service.NewCLIModelService(pool, clk).Get(modelID)
+	row, err := service.NewModelService(pool, clk).Get(modelID)
 	if err != nil {
-		// Unknown id: keep spec.Model as the raw value, no fallback; an
-		// effort override passes through for the CLI itself to validate.
+		if !strings.HasPrefix(err.Error(), "model not found:") {
+			return err
+		}
+		spec.Model = modelID
 		spec.ReasoningEffort = effort
 		return nil
 	}
-	if row.CLIType != r.engine {
-		return fmt.Errorf("model %q is registered for cli %s, not %s", modelID, row.CLIType, r.engine)
+	registeredEngine := cliEngineForProvider(row.Provider)
+	if registeredEngine != r.engine {
+		return fmt.Errorf("model %q uses provider %s (%s CLI), not %s", modelID, row.Provider, registeredEngine, r.engine)
 	}
 	if !row.Enabled {
-		return fmt.Errorf("model %q is disabled in the cli_models registry", modelID)
+		return fmt.Errorf("model %q is disabled in the models registry", modelID)
 	}
-	if err := service.ValidateEffortAllowed(effort, row.SupportedEfforts); err != nil {
+	if row.CLIModel == "" {
+		return fmt.Errorf("model %q does not support CLI mode", modelID)
+	}
+	if err := service.ValidateEffortAllowed(effort, row.CLIEfforts); err != nil {
 		return err
 	}
-	spec.Model = row.MappedModel
-	spec.ReasoningEffort = row.ReasoningEffort
+	spec.Model = row.CLIModel
+	spec.ReasoningEffort = row.DefaultEffort
 	if effort != "" {
 		spec.ReasoningEffort = effort
 	}
 	spec.FallbackModels = row.FallbackModels
-	spec.MaxContext = row.ContextLength
+	spec.MaxContext = row.CLIContext
 	return nil
 }
 
-// apiModelResolver resolves against api_models — a distinct id namespace
-// from cli_models that happens to collide on some ids (e.g. "sonnet"). Unlike
-// the CLI resolver, an unknown/disabled id is always an error: a direct-API
-// call cannot pass a raw model name through without a resolved provider.
+// apiModelResolver requires an enabled row with direct-API support.
 type apiModelResolver struct{}
 
 func (apiModelResolver) Resolve(pool *db.Pool, clk clock.Clock, spec *spawner.EngineSpec, modelID, effort string) error {
-	row, err := service.NewAPIModelService(pool, clk).Get(modelID)
+	row, err := service.NewModelService(pool, clk).Get(modelID)
 	if err != nil {
-		return fmt.Errorf("model %q not found in api_models registry", modelID)
+		return fmt.Errorf("model %q not found in models registry", modelID)
 	}
 	if !row.Enabled {
-		return fmt.Errorf("model %q is disabled in the api_models registry", modelID)
+		return fmt.Errorf("model %q is disabled in the models registry", modelID)
 	}
-	if err := service.ValidateEffortAllowed(effort, row.SupportedEfforts); err != nil {
+	if row.APIModel == "" {
+		return fmt.Errorf("model %q does not support direct API mode", modelID)
+	}
+	if err := service.ValidateEffortAllowed(effort, row.APIEfforts); err != nil {
 		return err
 	}
-	spec.Model = row.MappedModel
+	spec.Model = row.APIModel
 	spec.APIProvider = row.Provider
-	spec.ReasoningEffort = row.ReasoningEffort
+	spec.ReasoningEffort = row.DefaultEffort
 	if effort != "" {
 		spec.ReasoningEffort = effort
 	}
-	spec.MaxContext = row.ContextLength
+	spec.MaxContext = row.APIContext
 	return nil
 }

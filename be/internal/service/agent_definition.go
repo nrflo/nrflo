@@ -22,14 +22,13 @@ var ErrAPIModeDisabled = errors.New("api mode disabled")
 type AgentDefinitionService struct {
 	clock            clock.Clock
 	pool             *db.Pool
-	cliModelSvc      *CLIModelService
-	apiModelSvc      *APIModelService
+	modelSvc         *ModelService
 	pythonScriptRepo *repo.PythonScriptRepo
 }
 
 // NewAgentDefinitionService creates a new agent definition service
-func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, cliModelSvc *CLIModelService, apiModelSvc *APIModelService, pythonScriptRepo *repo.PythonScriptRepo) *AgentDefinitionService {
-	return &AgentDefinitionService{pool: pool, clock: clk, cliModelSvc: cliModelSvc, apiModelSvc: apiModelSvc, pythonScriptRepo: pythonScriptRepo}
+func NewAgentDefinitionService(pool *db.Pool, clk clock.Clock, modelSvc *ModelService, pythonScriptRepo *repo.PythonScriptRepo) *AgentDefinitionService {
+	return &AgentDefinitionService{pool: pool, clock: clk, modelSvc: modelSvc, pythonScriptRepo: pythonScriptRepo}
 }
 
 // CreateAgentDef creates a new agent definition
@@ -100,23 +99,12 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 
 	lcModel := strings.ToLower(req.LowConsumptionModel)
 	if lcModel != "" && executionMode != "script" {
-		switch executionMode {
-		case "api":
-			valid, err := s.apiModelSvc.IsValidModel(lcModel)
-			if err != nil {
-				return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
-			}
-			if !valid {
-				return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
-			}
-		default:
-			valid, err := s.cliModelSvc.IsValidModel(lcModel)
-			if err != nil {
-				return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
-			}
-			if !valid {
-				return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
-			}
+		valid, err := s.modelSvc.IsValidModelForMode(lcModel, registryMode(executionMode))
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate low_consumption_model: %w", err)
+		}
+		if !valid {
+			return nil, fmt.Errorf("invalid low_consumption_model: %q", lcModel)
 		}
 	}
 
@@ -143,12 +131,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if executionMode == "script" {
 		modelName = "script" // force sentinel model for script agents
 	} else if modelName == "" {
-		modelName = "sonnet"
+		modelName = "sonnet-5"
 	}
 
-	// Validate model against api_models for api execution mode
-	if executionMode == "api" {
-		valid, err := s.apiModelSvc.IsValidModel(modelName)
+	if executionMode != "script" {
+		valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(executionMode))
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate model: %w", err)
 		}
@@ -157,7 +144,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		}
 	}
 
-	if err := validateDefReasoningEffort(s.cliModelSvc, s.apiModelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
+	if err := validateDefReasoningEffort(s.modelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
 		return nil, err
 	}
 
@@ -248,8 +235,8 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if err != nil {
 			return err
 		}
-		if mode == "api" {
-			valid, vErr := s.apiModelSvc.IsValidModel(*req.Model)
+		if mode != "script" {
+			valid, vErr := s.modelSvc.IsValidModelForMode(*req.Model, registryMode(mode))
 			if vErr != nil {
 				return fmt.Errorf("failed to validate model: %w", vErr)
 			}
@@ -331,19 +318,8 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 			if err != nil {
 				return err
 			}
-			switch mode {
-			case "api":
-				valid, vErr := s.apiModelSvc.IsValidModel(lcModel)
-				if vErr != nil {
-					return fmt.Errorf("failed to validate low_consumption_model: %w", vErr)
-				}
-				if !valid {
-					return fmt.Errorf("invalid low_consumption_model: %q", lcModel)
-				}
-			case "script":
-				// skip validation for script mode
-			default:
-				valid, vErr := s.cliModelSvc.IsValidModel(lcModel)
+			if mode != "script" {
+				valid, vErr := s.modelSvc.IsValidModelForMode(lcModel, registryMode(mode))
 				if vErr != nil {
 					return fmt.Errorf("failed to validate low_consumption_model: %w", vErr)
 				}

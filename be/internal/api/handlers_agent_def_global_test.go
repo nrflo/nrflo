@@ -31,7 +31,7 @@ func newGlobalAgentDefServer(t *testing.T) (*Server, string) {
 	}
 	if _, err := s.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, node_role, description, created_at, updated_at)
-		 VALUES ('global-tpl', ?, 'dynamic', 'sonnet', 20, 'do work', 'cli_interactive', 'fanout_template', 'a template', ?, ?)`,
+		 VALUES ('global-tpl', ?, 'dynamic', 'sonnet-5', 20, 'do work', 'cli_interactive', 'fanout_template', 'a template', ?, ?)`,
 		service.GlobalProjectID, now, now,
 	); err != nil {
 		t.Fatalf("insert __global__ agent_definitions row: %v", err)

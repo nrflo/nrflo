@@ -15,17 +15,16 @@ type chatSpecParams struct {
 	SessionID       string
 	ProjectID       string
 	Engine          string // "claude" | "codex" | "api"
-	ModelID         string // cli_models/api_models registry id, a raw model name, or ""
-	ReasoningEffort string // optional override; must be in the row's supported_efforts
+	ModelID         string // models registry id, a raw CLI model name, or ""
+	ReasoningEffort string // optional override; must be in the selected mode's effort list
 	SpawnToken      string
 	ServerURL       string // loopback base, e.g. http://127.0.0.1:6587
 }
 
 // buildChatEngineSpec resolves the project workdir and (when ModelID names
 // one) the model registry row into a spawner.EngineSpec for a console-chat
-// session, via modelResolverFor(p.Engine) — cli_models and api_models are
-// separate tables whose ids collide, so resolution diverges by engine. A row
-// that doesn't resolve is an error surfaced before the engine is started.
+// session, via modelResolverFor(p.Engine). API rows must resolve; unknown CLI
+// ids remain valid raw model names.
 func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spawner.EngineSpec, error) {
 	project, err := repo.NewProjectRepo(pool, clk).Get(p.ProjectID)
 	if err != nil {

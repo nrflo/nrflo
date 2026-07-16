@@ -40,7 +40,7 @@ func insertHandlerSession(t *testing.T, database *db.DB, id, wfiID, projectID, s
 	_, err := database.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at)
-		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', ?, ?, ?, ?)`,
+		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet-5', ?, ?, ?, ?)`,
 		id, projectID, wfiID, status, startedAt, now, now)
 	if err != nil {
 		t.Fatalf("insertHandlerSession(%s): %v", id, err)

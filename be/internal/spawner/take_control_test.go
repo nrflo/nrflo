@@ -110,7 +110,7 @@ func TestUserInteractive_DBConstraintFixed(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	err := sessionRepo.UpdateStatus(env.sessionID, model.AgentSessionUserInteractive)
@@ -132,7 +132,7 @@ func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	hub := ws.NewHub(clock.Real())
 	go hub.Run()
@@ -147,7 +147,7 @@ func TestRegisterAgentStopWithReason_UserInteractive_BroadcastsEvent(t *testing.
 	env.spawner.registerAgentStopWithReason(
 		env.projectID, env.ticketID, env.workflowID,
 		env.sessionID, "agent-id-2",
-		"user_interactive", "take_control", "claude:sonnet",
+		"user_interactive", "take_control", "claude:sonnet-5",
 	)
 
 	// Expect EventAgentCompleted with result=user_interactive in WS event data.
@@ -193,7 +193,7 @@ func TestTakeControlBroadcastsEventAgentTakeControl(t *testing.T) {
 	env.spawner.broadcast(ws.EventAgentTakeControl, env.projectID, env.ticketID, env.workflowID, map[string]interface{}{
 		"session_id": env.sessionID,
 		"agent_type": "test-agent",
-		"model_id":   "claude:sonnet",
+		"model_id":   "claude:sonnet-5",
 	})
 
 	deadline := time.After(2 * time.Second)
@@ -214,8 +214,8 @@ func TestTakeControlBroadcastsEventAgentTakeControl(t *testing.T) {
 					t.Errorf("expected agent_type='test-agent', got %q", agentType)
 				}
 				modelID, _ := event.Data["model_id"].(string)
-				if modelID != "claude:sonnet" {
-					t.Errorf("expected model_id='claude:sonnet', got %q", modelID)
+				if modelID != "claude:sonnet-5" {
+					t.Errorf("expected model_id='claude:sonnet-5', got %q", modelID)
 				}
 				return
 			}

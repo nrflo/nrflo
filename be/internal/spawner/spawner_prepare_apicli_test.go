@@ -1,7 +1,7 @@
 package spawner
 
 // Tests for the api-via-cli hybrid spawn path. When Config.APIViaCLI=true and
-// the api_models provider is "anthropic", prepareSpawn delegates to
+// the model provider is "anthropic", prepareSpawn delegates to
 // prepareAPIViaCLISpawn which transforms the spawn into a cli_interactive Claude
 // session backed by the nrflo agent mcp bridge.
 
@@ -53,7 +53,7 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 	defer env.cleanup()
 
 	// Include read_document so the path-handler substitution is exercised.
-	insertAPIAgentDefWithTools(t, env, "impl", "sonnet", "agent_finished,read_document")
+	insertAPIAgentDefWithTools(t, env, "impl", "sonnet-5", "agent_finished,read_document")
 
 	var buildCalled int
 	const contextLen = 150000 // distinct from maxContextForModel default to verify override
@@ -67,8 +67,8 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 			buildCalled++
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: contextLen},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: contextLen},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -81,7 +81,7 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 
 	// proc fields set by prepareAPIViaCLISpawn
 	if proc.maxContext != contextLen {
-		t.Errorf("proc.maxContext = %d, want %d (from am.ContextLength)", proc.maxContext, contextLen)
+		t.Errorf("proc.maxContext = %d, want %d (from am.APIContext)", proc.maxContext, contextLen)
 	}
 	if proc.nudgeMax != 0 {
 		t.Errorf("proc.nudgeMax = %d, want 0 (api-via-cli disables nudge)", proc.nudgeMax)
@@ -194,8 +194,8 @@ func TestPrepareSpawn_APIViaCLI_OpenAIFallsThrough(t *testing.T) {
 			buildCalled++
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"gpt-o4": {Provider: "openai", MappedModel: "o4-mini", ContextLength: 128000},
+		ModelConfigs: map[string]ModelConfig{
+			"gpt-o4": {Provider: "openai", APIModel: "o4-mini", APIContext: 128000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -231,7 +231,7 @@ func TestPrepareSpawn_APIViaCLI_Disabled_UsesInProcess(t *testing.T) {
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	var buildCalled int
 	sp := New(Config{
@@ -244,8 +244,8 @@ func TestPrepareSpawn_APIViaCLI_Disabled_UsesInProcess(t *testing.T) {
 			buildCalled++
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -258,7 +258,7 @@ func TestPrepareSpawn_APIViaCLI_Disabled_UsesInProcess(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}

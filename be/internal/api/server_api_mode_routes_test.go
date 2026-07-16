@@ -78,3 +78,19 @@ func TestAPIRoutes_APICredentials_RouteGone(t *testing.T) {
 		t.Errorf("GET /api/v1/api-credentials status = %d, want 404", rr.Code)
 	}
 }
+
+func TestAPIRoutes_UnifiedModelsReplaceLegacyRoutes(t *testing.T) {
+	mux := newRoutesMux(t, true)
+	for _, path := range []string{"/api/v1/cli-models", "/api/v1/api-models"} {
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, path, nil))
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("GET %s status = %d, want 404", path, rr.Code)
+		}
+	}
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/api/v1/models", nil))
+	if rr.Code == http.StatusNotFound {
+		t.Error("GET /api/v1/models is not registered")
+	}
+}

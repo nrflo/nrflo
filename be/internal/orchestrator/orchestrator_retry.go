@@ -159,14 +159,8 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	// Read consumption-mode and stall-timeout settings (once at workflow retry)
 	lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
 
-	// Load CLI model configs from DB (once at workflow retry)
+	// Load the unified model registry once at workflow retry.
 	modelConfigs, err := o.loadModelConfigs(pool)
-	if err != nil {
-		return err
-	}
-
-	// Load API model configs from DB (once at workflow retry)
-	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
 	if err != nil {
 		return err
 	}
@@ -238,7 +232,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 	}))
 
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, startLayerIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	return nil
 }

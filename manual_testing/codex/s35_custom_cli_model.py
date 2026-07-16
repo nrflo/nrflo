@@ -1,10 +1,8 @@
-"""S35 — Custom cli_models row resolves to a real CLI binary (codex).
+"""S35 — A custom CLI-capable model resolves to the Codex binary.
 
-Mirrors claude/s35: registers a brand-new cli_models row with
-`cli_type=codex` and a known codex model name as `mapped_model`. The
-spawner must resolve the agent_def through `spawner.cliForModel` to the
-codex binary and complete normally; `agent_sessions.model_id` is stored
-as `<cli_type>:<id>` (spawner.go:898).
+Mirrors claude/s35: registers a brand-new openai model row with CLI mode
+and a known Codex model name. The spawner must derive the codex binary
+from the provider and complete normally.
 """
 
 from __future__ import annotations
@@ -27,13 +25,14 @@ tool, then stop.
 def run(ctx: Ctx) -> Result:
     pid, _root = make_project(ctx)
     model_id = next_id(ctx, "cm-codex-mini")
-    ctx.client.create_cli_model(
+    ctx.client.create_model(
         id=model_id,
-        cli_type="codex",
+        provider="openai",
         display_name=f"Custom Codex Mini ({model_id})",
-        mapped_model="gpt-5.4-mini",
-        reasoning_effort="low",
-        context_length=200000,
+        cli_model="gpt-5.4-mini",
+        cli_efforts=["low", "medium", "high", "xhigh"],
+        cli_context=200000,
+        default_effort="low",
     )
 
     wid = next_id(ctx, "wf")
@@ -49,12 +48,12 @@ def run(ctx: Ctx) -> Result:
 
     sess = first_session(db_mod.agent_sessions_for_instance(ctx.server.home, wfi))
     if sess["status"] not in PASS_STATUSES or sess["result"] != "pass":
-        return ("S35 custom cli_model", "FAIL",
+        return ("S35 custom model", "FAIL",
                 f"session status/result = {sess['status']}/{sess['result']}")
     sess_model = sess.get("model_id") or ""
     if not sess_model.endswith(model_id):
-        return ("S35 custom cli_model", "FAIL",
+        return ("S35 custom model", "FAIL",
                 f"agent_sessions.model_id = {sess_model!r}, "
                 f"want suffix {model_id!r}")
-    return ("S35 custom cli_model", "PASS",
+    return ("S35 custom model", "PASS",
             f"resolved {sess_model} → codex/gpt-5.4-mini, session={sess['id'][:8]}")

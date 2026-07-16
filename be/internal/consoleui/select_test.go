@@ -14,21 +14,22 @@ func newSelectionModelForTest(items []list.Item) *selectionModel {
 	return model
 }
 
-// TestSelectionItemsGroupBrandThenType asserts the drill-down tree: resume
-// rows at the root, then one branch per brand → type (CLI/Direct API) →
-// models in the server's (newest-first) order. Disabled engines vanish.
-func TestSelectionItemsGroupBrandThenType(t *testing.T) {
+func TestSelectionItemsGroupBrandModelModeEffort(t *testing.T) {
 	contextLeft := 71
 	items := selectionItems(Catalog{
 		Sessions: []types.ConsoleSessionOption{{SessionID: "session-1234567890", Engine: "codex", ContextLeft: &contextLeft}},
 		Engines: []types.ConsoleEngineOption{
 			{ID: "claude", DisplayName: "Claude", Kind: "cli", Brand: "claude", Enabled: true,
-				Models: []types.ConsoleModelOption{{ID: "sonnet", DisplayName: "Sonnet", Brand: "claude"}}},
-			{ID: "codex", DisplayName: "Codex", Kind: "cli", Brand: "gpt", Enabled: false, DisabledReason: "not installed"},
+				Models: []types.ConsoleModelOption{{
+					ID: "sonnet-5", DisplayName: "Sonnet 5", Brand: "claude", MappedModel: "claude-sonnet-5",
+					SupportedEfforts: []string{"low", "high"},
+				}}},
+			{ID: "codex", DisplayName: "Codex", Kind: "cli", Brand: "gpt", Enabled: false,
+				Models: []types.ConsoleModelOption{{ID: "gpt-5.4", DisplayName: "GPT-5.4", Brand: "gpt"}}},
 			{ID: "api", DisplayName: "Direct API", Kind: "api", Enabled: true, RequiresModel: true,
 				Models: []types.ConsoleModelOption{
-					{ID: "gpt54", DisplayName: "GPT 5.4", Brand: "gpt", Provider: "openai"},
-					{ID: "haiku", DisplayName: "Haiku", Brand: "claude", Provider: "anthropic"},
+					{ID: "gpt-5.4", DisplayName: "GPT-5.4", Brand: "gpt", Provider: "openai", MappedModel: "gpt-5.4", ReasoningEffort: "medium", SupportedEfforts: []string{"low", "medium", "high"}},
+					{ID: "sonnet-5", DisplayName: "Sonnet 5", Brand: "claude", Provider: "anthropic", MappedModel: "claude-sonnet-5", SupportedEfforts: []string{"low", "high"}},
 				}},
 		},
 	})
@@ -41,91 +42,64 @@ func TestSelectionItemsGroupBrandThenType(t *testing.T) {
 	}
 
 	claude := items[1].(selectionItem)
-	if claude.title != "Claude" || len(claude.children) != 2 {
-		t.Fatalf("claude brand = %+v, want CLI + Direct API children", claude)
+	if claude.title != "Claude" || len(claude.children) != 1 {
+		t.Fatalf("claude brand = %+v", claude)
 	}
-	cli := claude.children[0].(selectionItem)
-	if cli.title != "CLI" || len(cli.children) != 2 {
-		t.Fatalf("claude CLI = %+v, want default + sonnet", cli)
+	sonnet := claude.children[0].(selectionItem)
+	if sonnet.title != "Sonnet 5" || len(sonnet.children) != 2 {
+		t.Fatalf("sonnet model = %+v, want CLI + Direct API", sonnet)
 	}
-	if def := cli.children[0].(selectionItem).selection; def != (Selection{Engine: "claude"}) {
-		t.Fatalf("default selection = %+v", def)
+	cli := sonnet.children[0].(selectionItem)
+	if cli.title != "CLI" || len(cli.children) != 3 {
+		t.Fatalf("CLI mode = %+v, want Default + 2 efforts", cli)
 	}
-	if model := cli.children[1].(selectionItem).selection; model != (Selection{Engine: "claude", Model: "sonnet"}) {
-		t.Fatalf("cli model selection = %+v", model)
+	if def := cli.children[0].(selectionItem); def.selection != (Selection{Engine: "claude", Model: "sonnet-5"}) {
+		t.Fatalf("CLI default = %+v", def)
 	}
-	api := claude.children[1].(selectionItem)
-	if api.title != "Direct API" || len(api.children) != 1 {
-		t.Fatalf("claude Direct API = %+v, want haiku only", api)
-	}
-	if model := api.children[0].(selectionItem).selection; model != (Selection{Engine: "api", Model: "haiku"}) {
-		t.Fatalf("api model selection = %+v", model)
+	api := sonnet.children[1].(selectionItem)
+	if api.title != "Direct API" || api.children[2].(selectionItem).selection != (Selection{Engine: "api", Model: "sonnet-5", Effort: "high"}) {
+		t.Fatalf("API mode = %+v", api)
 	}
 
 	gpt := items[2].(selectionItem)
 	if gpt.title != "GPT" || len(gpt.children) != 1 {
-		t.Fatalf("gpt brand = %+v, want Direct API only (codex disabled)", gpt)
+		t.Fatalf("gpt brand = %+v", gpt)
 	}
-	if model := gpt.children[0].(selectionItem).children[0].(selectionItem).selection; model != (Selection{Engine: "api", Model: "gpt54"}) {
-		t.Fatalf("gpt api model selection = %+v", model)
+	gpt54 := gpt.children[0].(selectionItem)
+	if len(gpt54.children) != 1 || gpt54.children[0].(selectionItem).title != "Direct API" {
+		t.Fatalf("gpt model = %+v, disabled CLI mode must be absent", gpt54)
+	}
+	def := gpt54.children[0].(selectionItem).children[0].(selectionItem)
+	if def.title != "Default" || def.detail != "Medium" || def.selection != (Selection{Engine: "api", Model: "gpt-5.4"}) {
+		t.Fatalf("gpt default effort = %+v", def)
 	}
 }
 
-// TestModelItemsEffortLevels: the effort level is synthesized from the
-// row's supported_efforts — preset rows for the same mapped_model collapse
-// into it (matching efforts select the preset row, others select the newest
-// row with an override), single rows get the full level too, and rows
-// without capability data stay plain leaves.
-func TestModelItemsEffortLevels(t *testing.T) {
-	efforts := []string{"low", "medium", "high", "xhigh"}
-	items := modelItems("api", []types.ConsoleModelOption{
-		{ID: "gpt54_high", DisplayName: "GPT-5.4 (High)", MappedModel: "gpt-5.4", ReasoningEffort: "high", SupportedEfforts: efforts},
-		{ID: "gpt54_low", DisplayName: "GPT-5.4 (Low)", MappedModel: "gpt-5.4", ReasoningEffort: "low", SupportedEfforts: efforts},
-		{ID: "sonnet", DisplayName: "Sonnet", MappedModel: "claude-sonnet-5",
-			SupportedEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
-		{ID: "legacy", DisplayName: "Legacy", MappedModel: "old-model"},
+func TestEffortItemsAlwaysStartWithDefault(t *testing.T) {
+	items := effortItems("codex", types.ConsoleModelOption{
+		ID: "gpt-5.6-sol", MappedModel: "gpt-5.6-sol", ReasoningEffort: "medium",
+		SupportedEfforts: []string{"low", "medium", "ultra"},
 	})
-	if len(items) != 3 {
-		t.Fatalf("item count = %d, want gpt-5.4 group + sonnet group + legacy leaf", len(items))
+	if len(items) != 4 {
+		t.Fatalf("effort count = %d, want Default + 3", len(items))
+	}
+	if got := items[0].(selectionItem); got.title != "Default" || got.detail != "Medium" || got.selection.Effort != "" {
+		t.Fatalf("default item = %+v", got)
+	}
+	if got := items[3].(selectionItem); got.title != "Ultra" || got.selection != (Selection{Engine: "codex", Model: "gpt-5.6-sol", Effort: "ultra"}) {
+		t.Fatalf("ultra item = %+v", got)
 	}
 
-	gpt := items[0].(selectionItem)
-	if gpt.title != "GPT-5.4" || len(gpt.children) != 5 {
-		t.Fatalf("gpt group = %+v, want Default + 4 efforts", gpt)
-	}
-	if def := gpt.children[0].(selectionItem); def.title != "Default" || def.selection != (Selection{Engine: "api", Model: "gpt54_high"}) {
-		t.Fatalf("default child = %+v, want newest row without override", def)
-	}
-	// "low" matches the gpt54_low preset row → selected directly, no override.
-	if low := gpt.children[1].(selectionItem); low.title != "Low" || low.selection != (Selection{Engine: "api", Model: "gpt54_low"}) {
-		t.Fatalf("low child = %+v, want preset row gpt54_low", low)
-	}
-	// "xhigh" has no preset row → newest row + create-time override.
-	if xh := gpt.children[4].(selectionItem); xh.title != "Xhigh" || xh.selection != (Selection{Engine: "api", Model: "gpt54_high", Effort: "xhigh"}) {
-		t.Fatalf("xhigh child = %+v, want gpt54_high with override", xh)
-	}
-
-	sonnet := items[1].(selectionItem)
-	if sonnet.title != "Sonnet" || len(sonnet.children) != 6 {
-		t.Fatalf("sonnet group = %+v, want Default + 5 efforts", sonnet)
-	}
-	if mx := sonnet.children[5].(selectionItem); mx.selection != (Selection{Engine: "api", Model: "sonnet", Effort: "max"}) {
-		t.Fatalf("sonnet max child = %+v", mx)
-	}
-
-	legacy := items[2].(selectionItem)
-	if legacy.title != "Legacy" || len(legacy.children) != 0 || legacy.selection != (Selection{Engine: "api", Model: "legacy"}) {
-		t.Fatalf("legacy leaf = %+v", legacy)
+	noEfforts := effortItems("api", types.ConsoleModelOption{ID: "plain"})
+	if len(noEfforts) != 1 || noEfforts[0].(selectionItem).title != "Default" {
+		t.Fatalf("no-effort model items = %+v", noEfforts)
 	}
 }
 
-// TestSelectionModelPushPop drives push/pop directly: descending into a
-// branch swaps the list to its children and extends the title; pop restores
-// the parent level and cursor, and returns false at the root.
 func TestSelectionModelPushPop(t *testing.T) {
 	items := selectionItems(Catalog{Engines: []types.ConsoleEngineOption{
 		{ID: "claude", DisplayName: "Claude", Kind: "cli", Brand: "claude", Enabled: true,
-			Models: []types.ConsoleModelOption{{ID: "sonnet", DisplayName: "Sonnet", Brand: "claude"}}},
+			Models: []types.ConsoleModelOption{{ID: "sonnet-5", DisplayName: "Sonnet 5", Brand: "claude"}}},
 	}})
 	model := newSelectionModelForTest(items)
 
@@ -134,14 +108,11 @@ func TestSelectionModelPushPop(t *testing.T) {
 	if model.list.Title != selectRootTitle+" · Claude" {
 		t.Fatalf("title after push = %q", model.list.Title)
 	}
-	if got := model.list.SelectedItem().(selectionItem).title; got != "CLI" {
-		t.Fatalf("selected after push = %q, want CLI", got)
+	if got := model.list.SelectedItem().(selectionItem).title; got != "Sonnet 5" {
+		t.Fatalf("selected after push = %q, want Sonnet 5", got)
 	}
 	if _, ok := model.pop(); !ok {
 		t.Fatal("pop at depth 1 should succeed")
-	}
-	if model.list.Title != selectRootTitle {
-		t.Fatalf("title after pop = %q", model.list.Title)
 	}
 	if got := model.list.SelectedItem().(selectionItem).title; got != "Claude" {
 		t.Fatalf("selected after pop = %q, want Claude", got)

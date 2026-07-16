@@ -13,7 +13,7 @@ import (
 )
 
 // Fixed identifiers shared by every plan_*_test.go file in this package: one
-// project + workflow + fanout_template agent definition (model 'sonnet',
+// project + workflow + fanout_template agent definition (model 'sonnet-5',
 // cli_interactive) that a minimal valid plan manifest can reference.
 const (
 	planTestProjectID  = "plan-proj"
@@ -43,7 +43,7 @@ func setupPlanTestEnv(t *testing.T) (*db.Pool, string) {
 	mustExec(t, pool, `INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, '', 'ticket', ?, ?)`,
 		planTestWorkflowID, planTestProjectID, now, now)
 	mustExec(t, pool, `INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, model, execution_mode, node_role, consultant, created_at, updated_at)
-		 VALUES (?, ?, ?, 'do work', 0, 'sonnet', 'cli_interactive', 'fanout_template', 0, ?, ?)`,
+		 VALUES (?, ?, ?, 'do work', 0, 'sonnet-5', 'cli_interactive', 'fanout_template', 0, ?, ?)`,
 		planTestTemplateID, planTestProjectID, planTestWorkflowID, now, now)
 
 	instanceID := "plan-wfi-1"

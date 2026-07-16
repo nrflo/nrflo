@@ -9,9 +9,8 @@ import (
 
 // lcValidModels is the set of low_consumption_model values accepted by validation.
 var lcValidModels = []string{
-	"opus_4_6", "opus_4_6_1m", "opus_4_7", "opus_4_7_1m", "sonnet", "haiku",
-	"codex_gpt_normal", "codex_gpt_high",
-	"codex_gpt54_normal", "codex_gpt54_high",
+	"opus-4-6", "opus-4-6-1m", "opus-4-7", "opus-4-7-1m", "sonnet-5", "haiku-4-5",
+	"gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini",
 }
 
 // lcInvalidModels is a set of values that must be rejected by validation.
@@ -115,7 +114,7 @@ func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "main-agent", Prompt: "main", LowConsumptionModel: "haiku",
+		ID: "main-agent", Prompt: "main", LowConsumptionModel: "haiku-4-5",
 	}); err != nil {
 		t.Fatalf("create main-agent: %v", err)
 	}
@@ -124,8 +123,8 @@ func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef: %v", err)
 	}
-	if got.LowConsumptionModel != "haiku" {
-		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku")
+	if got.LowConsumptionModel != "haiku-4-5" {
+		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku-4-5")
 	}
 }
 
@@ -137,7 +136,7 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 		t.Fatalf("create la-ref: %v", err)
 	}
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "la-main", Prompt: "main", LowConsumptionModel: "sonnet",
+		ID: "la-main", Prompt: "main", LowConsumptionModel: "sonnet-5",
 	}); err != nil {
 		t.Fatalf("create la-main: %v", err)
 	}
@@ -150,8 +149,8 @@ func TestListAgentDefs_ReturnsLowConsumptionModel(t *testing.T) {
 		t.Fatalf("expected 2 agent defs, got %d", len(defs))
 	}
 	// defs are ordered by id; la-main < la-ref
-	if defs[0].LowConsumptionModel != "sonnet" {
-		t.Errorf("ListAgentDefs[0].LowConsumptionModel = %q, want %q", defs[0].LowConsumptionModel, "sonnet")
+	if defs[0].LowConsumptionModel != "sonnet-5" {
+		t.Errorf("ListAgentDefs[0].LowConsumptionModel = %q, want %q", defs[0].LowConsumptionModel, "sonnet-5")
 	}
 	if defs[1].LowConsumptionModel != "" {
 		t.Errorf("ListAgentDefs[1].LowConsumptionModel = %q, want empty", defs[1].LowConsumptionModel)
@@ -163,7 +162,7 @@ func TestUpdateAgentDef_ClearsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "clr-main", Prompt: "main", LowConsumptionModel: "sonnet",
+		ID: "clr-main", Prompt: "main", LowConsumptionModel: "sonnet-5",
 	}); err != nil {
 		t.Fatalf("create clr-main: %v", err)
 	}

@@ -13,7 +13,7 @@ import (
 // ReasoningEffort and CLIType are populated by EnabledTemplates/
 // ValidateTemplatesEnabled (empty until then): ReasoningEffort is the
 // EFFECTIVE effort (the def's own override when set, else the model row's),
-// CLIType is the model row's cli_type (cli_interactive templates only).
+// CLIType is derived from the model row's provider (cli_interactive only).
 type PlanTemplate struct {
 	ID              string  `json:"id"`
 	Model           string  `json:"model"`
@@ -76,36 +76,39 @@ func AllowedTemplates(pool *db.Pool, projectID, workflowID string) ([]PlanTempla
 // can never be disabled via the `enabled` flag, so PATH probing is the only
 // way to hide them on an install that lacks the binary), and — for api
 // templates — api_mode_enabled must be on. Returns the effective reasoning
-// effort (def override if set, else the model row's) and cli_type
+// effort (def override if set, else the model row's) and CLI type
 // (cli_interactive only) alongside the availability verdict.
-func resolveTemplateAvailability(cliSvc *CLIModelService, apiSvc *APIModelService, apiModeEnabled bool, t PlanTemplate) (available bool, effort, cliType string) {
+func resolveTemplateAvailability(modelSvc *ModelService, apiModeEnabled bool, t PlanTemplate) (available bool, effort, cliType string) {
+	m, err := modelSvc.Get(t.Model)
+	if err != nil || !m.Enabled {
+		return false, "", ""
+	}
 	if t.ExecutionMode == "api" {
-		if !apiModeEnabled {
+		if !apiModeEnabled || m.APIModel == "" {
 			return false, "", ""
 		}
-		am, err := apiSvc.Get(t.Model)
-		if err != nil || !am.Enabled {
-			return false, "", ""
-		}
-		effort = am.ReasoningEffort
+		effort = m.DefaultEffort
 		if t.effortOverride != nil {
 			effort = *t.effortOverride
 		}
 		return true, effort, ""
 	}
 
-	cm, err := cliSvc.Get(t.Model)
-	if err != nil || !cm.Enabled {
+	if m.CLIModel == "" {
 		return false, "", ""
 	}
-	if !CLIAvailable(cm.CLIType) {
+	cliType = "codex"
+	if m.Provider == "anthropic" {
+		cliType = "claude"
+	}
+	if !CLIAvailable(cliType) {
 		return false, "", ""
 	}
-	effort = cm.ReasoningEffort
+	effort = m.DefaultEffort
 	if t.effortOverride != nil {
 		effort = *t.effortOverride
 	}
-	return true, effort, cm.CLIType
+	return true, effort, cliType
 }
 
 // ValidateTemplatesEnabled re-checks that every given template can actually
@@ -113,13 +116,12 @@ func resolveTemplateAvailability(cliSvc *CLIModelService, apiSvc *APIModelServic
 // disabled between draft and approve, a binary may be absent, or api mode may
 // be off). Aggregates every violation into one error naming template+model+mode.
 func ValidateTemplatesEnabled(pool *db.Pool, clk clock.Clock, templates []PlanTemplate) error {
-	cliSvc := NewCLIModelService(pool, clk)
-	apiSvc := NewAPIModelService(pool, clk)
+	modelSvc := NewModelService(pool, clk)
 	apiModeEnabled := apiModeEnabledSetting(pool, clk)
 
 	var problems []string
 	for _, t := range templates {
-		if available, _, _ := resolveTemplateAvailability(cliSvc, apiSvc, apiModeEnabled, t); !available {
+		if available, _, _ := resolveTemplateAvailability(modelSvc, apiModeEnabled, t); !available {
 			problems = append(problems, fmt.Sprintf(
 				"template %q requires %s model %q, which is not available on this server; replan using only the templates listed above",
 				t.ID, t.ExecutionMode, t.Model))
@@ -136,13 +138,12 @@ func ValidateTemplatesEnabled(pool *db.Pool, clk clock.Clock, templates []PlanTe
 // effective reasoning effort + cli_type, so a planner's ${TEMPLATE_LIBRARY}
 // prompt var only ever lists usable templates.
 func EnabledTemplates(pool *db.Pool, clk clock.Clock, templates []PlanTemplate) []PlanTemplate {
-	cliSvc := NewCLIModelService(pool, clk)
-	apiSvc := NewAPIModelService(pool, clk)
+	modelSvc := NewModelService(pool, clk)
 	apiModeEnabled := apiModeEnabledSetting(pool, clk)
 
 	out := make([]PlanTemplate, 0, len(templates))
 	for _, t := range templates {
-		available, effort, cliType := resolveTemplateAvailability(cliSvc, apiSvc, apiModeEnabled, t)
+		available, effort, cliType := resolveTemplateAvailability(modelSvc, apiModeEnabled, t)
 		if !available {
 			continue
 		}

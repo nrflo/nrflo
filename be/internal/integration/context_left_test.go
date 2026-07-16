@@ -39,7 +39,7 @@ func TestActiveAgentsIncludesContextLeft(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-1", "test")
 
 	// Insert a running agent with context_left set
-	insertSessionWithContextLeft(t, env, "sess-cl-1", "CL-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "running", "", 72)
+	insertSessionWithContextLeft(t, env, "sess-cl-1", "CL-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "running", "", 72)
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-1", &types.WorkflowGetRequest{
@@ -54,7 +54,7 @@ func TestActiveAgentsIncludesContextLeft(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -79,7 +79,7 @@ func TestActiveAgentsOmitsContextLeftWhenNull(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-2", "test")
 
 	// Insert a running agent without context_left (uses InsertAgentSession which sets NULL)
-	env.InsertAgentSession(t, "sess-cl-2", "CL-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-cl-2", "CL-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-2", &types.WorkflowGetRequest{
@@ -94,7 +94,7 @@ func TestActiveAgentsOmitsContextLeftWhenNull(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -115,8 +115,8 @@ func TestAgentHistoryIncludesContextLeft(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-3", "test")
 
 	// Insert completed sessions with context_left
-	insertSessionWithContextLeft(t, env, "sess-cl-3a", "CL-3", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass", 45)
-	insertSessionWithContextLeft(t, env, "sess-cl-3b", "CL-3", wfiID, "builder", "implementor", "claude:opus", "completed", "pass", 12)
+	insertSessionWithContextLeft(t, env, "sess-cl-3a", "CL-3", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass", 45)
+	insertSessionWithContextLeft(t, env, "sess-cl-3b", "CL-3", wfiID, "builder", "implementor", "claude:opus-4-7", "completed", "pass", 12)
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-3", &types.WorkflowGetRequest{
@@ -168,7 +168,7 @@ func TestAgentHistoryOmitsContextLeftWhenNull(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-4", "test")
 
 	// Insert completed session without context_left
-	insertCompletedSession(t, env, "sess-cl-4", "CL-4", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-cl-4", "CL-4", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-4", &types.WorkflowGetRequest{
@@ -203,7 +203,7 @@ func TestAgentHistoryIncludesStartedAtEndedAt(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-5", "test")
 
 	// Insert completed session (insertCompletedSession sets both started_at and ended_at)
-	insertCompletedSession(t, env, "sess-cl-5", "CL-5", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-cl-5", "CL-5", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-5", &types.WorkflowGetRequest{
@@ -250,7 +250,7 @@ func TestActiveAgentsIncludesStartedAt(t *testing.T) {
 
 	wfiID := env.GetWorkflowInstanceID(t, "CL-6", "test")
 
-	env.InsertAgentSession(t, "sess-cl-6", "CL-6", wfiID, "analyzer", "setup-analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-cl-6", "CL-6", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-6", &types.WorkflowGetRequest{
@@ -265,7 +265,7 @@ func TestActiveAgentsIncludesStartedAt(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -289,8 +289,8 @@ func TestContextLeftBoundaryValues(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "CL-7", "test")
 
 	// Insert agents with boundary context_left values
-	insertSessionWithContextLeft(t, env, "sess-cl-7a", "CL-7", wfiID, "analyzer", "agent-zero", "claude:sonnet", "completed", "pass", 0)
-	insertSessionWithContextLeft(t, env, "sess-cl-7b", "CL-7", wfiID, "builder", "agent-full", "claude:opus", "completed", "pass", 100)
+	insertSessionWithContextLeft(t, env, "sess-cl-7a", "CL-7", wfiID, "analyzer", "agent-zero", "claude:sonnet-5", "completed", "pass", 0)
+	insertSessionWithContextLeft(t, env, "sess-cl-7b", "CL-7", wfiID, "builder", "agent-full", "claude:opus-4-7", "completed", "pass", 100)
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "CL-7", &types.WorkflowGetRequest{

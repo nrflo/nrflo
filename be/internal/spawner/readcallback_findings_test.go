@@ -91,7 +91,7 @@ func TestReadCallbackFindings(t *testing.T) {
 			env := setupTestEnv(t)
 			defer env.cleanup()
 
-			env.createSession(t, "claude:sonnet")
+			env.createSession(t, "claude:sonnet-5")
 			setFindings(t, env, tc.findings)
 
 			proc := &processInfo{sessionID: env.sessionID}

@@ -52,14 +52,14 @@ func TestPrepareSpawn_CLIInteractiveClaude_MCPTools(t *testing.T) {
 
 	// Blank tools must still yield the full nrflo tool set (lifecycle/findings),
 	// since the CLI path forces "*" — otherwise the agent could never finish.
-	insertCLIAgentDefWithTools(t, env, "impl", "sonnet", "")
+	insertCLIAgentDefWithTools(t, env, "impl", "sonnet-5", "")
 
 	proc, prep, err := cliMCPSpawner(env).prepareSpawn(context.Background(), SpawnRequest{
 		AgentType:          "impl",
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}

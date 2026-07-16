@@ -56,7 +56,7 @@ func (s *Server) registerResumeLaunch(session *model.AgentSession) error {
 	return nil
 }
 
-// splitModelID splits a stored model_id ("claude:sonnet") into CLI name and
+// splitModelID splits a stored model_id ("claude:sonnet-5") into CLI name and
 // bare model. A value with no ":" is treated as CLI-only.
 func splitModelID(modelID string) (cli, bareModel string) {
 	if idx := strings.Index(modelID, ":"); idx >= 0 {

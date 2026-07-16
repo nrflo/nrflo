@@ -15,48 +15,33 @@ type DefaultTemplateUpdateRequest struct {
 	Template *string `json:"template,omitempty"`
 }
 
-// CLIModelCreateRequest is the request for creating a CLI model
-type CLIModelCreateRequest struct {
-	ID               string   `json:"id"`
-	CLIType          string   `json:"cli_type"`
-	DisplayName      string   `json:"display_name"`
-	MappedModel      string   `json:"mapped_model"`
-	ReasoningEffort  string   `json:"reasoning_effort"`
-	SupportedEfforts []string `json:"supported_efforts"`
-	FallbackModels   string   `json:"fallback_models"`
-	ContextLength    int      `json:"context_length"`
+// ModelCreateRequest creates one provider model with at least one mode.
+type ModelCreateRequest struct {
+	ID             string   `json:"id"`
+	Provider       string   `json:"provider"`
+	DisplayName    string   `json:"display_name"`
+	CLIModel       string   `json:"cli_model"`
+	APIModel       string   `json:"api_model"`
+	CLIEfforts     []string `json:"cli_efforts"`
+	APIEfforts     []string `json:"api_efforts"`
+	CLIContext     int      `json:"cli_context"`
+	APIContext     int      `json:"api_context"`
+	FallbackModels string   `json:"fallback_models"`
+	DefaultEffort  string   `json:"default_effort"`
 }
 
-// CLIModelUpdateRequest is the request for updating a CLI model
-type CLIModelUpdateRequest struct {
-	DisplayName      *string   `json:"display_name,omitempty"`
-	MappedModel      *string   `json:"mapped_model,omitempty"`
-	ReasoningEffort  *string   `json:"reasoning_effort,omitempty"`
-	SupportedEfforts *[]string `json:"supported_efforts,omitempty"`
-	FallbackModels   *string   `json:"fallback_models,omitempty"`
-	ContextLength    *int      `json:"context_length,omitempty"`
-	Enabled          *bool     `json:"enabled,omitempty"`
-}
-
-// APIModelCreateRequest is the request for creating an API model
-type APIModelCreateRequest struct {
-	ID               string   `json:"id"`
-	Provider         string   `json:"provider"`
-	DisplayName      string   `json:"display_name"`
-	MappedModel      string   `json:"mapped_model"`
-	ReasoningEffort  string   `json:"reasoning_effort"`
-	SupportedEfforts []string `json:"supported_efforts"`
-	ContextLength    int      `json:"context_length"`
-}
-
-// APIModelUpdateRequest is the request for updating an API model
-type APIModelUpdateRequest struct {
-	DisplayName      *string   `json:"display_name,omitempty"`
-	MappedModel      *string   `json:"mapped_model,omitempty"`
-	ReasoningEffort  *string   `json:"reasoning_effort,omitempty"`
-	SupportedEfforts *[]string `json:"supported_efforts,omitempty"`
-	ContextLength    *int      `json:"context_length,omitempty"`
-	Enabled          *bool     `json:"enabled,omitempty"`
+// ModelUpdateRequest partially updates a provider model.
+type ModelUpdateRequest struct {
+	DisplayName    *string   `json:"display_name,omitempty"`
+	CLIModel       *string   `json:"cli_model,omitempty"`
+	APIModel       *string   `json:"api_model,omitempty"`
+	CLIEfforts     *[]string `json:"cli_efforts,omitempty"`
+	APIEfforts     *[]string `json:"api_efforts,omitempty"`
+	CLIContext     *int      `json:"cli_context,omitempty"`
+	APIContext     *int      `json:"api_context,omitempty"`
+	FallbackModels *string   `json:"fallback_models,omitempty"`
+	DefaultEffort  *string   `json:"default_effort,omitempty"`
+	Enabled        *bool     `json:"enabled,omitempty"`
 }
 
 // InputArtifactRef references a staged upload to attach to a workflow run.

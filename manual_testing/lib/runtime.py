@@ -34,7 +34,7 @@ class Ctx:
     server: server_mod.RunningServer
     client: api_mod.NrfloClient
     provider: str           # claude | codex | python
-    model: str              # cli_models row id (e.g. "haiku")
+    model: str              # models row id (e.g. "haiku-4-5")
     binary: str             # PATH binary name
     mode: str = "cli_interactive"   # "cli_interactive" for CLI; "script" for python
     scenario: str = ""      # set per-scenario for log prefixing
@@ -55,11 +55,11 @@ def resolve_model(ctx: Ctx, overrides: dict[str, str] | None) -> str:
     `ctx.model`. Scenarios that need a stronger model on a particular
     provider declare a module-level dict like:
 
-        MODELS_BY_PROVIDER = {"claude": "sonnet", "codex": "codex_gpt_high"}
+        MODELS_BY_PROVIDER = {"claude": "sonnet-5", "codex": "gpt-5.4"}
 
     and pass it to `resolve_model(ctx, MODELS_BY_PROVIDER)` when building
     their agent_def. Empty/None dict means "use whatever the runner picked"
-    (the entry script's default, e.g. claude=haiku)."""
+    (the entry script's default, e.g. claude=haiku-4-5)."""
     if not overrides:
         return ctx.model
     return overrides.get(ctx.provider, ctx.model)

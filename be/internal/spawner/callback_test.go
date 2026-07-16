@@ -18,7 +18,7 @@ func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	// Simulate explicit callback by setting result before handleCompletion
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -35,7 +35,7 @@ func TestHandleCompletion_ExitZeroWithExplicitCallback(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -80,7 +80,7 @@ func TestHandleCompletion_CallbackStatusMapping(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	// Simulate explicit callback
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -97,7 +97,7 @@ func TestHandleCompletion_CallbackStatusMapping(t *testing.T) {
 		"test-agent-id",
 		"callback",
 		"explicit",
-		"claude:opus",
+		"claude:opus-4-7",
 	)
 
 	// Verify status was correctly mapped to callback
@@ -146,7 +146,7 @@ func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
 			env := setupTestEnv(t)
 			defer env.cleanup()
 
-			env.createSession(t, "claude:sonnet")
+			env.createSession(t, "claude:sonnet-5")
 
 			sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 			if err := sessionRepo.UpdateResult(env.sessionID, tc.result, tc.resultReason); err != nil {
@@ -162,7 +162,7 @@ func TestHandleCompletion_CallbackWithOtherResults(t *testing.T) {
 				cmd:                cmd,
 				sessionID:          env.sessionID,
 				agentID:            "test-agent-id",
-				modelID:            "claude:sonnet",
+				modelID:            "claude:sonnet-5",
 				workflowInstanceID: env.wfiID,
 				projectID:          env.projectID,
 				ticketID:           env.ticketID,
@@ -201,7 +201,7 @@ func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	// Set result to callback
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -212,7 +212,7 @@ func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
 	proc := &processInfo{
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		workflowInstanceID: env.wfiID,
 	}
 

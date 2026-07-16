@@ -19,7 +19,7 @@ func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	doneCh := make(chan struct{})
 	close(doneCh)
@@ -31,7 +31,7 @@ func TestHandleStallRestart_StartStall_DBState(t *testing.T) {
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
 		agentType:          "implementor",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -81,7 +81,7 @@ func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	doneCh := make(chan struct{})
 	close(doneCh)
@@ -93,7 +93,7 @@ func TestHandleStallRestart_RunningStall_DBState(t *testing.T) {
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
 		agentType:          "qa-verifier",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -138,7 +138,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	clk := clock.NewTest(time.Now())
 	env.spawner.config.Clock = clk
@@ -150,7 +150,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
 		agentType:          "implementor",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
 		workflowName:       env.workflowID,

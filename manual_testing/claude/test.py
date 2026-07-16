@@ -7,7 +7,7 @@ Anthropic credentials. Scenarios run sequentially by default.
 Usage:
     python3 manual_testing/claude/test.py
     python3 manual_testing/claude/test.py --only=s01,s07
-    python3 manual_testing/claude/test.py --model=sonnet
+    python3 manual_testing/claude/test.py --model=sonnet-5
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from claude import ALL_SCENARIOS  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default="haiku")
+    ap.add_argument("--model", default="haiku-4-5")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None,

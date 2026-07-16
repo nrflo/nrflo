@@ -48,7 +48,7 @@ func seedSessionAndMessages(t *testing.T, dbPath string) {
 
 	// Agent session (FK: workflow_instances)
 	if _, err := database.Exec(`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"sess-e2e-1", "e2eproj", "E2E-1", "wi-e2e-1", "implementation", "implementor", "claude:sonnet", "running", now, now, now); err != nil {
+		"sess-e2e-1", "e2eproj", "E2E-1", "wi-e2e-1", "implementation", "implementor", "claude:sonnet-5", "running", now, now, now); err != nil {
 		t.Fatalf("failed to seed agent session: %v", err)
 	}
 

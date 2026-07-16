@@ -50,7 +50,7 @@ func seedAPISession(t *testing.T, dbPath, projectID, ticketID, sessionID, wfiID 
 		INSERT OR IGNORE INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		"api-agent", projectID, "api-wf", "sonnet", 60, "do stuff", 0, "api", now, now,
+		"api-agent", projectID, "api-wf", "sonnet-5", 60, "do stuff", 0, "api", now, now,
 	); err != nil {
 		t.Fatalf("seedAPISession: agent_definition: %v", err)
 	}

@@ -27,8 +27,8 @@ func setupAgentDefScriptEnv(t *testing.T) (*AgentDefinitionService, string, stri
 	}
 
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
-	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), scriptRepo)
+	modelSvc := NewModelService(pool, clock.Real())
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, scriptRepo)
 	return svc, wfID, scriptID
 }
 
@@ -139,7 +139,7 @@ func TestCreateAgentDef_ScriptMode_ModelForcedToScript(t *testing.T) {
 	t.Parallel()
 	svc, wfID, scriptID := setupAgentDefScriptEnv(t)
 
-	for _, model := range []string{"sonnet", "opus_4_7", ""} {
+	for _, model := range []string{"sonnet-5", "opus-4-7", ""} {
 		req := &types.AgentDefCreateRequest{
 			ID:             "agent-model-" + model,
 			ExecutionMode:  "script",
@@ -192,8 +192,8 @@ func TestCreateAgentDef_ScriptMode_Success_APIModeTrue(t *testing.T) {
 		t.Fatalf("insert python_scripts: %v", err)
 	}
 	scriptRepo := repo.NewPythonScriptRepo(pool, clock.Real())
-	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), scriptRepo)
+	modelSvc := NewModelService(pool, clock.Real())
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, scriptRepo)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:             "agent-script-on",

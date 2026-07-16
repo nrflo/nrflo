@@ -1,11 +1,11 @@
-"""O01 — OpenAI api-mode: reasoning_effort seeded row drives a successful run.
+"""O01 — OpenAI api-mode: an agent effort override drives a successful run.
 
-Authors an agent on the `gpt54_high` api_models row (reasoning_effort='high').
-Asserts via GET /api/v1/api-models/gpt54_high that reasoning_effort is
-non-empty, then verifies the agent completes successfully.
+Authors an agent on the unified `gpt-5.4` model with
+`reasoning_effort='high'`. Asserts the row supports API high effort, then
+verifies the agent completes successfully.
 
 Expected PASS:
-  - api_models row gpt54_high has reasoning_effort == 'high'
+  - models row gpt-5.4 includes high in api_efforts
   - agent_sessions.effective_mode == 'api'
   - agent_sessions.status ∈ PASS_STATUSES
   - agent_sessions.result == 'pass'
@@ -28,17 +28,18 @@ call before invoking the tool.
 
 
 def run(ctx: Ctx) -> Result:
-    am = ctx.client.get_api_model("gpt54_high")
-    if am.get("reasoning_effort") != "high":
+    am = ctx.client.get_model("gpt-5.4")
+    if "high" not in (am.get("api_efforts") or []):
         return ("O01 reasoning effort", "FAIL",
-                f"gpt54_high.reasoning_effort = {am.get('reasoning_effort')!r}, want 'high'")
+                f"gpt-5.4.api_efforts = {am.get('api_efforts')!r}, want high support")
 
     pid, _root = make_project(ctx)
     wid = next_id(ctx, "wf")
     ctx.client.create_workflow(pid, wid, scope_type="project")
     ctx.client.create_agent_def(
         pid, wid, "main",
-        model="gpt54_high",
+        model="gpt-5.4",
+        reasoning_effort="high",
         layer=0, timeout=90, prompt=PROMPT,
         tools="agent_finished",
     )

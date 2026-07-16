@@ -67,9 +67,9 @@ func EnsureGlobalDeepResearch(pool *db.Pool, clk clock.Clock, rootPath string) e
 
 	for _, a := range drAgents {
 		if _, err := tx.Exec(
-			`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, tools, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, 'cli_interactive', ?, ?, ?)`,
-			a.ID, GlobalProjectID, DeepResearchWorkflow, a.Model, 30, drPrompt(a.ID), a.Layer, a.Tools, now, now); err != nil {
+			`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, tools, reasoning_effort, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, 'cli_interactive', ?, NULLIF(?, ''), ?, ?)`,
+			a.ID, GlobalProjectID, DeepResearchWorkflow, a.Model, 30, drPrompt(a.ID), a.Layer, a.Tools, a.ReasoningEffort, now, now); err != nil {
 			return fmt.Errorf("deep-research seed: agent %s: %w", a.ID, err)
 		}
 	}

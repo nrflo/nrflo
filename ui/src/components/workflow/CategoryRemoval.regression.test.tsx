@@ -114,7 +114,7 @@ vi.mock('@tanstack/react-query', async () => {
           isLoading: false,
         }
       }
-      if (queryKey[0] === 'cli-models') {
+      if (queryKey[0] === 'models') {
         return { data: [], isLoading: false }
       }
       return {

@@ -116,7 +116,7 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	agentHistory := s.buildAgentHistory(wi.ID, detailsMap)
 	result["agent_history"] = agentHistory
 
-	// Total tokens used (per-session context window via cli_models)
+	// Total tokens used from each session's mode-specific model context window.
 	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
 		ctxLengths := s.loadModelContextLengths()
 		var totalTokens int64
@@ -126,8 +126,11 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 					if contextLeft, ok := cl.(int64); ok {
 						ctxLen := int64(200000)
 						if modelID, ok := m["model_id"].(string); ok && modelID != "" {
-							if l, found := ctxLengths[modelID]; found {
-								ctxLen = l
+							if lengths, found := ctxLengths[modelID]; found {
+								ctxLen = lengths.cli
+								if mode, _ := m["effective_mode"].(string); mode == "api" {
+									ctxLen = lengths.api
+								}
 							}
 						}
 						totalTokens += ctxLen * (100 - contextLeft) / 100

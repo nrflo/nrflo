@@ -251,10 +251,10 @@ func TestFindingsWithModel(t *testing.T) {
 	env.InitWorkflow(t, "FIND-6")
 
 	wfiID := env.GetWorkflowInstanceID(t, "FIND-6", "test")
-	env.InsertAgentSession(t, "sess-model-s", "FIND-6", wfiID, "analyzer", "analyzer", "sonnet")
-	env.InsertAgentSession(t, "sess-model-o", "FIND-6", wfiID, "analyzer", "analyzer", "opus_4_7")
+	env.InsertAgentSession(t, "sess-model-s", "FIND-6", wfiID, "analyzer", "analyzer", "sonnet-5")
+	env.InsertAgentSession(t, "sess-model-o", "FIND-6", wfiID, "analyzer", "analyzer", "opus-4-7")
 
-	// Add findings to sonnet session
+	// Add findings to sonnet-5 session
 	env.MustExecute(t, "findings.add", map[string]interface{}{
 		"session_id":  "sess-model-s",
 		"instance_id": wfiID,
@@ -262,7 +262,7 @@ func TestFindingsWithModel(t *testing.T) {
 		"value":       `"sonnet-result"`,
 	}, nil)
 
-	// Add findings to opus session
+	// Add findings to opus-4-7 session
 	env.MustExecute(t, "findings.add", map[string]interface{}{
 		"session_id":  "sess-model-o",
 		"instance_id": wfiID,
@@ -275,7 +275,7 @@ func TestFindingsWithModel(t *testing.T) {
 	env.MustExecute(t, "findings.get", map[string]interface{}{
 		"agent_type":  "analyzer",
 		"key":         "result",
-		"model":       "sonnet",
+		"model":       "sonnet-5",
 		"instance_id": wfiID,
 	}, &sonnetResult)
 	if sonnetResult != "sonnet-result" {

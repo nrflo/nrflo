@@ -159,7 +159,7 @@ func TestConsoleChat_MintsScopedBearer(t *testing.T) {
 	creator := &fakeConsoleChatCreator{}
 	env.handler.consoleChat = creator
 	params, _ := json.Marshal(map[string]string{
-		"project": env.project, "engine": "codex", "model": "codex_gpt_high",
+		"project": env.project, "engine": "codex", "model": "gpt-5.3-codex",
 	})
 	resp := env.handler.Handle(Request{ID: "chat-1", Method: "console.chat", Params: params})
 	if resp.Error != nil {
@@ -172,7 +172,7 @@ func TestConsoleChat_MintsScopedBearer(t *testing.T) {
 	if result["session_id"] != "chat-session-1" || result["token"] != "chat-token-1" {
 		t.Fatalf("result = %+v", result)
 	}
-	if creator.engine != "codex" || creator.model != "codex_gpt_high" || creator.project != env.project {
+	if creator.engine != "codex" || creator.model != "gpt-5.3-codex" || creator.project != env.project {
 		t.Fatalf("creator args = engine=%q model=%q project=%q", creator.engine, creator.model, creator.project)
 	}
 }

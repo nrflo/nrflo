@@ -12,7 +12,7 @@ vi.mock('@/api/systemAgentDefs')
 function makeAgent(overrides: Partial<SystemAgentDef> = {}): SystemAgentDef {
   return {
     id: 'conflict-resolver',
-    model: 'sonnet',
+    model: 'sonnet-5',
     timeout: 30,
     prompt: 'Resolve merge conflicts in ${BRANCH_NAME}',
     restart_threshold: null,
@@ -115,7 +115,7 @@ describe('SystemAgentsSection', () => {
     await waitFor(() => {
       expect(systemAgentDefsApi.createSystemAgentDef).toHaveBeenCalledWith({
         id: 'my-agent',
-        model: 'sonnet',
+        model: 'sonnet-5',
         timeout: 30,
         prompt: 'My prompt',
         restart_threshold: null,

@@ -87,7 +87,6 @@ func (s *Spawner) Consult(ctx context.Context, callerSessionID, consultantID, qu
 		ModelConfigs:       s.config.ModelConfigs,
 		ErrorSvc:           s.config.ErrorSvc,
 		BuildAPIProvider:   s.config.BuildAPIProvider,
-		APIModelConfigs:    s.config.APIModelConfigs,
 		AgentSvc:           s.config.AgentSvc,
 		FindingsSvc:        s.config.FindingsSvc,
 		ProjectFindingsSvc: s.config.ProjectFindingsSvc,

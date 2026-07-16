@@ -13,12 +13,13 @@ registry, multimodal tool results, and behavioral notes.
 
 API mode runs agents as an in-process tool-use loop rather than spawning a
 CLI process. The concrete provider (Anthropic or OpenAI) is selected
-**per-agent** from the agent's `api_models` row — the `model` field on the
-agent definition is an `api_models.id`; the spawner looks up the row, reads
-its `provider` column, and calls `BuildAPIProvider(provider, projectID)` at
-spawn time. Each agent turn calls the provider's streaming API, dispatches
-tool invocations to registered handlers, and loops until `end_turn` or a
-terminal signal.
+**per-agent** from the agent's unified `models` row — the `model` field on the
+agent definition is a `models.id`, and api mode requires that row's
+`api_model` to be non-empty. The spawner reads `provider`, `api_model`,
+`api_context`, and `api_efforts`, then calls
+`BuildAPIProvider(provider, projectID)` at spawn time. Each agent turn calls
+the provider's streaming API, dispatches tool invocations to registered
+handlers, and loops until `end_turn` or a terminal signal.
 
 ---
 
@@ -28,53 +29,53 @@ API mode is controlled by the `api_mode_enabled` global setting. Toggle it at
 **Settings → Administration**. When off, any spawn request for an api-mode
 agent returns an error immediately.
 
-**api-via-cli hybrid** (`api_via_cli_enabled`): when on, Anthropic api-models
-(`provider=anthropic`) are routed through the Claude CLI billed on your
-subscription instead of direct HTTP calls. The tool registry is identical;
-tools are served over the MCP bridge (`nrflo_server agent mcp`). OpenAI api-models
-are unaffected and continue to use the in-process runner.
+**api-via-cli hybrid** (`api_via_cli_enabled`): when on, Anthropic api-mode
+models are routed through the Claude CLI billed on your subscription instead
+of direct HTTP calls. The hybrid deliberately retains the row's API model,
+context, and effort fields even though it launches a CLI process. The tool
+registry is identical; tools are served over the MCP bridge
+(`nrflo_server agent mcp`). OpenAI models are unaffected and continue to use
+the in-process runner.
 
 ---
 
 ## Model and Provider Selection
 
-The `model` field on an agent definition must be the `id` of a row in the
-`api_models` table. The row's `provider` column selects the backend:
+One `models` row represents a provider/model pair and may support CLI mode,
+API mode, or both. For an api-mode agent, `model` must name an enabled row
+whose `api_model` is non-empty. The row's `provider` selects the backend:
 
 | `provider` | Backend |
 |------------|---------|
 | `anthropic` | Anthropic Messages API (streaming) |
 | `openai` | OpenAI Responses API (streaming) |
 
-**Seeded Anthropic rows** (read-only):
+**Seeded API-capable rows** (read-only):
 
-| id | mapped_model | context |
-|----|--------------|---------|
-| `opus_4_8` | `claude-opus-4-8` | 1M |
-| `opus_4_8_1m` | `claude-opus-4-8` | 1M |
-| `opus_4_7` | `claude-opus-4-7` | 1M |
-| `opus_4_7_1m` | `claude-opus-4-7` | 1M |
-| `opus_4_6` | `claude-opus-4-6` | 1M |
-| `opus_4_6_1m` | `claude-opus-4-6` | 1M |
-| `sonnet` | `claude-sonnet-5` | 1M |
-| `haiku` | `claude-haiku-4-5` | 200k |
+| provider | id | api_model | api_context | api_efforts |
+|----------|----|-----------|-------------|-------------|
+| anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | low, medium, high, xhigh, max |
+| anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | low, medium, high |
+| anthropic | `opus-4-6` | `claude-opus-4-6` | 1M | low, medium, high, max |
+| anthropic | `opus-4-6-1m` | `claude-opus-4-6[1m]` | 1M | low, medium, high, max |
+| anthropic | `opus-4-7` | `claude-opus-4-7` | 1M | low, medium, high, xhigh, max |
+| anthropic | `opus-4-7-1m` | `claude-opus-4-7[1m]` | 1M | low, medium, high, xhigh, max |
+| anthropic | `opus-4-8` | `claude-opus-4-8` | 1M | low, medium, high, xhigh, max |
+| anthropic | `opus-4-8-1m` | `claude-opus-4-8[1m]` | 1M | low, medium, high, xhigh, max |
+| openai | `gpt-5.3-codex` | `gpt-5.3-codex` | 200k | low, medium, high, xhigh |
+| openai | `gpt-5.4` | `gpt-5.4` | 200k | low, medium, high, xhigh |
+| openai | `gpt-5.5` | `gpt-5.5` | 200k | low, medium, high, xhigh |
+| openai | `gpt-5.6-sol` | `gpt-5.6-sol` | 372k | low, medium, high, xhigh, max |
 
-**Seeded OpenAI rows** (read-only):
+`reasoning_effort` on an agent definition is an optional per-agent override
+validated against `api_efforts`; when omitted, `default_effort` from the model
+row is used. (`ultra` is a Codex-CLI-only effort and therefore never appears
+in `api_efforts`.) Custom rows can be managed under **Settings → Models** or
+through the global model routes:
 
-| id | mapped_model | reasoning_effort |
-|----|--------------|-----------------|
-| `gpt54_high` | `gpt-5.4` | high |
-| `gpt54_medium` | `gpt-5.4` | medium |
-| `gpt54_low` | `gpt-5.4` | low |
-| `gpt53_codex_high` | `gpt-5.3-codex` | high |
-| `gpt53_codex_medium` | `gpt-5.3-codex` | medium |
-| `gpt53_codex_low` | `gpt-5.3-codex` | low |
-
-The `reasoning_effort` column is threaded into the OpenAI Responses request
-(`be/internal/spawner/apirun/provider/openai/translate.go:28`). Each row also
-carries `supported_efforts` — the JSON list of levels the underlying model
-accepts (source of truth for effort validation and pickers). Custom rows can
-be added via **Settings → Administration → API Models**.
+- `GET|POST /api/v1/models`
+- `GET|PATCH|DELETE /api/v1/models/{id}`
+- `POST /api/v1/models/{id}/test` — CLI-mode probe; API-only rows are rejected
 
 ---
 

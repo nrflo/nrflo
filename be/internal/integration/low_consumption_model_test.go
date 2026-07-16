@@ -16,14 +16,14 @@ func TestAgentDefCreateWithLowConsumptionModel(t *testing.T) {
 	def, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
 		ID:                  "lc-main",
 		Prompt:              "main agent",
-		LowConsumptionModel: "sonnet",
+		LowConsumptionModel: "sonnet-5",
 	})
 	if err != nil {
 		t.Fatalf("create main agent with low_consumption_model: %v", err)
 	}
 
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
+	if def.LowConsumptionModel != "sonnet-5" {
+		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet-5")
 	}
 }
 
@@ -35,7 +35,7 @@ func TestAgentDefGetLowConsumptionModel(t *testing.T) {
 	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
 		ID:                  "get-main",
 		Prompt:              "main",
-		LowConsumptionModel: "haiku",
+		LowConsumptionModel: "haiku-4-5",
 	})
 	if err != nil {
 		t.Fatalf("create main: %v", err)
@@ -45,8 +45,8 @@ func TestAgentDefGetLowConsumptionModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef: %v", err)
 	}
-	if got.LowConsumptionModel != "haiku" {
-		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku")
+	if got.LowConsumptionModel != "haiku-4-5" {
+		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku-4-5")
 	}
 }
 
@@ -94,7 +94,7 @@ func TestAgentDefUpdateLowConsumptionModel(t *testing.T) {
 		t.Fatalf("create main: %v", err)
 	}
 
-	lcModel := "sonnet"
+	lcModel := "sonnet-5"
 	if err := svc.UpdateAgentDef(env.ProjectID, "test", "upd-lc-main", &types.AgentDefUpdateRequest{
 		LowConsumptionModel: &lcModel,
 	}); err != nil {
@@ -105,8 +105,8 @@ func TestAgentDefUpdateLowConsumptionModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef after update: %v", err)
 	}
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
+	if def.LowConsumptionModel != "sonnet-5" {
+		t.Errorf("after update LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet-5")
 	}
 }
 

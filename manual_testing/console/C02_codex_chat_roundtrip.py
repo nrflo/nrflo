@@ -11,7 +11,7 @@ import shutil
 from lib import console as con
 from lib.runtime import Ctx, Result, make_project
 
-CODEX_MODEL = "codex_gpt54_mini_low"
+CODEX_MODEL = "gpt-5.4-mini"
 
 
 def run(ctx: Ctx) -> Result:

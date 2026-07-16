@@ -54,6 +54,8 @@ grep -rn "protected\|admin(\|mux.HandleFunc" be/internal/api/server*.go
 
 Errors are returned as `{"error":"code","message":"..."}` for structured failures, or plain text on framework-level 4xx rejections.
 
+Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models/{id}/test`; the test route probes CLI mode only and rejects API-only rows. Writes are admin-only; reads and the test route are protected.
+
 `GET /api/v1/import/jira/search` and `GET /api/v1/import/github/search` return 400 when `X-Project` is missing (matching `POST /api/v1/import/spec`).
 
 ## Pause-Continue-Fail Routes

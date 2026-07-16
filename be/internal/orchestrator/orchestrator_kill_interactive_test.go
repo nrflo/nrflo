@@ -29,7 +29,7 @@ func insertInteractiveSession(t *testing.T, env *testEnv, wfiID, ticketID, sessi
 			?, ?, ?, ?,
 			?, ?, ?, ?, ?)`,
 		sessionID, env.project, ticketID, wfiID, "test-phase", "test-agent",
-		sql.NullString{String: "claude:sonnet", Valid: true},
+		sql.NullString{String: "claude:sonnet-5", Valid: true},
 		"user_interactive",
 		sql.NullString{}, sql.NullString{}, sql.NullInt64{},
 		sql.NullInt64{}, sql.NullString{}, sql.NullString{}, sql.NullString{},

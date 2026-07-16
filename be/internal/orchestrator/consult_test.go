@@ -70,7 +70,7 @@ func seedConsultDefs(t *testing.T, env *testEnv, ticketID string) (callerSID, wf
 		WorkflowInstanceID: wfiID,
 		Phase:              "implementor",
 		AgentType:          "implementor",
-		ModelID:            sql.NullString{String: "claude:opus_4_7", Valid: true},
+		ModelID:            sql.NullString{String: "claude:opus-4-7", Valid: true},
 		Status:             model.AgentSessionRunning,
 		StartedAt:          sql.NullString{String: now, Valid: true},
 	}); err != nil {
@@ -80,7 +80,7 @@ func seedConsultDefs(t *testing.T, env *testEnv, ticketID string) (callerSID, wf
 	// Consultant def: consultant=1, execution_mode=api, in "test" workflow.
 	if _, err := env.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, tools, layer, consultant, created_at, updated_at)
-		 VALUES ('test-consultant', ?, 'test', 'sonnet', 30, '# Answer: ${CONSULT_QUESTION}', 'api', 'findings_add,agent_finished', 0, 1, ?, ?)`,
+		 VALUES ('test-consultant', ?, 'test', 'sonnet-5', 30, '# Answer: ${CONSULT_QUESTION}', 'api', 'findings_add,agent_finished', 0, 1, ?, ?)`,
 		env.project, now, now,
 	); err != nil {
 		t.Fatalf("insert consultant def: %v", err)
@@ -117,7 +117,7 @@ func TestConsult_RecursionGuard(t *testing.T) {
 	// Insert a consultant def for the CALLER agent type.
 	if _, err := env.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, layer, consultant, created_at, updated_at)
-		 VALUES ('doc-consultant', ?, 'test', 'sonnet', 30, '# answer', 'api', 0, 1, ?, ?)`,
+		 VALUES ('doc-consultant', ?, 'test', 'sonnet-5', 30, '# answer', 'api', 0, 1, ?, ?)`,
 		env.project, now, now,
 	); err != nil {
 		t.Fatalf("insert caller consultant def: %v", err)
@@ -157,7 +157,7 @@ func TestConsult_TargetNotConsultant(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := env.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, layer, consultant, created_at, updated_at)
-		 VALUES ('normal-agent', ?, 'test', 'sonnet', 30, '# impl', 'api', 0, 0, ?, ?)`,
+		 VALUES ('normal-agent', ?, 'test', 'sonnet-5', 30, '# impl', 'api', 0, 0, ?, ?)`,
 		env.project, now, now,
 	); err != nil {
 		t.Fatalf("insert non-consultant def: %v", err)
@@ -181,7 +181,7 @@ func TestConsult_TargetNotAPIMode(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := env.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, execution_mode, layer, consultant, created_at, updated_at)
-		 VALUES ('cli-consultant', ?, 'test', 'sonnet', 30, '# impl', 'cli_interactive', 0, 1, ?, ?)`,
+		 VALUES ('cli-consultant', ?, 'test', 'sonnet-5', 30, '# impl', 'cli_interactive', 0, 1, ?, ?)`,
 		env.project, now, now,
 	); err != nil {
 		t.Fatalf("insert cli consultant def: %v", err)

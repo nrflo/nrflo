@@ -25,17 +25,17 @@ func TestCreateAgentDef_ReasoningEffort_ValidationMatrix(t *testing.T) {
 		effort        *string
 		wantErr       bool
 	}{
-		{"ultra on claude cli row rejected", "cli_interactive", "sonnet", strPtr("ultra"), true},
-		{"ultra on codex sol row accepted", "cli_interactive", "codex_gpt56_sol_high", strPtr("ultra"), false},
-		{"ultra on codex terra row accepted", "cli_interactive", "codex_gpt56_terra_high", strPtr("ultra"), false},
-		{"xhigh on claude haiku rejected", "cli_interactive", "haiku", strPtr("xhigh"), true},
-		{"xhigh on claude opus_4_8 accepted", "cli_interactive", "opus_4_8", strPtr("xhigh"), false},
-		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt56_sol_high", strPtr("xhigh"), false},
-		{"max on api openai gpt-5.4 rejected", "api", "gpt54_high", strPtr("max"), true},
-		{"ultra on api def rejected regardless of model", "api", "opus_4_8", strPtr("ultra"), true},
-		{"xhigh on api anthropic opus accepted", "api", "opus_4_8", strPtr("xhigh"), false},
-		{"nil reasoning_effort accepted (inherit)", "cli_interactive", "sonnet", nil, false},
-		{"garbage string rejected", "cli_interactive", "sonnet", strPtr("extreme"), true},
+		{"ultra on claude cli row rejected", "cli_interactive", "sonnet-5", strPtr("ultra"), true},
+		{"ultra on codex sol row accepted", "cli_interactive", "gpt-5.6-sol", strPtr("ultra"), false},
+		{"ultra on codex terra row accepted", "cli_interactive", "gpt-5.6-terra", strPtr("ultra"), false},
+		{"xhigh on claude haiku rejected", "cli_interactive", "haiku-4-5", strPtr("xhigh"), true},
+		{"xhigh on claude opus accepted", "cli_interactive", "opus-4-8", strPtr("xhigh"), false},
+		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt-5.6-sol", strPtr("xhigh"), false},
+		{"max on api openai gpt-5.4 rejected", "api", "gpt-5.4", strPtr("max"), true},
+		{"ultra on api def rejected regardless of model", "api", "opus-4-8", strPtr("ultra"), true},
+		{"xhigh on api anthropic opus accepted", "api", "opus-4-8", strPtr("xhigh"), false},
+		{"nil reasoning_effort accepted (inherit)", "cli_interactive", "sonnet-5", nil, false},
+		{"garbage string rejected", "cli_interactive", "sonnet-5", strPtr("extreme"), true},
 	}
 
 	for i, tc := range cases {
@@ -80,7 +80,7 @@ func TestCreateAgentDef_ReasoningEffort_RoundTripsThroughGetAndList(t *testing.T
 	created, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:              "effort-roundtrip",
 		Prompt:          "do work",
-		Model:           "opus_4_8",
+		Model:           "opus-4-8",
 		ReasoningEffort: strPtr("xhigh"),
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func TestCreateAgentDef_ReasoningEffort_RoundTripsThroughGetAndList(t *testing.T
 	noOverride, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:     "effort-no-override",
 		Prompt: "do work",
-		Model:  "sonnet",
+		Model:  "sonnet-5",
 	})
 	if err != nil {
 		t.Fatalf("CreateAgentDef (no override): %v", err)
@@ -141,18 +141,18 @@ func TestUpdateAgentDef_ReasoningEffort_PatchSafetyNet(t *testing.T) {
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:              "patch-safety-net",
 		Prompt:          "do work",
-		Model:           "codex_gpt56_sol_high",
+		Model:           "gpt-5.6-sol",
 		ReasoningEffort: strPtr("ultra"),
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	newModel := "sonnet"
+	newModel := "sonnet-5"
 	err := svc.UpdateAgentDef("proj1", wfID, "patch-safety-net", &types.AgentDefUpdateRequest{
 		Model: &newModel,
 	})
 	if err == nil {
-		t.Fatal("UpdateAgentDef(model=sonnet) on a def carrying an 'ultra' override: expected error, got nil")
+		t.Fatal("UpdateAgentDef(model=sonnet-5) on a def carrying an 'ultra' override: expected error, got nil")
 	}
 
 	// The def must be left untouched by the rejected PATCH.
@@ -160,8 +160,8 @@ func TestUpdateAgentDef_ReasoningEffort_PatchSafetyNet(t *testing.T) {
 	if getErr != nil {
 		t.Fatalf("GetAgentDef: %v", getErr)
 	}
-	if def.Model != "codex_gpt56_sol_high" {
-		t.Errorf("Model after rejected PATCH = %q, want unchanged %q", def.Model, "codex_gpt56_sol_high")
+	if def.Model != "gpt-5.6-sol" {
+		t.Errorf("Model after rejected PATCH = %q, want unchanged %q", def.Model, "gpt-5.6-sol")
 	}
 }
 
@@ -175,13 +175,13 @@ func TestUpdateAgentDef_ReasoningEffort_PatchSafetyNet_ModelSwapToCompatibleRow(
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:              "patch-safety-net-ok",
 		Prompt:          "do work",
-		Model:           "codex_gpt56_sol_high",
+		Model:           "gpt-5.6-sol",
 		ReasoningEffort: strPtr("ultra"),
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	newModel := "codex_gpt56_terra_high"
+	newModel := "gpt-5.6-terra"
 	if err := svc.UpdateAgentDef("proj1", wfID, "patch-safety-net-ok", &types.AgentDefUpdateRequest{
 		Model: &newModel,
 	}); err != nil {
@@ -210,7 +210,7 @@ func TestUpdateAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:     "patch-direct",
 		Prompt: "do work",
-		Model:  "haiku",
+		Model:  "haiku-4-5",
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -219,14 +219,14 @@ func TestUpdateAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if err := svc.UpdateAgentDef("proj1", wfID, "patch-direct", &types.AgentDefUpdateRequest{
 		ReasoningEffort: &bad,
 	}); err == nil {
-		t.Fatal("UpdateAgentDef(reasoning_effort=xhigh) on a haiku def: expected error, got nil")
+		t.Fatal("UpdateAgentDef(reasoning_effort=xhigh) on a haiku-4-5 def: expected error, got nil")
 	}
 
 	good := "high"
 	if err := svc.UpdateAgentDef("proj1", wfID, "patch-direct", &types.AgentDefUpdateRequest{
 		ReasoningEffort: &good,
 	}); err != nil {
-		t.Fatalf("UpdateAgentDef(reasoning_effort=high) on a haiku def: %v", err)
+		t.Fatalf("UpdateAgentDef(reasoning_effort=high) on a haiku-4-5 def: %v", err)
 	}
 	def, err := svc.GetAgentDef("proj1", wfID, "patch-direct")
 	if err != nil {

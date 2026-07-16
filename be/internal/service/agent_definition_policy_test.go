@@ -33,8 +33,8 @@ func setupPolicyTestEnv(t *testing.T) (*db.Pool, *AgentDefinitionService, *Workf
 	wfSvc := NewWorkflowService(pool, clk)
 	wfSvc.CreateWorkflowDef("proj", &types.WorkflowDefCreateRequest{ID: "wf"})
 
-	cliModelSvc := NewCLIModelService(pool, clk)
-	agentSvc := NewAgentDefinitionService(pool, clk, cliModelSvc, NewAPIModelService(pool, clk), nil)
+	modelSvc := NewModelService(pool, clk)
+	agentSvc := NewAgentDefinitionService(pool, clk, modelSvc, nil)
 	if _, err := agentSvc.CreateAgentDef("proj", "wf", &types.AgentDefCreateRequest{ID: "agent-a", Prompt: "do stuff", Layer: 1}); err != nil {
 		t.Fatalf("create agent-a: %v", err)
 	}

@@ -36,7 +36,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | s31 | take-control on cli_interactive broadcasts viewer-attach (no DB flip) |
 | s32 | plan_mode=true passes plan context to agent |
 | s34 | multiple workflow instances per ticket allowed |
-| s35 | POST /cli-models registers custom model |
+| s35 | POST /models registers a custom CLI-capable provider model |
 | s37 | WS subscriber receives workflow events |
 | s38 | notification webhook fires on completion |
 | s39 | declarative validation_commands run on pass (no flip) |
@@ -108,7 +108,7 @@ Reuses provider-agnostic scenarios A01, A02, A03, A06 from `api/` unchanged.
 
 | ID  | Description |
 |-----|-------------|
-| O01 | gpt54_high api_models row has reasoning_effort='high'; agent completes with result=pass |
+| O01 | gpt-5.4 API effort override `high` is accepted; agent completes with result=pass |
 | O02 | openai api-mode rate-limit detection: mock 429 → agent.rate_limited WS + DB cols |
 
 ## Console-chat scenarios (C-prefix)
@@ -125,7 +125,7 @@ PATH, C03 SKIPs without an Anthropic OAuth token).
 | C02 | codex console-chat roundtrip (same lifecycle on the app-server engine) |
 | C03 | api console-chat roundtrip (in-process apirun engine; api_mode_enabled toggle) |
 | C04 | console MCP tool dispatch: model calls ticket_list through the adopted mcp-external bridge and echoes a seeded ticket id (approvals answered with allow_for_session) |
-| C05 | openai api console-chat roundtrip (in-process apirun on a provider='openai' api_models row; SKIPs without an OpenAI key) |
+| C05 | openai api console-chat roundtrip (in-process apirun on a provider='openai' model row; SKIPs without an OpenAI key) |
 | C06 | api-engine native bash through the approval flow (api_native_tools_enabled): allow_for_session round-trip asserted via detail `session_approvals`, command side effect verified on disk |
 
 ## Folder applicability
@@ -146,7 +146,7 @@ implementations:
 - `s05` validates each adapter's own context-reporting channel (claude
   PreToolUse/PostToolUse, codex `thread/tokenUsage/updated`
   via the app-server backend). All providers assert context_left is populated.
-- `s35` registers a different `cli_type` + model id + timeout per provider.
+- `s35` registers a different provider + CLI model string + timeout per provider.
 
 Stall detection (`s16`) runs only in engine — the authoritative engine-side
 detector check under claude. The agent blocks in a server-side MCP python tool

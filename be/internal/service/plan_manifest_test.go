@@ -35,7 +35,7 @@ func TestParsePlanManifest_RejectsUnknownTopLevelField(t *testing.T) {
 		name string
 		raw  string
 	}{
-		{"model", `{"version":1,"goal":"g","layers":[],"model":"opus"}`},
+		{"model", `{"version":1,"goal":"g","layers":[],"model":"opus-4-7"}`},
 		{"effort", `{"version":1,"goal":"g","layers":[],"effort":"high"}`},
 		{"finding_schemas", `{"version":1,"goal":"g","layers":[],"finding_schemas":[]}`},
 		{"tools", `{"version":1,"goal":"g","layers":[],"tools":"emit_findings"}`},
@@ -58,7 +58,7 @@ func TestParsePlanManifest_RejectsUnknownLayerField(t *testing.T) {
 		"version": 1,
 		"goal": "g",
 		"layers": [
-			{"layer": 0, "policy": "all", "nodes": [], "model": "opus"}
+			{"layer": 0, "policy": "all", "nodes": [], "model": "opus-4-7"}
 		]
 	}`)
 	if _, err := ParsePlanManifest(raw); err == nil {
@@ -93,7 +93,7 @@ func TestParsePlanManifest_RejectsUnknownQuestionField(t *testing.T) {
 			]}
 		],
 		"questions": [
-			{"id": "q1", "question": "why?", "model": "opus"}
+			{"id": "q1", "question": "why?", "model": "opus-4-7"}
 		]
 	}`)
 	if _, err := ParsePlanManifest(raw); err == nil {

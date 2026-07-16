@@ -21,12 +21,13 @@ package service
 // dynAgent describes one seeded agent definition: a fanout_template (the
 // default when NodeRole is empty) or the workflow-local planner override.
 type dynAgent struct {
-	ID          string
-	Model       string
-	Tools       string
-	NodeRole    string // "" defaults to fanout_template at seed time
-	Description string
-	FindingKey  string // finding key this template emits to; "" for the planner
+	ID              string
+	Model           string
+	ReasoningEffort string
+	Tools           string
+	NodeRole        string // "" defaults to fanout_template at seed time
+	Description     string
+	FindingKey      string // finding key this template emits to; "" for the planner
 }
 
 // dynAgents is the seeded roster: the workflow-local planner override plus
@@ -35,77 +36,79 @@ type dynAgent struct {
 var dynAgents = []dynAgent{
 	{
 		ID:          "dynamic-planner",
-		Model:       "opus_4_8",
+		Model:       "opus-4-8",
 		Tools:       "emit_findings",
 		NodeRole:    "planner",
 		Description: "Workflow-local planner for the dynamic workflow: decomposes a goal into a layered manifest bound to the templates below.",
 	},
 	{
 		ID:          "codebase-explorer",
-		Model:       "haiku",
+		Model:       "haiku-4-5",
 		Tools:       "findings_add,findings_get,artifact_get",
 		Description: "Fast, lean-context codebase exploration: locates files/symbols/patterns and reports back without editing anything. Read-only by prompt discipline, not sandboxing. Emits to finding key `map`.",
 		FindingKey:  "map",
 	},
 	{
 		ID:          "module-reviewer",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "emit_findings,findings_get,artifact_get,artifact_list,read_document",
 		Description: "Reviews a module, change, or another node's finding critically and reports a pass/fail/concerns verdict; read-only by prompt discipline. Emits to finding key `report`.",
 		FindingKey:  "report",
 	},
 	{
-		ID:          "module-reviewer-codex",
-		Model:       "codex_gpt56_terra_high",
-		Tools:       "emit_findings,findings_get,artifact_get,artifact_list,read_document",
-		Description: "Provider-diverse twin of module-reviewer (codex GPT-5.6 Terra) for a cross-provider review quorum. Read-only by prompt discipline. Emits to finding key `report`.",
-		FindingKey:  "report",
+		ID:              "module-reviewer-codex",
+		Model:           "gpt-5.6-terra",
+		ReasoningEffort: "high",
+		Tools:           "emit_findings,findings_get,artifact_get,artifact_list,read_document",
+		Description:     "Provider-diverse twin of module-reviewer (codex GPT-5.6 Terra) for a cross-provider review quorum. Read-only by prompt discipline. Emits to finding key `report`.",
+		FindingKey:      "report",
 	},
 	{
 		ID:          "implementor-worker",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "*",
 		Description: "General-purpose implementation node with full tool access — writes code, runs commands, edits files in the shared working tree. Emits to finding key `work_log`.",
 		FindingKey:  "work_log",
 	},
 	{
 		ID:          "web-researcher",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
 		Description: "Web research node: searches, fetches, and extracts falsifiable claims with verbatim quotes and sources. Emits to finding key `claims`.",
 		FindingKey:  "claims",
 	},
 	{
 		ID:          "finding-verifier",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "emit_findings,findings_get,web_search",
 		Description: "Adversarial, refute-oriented verifier: checks an earlier node's findings and returns a CONFIRMED|PLAUSIBLE|REFUTED verdict per item (plausible-by-default). Emits to finding key `verdicts`.",
 		FindingKey:  "verdicts",
 	},
 	{
-		ID:          "finding-verifier-codex",
-		Model:       "codex_gpt56_sol_high",
-		Tools:       "emit_findings,findings_get,web_search",
-		Description: "Provider-diverse twin of finding-verifier (codex GPT-5.6 Sol) for a cross-provider verification quorum. Emits to finding key `verdicts`.",
-		FindingKey:  "verdicts",
+		ID:              "finding-verifier-codex",
+		Model:           "gpt-5.6-sol",
+		ReasoningEffort: "high",
+		Tools:           "emit_findings,findings_get,web_search",
+		Description:     "Provider-diverse twin of finding-verifier (codex GPT-5.6 Sol) for a cross-provider verification quorum. Emits to finding key `verdicts`.",
+		FindingKey:      "verdicts",
 	},
 	{
 		ID:          "generic-worker",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "findings_add,findings_get,artifact_get,artifact_list,read_document",
 		Description: "Moderate, read-leaning general-purpose node for tasks that don't fit the other templates (analysis, drafting, light investigation). Emits to finding key `notes`.",
 		FindingKey:  "notes",
 	},
 	{
 		ID:          "cross-checker",
-		Model:       "sonnet",
+		Model:       "sonnet-5",
 		Tools:       "emit_findings,findings_get",
 		Description: "Reads two prior nodes' findings (bind via #{NODE_FINDINGS:<a>} / #{NODE_FINDINGS:<b>} in its instructions) and reports where they agree or disagree. Emits to finding key `cross_check`.",
 		FindingKey:  "cross_check",
 	},
 	{
 		ID:          "synthesizer",
-		Model:       "opus_4_8",
+		Model:       "opus-4-8",
 		Tools:       "emit_findings,findings_get",
 		Description: "Final, result-carrying node: merges semantic duplicates across earlier findings, ranks by confidence, and emits exactly once. Emits to finding key `workflow_final_result`.",
 		FindingKey:  "workflow_final_result",

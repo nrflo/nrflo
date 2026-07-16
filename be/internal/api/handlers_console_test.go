@@ -36,7 +36,7 @@ func seedWorkflowAgentForConsoleTest(t *testing.T, s *Server, projectID, id stri
 	}
 	if _, err := s.pool.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, spawn_token, created_at, updated_at)
-		VALUES (?, ?, '', ?, 'p', 'a', 'sonnet', 'user_interactive', 'workflow_agent', ?, ?, ?)`,
+		VALUES (?, ?, '', ?, 'p', 'a', 'sonnet-5', 'user_interactive', 'workflow_agent', ?, ?, ?)`,
 		id, projectID, wfiID, "tok-"+id, now, now); err != nil {
 		t.Fatalf("workflow agent session: %v", err)
 	}

@@ -67,7 +67,7 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 		return plannerAgentConfig{}, fmt.Errorf("planner: query workflow planner def: %w", err)
 	}
 
-	sysSvc := service.NewSystemAgentDefinitionService(pool, o.clock, service.NewAPIModelService(pool, o.clock))
+	sysSvc := service.NewSystemAgentDefinitionService(pool, o.clock, service.NewModelService(pool, o.clock))
 	sysDef, sErr := sysSvc.GetForBackend("planner", "cli_interactive")
 	if sErr != nil {
 		sysDef, sErr = sysSvc.GetForBackend("planner", "api")
@@ -191,7 +191,6 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 	}
 
 	modelConfigs, _ := o.loadModelConfigs(pool)
-	apiModelConfigs, _ := o.loadAPIModelConfigs(pool)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(wfi.ProjectID, "claude_safety_hook"); raw != "" {
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
@@ -227,7 +226,6 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 		APIMode:            true,
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
-		APIModelConfigs:    apiModelConfigs,
 		ErrorSvc:           o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
 			return service.BuildAPIProvider(ctx, plannerPool, o.clock, providerName, projectID)

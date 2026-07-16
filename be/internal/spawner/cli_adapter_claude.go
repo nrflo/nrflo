@@ -24,20 +24,6 @@ func (a *ClaudeAdapter) Name() string {
 }
 
 func (a *ClaudeAdapter) MapModel(model string) string {
-	switch model {
-	case "opus_4_6":
-		return "claude-opus-4-6"
-	case "opus_4_6_1m":
-		return "claude-opus-4-6[1m]"
-	case "opus_4_7":
-		return "claude-opus-4-7"
-	case "opus_4_7_1m":
-		return "claude-opus-4-7[1m]"
-	case "opus_4_8":
-		return "claude-opus-4-8"
-	case "opus_4_8_1m":
-		return "claude-opus-4-8[1m]"
-	}
 	return model
 }
 

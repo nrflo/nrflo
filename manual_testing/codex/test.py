@@ -25,7 +25,7 @@ from codex import ALL_SCENARIOS  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default="codex_gpt54_mini_low")
+    ap.add_argument("--model", default="gpt-5.4-mini")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None)

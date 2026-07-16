@@ -73,7 +73,7 @@ func TestCleanupCascade(t *testing.T) {
 				WorkflowInstanceID: inst.id,
 				Phase:              "phase1",
 				AgentType:          "test-agent",
-				ModelID:            sql.NullString{String: "sonnet", Valid: true},
+				ModelID:            sql.NullString{String: "sonnet-5", Valid: true},
 				Status:             model.AgentSessionCompleted,
 			}
 			if err := asRepo.Create(s); err != nil {

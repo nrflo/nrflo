@@ -28,7 +28,7 @@ func setupObserverListDB(t *testing.T) (*AgentSessionRepo, func(id, proj, kind s
 		_, err := database.Exec(`
 			INSERT INTO agent_sessions
 			(id, project_id, ticket_id, phase, agent_type, model_id, status, kind, observer_scope, started_at, created_at, updated_at)
-			VALUES (?, ?, '', 'observer', '_observer', 'sonnet', ?, ?, 'global', ?, ?, ?)`,
+			VALUES (?, ?, '', 'observer', '_observer', 'sonnet-5', ?, ?, 'global', ?, ?, ?)`,
 			id, proj, status, kind, startedAtStr, now, now)
 		if err != nil {
 			t.Fatalf("insert session %s: %v", id, err)

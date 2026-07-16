@@ -46,7 +46,7 @@ func insertRunningSession(t *testing.T, database *db.DB, id, wfiID string, statu
 	_, err := database.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at)
-		VALUES (?, 'proj', 'TKT-1', ?, 'test-phase', 'test-agent', 'sonnet', ?, ?, ?, ?)`,
+		VALUES (?, 'proj', 'TKT-1', ?, 'test-phase', 'test-agent', 'sonnet-5', ?, ?, ?, ?)`,
 		id, wfiID, status, startedAtStr, now, now)
 	if err != nil {
 		t.Fatalf("insertRunningSession(%s): %v", id, err)

@@ -70,7 +70,7 @@ func TestRejectTakeControl_BroadcastsAndUnblocksReadiness(t *testing.T) {
 		t.Fatal("RequestTakeControl did not register a readiness channel")
 	}
 
-	proc := &processInfo{sessionID: "sess-reject", agentType: "implementor", modelID: "claude:sonnet"}
+	proc := &processInfo{sessionID: "sess-reject", agentType: "implementor", modelID: "claude:sonnet-5"}
 	req := SpawnRequest{ProjectID: "proj-reject", TicketID: "T-1", WorkflowName: "feature"}
 
 	sp.rejectTakeControl(req, proc, "sess-reject", "resume_unsupported")
@@ -120,7 +120,7 @@ func TestRejectTakeControl_BroadcastsAndUnblocksReadiness(t *testing.T) {
 func TestRegisterTakeControlResumeLaunch_NilPTYManager_NoPanic(t *testing.T) {
 	t.Parallel()
 	sp := New(Config{Clock: clock.Real()})
-	proc := &processInfo{sessionID: "sess-no-mgr", adapter: &ClaudeAdapter{}, modelID: "claude:sonnet"}
+	proc := &processInfo{sessionID: "sess-no-mgr", adapter: &ClaudeAdapter{}, modelID: "claude:sonnet-5"}
 	sp.registerTakeControlResumeLaunch(proc) // must not panic
 }
 
@@ -134,13 +134,13 @@ func TestRegisterTakeControlResumeLaunch_RegistersClaudeResumeLaunch(t *testing.
 		Clock:      clock.Real(),
 		PTYManager: ptyMgr,
 		ModelConfigs: map[string]ModelConfig{
-			"sonnet": {CLIType: "claude", MappedModel: "claude-sonnet-mapped"},
+			"sonnet-5": {Provider: "anthropic", CLIModel: "claude-sonnet-mapped"},
 		},
 	})
 	proc := &processInfo{
 		sessionID: "sess-resume-1",
 		adapter:   &ClaudeAdapter{},
-		modelID:   "claude:sonnet",
+		modelID:   "claude:sonnet-5",
 		workDir:   "/tmp/resume-workdir",
 	}
 

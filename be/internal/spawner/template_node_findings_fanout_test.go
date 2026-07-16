@@ -27,7 +27,7 @@ func TestLoadTemplate_NodeFindings_FanOutSiblingsDisjoint_AggregateStillMerges(t
 		"W1: #{NODE_FINDINGS:worker#1:picked}\nW2: #{NODE_FINDINGS:worker#2:picked}\nAgg:\n#{FINDINGS:worker}", 1)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 1)
+	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 1)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestLoadTemplate_NodeFindings_EndedSessionWinsOverRunning(t *testing.T) {
 	createAgentDefWithLayer(t, env, "consumer", "#{NODE_FINDINGS:flaky-node:status}", 1)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 1)
+	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 1)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestLoadTemplate_NodeID_ExpandsToArgument(t *testing.T) {
 	createAgentDefWithLayer(t, env, "worker", "Running as ${NODE_ID}", 0)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("worker", ticketID, env.project, "p", "c", "test", "claude:sonnet", "worker#3", wfiID, nil, 0)
+	result, _, _, err := sp.loadTemplate("worker", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "worker#3", wfiID, nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -108,7 +108,7 @@ func TestLoadTemplate_NodeID_FallsBackToAgentType_WhenEmpty(t *testing.T) {
 	createAgentDefWithLayer(t, env, "worker", "Running as ${NODE_ID}", 0)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("worker", ticketID, env.project, "p", "c", "test", "claude:sonnet", "" /* nodeID unset */, wfiID, nil, 0)
+	result, _, _, err := sp.loadTemplate("worker", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "" /* nodeID unset */, wfiID, nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

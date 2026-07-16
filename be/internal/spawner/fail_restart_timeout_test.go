@@ -17,7 +17,7 @@ func TestAutoRestart_TimeoutSessionOverriddenToContinued(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 
@@ -33,7 +33,7 @@ func TestAutoRestart_TimeoutSessionOverriddenToContinued(t *testing.T) {
 	proc := &processInfo{
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -143,7 +143,7 @@ func TestAutoRestart_TimeoutDisabledAtZero(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 
@@ -191,7 +191,7 @@ func TestAutoRestart_TimeoutTerminalAtMaxCount(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 

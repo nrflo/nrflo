@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CLIModelCheckButton } from './CLIModelCheckButton'
-import * as cliModelsApi from '@/api/cliModels'
+import * as modelsApi from '@/api/models'
 
-vi.mock('@/api/cliModels')
+vi.mock('@/api/models')
 
 describe('CLIModelCheckButton', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -17,17 +17,17 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('calls testCLIModel with the provided modelId on click', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 100 })
+    vi.mocked(modelsApi.testModel).mockResolvedValue({ success: true, duration_ms: 100 })
     render(<CLIModelCheckButton modelId="my-custom-model" />)
 
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /check model/i }))
 
-    expect(cliModelsApi.testCLIModel).toHaveBeenCalledWith('my-custom-model', expect.any(AbortSignal))
+    expect(modelsApi.testModel).toHaveBeenCalledWith('my-custom-model', expect.any(AbortSignal))
   })
 
   it('shows spinner and disables button during testing', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockReturnValue(new Promise(() => {}))
+    vi.mocked(modelsApi.testModel).mockReturnValue(new Promise(() => {}))
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
@@ -38,7 +38,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('shows duration text on success', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 1234 })
+    vi.mocked(modelsApi.testModel).mockResolvedValue({ success: true, duration_ms: 1234 })
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
@@ -49,7 +49,7 @@ describe('CLIModelCheckButton', () => {
 
   it('auto-fades success indicator back to idle after 3s', async () => {
     vi.useFakeTimers()
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: true, duration_ms: 500 })
+    vi.mocked(modelsApi.testModel).mockResolvedValue({ success: true, duration_ms: 500 })
 
     render(<CLIModelCheckButton modelId="sonnet" />)
 
@@ -70,7 +70,7 @@ describe('CLIModelCheckButton', () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
     // Mock that stays pending until the abort signal fires
-    vi.mocked(cliModelsApi.testCLIModel).mockImplementation((_id, signal) =>
+    vi.mocked(modelsApi.testModel).mockImplementation((_id, signal) =>
       new Promise<never>((_, reject) => {
         signal?.addEventListener('abort', () =>
           reject(new DOMException('The operation was aborted.', 'AbortError'))
@@ -96,7 +96,7 @@ describe('CLIModelCheckButton', () => {
   afterEach(() => vi.useRealTimers())
 
   it('shows error in popup dialog automatically on failure', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+    vi.mocked(modelsApi.testModel).mockResolvedValue({
       success: false,
       error: 'binary not found',
       duration_ms: 0,
@@ -110,7 +110,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('shows "Unknown error" in popup dialog when error field is absent', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({ success: false, duration_ms: 0 })
+    vi.mocked(modelsApi.testModel).mockResolvedValue({ success: false, duration_ms: 0 })
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
@@ -120,7 +120,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('shows error in popup dialog when testCLIModel throws', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockRejectedValue(new Error('network failure'))
+    vi.mocked(modelsApi.testModel).mockRejectedValue(new Error('network failure'))
     render(<CLIModelCheckButton modelId="sonnet" />)
 
     const user = userEvent.setup()
@@ -131,7 +131,7 @@ describe('CLIModelCheckButton', () => {
 
   it('closes error dialog when re-testing', async () => {
     const user = userEvent.setup()
-    vi.mocked(cliModelsApi.testCLIModel)
+    vi.mocked(modelsApi.testModel)
       .mockResolvedValueOnce({ success: false, error: 'connection refused', duration_ms: 0 })
       .mockReturnValueOnce(new Promise(() => {}))
 
@@ -148,7 +148,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('opens error dialog automatically on failure', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+    vi.mocked(modelsApi.testModel).mockResolvedValue({
       success: false,
       error: 'unique-inline-check-error',
       duration_ms: 0,
@@ -162,7 +162,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('dialog header includes modelId for context', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+    vi.mocked(modelsApi.testModel).mockResolvedValue({
       success: false,
       error: 'oops',
       duration_ms: 0,
@@ -174,7 +174,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('dialog closes when Close button is clicked', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+    vi.mocked(modelsApi.testModel).mockResolvedValue({
       success: false,
       error: 'close-button-test-error',
       duration_ms: 0,
@@ -189,7 +189,7 @@ describe('CLIModelCheckButton', () => {
   })
 
   it('dialog closes when Escape key is pressed', async () => {
-    vi.mocked(cliModelsApi.testCLIModel).mockResolvedValue({
+    vi.mocked(modelsApi.testModel).mockResolvedValue({
       success: false,
       error: 'escape-key-test-error',
       duration_ms: 0,

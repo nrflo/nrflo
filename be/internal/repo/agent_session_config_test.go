@@ -45,7 +45,7 @@ func makeSession(id, wfiID, config string) *model.AgentSession {
 		WorkflowInstanceID: wfiID,
 		Phase:              "phase0",
 		AgentType:          "test-agent",
-		ModelID:            sql.NullString{String: "sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "sonnet-5", Valid: true},
 		Status:             model.AgentSessionRunning,
 		Config:             config,
 	}
@@ -102,8 +102,8 @@ func TestAgentSessionCreate_ConfigRoundTrip(t *testing.T) {
 		id     string
 		config string
 	}{
-		{"sess-a", `{"model":"sonnet"}`},
-		{"sess-b", `{"model":"haiku","safety":true}`},
+		{"sess-a", `{"model":"sonnet-5"}`},
+		{"sess-b", `{"model":"haiku-4-5","safety":true}`},
 		{"sess-c", ""},
 	}
 
@@ -169,7 +169,7 @@ func TestAgentSessionInsertWithoutConfig_DefaultsToEmpty(t *testing.T) {
 	_, err := database.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-		VALUES (?, 'proj', 'TKT-1', ?, 'phase0', 'test-agent', 'sonnet', 'completed', ?, ?)`,
+		VALUES (?, 'proj', 'TKT-1', ?, 'phase0', 'test-agent', 'sonnet-5', 'completed', ?, ?)`,
 		"sess-legacy", wfiID, now, now)
 	if err != nil {
 		t.Fatalf("legacy insert: %v", err)

@@ -28,7 +28,6 @@ func (o *Orchestrator) setupInteractivePreStep(
 	agents map[string]spawner.AgentConfig,
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
-	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 ) (*interactivePreStep, error) {
 	sessionID := uuid.New().String()
@@ -36,10 +35,10 @@ func (o *Orchestrator) setupInteractivePreStep(
 	// Determine agent type and model for the session. Both modes derive the
 	// model from the workflow's L0 agent (Phases[0] is the tie-breaker when
 	// L0 has multiple agents) so plan capability tracks workflow capability.
-	// opus_4_8 is the last-resort fallback when the workflow has no phases
+	// opus-4-8 is the last-resort fallback when the workflow has no phases
 	// or the L0 agent has no configured model.
 	var agentType, modelName, phase string
-	modelName = "opus_4_8"
+	modelName = "opus-4-8"
 	if len(svcWf.Phases) > 0 {
 		l0Agent := svcWf.Phases[0].Agent
 		if cfg, ok := svcAgents[l0Agent]; ok && cfg.Model != "" {
@@ -88,7 +87,7 @@ func (o *Orchestrator) setupInteractivePreStep(
 	}
 
 	// Build the PTY launch via the CLI adapter resolved from the L0 model.
-	launch, adapter, planFile, cleanup, err := o.buildInteractiveLaunch(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, apiModelConfigs, claudeSettingsJSON)
+	launch, adapter, planFile, cleanup, err := o.buildInteractiveLaunch(req, wi, sessionID, modelName, svcWf, workflows, agents, pool, projectRoot, modelConfigs, claudeSettingsJSON)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build interactive launch: %w", err)
 	}
@@ -103,13 +102,12 @@ func (o *Orchestrator) setupInteractivePreStep(
 	wfiID := wi.ID
 	interactivePool := pool
 	sp := spawner.New(spawner.Config{
-		Workflows:       workflows,
-		Agents:          agents,
-		DataPath:        o.dataPath,
-		WSHub:           o.wsHub,
-		Clock:           o.clock,
-		ModelConfigs:    modelConfigs,
-		APIModelConfigs: apiModelConfigs,
+		Workflows:    workflows,
+		Agents:       agents,
+		DataPath:     o.dataPath,
+		WSHub:        o.wsHub,
+		Clock:        o.clock,
+		ModelConfigs: modelConfigs,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
 			return service.BuildAPIProvider(ctx, interactivePool, o.clock, providerName, projectID)
 		},

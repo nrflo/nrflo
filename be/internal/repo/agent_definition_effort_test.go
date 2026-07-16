@@ -21,14 +21,14 @@ func TestAgentDefinition_ReasoningEffort_RoundTripsCreateGetList(t *testing.T) {
 	effort := "xhigh"
 	if err := r.Create(&model.AgentDefinition{
 		ID: "with-effort", ProjectID: "proj-effort", WorkflowID: "wf-effort",
-		ExecutionMode: "cli_interactive", Layer: 0, Model: "opus_4_8",
+		ExecutionMode: "cli_interactive", Layer: 0, Model: "opus-4-8",
 		ReasoningEffort: &effort,
 	}); err != nil {
 		t.Fatalf("create with-effort: %v", err)
 	}
 	if err := r.Create(&model.AgentDefinition{
 		ID: "no-effort", ProjectID: "proj-effort", WorkflowID: "wf-effort",
-		ExecutionMode: "cli_interactive", Layer: 0, Model: "sonnet",
+		ExecutionMode: "cli_interactive", Layer: 0, Model: "sonnet-5",
 	}); err != nil {
 		t.Fatalf("create no-effort: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestAgentDefinition_ReasoningEffort_RoundTripsUpdate(t *testing.T) {
 	r := NewAgentDefinitionRepo(pool, clock.Real())
 	if err := r.Create(&model.AgentDefinition{
 		ID: "agent-a", ProjectID: "proj-effort2", WorkflowID: "wf-effort2",
-		ExecutionMode: "cli_interactive", Layer: 0, Model: "opus_4_8",
+		ExecutionMode: "cli_interactive", Layer: 0, Model: "opus-4-8",
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}

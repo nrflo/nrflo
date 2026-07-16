@@ -15,8 +15,9 @@ vi.mock('@/stores/projectStore', () => ({
   ),
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useCLIModels: () => ({ data: [] }),
+vi.mock('@/hooks/useModels', () => ({
+  cliTypeForProvider: vi.fn(),
+  useModels: () => ({ data: [] }),
 }))
 
 function renderForm(props: Partial<React.ComponentProps<typeof WorkflowDefForm>> = {}) {

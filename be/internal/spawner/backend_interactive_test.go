@@ -59,7 +59,7 @@ func TestCLIInteractiveBackend_Start_NilPtyManager_ReturnsError(t *testing.T) {
 	s := New(Config{Clock: clock.Real()})
 	b := newCLIInteractiveBackend(&ClaudeAdapter{}, s, nil)
 	proc := &processInfo{sessionID: "s", doneCh: make(chan struct{})}
-	prep := &prepResult{opts: SpawnOptions{Model: "sonnet", WorkDir: "/tmp"}}
+	prep := &prepResult{opts: SpawnOptions{Model: "sonnet-5", WorkDir: "/tmp"}}
 	if err := b.Start(context.Background(), proc, prep); err == nil {
 		t.Error("Start() with nil PTYManager should return error")
 	}
@@ -80,7 +80,7 @@ func TestCLIInteractiveBackend_Start_DeliverPrompt(t *testing.T) {
 	}
 	prep := &prepResult{
 		prompt: "run the tests",
-		opts:   SpawnOptions{Model: "sonnet", WorkDir: "/tmp"},
+		opts:   SpawnOptions{Model: "sonnet-5", WorkDir: "/tmp"},
 	}
 
 	// Cleanup: close session so goroutines (ferry + wait) exit even on test failure.

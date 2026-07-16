@@ -99,7 +99,7 @@ func (s *ProjectService) seedSpecImportWorkflow(projectID, now string) {
 	_, err = s.pool.Exec(`
 		INSERT OR IGNORE INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-		VALUES ('spec-normalizer', ?, '__spec_import__', 'haiku', 5, '', 0, ?, ?)`,
+		VALUES ('spec-normalizer', ?, '__spec_import__', 'haiku-4-5', 5, '', 0, ?, ?)`,
 		projectID, now, now,
 	)
 	if err != nil {

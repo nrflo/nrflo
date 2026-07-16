@@ -16,7 +16,6 @@
 # Format: "<path><TAB><line count>", sorted by path.
 #
 be/cmd/binaries_test.go	317
-be/internal/api/handlers_api_models_test.go	364
 be/internal/api/handlers_chains.go	388
 be/internal/api/handlers_default_template_type_test.go	333
 be/internal/api/handlers_git_test.go	670
@@ -94,7 +93,6 @@ be/internal/scheduler/scheduler_dispatch_test.go	337
 be/internal/service/agent.go	520
 be/internal/service/agent_definition.go	483
 be/internal/service/agent_definition_script_test.go	321
-be/internal/service/api_model.go	354
 be/internal/service/artifact.go	326
 be/internal/service/chain.go	466
 be/internal/service/chain_append_test.go	536
@@ -103,8 +101,6 @@ be/internal/service/chain_order_test.go	413
 be/internal/service/chain_preview_test.go	343
 be/internal/service/chain_remove_test.go	425
 be/internal/service/chain_test.go	723
-be/internal/service/cli_model.go	394
-be/internal/service/cli_model_test.go	424
 be/internal/service/daily_stats_test.go	604
 be/internal/service/default_template_type_test.go	362
 be/internal/service/findings_layer_test.go	338

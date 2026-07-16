@@ -13,7 +13,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_SystemPromptFile(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:            "sonnet",
+		Model:            "sonnet-5",
 		SessionID:        "sess-1",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
@@ -36,7 +36,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_NoSystemPromptFile(t *testing.T) 
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:     "sonnet",
+		Model:     "sonnet-5",
 		SessionID: "sess-1",
 		WorkDir:   "/tmp",
 	}
@@ -58,7 +58,7 @@ func TestClaudeAdapter_ResumeWithSystemPromptFile(t *testing.T) {
 	opts := InteractiveSpawnOptions{
 		SessionID:        "sess-new",
 		ResumeSessionID:  "sess-resume",
-		Model:            "sonnet",
+		Model:            "sonnet-5",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
@@ -89,7 +89,7 @@ func TestCodexAdapter_BuildInteractiveCommand_IgnoresSystemPromptFile(t *testing
 	adapter := &CodexAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:            "codex_gpt_high",
+		Model:            "gpt-5.3-codex",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/foo.md",
 	}
@@ -111,7 +111,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_BothFiles(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:                    "sonnet",
+		Model:                    "sonnet-5",
 		SessionID:                "sess-both",
 		WorkDir:                  "/tmp",
 		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
@@ -157,7 +157,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_OverrideFileOnly(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:                    "sonnet",
+		Model:                    "sonnet-5",
 		SessionID:                "sess-override-only",
 		WorkDir:                  "/tmp",
 		SystemPromptOverrideFile: "/tmp/nrflo/override.md",
@@ -189,7 +189,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_OverrideFileEmpty(t *testing.T) {
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:            "sonnet",
+		Model:            "sonnet-5",
 		SessionID:        "sess-no-override",
 		WorkDir:          "/tmp",
 		SystemPromptFile: "/tmp/nrflo/suffix.md",
@@ -222,7 +222,7 @@ func TestNonClaudeAdapters_IgnoreSystemPromptOverrideFile(t *testing.T) {
 		adapter CLIAdapter
 		model   string
 	}{
-		{"codex", &CodexAdapter{}, "codex_gpt_high"},
+		{"codex", &CodexAdapter{}, "gpt-5.3-codex"},
 	}
 	for _, tt := range adapters {
 		t.Run(tt.name, func(t *testing.T) {

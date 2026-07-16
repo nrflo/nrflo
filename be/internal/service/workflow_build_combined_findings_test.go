@@ -139,16 +139,16 @@ func TestBuildCombinedFindings_SessionWithModelID(t *testing.T) {
 	pool, svc, wfiID := setupDeriveTestEnv(t)
 
 	insertSession(t, pool, "s-opus", wfiID, "analyzer", "completed", "pass", "")
-	if _, err := pool.Exec(`UPDATE agent_sessions SET model_id = 'opus' WHERE id = ?`, "s-opus"); err != nil {
+	if _, err := pool.Exec(`UPDATE agent_sessions SET model_id = 'opus-4-7' WHERE id = ?`, "s-opus"); err != nil {
 		t.Fatalf("set model_id: %v", err)
 	}
-	upsertSessionFinding(t, pool, wfiID, "s-opus", "analyzer", "opus", "key", "val")
+	upsertSessionFinding(t, pool, wfiID, "s-opus", "analyzer", "opus-4-7", "key", "val")
 
 	wi := &model.WorkflowInstance{ID: wfiID}
 	combined := svc.BuildCombinedFindings(wi)
 
-	if _, ok := combined["analyzer:opus"]; !ok {
-		t.Errorf("expected key 'analyzer:opus' in combined, got keys: %v", buildCombinedFindingsKeys(combined))
+	if _, ok := combined["analyzer:opus-4-7"]; !ok {
+		t.Errorf("expected key 'analyzer:opus-4-7' in combined, got keys: %v", buildCombinedFindingsKeys(combined))
 	}
 	if _, ok := combined["analyzer"]; ok {
 		t.Errorf("unexpected bare 'analyzer' key when model_id is set")

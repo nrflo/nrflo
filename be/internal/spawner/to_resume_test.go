@@ -36,7 +36,7 @@ func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -67,7 +67,7 @@ func TestFetchPreviousData_WithoutToResumeKey(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -96,7 +96,7 @@ func TestFetchPreviousData_EmptyToResumeValue(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -125,7 +125,7 @@ func TestFetchPreviousData_NonStringToResume(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -150,7 +150,7 @@ func TestFetchPreviousData_NoFindings(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -173,7 +173,7 @@ func TestFetchPreviousData_NoContinuedSession(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -209,7 +209,7 @@ func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -239,7 +239,7 @@ func TestFetchPreviousData_DifferentAgentType(t *testing.T) {
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -261,15 +261,15 @@ func TestFetchPreviousData_DifferentModelID(t *testing.T) {
 	findings := map[string]interface{}{
 		"to_resume": "opus model summary",
 	}
-	env.createContinuedSessionWithModel(t, continuedSessionID, findings, "claude:opus")
+	env.createContinuedSessionWithModel(t, continuedSessionID, findings, "claude:opus-4-7")
 
-	// Query for claude:sonnet (should not find it)
+	// Query for claude:sonnet-5 (should not find it)
 	result, _ := env.spawner.fetchPreviousDataAndReason(
 		env.projectID,
 		env.ticketID,
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -296,7 +296,7 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 		"", // empty ticket ID for project scope
 		env.workflowID,
 		"test-agent",
-		"claude:sonnet",
+		"claude:sonnet-5",
 		"test-phase",
 		"",
 	)
@@ -411,13 +411,13 @@ func (env *toResumeTestEnv) createContinuedSession(t *testing.T, sessionID strin
 // createContinuedSessionWithTime creates a continued session with specific ended_at time
 func (env *toResumeTestEnv) createContinuedSessionWithTime(t *testing.T, sessionID string, findings map[string]interface{}, endedAt time.Time) {
 	t.Helper()
-	env.createContinuedSessionFull(t, sessionID, findings, "test-agent", "claude:sonnet", endedAt)
+	env.createContinuedSessionFull(t, sessionID, findings, "test-agent", "claude:sonnet-5", endedAt)
 }
 
 // createContinuedSessionForAgent creates a continued session for a specific agent type
 func (env *toResumeTestEnv) createContinuedSessionForAgent(t *testing.T, sessionID string, findings map[string]interface{}, agentType string) {
 	t.Helper()
-	env.createContinuedSessionFull(t, sessionID, findings, agentType, "claude:sonnet", time.Now())
+	env.createContinuedSessionFull(t, sessionID, findings, agentType, "claude:sonnet-5", time.Now())
 }
 
 // createContinuedSessionWithModel creates a continued session with a specific model ID

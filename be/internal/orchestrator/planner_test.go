@@ -30,7 +30,7 @@ func insertLocalPlannerDef(t *testing.T, env *testEnv, workflowID, id, model, ex
 // system default.
 func TestResolvePlannerDef_WorkflowLocalOverride(t *testing.T) {
 	env := newTestEnv(t)
-	insertLocalPlannerDef(t, env, "test", "local-planner", "opus", "api")
+	insertLocalPlannerDef(t, env, "test", "local-planner", "opus-4-7", "api")
 
 	cfg, err := env.orch.resolvePlannerDef(env.pool, env.project, "test")
 	if err != nil {
@@ -42,8 +42,8 @@ func TestResolvePlannerDef_WorkflowLocalOverride(t *testing.T) {
 	if cfg.ExecutionMode != "api" {
 		t.Errorf("ExecutionMode = %q, want %q", cfg.ExecutionMode, "api")
 	}
-	if cfg.Model != "opus" {
-		t.Errorf("Model = %q, want %q", cfg.Model, "opus")
+	if cfg.Model != "opus-4-7" {
+		t.Errorf("Model = %q, want %q", cfg.Model, "opus-4-7")
 	}
 }
 
@@ -73,7 +73,7 @@ func TestResolvePlannerDef_SystemDefaultFallback(t *testing.T) {
 // (system-default fallback) resolves to nil.
 func TestResolvePlannerDef_ReasoningEffort_WorkflowLocalOverride(t *testing.T) {
 	env := newTestEnv(t)
-	insertLocalPlannerDef(t, env, "test", "local-planner-effort", "opus_4_8", "cli_interactive")
+	insertLocalPlannerDef(t, env, "test", "local-planner-effort", "opus-4-8", "cli_interactive")
 	if _, err := env.pool.Exec(
 		`UPDATE agent_definitions SET reasoning_effort = 'xhigh' WHERE id = 'local-planner-effort'`,
 	); err != nil {
@@ -121,15 +121,15 @@ func TestRenderTemplateLibrary_Empty(t *testing.T) {
 // falls back to a placeholder instead of an empty line.
 func TestRenderTemplateLibrary_NonEmpty(t *testing.T) {
 	templates := []service.PlanTemplate{
-		{ID: "tpl-a", Model: "sonnet", ExecutionMode: "api", ReasoningEffort: "high", Prompt: "short prompt", Description: "Reviews code for correctness."},
-		{ID: "tpl-b", Model: "opus", ExecutionMode: "cli_interactive", Prompt: "irrelevant prompt body"},
+		{ID: "tpl-a", Model: "sonnet-5", ExecutionMode: "api", ReasoningEffort: "high", Prompt: "short prompt", Description: "Reviews code for correctness."},
+		{ID: "tpl-b", Model: "opus-4-7", ExecutionMode: "cli_interactive", Prompt: "irrelevant prompt body"},
 	}
 
 	got := renderTemplateLibrary(templates)
 
 	for _, want := range []string{
-		"tpl-a", "sonnet", "api", "effort=high", "Reviews code for correctness.",
-		"tpl-b", "opus", "cli_interactive", "effort=", "(no description provided)",
+		"tpl-a", "sonnet-5", "api", "effort=high", "Reviews code for correctness.",
+		"tpl-b", "opus-4-7", "cli_interactive", "effort=", "(no description provided)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("renderTemplateLibrary() missing %q in output:\n%s", want, got)
@@ -145,10 +145,10 @@ func TestRenderTemplateLibrary_NonEmpty(t *testing.T) {
 // the "effort=" marker with a blank value, rather than omitting the field.
 func TestRenderTemplateLibrary_EmptyEffortRendersBlank(t *testing.T) {
 	templates := []service.PlanTemplate{
-		{ID: "tpl-noeffort", Model: "sonnet", ExecutionMode: "cli_interactive"},
+		{ID: "tpl-noeffort", Model: "sonnet-5", ExecutionMode: "cli_interactive"},
 	}
 	got := renderTemplateLibrary(templates)
-	if !strings.Contains(got, "tpl-noeffort (sonnet, cli_interactive, effort=)") {
+	if !strings.Contains(got, "tpl-noeffort (sonnet-5, cli_interactive, effort=)") {
 		t.Errorf("renderTemplateLibrary() = %q, want a line with a blank effort=", got)
 	}
 }
@@ -158,7 +158,7 @@ func TestRenderTemplateLibrary_EmptyEffortRendersBlank(t *testing.T) {
 // library stays one entry per line for the planner to scan.
 func TestRenderTemplateLibrary_DescriptionNewlinesCollapsed(t *testing.T) {
 	templates := []service.PlanTemplate{
-		{ID: "tpl-multiline", Model: "sonnet", ExecutionMode: "cli_interactive", Description: "line one\nline two"},
+		{ID: "tpl-multiline", Model: "sonnet-5", ExecutionMode: "cli_interactive", Description: "line one\nline two"},
 	}
 	got := renderTemplateLibrary(templates)
 	if !strings.Contains(got, "line one line two") {

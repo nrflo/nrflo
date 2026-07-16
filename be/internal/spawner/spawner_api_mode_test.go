@@ -25,7 +25,7 @@ func TestSpawner_RejectsAPIModeAgent_WhenConfigAPIModeFalse(t *testing.T) {
 	if _, err := env.database.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, created_at, updated_at)
-		VALUES ('implementor', ?, 'feature', 'sonnet', 20, '# prompt', 'api', ?, ?)`,
+		VALUES ('implementor', ?, 'feature', 'sonnet-5', 20, '# prompt', 'api', ?, ?)`,
 		env.projectID, now, now,
 	); err != nil {
 		t.Fatalf("insert agent_definition: %v", err)
@@ -78,7 +78,7 @@ func TestSpawner_RejectsAPIModeAgent_ViaConfigAgents(t *testing.T) {
 		},
 		Agents: map[string]AgentConfig{
 			"implementor": {
-				Model:         "sonnet",
+				Model:         "sonnet-5",
 				ExecutionMode: "api", // Config.Agents says api, but APIMode=false
 			},
 		},

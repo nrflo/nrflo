@@ -81,22 +81,25 @@ func TestEnsureGlobalDeepResearch(t *testing.T) {
 	if nonCLI != 0 {
 		t.Errorf("non-cli_interactive deep-research agents = %d, want 0", nonCLI)
 	}
-	var verifyBModel string
-	if err := pool.QueryRow(`SELECT model FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id='verify_b'`,
-		GlobalProjectID, DeepResearchWorkflow).Scan(&verifyBModel); err != nil {
+	var verifyBModel, verifyBEffort string
+	if err := pool.QueryRow(`SELECT model, reasoning_effort FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id='verify_b'`,
+		GlobalProjectID, DeepResearchWorkflow).Scan(&verifyBModel, &verifyBEffort); err != nil {
 		t.Fatal(err)
 	}
-	if verifyBModel != "codex_gpt56_sol_high" {
-		t.Errorf("verify_b model = %q, want codex_gpt56_sol_high", verifyBModel)
+	if verifyBModel != "gpt-5.6-sol" {
+		t.Errorf("verify_b model = %q, want gpt-5.6-sol", verifyBModel)
+	}
+	if verifyBEffort != "high" {
+		t.Errorf("verify_b reasoning_effort = %q, want high", verifyBEffort)
 	}
 
 	// L2 verifiers are differentiated by lens (migrations 000149-000152):
 	// verify_a = opus_4_8_1m + artifact reads (quote support); verify_b = codex +
-	// web_fetch (independent corroboration); verify_c = lean sonnet (source quality).
+	// web_fetch (independent corroboration); verify_c = lean sonnet-5 (source quality).
 	for _, tc := range []struct{ id, wantModel, toolsLike string }{
-		{"verify_a", "opus_4_8_1m", "%artifact_get%"},
-		{"verify_b", "codex_gpt56_sol_high", "%web_fetch%"},
-		{"verify_c", "sonnet", "web_search,emit_findings"},
+		{"verify_a", "opus-4-8-1m", "%artifact_get%"},
+		{"verify_b", "gpt-5.6-sol", "%web_fetch%"},
+		{"verify_c", "sonnet-5", "web_search,emit_findings"},
 	} {
 		var n int
 		if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=? AND model=? AND tools LIKE ?`,

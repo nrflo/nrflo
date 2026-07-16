@@ -27,15 +27,15 @@ func TestBuildInteractiveLaunch_RoutesToL0ModelCLI(t *testing.T) {
 	}{
 		{
 			name:        "claude model, interactive",
-			model:       "opus_4_7",
-			modelConfig: spawner.ModelConfig{CLIType: "claude", MappedModel: "claude-opus-4-7"},
+			model:       "opus-4-7",
+			modelConfig: spawner.ModelConfig{Provider: "anthropic", CLIModel: "claude-opus-4-7"},
 			wantCLI:     "claude",
 			wantArgs:    []string{"--model claude-opus-4-7", "--dangerously-skip-permissions"},
 		},
 		{
 			name:        "codex model, interactive",
-			model:       "codex_gpt55_high",
-			modelConfig: spawner.ModelConfig{CLIType: "codex", MappedModel: "gpt-5.5", ReasoningEffort: "high"},
+			model:       "gpt-5.5",
+			modelConfig: spawner.ModelConfig{Provider: "openai", CLIModel: "gpt-5.5", DefaultEffort: "high"},
 			wantCLI:     "codex",
 			wantArgs:    []string{"--model gpt-5.5", "--dangerously-bypass-approvals-and-sandbox"},
 			// Claude flags must never leak into a codex launch.
@@ -43,16 +43,16 @@ func TestBuildInteractiveLaunch_RoutesToL0ModelCLI(t *testing.T) {
 		},
 		{
 			name:        "claude model, plan mode",
-			model:       "opus_4_7",
-			modelConfig: spawner.ModelConfig{CLIType: "claude", MappedModel: "claude-opus-4-7"},
+			model:       "opus-4-7",
+			modelConfig: spawner.ModelConfig{Provider: "anthropic", CLIModel: "claude-opus-4-7"},
 			planMode:    true,
 			wantCLI:     "claude",
 			wantArgs:    []string{"--permission-mode plan"},
 		},
 		{
 			name:        "codex model, plan mode",
-			model:       "codex_gpt55_high",
-			modelConfig: spawner.ModelConfig{CLIType: "codex", MappedModel: "gpt-5.5", ReasoningEffort: "high"},
+			model:       "gpt-5.5",
+			modelConfig: spawner.ModelConfig{Provider: "openai", CLIModel: "gpt-5.5", DefaultEffort: "high"},
 			planMode:    true,
 			wantCLI:     "codex",
 			// Codex has no native plan permission mode: read-only sandbox stands in.
@@ -92,7 +92,6 @@ func TestBuildInteractiveLaunch_RoutesToL0ModelCLI(t *testing.T) {
 				env.pool,
 				t.TempDir(),
 				modelConfigs,
-				map[string]spawner.APIModelConfig{},
 				"",
 			)
 			if err != nil {

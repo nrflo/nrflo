@@ -40,7 +40,7 @@ func insertSessionWithPrompt(t *testing.T, database *db.DB, id, wfiID, projectID
 		_, err := database.Exec(`
 			INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, created_at, updated_at)
-			VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'completed', datetime('now'), datetime('now'))`,
+			VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet-5', 'completed', datetime('now'), datetime('now'))`,
 			id, projectID, wfiID)
 		if err != nil {
 			t.Fatalf("insertSessionWithPrompt(%s, null prompt): %v", id, err)
@@ -49,7 +49,7 @@ func insertSessionWithPrompt(t *testing.T, database *db.DB, id, wfiID, projectID
 		_, err := database.Exec(`
 			INSERT INTO agent_sessions
 			(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, prompt, created_at, updated_at)
-			VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'completed', ?, datetime('now'), datetime('now'))`,
+			VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet-5', 'completed', ?, datetime('now'), datetime('now'))`,
 			id, projectID, wfiID, promptContext)
 		if err != nil {
 			t.Fatalf("insertSessionWithPrompt(%s): %v", id, err)
@@ -162,7 +162,7 @@ func insertSessionFull(t *testing.T, database *db.DB, id, wfiID, projectID, prom
 	_, err := database.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, prompt, system_prompt, created_at, updated_at)
-		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'completed', ?, ?, datetime('now'), datetime('now'))`,
+		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet-5', 'completed', ?, ?, datetime('now'), datetime('now'))`,
 		id, projectID, wfiID, p, sp)
 	if err != nil {
 		t.Fatalf("insertSessionFull(%s): %v", id, err)

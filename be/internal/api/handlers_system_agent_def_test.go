@@ -105,7 +105,7 @@ func TestHandleListSystemAgentDefs_WithEntries(t *testing.T) {
 
 func TestHandleCreateSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
-	body := `{"id":"conflict-resolver","prompt":"resolve it","model":"opus_4_7","timeout":45}`
+	body := `{"id":"conflict-resolver","prompt":"resolve it","model":"opus-4-7","timeout":45}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr, req)
@@ -117,8 +117,8 @@ func TestHandleCreateSystemAgentDef_Valid(t *testing.T) {
 	if def.ID != "conflict-resolver" {
 		t.Errorf("ID = %q, want %q", def.ID, "conflict-resolver")
 	}
-	if def.Model != "opus_4_7" {
-		t.Errorf("Model = %q, want %q", def.Model, "opus_4_7")
+	if def.Model != "opus-4-7" {
+		t.Errorf("Model = %q, want %q", def.Model, "opus-4-7")
 	}
 	if def.Timeout != 45 {
 		t.Errorf("Timeout = %d, want 45", def.Timeout)
@@ -136,8 +136,8 @@ func TestHandleCreateSystemAgentDef_DefaultsApplied(t *testing.T) {
 		t.Errorf("status = %d, want 201", rr.Code)
 	}
 	def := decodeSystemAgentDef(t, rr)
-	if def.Model != "sonnet" {
-		t.Errorf("default Model = %q, want %q", def.Model, "sonnet")
+	if def.Model != "sonnet-5" {
+		t.Errorf("default Model = %q, want %q", def.Model, "sonnet-5")
 	}
 	if def.Timeout != 20 {
 		t.Errorf("default Timeout = %d, want 20", def.Timeout)
@@ -192,7 +192,7 @@ func TestHandleCreateSystemAgentDef_Duplicate(t *testing.T) {
 // execution_mode="cli_interactive" is accepted for system agent definitions after migration 101.
 func TestHandleCreateSystemAgentDef_CLIInteractiveAccepted(t *testing.T) {
 	s := newSystemAgentServer(t)
-	body := `{"id":"interactive-sys-agent","execution_mode":"cli_interactive","prompt":"do stuff","model":"opus_4_7"}`
+	body := `{"id":"interactive-sys-agent","execution_mode":"cli_interactive","prompt":"do stuff","model":"opus-4-7"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr, req)
@@ -227,7 +227,7 @@ func TestHandleGetSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"my-agent","prompt":"hello","model":"haiku"}`))
+		strings.NewReader(`{"id":"my-agent","prompt":"hello","model":"haiku-4-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agents/my-agent", nil)
@@ -242,8 +242,8 @@ func TestHandleGetSystemAgentDef_Valid(t *testing.T) {
 	if def.ID != "my-agent" {
 		t.Errorf("ID = %q, want %q", def.ID, "my-agent")
 	}
-	if def.Model != "haiku" {
-		t.Errorf("Model = %q, want %q", def.Model, "haiku")
+	if def.Model != "haiku-4-5" {
+		t.Errorf("Model = %q, want %q", def.Model, "haiku-4-5")
 	}
 }
 
@@ -266,11 +266,11 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"upd-agent","prompt":"p","model":"haiku"}`))
+		strings.NewReader(`{"id":"upd-agent","prompt":"p","model":"haiku-4-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/upd-agent",
-		strings.NewReader(`{"model":"opus_4_7"}`))
+		strings.NewReader(`{"model":"opus-4-7"}`))
 	req.SetPathValue("id", "upd-agent")
 	rr := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(rr, req)
@@ -285,8 +285,8 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 	getRR := httptest.NewRecorder()
 	s.handleGetSystemAgentDef(getRR, getReq)
 	def := decodeSystemAgentDef(t, getRR)
-	if def.Model != "opus_4_7" {
-		t.Errorf("after update Model = %q, want %q", def.Model, "opus_4_7")
+	if def.Model != "opus-4-7" {
+		t.Errorf("after update Model = %q, want %q", def.Model, "opus-4-7")
 	}
 	// Prompt unchanged.
 	if def.Prompt != "p" {
@@ -396,8 +396,8 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 		t.Fatalf("get status = %d, want 200", getRR.Code)
 	}
 	def := decodeSystemAgentDef(t, getRR)
-	if def.Model != "sonnet" {
-		t.Errorf("Model = %q, want %q", def.Model, "sonnet")
+	if def.Model != "sonnet-5" {
+		t.Errorf("Model = %q, want %q", def.Model, "sonnet-5")
 	}
 
 	// 4. List — one entry.
@@ -411,7 +411,7 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 
 	// 5. Update.
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/conflict-resolver",
-		strings.NewReader(`{"model":"opus_4_7"}`))
+		strings.NewReader(`{"model":"opus-4-7"}`))
 	patchReq.SetPathValue("id", "conflict-resolver")
 	patchRR := httptest.NewRecorder()
 	s.handleUpdateSystemAgentDef(patchRR, patchReq)
@@ -425,8 +425,8 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 	getRR2 := httptest.NewRecorder()
 	s.handleGetSystemAgentDef(getRR2, getReq2)
 	def2 := decodeSystemAgentDef(t, getRR2)
-	if def2.Model != "opus_4_7" {
-		t.Errorf("after update Model = %q, want %q", def2.Model, "opus_4_7")
+	if def2.Model != "opus-4-7" {
+		t.Errorf("after update Model = %q, want %q", def2.Model, "opus-4-7")
 	}
 	if def2.Prompt != "fix it" {
 		t.Errorf("after update Prompt = %q, want %q", def2.Prompt, "fix it")

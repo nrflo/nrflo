@@ -75,10 +75,11 @@ Emit one finding with emit_findings, key "report", value {summary (3-5 sentences
 
 // drAgent describes one seeded agent definition.
 type drAgent struct {
-	ID    string
-	Layer int
-	Model string
-	Tools string
+	ID              string
+	Layer           int
+	Model           string
+	ReasoningEffort string
+	Tools           string
 }
 
 // drAgents is the layer-ordered roster. All agents run cli_interactive: the
@@ -86,7 +87,7 @@ type drAgent struct {
 // credential. The L2 verifiers are differentiated by lens so each reads the
 // evidence its lens actually needs:
 //
-//	verify_a (QUOTE SUPPORT)            opus_4_8_1m + artifact_get — reads the
+//	verify_a (QUOTE SUPPORT)            opus-4-8-1m + artifact_get — reads the
 //	    researcher's cached source pages to check each quote verbatim/in-context
 //	    (the 1M window holds them without exhausting).
 //	verify_b (INDEPENDENT CORROBORATION) codex GPT-5.6 Sol (cross-provider diversity)
@@ -95,12 +96,12 @@ type drAgent struct {
 //
 // quorum:2 tolerates one verifier failing (e.g. codex not configured).
 var drAgents = []drAgent{
-	{ID: "scope", Layer: 0, Model: "sonnet", Tools: "emit_findings"},
-	{ID: "research", Layer: 1, Model: "sonnet", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
-	{ID: "verify_a", Layer: 2, Model: "opus_4_8_1m", Tools: "web_search,artifact_list,artifact_get,emit_findings"},
-	{ID: "verify_b", Layer: 2, Model: "codex_gpt56_sol_high", Tools: "web_search,web_fetch,emit_findings"},
-	{ID: "verify_c", Layer: 2, Model: "sonnet", Tools: "web_search,emit_findings"},
-	{ID: "synthesize", Layer: 3, Model: "opus_4_8", Tools: "emit_findings"},
+	{ID: "scope", Layer: 0, Model: "sonnet-5", Tools: "emit_findings"},
+	{ID: "research", Layer: 1, Model: "sonnet-5", Tools: "web_search,web_fetch,read_document,artifact_get,emit_findings"},
+	{ID: "verify_a", Layer: 2, Model: "opus-4-8-1m", Tools: "web_search,artifact_list,artifact_get,emit_findings"},
+	{ID: "verify_b", Layer: 2, Model: "gpt-5.6-sol", ReasoningEffort: "high", Tools: "web_search,web_fetch,emit_findings"},
+	{ID: "verify_c", Layer: 2, Model: "sonnet-5", Tools: "web_search,emit_findings"},
+	{ID: "synthesize", Layer: 3, Model: "opus-4-8", Tools: "emit_findings"},
 }
 
 // drPrompt returns the prompt for a seeded agent id.

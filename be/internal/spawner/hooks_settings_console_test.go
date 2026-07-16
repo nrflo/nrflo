@@ -67,7 +67,7 @@ func TestBuildConsoleSettingsJSON_OtherHooksHaveNoTimeoutAndCorrectCommand(t *te
 // autonomous BuildInteractiveSettingsJSON — only the command/timeout differ.
 func TestBuildConsoleSettingsJSON_HookKeySetMatchesInteractive(t *testing.T) {
 	consoleJSON := BuildConsoleSettingsJSON("/opt/nrflo_server")
-	interactiveJSON := BuildInteractiveSettingsJSON(&processInfo{modelID: "claude:opus"})
+	interactiveJSON := BuildInteractiveSettingsJSON(&processInfo{modelID: "claude:opus-4-7"})
 
 	var consoleParsed, interactiveParsed map[string]interface{}
 	if err := json.Unmarshal([]byte(consoleJSON), &consoleParsed); err != nil {
@@ -128,7 +128,7 @@ func TestBuildConsoleSettingsJSON_NoUnexpectedTopLevelKeys(t *testing.T) {
 // stay byte-shape-identical (no numeric timeout, no --console) now that
 // BuildConsoleSettingsJSON exists.
 func TestBuildInteractiveSettingsJSON_PreToolUseHasNoTimeoutField(t *testing.T) {
-	proc := &processInfo{modelID: "claude:sonnet"}
+	proc := &processInfo{modelID: "claude:sonnet-5"}
 	var parsed map[string]interface{}
 	if err := json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed); err != nil {
 		t.Fatalf("invalid JSON: %v", err)

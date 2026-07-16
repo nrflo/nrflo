@@ -3,16 +3,14 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: {

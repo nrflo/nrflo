@@ -58,7 +58,7 @@ func TestHandleResumeSessionProject_SessionNotFound(t *testing.T) {
 
 func TestHandleResumeSessionProject_NonClaudeSession(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-nc-rsp", "proj-rsp-nc", model.AgentSessionCompleted, "codex:codex_gpt_high")
+	insertResumeTestSession(t, dbPath, "sess-nc-rsp", "proj-rsp-nc", model.AgentSessionCompleted, "codex:gpt-5.3-codex")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp-nc/workflow/resume-session",
 		strings.NewReader(`{"session_id":"sess-nc-rsp"}`))
@@ -74,7 +74,7 @@ func TestHandleResumeSessionProject_NonClaudeSession(t *testing.T) {
 
 func TestHandleResumeSessionProject_HappyPath(t *testing.T) {
 	s, dbPath := newResumeTestServer(t)
-	insertResumeTestSession(t, dbPath, "sess-happy-rsp", "proj-rsp-happy", model.AgentSessionFailed, "claude:opus")
+	insertResumeTestSession(t, dbPath, "sess-happy-rsp", "proj-rsp-happy", model.AgentSessionFailed, "claude:opus-4-7")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/projects/proj-rsp-happy/workflow/resume-session",
 		strings.NewReader(`{"session_id":"sess-happy-rsp"}`))

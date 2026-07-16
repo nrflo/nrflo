@@ -11,10 +11,11 @@ vi.mock('@/api/settings', async (importOriginal) => {
   return { ...actual, getGlobalSettings: vi.fn(), updateGlobalSettings: vi.fn() }
 })
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useCLIModels: () => ({
+vi.mock('@/hooks/useModels', () => ({
+  cliTypeForProvider: (provider: string) => provider === 'anthropic' ? 'claude' : 'codex',
+  useModels: () => ({
     data: [
-      { id: 'claude-sonnet', cli_type: 'claude', display_name: 'Sonnet', enabled: true },
+      { id: 'sonnet-5', provider: 'anthropic', cli_model: 'claude-sonnet-5', display_name: 'Sonnet', enabled: true },
     ],
   }),
 }))

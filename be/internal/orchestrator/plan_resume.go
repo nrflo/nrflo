@@ -136,11 +136,6 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 	if err != nil {
 		return err
 	}
-	apiModelConfigs, err := o.loadAPIModelConfigs(pool)
-	if err != nil {
-		return err
-	}
-
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(wi.ProjectID, "claude_safety_hook"); raw != "" {
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
@@ -186,7 +181,7 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 
 	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf,
 		resumeIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent,
-		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, apiModelConfigs, claudeSettingsJSON,
+		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON,
 		pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	return nil

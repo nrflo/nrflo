@@ -7,17 +7,15 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'opus', label: 'Claude: Opus' },
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'opus-4-8', label: 'Anthropic: Opus' },
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: any) => (

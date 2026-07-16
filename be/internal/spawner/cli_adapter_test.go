@@ -33,7 +33,7 @@ func TestClaudeAdapter_BuildInteractiveCommand_OmitsPartialMessages(t *testing.T
 	adapter := &ClaudeAdapter{}
 
 	opts := InteractiveSpawnOptions{
-		Model:     "opus_4_7",
+		Model:     "opus-4-7",
 		SessionID: "sess-interactive-partial-1",
 		WorkDir:   "/tmp",
 	}

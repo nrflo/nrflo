@@ -23,7 +23,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	effectiveThreshold int,
 	extID, extCtx string,
 	prompt string,
-	am APIModelConfig,
+	am ModelConfig,
 	agentDef *model.AgentDefinition,
 	proc *processInfo,
 	prep *prepResult,
@@ -33,8 +33,8 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		return nil, nil, fmt.Errorf("api-via-cli: %w", err)
 	}
 
-	// Set maxContext from the api_models row.
-	proc.maxContext = am.ContextLength
+	// The hybrid deliberately uses the API mode's context, model, and efforts.
+	proc.maxContext = am.APIContext
 
 	// Build tool registry: honor the tools field but force the lifecycle
 	// baseline — api-via-cli completes over the socket like a CLI agent.
@@ -52,11 +52,11 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	proc.adapter = adapter
 	// modelID must start "claude:" so BuildInteractiveSettingsJSON emits hooks+statusLine
 	// and startBackend routes to the PTY backend (not codex app-server). The incoming
-	// modelID is "<cliForModel>:<model>" (e.g. "claude:sonnet"), not "api:" — parse it.
+	// modelID is "<cliForModel>:<model>" (e.g. "claude:sonnet-5"), not "api:" — parse it.
 	_, rawModel := parseModelID(proc.modelID)
-	claudeModel := am.MappedModel
+	claudeModel := am.APIModel
 	if claudeModel == "" {
-		claudeModel = adapter.MapModel(rawModel)
+		return nil, nil, fmt.Errorf("api-via-cli: model %q does not support api mode", rawModel)
 	}
 	proc.modelID = "claude:" + rawModel
 
@@ -114,14 +114,14 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		return nil, nil, fmt.Errorf("api-via-cli: build mcp config: %w", mcpErr)
 	}
 
-	effort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
-	if err := service.ValidateEffortAllowed(effort, am.SupportedEfforts); err != nil {
+	effort := s.resolveReasoningEffort(agentDef, req.AgentType, am.DefaultEffort)
+	if err := service.ValidateEffortAllowed(effort, am.APIEfforts); err != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: %w", err)
 	}
 
 	opts := SpawnOptions{
 		Model:                    claudeModel,
-		MappedModel:              am.MappedModel,
+		MappedModel:              am.APIModel,
 		ReasoningEffort:          effort,
 		SessionID:                sessionID,
 		WorkDir:                  s.config.ProjectRoot,

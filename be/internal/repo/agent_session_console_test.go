@@ -25,7 +25,7 @@ func insertConsoleSession(t *testing.T, database *db.DB, id, token string, statu
 	updated := updatedAt.UTC().Format(time.RFC3339Nano)
 	_, err := database.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, spawn_token, created_at, updated_at)
-		VALUES (?, 'proj', '', NULL, 'console', 'console', 'sonnet', ?, 'console', ?, ?, ?)`,
+		VALUES (?, 'proj', '', NULL, 'console', 'console', 'sonnet-5', ?, 'console', ?, ?, ?)`,
 		id, status, token, updated, updated)
 	if err != nil {
 		t.Fatalf("insert console session %s: %v", id, err)
@@ -47,7 +47,7 @@ func insertWorkflowAgentSession(t *testing.T, database *db.DB, id string, status
 	}
 	_, err := database.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, spawn_token, pid, created_at, updated_at)
-		VALUES (?, 'proj', '', ?, 'p', 'a', 'sonnet', ?, 'workflow_agent', 'tok-wf-'||?, 123, ?, ?)`,
+		VALUES (?, 'proj', '', ?, 'p', 'a', 'sonnet-5', ?, 'workflow_agent', 'tok-wf-'||?, 123, ?, ?)`,
 		id, wfiID, status, id, updated, updated)
 	if err != nil {
 		t.Fatalf("insert workflow agent session %s: %v", id, err)

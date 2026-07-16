@@ -160,7 +160,7 @@ func newInbandProc(cfg, workDir, sid string, clk clock.Clock) *processInfo {
 		backend:         fakeBackend{name: "cli_interactive"},
 		workDir:         workDir,
 		sessionID:       sid,
-		modelID:         "claude:opus_4_8_1m",
+		modelID:         "claude:opus-4-8-1m",
 		env:             []string{"CLAUDE_CONFIG_DIR=" + cfg},
 		lastMessageTime: clk.Now().Add(-2 * time.Minute),
 		pendingMessages: make([]repo.MessageEntry, 0),

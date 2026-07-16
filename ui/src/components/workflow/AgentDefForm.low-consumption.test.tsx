@@ -7,25 +7,21 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'haiku', label: 'Claude: Haiku' },
-      { value: 'opus', label: 'Claude: Opus' },
-      { value: 'opus_1m', label: 'Claude: Opus 1M' },
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'haiku-4-5', label: 'Anthropic: Haiku' },
+      { value: 'opus-4-8', label: 'Anthropic: Opus' },
+      { value: 'opus-4-8-1m', label: 'Anthropic: Opus 1M' },
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
-    { label: 'Codex', options: [
-      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
-      { value: 'codex_gpt_normal', label: 'Codex: GPT (Normal)' },
-      { value: 'codex_gpt54_high', label: 'Codex: GPT-54 (High)' },
-      { value: 'codex_gpt54_normal', label: 'Codex: GPT-54 (Normal)' },
+    { label: 'OpenAI', options: [
+      { value: 'gpt-5.3-codex', label: 'OpenAI: GPT 5.3 Codex' },
+      { value: 'gpt-5.4', label: 'OpenAI: GPT 5.4' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: any) => (
@@ -83,9 +79,9 @@ describe('AgentDefForm - low consumption dropdown', () => {
       const container = btn.closest('.relative')!
       const options = Array.from(container.querySelectorAll('.cursor-pointer span')).map((el) => el.textContent)
       expect(options).toContain('(none)')
-      expect(options).toContain('Claude: Sonnet')
-      expect(options).toContain('Claude: Haiku')
-      expect(options).toContain('Claude: Opus')
+      expect(options).toContain('Anthropic: Sonnet')
+      expect(options).toContain('Anthropic: Haiku')
+      expect(options).toContain('Anthropic: Opus')
     })
 
     it('defaults to (none) when no initial value', () => {
@@ -102,11 +98,11 @@ describe('AgentDefForm - low consumption dropdown', () => {
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
-      await selectDropdownOption(user, getLCDropdownButton(), 'Claude: Sonnet')
+      await selectDropdownOption(user, getLCDropdownButton(), 'Anthropic: Sonnet')
       await user.click(screen.getByRole('button', { name: /^create$/i }))
 
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ low_consumption_model: 'sonnet' })
+        expect.objectContaining({ low_consumption_model: 'sonnet-5' })
       )
     })
 
@@ -127,9 +123,9 @@ describe('AgentDefForm - low consumption dropdown', () => {
     it('pre-selects initial low_consumption_model', () => {
       renderForm({
         isCreate: false,
-        initial: { low_consumption_model: 'haiku' },
+        initial: { low_consumption_model: 'haiku-4-5' },
       })
-      expect(getLCDropdownButton().textContent).toContain('Claude: Haiku')
+      expect(getLCDropdownButton().textContent).toContain('Anthropic: Haiku')
     })
 
     it('allows clearing back to (none) in update mode', async () => {
@@ -137,11 +133,11 @@ describe('AgentDefForm - low consumption dropdown', () => {
       const onSubmit = vi.fn()
       renderForm({
         isCreate: false,
-        initial: { low_consumption_model: 'haiku', prompt: 'Test' },
+        initial: { low_consumption_model: 'haiku-4-5', prompt: 'Test' },
         onSubmit,
       })
 
-      expect(getLCDropdownButton().textContent).toContain('Claude: Haiku')
+      expect(getLCDropdownButton().textContent).toContain('Anthropic: Haiku')
       await selectDropdownOption(user, getLCDropdownButton(), '(none)')
       await user.click(screen.getByRole('button', { name: /^save$/i }))
 

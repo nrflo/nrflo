@@ -37,7 +37,7 @@ func createAgentDefWithLCM(t *testing.T, env *spawnerTestEnv, agentID, prompt, l
 		ID:                  agentID,
 		ProjectID:           env.project,
 		WorkflowID:          "test",
-		Model:               "opus_4_7",
+		Model:               "opus-4-7",
 		Timeout:             60,
 		Prompt:              prompt,
 		LowConsumptionModel: lcModel,
@@ -51,7 +51,7 @@ func TestLoadAgentDefinition_ReturnsLowConsumptionModel(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
 
-	createAgentDefWithLCM(t, env, "analyzer", "analyze things", "sonnet")
+	createAgentDefWithLCM(t, env, "analyzer", "analyze things", "sonnet-5")
 
 	sp := New(Config{
 		DataPath: env.dbPath,
@@ -63,8 +63,8 @@ func TestLoadAgentDefinition_ReturnsLowConsumptionModel(t *testing.T) {
 	if def == nil {
 		t.Fatal("loadAgentDefinition returned nil, want non-nil")
 	}
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
+	if def.LowConsumptionModel != "sonnet-5" {
+		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet-5")
 	}
 	if def.ID != "analyzer" {
 		t.Errorf("ID = %q, want %q", def.ID, "analyzer")
@@ -124,23 +124,23 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 		{
 			name:          "mode_off_no_substitution",
 			lcMode:        false,
-			lcModel:       "haiku",
-			originalModel: "opus_4_7",
-			wantModel:     "opus_4_7",
+			lcModel:       "haiku-4-5",
+			originalModel: "opus-4-7",
+			wantModel:     "opus-4-7",
 		},
 		{
 			name:          "mode_on_no_lcm",
 			lcMode:        true,
 			lcModel:       "",
-			originalModel: "opus_4_7",
-			wantModel:     "opus_4_7",
+			originalModel: "opus-4-7",
+			wantModel:     "opus-4-7",
 		},
 		{
 			name:          "mode_on_with_lcm",
 			lcMode:        true,
-			lcModel:       "haiku",
-			originalModel: "opus_4_7",
-			wantModel:     "haiku",
+			lcModel:       "haiku-4-5",
+			originalModel: "opus-4-7",
+			wantModel:     "haiku-4-5",
 		},
 	}
 
@@ -154,7 +154,7 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 			}
 
 			// Simulate model determination from Spawn()
-			selectedModel := "opus_4_7"
+			selectedModel := "opus-4-7"
 			if agentCfg, ok := cfg.Agents["implementor"]; ok && agentCfg.Model != "" {
 				selectedModel = agentCfg.Model
 			}
@@ -180,7 +180,7 @@ func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
 	ticketID := "LCM-" + uuid.New().String()[:6]
 	env.initWorkflow(t, ticketID)
 
-	createAgentDefWithLCM(t, env, "analyzer", "analyze code", "sonnet")
+	createAgentDefWithLCM(t, env, "analyzer", "analyze code", "sonnet-5")
 
 	sp := New(Config{
 		DataPath:           env.dbPath,
@@ -188,7 +188,7 @@ func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
 		Clock:              clock.Real(),
 		LowConsumptionMode: true,
 		Agents: map[string]AgentConfig{
-			"analyzer": {Model: "opus_4_7"},
+			"analyzer": {Model: "opus-4-7"},
 		},
 	})
 
@@ -200,8 +200,8 @@ func TestLowConsumptionMode_LoadAgentDef_SubstitutionDecision(t *testing.T) {
 	if def.LowConsumptionModel == "" {
 		t.Error("LowConsumptionModel empty — model override would not trigger")
 	}
-	if def.LowConsumptionModel != "sonnet" {
-		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet")
+	if def.LowConsumptionModel != "sonnet-5" {
+		t.Errorf("LowConsumptionModel = %q, want %q", def.LowConsumptionModel, "sonnet-5")
 	}
 }
 
@@ -212,7 +212,7 @@ func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
 	sp := New(Config{
 		LowConsumptionMode: false,
 		Agents: map[string]AgentConfig{
-			"implementor": {Model: "opus_4_7"},
+			"implementor": {Model: "opus-4-7"},
 		},
 	})
 
@@ -226,36 +226,33 @@ func TestLowConsumptionMode_ModeOff_NoSubstitution(t *testing.T) {
 	}
 }
 
-// TestLowConsumptionSubstitution_CLINameAndModelID verifies that the cliName
-// and modelID format are correctly derived from each low_consumption_model value.
-// This mirrors the spawner logic: cliName = DefaultCLIForModel(model), modelID = cli:model.
+// TestLowConsumptionSubstitution_CLINameAndModelID verifies provider-derived CLI routing.
 func TestLowConsumptionSubstitution_CLINameAndModelID(t *testing.T) {
 	t.Parallel()
+	sp := &Spawner{config: Config{ModelConfigs: map[string]ModelConfig{
+		"opus-4-8":    {Provider: "anthropic"},
+		"sonnet-5":    {Provider: "anthropic"},
+		"gpt-5.4":     {Provider: "openai"},
+		"gpt-5.6-sol": {Provider: "openai"},
+	}}}
 	tests := []struct {
 		lcModel     string
 		wantCLI     string
 		wantModelID string
 	}{
-		{"opus_4_7", "claude", "claude:opus_4_7"},
-		{"opus_4_7_1m", "claude", "claude:opus_4_7_1m"},
-		{"sonnet", "claude", "claude:sonnet"},
-		{"haiku", "claude", "claude:haiku"},
-		{"codex_gpt_normal", "codex", "codex:codex_gpt_normal"},
-		{"codex_gpt_high", "codex", "codex:codex_gpt_high"},
-		{"codex_gpt54_normal", "codex", "codex:codex_gpt54_normal"},
-		{"codex_gpt54_high", "codex", "codex:codex_gpt54_high"},
+		{"opus-4-8", "claude", "claude:opus-4-8"},
+		{"sonnet-5", "claude", "claude:sonnet-5"},
+		{"gpt-5.4", "codex", "codex:gpt-5.4"},
+		{"gpt-5.6-sol", "codex", "codex:gpt-5.6-sol"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.lcModel, func(t *testing.T) {
-			// Simulate the substitution block in Spawn():
-			//   cliName = DefaultCLIForModel(model)
-			//   modelID = fmt.Sprintf("%s:%s", cliName, model)
-			gotCLI := DefaultCLIForModel(tt.lcModel)
+			gotCLI := sp.cliForModel(tt.lcModel)
 			gotModelID := gotCLI + ":" + tt.lcModel
 
 			if gotCLI != tt.wantCLI {
-				t.Errorf("DefaultCLIForModel(%q) = %q, want %q", tt.lcModel, gotCLI, tt.wantCLI)
+				t.Errorf("cliForModel(%q) = %q, want %q", tt.lcModel, gotCLI, tt.wantCLI)
 			}
 			if gotModelID != tt.wantModelID {
 				t.Errorf("modelID for %q = %q, want %q", tt.lcModel, gotModelID, tt.wantModelID)

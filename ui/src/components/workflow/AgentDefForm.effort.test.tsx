@@ -8,16 +8,14 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => false,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [{ value: 'sonnet', label: 'Claude: Sonnet' }] },
+    { label: 'Anthropic', options: [{ value: 'sonnet-5', label: 'Anthropic: Sonnet' }] },
   ],
-  useCLIModels: () => ({
-    data: [{ id: 'sonnet', cli_type: 'claude', display_name: 'Sonnet', mapped_model: 'claude-sonnet-5', reasoning_effort: 'high' }],
+  useModels: () => ({
+    data: [{ id: 'sonnet-5', provider: 'anthropic', display_name: 'Sonnet', cli_model: 'claude-sonnet-5', cli_efforts: ['low', 'medium', 'high', 'max'], api_efforts: [], default_effort: 'high' }],
   }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
@@ -45,7 +43,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
     project_id: 'test-project',
     workflow_id: 'feature',
     layer: 0,
-    model: 'sonnet',
+    model: 'sonnet-5',
     timeout: 20,
     prompt: 'Test prompt',
     execution_mode: 'cli_interactive',
@@ -89,7 +87,7 @@ describe('AgentDefForm - reasoning effort', () => {
 
     await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
-    await selectDropdownOption(user, getEffortDropdownButton(), 'High')
+    await selectDropdownOption(user, getEffortDropdownButton(), 'high')
     await user.click(screen.getByRole('button', { name: /^create$/i }))
 
     expect(onSubmit).toHaveBeenCalledWith(
@@ -139,6 +137,6 @@ describe('AgentDefForm - reasoning effort', () => {
         onCancel={vi.fn()}
       />
     )
-    expect(getEffortDropdownButton().textContent).toContain('Max')
+    expect(getEffortDropdownButton().textContent).toContain('max')
   })
 })

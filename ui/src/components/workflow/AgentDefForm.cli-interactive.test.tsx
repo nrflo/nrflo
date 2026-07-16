@@ -9,12 +9,12 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: mockUseAPIModeEnabled,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useModelOptions: () => [],
-  useCLIModels: () => ({ data: [{ id: 'sonnet', cli_type: 'claude', enabled: true, display_name: 'Sonnet' }] }),
+vi.mock('@/hooks/useModels', () => ({
+  useModelOptions: (mode: string) => mode === 'cli' ? [
+    { label: 'Anthropic', options: [{ value: 'sonnet-5', label: 'Anthropic: Sonnet' }] },
+  ] : [],
+  useModels: () => ({ data: [{ id: 'sonnet-5', provider: 'anthropic', enabled: true, display_name: 'Sonnet', cli_model: 'claude-sonnet-5', cli_efforts: [] }] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: {
@@ -149,7 +149,7 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
         expect.objectContaining({
           id: 'my-agent',
           execution_mode: 'cli_interactive',
-          model: 'sonnet',
+          model: 'sonnet-5',
           prompt: 'My prompt',
         })
       )

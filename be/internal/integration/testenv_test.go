@@ -118,7 +118,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 
 	// 11b. Seed agent definitions for the test workflow
-	agentDefSvc := service.NewAgentDefinitionService(pool, clk, service.NewCLIModelService(pool, clk), service.NewAPIModelService(pool, clk), nil)
+	agentDefSvc := service.NewAgentDefinitionService(pool, clk, service.NewModelService(pool, clk), nil)
 	for _, ad := range []types.AgentDefCreateRequest{
 		{ID: "analyzer", Prompt: "analyze", Layer: 0},
 		{ID: "builder", Prompt: "build", Layer: 1},
@@ -293,7 +293,7 @@ func nullStr(s string) interface{} {
 // getAgentDefService returns the AgentDefinitionService for testing.
 func (e *TestEnv) getAgentDefService(t *testing.T) *service.AgentDefinitionService {
 	t.Helper()
-	return service.NewAgentDefinitionService(e.Pool, e.Clock, service.NewCLIModelService(e.Pool, e.Clock), service.NewAPIModelService(e.Pool, e.Clock), nil)
+	return service.NewAgentDefinitionService(e.Pool, e.Clock, service.NewModelService(e.Pool, e.Clock), nil)
 }
 
 // CreateAdminUser creates an active admin user in the DB and returns the user ID.

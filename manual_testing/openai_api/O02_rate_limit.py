@@ -128,7 +128,7 @@ def run(ctx: Ctx) -> Result:
         client.create_workflow(pid, wid, scope_type="project")
         client.create_agent_def(
             pid, wid, "main",
-            model="gpt54_low", layer=0, timeout=60, prompt=PROMPT,
+            model="gpt-5.4", layer=0, timeout=60, prompt=PROMPT,
             tools="agent_finished",
         )
 

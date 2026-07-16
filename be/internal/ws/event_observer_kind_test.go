@@ -7,7 +7,7 @@ func TestAgentStartedEvent_WorkflowAgentKind(t *testing.T) {
 	event := NewEvent(EventAgentStarted, "proj-1", "TKT-1", "feature", map[string]interface{}{
 		"agent_id":          "agt-123",
 		"agent_type":        "implementor",
-		"model_id":          "sonnet",
+		"model_id":          "sonnet-5",
 		"session_id":        "sess-1",
 		"phase":             "implementor",
 		"restart_threshold": 3,
@@ -28,7 +28,7 @@ func TestAgentStartedEvent_ObserverKind(t *testing.T) {
 	event := NewEvent(EventAgentStarted, "proj-1", "", "wf-obs", map[string]interface{}{
 		"agent_id":          "obs-abc",
 		"agent_type":        "_observer",
-		"model_id":          "sonnet",
+		"model_id":          "sonnet-5",
 		"session_id":        "sess-obs-1",
 		"phase":             "observer",
 		"restart_threshold": 0,
@@ -60,7 +60,7 @@ func TestAgentCompletedEvent_KindField(t *testing.T) {
 				"session_id":    "sess-1",
 				"result":        "pass",
 				"result_reason": "",
-				"model_id":      "sonnet",
+				"model_id":      "sonnet-5",
 				"kind":          tc.kind,
 			})
 
@@ -83,7 +83,7 @@ func TestAgentStartedEvent_AllRequiredFieldsWithKind(t *testing.T) {
 	event := NewEvent(EventAgentStarted, "proj-1", "TKT-1", "feature", map[string]interface{}{
 		"agent_id":          "agt-1",
 		"agent_type":        "implementor",
-		"model_id":          "sonnet",
+		"model_id":          "sonnet-5",
 		"session_id":        "sess-1",
 		"phase":             "implementor",
 		"restart_threshold": 3,

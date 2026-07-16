@@ -4,9 +4,7 @@ import (
 	"testing"
 )
 
-// TestMigration153_SonnetFive verifies the seeded "sonnet" cli_models and
-// api_models rows are repointed to Claude Sonnet 5 with a 1M context window
-// in both tables.
+// TestMigration153_SonnetFive verifies Sonnet 5 has a 1M context in both modes.
 func TestMigration153_SonnetFive(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -14,25 +12,17 @@ func TestMigration153_SonnetFive(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	var cliMapped string
-	var cliContext int
+	var cliMapped, apiMapped string
+	var cliContext, apiContext int
 	if err := pool.QueryRow(
-		`SELECT mapped_model, context_length FROM cli_models WHERE id = 'sonnet' AND cli_type = 'claude'`,
-	).Scan(&cliMapped, &cliContext); err != nil {
-		t.Fatalf("query cli_models: %v", err)
+		`SELECT cli_model, cli_context, api_model, api_context FROM models WHERE id = 'sonnet-5'`,
+	).Scan(&cliMapped, &cliContext, &apiMapped, &apiContext); err != nil {
+		t.Fatalf("query models: %v", err)
 	}
 	if cliMapped != "claude-sonnet-5" || cliContext != 1000000 {
-		t.Errorf("cli_models[sonnet] = (%q, %d), want (%q, %d)", cliMapped, cliContext, "claude-sonnet-5", 1000000)
-	}
-
-	var apiMapped string
-	var apiContext int
-	if err := pool.QueryRow(
-		`SELECT mapped_model, context_length FROM api_models WHERE id = 'sonnet' AND provider = 'anthropic'`,
-	).Scan(&apiMapped, &apiContext); err != nil {
-		t.Fatalf("query api_models: %v", err)
+		t.Errorf("models[sonnet-5] CLI = (%q, %d), want (%q, %d)", cliMapped, cliContext, "claude-sonnet-5", 1000000)
 	}
 	if apiMapped != "claude-sonnet-5" || apiContext != 1000000 {
-		t.Errorf("api_models[sonnet] = (%q, %d), want (%q, %d)", apiMapped, apiContext, "claude-sonnet-5", 1000000)
+		t.Errorf("models[sonnet-5] API = (%q, %d), want (%q, %d)", apiMapped, apiContext, "claude-sonnet-5", 1000000)
 	}
 }

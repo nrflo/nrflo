@@ -15,8 +15,8 @@ func TestFindReportFinding_FlatShape(t *testing.T) {
 
 func TestFindReportFinding_GroupedShape(t *testing.T) {
 	combined := map[string]any{
-		"synthesize:claude:opus_4_8": map[string]any{"report": "grouped report"},
-		"analyzer":                   map[string]any{"note": "irrelevant"},
+		"synthesize:claude:opus-4-7_4_8": map[string]any{"report": "grouped report"},
+		"analyzer":                       map[string]any{"note": "irrelevant"},
 	}
 	got, ok := FindReportFinding(combined)
 	if !ok {

@@ -33,7 +33,7 @@ func insertSessionWithToken(t *testing.T, database *db.DB, id, wfiID, token stri
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	_, err := database.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, spawn_token, created_at, updated_at)
-		VALUES (?, 'proj', 'TKT-1', ?, 'p', 'a', 'sonnet', ?, ?, ?, ?)`,
+		VALUES (?, 'proj', 'TKT-1', ?, 'p', 'a', 'sonnet-5', ?, ?, ?, ?)`,
 		id, wfiID, status, token, now, now)
 	if err != nil {
 		t.Fatalf("insert %s: %v", id, err)

@@ -8,7 +8,6 @@ import (
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/service"
-	"be/internal/spawner"
 	"be/internal/spawner/apirun"
 	"be/internal/ws"
 )
@@ -27,28 +26,6 @@ func loadProjectEnv(ctx context.Context, pool *db.Pool, projectID string, clk cl
 		out = append(out, fmt.Sprintf("%s=%s", v.Name, v.Value))
 	}
 	return out
-}
-
-// loadAPIModelConfigs loads enabled API model configs from the database and
-// builds a map keyed by row id, suitable for spawner.Config.APIModelConfigs.
-// Called once at workflow start.
-func (o *Orchestrator) loadAPIModelConfigs(pool *db.Pool) (map[string]spawner.APIModelConfig, error) {
-	apiModelSvc := service.NewAPIModelService(pool, o.clock)
-	models, err := apiModelSvc.ListEnabled()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load API model configs: %w", err)
-	}
-	configs := make(map[string]spawner.APIModelConfig, len(models))
-	for _, m := range models {
-		configs[m.ID] = spawner.APIModelConfig{
-			Provider:         m.Provider,
-			MappedModel:      m.MappedModel,
-			ContextLength:    m.ContextLength,
-			ReasoningEffort:  m.ReasoningEffort,
-			SupportedEfforts: m.SupportedEfforts,
-		}
-	}
-	return configs, nil
 }
 
 // apiAgentSvc adapts service.AgentService into apirun.AgentSvc, broadcasting

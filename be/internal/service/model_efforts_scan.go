@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -31,62 +30,24 @@ func marshalSupportedEfforts(efforts []string) string {
 	return string(b)
 }
 
-// resolveCreateEfforts normalizes a create request's supported_efforts,
-// defaulting to [reasoningEffort] when the list is empty but an effort is set,
-// then validates reasoningEffort against the resulting list.
-func resolveCreateEfforts(supported []string, reasoningEffort string) ([]string, error) {
-	normalized, err := NormalizeSupportedEfforts(supported)
-	if err != nil {
-		return nil, err
-	}
-	if len(normalized) == 0 && reasoningEffort != "" {
-		normalized = []string{reasoningEffort}
-	}
-	if err := ValidateEffortAllowed(reasoningEffort, normalized); err != nil {
-		return nil, err
-	}
-	return normalized, nil
+type rowScanner interface {
+	Scan(dest ...any) error
 }
 
-// scanCLIModel scans a row into a CLIModel
-func scanCLIModel(rows *sql.Rows) (*model.CLIModel, error) {
-	m := &model.CLIModel{}
-	var createdAt, updatedAt, supportedRaw string
+func scanModel(row rowScanner) (*model.Model, error) {
+	m := &model.Model{}
+	var createdAt, updatedAt, cliEfforts, apiEfforts string
 	var readOnly, enabled int
 
-	err := rows.Scan(
-		&m.ID, &m.CLIType, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &supportedRaw, &m.FallbackModels, &m.ContextLength, &readOnly, &enabled,
-		&createdAt, &updatedAt,
-	)
+	err := row.Scan(&m.ID, &m.Provider, &m.DisplayName, &m.CLIModel, &m.APIModel,
+		&cliEfforts, &apiEfforts, &m.CLIContext, &m.APIContext, &m.FallbackModels,
+		&m.DefaultEffort, &readOnly, &enabled, &createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
 	}
 
-	m.SupportedEfforts = parseSupportedEfforts(supportedRaw)
-	m.ReadOnly = readOnly == 1
-	m.Enabled = enabled == 1
-	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
-	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
-	return m, nil
-}
-
-// scanAPIModel scans a row into an APIModel
-func scanAPIModel(rows *sql.Rows) (*model.APIModel, error) {
-	m := &model.APIModel{}
-	var createdAt, updatedAt, supportedRaw string
-	var readOnly, enabled int
-
-	err := rows.Scan(
-		&m.ID, &m.Provider, &m.DisplayName, &m.MappedModel,
-		&m.ReasoningEffort, &supportedRaw, &m.ContextLength, &readOnly, &enabled,
-		&createdAt, &updatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	m.SupportedEfforts = parseSupportedEfforts(supportedRaw)
+	m.CLIEfforts = parseSupportedEfforts(cliEfforts)
+	m.APIEfforts = parseSupportedEfforts(apiEfforts)
 	m.ReadOnly = readOnly == 1
 	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)

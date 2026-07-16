@@ -27,7 +27,7 @@ var nodeFindingsPattern = regexp.MustCompile(`#\{NODE_FINDINGS:([^:}]+)(?::([^}]
 
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
-	model := "opus_4_8"
+	model := "opus-4-8"
 	if agentCfg, ok := s.config.Agents[agentType]; ok {
 		if agentCfg.Model != "" {
 			model = agentCfg.Model
@@ -77,7 +77,7 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 	}
 
 	// Fallback to system agent definition
-	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewAPIModelService(pool, s.config.Clock))
+	svc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewModelService(pool, s.config.Clock))
 	sysDef, sysErr := svc.Get(agentType)
 	if sysErr == nil {
 		if sysDef.Prompt == "" {
@@ -193,7 +193,7 @@ func (s *Spawner) LoadTemplate(agentType, ticketID, projectID, parentSession, ch
 // currentLayer is the agent's layer number; used to resolve #{LAYER_FINDINGS:N} and #{PRIOR_LAYER_FINDINGS}.
 // Returns (body, suffix, systemPromptOverride, error). The suffix is the rendered
 // system-prompt-suffix injectable; systemPromptOverride is non-empty only when the model
-// has CLIType=="claude" and the global claude_system_prompt_override_enabled setting is on.
+// is an Anthropic CLI model and the global claude_system_prompt_override_enabled setting is on.
 func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, childSession, workflowName, modelID, nodeID, wfiID string, extraVars map[string]string, currentLayer int) (string, string, string, error) {
 	promptContent, err := s.loadPromptContent(agentType, projectID, workflowName)
 	if err != nil {
@@ -204,7 +204,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 
 	_, model := parseModelID(modelID)
 	if model == "" {
-		model = "sonnet"
+		model = "sonnet-5"
 	}
 
 	// nodeVar falls back to agentType when nodeID is unset (Preview, interactive L0 starts).

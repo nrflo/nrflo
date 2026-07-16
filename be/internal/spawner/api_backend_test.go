@@ -204,7 +204,7 @@ func TestAPIBackend_FullLoop_RunsAndKills(t *testing.T) {
 		workflowName: "wf",
 		agentID:      "ag-1",
 		agentType:    "test-agent",
-		modelID:      "claude:sonnet",
+		modelID:      "claude:sonnet-5",
 		startTime:    clk.Now(),
 		doneCh:       make(chan struct{}),
 		maxContext:   1000,

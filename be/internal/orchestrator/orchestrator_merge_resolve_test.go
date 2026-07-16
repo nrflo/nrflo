@@ -18,11 +18,11 @@ import (
 // Deletes any existing row first (e.g. from migration seed data).
 func seedConflictResolver(t *testing.T, env *testEnv) {
 	t.Helper()
-	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewAPIModelService(env.pool, clock.Real()))
+	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewModelService(env.pool, clock.Real()))
 	_ = svc.Delete("conflict-resolver")
 	_, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:      "conflict-resolver",
-		Model:   "sonnet",
+		Model:   "sonnet-5",
 		Timeout: 1,
 		Prompt:  "Resolve the merge conflict.",
 	})
@@ -46,7 +46,7 @@ func TestAttemptConflictResolution_NoResolverConfigured(t *testing.T) {
 	env := newTestEnv(t)
 
 	// Remove seeded conflict-resolver from migration so we can test the missing-resolver path.
-	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewAPIModelService(env.pool, clock.Real()))
+	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewModelService(env.pool, clock.Real()))
 	_ = svc.Delete("conflict-resolver")
 
 	ticketID := "ticket-no-resolver"

@@ -74,7 +74,7 @@ func TestFanoutReady_ReadModelKeepsSiblingsSeparate(t *testing.T) {
 		if _, err := pool.Exec(`
 			INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, node_id, agent_type,
 				model_id, status, restart_count, started_at, created_at, updated_at)
-			VALUES (?, 'fo-proj', '', ?, ?, ?, 'worker', 'claude:sonnet', 'running', 0, ?, ?, ?)`,
+			VALUES (?, 'fo-proj', '', ?, ?, ?, 'worker', 'claude:sonnet-5', 'running', 0, ?, ?, ?)`,
 			sess.id, wfiID, sess.nodeID, sess.nodeID, now, now, now); err != nil {
 			t.Fatalf("insert session %s: %v", sess.id, err)
 		}
@@ -101,7 +101,7 @@ func TestFanoutReady_ReadModelKeepsSiblingsSeparate(t *testing.T) {
 	if len(active) != 2 {
 		t.Fatalf("buildActiveAgentsMap len = %d, want 2, got keys %v", len(active), activeAgentKeys(active))
 	}
-	for _, key := range []string{"worker#1:claude:sonnet", "worker#2:claude:sonnet"} {
+	for _, key := range []string{"worker#1:claude:sonnet-5", "worker#2:claude:sonnet-5"} {
 		entry, ok := active[key]
 		if !ok {
 			t.Errorf("buildActiveAgentsMap missing key %q, got keys %v", key, activeAgentKeys(active))

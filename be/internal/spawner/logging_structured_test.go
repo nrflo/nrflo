@@ -39,7 +39,7 @@ func procWithTrx(agentType, modelID, trx string) *processInfo {
 func TestLogAgent_InfoLevelWithTrxAndPrefix(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
-	proc := procWithTrx("implementor", "claude:opus", "abc12345")
+	proc := procWithTrx("implementor", "claude:opus-4-7", "abc12345")
 
 	s.logAgent(proc, "tool call detail")
 
@@ -50,8 +50,8 @@ func TestLogAgent_InfoLevelWithTrxAndPrefix(t *testing.T) {
 	if !strings.Contains(out, "[abc12345]") {
 		t.Errorf("logAgent: expected trx [abc12345] in output, got: %s", out)
 	}
-	if !strings.Contains(out, "[implementor:opus]") {
-		t.Errorf("logAgent: expected prefix [implementor:opus] in output, got: %s", out)
+	if !strings.Contains(out, "[implementor:opus-4-7]") {
+		t.Errorf("logAgent: expected prefix [implementor:opus-4-7] in output, got: %s", out)
 	}
 	if !strings.Contains(out, "tool call detail") {
 		t.Errorf("logAgent: expected message in output, got: %s", out)
@@ -62,7 +62,7 @@ func TestLogAgent_InfoLevelWithTrxAndPrefix(t *testing.T) {
 func TestWarnAgent_WarnLevelWithTrx(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
-	proc := procWithTrx("qa-verifier", "claude:sonnet", "deadbeef")
+	proc := procWithTrx("qa-verifier", "claude:sonnet-5", "deadbeef")
 
 	s.warnAgent(proc, "[stderr] some warning output")
 
@@ -73,8 +73,8 @@ func TestWarnAgent_WarnLevelWithTrx(t *testing.T) {
 	if !strings.Contains(out, "[deadbeef]") {
 		t.Errorf("warnAgent: expected trx [deadbeef] in output, got: %s", out)
 	}
-	if !strings.Contains(out, "[qa-verifier:sonnet]") {
-		t.Errorf("warnAgent: expected prefix [qa-verifier:sonnet] in output, got: %s", out)
+	if !strings.Contains(out, "[qa-verifier:sonnet-5]") {
+		t.Errorf("warnAgent: expected canonical model prefix in output, got: %s", out)
 	}
 	if !strings.Contains(out, "[stderr] some warning output") {
 		t.Errorf("warnAgent: expected message in output, got: %s", out)
@@ -85,7 +85,7 @@ func TestWarnAgent_WarnLevelWithTrx(t *testing.T) {
 func TestErrorAgent_ErrorLevelWithTrx(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
-	proc := procWithTrx("setup-analyzer", "claude:haiku", "cafebabe")
+	proc := procWithTrx("setup-analyzer", "claude:haiku-4-5", "cafebabe")
 
 	s.errorAgent(proc, "scanner error: unexpected EOF")
 
@@ -96,7 +96,7 @@ func TestErrorAgent_ErrorLevelWithTrx(t *testing.T) {
 	if !strings.Contains(out, "[cafebabe]") {
 		t.Errorf("errorAgent: expected trx [cafebabe] in output, got: %s", out)
 	}
-	if !strings.Contains(out, "[setup-analyzer:haiku]") {
+	if !strings.Contains(out, "[setup-analyzer:haiku-4-5]") {
 		t.Errorf("errorAgent: expected prefix in output, got: %s", out)
 	}
 	if !strings.Contains(out, "scanner error: unexpected EOF") {
@@ -108,7 +108,7 @@ func TestErrorAgent_ErrorLevelWithTrx(t *testing.T) {
 func TestLogAgent_EmptyTrxShowsDash(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
-	proc := procWithTrx("implementor", "claude:opus", "") // empty trx
+	proc := procWithTrx("implementor", "claude:opus-4-7", "") // empty trx
 
 	s.logAgent(proc, "msg")
 
@@ -123,8 +123,8 @@ func TestLogAgent_TrxIsolation(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	proc1 := procWithTrx("implementor", "claude:opus", "aaaa1111")
-	proc2 := procWithTrx("implementor", "claude:opus", "bbbb2222")
+	proc1 := procWithTrx("implementor", "claude:opus-4-7", "aaaa1111")
+	proc2 := procWithTrx("implementor", "claude:opus-4-7", "bbbb2222")
 
 	s.logAgent(proc1, "msg from proc1")
 	s.logAgent(proc2, "msg from proc2")
@@ -146,7 +146,7 @@ func TestPrintStatus_RunningAgent_LogsAgentStatusLine(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	proc := procWithTrx("implementor", "claude:opus", "11223344")
+	proc := procWithTrx("implementor", "claude:opus-4-7", "11223344")
 	proc.startTime = time.Now().Add(-10 * time.Second)
 	proc.lastMessage = "recent tool call"
 
@@ -159,8 +159,8 @@ func TestPrintStatus_RunningAgent_LogsAgentStatusLine(t *testing.T) {
 	if !strings.Contains(out, "phase=phase-l2") {
 		t.Errorf("printStatus running: missing phase=phase-l2, got: %s", out)
 	}
-	if !strings.Contains(out, "model=claude:opus") {
-		t.Errorf("printStatus running: missing model=claude:opus, got: %s", out)
+	if !strings.Contains(out, "model=claude:opus-4-7") {
+		t.Errorf("printStatus running: missing model=claude:opus-4-7, got: %s", out)
 	}
 	if !strings.Contains(out, "[11223344]") {
 		t.Errorf("printStatus running: missing trx [11223344], got: %s", out)
@@ -175,7 +175,7 @@ func TestPrintStatus_CompletedAgent_LogsStatusAndDuration(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	proc := procWithTrx("qa-verifier", "claude:sonnet", "55667788")
+	proc := procWithTrx("qa-verifier", "claude:sonnet-5", "55667788")
 	proc.finalStatus = "PASS"
 	proc.elapsed = 90 * time.Second
 
@@ -191,8 +191,8 @@ func TestPrintStatus_CompletedAgent_LogsStatusAndDuration(t *testing.T) {
 	if !strings.Contains(out, "phase=phase-l3") {
 		t.Errorf("printStatus completed: missing phase=phase-l3, got: %s", out)
 	}
-	if !strings.Contains(out, "model=claude:sonnet") {
-		t.Errorf("printStatus completed: missing model=claude:sonnet, got: %s", out)
+	if !strings.Contains(out, "model=claude:sonnet-5") {
+		t.Errorf("printStatus completed: missing model=claude:sonnet-5, got: %s", out)
 	}
 	if !strings.Contains(out, "[55667788]") {
 		t.Errorf("printStatus completed: missing trx [55667788], got: %s", out)
@@ -204,11 +204,11 @@ func TestPrintStatus_MultipleAgents_OneLineEach(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	r1 := procWithTrx("implementor", "claude:opus", "aaaa0001")
+	r1 := procWithTrx("implementor", "claude:opus-4-7", "aaaa0001")
 	r1.startTime = time.Now()
-	r2 := procWithTrx("test-writer", "claude:sonnet", "bbbb0002")
+	r2 := procWithTrx("test-writer", "claude:sonnet-5", "bbbb0002")
 	r2.startTime = time.Now()
-	c1 := procWithTrx("setup-analyzer", "claude:haiku", "cccc0003")
+	c1 := procWithTrx("setup-analyzer", "claude:haiku-4-5", "cccc0003")
 	c1.finalStatus = "PASS"
 
 	s.printStatus([]*processInfo{r1, r2}, []*processInfo{c1}, "phase-l0")
@@ -224,13 +224,13 @@ func TestLogAgent_FormatPrefix_ModelParsed(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	// modelID "claude:opus" should produce prefix "[doc-updater:opus]"
-	proc := procWithTrx("doc-updater", "claude:opus", "99887766")
+	// modelID "claude:opus-4-7" should produce prefix "[doc-updater:opus-4-7]"
+	proc := procWithTrx("doc-updater", "claude:opus-4-7", "99887766")
 	s.logAgent(proc, "hello")
 
 	out := buf.String()
-	if !strings.Contains(out, "[doc-updater:opus]") {
-		t.Errorf("formatPrefix: expected [doc-updater:opus] in output, got: %s", out)
+	if !strings.Contains(out, "[doc-updater:opus-4-7]") {
+		t.Errorf("formatPrefix: expected [doc-updater:opus-4-7] in output, got: %s", out)
 	}
 }
 
@@ -239,11 +239,11 @@ func TestLogAgent_DefaultModelWhenNoColon(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
 
-	proc := procWithTrx("implementor", "opus", "aabbccdd") // no cli: prefix
+	proc := procWithTrx("implementor", "opus-4-7", "aabbccdd") // no cli: prefix
 	s.logAgent(proc, "hello")
 
 	out := buf.String()
-	// parseModelID with no colon returns ("", "opus") or similar; model becomes "opus"
+	// parseModelID with no colon returns ("", "opus-4-7") or similar; model becomes "opus-4-7"
 	// Either way, the output must contain the agent type
 	if !strings.Contains(out, "implementor") {
 		t.Errorf("formatPrefix: expected agent type in output, got: %s", out)

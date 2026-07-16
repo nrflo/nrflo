@@ -29,7 +29,7 @@ func TestTakeControlRejected_APIMode_BroadcastsEvent(t *testing.T) {
 	sp.broadcast(ws.EventAgentTakeControlRejected, "proj-api", "T-100", "feature", map[string]interface{}{
 		"session_id": "api-sess-1",
 		"agent_type": "implementor",
-		"model_id":   "claude:sonnet",
+		"model_id":   "claude:sonnet-5",
 		"reason":     "api_mode_unsupported",
 	})
 
@@ -57,8 +57,8 @@ func TestTakeControlRejected_APIMode_BroadcastsEvent(t *testing.T) {
 				t.Errorf("agent_type = %q, want implementor", agentType)
 			}
 			modelID, _ := event.Data["model_id"].(string)
-			if modelID != "claude:sonnet" {
-				t.Errorf("model_id = %q, want claude:sonnet", modelID)
+			if modelID != "claude:sonnet-5" {
+				t.Errorf("model_id = %q, want claude:sonnet-5", modelID)
 			}
 			return
 		case <-deadline:

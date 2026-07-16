@@ -35,8 +35,8 @@ func TestGetProjectAgentSessions_HappyPath(t *testing.T) {
 	}
 
 	// Insert project-scoped agent sessions (empty ticket_id)
-	env.InsertAgentSession(t, "proj-sess-1", "", instance.ID, "setup", "setup-agent", "sonnet")
-	env.InsertAgentSession(t, "proj-sess-2", "", instance.ID, "impl", "impl-agent", "opus_4_7")
+	env.InsertAgentSession(t, "proj-sess-1", "", instance.ID, "setup", "setup-agent", "sonnet-5")
+	env.InsertAgentSession(t, "proj-sess-2", "", instance.ID, "impl", "impl-agent", "opus-4-7")
 
 	// Get project agent sessions via service
 	sessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "")
@@ -111,9 +111,9 @@ func TestGetProjectAgentSessions_PhaseFilter(t *testing.T) {
 	}
 
 	// Insert sessions in different phases
-	env.InsertAgentSession(t, "phase-setup-1", "", instance.ID, "setup", "setup-agent", "sonnet")
-	env.InsertAgentSession(t, "phase-impl-1", "", instance.ID, "impl", "impl-agent", "opus_4_7")
-	env.InsertAgentSession(t, "phase-impl-2", "", instance.ID, "impl", "impl-agent-2", "haiku")
+	env.InsertAgentSession(t, "phase-setup-1", "", instance.ID, "setup", "setup-agent", "sonnet-5")
+	env.InsertAgentSession(t, "phase-impl-1", "", instance.ID, "impl", "impl-agent", "opus-4-7")
+	env.InsertAgentSession(t, "phase-impl-2", "", instance.ID, "impl", "impl-agent-2", "haiku-4-5")
 
 	// Filter by "setup" phase
 	setupSessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "setup")
@@ -172,9 +172,9 @@ func TestGetProjectAgentSessions_ExcludesTicketScoped(t *testing.T) {
 	}
 
 	// Insert both ticket-scoped and project-scoped sessions
-	env.InsertAgentSession(t, "ticket-sess-1", "TICKET-1", ticketWFI, "analyzer", "analyzer", "sonnet")
-	env.InsertAgentSession(t, "ticket-sess-2", "TICKET-1", ticketWFI, "builder", "builder", "opus_4_7")
-	env.InsertAgentSession(t, "proj-sess-1", "", projectWFI.ID, "setup", "setup-agent", "haiku")
+	env.InsertAgentSession(t, "ticket-sess-1", "TICKET-1", ticketWFI, "analyzer", "analyzer", "sonnet-5")
+	env.InsertAgentSession(t, "ticket-sess-2", "TICKET-1", ticketWFI, "builder", "builder", "opus-4-7")
+	env.InsertAgentSession(t, "proj-sess-1", "", projectWFI.ID, "setup", "setup-agent", "haiku-4-5")
 
 	// Get project sessions - should only return project-scoped
 	sessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "")
@@ -232,7 +232,7 @@ func TestGetProjectAgentSessions_FindingsAggregation(t *testing.T) {
 	}
 
 	// Insert agent session with findings
-	env.InsertAgentSession(t, "findings-sess", "", instance.ID, "setup", "setup-agent", "sonnet")
+	env.InsertAgentSession(t, "findings-sess", "", instance.ID, "setup", "setup-agent", "sonnet-5")
 
 	// Add findings via socket (session_id targets the session directly)
 	env.MustExecute(t, "findings.add", map[string]interface{}{
@@ -284,7 +284,7 @@ func TestGetProjectAgentSessions_MultipleWorkflows(t *testing.T) {
 		}
 
 		// Insert session for each workflow
-		env.InsertAgentSession(t, "sess-"+wf, "", instance.ID, "setup", "setup-agent", "sonnet")
+		env.InsertAgentSession(t, "sess-"+wf, "", instance.ID, "setup", "setup-agent", "sonnet-5")
 	}
 
 	// Get all project sessions
@@ -334,7 +334,7 @@ func TestGetProjectAgentSessions_CaseInsensitiveProjectID(t *testing.T) {
 		t.Fatalf("failed to get instance: %v", err)
 	}
 
-	env.InsertAgentSession(t, "case-sess", "", instance.ID, "setup", "setup-agent", "sonnet")
+	env.InsertAgentSession(t, "case-sess", "", instance.ID, "setup", "setup-agent", "sonnet-5")
 
 	// Query with different case variations
 	for _, projectID := range []string{env.ProjectID, "TEST-PROJECT", "Test-Project"} {
@@ -376,7 +376,7 @@ func TestGetProjectAgentSessions_EmptyStringTicketID(t *testing.T) {
 	}
 
 	// Insert session with empty string ticket_id (project-scoped)
-	env.InsertAgentSession(t, "empty-ticket", "", instance.ID, "setup", "setup-agent", "sonnet")
+	env.InsertAgentSession(t, "empty-ticket", "", instance.ID, "setup", "setup-agent", "sonnet-5")
 
 	// Query should return the empty string ticket_id session
 	sessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "")

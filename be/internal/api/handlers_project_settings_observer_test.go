@@ -56,7 +56,7 @@ func TestHandlePutProjectObserver_RoundTrip(t *testing.T) {
 	s, projectID := newProjectSettingsServer(t)
 
 	rr := doObserverRequest(t, s, http.MethodPut, projectID,
-		`{"system_context":"watch errors","provider":"claude","model":"sonnet"}`)
+		`{"system_context":"watch errors","provider":"claude","model":"sonnet-5"}`)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("PUT status = %d, want 200; body=%s", rr.Code, rr.Body.String())
 	}
@@ -67,8 +67,8 @@ func TestHandlePutProjectObserver_RoundTrip(t *testing.T) {
 	if v := m["provider"]; v != "claude" {
 		t.Errorf("provider = %v, want claude", v)
 	}
-	if v := m["model"]; v != "sonnet" {
-		t.Errorf("model = %v, want sonnet", v)
+	if v := m["model"]; v != "sonnet-5" {
+		t.Errorf("model = %v, want sonnet-5", v)
 	}
 
 	// GET should return same values.
@@ -90,7 +90,7 @@ func TestHandlePutProjectObserver_PartialUpdate(t *testing.T) {
 
 	// Set all three.
 	doObserverRequest(t, s, http.MethodPut, projectID,
-		`{"system_context":"ctx","provider":"claude","model":"opus"}`)
+		`{"system_context":"ctx","provider":"claude","model":"opus-4-7"}`)
 
 	// Update only provider — other fields should be preserved.
 	rr := doObserverRequest(t, s, http.MethodPut, projectID, `{"provider":"openai"}`)
@@ -106,8 +106,8 @@ func TestHandlePutProjectObserver_PartialUpdate(t *testing.T) {
 	if m["provider"] != "openai" {
 		t.Errorf("provider = %v, want openai (updated)", m["provider"])
 	}
-	if m["model"] != "opus" {
-		t.Errorf("model = %v, want opus (unchanged)", m["model"])
+	if m["model"] != "opus-4-7" {
+		t.Errorf("model = %v, want opus-4-7 (unchanged)", m["model"])
 	}
 }
 

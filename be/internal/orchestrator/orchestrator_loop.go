@@ -35,7 +35,6 @@ func (o *Orchestrator) runLoop(
 	globalStallStartTimeout *int,
 	globalStallRunningTimeout *int,
 	modelConfigs map[string]spawner.ModelConfig,
-	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 	pushAfterMerge bool,
 	projectEnv []string,
@@ -148,7 +147,6 @@ func (o *Orchestrator) runLoop(
 		GlobalStallRunningTimeout: globalStallRunningTimeout,
 		ClaudeSettingsJSON:        claudeSettingsJSON,
 		ModelConfigs:              modelConfigs,
-		APIModelConfigs:           apiModelConfigs,
 		ErrorSvc:                  o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
 			return service.BuildAPIProvider(ctx, pool, o.clock, providerName, projectID)

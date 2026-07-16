@@ -82,8 +82,8 @@ func TestCopyFindingsForContinuation_EmptyTarget(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	oldFindings := map[string]interface{}{
 		"summary":   "abc",
@@ -122,8 +122,8 @@ func TestCopyFindingsForContinuation_PrePopulatedTarget(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	oldFindings := map[string]interface{}{
 		"summary":   "old summary",
@@ -169,8 +169,8 @@ func TestCopyFindingsForContinuation_OldEmpty(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	// Old session: empty findings (no UpdateFindings call).
 	// New session: has a pre-existing key.
@@ -200,8 +200,8 @@ func TestCopyFindingsForContinuation_OldEmptyJSON(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	setSessionFindings(t, env, oldID, map[string]interface{}{})
 
@@ -231,7 +231,7 @@ func TestCopyFindingsForContinuation_OldMissing(t *testing.T) {
 	nonExistentOldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 	setSessionFindings(t, env, newID, map[string]interface{}{"x": "1"})
 
 	// Should not panic; all errors are logged as warnings.
@@ -254,8 +254,8 @@ func TestCopyFindingsForContinuation_MultipleKeys(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	oldFindings := map[string]interface{}{
 		"summary":     "done",

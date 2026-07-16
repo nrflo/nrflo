@@ -76,12 +76,12 @@ func TestBuildChatEngineSpec_KnownEnabledModel_ResolvesRegistryFields(t *testing
 	pool, clk := newSpecTestPool(t)
 	seedSpecProject(t, pool, "proj-spec-known", "")
 
-	cliSvc := service.NewCLIModelService(pool, clk)
-	if _, err := cliSvc.Create(types.CLIModelCreateRequest{
-		ID: "codex-fast", CLIType: "codex", DisplayName: "Codex Fast", MappedModel: "gpt-5.5",
-		ReasoningEffort: "high", ContextLength: 200000,
+	modelSvc := service.NewModelService(pool, clk)
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "codex-fast", Provider: "openai", DisplayName: "Codex Fast", CLIModel: "gpt-5.5",
+		CLIEfforts: []string{"high"}, DefaultEffort: "high", CLIContext: 200000,
 	}); err != nil {
-		t.Fatalf("seed cli_models row: %v", err)
+		t.Fatalf("seed models row: %v", err)
 	}
 
 	spec, err := buildChatEngineSpec(pool, clk, chatSpecParams{
@@ -106,11 +106,11 @@ func TestBuildChatEngineSpec_ModelForDifferentCLIType_Errors(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 	seedSpecProject(t, pool, "proj-spec-wrongcli", "")
 
-	cliSvc := service.NewCLIModelService(pool, clk)
-	if _, err := cliSvc.Create(types.CLIModelCreateRequest{
-		ID: "claude-only", CLIType: "claude", DisplayName: "Claude", MappedModel: "sonnet",
+	modelSvc := service.NewModelService(pool, clk)
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "claude-only", Provider: "anthropic", DisplayName: "Claude", CLIModel: "sonnet-5",
 	}); err != nil {
-		t.Fatalf("seed cli_models row: %v", err)
+		t.Fatalf("seed models row: %v", err)
 	}
 
 	_, err := buildChatEngineSpec(pool, clk, chatSpecParams{
@@ -126,14 +126,14 @@ func TestBuildChatEngineSpec_DisabledModel_Errors(t *testing.T) {
 	pool, clk := newSpecTestPool(t)
 	seedSpecProject(t, pool, "proj-spec-disabled", "")
 
-	cliSvc := service.NewCLIModelService(pool, clk)
-	if _, err := cliSvc.Create(types.CLIModelCreateRequest{
-		ID: "codex-disabled", CLIType: "codex", DisplayName: "Disabled", MappedModel: "gpt-5.5",
+	modelSvc := service.NewModelService(pool, clk)
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "codex-disabled", Provider: "openai", DisplayName: "Disabled", CLIModel: "gpt-5.5",
 	}); err != nil {
-		t.Fatalf("seed cli_models row: %v", err)
+		t.Fatalf("seed models row: %v", err)
 	}
 	disabled := false
-	if _, err := cliSvc.Update("codex-disabled", types.CLIModelUpdateRequest{Enabled: &disabled}); err != nil {
+	if _, err := modelSvc.Update("codex-disabled", types.ModelUpdateRequest{Enabled: &disabled}); err != nil {
 		t.Fatalf("disable model: %v", err)
 	}
 

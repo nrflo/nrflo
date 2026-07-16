@@ -4,7 +4,7 @@ Route page components for the nrflo web UI. Uses React Router v6 for routing. Th
 
 ## Routes
 
-Routes are defined in `src/App.tsx`; one page component per route (run `ls ui/src/pages/`). Full route → component table with per-page behaviour notes: [REFERENCE.md](REFERENCE.md#routes) — read before adding, renaming, or changing a route's page. `/console` (admin-only) → `ConsolePage.tsx`.
+Routes are defined in `src/App.tsx`; one page component per route (run `ls ui/src/pages/`). Full route → component table with per-page behaviour notes: [REFERENCE.md](REFERENCE.md#routes) — read before adding, renaming, or changing a route's page. `/console` (admin-only) → `ConsolePage.tsx`; `/settings?tab=models&sub=anthropic|openai` is the unified model registry UI.
 
 ## Ticket Detail Page
 

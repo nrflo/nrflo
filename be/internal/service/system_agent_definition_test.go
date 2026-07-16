@@ -21,7 +21,7 @@ func setupSysAgentDefTestEnv(t *testing.T) (*SystemAgentDefinitionService, func(
 	if err != nil {
 		t.Fatalf("failed to open pool: %v", err)
 	}
-	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewModelService(pool, clock.Real()))
 	return svc, func() { pool.Close() }
 }
 
@@ -45,7 +45,7 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 
 	def, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:                     "conflict-resolver",
-		Model:                  "opus_4_7",
+		Model:                  "opus-4-7",
 		Timeout:                30,
 		Prompt:                 "resolve conflicts",
 		RestartThreshold:       rt,
@@ -60,8 +60,8 @@ func TestSystemAgentDef_CreateAndGet(t *testing.T) {
 	if def.ID != "conflict-resolver" {
 		t.Errorf("ID = %q, want %q", def.ID, "conflict-resolver")
 	}
-	if def.Model != "opus_4_7" {
-		t.Errorf("Model = %q, want %q", def.Model, "opus_4_7")
+	if def.Model != "opus-4-7" {
+		t.Errorf("Model = %q, want %q", def.Model, "opus-4-7")
 	}
 	if def.Timeout != 30 {
 		t.Errorf("Timeout = %d, want 30", def.Timeout)
@@ -125,8 +125,8 @@ func TestSystemAgentDef_CreateWithDefaults(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if def.Model != "sonnet" {
-		t.Errorf("default Model = %q, want %q", def.Model, "sonnet")
+	if def.Model != "sonnet-5" {
+		t.Errorf("default Model = %q, want %q", def.Model, "sonnet-5")
 	}
 	if def.Timeout != 20 {
 		t.Errorf("default Timeout = %d, want 20", def.Timeout)
@@ -209,12 +209,12 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "upd-agent", Model: "haiku", Timeout: 10, Prompt: "original",
+		ID: "upd-agent", Model: "haiku-4-5", Timeout: 10, Prompt: "original",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	newModel := "opus_4_7"
+	newModel := "opus-4-7"
 	if err := svc.Update("upd-agent", &types.SystemAgentDefUpdateRequest{
 		Model: &newModel,
 	}); err != nil {
@@ -225,8 +225,8 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get after update: %v", err)
 	}
-	if got.Model != "opus_4_7" {
-		t.Errorf("after update Model = %q, want %q", got.Model, "opus_4_7")
+	if got.Model != "opus-4-7" {
+		t.Errorf("after update Model = %q, want %q", got.Model, "opus-4-7")
 	}
 	// Unmodified fields preserved.
 	if got.Timeout != 10 {
@@ -275,7 +275,7 @@ func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "noop-agent", Prompt: "p", Model: "haiku",
+		ID: "noop-agent", Prompt: "p", Model: "haiku-4-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -289,8 +289,8 @@ func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.Model != "haiku" {
-		t.Errorf("Model = %q after no-op update, want %q", got.Model, "haiku")
+	if got.Model != "haiku-4-5" {
+		t.Errorf("Model = %q after no-op update, want %q", got.Model, "haiku-4-5")
 	}
 }
 

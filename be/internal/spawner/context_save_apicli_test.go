@@ -19,7 +19,7 @@ func TestShouldUseAgentSave_APIViaCLI_ForcesAgentSave(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
-		modelID:   "claude:sonnet",
+		modelID:   "claude:sonnet-5",
 		apiViaCLI: true,
 		backend:   fakeBackend{name: "cli_interactive", supportsResume: true},
 	}
@@ -35,7 +35,7 @@ func TestShouldUseAgentSave_APIViaCLI_GlobalSettingAlsoForces(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: true, Clock: clock.Real()})
 	proc := &processInfo{
-		modelID:   "claude:sonnet",
+		modelID:   "claude:sonnet-5",
 		apiViaCLI: true,
 		backend:   fakeBackend{name: "cli_interactive", supportsResume: true},
 	}

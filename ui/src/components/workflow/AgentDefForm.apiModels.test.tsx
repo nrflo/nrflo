@@ -7,23 +7,18 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useModelOptions: () => [
-    { label: 'Claude', options: [{ value: 'sonnet', label: 'Claude: Sonnet' }] },
-  ],
-  useCLIModels: () => ({ data: [] }),
-}))
-
-vi.mock('@/hooks/useAPIModels', () => ({
-  useAPIModelOptions: () => [
+vi.mock('@/hooks/useModels', () => ({
+  useModelOptions: (mode: string) => mode === 'api' ? [
     { label: 'Anthropic', options: [
-      { value: 'claude-opus', label: 'Anthropic: Claude Opus' },
+      { value: 'opus-4-8', label: 'Anthropic: Opus' },
     ]},
     { label: 'OpenAI', options: [
-      { value: 'gpt-4o', label: 'OpenAI: GPT-4o' },
+      { value: 'gpt-5.4', label: 'OpenAI: GPT 5.4' },
     ]},
+  ] : [
+    { label: 'Anthropic', options: [{ value: 'sonnet-5', label: 'Anthropic: Sonnet' }] },
   ],
-  useAPIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
@@ -67,8 +62,8 @@ describe('AgentDefForm — model dropdown routing', () => {
       const btn = getModelDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
-      expect(within(panel).getByText('Claude: Sonnet')).toBeInTheDocument()
-      expect(within(panel).queryByText('Anthropic: Claude Opus')).not.toBeInTheDocument()
+      expect(within(panel).getByText('Anthropic: Sonnet')).toBeInTheDocument()
+      expect(within(panel).queryByText('Anthropic: Opus')).not.toBeInTheDocument()
     })
 
     it('Low consumption model dropdown shows CLI model options', async () => {
@@ -76,8 +71,8 @@ describe('AgentDefForm — model dropdown routing', () => {
       const btn = getLowConsumptionDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
-      expect(within(panel).getByText('Claude: Sonnet')).toBeInTheDocument()
-      expect(within(panel).queryByText('Anthropic: Claude Opus')).not.toBeInTheDocument()
+      expect(within(panel).getByText('Anthropic: Sonnet')).toBeInTheDocument()
+      expect(within(panel).queryByText('Anthropic: Opus')).not.toBeInTheDocument()
     })
   })
 
@@ -91,17 +86,21 @@ describe('AgentDefForm — model dropdown routing', () => {
     it('Model dropdown shows API model options after switching to api', async () => {
       renderForm()
       await switchToAPI()
-      await userEvent.click(getModelDropdownButton())
-      expect(screen.getByText('Anthropic: Claude Opus')).toBeInTheDocument()
-      expect(screen.queryByText('Claude: Sonnet')).not.toBeInTheDocument()
+      const btn = getModelDropdownButton()
+      await userEvent.click(btn)
+      const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
+      expect(within(panel).getByText('Anthropic: Opus')).toBeInTheDocument()
+      expect(within(panel).queryByText('Anthropic: Sonnet')).not.toBeInTheDocument()
     })
 
     it('Low consumption model dropdown shows API model options in api mode', async () => {
       renderForm()
       await switchToAPI()
-      await userEvent.click(getLowConsumptionDropdownButton())
-      expect(screen.getByText('Anthropic: Claude Opus')).toBeInTheDocument()
-      expect(screen.queryByText('Claude: Sonnet')).not.toBeInTheDocument()
+      const btn = getLowConsumptionDropdownButton()
+      await userEvent.click(btn)
+      const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
+      expect(within(panel).getByText('Anthropic: Opus')).toBeInTheDocument()
+      expect(within(panel).queryByText('Anthropic: Sonnet')).not.toBeInTheDocument()
     })
 
     it('switching back to cli restores CLI model options', async () => {
@@ -115,8 +114,8 @@ describe('AgentDefForm — model dropdown routing', () => {
       const btn = getModelDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
-      expect(within(panel).getByText('Claude: Sonnet')).toBeInTheDocument()
-      expect(within(panel).queryByText('Anthropic: Claude Opus')).not.toBeInTheDocument()
+      expect(within(panel).getByText('Anthropic: Sonnet')).toBeInTheDocument()
+      expect(within(panel).queryByText('Anthropic: Opus')).not.toBeInTheDocument()
     })
 
     it('initial api mode shows API model options immediately', () => {

@@ -235,7 +235,7 @@ func TestLoadTemplate_ExternalIDExpansion(t *testing.T) {
 	extID, extCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	extraVars := mergeExtraVars(nil, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
 
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet", "", wfiID, extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet-5", "", wfiID, extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestLoadTemplate_ExternalID_EmptyWhenUnset(t *testing.T) {
 	extID, extCtx, _ := sp.fetchExternalRefs(env.project, ticketID, "test", wfiID)
 	extraVars := mergeExtraVars(nil, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
 
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet", "", wfiID, extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "s", "test", "claude:sonnet-5", "", wfiID, extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

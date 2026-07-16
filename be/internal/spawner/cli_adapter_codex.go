@@ -15,41 +15,7 @@ func (a *CodexAdapter) Name() string {
 }
 
 func (a *CodexAdapter) MapModel(model string) string {
-	modelMap := map[string]string{
-		"codex_gpt_normal":         "gpt-5.3-codex",
-		"codex_gpt_high":           "gpt-5.3-codex",
-		"codex_gpt54_normal":       "gpt-5.4",
-		"codex_gpt54_high":         "gpt-5.4",
-		"codex_gpt54_mini_low":     "gpt-5.4-mini",
-		"codex_gpt55_normal":       "gpt-5.5",
-		"codex_gpt55_high":         "gpt-5.5",
-		"codex_gpt55_mini_low":     "gpt-5.5-mini",
-		"codex_gpt56_sol_normal":   "gpt-5.6-sol",
-		"codex_gpt56_sol_high":     "gpt-5.6-sol",
-		"codex_gpt56_terra_normal": "gpt-5.6-terra",
-		"codex_gpt56_terra_high":   "gpt-5.6-terra",
-		"codex_gpt56_luna_low":     "gpt-5.6-luna",
-	}
-	if mapped, ok := modelMap[model]; ok {
-		return mapped
-	}
-	return model // pass through custom model names
-}
-
-// GetReasoningEffort returns the reasoning effort level for a model alias
-func (a *CodexAdapter) GetReasoningEffort(model string) string {
-	switch model {
-	case "codex_gpt_normal", "codex_gpt_high":
-		return "high"
-	case "codex_gpt54_normal", "codex_gpt55_normal", "codex_gpt56_sol_normal", "codex_gpt56_terra_normal":
-		return "medium"
-	case "codex_gpt54_high", "codex_gpt55_high", "codex_gpt56_sol_high", "codex_gpt56_terra_high":
-		return "high"
-	case "codex_gpt54_mini_low", "codex_gpt55_mini_low", "codex_gpt56_luna_low":
-		return "low"
-	default:
-		return "high"
-	}
+	return model
 }
 
 func (a *CodexAdapter) SupportsSessionID() bool {
@@ -71,7 +37,7 @@ func (a *CodexAdapter) SupportsNativeDocRead() bool {
 // BuildInteractiveCommand and the other PTY-path methods below are interface
 // compliance only: codex/cli_interactive is routed to the codex app-server
 // backend (codex_appserver_backend.go), not this PTY command. CodexAdapter is
-// still resolved for MapModel/GetReasoningEffort/ClassifyExit.
+// still resolved for passthrough model handling and ClassifyExit.
 func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--model", opts.Model,

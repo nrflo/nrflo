@@ -58,9 +58,9 @@ func EnsureGlobalDynamicWorkflow(pool *db.Pool, clk clock.Clock, rootPath string
 			nodeRole = "fanout_template"
 		}
 		if _, err := tx.Exec(
-			`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, tools, node_role, description, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, 0, 'cli_interactive', ?, ?, ?, ?, ?)`,
-			a.ID, GlobalProjectID, DynamicWorkflow, a.Model, 30, dynPrompt(a.ID), a.Tools, nodeRole, a.Description, now, now); err != nil {
+			`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, execution_mode, tools, node_role, description, reasoning_effort, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, 0, 'cli_interactive', ?, ?, ?, NULLIF(?, ''), ?, ?)`,
+			a.ID, GlobalProjectID, DynamicWorkflow, a.Model, 30, dynPrompt(a.ID), a.Tools, nodeRole, a.Description, a.ReasoningEffort, now, now); err != nil {
 			return fmt.Errorf("dynamic workflow seed: agent %s: %w", a.ID, err)
 		}
 	}

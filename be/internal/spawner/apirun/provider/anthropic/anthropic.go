@@ -63,7 +63,7 @@ type anthropicProvider struct {
 func (p *anthropicProvider) Name() string { return "anthropic" }
 
 // MaxContext returns the model's input context window in tokens. The DB
-// api_models.context_length is authoritative (see spawner_prepare); this is the
+// models.api_context is authoritative (see spawner_prepare); this is the
 // fallback consulted only when a row carries no explicit value. Window values
 // live in model.go (contextWindow); unknown models default to 200k.
 func (p *anthropicProvider) MaxContext(model string) int {

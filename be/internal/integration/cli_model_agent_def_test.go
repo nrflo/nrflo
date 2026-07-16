@@ -8,14 +8,14 @@ import (
 )
 
 // TestCustomCLIModel_ImmediatelyValidForAgentDef verifies that adding a new model
-// via CLIModelService.Create makes it immediately valid for agent definitions.
+// with CLI support makes it immediately valid for agent definitions.
 // This covers the acceptance criterion:
 //
-//	"Adding a custom model via POST /api/v1/cli-models makes it immediately valid for agent definitions"
+//	"Adding a custom model via POST /api/v1/models makes it immediately valid for agent definitions"
 func TestCustomCLIModel_ImmediatelyValidForAgentDef(t *testing.T) {
 	env := NewTestEnv(t)
 	svc := env.getAgentDefService(t)
-	cliModelSvc := service.NewCLIModelService(env.Pool, env.Clock)
+	modelSvc := service.NewModelService(env.Pool, env.Clock)
 
 	customModelID := "my-custom-cli-model"
 
@@ -29,15 +29,15 @@ func TestCustomCLIModel_ImmediatelyValidForAgentDef(t *testing.T) {
 		t.Fatal("expected error when using unknown model before adding it, got nil")
 	}
 
-	// Add the custom model via CLIModelService
-	_, err = cliModelSvc.Create(types.CLIModelCreateRequest{
+	// Add the custom model with CLI mode enabled.
+	_, err = modelSvc.Create(types.ModelCreateRequest{
 		ID:          customModelID,
-		CLIType:     "claude",
+		Provider:    "anthropic",
 		DisplayName: "My Custom Model",
-		MappedModel: "claude-custom",
+		CLIModel:    "claude-custom",
 	})
 	if err != nil {
-		t.Fatalf("CLIModelService.Create: %v", err)
+		t.Fatalf("ModelService.Create: %v", err)
 	}
 
 	// After adding: agent def creation with that model should succeed
@@ -59,26 +59,26 @@ func TestCustomCLIModel_ImmediatelyValidForAgentDef(t *testing.T) {
 func TestDisabledCLIModel_RejectedForAgentDef(t *testing.T) {
 	env := NewTestEnv(t)
 	svc := env.getAgentDefService(t)
-	cliModelSvc := service.NewCLIModelService(env.Pool, env.Clock)
+	modelSvc := service.NewModelService(env.Pool, env.Clock)
 
 	customModelID := "disabled-for-agentdef"
 
 	// Add the custom model (not yet referenced by any agent def)
-	_, err := cliModelSvc.Create(types.CLIModelCreateRequest{
+	_, err := modelSvc.Create(types.ModelCreateRequest{
 		ID:          customModelID,
-		CLIType:     "claude",
+		Provider:    "anthropic",
 		DisplayName: "Disabled For AgentDef",
-		MappedModel: "claude-custom",
+		CLIModel:    "claude-custom",
 	})
 	if err != nil {
-		t.Fatalf("CLIModelService.Create: %v", err)
+		t.Fatalf("ModelService.Create: %v", err)
 	}
 
 	// Disable the model while it has no agent def references
 	falseVal := false
-	_, err = cliModelSvc.Update(customModelID, types.CLIModelUpdateRequest{Enabled: &falseVal})
+	_, err = modelSvc.Update(customModelID, types.ModelUpdateRequest{Enabled: &falseVal})
 	if err != nil {
-		t.Fatalf("CLIModelService.Update (disable): %v", err)
+		t.Fatalf("ModelService.Update (disable): %v", err)
 	}
 
 	// Creating an agent def with the disabled model should be rejected
@@ -97,7 +97,7 @@ func TestDisabledCLIModel_RejectedForAgentDef(t *testing.T) {
 func TestCustomCLIModel_UpdateImmediatelyValid(t *testing.T) {
 	env := NewTestEnv(t)
 	svc := env.getAgentDefService(t)
-	cliModelSvc := service.NewCLIModelService(env.Pool, env.Clock)
+	modelSvc := service.NewModelService(env.Pool, env.Clock)
 
 	// Create a base agent without low_consumption_model
 	_, err := svc.CreateAgentDef(env.ProjectID, "test", &types.AgentDefCreateRequest{
@@ -118,14 +118,14 @@ func TestCustomCLIModel_UpdateImmediatelyValid(t *testing.T) {
 	}
 
 	// Add the model
-	_, err = cliModelSvc.Create(types.CLIModelCreateRequest{
+	_, err = modelSvc.Create(types.ModelCreateRequest{
 		ID:          newModelID,
-		CLIType:     "codex",
+		Provider:    "openai",
 		DisplayName: "Custom Update Model",
-		MappedModel: "gpt-custom",
+		CLIModel:    "gpt-custom",
 	})
 	if err != nil {
-		t.Fatalf("CLIModelService.Create: %v", err)
+		t.Fatalf("ModelService.Create: %v", err)
 	}
 
 	// Update should now succeed

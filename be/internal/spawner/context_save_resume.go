@@ -51,8 +51,8 @@ func (s *Spawner) contextSaveViaResume(ctx context.Context, proc *processInfo, r
 
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
-		mappedModel = cfg.MappedModel
-		reasoningEffort = cfg.ReasoningEffort
+		mappedModel = cfg.CLIModel
+		reasoningEffort = cfg.DefaultEffort
 	}
 	if mappedModel == "" {
 		mappedModel = adapter.MapModel(model)

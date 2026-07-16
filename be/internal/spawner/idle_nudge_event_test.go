@@ -30,7 +30,7 @@ func TestSendNudge_BroadcastsNudgedEvent(t *testing.T) {
 		backend:    &cliInteractiveBackend{},
 		sessionID:  "session-nudge-1",
 		agentType:  "implementor",
-		modelID:    "claude:sonnet",
+		modelID:    "claude:sonnet-5",
 		projectID:  "proj-nudge",
 		ticketID:   "TKT-1",
 	}
@@ -96,7 +96,7 @@ func TestSendNudge_BroadcastFields_AttemptIncrements(t *testing.T) {
 		backend:    &cliInteractiveBackend{},
 		sessionID:  "sess-inc",
 		agentType:  "qa-verifier",
-		modelID:    "claude:opus",
+		modelID:    "claude:opus-4-7",
 		projectID:  "proj-inc",
 		ticketID:   "TKT-INC",
 	}
@@ -140,7 +140,7 @@ func TestSendNudge_NudgeCountFallback_NilAgentSvc(t *testing.T) {
 		backend:    &cliInteractiveBackend{},
 		sessionID:  "s-fallback",
 		agentType:  "test-agent",
-		modelID:    "claude:sonnet",
+		modelID:    "claude:sonnet-5",
 	}
 
 	s.sendNudge(context.Background(), proc, SpawnRequest{})
@@ -223,7 +223,7 @@ func TestSendNudge_NilPTYManager_NoPanic(t *testing.T) {
 		backend:    &cliInteractiveBackend{},
 		sessionID:  "s-nopty",
 		agentType:  "test-agent",
-		modelID:    "sonnet",
+		modelID:    "sonnet-5",
 	}
 
 	// Must not panic; nudgeCount still incremented via fallback.

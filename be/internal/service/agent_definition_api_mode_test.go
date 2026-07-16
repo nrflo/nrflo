@@ -13,8 +13,8 @@ import (
 func setupAgentDefAPIModeEnv(t *testing.T) (svc *AgentDefinitionService, settingsSvc *GlobalSettingsService, wfID string) {
 	t.Helper()
 	pool, _, wfID := setupAgentDefTestEnv(t, nil)
-	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc = NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
+	modelSvc := NewModelService(pool, clock.Real())
+	svc = NewAgentDefinitionService(pool, clock.Real(), modelSvc, nil)
 	settingsSvc = NewGlobalSettingsService(pool, clock.Real())
 	return svc, settingsSvc, wfID
 }

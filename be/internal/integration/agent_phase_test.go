@@ -40,8 +40,8 @@ func TestAgentHistoryIncludesPhase(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-1", "test")
 
 	// Insert completed agent sessions in different phases
-	insertCompletedSession(t, env, "sess-ph-1", "PH-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
-	insertCompletedSession(t, env, "sess-ph-2", "PH-1", wfiID, "builder", "implementor", "claude:opus", "completed", "pass")
+	insertCompletedSession(t, env, "sess-ph-1", "PH-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass")
+	insertCompletedSession(t, env, "sess-ph-2", "PH-1", wfiID, "builder", "implementor", "claude:opus-4-7", "completed", "pass")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "PH-1", &types.WorkflowGetRequest{
@@ -103,7 +103,7 @@ func TestActiveAgentsIncludesPhase(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-2", "test")
 
 	// Insert a running agent with a specific phase
-	env.InsertAgentSession(t, "sess-ph-3", "PH-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-ph-3", "PH-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "PH-2", &types.WorkflowGetRequest{
@@ -119,9 +119,9 @@ func TestActiveAgentsIncludesPhase(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("expected agent entry for key 'analyzer:claude:sonnet', got keys: %v", keysOf(activeAgents))
+		t.Fatalf("expected agent entry for key 'analyzer:claude:sonnet-5', got keys: %v", keysOf(activeAgents))
 	}
 
 	phase, ok := agent["phase"].(string)
@@ -146,10 +146,10 @@ func TestMultiPhaseWorkflowAgentState(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-3", "test")
 
 	// Phase 1: analyzer - completed agent
-	insertCompletedSession(t, env, "sess-analyze", "PH-3", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-analyze", "PH-3", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass")
 
 	// Phase 2: builder - running agent
-	env.InsertAgentSession(t, "sess-build", "PH-3", wfiID, "builder", "implementor", "claude:opus")
+	env.InsertAgentSession(t, "sess-build", "PH-3", wfiID, "builder", "implementor", "claude:opus-4-7")
 
 	// Get workflow status - this is the critical check
 	status, err := getWorkflowStatus(t, env, "PH-3", &types.WorkflowGetRequest{
@@ -188,9 +188,9 @@ func TestMultiPhaseWorkflowAgentState(t *testing.T) {
 		t.Fatalf("expected 1 active agent (running builder), got %d", len(activeAgents))
 	}
 
-	agent, ok := activeAgents["builder:claude:opus"].(map[string]interface{})
+	agent, ok := activeAgents["builder:claude:opus-4-7"].(map[string]interface{})
 	if !ok {
-		t.Fatalf("expected active agent entry for key 'builder:claude:opus', got keys: %v", keysOf(activeAgents))
+		t.Fatalf("expected active agent entry for key 'builder:claude:opus-4-7', got keys: %v", keysOf(activeAgents))
 	}
 	if agent["phase"] != "builder" {
 		t.Fatalf("expected active agent phase 'builder', got %v", agent["phase"])
@@ -220,7 +220,7 @@ func TestAgentHistoryEmptyPhase(t *testing.T) {
 			started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, '', ?, ?, 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?, ?, ?)`,
 		"sess-empty-ph", env.ProjectID, "PH-4", wfiID, "analyzer",
-		nullStr("claude:sonnet"),
+		nullStr("claude:sonnet-5"),
 		now, now, now, now,
 	)
 	if err != nil {
@@ -302,9 +302,9 @@ func TestAgentHistoryMixedStatuses(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "PH-6", "test")
 
 	// Insert sessions with various non-running statuses
-	insertCompletedSession(t, env, "sess-pass", "PH-6", wfiID, "analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass")
-	insertCompletedSession(t, env, "sess-fail", "PH-6", wfiID, "analyzer", "code-reviewer", "claude:opus", "failed", "fail")
-	insertCompletedSession(t, env, "sess-cont", "PH-6", wfiID, "builder", "implementor", "claude:sonnet", "continued", "continue")
+	insertCompletedSession(t, env, "sess-pass", "PH-6", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass")
+	insertCompletedSession(t, env, "sess-fail", "PH-6", wfiID, "analyzer", "code-reviewer", "claude:opus-4-7", "failed", "fail")
+	insertCompletedSession(t, env, "sess-cont", "PH-6", wfiID, "builder", "implementor", "claude:sonnet-5", "continued", "continue")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "PH-6", &types.WorkflowGetRequest{

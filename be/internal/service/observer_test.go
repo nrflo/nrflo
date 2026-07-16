@@ -86,14 +86,14 @@ func TestObserverResolve_GlobalDefaults(t *testing.T) {
 
 	mustSet(t, gs.SetObserverSystemContext("global-ctx"))
 	mustSet(t, gs.SetObserverProvider("claude"))
-	mustSet(t, gs.SetObserverModel("sonnet"))
+	mustSet(t, gs.SetObserverModel("sonnet-5"))
 
 	sysCtx, provider, mdl, err := svc.Resolve("global", "", "")
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
-	if sysCtx != "global-ctx" || provider != "claude" || mdl != "sonnet" {
-		t.Errorf("Resolve() = %q/%q/%q, want global-ctx/claude/sonnet", sysCtx, provider, mdl)
+	if sysCtx != "global-ctx" || provider != "claude" || mdl != "sonnet-5" {
+		t.Errorf("Resolve() = %q/%q/%q, want global-ctx/claude/sonnet-5", sysCtx, provider, mdl)
 	}
 }
 
@@ -105,7 +105,7 @@ func TestObserverResolve_ProjectOverridesGlobal(t *testing.T) {
 	mustSet(t, gs.SetObserverSystemContext("global-ctx"))
 	mustSet(t, gs.SetObserverProvider("claude"))
 	mustSet(t, gs.SetObserverSystemContextForProject("proj1", "proj-ctx"))
-	mustSet(t, gs.SetObserverModelForProject("proj1", "opus"))
+	mustSet(t, gs.SetObserverModelForProject("proj1", "opus-4-7"))
 
 	sysCtx, provider, mdl, err := svc.Resolve("project", "proj1", "")
 	if err != nil {
@@ -117,8 +117,8 @@ func TestObserverResolve_ProjectOverridesGlobal(t *testing.T) {
 	if provider != "claude" {
 		t.Errorf("provider = %q, want claude (global passthrough)", provider)
 	}
-	if mdl != "opus" {
-		t.Errorf("model = %q, want opus (project override)", mdl)
+	if mdl != "opus-4-7" {
+		t.Errorf("model = %q, want opus-4-7 (project override)", mdl)
 	}
 }
 

@@ -9,7 +9,7 @@ every scenario SKIPs cleanly.
 Usage:
     python3 manual_testing/api/test.py
     python3 manual_testing/api/test.py --only=A01,A06
-    python3 manual_testing/api/test.py --model=haiku_api
+    python3 manual_testing/api/test.py --model=haiku-4-5
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from api import ALL_SCENARIOS  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default="haiku")
+    ap.add_argument("--model", default="haiku-4-5")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None,

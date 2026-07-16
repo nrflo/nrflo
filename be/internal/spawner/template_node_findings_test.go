@@ -50,7 +50,7 @@ func TestLoadTemplate_NodeFindings_SingleNode_ResolvesEarlierLayerNode(t *testin
 	createAgentDefWithLayer(t, env, "merger", "## G2\n#{NODE_FINDINGS:scrape-g2}\n\nDone.", 2)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("merger", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 2)
+	result, _, _, err := sp.loadTemplate("merger", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 2)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestLoadTemplate_NodeFindings_UnknownNode_ExpandsEmptyNoError(t *testing.T)
 	createAgentDefWithLayer(t, env, "consumer", "before[#{NODE_FINDINGS:ghost-node}]after", 0)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 0)
+	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate returned unexpected error: %v", err)
 	}
@@ -104,7 +104,7 @@ func TestLoadTemplate_NodeFindings_KnownNodeNoFindings_Placeholder(t *testing.T)
 	createAgentDefWithLayer(t, env, "consumer", "#{NODE_FINDINGS:empty-node}", 1)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 1)
+	result, _, _, err := sp.loadTemplate("consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 1)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestLoadTemplate_NodeFindings_KeySelection(t *testing.T) {
 
 	sp := env.newSpawner()
 
-	single, _, _, err := sp.loadTemplate("single-consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 1)
+	single, _, _, err := sp.loadTemplate("single-consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 1)
 	if err != nil {
 		t.Fatalf("loadTemplate(single-consumer) failed: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestLoadTemplate_NodeFindings_KeySelection(t *testing.T) {
 		t.Errorf("expected bare value 'Value:  1', got: %q", single)
 	}
 
-	multi, _, _, err := sp.loadTemplate("multi-consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 1)
+	multi, _, _, err := sp.loadTemplate("multi-consumer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 1)
 	if err != nil {
 		t.Fatalf("loadTemplate(multi-consumer) failed: %v", err)
 	}

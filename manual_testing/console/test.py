@@ -29,7 +29,7 @@ from console import ALL_SCENARIOS  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default="haiku")
+    ap.add_argument("--model", default="haiku-4-5")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None,

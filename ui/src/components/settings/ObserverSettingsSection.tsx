@@ -3,7 +3,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { Textarea } from '@/components/ui/Textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { updateGlobalSettings, settingsKeys } from '@/api/settings'
-import { useCLIModels } from '@/hooks/useCLIModels'
+import { cliTypeForProvider, useModels } from '@/hooks/useModels'
 import type { GlobalSettings } from '@/api/settings'
 
 interface ObserverSettingsSectionProps {
@@ -12,7 +12,7 @@ interface ObserverSettingsSectionProps {
 
 export function ObserverSettingsSection({ settings }: ObserverSettingsSectionProps) {
   const qc = useQueryClient()
-  const { data: models = [] } = useCLIModels()
+  const { data: models = [] } = useModels()
 
   const observerEnabledMutation = useMutation({
     mutationFn: (val: boolean) => updateGlobalSettings({ experimental_observer_enabled: val }),
@@ -27,7 +27,7 @@ export function ObserverSettingsSection({ settings }: ObserverSettingsSectionPro
 
   const providerOptions = [
     { value: '', label: 'None (use default)' },
-    ...Array.from(new Set(models.filter(m => m.enabled).map(m => m.cli_type))).map(t => ({
+    ...Array.from(new Set(models.filter(m => m.enabled && m.cli_model).map(m => cliTypeForProvider(m.provider)))).map(t => ({
       value: t,
       label: t.charAt(0).toUpperCase() + t.slice(1),
     })),
@@ -36,7 +36,7 @@ export function ObserverSettingsSection({ settings }: ObserverSettingsSectionPro
   const modelOptions = [
     { value: '', label: 'None (use default)' },
     ...models
-      .filter(m => m.enabled && (!settings.observer_provider || m.cli_type === settings.observer_provider))
+      .filter(m => m.enabled && m.cli_model && (!settings.observer_provider || cliTypeForProvider(m.provider) === settings.observer_provider))
       .map(m => ({ value: m.id, label: m.display_name })),
   ]
 

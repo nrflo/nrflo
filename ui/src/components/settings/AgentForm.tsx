@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Textarea } from '@/components/ui/Textarea'
-import { useModelOptions } from '@/hooks/useCLIModels'
+import { useModelOptions } from '@/hooks/useModels'
 
 export interface AgentFormData {
   id: string
@@ -18,7 +18,7 @@ export interface AgentFormData {
 
 export const emptyAgentForm: AgentFormData = {
   id: '',
-  model: 'sonnet',
+  model: 'sonnet-5',
   timeout: '30',
   prompt: '',
   restart_threshold: '',
@@ -50,7 +50,7 @@ export function AgentForm({
   mutation: { isPending: boolean; isError: boolean; error: any }
   isCreate?: boolean
 }) {
-  const modelOptions = useModelOptions()
+  const modelOptions = useModelOptions('cli')
 
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>

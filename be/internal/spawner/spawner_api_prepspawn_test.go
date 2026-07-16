@@ -2,7 +2,7 @@ package spawner
 
 // Tests for api-mode prepareSpawn: provider selection, missing model, credential
 // errors, and reasoning effort propagation. Each case exercises the path from
-// Config.APIModelConfigs → BuildAPIProvider → prepResult fields.
+// Config.ModelConfigs → BuildAPIProvider → prepResult fields.
 
 import (
 	"context"
@@ -32,14 +32,14 @@ func insertAPIAgentDef(t *testing.T, env *contextSaveTestEnv, agentID, model str
 	}
 }
 
-// TestPrepareSpawn_APIMode_AnthropicProvider verifies that when an api_models row
+// TestPrepareSpawn_APIMode_AnthropicProvider verifies that when a model row
 // has provider="anthropic", BuildAPIProvider is called with providerName="anthropic".
 func TestPrepareSpawn_APIMode_AnthropicProvider(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	var capturedProvider string
 	sp := New(Config{
@@ -51,8 +51,8 @@ func TestPrepareSpawn_APIMode_AnthropicProvider(t *testing.T) {
 			capturedProvider = providerName
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -65,7 +65,7 @@ func TestPrepareSpawn_APIMode_AnthropicProvider(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}
@@ -78,14 +78,14 @@ func TestPrepareSpawn_APIMode_AnthropicProvider(t *testing.T) {
 	}
 }
 
-// TestPrepareSpawn_APIMode_OpenAIProvider verifies that when an api_models row
+// TestPrepareSpawn_APIMode_OpenAIProvider verifies that when a model row
 // has provider="openai", BuildAPIProvider is called with providerName="openai".
 func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "codex-impl", "gpt53_codex_high")
+	insertAPIAgentDef(t, env, "codex-impl", "gpt-5.3-codex")
 
 	var capturedProvider string
 	sp := New(Config{
@@ -97,8 +97,8 @@ func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 			capturedProvider = providerName
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"gpt53_codex_high": {Provider: "openai", MappedModel: "gpt-5.3-codex", ReasoningEffort: "high", ContextLength: 200000, SupportedEfforts: []string{"low", "medium", "high"}},
+		ModelConfigs: map[string]ModelConfig{
+			"gpt-5.3-codex": {Provider: "openai", APIModel: "gpt-5.3-codex", DefaultEffort: "high", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -111,7 +111,7 @@ func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:gpt53_codex_high", "codex-impl", env.wfiID)
+	}, "codex:gpt-5.3-codex", "codex-impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}
@@ -125,14 +125,14 @@ func TestPrepareSpawn_APIMode_OpenAIProvider(t *testing.T) {
 }
 
 // TestPrepareSpawn_APIMode_MissingModelInConfigs verifies that when the model ID
-// is absent from APIModelConfigs, prepareSpawn returns a descriptive error and
+// is absent from ModelConfigs, prepareSpawn returns a descriptive error and
 // does NOT fall through to CLI mode.
 func TestPrepareSpawn_APIMode_MissingModelInConfigs(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	sp := New(Config{
 		DataPath: env.dbPath,
@@ -142,9 +142,9 @@ func TestPrepareSpawn_APIMode_MissingModelInConfigs(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		// APIModelConfigs deliberately empty — "sonnet" not present.
-		APIModelConfigs: map[string]APIModelConfig{},
-		AgentSvc:        &noopAgentSvc{},
+		// ModelConfigs deliberately empty — "sonnet-5" not present.
+		ModelConfigs: map[string]ModelConfig{},
+		AgentSvc:     &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
 			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
 		},
@@ -155,12 +155,12 @@ func TestPrepareSpawn_APIMode_MissingModelInConfigs(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err == nil {
-		t.Fatal("prepareSpawn() returned nil error; want error for missing model in APIModelConfigs")
+		t.Fatal("prepareSpawn() returned nil error; want error for missing model in ModelConfigs")
 	}
-	if !strings.Contains(err.Error(), "not found in api_models") {
-		t.Errorf("error = %q; want contains 'not found in api_models'", err.Error())
+	if !strings.Contains(err.Error(), "not found in models") {
+		t.Errorf("error = %q; want contains 'not found in models'", err.Error())
 	}
 }
 
@@ -171,7 +171,7 @@ func TestPrepareSpawn_APIMode_BuildProviderError(t *testing.T) {
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	credErr := errors.New("ANTHROPIC_API_KEY not found in env or project vars")
 	sp := New(Config{
@@ -182,8 +182,8 @@ func TestPrepareSpawn_APIMode_BuildProviderError(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return nil, credErr
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -196,7 +196,7 @@ func TestPrepareSpawn_APIMode_BuildProviderError(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err == nil {
 		t.Fatal("prepareSpawn() returned nil error; want credential error from BuildAPIProvider")
 	}
@@ -206,13 +206,13 @@ func TestPrepareSpawn_APIMode_BuildProviderError(t *testing.T) {
 }
 
 // TestPrepareSpawn_APIMode_ReasoningEffortPropagates verifies that the ReasoningEffort
-// field from the APIModelConfig row is stored in prep.apiReasoningEffort.
+// field from the ModelConfig row is stored in prep.apiReasoningEffort.
 func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	sp := New(Config{
 		DataPath: env.dbPath,
@@ -222,13 +222,13 @@ func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {
-				Provider:         "anthropic",
-				MappedModel:      "claude-sonnet-4-6",
-				ContextLength:    200000,
-				ReasoningEffort:  "high",
-				SupportedEfforts: []string{"low", "medium", "high", "xhigh"},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {
+				Provider:      "anthropic",
+				APIModel:      "claude-sonnet-4-6",
+				APIContext:    200000,
+				DefaultEffort: "high",
+				APIEfforts:    []string{"low", "medium", "high", "xhigh"},
 			},
 		},
 		AgentSvc: &noopAgentSvc{},
@@ -242,7 +242,7 @@ func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}
@@ -252,14 +252,14 @@ func TestPrepareSpawn_APIMode_ReasoningEffortPropagates(t *testing.T) {
 	}
 }
 
-// TestPrepareSpawn_APIMode_MappedModelFromConfig verifies that prep.apiModelID
-// is set to APIModelConfig.MappedModel (not the raw nrflo model ID).
-func TestPrepareSpawn_APIMode_MappedModelFromConfig(t *testing.T) {
+// TestPrepareSpawn_APIMode_APIModelFromConfig verifies that prep.apiModelID
+// is set to ModelConfig.APIModel (not the raw nrflo model ID).
+func TestPrepareSpawn_APIMode_APIModelFromConfig(t *testing.T) {
 	t.Parallel()
 	env := setupContextSaveTestEnv(t)
 	defer env.cleanup()
 
-	insertAPIAgentDef(t, env, "impl", "sonnet")
+	insertAPIAgentDef(t, env, "impl", "sonnet-5")
 
 	sp := New(Config{
 		DataPath: env.dbPath,
@@ -269,8 +269,8 @@ func TestPrepareSpawn_APIMode_MappedModelFromConfig(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6-20251001", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6-20251001", APIContext: 200000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -283,7 +283,7 @@ func TestPrepareSpawn_APIMode_MappedModelFromConfig(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "impl", env.wfiID)
+	}, "claude:sonnet-5", "impl", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn() error: %v", err)
 	}

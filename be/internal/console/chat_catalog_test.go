@@ -17,7 +17,7 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}
 	// Newest-added models sort first; seeded rows share a timestamp, so bump one.
-	mustExec(t, pool, `UPDATE api_models SET created_at = '2099-01-01T00:00:00Z' WHERE id = 'haiku'`)
+	mustExec(t, pool, `UPDATE models SET created_at = '2099-01-01T00:00:00Z' WHERE id = 'haiku-4-5'`)
 	catalog, err := svc.Catalog(chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Catalog: %v", err)
@@ -32,8 +32,11 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	if api.Kind != "api" || api.Brand != "" {
 		t.Fatalf("api engine kind/brand = %q/%q", api.Kind, api.Brand)
 	}
-	if len(api.Models) == 0 || api.Models[0].ID != "haiku" || api.Models[0].Brand != "claude" {
-		t.Fatalf("api models[0] = %+v, want newest-added haiku with brand claude", api.Models)
+	if len(api.Models) == 0 || api.Models[0].ID != "haiku-4-5" || api.Models[0].Brand != "claude" {
+		t.Fatalf("api models[0] = %+v, want newest-added haiku-4-5 with brand claude", api.Models)
+	}
+	if api.Models[0].MappedModel != "claude-haiku-4-5" || len(api.Models[0].SupportedEfforts) != 3 {
+		t.Fatalf("api haiku mode fields = %+v", api.Models[0])
 	}
 	for _, m := range api.Models {
 		if m.Provider == "openai" && m.Brand != "gpt" {

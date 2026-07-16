@@ -15,7 +15,7 @@ func TestAgentFail(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-1", "test")
 
 	// Create running agent session via DB
-	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus_4_7")
+	env.InsertAgentSession(t, "sess-2", "AGT-1", wfiID, "analyzer", "builder", "opus-4-7")
 
 	// Fail builder via socket — context derived from session on the server
 	env.MustExecute(t, "agent.fail", map[string]interface{}{
@@ -40,7 +40,7 @@ func TestAgentContinue(t *testing.T) {
 	env.InitWorkflow(t, "AGT-2")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-2", "test")
-	env.InsertAgentSession(t, "sess-cont-1", "AGT-2", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-cont-1", "AGT-2", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Continue analyzer via socket
 	env.MustExecute(t, "agent.continue", map[string]interface{}{
@@ -65,7 +65,7 @@ func TestAgentGetActive(t *testing.T) {
 	env.InitWorkflow(t, "AGT-3")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-3", "test")
-	env.InsertAgentSession(t, "sess-active", "AGT-3", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-active", "AGT-3", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Get active via service (socket no longer supports agent.active)
 	result, err := env.AgentSvc.GetActive(env.ProjectID, "AGT-3", &types.AgentActiveRequest{
@@ -97,9 +97,9 @@ func TestAgentSessions(t *testing.T) {
 	env.InitWorkflow(t, "ticket-b")
 	wfiB := env.GetWorkflowInstanceID(t, "ticket-b", "test")
 
-	env.InsertAgentSession(t, "sess-1", "ticket-a", wfiA, "analyzer", "analyzer", "sonnet")
-	env.InsertAgentSession(t, "sess-2", "ticket-a", wfiA, "builder", "builder", "sonnet")
-	env.InsertAgentSession(t, "sess-3", "ticket-b", wfiB, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-1", "ticket-a", wfiA, "analyzer", "analyzer", "sonnet-5")
+	env.InsertAgentSession(t, "sess-2", "ticket-a", wfiA, "builder", "builder", "sonnet-5")
+	env.InsertAgentSession(t, "sess-3", "ticket-b", wfiB, "analyzer", "analyzer", "sonnet-5")
 
 	// Get all sessions via service
 	allSessions, err := env.AgentSvc.GetRecentSessions(env.ProjectID, 20)

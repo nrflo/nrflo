@@ -14,7 +14,7 @@ vi.mock('@/api/projects')
 vi.mock('@/api/projectEnvVars')
 vi.mock('@/hooks/useEnvVarCatalog')
 vi.mock('@/api/projectSettings')
-vi.mock('@/api/cliModels', () => ({ listCLIModels: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/api/models', () => ({ listModels: vi.fn().mockResolvedValue([]) }))
 
 const mockUseProjectStore = vi.fn()
 vi.mock('@/stores/projectStore', () => ({

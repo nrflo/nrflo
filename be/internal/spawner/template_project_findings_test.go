@@ -235,7 +235,7 @@ func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
 		ID:         "analyzer",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     "Agent: ${AGENT}\n\n## Project Context\n#{PROJECT_FINDINGS:architecture}\n\nProceed with analysis.",
 	})
@@ -254,7 +254,7 @@ func TestLoadTemplate_ProjectFindingsExpansion(t *testing.T) {
 	}
 
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet-5", "investigation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -293,7 +293,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 		ID:         "implementor",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "opus_4_7",
+		Model:      "opus-4-7",
 		Timeout:    3600,
 		Prompt:     "## Agent Findings\n#{FINDINGS:analyzer}\n\n## Project Context\n#{PROJECT_FINDINGS:architecture}\n\nImplement the feature.",
 	})
@@ -314,7 +314,7 @@ func TestLoadTemplate_MixedPatterns(t *testing.T) {
 	// Note: We don't create any agent sessions, so #{FINDINGS:analyzer} should produce the placeholder
 
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("implementor", ticketID, env.project, "parent-1", "child-1", "test", "claude:opus", "implementation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("implementor", ticketID, env.project, "parent-1", "child-1", "test", "claude:opus-4-7", "implementation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -360,7 +360,7 @@ func TestLoadTemplate_NoProjectFindings(t *testing.T) {
 		ID:         "analyzer",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\nProceed with analysis.",
 	})
@@ -369,7 +369,7 @@ func TestLoadTemplate_NoProjectFindings(t *testing.T) {
 	}
 
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet-5", "investigation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

@@ -69,7 +69,7 @@ func TestAgentSessionNullTicketID(t *testing.T) {
 
 	// Insert agent session with empty ticket_id
 	sessionID := "test-session-" + t.Name()
-	env.InsertAgentSession(t, sessionID, "", wfi.ID, "setup", "setup", "claude:sonnet")
+	env.InsertAgentSession(t, sessionID, "", wfi.ID, "setup", "setup", "claude:sonnet-5")
 
 	// Verify session was created
 	var retrievedTicketID *string

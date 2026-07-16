@@ -233,7 +233,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 		ID:         "analyzer",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed with analysis.",
 	})
@@ -253,7 +253,7 @@ func TestLoadTemplate_CallbackInstructionsExpansion(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet-5", "investigation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 		ID:         "analyzer",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     "Agent: ${AGENT}\nTicket: ${TICKET_ID}\n\nProceed with analysis.",
 	})
@@ -320,7 +320,7 @@ func TestLoadTemplate_NoCallbackInstructions(t *testing.T) {
 	})
 
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet-5", "investigation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -356,7 +356,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 		ID:         "analyzer",
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     "Agent: ${AGENT}\n\n${CALLBACK_INSTRUCTIONS}\n\nProceed.",
 	})
@@ -366,7 +366,7 @@ func TestLoadTemplate_CallbackInstructionsDefault(t *testing.T) {
 
 	// No callback metadata - should get default placeholder
 	sp := env.newSpawner()
-	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet", "investigation", "", nil, 0)
+	template, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "parent-1", "child-1", "test", "claude:sonnet-5", "investigation", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

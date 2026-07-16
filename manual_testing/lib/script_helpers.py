@@ -52,7 +52,7 @@ def make_script_agent(
     code: str,
     layer: int = 0,
     timeout: int = 2,
-    model: str = "haiku",
+    model: str = "haiku-4-5",
     stall_start_timeout_sec: int | None = None,
     stall_running_timeout_sec: int | None = None,
     max_fail_restarts: int | None = None,
@@ -60,7 +60,7 @@ def make_script_agent(
     """One-shot: create python_script + script-mode agent_def.
 
     Returns the python_script id. `model` is required by the agent_def
-    schema but is unused by the script backend; defaults to 'haiku' so
+    schema but is unused by the script backend; defaults to 'haiku-4-5' so
     cli_model lookup in the spawner (if any) finds a valid row."""
     script_id = make_script(ctx, pid, code=code)
     ctx.client.create_agent_def(

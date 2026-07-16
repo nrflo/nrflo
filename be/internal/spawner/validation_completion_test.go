@@ -18,7 +18,7 @@ func validationProc(env *testEnv, cmds []string) *processInfo {
 	return &processInfo{
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		agentType:          "test-agent",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
@@ -56,7 +56,7 @@ func TestWriteValidationFailureFinding_PersistsToDB(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	proc := validationProc(env, []string{"false", "echo ignored"})
 	env.spawner.writeValidationFailureFinding(proc, 0, 1, "some output here")
@@ -86,7 +86,7 @@ func TestHandleCompletion_ValidationCommandsPass_ResultPreserved(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	cmd := exec.Command("true")
 	if err := cmd.Run(); err != nil {
@@ -128,7 +128,7 @@ func TestHandleCompletion_ValidationCommandsFail_FlipsToFail(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	cmd := exec.Command("true")
 	if err := cmd.Run(); err != nil {
@@ -171,7 +171,7 @@ func TestHandleCompletion_ExplicitFail_SkipsValidation(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "fail", "explicit"); err != nil {
@@ -214,8 +214,8 @@ func TestCopyFindingsForContinuation_CarriesValidationFailure(t *testing.T) {
 	oldID := uuid.New().String()
 	newID := uuid.New().String()
 
-	env.createNamedSession(t, oldID, "claude:sonnet")
-	env.createNamedSession(t, newID, "claude:sonnet")
+	env.createNamedSession(t, oldID, "claude:sonnet-5")
+	env.createNamedSession(t, newID, "claude:sonnet-5")
 
 	// Plant a validation_failure finding on the old session.
 	payload := json.RawMessage(`{"command":"false","command_index":0,"exit_code":1,"output_tail":"oops"}`)
@@ -224,7 +224,7 @@ func TestCopyFindingsForContinuation_CarriesValidationFailure(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowInstanceID: env.wfiID,
 		AgentType:          "test-agent",
-		ModelID:            "claude:sonnet",
+		ModelID:            "claude:sonnet-5",
 	}
 	if err := findingRepo.Upsert("session", oldID, "validation_failure", payload, denorm,
 		repo.Actor{Source: "system", ID: "validation"}); err != nil {

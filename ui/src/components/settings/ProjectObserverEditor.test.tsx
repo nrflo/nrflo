@@ -4,12 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { ProjectObserverEditor, type ObserverFormState } from './ProjectObserverEditor'
 import { renderWithQuery } from '@/test/utils'
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useCLIModels: () => ({
+vi.mock('@/hooks/useModels', () => ({
+  cliTypeForProvider: (provider: string) => provider === 'anthropic' ? 'claude' : 'codex',
+  useModels: () => ({
     data: [
-      { id: 'claude-sonnet', cli_type: 'claude', display_name: 'Claude Sonnet', enabled: true },
-      { id: 'claude-haiku', cli_type: 'claude', display_name: 'Claude Haiku', enabled: true },
-      { id: 'codex-mini', cli_type: 'codex', display_name: 'Codex Mini', enabled: true },
+      { id: 'sonnet-5', provider: 'anthropic', cli_model: 'claude-sonnet-5', display_name: 'Claude Sonnet', enabled: true },
+      { id: 'haiku-4-5', provider: 'anthropic', cli_model: 'claude-haiku-4-5', display_name: 'Claude Haiku', enabled: true },
+      { id: 'gpt-5.4-mini', provider: 'openai', cli_model: 'gpt-5.4-mini', display_name: 'Codex Mini', enabled: true },
     ],
   }),
 }))
@@ -87,7 +88,7 @@ describe('ProjectObserverEditor', () => {
     await user.click(screen.getByText('Claude Sonnet'))
 
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'claude-sonnet' })
+      expect.objectContaining({ model: 'sonnet-5' })
     )
   })
 

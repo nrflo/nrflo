@@ -45,8 +45,8 @@ func TestPrepareSpawn_API_ReasoningEffort_DefOverrideReachesPrepResult(t *testin
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"opus48": {Provider: "anthropic", MappedModel: "claude-opus-4-8", ContextLength: 200000, SupportedEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
+		ModelConfigs: map[string]ModelConfig{
+			"opus48": {Provider: "anthropic", APIModel: "claude-opus-4-8", APIContext: 200000, APIEfforts: []string{"low", "medium", "high", "xhigh", "max"}},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},
@@ -91,8 +91,8 @@ func TestPrepareSpawn_API_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"gpt56": {Provider: "openai", MappedModel: "gpt-5.6-sol", ContextLength: 372000, SupportedEfforts: []string{"low", "medium", "high"}},
+		ModelConfigs: map[string]ModelConfig{
+			"gpt56": {Provider: "openai", APIModel: "gpt-5.6-sol", APIContext: 372000, APIEfforts: []string{"low", "medium", "high"}},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {Phases: []PhaseDef{{NodeID: "impl", Agent: "impl", Layer: 0}}},

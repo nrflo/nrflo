@@ -29,7 +29,7 @@ func createAgentDefWithLayer(t *testing.T, env *spawnerTestEnv, agentID, prompt 
 		ID:         agentID,
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     prompt,
 		Layer:      layer,
@@ -121,7 +121,7 @@ func TestLoadTemplate_PriorLayerFindings_RosterSortedWithMissing(t *testing.T) {
 	createAgentDefWithLayer(t, env, "merger", "## Prior Scrapers\n#{PRIOR_LAYER_FINDINGS}\n\nMerge all.", 2)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("merger", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 2)
+	result, _, _, err := sp.loadTemplate("merger", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 2)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -178,12 +178,12 @@ func TestLoadTemplate_LayerFindingsExplicit_IdenticalToPriorLayer(t *testing.T) 
 
 	sp := env.newSpawner()
 
-	prior, _, _, err := sp.loadTemplate("merger-prior", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 2)
+	prior, _, _, err := sp.loadTemplate("merger-prior", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 2)
 	if err != nil {
 		t.Fatalf("loadTemplate(merger-prior) failed: %v", err)
 	}
 
-	explicit, _, _, err := sp.loadTemplate("merger-explicit", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", wfiID, nil, 2)
+	explicit, _, _, err := sp.loadTemplate("merger-explicit", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", wfiID, nil, 2)
 	if err != nil {
 		t.Fatalf("loadTemplate(merger-explicit) failed: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestLoadTemplate_PriorLayerFindings_Layer0_NoPriorLayer(t *testing.T) {
 	createAgentDefWithLayer(t, env, "l0-agent", "Context: #{PRIOR_LAYER_FINDINGS}\n\nRun analysis.", 0)
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("l0-agent", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", nil, 0)
+	result, _, _, err := sp.loadTemplate("l0-agent", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed unexpectedly: %v", err)
 	}

@@ -44,7 +44,10 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 		PlanMode:     true,
 	}
 
-	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), nil, nil, "")
+	modelConfigs := map[string]spawner.ModelConfig{
+		"opus-4-8": {Provider: "anthropic", CLIModel: "claude-opus-4-8"},
+	}
+	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), modelConfigs, "")
 	if err != nil {
 		t.Fatalf("setupInteractivePreStep() error: %v", err)
 	}
@@ -119,8 +122,8 @@ func TestSetupInteractivePreStep_PlanMode_UsesL0AgentModel(t *testing.T) {
 		},
 	}
 	svcAgents := map[string]service.SpawnerAgentConfig{
-		"analyzer": {Model: "sonnet"},
-		"builder":  {Model: "opus_4_7"},
+		"analyzer": {Model: "sonnet-5"},
+		"builder":  {Model: "opus-4-7"},
 	}
 
 	var registeredArgs []string
@@ -135,7 +138,6 @@ func TestSetupInteractivePreStep_PlanMode_UsesL0AgentModel(t *testing.T) {
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
 		nil,
-		nil,
 		"",
 	)
 	if err != nil {
@@ -144,12 +146,12 @@ func TestSetupInteractivePreStep_PlanMode_UsesL0AgentModel(t *testing.T) {
 	t.Cleanup(func() { pre.spawner.CompleteInteractive(pre.sessionID) })
 
 	argsStr := strings.Join(registeredArgs, " ")
-	// "sonnet" passes through ClaudeAdapter.MapModel unchanged
-	if !strings.Contains(argsStr, "--model sonnet") {
-		t.Errorf("plan mode should use L0 agent's model (sonnet), got args: %v", registeredArgs)
+	// "sonnet-5" passes through ClaudeAdapter.MapModel unchanged
+	if !strings.Contains(argsStr, "--model sonnet-5") {
+		t.Errorf("plan mode should use L0 agent's model (sonnet-5), got args: %v", registeredArgs)
 	}
 	if strings.Contains(argsStr, "claude-opus-4-7") {
-		t.Errorf("plan mode should not fall back to opus_4_7 when L0 has a model: %v", registeredArgs)
+		t.Errorf("plan mode should not fall back to opus-4-7 when L0 has a model: %v", registeredArgs)
 	}
 }
 
@@ -169,7 +171,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	}
 
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_8": {CLIType: "claude", MappedModel: "claude-opus-db-override"},
+		"opus-4-8": {Provider: "anthropic", CLIModel: "claude-opus-db-override"},
 	}
 
 	pre, err := env.orch.setupInteractivePreStep(
@@ -180,7 +182,6 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
 		modelConfigs,
-		nil,
 		"",
 	)
 	if err != nil {
@@ -192,7 +193,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	if !strings.Contains(argsStr, "--model claude-opus-db-override") {
 		t.Errorf("DB MappedModel should override hardcoded mapping; got args: %v", registeredArgs)
 	}
-	if strings.Contains(argsStr, "--model opus_4_8") {
+	if strings.Contains(argsStr, "--model opus-4-8") {
 		t.Errorf("raw nrflo ID leaked to --model: %v", registeredArgs)
 	}
 }
@@ -216,7 +217,6 @@ func TestSetupInteractivePreStep_PlanMode_NoRegisterPtyCommand_OK(t *testing.T) 
 		map[string]spawner.WorkflowDef{},
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
-		nil,
 		nil,
 		"",
 	)
@@ -243,7 +243,6 @@ func TestSetupInteractivePreStep_EmptyWorkflowReturnsError(t *testing.T) {
 		map[string]spawner.WorkflowDef{},
 		map[string]spawner.AgentConfig{},
 		t.TempDir(),
-		nil,
 		nil,
 		"",
 	)

@@ -13,7 +13,7 @@ import (
 // maps to the SDK OutputConfig effort "max" on a 4.6+ (adaptive) model and to a
 // 32768-token budget on Haiku 4.5 (budget path).
 func TestTranslateRequest_MaxEffort_AdaptiveAndBudget(t *testing.T) {
-	t.Run("adaptive_opus_4_8", func(t *testing.T) {
+	t.Run("adaptive_opus-4-8", func(t *testing.T) {
 		params, err := translateRequest(provider.Request{
 			Model:           "claude-opus-4-8",
 			MaxTokens:       1000,

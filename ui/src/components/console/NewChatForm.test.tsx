@@ -27,7 +27,7 @@ function engineOption(overrides: Partial<ConsoleEngineOption> = {}): ConsoleEngi
     brand: 'claude',
     enabled: true,
     requires_model: false,
-    models: [{ id: 'sonnet', display_name: 'Sonnet (CLI)' }],
+    models: [{ id: 'sonnet-5', display_name: 'Sonnet (CLI)' }],
     ...overrides,
   }
 }
@@ -38,12 +38,12 @@ function makeCatalog(engines: ConsoleEngineOption[]): ConsoleCatalog {
 
 const DEFAULT_ENGINES = [
   engineOption(),
-  engineOption({ id: 'codex', display_name: 'Codex', models: [{ id: 'codex_gpt', display_name: 'GPT (Codex)' }] }),
+  engineOption({ id: 'codex', display_name: 'Codex', models: [{ id: 'gpt-5.4', display_name: 'GPT (Codex)' }] }),
   engineOption({
     id: 'api',
     display_name: 'Direct API',
     requires_model: true,
-    models: [{ id: 'api-sonnet', display_name: 'Sonnet (API)', provider: 'anthropic' }],
+    models: [{ id: 'sonnet-5', display_name: 'Sonnet (API)', provider: 'anthropic' }],
   }),
 ]
 
@@ -139,7 +139,7 @@ describe('NewChatForm (catalog-driven)', () => {
     expect(screen.getByText(/No file\/edit\/bash tools/)).toBeInTheDocument()
   })
 
-  it('submits the api_models row id when the api engine is chosen', async () => {
+  it('submits the unified model row id when the API engine is chosen', async () => {
     const { mutateAsync } = setup()
     const onCreated = vi.fn()
     const user = userEvent.setup()
@@ -151,7 +151,7 @@ describe('NewChatForm (catalog-driven)', () => {
     await user.click(screen.getByText('Sonnet (API)'))
     await user.click(screen.getByRole('button', { name: 'New chat' }))
 
-    expect(mutateAsync).toHaveBeenCalledWith({ engine: 'api', model: 'api-sonnet' })
+    expect(mutateAsync).toHaveBeenCalledWith({ engine: 'api', model: 'sonnet-5' })
     expect(onCreated).toHaveBeenCalledWith('sid-x')
   })
 
@@ -165,7 +165,7 @@ describe('NewChatForm (catalog-driven)', () => {
           requires_model: true,
           models: [
             {
-              id: 'api-sonnet',
+              id: 'sonnet-5',
               display_name: 'Sonnet (API)',
               supported_efforts: ['low', 'medium', 'high', 'max'],
             },
@@ -188,18 +188,18 @@ describe('NewChatForm (catalog-driven)', () => {
     await user.click(screen.getByText('Max'))
     await user.click(screen.getByRole('button', { name: 'New chat' }))
 
-    expect(mutateAsync).toHaveBeenCalledWith({ engine: 'api', model: 'api-sonnet', reasoning_effort: 'max' })
+    expect(mutateAsync).toHaveBeenCalledWith({ engine: 'api', model: 'sonnet-5', reasoning_effort: 'max' })
   })
 
-  it('clears the selected model when switching engines, even when ids collide across registries', async () => {
+  it('clears the selected model when switching modes of the same unified row', async () => {
     setup({
       engines: [
-        engineOption({ models: [{ id: 'sonnet', display_name: 'Sonnet (CLI)' }] }),
+        engineOption({ models: [{ id: 'sonnet-5', display_name: 'Sonnet (CLI)' }] }),
         engineOption({
           id: 'api',
           display_name: 'Direct API',
           requires_model: true,
-          models: [{ id: 'sonnet', display_name: 'Sonnet (API)' }],
+          models: [{ id: 'sonnet-5', display_name: 'Sonnet (API)' }],
         }),
       ],
     })

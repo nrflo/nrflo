@@ -52,15 +52,15 @@ func TestAllowedTemplates_DynamicWorkflow_ExcludesPlannerReturnsAllFanoutTemplat
 }
 
 // TestEnabledTemplates_DynamicWorkflow_DropsDisabledCodexTemplates verifies
-// graceful degradation: when the codex cli_models rows are disabled,
+// graceful degradation: when OpenAI CLI-capable model rows are disabled,
 // EnabledTemplates filters the -codex twins out of the ${TEMPLATE_LIBRARY}
 // while every claude-backed template stays.
 func TestEnabledTemplates_DynamicWorkflow_DropsDisabledCodexTemplates(t *testing.T) {
 	t.Parallel()
 	pool := seedDynamicWorkflowDB(t, "enabled_templates.db")
 
-	if _, err := pool.Exec(`UPDATE cli_models SET enabled = 0 WHERE cli_type = 'codex'`); err != nil {
-		t.Fatalf("disable codex cli models: %v", err)
+	if _, err := pool.Exec(`UPDATE models SET enabled = 0 WHERE provider = 'openai' AND cli_model <> ''`); err != nil {
+		t.Fatalf("disable OpenAI CLI models: %v", err)
 	}
 
 	all, err := AllowedTemplates(pool, GlobalProjectID, DynamicWorkflow)
@@ -141,7 +141,7 @@ func TestAllowedTemplates_ProjectLocalDynamicWorkflowShadowsGlobal(t *testing.T)
 	if _, err := wfSvc.CreateWorkflowDef("proj-shadow", &types.WorkflowDefCreateRequest{ID: DynamicWorkflow}); err != nil {
 		t.Fatalf("create project-local dynamic workflow: %v", err)
 	}
-	insertFanoutTemplate(t, pool, "proj-shadow", DynamicWorkflow, "module-reviewer", "sonnet", "cli_interactive")
+	insertFanoutTemplate(t, pool, "proj-shadow", DynamicWorkflow, "module-reviewer", "sonnet-5", "cli_interactive")
 
 	templates, err := AllowedTemplates(pool, "proj-shadow", DynamicWorkflow)
 	if err != nil {

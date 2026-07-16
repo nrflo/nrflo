@@ -18,7 +18,7 @@ func insertConsoleChatSessionForBroadcastTest(t *testing.T, env *handlerTestEnv,
 	t.Helper()
 	if _, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, created_at, updated_at)
-		VALUES (?, ?, '', NULL, 'console_chat', 'console_chat', 'sonnet', 'user_interactive', 'console_chat', datetime('now'), datetime('now'))
+		VALUES (?, ?, '', NULL, 'console_chat', 'console_chat', 'sonnet-5', 'user_interactive', 'console_chat', datetime('now'), datetime('now'))
 	`, sessionID, env.project); err != nil {
 		t.Fatalf("insert console_chat session: %v", err)
 	}

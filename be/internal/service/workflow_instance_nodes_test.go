@@ -35,7 +35,7 @@ func setupPlainProjectNoFanout(t *testing.T) (*db.Pool, string, string) {
 	mustExec(t, pool, `INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, '', 'ticket', ?, ?)`,
 		workflowID, projectID, now, now)
 	mustExec(t, pool, `INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, model, execution_mode, created_at, updated_at)
-		 VALUES ('static-1', ?, ?, 'p', 0, 'sonnet', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
+		 VALUES ('static-1', ?, ?, 'p', 0, 'sonnet-5', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
 
 	return pool, projectID, workflowID
 }
@@ -174,7 +174,7 @@ func TestLoadMaterializedAgentConfigs_ResolvesModelTimeoutTag_SkipsDeletedTempla
 	if !ok {
 		t.Fatalf("configs missing entry for %q: %+v", planTestTemplateID, configs)
 	}
-	want := SpawnerAgentConfig{Model: "sonnet", Timeout: 45, Tag: "ops"}
+	want := SpawnerAgentConfig{Model: "sonnet-5", Timeout: 45, Tag: "ops"}
 	if cfg != want {
 		t.Errorf("configs[%q] = %+v, want %+v", planTestTemplateID, cfg, want)
 	}

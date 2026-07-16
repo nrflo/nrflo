@@ -10,8 +10,7 @@ import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
 import { AgentDefEffortField } from './AgentDefEffortField'
 import { AgentDefToolsField } from './AgentDefToolsField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
-import { useModelOptions } from '@/hooks/useCLIModels'
-import { useAPIModelOptions } from '@/hooks/useAPIModels'
+import { useModelOptions } from '@/hooks/useModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
 
@@ -33,7 +32,7 @@ export function AgentDefForm({
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [layer, setLayer] = useState(initial?.layer ?? 0)
-  const [model, setModel] = useState(initial?.model || 'sonnet')
+  const [model, setModel] = useState(initial?.model || 'sonnet-5')
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
   const [maxFailRestarts, setMaxFailRestarts] = useState<number | ''>(initial?.max_fail_restarts ?? '')
@@ -55,13 +54,20 @@ export function AgentDefForm({
   const [description, setDescription] = useState(initial?.description || '')
   const [reasoningEffort, setReasoningEffort] = useState(initial?.reasoning_effort ?? '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
-  const modelOptions = useModelOptions()
-  const apiModelOptions = useAPIModelOptions()
+  const modelOptions = useModelOptions('cli')
+  const apiModelOptions = useModelOptions('api')
   const activeModelOptions = executionMode === 'api' ? apiModelOptions : modelOptions
   const apiModeEnabled = useAPIModeEnabled()
   const handleExecutionModeChange = (v: string) => {
     const next = v as ExecutionMode
     if (next !== 'script') setPythonScriptId('')
+    if (next !== 'script') {
+      const options = next === 'api' ? apiModelOptions : modelOptions
+      const values = options.flatMap((group) => group.options.map((option) => option.value))
+      if (!values.includes(model)) setModel(values[0] ?? '')
+      setLowConsumptionModel('')
+      setReasoningEffort('')
+    }
     setExecutionMode(next)
   }
   const handleConsultantChange = (checked: boolean) => {

@@ -36,7 +36,7 @@ type CLIAdapter interface {
 	// Name returns the CLI identifier (e.g., "claude", "codex")
 	Name() string
 
-	// MapModel converts a short model name to the CLI's expected format
+	// MapModel passes through a raw CLI model string.
 	MapModel(model string) string
 
 	// SupportsSessionID returns true if the CLI supports custom session IDs
@@ -209,8 +209,8 @@ type SpawnOptions struct {
 	Prompt                   string // Full prompt content (for CLIs without file support)
 	WorkDir                  string
 	Env                      []string
-	MappedModel              string // DB-sourced mapped model name; if set, adapters skip their own MapModel()
-	ReasoningEffort          string // DB-sourced reasoning effort; if set, adapters skip their own GetReasoningEffort()
+	MappedModel              string // Registry mode-specific model name; raw CLI values may leave this empty
+	ReasoningEffort          string // Resolved def override or registry default
 	FallbackModels           string // Claude only / ignored by non-Claude adapters: comma-separated --fallback-model chain (≤3)
 	SettingsJSON             string // Claude --settings JSON (ignored by non-Claude adapters)
 	SystemPromptFile         string // Path to system prompt suffix file (--append-system-prompt-file; Claude only)
@@ -218,15 +218,6 @@ type SpawnOptions struct {
 	NativeToolsCSV           string // Claude only / ignored by non-Claude adapters: comma-separated native tool names for --tools
 	MCPConfigJSON            string // Claude only / ignored by non-Claude adapters: JSON passed to --mcp-config (always paired with --strict-mcp-config)
 	AllowedToolsCSV          string // Claude only / ignored by non-Claude adapters: comma-separated tool patterns for --allowedTools
-}
-
-// DefaultCLIForModel returns the appropriate CLI name for a model.
-// codex_gpt* → codex, everything else → claude.
-func DefaultCLIForModel(model string) string {
-	if strings.HasPrefix(model, "codex_gpt") {
-		return "codex"
-	}
-	return "claude"
 }
 
 // GetCLIAdapter returns the appropriate adapter for a CLI name

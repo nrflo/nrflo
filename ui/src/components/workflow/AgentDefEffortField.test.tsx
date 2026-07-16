@@ -3,16 +3,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDefEffortField } from './AgentDefEffortField'
 
-const cliModels = [
-  { id: 'sonnet', cli_type: 'claude', display_name: 'Sonnet', mapped_model: 'claude-sonnet-5', reasoning_effort: 'high' },
-  { id: 'haiku', cli_type: 'claude', display_name: 'Haiku', mapped_model: 'claude-haiku-4-5', reasoning_effort: '' },
-]
-const apiModels = [
-  { id: 'anthropic-sonnet', provider: 'anthropic', display_name: 'Sonnet', mapped_model: 'claude-sonnet-5', reasoning_effort: 'medium' },
+const models = [
+  { id: 'sonnet-5', cli_efforts: ['low', 'medium', 'high', 'xhigh'], api_efforts: ['low', 'high'], default_effort: 'high' },
+  { id: 'haiku-4-5', cli_efforts: ['low', 'medium', 'high'], api_efforts: [], default_effort: '' },
 ]
 
-vi.mock('@/hooks/useCLIModels', () => ({ useCLIModels: () => ({ data: cliModels }) }))
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModels: () => ({ data: apiModels }) }))
+vi.mock('@/hooks/useModels', () => ({ useModels: () => ({ data: models }) }))
 
 function getDropdownButton() {
   const label = screen.getByText('Reasoning Effort')
@@ -21,51 +17,29 @@ function getDropdownButton() {
 
 describe('AgentDefEffortField', () => {
   it('renders nothing for execution_mode=script', () => {
-    render(<AgentDefEffortField executionMode="script" model="sonnet" value="" onChange={vi.fn()} />)
+    render(<AgentDefEffortField executionMode="script" model="sonnet-5" value="" onChange={vi.fn()} />)
     expect(screen.queryByText('Reasoning Effort')).not.toBeInTheDocument()
   })
 
   it('shows an inherit label with the selected model row effort when value is empty', () => {
-    render(<AgentDefEffortField executionMode="cli_interactive" model="sonnet" value="" onChange={vi.fn()} />)
+    render(<AgentDefEffortField executionMode="cli_interactive" model="sonnet-5" value="" onChange={vi.fn()} />)
     expect(getDropdownButton().textContent).toContain('Inherit from model (high)')
   })
 
-  it('shows "none" in the inherit label when the model row has no effort', () => {
-    render(<AgentDefEffortField executionMode="cli_interactive" model="haiku" value="" onChange={vi.fn()} />)
-    expect(getDropdownButton().textContent).toContain('Inherit from model (none)')
+  it('shows provider default when the row has no default effort', () => {
+    render(<AgentDefEffortField executionMode="cli_interactive" model="haiku-4-5" value="" onChange={vi.fn()} />)
+    expect(getDropdownButton().textContent).toContain('Inherit from model (provider default)')
   })
 
-  it('gates xhigh according to the SELECTED model row: sonnet enables it, haiku disables it', async () => {
+  it('uses only the selected row mode efforts', async () => {
     const user = userEvent.setup()
-    const { rerender } = render(
-      <AgentDefEffortField executionMode="cli_interactive" model="sonnet" value="" onChange={vi.fn()} />
-    )
-    await user.click(getDropdownButton())
-    let dropdownContainer = getDropdownButton().closest('.relative')!
-    const enabledXHigh = Array.from(dropdownContainer.querySelectorAll('.cursor-pointer span')).find(
-      (el) => el.textContent?.startsWith('Extra High')
-    )
-    expect(enabledXHigh).toBeDefined()
-    await user.click(getDropdownButton())
-
-    rerender(<AgentDefEffortField executionMode="cli_interactive" model="haiku" value="" onChange={vi.fn()} />)
-    await user.click(getDropdownButton())
-    dropdownContainer = getDropdownButton().closest('.relative')!
-    const disabledXHigh = Array.from(dropdownContainer.querySelectorAll('.cursor-not-allowed span')).find(
-      (el) => el.textContent?.startsWith('Extra High')
-    )
-    expect(disabledXHigh).toBeDefined()
-    expect(
-      Array.from(dropdownContainer.querySelectorAll('.cursor-pointer span')).find((el) =>
-        el.textContent?.startsWith('Extra High')
-      )
-    ).toBeUndefined()
-  })
-
-  it('uses the API model row when executionMode is api', () => {
     render(
-      <AgentDefEffortField executionMode="api" model="anthropic-sonnet" value="" onChange={vi.fn()} />
+      <AgentDefEffortField executionMode="api" model="sonnet-5" value="" onChange={vi.fn()} />
     )
-    expect(getDropdownButton().textContent).toContain('Inherit from model (medium)')
+    await user.click(getDropdownButton())
+    expect(screen.getByText('low')).toBeInTheDocument()
+    expect(screen.getByText('high')).toBeInTheDocument()
+    expect(screen.queryByText('medium')).not.toBeInTheDocument()
+    expect(screen.queryByText('xhigh')).not.toBeInTheDocument()
   })
 })

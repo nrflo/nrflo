@@ -17,8 +17,9 @@ vi.mock('@/stores/projectStore', () => ({
   ),
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
-  useCLIModels: () => ({ data: [] }),
+vi.mock('@/hooks/useModels', () => ({
+  cliTypeForProvider: vi.fn(),
+  useModels: () => ({ data: [] }),
 }))
 
 vi.mock('@/hooks/usePythonScripts', () => ({

@@ -96,7 +96,7 @@ func newTestEnv(t *testing.T) *testEnv {
 		{"builder", 1},
 	} {
 		_, err = pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-			VALUES (?, ?, ?, 'sonnet', 20, 'test prompt', ?, ?, ?)`,
+			VALUES (?, ?, ?, 'sonnet-5', 20, 'test prompt', ?, ?, ?)`,
 			ad.id, projectID, "test", ad.layer, now, now)
 		if err != nil {
 			t.Fatalf("failed to seed agent definition %s: %v", ad.id, err)
@@ -153,7 +153,7 @@ func (e *testEnv) createWorkflowWithAgents(t *testing.T, workflowID, description
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	for _, a := range agents {
 		_, err = e.pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-			VALUES (?, ?, ?, 'sonnet', 20, 'test prompt', ?, ?, ?)`,
+			VALUES (?, ?, ?, 'sonnet-5', 20, 'test prompt', ?, ?, ?)`,
 			a.ID, e.project, workflowID, a.Layer, now, now)
 		if err != nil {
 			t.Fatalf("failed to create agent def %s for workflow %s: %v", a.ID, workflowID, err)

@@ -326,21 +326,29 @@ class NrfloClient:
             project=project_id,
         )
 
-    def create_cli_model(
-        self, *, id: str, cli_type: str, display_name: str,
-        mapped_model: str, context_length: int,
-        reasoning_effort: str = "",
+    def create_model(
+        self, *, id: str, provider: str, display_name: str,
+        cli_model: str = "", api_model: str = "",
+        cli_efforts: list[str] | None = None,
+        api_efforts: list[str] | None = None,
+        cli_context: int = 200000, api_context: int = 200000,
+        fallback_models: str = "", default_effort: str = "",
     ) -> dict:
         return self._request(
             "POST",
-            "/api/v1/cli-models",
+            "/api/v1/models",
             body={
                 "id": id,
-                "cli_type": cli_type,
+                "provider": provider,
                 "display_name": display_name,
-                "mapped_model": mapped_model,
-                "reasoning_effort": reasoning_effort,
-                "context_length": context_length,
+                "cli_model": cli_model,
+                "api_model": api_model,
+                "cli_efforts": cli_efforts or [],
+                "api_efforts": api_efforts or [],
+                "cli_context": cli_context,
+                "api_context": api_context,
+                "fallback_models": fallback_models,
+                "default_effort": default_effort,
             },
         )
 
@@ -615,10 +623,10 @@ class NrfloClient:
             project=project_id,
         )
 
-    # ---- api models ---------------------------------------------------
+    # ---- models -------------------------------------------------------
 
-    def get_api_model(self, model_id: str) -> dict:
-        return self._request("GET", f"/api/v1/api-models/{model_id}")
+    def get_model(self, model_id: str) -> dict:
+        return self._request("GET", f"/api/v1/models/{model_id}")
 
     # ---- findings history ---------------------------------------------
 

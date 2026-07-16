@@ -91,12 +91,12 @@ func TestConsoleSweepIdle_LeavesWorkflowAndObserverRowsAlone(t *testing.T) {
 	}
 	if _, err := pool.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, created_at, updated_at)
-		VALUES ('wf-agent-1', 'proj1', '', 'wfi-1', 'p', 'a', 'sonnet', 'user_interactive', 'workflow_agent', ?, ?)`, staleTs, staleTs); err != nil {
+		VALUES ('wf-agent-1', 'proj1', '', 'wfi-1', 'p', 'a', 'sonnet-5', 'user_interactive', 'workflow_agent', ?, ?)`, staleTs, staleTs); err != nil {
 		t.Fatalf("insert workflow agent session: %v", err)
 	}
 	if _, err := pool.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, kind, observer_scope, created_at, updated_at)
-		VALUES ('obs-1', 'proj1', '', NULL, 'observer', '_observer', 'sonnet', 'user_interactive', 'observer', 'global', ?, ?)`, staleTs, staleTs); err != nil {
+		VALUES ('obs-1', 'proj1', '', NULL, 'observer', '_observer', 'sonnet-5', 'user_interactive', 'observer', 'global', ?, ?)`, staleTs, staleTs); err != nil {
 		t.Fatalf("insert observer session: %v", err)
 	}
 

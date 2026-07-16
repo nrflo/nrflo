@@ -40,7 +40,6 @@ func (o *Orchestrator) buildInteractiveLaunch(
 	pool *db.Pool,
 	projectRoot string,
 	modelConfigs map[string]spawner.ModelConfig,
-	apiModelConfigs map[string]spawner.APIModelConfig,
 	claudeSettingsJSON string,
 ) (ptyPkg.Launch, spawner.CLIAdapter, string, func(), error) {
 	cliName := cliNameFromModelConfigs(modelConfigs, modelName)
@@ -49,14 +48,15 @@ func (o *Orchestrator) buildInteractiveLaunch(
 		return ptyPkg.Launch{}, nil, "", nil, fmt.Errorf("resolve CLI adapter %q: %w", cliName, err)
 	}
 
-	// Model resolution: DB cli_models row wins, else the adapter's own
-	// mapping; effort/fallback ride along from the same row so registry ids
-	// that are many-to-one on mapped_model (e.g. codex_gpt55_high/_normal)
-	// don't silently collapse to the same launch.
+	// Known registry rows supply the CLI-mode model, default effort, and fallback.
+	// Unknown values remain raw CLI passthrough strings.
 	var mappedModel, reasoningEffort, fallbackModels string
 	if cfg, ok := modelConfigs[modelName]; ok {
-		mappedModel = cfg.MappedModel
-		reasoningEffort = cfg.ReasoningEffort
+		if cfg.CLIModel == "" {
+			return ptyPkg.Launch{}, nil, "", nil, fmt.Errorf("model %q does not support cli mode", modelName)
+		}
+		mappedModel = cfg.CLIModel
+		reasoningEffort = cfg.DefaultEffort
 		fallbackModels = cfg.FallbackModels
 	}
 	if mappedModel == "" {
@@ -88,14 +88,13 @@ func (o *Orchestrator) buildInteractiveLaunch(
 		tmplWfiID := wi.ID
 		tmplPool := pool
 		sp := spawner.New(spawner.Config{
-			Workflows:       workflows,
-			Agents:          agents,
-			DataPath:        o.dataPath,
-			WSHub:           o.wsHub,
-			Pool:            pool,
-			Clock:           o.clock,
-			ModelConfigs:    modelConfigs,
-			APIModelConfigs: apiModelConfigs,
+			Workflows:    workflows,
+			Agents:       agents,
+			DataPath:     o.dataPath,
+			WSHub:        o.wsHub,
+			Pool:         pool,
+			Clock:        o.clock,
+			ModelConfigs: modelConfigs,
 			BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
 				return service.BuildAPIProvider(ctx, tmplPool, o.clock, providerName, projectID)
 			},

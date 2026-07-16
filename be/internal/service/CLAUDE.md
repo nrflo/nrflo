@@ -32,8 +32,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `worktree.go` (+ `_context.go`) | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup; Setup seeds untracked/gitignored agent context into the worktree (CLAUDE.md/AGENTS.md copied, `.claude` dirs symlinked, any depth, absent-only) |
 | `system_agent_definition.go` (+ `_read.go`) | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
-| `cli_model.go` + `model_reasoning.go` + `cli_availability.go` | CLI model CRUD; per-model effort capability lives in the row's `supported_efforts` JSON column (seeded by migration 000166) — `ValidateEffortAllowed(effort, supported)` (reused by spawner + console at use time) and `NormalizeSupportedEfforts` are the only validators, no name-check gating; `normalizeFallbackModels` caps `fallback_models` at 3; readonly rows only accept `reasoning_effort`/`fallback_models` updates. `CLIAvailable(cliType)`: memoized, injectable-`lookPath` PATH probe — hides a read_only row's templates when its binary is absent |
-| `api_model.go` | API model CRUD (provider: anthropic/openai); effort validated via `ValidateEffortAllowed` against the row's `supported_efforts`; readonly rows only accept `reasoning_effort` updates; `IsValidModel` used by `agent_definition.go`/`system_agent_definition.go` for api-mode validation |
+| `model.go` + `model_update.go` + `model_reasoning.go` | Unified model CRUD: one provider row enables CLI/API through non-empty mode model IDs and carries per-mode contexts/effort lists plus one default effort. `IsValidModelForMode` validates enabled mode support for definitions; readonly rows only accept `default_effort`/`fallback_models`, fallback models are anthropic-only and capped at 3, and in-use rows cannot be disabled/deleted |
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking + TestSend + ListDeliveries |
@@ -69,6 +68,6 @@ Bundled global workflows (`deep-research`, `dynamic`) are seeded idempotently at
 
 Most service constructors take `(pool *db.Pool, clk clock.Clock)`. Pass `clock.Real()` in prod; `clock.NewTest(fixedTime)` in tests.
 
-**Exception:** `NewAgentDefinitionService(pool, clk, cliModelSvc, apiModelSvc, pythonScriptRepo)` additionally requires a `*CLIModelService` (validates `low_consumption_model`/`reasoning_effort` for cli_interactive) and `*APIModelService` (same for api mode). `NewSystemAgentDefinitionService(pool, clk, apiModelSvc)` also requires `*APIModelService`.
+**Exception:** `NewAgentDefinitionService(pool, clk, modelSvc, pythonScriptRepo)` and `NewSystemAgentDefinitionService(pool, clk, modelSvc)` require the shared `*ModelService`; definition validation selects `cli_efforts` or `api_efforts` from the row according to execution mode.
 
 Workflow/agent definition CRUD routes: see [api/CLAUDE.md](../api/CLAUDE.md).

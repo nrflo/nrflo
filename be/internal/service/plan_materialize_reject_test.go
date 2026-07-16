@@ -139,11 +139,11 @@ func TestPlanMaterialize_LayerOffsetAboveStaticExecutableLayers(t *testing.T) {
 	mustExec(t, pool, `INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES (?, ?, '', 'ticket', ?, ?)`,
 		workflowID, projectID, now, now)
 	mustExec(t, pool, `INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, model, execution_mode, created_at, updated_at)
-		 VALUES ('static-l0', ?, ?, 'p', 0, 'sonnet', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
+		 VALUES ('static-l0', ?, ?, 'p', 0, 'sonnet-5', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
 	mustExec(t, pool, `INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, model, execution_mode, created_at, updated_at)
-		 VALUES ('static-l1', ?, ?, 'p', 1, 'sonnet', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
+		 VALUES ('static-l1', ?, ?, 'p', 1, 'sonnet-5', 'cli_interactive', ?, ?)`, projectID, workflowID, now, now)
 	mustExec(t, pool, `INSERT INTO agent_definitions (id, project_id, workflow_id, prompt, layer, model, execution_mode, node_role, created_at, updated_at)
-		 VALUES (?, ?, ?, 'p', 0, 'sonnet', 'cli_interactive', 'fanout_template', ?, ?)`, templateID, projectID, workflowID, now, now)
+		 VALUES (?, ?, ?, 'p', 0, 'sonnet-5', 'cli_interactive', 'fanout_template', ?, ?)`, templateID, projectID, workflowID, now, now)
 	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
 		 VALUES (?, ?, '', ?, 'ticket', 'active', 0, ?, ?)`, instanceID, projectID, workflowID, now, now)
 

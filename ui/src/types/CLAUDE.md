@@ -15,7 +15,7 @@ TypeScript type definitions matching Go API models — one module per domain (`l
 | `CompletedAgentRow` | Extends `AgentHistoryEntry` with `workflow_label` for the unified completed-agents table |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
 | `ActiveAgentV4` | Optional `effective_mode?: 'cli_interactive'\|'api'\|'script'` sourced from `agent_sessions.effective_mode`; omitted for legacy rows |
-| `AgentDef` (`workflow.agentDefs.ts`, re-exported from `workflow.ts`) | `execution_mode` is `'cli_interactive'\|'api'\|'script'`; optional `python_script_id?`, `node_role?: 'static'\|'planner'\|'fanout_template'`, `description?`, `reasoning_effort?: string \| null` (`null` clears the override → inherit from the model row; omitted entirely for script mode) |
+| `AgentDef` (`workflow.agentDefs.ts`, re-exported from `workflow.ts`) | `execution_mode` is `'cli_interactive'\|'api'\|'script'`; `model` is a unified model slug whose selected mode must be enabled; optional `python_script_id?`, `node_role?: 'static'\|'planner'\|'fanout_template'`, `description?`, `reasoning_effort?: string \| null` (`null` clears the override → the row's `default_effort`; omitted entirely for script mode) |
 | `PlanTemplate` (`plan.ts`) | Fanout-template catalog row shown when revising a plan; carries the effective `reasoning_effort?` the backend resolved |
 
 ## Other Modules

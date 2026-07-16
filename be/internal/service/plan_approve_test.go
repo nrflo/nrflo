@@ -86,7 +86,7 @@ func TestPlanApprove_FailsWhenTemplateModelDisabled(t *testing.T) {
 		t.Fatalf("revise: %v", err)
 	}
 
-	mustExec(t, pool, `UPDATE cli_models SET enabled = 0 WHERE id = 'sonnet'`)
+	mustExec(t, pool, `UPDATE models SET enabled = 0 WHERE id = 'sonnet-5'`)
 
 	_, err = svc.Approve(instanceID, rev.Revision)
 	if err == nil {

@@ -179,21 +179,26 @@ func HostEnvWithoutClaudeMarkers() []string {
 }
 
 func (s *Spawner) maxContextForModel(model string) int {
-	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.ContextLength > 0 {
-		return cfg.ContextLength
-	}
-	if model == "opus_4_6_1m" || model == "opus_4_7_1m" || model == "opus_4_8_1m" {
-		return 1000000
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.CLIContext > 0 {
+		return cfg.CLIContext
 	}
 	return 200000
 }
 
-// cliForModel returns the CLI name for a model, checking DB config first.
+// cliForModel derives the CLI from the registry provider. Unknown raw CLI
+// model strings retain the historical Claude passthrough default.
 func (s *Spawner) cliForModel(model string) string {
-	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.CLIType != "" {
-		return cfg.CLIType
+	if cfg, ok := s.config.ModelConfigs[model]; ok {
+		return cliForProvider(cfg.Provider)
 	}
-	return DefaultCLIForModel(model)
+	return "claude"
+}
+
+func cliForProvider(provider string) string {
+	if provider == "openai" {
+		return "codex"
+	}
+	return "claude"
 }
 
 func parseModelID(modelID string) (cli, model string) {

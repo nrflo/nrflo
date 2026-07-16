@@ -3,7 +3,7 @@ import { Zap, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { Dialog, DialogHeader, DialogBody, DialogFooter } from '@/components/ui/Dialog'
-import { testCLIModel } from '@/api/cliModels'
+import { testModel } from '@/api/models'
 
 type TestStatus = 'idle' | 'testing' | 'success' | 'error'
 
@@ -35,7 +35,7 @@ export function CLIModelCheckButton({ modelId, disabled }: CLIModelCheckButtonPr
     abortRef.current = controller
     const timeoutId = setTimeout(() => controller.abort(), 45_000)
     try {
-      const result = await testCLIModel(modelId, controller.signal)
+      const result = await testModel(modelId, controller.signal)
       if (result.success) {
         setStatus('success')
         setDurationMs(result.duration_ms)

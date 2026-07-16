@@ -31,7 +31,7 @@ func TestResolveWorkflowDef_GlobalFallback(t *testing.T) {
 	}
 	if _, err := env.pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-		 VALUES ('scope', ?, 'gwf', 'sonnet', 20, 'p', 0, ?, ?)`,
+		 VALUES ('scope', ?, 'gwf', 'sonnet-5', 20, 'p', 0, ?, ?)`,
 		service.GlobalProjectID, now, now); err != nil {
 		t.Fatalf("seed global agent: %v", err)
 	}

@@ -1,12 +1,9 @@
-"""S35 — Custom cli_models row resolves to a real CLI binary.
+"""S35 — A custom CLI-capable model resolves to the Claude binary.
 
 Tests:
-  - `POST /api/v1/cli-models` with a brand-new ID + cli_type=claude
-    inserts the row. An agent_def using that ID must resolve through
-    `spawner.cliForModel` to the claude binary and complete normally.
-  - claude only — the scenario asserts the resolution path for one
-    provider; codex shares the same code (validated by
-    its seed cli_models rows already exercised by every other scenario).
+  - `POST /api/v1/models` inserts a brand-new anthropic row with CLI mode.
+  - An agent definition using that slug resolves provider→claude and
+    completes normally.
 """
 
 from __future__ import annotations
@@ -29,12 +26,13 @@ tool, then stop.
 def run(ctx: Ctx) -> Result:
     pid, _root = make_project(ctx)
     model_id = next_id(ctx, "cm-haiku")
-    ctx.client.create_cli_model(
+    ctx.client.create_model(
         id=model_id,
-        cli_type="claude",
+        provider="anthropic",
         display_name=f"Custom Haiku ({model_id})",
-        mapped_model="haiku",
-        context_length=200000,
+        cli_model="claude-haiku-4-5",
+        cli_efforts=["low", "medium", "high"],
+        cli_context=200000,
     )
 
     wid = next_id(ctx, "wf")
@@ -50,13 +48,12 @@ def run(ctx: Ctx) -> Result:
 
     sess = first_session(db_mod.agent_sessions_for_instance(ctx.server.home, wfi))
     if sess["status"] not in PASS_STATUSES or sess["result"] != "pass":
-        return ("S35 custom cli_model", "FAIL",
+        return ("S35 custom model", "FAIL",
                 f"session status/result = {sess['status']}/{sess['result']}")
-    # The spawner stores model_id as "<cli_type>:<id>" (spawner.go:898).
     sess_model = sess.get("model_id") or ""
     if not sess_model.endswith(model_id):
-        return ("S35 custom cli_model", "FAIL",
+        return ("S35 custom model", "FAIL",
                 f"agent_sessions.model_id = {sess_model!r}, "
                 f"want suffix {model_id!r}")
-    return ("S35 custom cli_model", "PASS",
-            f"resolved {sess_model} → claude/haiku, session={sess['id'][:8]}")
+    return ("S35 custom model", "PASS",
+            f"resolved {sess_model} → claude/claude-haiku-4-5, session={sess['id'][:8]}")

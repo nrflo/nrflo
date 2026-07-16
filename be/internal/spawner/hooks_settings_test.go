@@ -9,7 +9,7 @@ import (
 // TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON verifies a claude process yields valid JSON.
 func TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON(t *testing.T) {
 	t.Parallel()
-	proc := &processInfo{modelID: "claude:sonnet"}
+	proc := &processInfo{modelID: "claude:sonnet-5"}
 	got := BuildInteractiveSettingsJSON(proc)
 	if got == "" {
 		t.Fatal("expected non-empty JSON for claude process")
@@ -24,7 +24,7 @@ func TestBuildInteractiveSettingsJSON_ClaudeReturnsJSON(t *testing.T) {
 func TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{
-		"codex:codex_gpt_high",
+		"codex:gpt-5.3-codex",
 	} {
 		proc := &processInfo{modelID: modelID}
 		if got := BuildInteractiveSettingsJSON(proc); got != "" {
@@ -36,7 +36,7 @@ func TestBuildInteractiveSettingsJSON_NonClaudeReturnsEmpty(t *testing.T) {
 // TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse verifies PreToolUse and PostToolUse are present.
 func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
 	t.Parallel()
-	proc := &processInfo{modelID: "claude:opus"}
+	proc := &processInfo{modelID: "claude:opus-4-7"}
 	var parsed map[string]interface{}
 	json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed)
 
@@ -57,7 +57,7 @@ func TestBuildInteractiveSettingsJSON_HasPreAndPostToolUse(t *testing.T) {
 // enforcement). SessionEnd and unverified keys stay out.
 func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 	t.Parallel()
-	proc := &processInfo{modelID: "claude:opus"}
+	proc := &processInfo{modelID: "claude:opus-4-7"}
 	var parsed map[string]interface{}
 	json.Unmarshal([]byte(BuildInteractiveSettingsJSON(proc)), &parsed)
 	hooks, _ := parsed["hooks"].(map[string]interface{})
@@ -90,7 +90,7 @@ func TestBuildInteractiveSettingsJSON_HookKeys(t *testing.T) {
 // TestBuildInteractiveSettingsJSON_CommandAndMatcherShape verifies each hook entry structure.
 func TestBuildInteractiveSettingsJSON_CommandAndMatcherShape(t *testing.T) {
 	t.Parallel()
-	proc := &processInfo{modelID: "claude:sonnet"}
+	proc := &processInfo{modelID: "claude:sonnet-5"}
 	got := BuildInteractiveSettingsJSON(proc)
 
 	var parsed map[string]interface{}
@@ -147,7 +147,7 @@ func TestMergeInteractiveSettings_ConcatenatesPreToolUseArrays(t *testing.T) {
 // that ends with "agent statusline".
 func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
 	t.Parallel()
-	proc := &processInfo{modelID: "claude:sonnet"}
+	proc := &processInfo{modelID: "claude:sonnet-5"}
 	got := BuildInteractiveSettingsJSON(proc)
 	if got == "" {
 		t.Fatal("expected non-empty JSON for claude process")
@@ -175,7 +175,7 @@ func TestBuildInteractiveSettingsJSON_HasStatusLine(t *testing.T) {
 func TestBuildInteractiveSettingsJSON_NonClaudeNoStatusLine(t *testing.T) {
 	t.Parallel()
 	for _, modelID := range []string{
-		"codex:codex_gpt_high",
+		"codex:gpt-5.3-codex",
 	} {
 		proc := &processInfo{modelID: modelID}
 		if got := BuildInteractiveSettingsJSON(proc); got != "" {

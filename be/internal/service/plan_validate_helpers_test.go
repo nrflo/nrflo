@@ -11,7 +11,7 @@ import (
 )
 
 // setupPlanValidateEnv creates an isolated DB with a project and a workflow,
-// plus one usable "worker" fanout_template agent definition (model "sonnet",
+// plus one usable "worker" fanout_template agent definition (model "sonnet-5",
 // execution_mode "cli_interactive", both seeded enabled=1 in the template DB)
 // so reject-case tests can reference a valid template and isolate the
 // violation under test. Returns pool, projectID, workflowID.
@@ -41,7 +41,7 @@ func setupPlanValidateEnv(t *testing.T) (*db.Pool, string, string) {
 		t.Fatalf("create workflow: %v", err)
 	}
 
-	insertFanoutTemplate(t, pool, projectID, workflowID, "worker", "sonnet", "cli_interactive")
+	insertFanoutTemplate(t, pool, projectID, workflowID, "worker", "sonnet-5", "cli_interactive")
 
 	return pool, projectID, workflowID
 }
@@ -69,7 +69,7 @@ func insertPlannerDef(t *testing.T, pool *db.Pool, projectID, workflowID, id str
 	if _, err := pool.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, tools, layer, consultant, node_role, created_at, updated_at)
-		 VALUES (?, ?, ?, 'sonnet', 20, 'plan', 'cli_interactive', '', 0, 0, 'planner', ?, ?)`,
+		 VALUES (?, ?, ?, 'sonnet-5', 20, 'plan', 'cli_interactive', '', 0, 0, 'planner', ?, ?)`,
 		id, projectID, workflowID, now, now); err != nil {
 		t.Fatalf("insert planner def %q: %v", id, err)
 	}

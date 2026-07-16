@@ -30,7 +30,7 @@ func seedTokenSession(t *testing.T, s *Server, projectID, token string, status m
 	sid := "sess-" + token
 	if _, err := s.pool.Exec(`INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, spawn_token, created_at, updated_at)
-		VALUES (?, ?, '', ?, 'p', 'a', 'sonnet', ?, ?, ?, ?)`,
+		VALUES (?, ?, '', ?, 'p', 'a', 'sonnet-5', ?, ?, ?, ?)`,
 		sid, projectID, wfiID, status, token, now, now); err != nil {
 		t.Fatalf("session: %v", err)
 	}

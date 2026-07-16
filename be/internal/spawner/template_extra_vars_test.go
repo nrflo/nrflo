@@ -28,7 +28,7 @@ func createAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt string) {
 		ID:         agentID,
 		ProjectID:  env.project,
 		WorkflowID: "test",
-		Model:      "sonnet",
+		Model:      "sonnet-5",
 		Timeout:    3600,
 		Prompt:     prompt,
 	})
@@ -41,12 +41,12 @@ func createAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt string) {
 // Deletes any existing row first (e.g. from migration seed data).
 func createSystemAgentDef(t *testing.T, env *spawnerTestEnv, agentID, prompt string) {
 	t.Helper()
-	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewAPIModelService(env.pool, clock.Real()))
+	svc := service.NewSystemAgentDefinitionService(env.pool, clock.Real(), service.NewModelService(env.pool, clock.Real()))
 	// Remove seeded row if present so Create doesn't fail on duplicate.
 	_ = svc.Delete(agentID)
 	_, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     agentID,
-		Model:  "sonnet",
+		Model:  "sonnet-5",
 		Prompt: prompt,
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func TestLoadTemplate_ExtraVars_BasicExpansion(t *testing.T) {
 		"BRANCH_NAME": "feat/my-branch",
 		"MERGE_ERROR": "conflict in main.go",
 	}
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestLoadTemplate_ExtraVars_MultipleVars(t *testing.T) {
 		"DEFAULT_BRANCH": "main",
 		"MERGE_ERROR":    "merge failed",
 	}
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestLoadTemplate_ExtraVars_Nil_NoPanic(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Static template with no extra vars")
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", nil, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with nil extraVars failed: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestLoadTemplate_ExtraVars_EmptyMap_NoPanic(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Static template")
 
 	sp := env.newSpawner()
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", map[string]string{}, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", map[string]string{}, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with empty extraVars failed: %v", err)
 	}
@@ -155,7 +155,7 @@ func TestLoadTemplate_ExtraVars_StandardVarsRunFirst(t *testing.T) {
 	sp := env.newSpawner()
 	// ExtraVars key "AGENT" – but ${AGENT} is already replaced before ExtraVars runs.
 	extraVars := map[string]string{"AGENT": "overridden"}
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestLoadTemplate_ExtraVars_UnusedVarsIgnored(t *testing.T) {
 		"BRANCH_NAME":    "unused",
 		"DEFAULT_BRANCH": "also-unused",
 	}
-	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
+	result, _, _, err := sp.loadTemplate("analyzer", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestLoadTemplate_SystemDefFallback_WithExtraVars(t *testing.T) {
 		"DEFAULT_BRANCH": "main",
 		"MERGE_ERROR":    "CONFLICT in main.go",
 	}
-	result, _, _, err := sp.loadTemplate("conflict-resolver", ticketID, env.project, "p", "c", "test", "claude:sonnet", "", "", extraVars, 0)
+	result, _, _, err := sp.loadTemplate("conflict-resolver", ticketID, env.project, "p", "c", "test", "claude:sonnet-5", "", "", extraVars, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate with system def fallback + extraVars failed: %v", err)
 	}

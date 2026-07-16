@@ -75,8 +75,8 @@ type prepResult struct {
 	apiDeadline        time.Time
 	apiModelID         string // mapped model name, e.g. "claude-haiku-4-5-20251001"
 	apiMaxContext      int
-	apiProvider        provider.Provider // resolved per-spawn from APIModelConfigs + BuildAPIProvider
-	apiReasoningEffort string            // from api_models row
+	apiProvider        provider.Provider // resolved per-spawn from ModelConfigs + BuildAPIProvider
+	apiReasoningEffort string            // resolved against the model's API-mode efforts
 	apiCaptureThinking bool              // from capture_thinking_enabled setting
 }
 

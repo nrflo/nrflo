@@ -24,7 +24,7 @@ func TestFetchPreviousDataAndReason_WithDataAndReason(t *testing.T) {
 
 	data, reason := env.spawner.fetchPreviousDataAndReason(
 		env.projectID, env.ticketID, env.workflowID,
-		"test-agent", "claude:sonnet", "test-phase", "")
+		"test-agent", "claude:sonnet-5", "test-phase", "")
 	if data != "saved progress" {
 		t.Errorf("data = %q, want %q", data, "saved progress")
 	}
@@ -40,7 +40,7 @@ func TestFetchPreviousDataAndReason_NoContinuedSessionReturnsEmptyReason(t *test
 
 	data, reason := env.spawner.fetchPreviousDataAndReason(
 		env.projectID, env.ticketID, env.workflowID,
-		"test-agent", "claude:sonnet", "test-phase", "")
+		"test-agent", "claude:sonnet-5", "test-phase", "")
 	if data != "" {
 		t.Errorf("data = %q, want empty", data)
 	}
@@ -60,7 +60,7 @@ func TestFetchPreviousDataAndReason_NullReason(t *testing.T) {
 
 	data, reason := env.spawner.fetchPreviousDataAndReason(
 		env.projectID, env.ticketID, env.workflowID,
-		"test-agent", "claude:sonnet", "test-phase", "")
+		"test-agent", "claude:sonnet-5", "test-phase", "")
 	if data != "progress data" {
 		t.Errorf("data = %q, want %q", data, "progress data")
 	}
@@ -88,7 +88,7 @@ func TestFetchPreviousDataAndReason_AllStallReasons(t *testing.T) {
 
 			_, reason := env.spawner.fetchPreviousDataAndReason(
 				env.projectID, env.ticketID, env.workflowID,
-				"test-agent", "claude:sonnet", "test-phase", "")
+				"test-agent", "claude:sonnet-5", "test-phase", "")
 			if reason != r {
 				t.Errorf("reason = %q, want %q", reason, r)
 			}
@@ -107,7 +107,7 @@ func createContinuedSessionWithReason(t *testing.T, env *toResumeTestEnv, sessio
 		Phase:              "test-phase",
 		NodeID:             "test-phase",
 		AgentType:          "test-agent",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionContinued,
 		Result:             sql.NullString{String: "continue", Valid: true},
 		ResultReason:       sql.NullString{String: resultReason, Valid: resultReason != ""},
@@ -120,7 +120,7 @@ func createContinuedSessionWithReason(t *testing.T, env *toResumeTestEnv, sessio
 	}
 
 	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
-	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet-5"}
 	actor := repo.Actor{Source: "agent"}
 	for k, v := range findings {
 		b, err := json.Marshal(v)

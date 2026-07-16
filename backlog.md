@@ -86,7 +86,7 @@ be/internal/spawner/
 ```
 
 The ACP adapter:
-1. Spawns the configured launch command per provider profile (e.g., `npx -y @google/gemini-cli --acp`). Provider catalog stored in a new `acp_providers` table or as `cli_models` rows with a `launch_command` column.
+1. Spawns the configured launch command per provider profile (e.g., `npx -y @google/gemini-cli --acp`). Provider catalog stored in a new `acp_providers` table or as `models` rows with a `launch_command` column.
 2. Speaks ACP: `initialize` → `session/new` → `session/prompt` → consumes `session/update` notifications until `stop_reason`.
 3. Maps `session/update` variants to nrflo events:
    - `ContentChunk` (agent_message_chunk / agent_thought_chunk) → agent log lines.
@@ -127,7 +127,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 - Cost / pricing.
 
 ### API & UI surface
-- New `cli_models` rows (or new `acp_providers` table) with `launch_command`, optional `--model` template, `auth_env` (e.g. `GEMINI_API_KEY`), display logo. Seeded list mirrors kandev's catalog.
+- New `models` rows (or new `acp_providers` table) with `launch_command`, optional `--model` template, `auth_env` (e.g. `GEMINI_API_KEY`), display logo. Seeded list mirrors kandev's catalog.
 - Agent-definition editor: when `execution_mode='acp'`, model picker is sourced from the chosen provider's catalog row.
 - Logs: surface ACP `session/update` stream in the existing agent session log; tool events go through the same path as apirun.
 - No new WS event types — map onto existing `agent.*` events.
@@ -135,7 +135,7 @@ What you genuinely **cannot** do (single-process stdio constraint):
 ### Open questions
 - **Per-message usage in ACP lane.** Accept the blind spot (document it), or wrap each adapter's stderr and grep for usage lines (fragile, per-vendor)? Default: accept it; nudge users to `cli_interactive` mode when they need cost telemetry.
 - **Auto-approve vs UI-approve for `session/request_permission`.** Auto-approve matches kandev's default and current nrflo behavior. UI-approve is a future option; gate behind a per-agent flag.
-- **Provider catalog management.** Hard-coded Go seed (kandev's approach), `cli_models` rows (extensible, fits existing surface), or a new admin-CRUD table? Lean toward `cli_models` extension to avoid a new table.
+- **Provider catalog management.** Hard-coded Go seed (kandev's approach), `models` rows (extensible, fits existing surface), or a new admin-CRUD table? Lean toward extending `models` to avoid a new table.
 - **`fs/*` and `terminal/*` client methods.** Implement nrflo-side, or refuse (let the agent fall back to shell)? Refuse initially; implement only if a provider misbehaves without them.
 - **Take-control swap.** Does the adapter-spawned child expose its underlying CLI's session id well enough to resume in PTY? Vendor-specific — verify per provider before promising the UX.
 - **Manifest tools / api-mode parity.** ACP tools are agent-side and named by the CLI vendor; manifest tools (principle 40) are nrflo-side and api-mode only. Keep these orthogonal — don't try to surface manifest tools through ACP.
@@ -196,13 +196,13 @@ No new hook registration, no `--settings` bootstrap risk.
 
 ---
 
-## 4. Per-cli-model thinking toggle (mirror api-mode `reasoning_effort=''`)
+## 4. Per-mode thinking toggle
 
 ### Motivation
-The same `cli_models` row behaves differently across execution modes. In `api` mode, `reasoning_effort=''` maps to a thinking budget of 0 — thinking is fully off (`spawner/apirun/provider/anthropic/translate.go`, `thinkingBudget`). In `cli` mode, `''` just omits the `--effort` flag (`cli_adapter_claude.go:54-56`), leaving Claude Code's default — which on Opus 4.8 (lean prompt + high-effort default) means thinking is **on**. So an operator who sets empty effort to save tokens gets thinking-off via the api lane and thinking-on via the cli lane.
+The unified `models` row has separate CLI/API effort fields, but an empty effort still behaves differently by mode. In `api` mode it maps to a thinking budget of 0; in `cli` mode it omits the `--effort` flag and leaves Claude Code's default active. An operator who clears both defaults can therefore get thinking-off via API and thinking-on via CLI.
 
 ### Design
-When `reasoning_effort==''` for a `claude` cli model, set `MAX_THINKING_TOKENS=0` in the spawned agent's env (or pass `--thinking disabled`) so the cli lane mirrors the api lane. Non-empty effort keeps `--effort=<value>` (thinking on at that tier). Requires Claude Code ≥ 2.1.166 (bundled image is 2.1.178; BYO hosts may be older — see item 5).
+When `cli_default_effort==''` for a `claude` model, set `MAX_THINKING_TOKENS=0` in the spawned agent's env (or pass `--thinking disabled`) so the CLI lane mirrors the API lane. Non-empty effort keeps `--effort=<value>` (thinking on at that tier). Requires Claude Code ≥ 2.1.166 (bundled image is 2.1.178; BYO hosts may be older — see item 5).
 
 ### Surface area
 - `cli_adapter_claude.go` (argv/env construction).
@@ -248,13 +248,13 @@ Only worth doing if `--resume` depends on CC's on-disk session transcripts. If n
 
 ---
 
-## 7. Register Fable 5 as a selectable cli model
+## 7. Register Fable 5 as a selectable model
 
 ### Motivation
-Claude Code 2.1.170 introduced Fable 5 (`claude-fable-5`). nrflo's `cli_models` registry should offer it for selection and as a fallback-chain entry (pairs with the `--fallback-model` work).
+Claude Code 2.1.170 introduced Fable 5 (`claude-fable-5`). nrflo's `models` registry should offer it for CLI selection and as a fallback-chain entry (pairs with the `--fallback-model` work).
 
 ### Design
-Seed migration adding a `claude` `cli_models` row mapped to `claude-fable-5`, mirroring the Opus 4.8 seed (`000138_opus_4_8_models.up.sql`). Confirm default `reasoning_effort` and whether the `xhigh`-restricted-to-Opus rule (`service/cli_model.go`) needs to include Fable 5.
+Seed migration adding a `claude` `models` row mapped to `claude-fable-5`, with the appropriate CLI fields populated. Confirm default effort and whether any model-family effort restriction needs to include Fable 5.
 
 ### Surface area
 - DB seed migration; possibly the UI model list (auto-driven from the table).

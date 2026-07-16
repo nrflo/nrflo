@@ -212,7 +212,7 @@ func TestRestartProjectAgentWithInstanceID(t *testing.T) {
 		Phase:              "setup",
 		NodeID:             "setup",
 		AgentType:          "setup",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionRunning,
 		PID:                sql.NullInt64{Int64: 12345, Valid: true},
 		ContextLeft:        sql.NullInt64{Int64: 60, Valid: true},
@@ -304,7 +304,7 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 		Phase:              "setup",
 		NodeID:             "setup",
 		AgentType:          "setup",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionFailed,
 		Result:             NewNullString("fail"),
 	}

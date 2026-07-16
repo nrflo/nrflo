@@ -42,7 +42,7 @@ func setupConsultTestEnv(t *testing.T) *consultTestEnv {
 		WorkflowInstanceID: base.wfiID,
 		Phase:              "implementor",
 		AgentType:          "implementor",
-		ModelID:            sql.NullString{String: "claude:opus_4_7", Valid: true},
+		ModelID:            sql.NullString{String: "claude:opus-4-7", Valid: true},
 		Status:             model.AgentSessionRunning,
 		StartedAt:          sql.NullString{String: now, Valid: true},
 	}); err != nil {
@@ -53,7 +53,7 @@ func setupConsultTestEnv(t *testing.T) *consultTestEnv {
 	if _, err := base.database.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, tools, layer, consultant, created_at, updated_at)
-		VALUES (?, ?, 'feature', 'sonnet', 30, '# Answer: ${CONSULT_QUESTION}', 'api', 'findings_add,agent_finished', 0, 1, ?, ?)`,
+		VALUES (?, ?, 'feature', 'sonnet-5', 30, '# Answer: ${CONSULT_QUESTION}', 'api', 'findings_add,agent_finished', 0, 1, ?, ?)`,
 		"consultant", base.projectID, now, now,
 	); err != nil {
 		t.Fatalf("insert consultant agent_def: %v", err)
@@ -74,8 +74,8 @@ func buildConsultSpawner(t *testing.T, env *consultTestEnv, prov provider.Provid
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return prov, nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
 		},
 		AgentSvc:           &noopAgentSvc{},
 		FindingsSvc:        service.NewFindingsService(env.pool, clk),
@@ -167,7 +167,7 @@ func TestConsult_NotFlaggedAsConsultant_ReturnsError(t *testing.T) {
 	if _, err := env.database.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, layer, consultant, created_at, updated_at)
-		VALUES ('normal-agent', ?, 'feature', 'sonnet', 30, '# Implement', 'api', 0, 0, ?, ?)`,
+		VALUES ('normal-agent', ?, 'feature', 'sonnet-5', 30, '# Implement', 'api', 0, 0, ?, ?)`,
 		env.projectID, now, now,
 	); err != nil {
 		t.Fatalf("insert normal agent def: %v", err)
@@ -192,7 +192,7 @@ func TestConsult_NonAPIMode_ReturnsError(t *testing.T) {
 	if _, err := env.database.Exec(
 		`INSERT INTO agent_definitions
 			(id, project_id, workflow_id, model, timeout, prompt, execution_mode, layer, consultant, created_at, updated_at)
-		VALUES ('cli-consultant', ?, 'feature', 'sonnet', 30, '# Impl', 'cli_interactive', 0, 1, ?, ?)`,
+		VALUES ('cli-consultant', ?, 'feature', 'sonnet-5', 30, '# Impl', 'cli_interactive', 0, 1, ?, ?)`,
 		env.projectID, now, now,
 	); err != nil {
 		t.Fatalf("insert cli-interactive consultant def: %v", err)
@@ -267,8 +267,8 @@ func TestConsultRecursionGuard_ConsultExcludedForConsultantAgent(t *testing.T) {
 		BuildAPIProvider: func(_ context.Context, _, _ string) (provider.Provider, error) {
 			return mock.New(), nil
 		},
-		APIModelConfigs: map[string]APIModelConfig{
-			"sonnet": {Provider: "anthropic", MappedModel: "claude-sonnet-4-6", ContextLength: 200000},
+		ModelConfigs: map[string]ModelConfig{
+			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
 		},
 		AgentSvc: &noopAgentSvc{},
 		Workflows: map[string]WorkflowDef{
@@ -283,7 +283,7 @@ func TestConsultRecursionGuard_ConsultExcludedForConsultantAgent(t *testing.T) {
 		ProjectID:          env.projectID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:sonnet", "_consult", env.wfiID)
+	}, "claude:sonnet-5", "_consult", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn: %v", err)
 	}

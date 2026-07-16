@@ -1,7 +1,5 @@
 import { Dropdown } from '@/components/ui/Dropdown'
-import { useCLIModels } from '@/hooks/useCLIModels'
-import { useAPIModels } from '@/hooks/useAPIModels'
-import { buildCLIEffortOptions, buildAPIEffortOptions } from '@/components/settings/effortOptions'
+import { useModels } from '@/hooks/useModels'
 
 type ExecutionMode = 'cli_interactive' | 'api' | 'script'
 
@@ -16,27 +14,22 @@ export function AgentDefEffortField({
   value: string
   onChange: (v: string) => void
 }) {
-  const { data: cliModels = [] } = useCLIModels()
-  const { data: apiModels = [] } = useAPIModels()
+  const { data: models = [] } = useModels()
 
   if (executionMode === 'script') return null
 
-  const isApi = executionMode === 'api'
-  const apiRow = apiModels.find((m) => m.id === model)
-  const cliRow = cliModels.find((m) => m.id === model)
-  const options = isApi
-    ? buildAPIEffortOptions(apiRow?.provider ?? 'anthropic', apiRow?.mapped_model ?? '')
-    : buildCLIEffortOptions(cliRow?.cli_type ?? 'claude', cliRow?.mapped_model ?? '')
-
-  const inherited = (isApi ? apiRow?.reasoning_effort : cliRow?.reasoning_effort) || 'none'
-  const inheritOptions = options.map((opt) =>
-    opt.value === '' ? { ...opt, label: `Inherit from model (${inherited})` } : opt
-  )
+  const row = models.find((item) => item.id === model)
+  const efforts = executionMode === 'api' ? row?.api_efforts ?? [] : row?.cli_efforts ?? []
+  const inherited = row?.default_effort || 'provider default'
+  const options = [
+    { value: '', label: `Inherit from model (${inherited})` },
+    ...efforts.map((effort) => ({ value: effort, label: effort })),
+  ]
 
   return (
     <div className="flex-1">
       <label className="block text-xs font-medium text-muted-foreground mb-1">Reasoning Effort</label>
-      <Dropdown value={value} onChange={onChange} options={inheritOptions} />
+      <Dropdown value={value} onChange={onChange} options={options} />
     </div>
   )
 }

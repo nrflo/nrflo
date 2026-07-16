@@ -119,7 +119,7 @@ func TestWorkflowObserverColumns_RoundTrip(t *testing.T) {
 
 	if _, err := pool.Exec(
 		`UPDATE workflows SET observer_context=?,observer_provider=?,observer_model=? WHERE project_id=? AND id=?`,
-		"my-ctx", "claude", "opus",
+		"my-ctx", "claude", "opus-4-7",
 		"proj1", "wf1",
 	); err != nil {
 		t.Fatalf("update: %v", err)
@@ -136,7 +136,7 @@ func TestWorkflowObserverColumns_RoundTrip(t *testing.T) {
 	if !wf.ObserverProvider.Valid || wf.ObserverProvider.String != "claude" {
 		t.Errorf("ObserverProvider = %v, want {claude, true}", wf.ObserverProvider)
 	}
-	if !wf.ObserverModel.Valid || wf.ObserverModel.String != "opus" {
-		t.Errorf("ObserverModel = %v, want {opus, true}", wf.ObserverModel)
+	if !wf.ObserverModel.Valid || wf.ObserverModel.String != "opus-4-7" {
+		t.Errorf("ObserverModel = %v, want {opus-4-7, true}", wf.ObserverModel)
 	}
 }

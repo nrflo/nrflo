@@ -13,25 +13,17 @@ import (
 	"be/internal/ws"
 )
 
-// ModelConfig holds DB-sourced model configuration for the spawner.
-// Zero values mean "not configured" — adapters fall back to their hardcoded methods.
+// ModelConfig holds one enabled row from the unified model registry.
 type ModelConfig struct {
-	CLIType          string   // "claude", "codex"
-	MappedModel      string   // actual CLI arg: "opus[1m]", "gpt-5.3-codex"
-	ReasoningEffort  string   // "", "low", "medium", "high", "xhigh", "max", "ultra" (ultra: codex gpt-5.6 only)
-	FallbackModels   string   // claude only: comma-separated --fallback-model chain (≤3)
-	ContextLength    int      // 200000, 1000000
-	SupportedEfforts []string // effort levels this model accepts (cli_models.supported_efforts)
-}
-
-// APIModelConfig holds DB-sourced configuration for an API-mode model row.
-// Sourced from the api_models table, keyed by row id.
-type APIModelConfig struct {
-	Provider         string   // "anthropic", "openai"
-	MappedModel      string   // actual provider model ID, e.g. "claude-opus-4-7"
-	ContextLength    int      // max input context window in tokens
-	ReasoningEffort  string   // "", "low", "medium", "high", "xhigh", "max"
-	SupportedEfforts []string // effort levels this model accepts (api_models.supported_efforts)
+	Provider       string
+	CLIModel       string
+	CLIContext     int
+	CLIEfforts     []string
+	APIModel       string
+	APIContext     int
+	APIEfforts     []string
+	FallbackModels string
+	DefaultEffort  string
 }
 
 // Config holds the spawner configuration
@@ -64,9 +56,8 @@ type Config struct {
 	// ClaudeSettingsJSON is the --settings JSON for Claude CLI agents (safety hooks).
 	// Empty string means no settings. Read once at workflow start from project config.
 	ClaudeSettingsJSON string
-	// ModelConfigs maps model name to DB-sourced config. When populated, the spawner
-	// uses these for model mapping, reasoning effort, context length, and CLI type
-	// instead of hardcoded adapter methods. nil map is safe (lookup returns zero value).
+	// ModelConfigs maps registry slug to its enabled provider/mode configuration.
+	// Unknown slugs remain valid only as raw CLI passthrough values.
 	ModelConfigs map[string]ModelConfig
 	// ErrorSvc records agent errors (optional, nil-safe).
 	ErrorSvc ErrorRecorder
@@ -74,10 +65,6 @@ type Config struct {
 	// Called once per spawn with the provider name (e.g. "anthropic", "openai")
 	// and project ID. Required when any agent definition selects api mode.
 	BuildAPIProvider func(ctx context.Context, providerName, projectID string) (provider.Provider, error)
-	// APIModelConfigs maps api_models row id to DB-sourced configuration.
-	// Used in the api branch of prepareSpawn to look up provider, mapped model,
-	// context length, and reasoning effort. nil map is safe (lookup returns zero value).
-	APIModelConfigs map[string]APIModelConfig
 	// AgentSvc persists context_left for API-mode agents (mirrors what the
 	// CLI hook does for CLI agents).
 	AgentSvc apirun.AgentSvc

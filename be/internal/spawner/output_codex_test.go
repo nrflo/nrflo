@@ -16,7 +16,7 @@ func minProc(sessionID string) *processInfo {
 	return &processInfo{
 		sessionID:       sessionID,
 		agentType:       "test-agent",
-		modelID:         "codex:codex_gpt_high",
+		modelID:         "codex:gpt-5.3-codex",
 		pendingMessages: make([]repo.MessageEntry, 0),
 		pendingTasks:    make(map[string]taskInfo),
 	}

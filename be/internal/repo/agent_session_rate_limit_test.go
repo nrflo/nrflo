@@ -18,7 +18,7 @@ func makeRateLimitSession(id, wfiID string) *model.AgentSession {
 		WorkflowInstanceID:  wfiID,
 		Phase:               "phase0",
 		AgentType:           "test-agent",
-		ModelID:             sql.NullString{String: "sonnet", Valid: true},
+		ModelID:             sql.NullString{String: "sonnet-5", Valid: true},
 		Status:              model.AgentSessionRunning,
 		RateLimitRetryCount: 3,
 		RateLimitUntilTs:    sql.NullString{String: "2026-05-25T12:00:00Z", Valid: true},
@@ -146,7 +146,7 @@ func insertContinuedSessionWithRateLimit(t *testing.T, database *db.DB, id, wfiI
 	_, err := database.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at, rate_limit_until_ts)
-		VALUES (?, 'proj', 'TKT-1', ?, 'test-phase', 'test-agent', 'sonnet', 'continued', ?, ?, ?, ?)`,
+		VALUES (?, 'proj', 'TKT-1', ?, 'test-phase', 'test-agent', 'sonnet-5', 'continued', ?, ?, ?, ?)`,
 		id, wfiID, now, now, now, rlTs)
 	if err != nil {
 		t.Fatalf("insertContinuedSessionWithRateLimit(%s): %v", id, err)

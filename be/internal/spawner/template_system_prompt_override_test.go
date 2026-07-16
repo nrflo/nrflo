@@ -48,10 +48,10 @@ func TestLoadTemplate_SystemPromptOverride_ClaudeWithToggle(t *testing.T) {
 	createAgentDef(t, env, "analyzer", "Test body")
 	setSysPromptOverride(t, env, true)
 
-	sp := claudeOverrideSpawner(env, map[string]ModelConfig{"sonnet": {CLIType: "claude"}})
+	sp := claudeOverrideSpawner(env, map[string]ModelConfig{"sonnet-5": {Provider: "anthropic", CLIModel: "raw"}})
 
 	body, suffix, override, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
+		"p", "c", "test", "claude:sonnet-5", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -83,43 +83,43 @@ func TestLoadTemplate_SystemPromptOverride_Gating(t *testing.T) {
 		{
 			name:         "claude+key=true → non-empty",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
-			modelID:      "claude:sonnet",
+			configs:      map[string]ModelConfig{"sonnet-5": {Provider: "anthropic", CLIModel: "raw"}},
+			modelID:      "claude:sonnet-5",
 			wantNonEmpty: true,
 		},
 		{
 			name:         "claude+key=false → empty",
 			keyState:     "false",
-			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
-			modelID:      "claude:sonnet",
+			configs:      map[string]ModelConfig{"sonnet-5": {Provider: "anthropic", CLIModel: "raw"}},
+			modelID:      "claude:sonnet-5",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "claude+key unset → empty",
 			keyState:     "",
-			configs:      map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
-			modelID:      "claude:sonnet",
+			configs:      map[string]ModelConfig{"sonnet-5": {Provider: "anthropic", CLIModel: "raw"}},
+			modelID:      "claude:sonnet-5",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "codex+key=true → empty (non-claude)",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"codex_gpt_high": {CLIType: "codex"}},
-			modelID:      "codex:codex_gpt_high",
+			configs:      map[string]ModelConfig{"gpt-5.3-codex": {Provider: "openai", CLIModel: "raw"}},
+			modelID:      "codex:gpt-5.3-codex",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "model absent from configs → empty",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"other-model": {CLIType: "claude"}},
-			modelID:      "claude:sonnet",
+			configs:      map[string]ModelConfig{"other-model": {Provider: "anthropic", CLIModel: "raw"}},
+			modelID:      "claude:sonnet-5",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "nil configs → empty",
 			keyState:     "true",
 			configs:      nil,
-			modelID:      "claude:sonnet",
+			modelID:      "claude:sonnet-5",
 			wantNonEmpty: false,
 		},
 	}
@@ -171,35 +171,35 @@ func TestSystemPromptOverrideFor_GatesOnGlobalKeyAndCLIType(t *testing.T) {
 		{
 			name:         "claude+key=true → non-empty",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
-			model:        "opus_4_7",
+			configs:      map[string]ModelConfig{"opus-4-7": {Provider: "anthropic", CLIModel: "raw"}},
+			model:        "opus-4-7",
 			wantNonEmpty: true,
 		},
 		{
 			name:         "claude+key=false → empty",
 			keyState:     "false",
-			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
-			model:        "opus_4_7",
+			configs:      map[string]ModelConfig{"opus-4-7": {Provider: "anthropic", CLIModel: "raw"}},
+			model:        "opus-4-7",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "claude+key unset → empty",
 			keyState:     "",
-			configs:      map[string]ModelConfig{"opus_4_7": {CLIType: "claude"}},
-			model:        "opus_4_7",
+			configs:      map[string]ModelConfig{"opus-4-7": {Provider: "anthropic", CLIModel: "raw"}},
+			model:        "opus-4-7",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "codex+key=true → empty",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"m": {CLIType: "codex"}},
+			configs:      map[string]ModelConfig{"m": {Provider: "openai", CLIModel: "raw"}},
 			model:        "m",
 			wantNonEmpty: false,
 		},
 		{
 			name:         "model absent → empty",
 			keyState:     "true",
-			configs:      map[string]ModelConfig{"other": {CLIType: "claude"}},
+			configs:      map[string]ModelConfig{"other": {Provider: "anthropic", CLIModel: "raw"}},
 			model:        "m",
 			wantNonEmpty: false,
 		},
@@ -238,10 +238,10 @@ func TestSystemPromptOverrideFor_NilPool(t *testing.T) {
 	t.Parallel()
 	sp := &Spawner{
 		config: Config{
-			ModelConfigs: map[string]ModelConfig{"sonnet": {CLIType: "claude"}},
+			ModelConfigs: map[string]ModelConfig{"sonnet-5": {Provider: "anthropic", CLIModel: "raw"}},
 		},
 	}
-	if got := sp.systemPromptOverrideFor("sonnet", nil); got != "" {
+	if got := sp.systemPromptOverrideFor("sonnet-5", nil); got != "" {
 		t.Errorf("systemPromptOverrideFor with nil pool = %q, want empty", got)
 	}
 }

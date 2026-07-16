@@ -39,9 +39,9 @@ func setupFindingReadDB(t *testing.T) *findingReadEnv {
 		VALUES (?, 'proj-r', 'tkt-r', 'wf-r', 'ticket', 'active', ?, ?)`, wfiID, now, now)
 
 	exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, layer, model, prompt, tag, low_consumption_model, tools, created_at, updated_at)
-		VALUES ('analyzer', 'proj-r', 'wf-r', 0, 'sonnet', '', '', '', '', ?, ?)`, now, now)
+		VALUES ('analyzer', 'proj-r', 'wf-r', 0, 'sonnet-5', '', '', '', '', ?, ?)`, now, now)
 	exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, layer, model, prompt, tag, low_consumption_model, tools, created_at, updated_at)
-		VALUES ('builder', 'proj-r', 'wf-r', 0, 'sonnet', '', '', '', '', ?, ?)`, now, now)
+		VALUES ('builder', 'proj-r', 'wf-r', 0, 'sonnet-5', '', '', '', '', ?, ?)`, now, now)
 
 	// Completed session for analyzer (no model)
 	exec(`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, result, result_reason, pid, context_left, ancestor_session_id, spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
@@ -49,7 +49,7 @@ func setupFindingReadDB(t *testing.T) *findingReadEnv {
 		wfiID, now, now, now, now)
 	// Running session for builder with model_id
 	exec(`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, result, result_reason, pid, context_left, ancestor_session_id, spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES ('sess-r-2', 'proj-r', 'tkt-r', ?, 'builder', 'builder', 'sonnet', 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
+		VALUES ('sess-r-2', 'proj-r', 'tkt-r', ?, 'builder', 'builder', 'sonnet-5', 'running', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		wfiID, now, now, now)
 
 	return &findingReadEnv{repo: NewFindingRepo(pool, clk), clk: clk, pool: pool, wfiID: wfiID}
@@ -81,14 +81,14 @@ func TestFindingRepo_GetByAgentAllModels_ModelKey(t *testing.T) {
 	env := setupFindingReadDB(t)
 
 	env.repo.Upsert("session", "sess-r-2", "result", json.RawMessage(`"built"`), //nolint:errcheck
-		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "builder", ModelID: "sonnet"}, Actor{Source: "agent"})
+		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "builder", ModelID: "sonnet-5"}, Actor{Source: "agent"})
 
 	byModel, err := env.repo.GetByAgentAllModels(env.wfiID, "builder")
 	if err != nil {
 		t.Fatalf("GetByAgentAllModels: %v", err)
 	}
-	if _, ok := byModel["sonnet"]; !ok {
-		t.Errorf("expected 'sonnet' key, got: %v", sortedKeys(byModel))
+	if _, ok := byModel["sonnet-5"]; !ok {
+		t.Errorf("expected 'sonnet-5' key, got: %v", sortedKeys(byModel))
 	}
 }
 
@@ -107,12 +107,12 @@ func TestFindingRepo_GetByAgentAllModels_MultipleModels(t *testing.T) {
 	// always resolves an existing session before writing a finding.
 	if _, err := env.pool.Exec(`
 		INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, result, result_reason, pid, context_left, ancestor_session_id, spawn_command, prompt, restart_count, started_at, ended_at, created_at, updated_at)
-		VALUES ('sess-r-extra', 'proj-r', 'tkt-r', ?, 'analyzer', 'analyzer', 'opus', 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
+		VALUES ('sess-r-extra', 'proj-r', 'tkt-r', ?, 'analyzer', 'analyzer', 'opus-4-7', 'completed', 'pass', NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, ?, ?, ?)`,
 		env.wfiID, now, now, now, now); err != nil {
 		t.Fatalf("insert sess-r-extra: %v", err)
 	}
 	env.repo.Upsert("session", "sess-r-extra", "k", json.RawMessage(`"with-model"`), //nolint:errcheck
-		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "analyzer", ModelID: "opus"}, actor)
+		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "analyzer", ModelID: "opus-4-7"}, actor)
 
 	byModel, err := env.repo.GetByAgentAllModels(env.wfiID, "analyzer")
 	if err != nil {
@@ -124,8 +124,8 @@ func TestFindingRepo_GetByAgentAllModels_MultipleModels(t *testing.T) {
 	if _, ok := byModel["default"]; !ok {
 		t.Error("expected 'default' group for no model_id")
 	}
-	if _, ok := byModel["opus"]; !ok {
-		t.Error("expected 'opus' group")
+	if _, ok := byModel["opus-4-7"]; !ok {
+		t.Error("expected 'opus-4-7' group")
 	}
 }
 
@@ -210,9 +210,9 @@ func TestFindingRepo_ListByWorkflowInstance_KeyFormat(t *testing.T) {
 	// analyzer: no model_id → key = "analyzer"
 	env.repo.Upsert("session", "sess-r-1", "k", json.RawMessage(`1`), //nolint:errcheck
 		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "analyzer"}, actor)
-	// builder: model_id=sonnet → key = "builder:sonnet"
+	// builder: model_id=sonnet-5 → key = "builder:sonnet-5"
 	env.repo.Upsert("session", "sess-r-2", "k", json.RawMessage(`2`), //nolint:errcheck
-		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "builder", ModelID: "sonnet"}, actor)
+		Denorm{WorkflowInstanceID: env.wfiID, AgentType: "builder", ModelID: "sonnet-5"}, actor)
 
 	result, err := env.repo.ListByWorkflowInstance(env.wfiID)
 	if err != nil {
@@ -221,8 +221,8 @@ func TestFindingRepo_ListByWorkflowInstance_KeyFormat(t *testing.T) {
 	if _, ok := result["analyzer"]; !ok {
 		t.Errorf("expected key 'analyzer', got keys: %v", sortedKeys(result))
 	}
-	if _, ok := result["builder:sonnet"]; !ok {
-		t.Errorf("expected key 'builder:sonnet', got keys: %v", sortedKeys(result))
+	if _, ok := result["builder:sonnet-5"]; !ok {
+		t.Errorf("expected key 'builder:sonnet-5', got keys: %v", sortedKeys(result))
 	}
 }
 

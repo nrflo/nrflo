@@ -106,7 +106,7 @@ func TestHandlePatchGlobalSettings_ObserverProviderModel_RoundTrip(t *testing.T)
 	s := newGlobalSettingsServer(t)
 
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/settings",
-		strings.NewReader(`{"observer_provider":"claude","observer_model":"opus"}`))
+		strings.NewReader(`{"observer_provider":"claude","observer_model":"opus-4-7"}`))
 	patchRR := httptest.NewRecorder()
 	s.handlePatchGlobalSettings(patchRR, patchReq)
 	if patchRR.Code != http.StatusOK {
@@ -121,8 +121,8 @@ func TestHandlePatchGlobalSettings_ObserverProviderModel_RoundTrip(t *testing.T)
 	if v := resp["observer_provider"]; v != "claude" {
 		t.Errorf("observer_provider = %v, want claude", v)
 	}
-	if v := resp["observer_model"]; v != "opus" {
-		t.Errorf("observer_model = %v, want opus", v)
+	if v := resp["observer_model"]; v != "opus-4-7" {
+		t.Errorf("observer_model = %v, want opus-4-7", v)
 	}
 }
 

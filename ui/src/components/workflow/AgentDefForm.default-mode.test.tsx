@@ -7,19 +7,17 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
-    { label: 'Codex', options: [
-      { value: 'codex_gpt_high', label: 'Codex: GPT (High)' },
+    { label: 'OpenAI', options: [
+      { value: 'gpt-5.3-codex', label: 'OpenAI: GPT 5.3 Codex' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: {
@@ -68,7 +66,7 @@ describe('AgentDefForm — execution_mode default', () => {
 
   describe('with initial codex model — no auto-coercion to cli', () => {
     it('execution mode button still shows CLI Interactive (PTY)', () => {
-      renderForm({ isCreate: false, initial: { model: 'codex_gpt_high' } })
+      renderForm({ isCreate: false, initial: { model: 'gpt-5.3-codex' } })
       expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
     })
 
@@ -77,7 +75,7 @@ describe('AgentDefForm — execution_mode default', () => {
       const onSubmit = vi.fn()
       renderForm({
         isCreate: false,
-        initial: { model: 'codex_gpt_high', prompt: 'Existing prompt' },
+        initial: { model: 'gpt-5.3-codex', prompt: 'Existing prompt' },
         onSubmit,
       })
 
@@ -85,7 +83,7 @@ describe('AgentDefForm — execution_mode default', () => {
 
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'codex_gpt_high',
+          model: 'gpt-5.3-codex',
           execution_mode: 'cli_interactive',
         })
       )

@@ -10,7 +10,7 @@ Server-side workflow orchestration: phases grouped by layer, layers executed seq
 
 ## Startup Loading
 
-`loadModelConfigs()` (cli_models → all spawners, `orchestrator_lifecycle.go`); `claude_safety_hook` project config → `BuildSafetySettingsJSON()`, read once (`orchestrator_start.go`); `venvMgr.Ensure(...)` once per run → `Config.PythonPath` (non-blocking, falls back to PATH `python3`).
+`loadModelConfigs()` loads the unified `models` registry, including both modes, into every spawner (`orchestrator_lifecycle.go`); `claude_safety_hook` project config → `BuildSafetySettingsJSON()`, read once (`orchestrator_start.go`); `venvMgr.Ensure(...)` once per run → `Config.PythonPath` (non-blocking, falls back to PATH `python3`).
 
 ## Callback Flow
 

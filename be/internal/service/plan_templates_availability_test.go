@@ -26,7 +26,7 @@ func stubLookPath(t *testing.T, fn func(string) (string, error)) {
 }
 
 // TestEnabledTemplates_DynamicWorkflow_PathProbeDropsCodexEvenWhenRowsEnabled
-// is acceptance case #5: every seeded codex_* cli_models row is read_only=1
+// is acceptance case #5: every seeded OpenAI CLI-capable row is read_only=1
 // (migration 000156) and can never be disabled via the `enabled` flag (see
 // cli_model.go), so on an install without the codex binary the only way to
 // hide codex-backed templates is CLIAvailable's PATH probe. Stubs lookPath to
@@ -43,11 +43,11 @@ func TestEnabledTemplates_DynamicWorkflow_PathProbeDropsCodexEvenWhenRowsEnabled
 	pool := seedDynamicWorkflowDB(t, "path_probe.db")
 
 	var codexEnabled int
-	if err := pool.QueryRow(`SELECT enabled FROM cli_models WHERE id = 'codex_gpt56_terra_high'`).Scan(&codexEnabled); err != nil {
+	if err := pool.QueryRow(`SELECT enabled FROM models WHERE id = 'gpt-5.6-terra'`).Scan(&codexEnabled); err != nil {
 		t.Fatalf("select codex row enabled: %v", err)
 	}
 	if codexEnabled != 1 {
-		t.Fatalf("codex_gpt56_terra_high.enabled = %d, want 1 (read_only rows stay enabled)", codexEnabled)
+		t.Fatalf("gpt-5.6-terra.enabled = %d, want 1 (read_only rows stay enabled)", codexEnabled)
 	}
 
 	all, err := AllowedTemplates(pool, GlobalProjectID, DynamicWorkflow)
@@ -64,7 +64,7 @@ func TestEnabledTemplates_DynamicWorkflow_PathProbeDropsCodexEvenWhenRowsEnabled
 		}
 	}
 
-	if err := ValidateTemplatesEnabled(pool, clock.Real(), []PlanTemplate{{ID: "module-reviewer-codex", Model: "codex_gpt56_terra_high", ExecutionMode: "cli_interactive"}}); err == nil {
+	if err := ValidateTemplatesEnabled(pool, clock.Real(), []PlanTemplate{{ID: "module-reviewer-codex", Model: "gpt-5.6-terra", ExecutionMode: "cli_interactive"}}); err == nil {
 		t.Fatal("ValidateTemplatesEnabled: expected error for a codex template on a codex-less install, got nil")
 	} else if !strings.Contains(err.Error(), "module-reviewer-codex") {
 		t.Errorf("ValidateTemplatesEnabled error = %q, want it to name the offending template", err.Error())
@@ -77,7 +77,7 @@ func TestEnabledTemplates_DynamicWorkflow_PathProbeDropsCodexEvenWhenRowsEnabled
 func TestEnabledTemplates_APIModeDisabled_DropsAPITemplates(t *testing.T) {
 	t.Parallel()
 	pool, projectID, workflowID := setupPlanValidateEnv(t)
-	insertFanoutTemplate(t, pool, projectID, workflowID, "api-worker", "opus_4_8", "api")
+	insertFanoutTemplate(t, pool, projectID, workflowID, "api-worker", "opus-4-8", "api")
 
 	all, err := AllowedTemplates(pool, projectID, workflowID)
 	if err != nil {
@@ -110,15 +110,15 @@ func TestEnabledTemplates_APIModeDisabled_DropsAPITemplates(t *testing.T) {
 
 // TestEnabledTemplates_EffectiveReasoningEffort verifies the effective effort
 // filled in by EnabledTemplates is the def-level override when one is set,
-// and the model row's own reasoning_effort otherwise.
+// and the model row's default_effort otherwise.
 func TestEnabledTemplates_EffectiveReasoningEffort(t *testing.T) {
 	t.Parallel()
 	pool, projectID, workflowID := setupPlanValidateEnv(t)
 
-	// "worker" (seeded by setupPlanValidateEnv) is bound to model "sonnet",
-	// whose seeded cli_models row has reasoning_effort = "" (no row-level
-	// default) — the effective effort should be "" with no override.
-	insertFanoutTemplate(t, pool, projectID, workflowID, "override-worker", "opus_4_8", "cli_interactive")
+	// "worker" (seeded by setupPlanValidateEnv) is bound to model "sonnet-5",
+	// whose unified row has default_effort = "" (provider default), so its
+	// effective effort should remain empty with no override.
+	insertFanoutTemplate(t, pool, projectID, workflowID, "override-worker", "opus-4-8", "cli_interactive")
 	if _, err := pool.Exec(`UPDATE agent_definitions SET reasoning_effort = 'xhigh' WHERE project_id = ? AND workflow_id = ? AND id = 'override-worker'`, projectID, workflowID); err != nil {
 		t.Fatalf("set reasoning_effort override: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestEnabledTemplates_EffectiveReasoningEffort(t *testing.T) {
 		t.Errorf("worker (no override) ReasoningEffort = %q, want empty (model row default)", worker.ReasoningEffort)
 	}
 	if overrideWorker.ReasoningEffort != "xhigh" {
-		t.Errorf("override-worker ReasoningEffort = %q, want %q (def override wins over the opus_4_8 row's own effort)", overrideWorker.ReasoningEffort, "xhigh")
+		t.Errorf("override-worker ReasoningEffort = %q, want %q (def override wins over the opus-4-8 row default)", overrideWorker.ReasoningEffort, "xhigh")
 	}
 	if worker.CLIType != "claude" || overrideWorker.CLIType != "claude" {
 		t.Errorf("CLIType = %q/%q, want claude/claude for cli_interactive templates", worker.CLIType, overrideWorker.CLIType)

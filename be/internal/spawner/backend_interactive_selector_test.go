@@ -134,7 +134,7 @@ func TestEventAgentViewerAttached_Broadcast(t *testing.T) {
 	sp.broadcast(ws.EventAgentViewerAttached, "proj-ia", "T-200", "feature", map[string]interface{}{
 		"session_id": "interactive-sess-1",
 		"agent_type": "implementor",
-		"model_id":   "claude:opus_4_7",
+		"model_id":   "claude:opus-4-7",
 	})
 
 	deadline := time.After(2 * time.Second)
@@ -157,8 +157,8 @@ func TestEventAgentViewerAttached_Broadcast(t *testing.T) {
 				t.Errorf("agent_type = %q, want implementor", agentType)
 			}
 			modelID, _ := event.Data["model_id"].(string)
-			if modelID != "claude:opus_4_7" {
-				t.Errorf("model_id = %q, want claude:opus_4_7", modelID)
+			if modelID != "claude:opus-4-7" {
+				t.Errorf("model_id = %q, want claude:opus-4-7", modelID)
 			}
 			return
 		case <-deadline:

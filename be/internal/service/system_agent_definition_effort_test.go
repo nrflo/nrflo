@@ -26,16 +26,16 @@ func TestSystemAgentDef_ReasoningEffort_ValidationMatrix(t *testing.T) {
 		effort        *string
 		wantErr       bool
 	}{
-		{"ultra on claude cli row rejected", "cli_interactive", "sonnet", strPtr("ultra"), true},
-		{"ultra on codex sol row accepted", "cli_interactive", "codex_gpt56_sol_high", strPtr("ultra"), false},
-		{"xhigh on claude haiku rejected", "cli_interactive", "haiku", strPtr("xhigh"), true},
-		{"xhigh on claude opus_4_8 accepted", "cli_interactive", "opus_4_8", strPtr("xhigh"), false},
-		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt56_sol_high", strPtr("xhigh"), false},
-		{"max on api openai gpt-5.4 rejected", "api", "gpt54_high", strPtr("max"), true},
-		{"ultra on api def rejected regardless of model", "api", "opus_4_8", strPtr("ultra"), true},
-		{"xhigh on api anthropic opus accepted", "api", "opus_4_8", strPtr("xhigh"), false},
-		{"nil reasoning_effort accepted (inherit)", "cli_interactive", "sonnet", nil, false},
-		{"garbage string rejected", "cli_interactive", "sonnet", strPtr("extreme"), true},
+		{"ultra on claude cli row rejected", "cli_interactive", "sonnet-5", strPtr("ultra"), true},
+		{"ultra on codex sol row accepted", "cli_interactive", "gpt-5.6-sol", strPtr("ultra"), false},
+		{"xhigh on claude haiku rejected", "cli_interactive", "haiku-4-5", strPtr("xhigh"), true},
+		{"xhigh on claude opus accepted", "cli_interactive", "opus-4-8", strPtr("xhigh"), false},
+		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt-5.6-sol", strPtr("xhigh"), false},
+		{"max on api openai gpt-5.4 rejected", "api", "gpt-5.4", strPtr("max"), true},
+		{"ultra on api def rejected regardless of model", "api", "opus-4-8", strPtr("ultra"), true},
+		{"xhigh on api anthropic opus accepted", "api", "opus-4-8", strPtr("xhigh"), false},
+		{"nil reasoning_effort accepted (inherit)", "cli_interactive", "sonnet-5", nil, false},
+		{"garbage string rejected", "cli_interactive", "sonnet-5", strPtr("extreme"), true},
 	}
 
 	for i, tc := range cases {
@@ -79,7 +79,7 @@ func TestSystemAgentDef_ReasoningEffort_RoundTripsThroughGetAndList(t *testing.T
 	created, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:              "sys-effort-roundtrip",
 		Prompt:          "do work",
-		Model:           "opus_4_8",
+		Model:           "opus-4-8",
 		ReasoningEffort: strPtr("xhigh"),
 	})
 	if err != nil {
@@ -115,16 +115,6 @@ func TestSystemAgentDef_ReasoningEffort_RoundTripsThroughGetAndList(t *testing.T
 	}
 }
 
-// NOTE: unlike AgentDefinitionService.revalidateConsultantAndNodeRole (which
-// re-checks reasoning_effort whenever `model` changes on a PATCH),
-// SystemAgentDefinitionService.Update only re-validates reasoning_effort
-// when the request touches that field directly (system_agent_definition.go
-// Update's ReasoningEffort block is gated solely on `req.ReasoningEffort !=
-// nil`). A model-only PATCH can therefore strand an existing override that
-// is illegal for the new model row — reported via findings, not covered
-// here per "do not patch production code" (this is a production gap, not a
-// test gap).
-
 // TestSystemAgentDef_ReasoningEffort_DirectPatchValidated verifies a PATCH
 // that sets reasoning_effort directly is validated against the current model
 // row.
@@ -135,7 +125,7 @@ func TestSystemAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "sys-patch-direct",
 		Prompt: "do work",
-		Model:  "haiku",
+		Model:  "haiku-4-5",
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -144,14 +134,14 @@ func TestSystemAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if err := svc.Update("sys-patch-direct", &types.SystemAgentDefUpdateRequest{
 		ReasoningEffort: &bad,
 	}); err == nil {
-		t.Fatal("Update(reasoning_effort=xhigh) on a haiku def: expected error, got nil")
+		t.Fatal("Update(reasoning_effort=xhigh) on a haiku-4-5 def: expected error, got nil")
 	}
 
 	good := "high"
 	if err := svc.Update("sys-patch-direct", &types.SystemAgentDefUpdateRequest{
 		ReasoningEffort: &good,
 	}); err != nil {
-		t.Fatalf("Update(reasoning_effort=high) on a haiku def: %v", err)
+		t.Fatalf("Update(reasoning_effort=high) on a haiku-4-5 def: %v", err)
 	}
 	def, err := svc.Get("sys-patch-direct")
 	if err != nil {
@@ -159,5 +149,20 @@ func TestSystemAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	}
 	if def.ReasoningEffort == nil || *def.ReasoningEffort != "high" {
 		t.Errorf("ReasoningEffort = %v, want high", def.ReasoningEffort)
+	}
+}
+
+func TestSystemAgentDef_ModelPatchRevalidatesExistingEffort(t *testing.T) {
+	svc, cleanup := setupSysAgentDefTestEnv(t)
+	t.Cleanup(cleanup)
+	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
+		ID: "sys-model-patch", Prompt: "do work", Model: "gpt-5.6-sol",
+		ReasoningEffort: strPtr("ultra"),
+	}); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	modelName := "sonnet-5"
+	if err := svc.Update("sys-model-patch", &types.SystemAgentDefUpdateRequest{Model: &modelName}); err == nil {
+		t.Fatal("model patch stranded an unsupported effort")
 	}
 }

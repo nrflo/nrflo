@@ -9,7 +9,7 @@ OPENAI_API_KEY nor CODEX_API_KEY is set, every scenario SKIPs cleanly.
 Usage:
     python3 manual_testing/openai_api/test.py
     python3 manual_testing/openai_api/test.py --only=A01,O01
-    python3 manual_testing/openai_api/test.py --model=gpt54_low
+    python3 manual_testing/openai_api/test.py --model=gpt-5.4
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from openai_api import ALL_SCENARIOS  # noqa: E402
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--parallel", type=int, default=1)
-    ap.add_argument("--model", default="gpt54_medium")
+    ap.add_argument("--model", default="gpt-5.4")
     ap.add_argument("--only", default=None)
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--results", default=None,

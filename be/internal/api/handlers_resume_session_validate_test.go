@@ -31,45 +31,45 @@ func TestValidateResumeSession(t *testing.T) {
 		},
 		{
 			name:        "codex model_id (no resume support)",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "codex:codex_gpt_high", Valid: true}, Status: model.AgentSessionCompleted},
+			session:     &model.AgentSession{ModelID: sql.NullString{String: "codex:gpt-5.3-codex", Valid: true}, Status: model.AgentSessionCompleted},
 			wantErr:     true,
 			errContains: "does not support resume",
 		},
 		{
 			name:        "running session",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionRunning},
+			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true}, Status: model.AgentSessionRunning},
 			wantErr:     true,
 			errContains: "terminal state",
 		},
 		{
 			name:        "user_interactive session",
-			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionUserInteractive},
+			session:     &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true}, Status: model.AgentSessionUserInteractive},
 			wantErr:     true,
 			errContains: "terminal state",
 		},
 		{
 			name:    "completed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionCompleted},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true}, Status: model.AgentSessionCompleted},
 			wantErr: false,
 		},
 		{
 			name:    "failed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:opus", Valid: true}, Status: model.AgentSessionFailed},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:opus-4-7", Valid: true}, Status: model.AgentSessionFailed},
 			wantErr: false,
 		},
 		{
 			name:    "timeout claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:haiku", Valid: true}, Status: model.AgentSessionTimeout},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:haiku-4-5", Valid: true}, Status: model.AgentSessionTimeout},
 			wantErr: false,
 		},
 		{
 			name:    "interactive_completed claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionInteractiveCompleted},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true}, Status: model.AgentSessionInteractiveCompleted},
 			wantErr: false,
 		},
 		{
 			name:    "skipped claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet", Valid: true}, Status: model.AgentSessionSkipped},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true}, Status: model.AgentSessionSkipped},
 			wantErr: false,
 		},
 		{
@@ -77,7 +77,7 @@ func TestValidateResumeSession(t *testing.T) {
 			// resurrect its dead bearer token. Only the kind guard blocks it.
 			name: "console session is never resumable",
 			session: &model.AgentSession{
-				ModelID: sql.NullString{String: "claude:sonnet", Valid: true},
+				ModelID: sql.NullString{String: "claude:sonnet-5", Valid: true},
 				Status:  model.AgentSessionInteractiveCompleted,
 				Kind:    model.AgentSessionKindConsole,
 			},

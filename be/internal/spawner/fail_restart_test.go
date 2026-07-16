@@ -65,7 +65,7 @@ func TestAutoRestart_SessionOverriddenToContined(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	// Simulate non-zero exit — handleCompletion will set FAIL and register in DB.
 	cmd := exec.Command("false")
@@ -75,7 +75,7 @@ func TestAutoRestart_SessionOverriddenToContined(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -145,7 +145,7 @@ func TestAutoRestart_DisabledAtZero(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	cmd := exec.Command("false")
 	_ = cmd.Run()
@@ -154,7 +154,7 @@ func TestAutoRestart_DisabledAtZero(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -198,7 +198,7 @@ func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	cmd := exec.Command("false")
 	_ = cmd.Run()
@@ -207,7 +207,7 @@ func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

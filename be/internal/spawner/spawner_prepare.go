@@ -167,10 +167,13 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	if executionMode == "api" {
-		// Look up api_models row for this model. Fail fast if not configured.
-		am, ok := s.config.APIModelConfigs[model]
+		// API mode always requires a supported registry row.
+		am, ok := s.config.ModelConfigs[model]
 		if !ok {
-			return nil, nil, fmt.Errorf("api mode: model %q not found in api_models", model)
+			return nil, nil, fmt.Errorf("api mode: model %q not found in models", model)
+		}
+		if am.APIModel == "" {
+			return nil, nil, fmt.Errorf("api mode: model %q does not support api mode", model)
 		}
 
 		// api-via-cli hybrid: route Anthropic api-models through the Claude CLI.
@@ -184,18 +187,14 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, fmt.Errorf("api mode: %w", provErr)
 		}
 		prep.apiProvider = apiProv
-		apiEffort := s.resolveReasoningEffort(agentDef, req.AgentType, am.ReasoningEffort)
-		if err := service.ValidateEffortAllowed(apiEffort, am.SupportedEfforts); err != nil {
+		apiEffort := s.resolveReasoningEffort(agentDef, req.AgentType, am.DefaultEffort)
+		if err := service.ValidateEffortAllowed(apiEffort, am.APIEfforts); err != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", err)
 		}
 		prep.apiReasoningEffort = apiEffort
 		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
 
-		// Resolve mapped model name from the api_models row.
-		apiModelID := model
-		if am.MappedModel != "" {
-			apiModelID = am.MappedModel
-		}
+		apiModelID := am.APIModel
 
 		maxIter := defaultAPIMaxIterations
 		if agentDef != nil && agentDef.APIMaxIterations != nil && *agentDef.APIMaxIterations > 0 {
@@ -214,7 +213,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 				maxTokens = *agentCfg.APIMaxTokens
 			}
 		}
-		maxCtx := am.ContextLength // DB authoritative; provider hardcode is fallback
+		maxCtx := am.APIContext // Registry context is authoritative; provider is fallback.
 		if maxCtx <= 0 {
 			maxCtx = apiProv.MaxContext(apiModelID)
 		}
@@ -292,14 +291,16 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// temp files (Claude only — adapter.SupportsSystemPromptFile()).
 	suffixFilePath, systemPromptOverrideFilePath := writeSuffixAndOverrideFiles(suffix, systemPromptOverride, adapter)
 
-	// DB-sourced mapped model + reasoning effort. A model absent from
-	// ModelConfigs has no capability list, so its effort skips validation.
+	// Known models must support CLI mode; unknown values are raw CLI passthrough strings.
 	cfg, modelFound := s.config.ModelConfigs[model]
-	mappedModel := cfg.MappedModel
+	if modelFound && cfg.CLIModel == "" {
+		return nil, nil, fmt.Errorf("cli mode: model %q does not support cli mode", model)
+	}
+	mappedModel := cfg.CLIModel
 	fallbackModels := cfg.FallbackModels
-	reasoningEffort := s.resolveReasoningEffort(agentDef, req.AgentType, cfg.ReasoningEffort)
+	reasoningEffort := s.resolveReasoningEffort(agentDef, req.AgentType, cfg.DefaultEffort)
 	if modelFound {
-		if err := service.ValidateEffortAllowed(reasoningEffort, cfg.SupportedEfforts); err != nil {
+		if err := service.ValidateEffortAllowed(reasoningEffort, cfg.CLIEfforts); err != nil {
 			return nil, nil, fmt.Errorf("cli mode: %w", err)
 		}
 	}

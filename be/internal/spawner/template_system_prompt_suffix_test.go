@@ -86,7 +86,7 @@ func TestLoadTemplate_SuffixReturnedFromLoadTemplate(t *testing.T) {
 
 	sp := env.newSpawner()
 	body, suffix, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
+		"p", "c", "test", "claude:sonnet-5", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestLoadTemplate_SuffixNotInBody(t *testing.T) {
 
 	sp := env.newSpawner()
 	body, suffix, _, err := sp.loadTemplate("analyzer", ticketID, env.project,
-		"p", "c", "test", "claude:sonnet", "", "", nil, 0)
+		"p", "c", "test", "claude:sonnet-5", "", "", nil, 0)
 	if err != nil {
 		t.Fatalf("loadTemplate failed: %v", err)
 	}

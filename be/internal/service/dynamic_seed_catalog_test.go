@@ -50,7 +50,7 @@ func TestDynAgents_PlannerHasEmitFindingsAndRole(t *testing.T) {
 }
 
 // TestDynAgents_ModelsResolveToEnabledCLIModels verifies every seeded model
-// id (planner + fanout templates) resolves to an enabled cli_models row —
+// id (planner + fanout templates) resolves to an enabled CLI-capable model row —
 // the seed bypasses AgentDefinitionService's model validation (shipped
 // data), so this is the only guard against a typo'd or retired model id.
 func TestDynAgents_ModelsResolveToEnabledCLIModels(t *testing.T) {
@@ -65,14 +65,17 @@ func TestDynAgents_ModelsResolveToEnabledCLIModels(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	cliSvc := NewCLIModelService(pool, clock.Real())
+	modelSvc := NewModelService(pool, clock.Real())
 	for _, a := range dynAgents {
-		valid, err := cliSvc.IsValidModel(a.Model)
+		valid, err := modelSvc.IsValidModelForMode(a.Model, "cli")
 		if err != nil {
 			t.Fatalf("IsValidModel(%q) for %s: %v", a.Model, a.ID, err)
 		}
 		if !valid {
 			t.Errorf("dynAgents[%q]: model %q is not an enabled cli model", a.ID, a.Model)
+		}
+		if (a.ID == "module-reviewer-codex" || a.ID == "finding-verifier-codex") && a.ReasoningEffort != "high" {
+			t.Errorf("dynAgents[%q]: reasoning effort = %q, want high", a.ID, a.ReasoningEffort)
 		}
 	}
 }

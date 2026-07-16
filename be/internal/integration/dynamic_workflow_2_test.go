@@ -40,7 +40,7 @@ func TestDynamicWorkflow_ApprovePlan_ResumesPlanSuspendedChild(t *testing.T) {
 		Layer:         0,
 		NodeRole:      "fanout_template",
 		Description:   "fanout template",
-		Model:         "sonnet",
+		Model:         "sonnet-5",
 		ExecutionMode: "cli_interactive",
 	}); err != nil {
 		t.Fatalf("create fanout_template def: %v", err)

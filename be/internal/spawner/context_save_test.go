@@ -331,7 +331,7 @@ func (env *contextSaveTestEnv) createSessionWithFindings(t *testing.T, findings 
 		WorkflowInstanceID: env.wfiID,
 		Phase:              "test-phase",
 		AgentType:          "test-agent",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionRunning,
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
@@ -340,7 +340,7 @@ func (env *contextSaveTestEnv) createSessionWithFindings(t *testing.T, findings 
 	}
 
 	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
-	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet-5"}
 	actor := repo.Actor{Source: "agent"}
 	for k, v := range findings {
 		b, err := json.Marshal(v)
@@ -368,7 +368,7 @@ func (env *contextSaveTestEnv) createSessionWithNullFindings(t *testing.T) strin
 		WorkflowInstanceID: env.wfiID,
 		Phase:              "test-phase",
 		AgentType:          "test-agent",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionRunning,
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
@@ -396,7 +396,7 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 		WorkflowInstanceID: env.wfiID,
 		Phase:              "test-phase",
 		AgentType:          "test-agent",
-		ModelID:            sql.NullString{String: "claude:sonnet", Valid: true},
+		ModelID:            sql.NullString{String: "claude:sonnet-5", Valid: true},
 		Status:             model.AgentSessionRunning,
 		StartedAt:          sql.NullString{String: time.Now().UTC().Format(time.RFC3339Nano), Valid: true},
 	}
@@ -406,7 +406,7 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 
 	// Insert a to_resume value that is a number (not a string) so the type check fails.
 	findingRepo := repo.NewFindingRepo(env.database, clock.Real())
-	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet"}
+	denorm := repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID, AgentType: "test-agent", ModelID: "claude:sonnet-5"}
 	actor := repo.Actor{Source: "agent"}
 	if err := findingRepo.Upsert("session", sessionID, "to_resume", json.RawMessage("12345"), denorm, actor); err != nil {
 		t.Fatalf("failed to upsert finding: %v", err)
@@ -439,7 +439,7 @@ func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) e
 func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: true, Clock: clock.Real()})
-	proc := &processInfo{modelID: "claude:sonnet"}
+	proc := &processInfo{modelID: "claude:sonnet-5"}
 	if !s.shouldUseAgentSave(proc) {
 		t.Error("global setting=true must force agent save regardless of adapter")
 	}
@@ -449,7 +449,7 @@ func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
-		modelID: "claude:sonnet",
+		modelID: "claude:sonnet-5",
 		backend: fakeBackend{name: "api"},
 	}
 	if !s.shouldUseAgentSave(proc) {
@@ -476,7 +476,7 @@ func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
 	t.Parallel()
 	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
 	proc := &processInfo{
-		modelID: "claude:sonnet",
+		modelID: "claude:sonnet-5",
 		backend: fakeBackend{name: "cli_interactive", supportsResume: true},
 	}
 	if s.shouldUseAgentSave(proc) {

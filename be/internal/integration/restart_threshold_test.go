@@ -15,7 +15,7 @@ func TestAgentDefCreateWithRestartThreshold(t *testing.T) {
 	threshold := 30
 	req := &types.AgentDefCreateRequest{
 		ID:               "test-agent",
-		Model:            "sonnet",
+		Model:            "sonnet-5",
 		Timeout:          20,
 		Prompt:           "Test prompt",
 		RestartThreshold: &threshold,
@@ -42,7 +42,7 @@ func TestAgentDefCreateWithoutRestartThreshold(t *testing.T) {
 
 	req := &types.AgentDefCreateRequest{
 		ID:      "test-agent-2",
-		Model:   "sonnet",
+		Model:   "sonnet-5",
 		Timeout: 20,
 		Prompt:  "Test prompt",
 	}
@@ -79,7 +79,7 @@ func TestAgentDefGetRestartThreshold(t *testing.T) {
 	threshold := 35
 	req := &types.AgentDefCreateRequest{
 		ID:               "test-agent-3",
-		Model:            "opus_4_7",
+		Model:            "opus-4-7",
 		Timeout:          25,
 		Prompt:           "Test prompt",
 		RestartThreshold: &threshold,
@@ -268,7 +268,7 @@ func TestActiveAgentsIncludesRestartThreshold(t *testing.T) {
 	}
 
 	// Insert a running agent
-	env.InsertAgentSession(t, "sess-rt-1", "RT-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-rt-1", "RT-1", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "RT-1", &types.WorkflowGetRequest{
@@ -283,7 +283,7 @@ func TestActiveAgentsIncludesRestartThreshold(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -318,7 +318,7 @@ func TestActiveAgentsOmitsRestartThresholdWhenNull(t *testing.T) {
 	}
 
 	// Insert a running agent
-	env.InsertAgentSession(t, "sess-rt-2", "RT-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-rt-2", "RT-2", wfiID, "analyzer", "setup-analyzer", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "RT-2", &types.WorkflowGetRequest{
@@ -333,7 +333,7 @@ func TestActiveAgentsOmitsRestartThresholdWhenNull(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -354,7 +354,7 @@ func TestActiveAgentsRestartThresholdWithoutAgentDef(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "RT-3", "test")
 
 	// Insert a running agent WITHOUT creating an agent definition
-	env.InsertAgentSession(t, "sess-rt-3", "RT-3", wfiID, "analyzer", "some-agent", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-rt-3", "RT-3", wfiID, "analyzer", "some-agent", "claude:sonnet-5")
 
 	// Get workflow status
 	status, err := getWorkflowStatus(t, env, "RT-3", &types.WorkflowGetRequest{
@@ -369,7 +369,7 @@ func TestActiveAgentsRestartThresholdWithoutAgentDef(t *testing.T) {
 		t.Fatalf("expected active_agents to be map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}

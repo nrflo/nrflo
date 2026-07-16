@@ -32,7 +32,7 @@ func TestActiveAgentsIncludesTag(t *testing.T) {
 		t.Fatalf("failed to update agent def: %v", err)
 	}
 
-	env.InsertAgentSession(t, "sess-at-1", "AT-1", wfiID, "analyzer", "analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-at-1", "AT-1", wfiID, "analyzer", "analyzer", "claude:sonnet-5")
 
 	status, err := getWorkflowStatus(t, env, "AT-1", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -44,7 +44,7 @@ func TestActiveAgentsIncludesTag(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -69,7 +69,7 @@ func TestActiveAgentsOmitsTagWhenEmpty(t *testing.T) {
 
 	// "analyzer" already exists from testenv seeding — no update needed (tag is empty by default)
 
-	env.InsertAgentSession(t, "sess-at-2", "AT-2", wfiID, "analyzer", "analyzer", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-at-2", "AT-2", wfiID, "analyzer", "analyzer", "claude:sonnet-5")
 
 	status, err := getWorkflowStatus(t, env, "AT-2", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -81,7 +81,7 @@ func TestActiveAgentsOmitsTagWhenEmpty(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -101,7 +101,7 @@ func TestActiveAgentsOmitsTagWithNoAgentDef(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "AT-3", "test")
 
 	// Insert session with no matching agent definition
-	env.InsertAgentSession(t, "sess-at-3", "AT-3", wfiID, "analyzer", "unknown-agent", "claude:sonnet")
+	env.InsertAgentSession(t, "sess-at-3", "AT-3", wfiID, "analyzer", "unknown-agent", "claude:sonnet-5")
 
 	status, err := getWorkflowStatus(t, env, "AT-3", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -113,7 +113,7 @@ func TestActiveAgentsOmitsTagWithNoAgentDef(t *testing.T) {
 		t.Fatalf("expected active_agents map, got %T", status["active_agents"])
 	}
 
-	agent, ok := activeAgents["analyzer:claude:sonnet"].(map[string]interface{})
+	agent, ok := activeAgents["analyzer:claude:sonnet-5"].(map[string]interface{})
 	if !ok {
 		t.Fatalf("expected agent entry, got keys: %v", keysOf(activeAgents))
 	}
@@ -149,7 +149,7 @@ func TestAgentHistoryIncludesTag(t *testing.T) {
 		t.Fatalf("failed to update agent def: %v", err)
 	}
 
-	insertCompletedSession(t, env, "sess-at-4", "AT-4", wfiID, "analyzer", "analyzer", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-at-4", "AT-4", wfiID, "analyzer", "analyzer", "claude:sonnet-5", "completed", "pass")
 
 	status, err := getWorkflowStatus(t, env, "AT-4", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -189,7 +189,7 @@ func TestAgentHistoryOmitsTagWhenEmpty(t *testing.T) {
 
 	// "analyzer" already exists from testenv seeding — tag is empty by default
 
-	insertCompletedSession(t, env, "sess-at-5", "AT-5", wfiID, "analyzer", "analyzer", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-at-5", "AT-5", wfiID, "analyzer", "analyzer", "claude:sonnet-5", "completed", "pass")
 
 	status, err := getWorkflowStatus(t, env, "AT-5", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {
@@ -224,7 +224,7 @@ func TestAgentHistoryOmitsTagWithNoAgentDef(t *testing.T) {
 	wfiID := env.GetWorkflowInstanceID(t, "AT-6", "test")
 
 	// No agent def — LEFT JOIN produces NULL tag
-	insertCompletedSession(t, env, "sess-at-6", "AT-6", wfiID, "analyzer", "unknown-agent", "claude:sonnet", "completed", "pass")
+	insertCompletedSession(t, env, "sess-at-6", "AT-6", wfiID, "analyzer", "unknown-agent", "claude:sonnet-5", "completed", "pass")
 
 	status, err := getWorkflowStatus(t, env, "AT-6", &types.WorkflowGetRequest{Workflow: "test"})
 	if err != nil {

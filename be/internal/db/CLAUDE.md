@@ -30,6 +30,8 @@ Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agen
 
 `agent_sessions.node_id` is execution identity (which slot in the run — session dedupe, retry target, callback scope, trace lane layering); `agent_sessions.agent_type` stays template identity (which `agent_definitions` row — model/tag/prompt resolution). They are equal for every static workflow today. `agent_definitions.node_role` (`static`|`planner`|`fanout_template`) marks defs that must never auto-execute as a phase, alongside `consultant`.
 
+The `models` table has one row per provider/model pair; non-empty `cli_model` and `api_model` columns enable each mode, with separate context windows and JSON effort lists. Agent definitions and historical run/session model references use its canonical slug IDs.
+
 ## Per-project & global settings (config table)
 
 Composite PK `(project_id, key)`. `project_id=''` is the sentinel for global (non-project) settings. Accessors at `be/internal/db/pool.go:94-130`:

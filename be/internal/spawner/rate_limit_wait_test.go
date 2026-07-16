@@ -20,7 +20,7 @@ func TestWaitForRateLimitRetry_CancelledContext(t *testing.T) {
 	proc := &processInfo{
 		sessionID:           "sess-rl-cancel",
 		agentType:           "implementor",
-		modelID:             "claude:sonnet",
+		modelID:             "claude:sonnet-5",
 		projectID:           "proj-1",
 		ticketID:            "ticket-1",
 		workflowName:        "feature",
@@ -55,7 +55,7 @@ func TestWaitForRateLimitRetry_ClockFires(t *testing.T) {
 	proc := &processInfo{
 		sessionID:           "sess-rl-clock",
 		agentType:           "implementor",
-		modelID:             "claude:sonnet",
+		modelID:             "claude:sonnet-5",
 		projectID:           "proj-1",
 		ticketID:            "ticket-1",
 		workflowName:        "feature",

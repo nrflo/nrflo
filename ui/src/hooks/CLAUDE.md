@@ -11,6 +11,8 @@ Custom React hooks for data fetching, WebSocket communication, and shared UI log
 
 TanStack Query hooks export a `*Keys` factory + one hook per query/mutation. WS-driven invalidations live in `useWSReducer.ts`.
 
+`useModels` owns the unified global model query/mutations; `useModelOptions(mode)` filters enabled rows by non-empty `cli_model`/`api_model`, and model effort selectors read the corresponding row effort list instead of applying client-side name gates.
+
 Hooks live under `ui/src/hooks/`. Run `ls ui/src/hooks/` for the full list.
 
 ## WebSocket Protocol v2

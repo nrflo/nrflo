@@ -258,7 +258,7 @@ func insertObserverSession(t *testing.T, pool *db.Pool, id, projectID, kind, sta
 	_, err := pool.Exec(`
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, phase, agent_type, model_id, status, kind, observer_scope, started_at, created_at, updated_at)
-		VALUES (?, ?, '', 'observer', '_observer', 'sonnet', ?, ?, 'global', ?, ?, ?)`,
+		VALUES (?, ?, '', 'observer', '_observer', 'sonnet-5', ?, ?, 'global', ?, ?, ?)`,
 		id, projectID, status, kind, now, now, now)
 	if err != nil {
 		t.Fatalf("insertObserverSession(%s): %v", id, err)

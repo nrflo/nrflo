@@ -8,16 +8,14 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => false,
 }))
 
-vi.mock('@/hooks/useCLIModels', () => ({
+vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Claude', options: [
-      { value: 'sonnet', label: 'Claude: Sonnet' },
+    { label: 'Anthropic', options: [
+      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
     ]},
   ],
-  useCLIModels: () => ({ data: [] }),
+  useModels: () => ({ data: [] }),
 }))
-
-vi.mock('@/hooks/useAPIModels', () => ({ useAPIModelOptions: () => [], useAPIModels: () => ({ data: [] }) }))
 
 vi.mock('@/components/workflow/PythonScriptPickerField', () => ({
   PythonScriptPickerField: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -34,7 +32,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
     project_id: 'test-project',
     workflow_id: 'feature',
     layer: 0,
-    model: 'sonnet',
+    model: 'sonnet-5',
     timeout: 20,
     prompt: 'Test prompt',
     execution_mode: 'cli_interactive',

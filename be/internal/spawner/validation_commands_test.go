@@ -27,7 +27,7 @@ func TestLoadAgentDefinition_ValidationCommandsField(t *testing.T) {
 		ID:                 "vc-agent",
 		ProjectID:          env.project,
 		WorkflowID:         "test",
-		Model:              "sonnet",
+		Model:              "sonnet-5",
 		Timeout:            20,
 		Prompt:             "validation commands test",
 		ValidationCommands: `["true","make test"]`,
@@ -67,7 +67,7 @@ func TestLoadAgentDefinition_ValidationCommandsEmpty(t *testing.T) {
 		ID:                 "vc-empty",
 		ProjectID:          env.project,
 		WorkflowID:         "test",
-		Model:              "sonnet",
+		Model:              "sonnet-5",
 		Timeout:            20,
 		Prompt:             "no validation commands",
 		ValidationCommands: "[]", // service layer sets this default on create

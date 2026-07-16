@@ -21,7 +21,7 @@ from lib import db as db_mod
 from lib.runtime import Ctx, Result, make_project, next_id, resolve_model, wait_for_workflow
 
 
-# Per-provider model overrides; empty = use the runner default (e.g. haiku).
+# Per-provider model overrides; empty = use the runner default (e.g. haiku-4-5).
 MODELS_BY_PROVIDER: dict[str, str] = {}
 
 

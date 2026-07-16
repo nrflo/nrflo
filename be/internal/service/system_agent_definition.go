@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -13,14 +14,14 @@ import (
 
 // SystemAgentDefinitionService handles system agent definition business logic
 type SystemAgentDefinitionService struct {
-	clock       clock.Clock
-	pool        *db.Pool
-	apiModelSvc *APIModelService
+	clock    clock.Clock
+	pool     *db.Pool
+	modelSvc *ModelService
 }
 
 // NewSystemAgentDefinitionService creates a new system agent definition service
-func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock, apiModelSvc *APIModelService) *SystemAgentDefinitionService {
-	return &SystemAgentDefinitionService{pool: pool, clock: clk, apiModelSvc: apiModelSvc}
+func NewSystemAgentDefinitionService(pool *db.Pool, clk clock.Clock, modelSvc *ModelService) *SystemAgentDefinitionService {
+	return &SystemAgentDefinitionService{pool: pool, clock: clk, modelSvc: modelSvc}
 }
 
 // Create creates a new system agent definition
@@ -31,7 +32,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 
 	modelName := req.Model
 	if modelName == "" {
-		modelName = "sonnet"
+		modelName = "sonnet-5"
 	}
 	timeout := req.Timeout
 	if timeout == 0 {
@@ -45,8 +46,8 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		return nil, err
 	}
 
-	if executionMode == "api" && s.apiModelSvc != nil {
-		valid, err := s.apiModelSvc.IsValidModel(modelName)
+	if s.modelSvc != nil {
+		valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(executionMode))
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate model: %w", err)
 		}
@@ -64,7 +65,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		return nil, fmt.Errorf("planner agent requires the emit_findings tool in its tools CSV")
 	}
 
-	if err := validateDefReasoningEffort(NewCLIModelService(s.pool, s.clock), s.apiModelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
+	if err := validateDefReasoningEffort(s.modelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
 		return nil, err
 	}
 
@@ -113,6 +114,9 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 	if err := s.revalidatePlannerTools(id, req); err != nil {
 		return err
 	}
+	if err := s.revalidateModel(id, req); err != nil {
+		return err
+	}
 	updates := []string{}
 	args := []interface{}{}
 
@@ -128,7 +132,7 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		args = append(args, *req.ExecutionMode)
 	}
 	if req.Model != nil {
-		if s.apiModelSvc != nil {
+		if s.modelSvc != nil {
 			// Determine effective execution_mode to branch validation
 			var currentMode string
 			if req.ExecutionMode != nil {
@@ -140,8 +144,8 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 					return fmt.Errorf("failed to load system agent definition: %w", scanErr)
 				}
 			}
-			if currentMode == "api" {
-				valid, vErr := s.apiModelSvc.IsValidModel(*req.Model)
+			if currentMode != "script" {
+				valid, vErr := s.modelSvc.IsValidModelForMode(*req.Model, registryMode(currentMode))
 				if vErr != nil {
 					return fmt.Errorf("failed to validate model: %w", vErr)
 				}
@@ -206,7 +210,7 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 				modelName = &currentModel
 			}
 		}
-		if err := validateDefReasoningEffort(NewCLIModelService(s.pool, s.clock), s.apiModelSvc, *mode, *modelName, req.ReasoningEffort); err != nil {
+		if err := validateDefReasoningEffort(s.modelSvc, *mode, *modelName, req.ReasoningEffort); err != nil {
 			return err
 		}
 		updates = append(updates, "reasoning_effort = ?")
@@ -235,6 +239,40 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		return fmt.Errorf("system agent definition not found: %s", id)
 	}
 	return nil
+}
+
+func (s *SystemAgentDefinitionService) revalidateModel(id string, req *types.SystemAgentDefUpdateRequest) error {
+	if req.ExecutionMode == nil && req.Model == nil && req.ReasoningEffort == nil {
+		return nil
+	}
+	var mode, modelName string
+	var effort sql.NullString
+	if err := s.pool.QueryRow(`SELECT execution_mode, model, reasoning_effort
+		FROM system_agent_definitions WHERE LOWER(id) = LOWER(?)`, id).Scan(&mode, &modelName, &effort); err != nil {
+		return fmt.Errorf("failed to load system agent definition: %w", err)
+	}
+	if req.ExecutionMode != nil {
+		mode = *req.ExecutionMode
+	}
+	if req.Model != nil {
+		modelName = *req.Model
+	}
+	var effectiveEffort *string
+	if effort.Valid {
+		value := effort.String
+		effectiveEffort = &value
+	}
+	if req.ReasoningEffort != nil {
+		effectiveEffort = req.ReasoningEffort
+	}
+	valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(mode))
+	if err != nil {
+		return fmt.Errorf("failed to validate model: %w", err)
+	}
+	if !valid {
+		return fmt.Errorf("invalid model: %q", modelName)
+	}
+	return validateDefReasoningEffort(s.modelSvc, mode, modelName, effectiveEffort)
 }
 
 // Delete deletes a system agent definition

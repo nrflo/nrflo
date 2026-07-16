@@ -333,7 +333,7 @@ describe('SettingsPage - Logs tab', () => {
     const logsTab = screen.getByRole('button', { name: 'Logs' })
     expect(logsTab).toBeInTheDocument()
     const allTabs = screen.getAllByRole('button').filter((b) =>
-      ['General', 'Menu Panel', 'Projects', 'System Agents', 'Default Templates', 'CLI Models', 'Logs'].includes(b.textContent ?? '')
+      ['General', 'Menu Panel', 'Projects', 'System Agents', 'Default Templates', 'Models', 'Logs'].includes(b.textContent ?? '')
     )
     expect(allTabs[allTabs.length - 1]).toHaveTextContent('Logs')
   })

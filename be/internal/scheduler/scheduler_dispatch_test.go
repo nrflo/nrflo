@@ -66,7 +66,7 @@ func seedProjectWorkflowWithAgent(t *testing.T, pool *db.Pool, projectID, workfl
 	}
 	_, err = pool.Exec(
 		`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-		 VALUES (?, ?, ?, 'sonnet', 5, 'test prompt', 0, ?, ?)`,
+		 VALUES (?, ?, ?, 'sonnet-5', 5, 'test prompt', 0, ?, ?)`,
 		"agent-sched-1", projectID, workflowID, now, now,
 	)
 	if err != nil {

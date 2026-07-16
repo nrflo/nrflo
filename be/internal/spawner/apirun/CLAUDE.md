@@ -55,7 +55,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Wiring
 
-The concrete provider is selected per-agent from the agent's `api_models` row (`provider` column); credentials are resolved per-provider — Anthropic uses OAuth/API-key (`provider/anthropic/credentials.go`), OpenAI uses API-key only (`provider/openai/credentials.go`).
+The concrete provider is selected per-agent from the unified `models` row (`provider` column); credentials are resolved per-provider — Anthropic uses OAuth/API-key (`provider/anthropic/credentials.go`), OpenAI uses API-key only (`provider/openai/credentials.go`).
 
 `prepareSpawn` (api branch) calls `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
 
@@ -69,7 +69,7 @@ The concrete provider is selected per-agent from the agent's `api_models` row (`
 
 ## Extended Thinking (Anthropic)
 
-Opt-in via the api_models row's `ReasoningEffort`. 4.6+ models get adaptive thinking + `OutputConfig.Effort`; Haiku 4.5 and older keep budgeted `thinking` blocks. Thinking/redacted blocks are replayed in later turns; `capture_thinking_enabled` gates display-only rows. Shapes, budgets, and the `[1m]` strip: [REFERENCE.md](REFERENCE.md#extended-thinking-anthropic).
+Opt-in via the unified model row's API reasoning effort. 4.6+ models get adaptive thinking + `OutputConfig.Effort`; Haiku 4.5 and older keep budgeted `thinking` blocks. Thinking/redacted blocks are replayed in later turns; `capture_thinking_enabled` gates display-only rows. Shapes, budgets, and the `[1m]` strip: [REFERENCE.md](REFERENCE.md#extended-thinking-anthropic).
 
 ## Prompt Caching (Anthropic)
 

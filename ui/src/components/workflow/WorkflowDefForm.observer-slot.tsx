@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Textarea } from '@/components/ui/Textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { useCLIModels } from '@/hooks/useCLIModels'
+import { cliTypeForProvider, useModels } from '@/hooks/useModels'
 
 export interface ObserverState {
   context: string
@@ -15,10 +15,10 @@ interface ObserverSectionProps {
 }
 
 export function ObserverSection({ state, onChange }: ObserverSectionProps) {
-  const { data: models = [] } = useCLIModels()
+  const { data: models = [] } = useModels()
 
   const providerOptions = useMemo(() => {
-    const types = Array.from(new Set(models.filter((m) => m.enabled).map((m) => m.cli_type)))
+    const types = Array.from(new Set(models.filter((m) => m.enabled && m.cli_model).map((m) => cliTypeForProvider(m.provider))))
     return [
       { value: '', label: 'Inherit project default' },
       ...types.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })),
@@ -26,7 +26,7 @@ export function ObserverSection({ state, onChange }: ObserverSectionProps) {
   }, [models])
 
   const modelOptions = useMemo(() => {
-    const filtered = models.filter((m) => m.enabled && (!state.provider || m.cli_type === state.provider))
+    const filtered = models.filter((m) => m.enabled && m.cli_model && (!state.provider || cliTypeForProvider(m.provider) === state.provider))
     return [
       { value: '', label: 'Inherit project default' },
       ...filtered.map((m) => ({ value: m.id, label: m.display_name })),

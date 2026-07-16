@@ -49,7 +49,7 @@ func insertContinuedHandlerSession(t *testing.T, database *db.DB, id, wfiID, pro
 		INSERT INTO agent_sessions
 		(id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id,
 		 status, started_at, created_at, updated_at, rate_limit_until_ts, rate_limit_retry_count)
-		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet', 'continued', ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, 'TKT-1', ?, 'impl', 'implementor', 'sonnet-5', 'continued', ?, ?, ?, ?, ?)`,
 		id, projectID, wfiID, now, now, now,
 		sql.NullString{String: rateLimitUntilTs, Valid: rateLimitUntilTs != ""},
 		retryCount)

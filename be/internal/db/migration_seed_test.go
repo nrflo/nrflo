@@ -26,8 +26,8 @@ func TestMigration039_SeedsConflictResolver(t *testing.T) {
 	if id != "conflict-resolver" {
 		t.Errorf("id = %q, want %q", id, "conflict-resolver")
 	}
-	if model != "sonnet" {
-		t.Errorf("model = %q, want %q", model, "sonnet")
+	if model != "sonnet-5" {
+		t.Errorf("model = %q, want %q", model, "sonnet-5")
 	}
 	if timeout != 20 {
 		t.Errorf("timeout = %d, want 20", timeout)
@@ -149,7 +149,7 @@ func TestMigration039_DuplicateInsertFails(t *testing.T) {
 	// conflict-resolver is already seeded by migration. A plain INSERT must fail.
 	_, insertErr := pool.Exec(
 		"INSERT INTO system_agent_definitions (id, model, timeout, prompt, created_at, updated_at) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))",
-		"conflict-resolver", "haiku", 5, "duplicate-test",
+		"conflict-resolver", "haiku-4-5", 5, "duplicate-test",
 	)
 	if insertErr == nil {
 		t.Fatal("expected UNIQUE constraint error for duplicate conflict-resolver insert, got nil")

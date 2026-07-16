@@ -79,7 +79,7 @@ type EngineSpec struct {
 	Sandbox         string // e.g. "workspace-write"; engine-specific default when empty
 	MCPServerPath   string
 	MCPEnv          map[string]string
-	// APIProvider is "anthropic" or "openai", resolved from the api_models row
+	// APIProvider is "anthropic" or "openai", resolved from the unified model row.
 	// (chat_model_resolver.go). Empty for claude/codex specs.
 	APIProvider string
 }

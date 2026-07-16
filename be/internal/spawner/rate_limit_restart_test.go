@@ -36,7 +36,7 @@ func TestHandleRateLimitRetry_BroadcastsEvent(t *testing.T) {
 		doneCh:              doneCh,
 		sessionID:           "sess-rl-event",
 		agentType:           "implementor",
-		modelID:             "claude:sonnet",
+		modelID:             "claude:sonnet-5",
 		projectID:           "proj-rl",
 		ticketID:            "ticket-rl",
 		workflowName:        "feature",
@@ -81,7 +81,7 @@ func TestHandleRateLimitRetry_DBState(t *testing.T) {
 	t.Parallel()
 	env := setupTestEnv(t)
 	defer env.cleanup()
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	doneCh := make(chan struct{})
 	close(doneCh)
@@ -96,7 +96,7 @@ func TestHandleRateLimitRetry_DBState(t *testing.T) {
 		sessionID:           env.sessionID,
 		agentID:             "test-agent-id",
 		agentType:           "implementor",
-		modelID:             "claude:sonnet",
+		modelID:             "claude:sonnet-5",
 		workflowInstanceID:  env.wfiID,
 		projectID:           env.projectID,
 		ticketID:            env.ticketID,

@@ -25,15 +25,15 @@ func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewModelService(pool, clock.Real()))
 
 	def, err := svc.Get("conflict-resolver")
 	if err != nil {
 		t.Fatalf("Get seeded conflict-resolver: %v", err)
 	}
 
-	if def.Model != "sonnet" {
-		t.Errorf("seeded model = %q, want %q", def.Model, "sonnet")
+	if def.Model != "sonnet-5" {
+		t.Errorf("seeded model = %q, want %q", def.Model, "sonnet-5")
 	}
 	if def.Timeout != 20 {
 		t.Errorf("seeded timeout = %d, want 20", def.Timeout)
@@ -78,8 +78,8 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get initial seeded row: %v", err)
 	}
-	if orig.Model != "sonnet" {
-		t.Fatalf("seeded model = %q, want sonnet", orig.Model)
+	if orig.Model != "sonnet-5" {
+		t.Fatalf("seeded model = %q, want sonnet-5", orig.Model)
 	}
 
 	// Delete seeded row.
@@ -95,14 +95,14 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 	// Recreate with custom values — should succeed now that the row is gone.
 	newDef, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "conflict-resolver",
-		Model:  "opus_4_7",
+		Model:  "opus-4-7",
 		Prompt: "custom prompt for testing",
 	})
 	if err != nil {
 		t.Fatalf("Create after Delete: %v", err)
 	}
-	if newDef.Model != "opus_4_7" {
-		t.Errorf("recreated model = %q, want opus", newDef.Model)
+	if newDef.Model != "opus-4-7" {
+		t.Errorf("recreated model = %q, want opus-4-7", newDef.Model)
 	}
 }
 
@@ -120,7 +120,7 @@ func TestSystemAgentDef_SeededConflictResolverPromptVars(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewAPIModelService(pool, clock.Real()))
+	svc := NewSystemAgentDefinitionService(pool, clock.Real(), NewModelService(pool, clock.Real()))
 
 	def, err := svc.Get("conflict-resolver")
 	if err != nil {

@@ -17,7 +17,7 @@ func setupAgentDefCLIInteractiveEnv(t *testing.T) (*AgentDefinitionService, stri
 }
 
 // TestCreateAgentDef_CLIInteractive_ClaudeModel verifies that cli_interactive with a claude
-// model (opus_4_7) succeeds. No CLIType DB lookup needed — the string-prefix heuristic
+// model (opus-4-7) succeeds. No CLIType DB lookup needed — the string-prefix heuristic
 // defaults to "claude" for unknown prefixes.
 func TestCreateAgentDef_CLIInteractive_ClaudeModel(t *testing.T) {
 	t.Parallel()
@@ -27,21 +27,21 @@ func TestCreateAgentDef_CLIInteractive_ClaudeModel(t *testing.T) {
 		ID:            "agent-cli-int-claude",
 		Prompt:        "do stuff",
 		ExecutionMode: "cli_interactive",
-		Model:         "opus_4_7",
+		Model:         "opus-4-7",
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef(cli_interactive, opus_4_7): %v", err)
+		t.Fatalf("CreateAgentDef(cli_interactive, opus-4-7): %v", err)
 	}
 	if def.ExecutionMode != "cli_interactive" {
 		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
 	}
-	if def.Model != "opus_4_7" {
-		t.Errorf("Model = %q, want opus_4_7", def.Model)
+	if def.Model != "opus-4-7" {
+		t.Errorf("Model = %q, want opus-4-7", def.Model)
 	}
 }
 
-// TestCreateAgentDef_CLIInteractive_CodexModel verifies that cli_interactive with a codex model
-// (codex_gpt_normal) succeeds. The "codex_gpt" prefix maps to the codex adapter.
+// TestCreateAgentDef_CLIInteractive_CodexModel verifies that cli_interactive with
+// an OpenAI registry model succeeds and resolves to the Codex adapter.
 func TestCreateAgentDef_CLIInteractive_CodexModel(t *testing.T) {
 	t.Parallel()
 	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
@@ -50,7 +50,7 @@ func TestCreateAgentDef_CLIInteractive_CodexModel(t *testing.T) {
 		ID:            "agent-cli-int-codex",
 		Prompt:        "do stuff",
 		ExecutionMode: "cli_interactive",
-		Model:         "codex_gpt_normal",
+		Model:         "gpt-5.3-codex",
 	})
 	if err != nil {
 		t.Fatalf("CreateAgentDef(cli_interactive, codex_gpt_normal): %v", err)
@@ -82,22 +82,22 @@ func TestCreateAgentDef_CLIInteractive_WithPythonScriptID(t *testing.T) {
 }
 
 // TestCreateAgentDef_CLIInteractive_DBLookupUsedModel verifies that cli_interactive uses the
-// DB-sourced CLIType when the model is in the cli_models table. Uses opus_4_7 which is
-// seeded as cli_type='claude' in the template DB.
+// DB-sourced CLIType when the model supports CLI mode. Uses opus-4-7, which is
+// seeded with cli_type='claude' in the template DB.
 func TestCreateAgentDef_CLIInteractive_DBLookupUsedModel(t *testing.T) {
 	t.Parallel()
 	pool, _, wfID := setupAgentDefTestEnv(t, nil)
-	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
+	modelSvc := NewModelService(pool, clock.Real())
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, nil)
 
 	def, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
 		ID:            "agent-cli-int-db",
 		Prompt:        "do stuff",
 		ExecutionMode: "cli_interactive",
-		Model:         "opus_4_7",
+		Model:         "opus-4-7",
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef(cli_interactive, opus_4_7 via DB lookup): %v", err)
+		t.Fatalf("CreateAgentDef(cli_interactive, opus-4-7 via DB lookup): %v", err)
 	}
 	if def.ExecutionMode != "cli_interactive" {
 		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
@@ -105,7 +105,7 @@ func TestCreateAgentDef_CLIInteractive_DBLookupUsedModel(t *testing.T) {
 }
 
 // TestUpdateAgentDef_ToCLIInteractive_Succeeds verifies that updating execution_mode to
-// cli_interactive succeeds when the existing model is compatible (default sonnet → claude).
+// cli_interactive succeeds when the existing model is compatible (default sonnet-5 → claude).
 func TestUpdateAgentDef_ToCLIInteractive_Succeeds(t *testing.T) {
 	t.Parallel()
 	svc, wfID := setupAgentDefCLIInteractiveEnv(t)
@@ -149,7 +149,7 @@ func TestUpdateAgentDef_ToCLIInteractive_WithNewModel(t *testing.T) {
 	}
 
 	mode := "cli_interactive"
-	model := "codex_gpt_normal"
+	model := "gpt-5.3-codex"
 	if err := svc.UpdateAgentDef("proj1", wfID, "upd-mode-and-model", &types.AgentDefUpdateRequest{
 		ExecutionMode: &mode,
 		Model:         &model,
@@ -164,8 +164,8 @@ func TestUpdateAgentDef_ToCLIInteractive_WithNewModel(t *testing.T) {
 	if def.ExecutionMode != "cli_interactive" {
 		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
 	}
-	if def.Model != "codex_gpt_normal" {
-		t.Errorf("Model = %q, want codex_gpt_normal", def.Model)
+	if def.Model != "gpt-5.3-codex" {
+		t.Errorf("Model = %q, want gpt-5.3-codex", def.Model)
 	}
 }
 
@@ -181,9 +181,9 @@ func TestCreateAgentDef_CLIInteractive_ModelValidation(t *testing.T) {
 		model   string
 		wantOK  bool
 	}{
-		{"claude default", "ag-claude", "opus_4_7", true},
-		{"codex prefix", "ag-codex", "codex_gpt_high", true},
-		{"unknown prefix falls back to claude", "ag-unknown", "mycompany_model_v1", true},
+		{"claude model", "ag-claude", "opus-4-7", true},
+		{"codex model", "ag-codex", "gpt-5.3-codex", true},
+		{"unknown model rejected", "ag-unknown", "mycompany_model_v1", false},
 	}
 
 	for _, tc := range cases {

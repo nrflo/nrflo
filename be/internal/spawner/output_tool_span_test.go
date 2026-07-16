@@ -53,7 +53,7 @@ func TestCloseToolSpan_StampsPendingBufferEntry(t *testing.T) {
 func TestCloseToolSpan_FallsBackToDBRow(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 	proc := &processInfo{sessionID: env.sessionID}
 
 	env.spawner.TrackToolInvoke(proc, "[WebFetch] http://x", "tool", "tu_slow")

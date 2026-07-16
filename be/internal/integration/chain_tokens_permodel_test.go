@@ -10,8 +10,8 @@ import (
 )
 
 // TestChainItemTokensUsed_PerModelContext verifies that chain item token totals
-// use the per-model context_length from cli_models rather than the 200000 default.
-// opus_4_7_1m has context_length=1000000; two completed sessions with context_left=50
+// use the per-model CLI context from models rather than the 200000 default.
+// opus-4-7-1m has cli_context=1000000; two completed sessions with context_left=50
 // each yield 1000000*(100-50)/100 * 2 = 1_000_000.
 func TestChainItemTokensUsed_PerModelContext(t *testing.T) {
 	env := NewTestEnv(t)
@@ -32,20 +32,20 @@ func TestChainItemTokensUsed_PerModelContext(t *testing.T) {
 		t.Fatalf("CreateChain failed: %v", err)
 	}
 
-	// PM-A: 2 sessions at context_left=50 with opus_4_7_1m (context_length=1000000)
+	// PM-A: 2 sessions at context_left=50 with opus-4-7-1m (cli_context=1000000)
 	// 2 × (1000000*(100-50)/100) = 1_000_000
 	wfiA := "wfi-pma-001"
 	env.InitWorkflowWithID(t, "PM-A", wfiA)
 	insertSessionWithContextLeft(t, env, "sess-pma-1", "PM-A", wfiA,
-		"analyzer", "setup-analyzer", "opus_4_7_1m", "completed", "pass", 50)
+		"analyzer", "setup-analyzer", "opus-4-7-1m", "completed", "pass", 50)
 	insertSessionWithContextLeft(t, env, "sess-pma-2", "PM-A", wfiA,
-		"builder", "implementor", "opus_4_7_1m", "completed", "pass", 50)
+		"builder", "implementor", "opus-4-7-1m", "completed", "pass", 50)
 
-	// PM-B: 1 session at context_left=50 with opus_4_7_1m → 500000
+	// PM-B: 1 session at context_left=50 with opus-4-7-1m → 500000
 	wfiB := "wfi-pmb-001"
 	env.InitWorkflowWithID(t, "PM-B", wfiB)
 	insertSessionWithContextLeft(t, env, "sess-pmb-1", "PM-B", wfiB,
-		"analyzer", "setup-analyzer", "opus_4_7_1m", "completed", "pass", 50)
+		"analyzer", "setup-analyzer", "opus-4-7-1m", "completed", "pass", 50)
 
 	itemRepo := repo.NewChainItemRepo(env.Pool, env.Clock)
 	items, err := itemRepo.ListByChain(chain.ID)

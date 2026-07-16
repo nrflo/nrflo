@@ -142,7 +142,7 @@ export function SystemAgentsSection() {
               <strong>System agents run under the Claude Code CLI.</strong>{' '}
               The <code>claude</code> CLI binary is used regardless of the project default CLI. Ensure
               Claude Code CLI is installed and authenticated on the server host, and that a Claude
-              model is configured under <strong>CLI Models &rarr; Claude</strong>.
+              model is configured under <strong>Models &rarr; Anthropic</strong> with CLI mode enabled.
             </div>
           </div>
           {isLoading && (

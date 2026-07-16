@@ -27,10 +27,10 @@ func TestBuildInteractiveLaunch_SystemPromptOverride_EmitsBothFlags(t *testing.T
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
 	}
 	agents := map[string]spawner.AgentConfig{
-		"analyzer": {Model: "opus_4_7"},
+		"analyzer": {Model: "opus-4-7"},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
+		"opus-4-7": {Provider: "anthropic", CLIModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{
@@ -41,14 +41,13 @@ func TestBuildInteractiveLaunch_SystemPromptOverride_EmitsBothFlags(t *testing.T
 	}
 
 	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
-		req, wi, "test-session-ovr", "opus_4_7",
+		req, wi, "test-session-ovr", "opus-4-7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
 		agents,
 		env.pool,
 		"",
 		modelConfigs,
-		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {
@@ -90,10 +89,10 @@ func TestBuildInteractiveLaunch_SystemPromptOverride_ToggleFalse(t *testing.T) {
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
 	}
 	agents := map[string]spawner.AgentConfig{
-		"analyzer": {Model: "opus_4_7"},
+		"analyzer": {Model: "opus-4-7"},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
+		"opus-4-7": {Provider: "anthropic", CLIModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{
@@ -104,14 +103,13 @@ func TestBuildInteractiveLaunch_SystemPromptOverride_ToggleFalse(t *testing.T) {
 	}
 
 	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
-		req, wi, "test-session-nov", "opus_4_7",
+		req, wi, "test-session-nov", "opus-4-7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
 		agents,
 		env.pool,
 		"",
 		modelConfigs,
-		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {
@@ -150,7 +148,7 @@ func TestBuildInteractiveLaunch_PlanMode_NoOverrideFile(t *testing.T) {
 		Phases: []service.SpawnerPhaseDef{{Agent: "analyzer", Layer: 0}},
 	}
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus_4_7": {CLIType: "claude", MappedModel: "claude-opus-4-7"},
+		"opus-4-7": {Provider: "anthropic", CLIModel: "claude-opus-4-7"},
 	}
 
 	req := RunRequest{
@@ -161,14 +159,13 @@ func TestBuildInteractiveLaunch_PlanMode_NoOverrideFile(t *testing.T) {
 	}
 
 	launch, _, _, cleanup, err := env.orch.buildInteractiveLaunch(
-		req, wi, "test-session-pm", "opus_4_7",
+		req, wi, "test-session-pm", "opus-4-7",
 		svcWf,
 		map[string]spawner.WorkflowDef{},
 		map[string]spawner.AgentConfig{},
 		env.pool,
 		"",
 		modelConfigs,
-		map[string]spawner.APIModelConfig{},
 		"",
 	)
 	if err != nil {

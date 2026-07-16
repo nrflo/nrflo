@@ -112,7 +112,7 @@ func TestCreateAgentSessionRow_EffectiveModePersisted(t *testing.T) {
 
 	s.createAgentSessionRow(
 		"proj", "T-1", "wfi-1",
-		"implementor", "phase1", "sess-em-persist", "sonnet", "phase1",
+		"implementor", "phase1", "sess-em-persist", "sonnet-5", "phase1",
 		"", "", "", "tok-em-persist",
 		"cli_interactive", 0,
 	)
@@ -141,7 +141,7 @@ func TestCreateAgentSessionRow_AllEffectiveModes(t *testing.T) {
 		s := New(Config{Pool: pool, Clock: clock.Real()})
 		s.createAgentSessionRow(
 			"proj", "T-1", "wfi-1",
-			"implementor", "phase1", sessionID, "sonnet", "phase1",
+			"implementor", "phase1", sessionID, "sonnet-5", "phase1",
 			"", "", "", spawnToken,
 			mode, i,
 		)
@@ -171,7 +171,7 @@ func TestCreateAgentSessionRow_InsertOnceGatesRollback(t *testing.T) {
 
 	first := s.createAgentSessionRow(
 		"proj", "T-1", "wfi-1",
-		"implementor", "phase1", "sess-once", "sonnet", "phase1",
+		"implementor", "phase1", "sess-once", "sonnet-5", "phase1",
 		"", "", "", "tok-once",
 		"script", 0,
 	)
@@ -181,7 +181,7 @@ func TestCreateAgentSessionRow_InsertOnceGatesRollback(t *testing.T) {
 
 	second := s.createAgentSessionRow(
 		"proj", "T-1", "wfi-1",
-		"implementor", "phase1", "sess-once", "sonnet", "phase1",
+		"implementor", "phase1", "sess-once", "sonnet-5", "phase1",
 		"", "", "", "tok-once-2",
 		"script", 0,
 	)

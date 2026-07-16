@@ -55,7 +55,7 @@ func TestAgentCallbackPreservesExistingFindings(t *testing.T) {
 	env.InitWorkflow(t, "AGT-CB-5")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-5", "test")
-	env.InsertAgentSession(t, "sess-cb-5", "AGT-CB-5", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-cb-5", "AGT-CB-5", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Add initial findings via socket (use findings.add-bulk)
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
@@ -103,7 +103,7 @@ func TestAgentCallbackStatusMapping(t *testing.T) {
 	env.InitWorkflow(t, "AGT-CB-6")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-6", "test")
-	env.InsertAgentSession(t, "sess-cb-6", "AGT-CB-6", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-cb-6", "AGT-CB-6", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// Set result to callback
 	env.MustExecute(t, "agent.callback", map[string]interface{}{
@@ -138,7 +138,7 @@ func TestAgentCallbackE2E(t *testing.T) {
 	env.InitWorkflow(t, "AGT-CB-E2E")
 
 	wfiID := env.GetWorkflowInstanceID(t, "AGT-CB-E2E", "test")
-	env.InsertAgentSession(t, "sess-cb-e2e", "AGT-CB-E2E", wfiID, "analyzer", "analyzer", "sonnet")
+	env.InsertAgentSession(t, "sess-cb-e2e", "AGT-CB-E2E", wfiID, "analyzer", "analyzer", "sonnet-5")
 
 	// 1. Agent saves callback_instructions finding
 	env.MustExecute(t, "findings.add-bulk", map[string]interface{}{
@@ -240,11 +240,11 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 		// for level 0, the default-layer-mode zero value).
 		wantLayerMode bool
 	}{
-		{name: "Level 0", ticketID: "AGT-CB-L0", agentType: "analyzer", cliModel: "haiku", level: 0, wantLayerMode: true},
-		{name: "Level 1", ticketID: "AGT-CB-L1", agentType: "analyzer", cliModel: "sonnet", level: 1},
-		{name: "Level 2 with model filter", ticketID: "AGT-CB-L2", agentType: "builder", cliModel: "opus_4_7", modelFilter: "opus_4_7", level: 2},
-		{name: "Level 5", ticketID: "AGT-CB-L5", agentType: "analyzer", cliModel: "sonnet", level: 5},
-		{name: "Level 10", ticketID: "AGT-CB-L10", agentType: "analyzer", cliModel: "sonnet", level: 10},
+		{name: "Level 0", ticketID: "AGT-CB-L0", agentType: "analyzer", cliModel: "haiku-4-5", level: 0, wantLayerMode: true},
+		{name: "Level 1", ticketID: "AGT-CB-L1", agentType: "analyzer", cliModel: "sonnet-5", level: 1},
+		{name: "Level 2 with model filter", ticketID: "AGT-CB-L2", agentType: "builder", cliModel: "opus-4-7", modelFilter: "opus-4-7", level: 2},
+		{name: "Level 5", ticketID: "AGT-CB-L5", agentType: "analyzer", cliModel: "sonnet-5", level: 5},
+		{name: "Level 10", ticketID: "AGT-CB-L10", agentType: "analyzer", cliModel: "sonnet-5", level: 10},
 	}
 
 	for _, tc := range testCases {

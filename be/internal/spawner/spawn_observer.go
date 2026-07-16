@@ -23,27 +23,27 @@ import (
 func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 	ctx := context.Background()
 
-	// Resolve which CLI adapter to use. Provider string maps to a CLI name;
-	// default to "claude" if empty.
+	model := req.Model
+	if model == "" {
+		model = "sonnet-5"
+	}
+
+	// Explicit CLI overrides remain supported; otherwise derive the CLI from
+	// the model registry provider.
 	cliName := req.Provider
-	if cliName == "" {
-		cliName = "claude"
+	switch cliName {
+	case "":
+		cliName = s.cliForModel(model)
+	case "anthropic", "openai":
+		cliName = cliForProvider(cliName)
 	}
 	adapter, err := GetCLIAdapter(cliName)
 	if err != nil {
-		// If the provider is not a known CLI name, treat it as a model name and
-		// derive the CLI from it.
-		cliName = s.cliForModel(req.Provider)
-		adapter, err = GetCLIAdapter(cliName)
-		if err != nil {
-			return fmt.Errorf("spawn_observer: resolve cli adapter: %w", err)
-		}
+		return fmt.Errorf("spawn_observer: resolve cli adapter: %w", err)
 	}
 
-	// Resolve model: use req.Model if set, otherwise fall back to "sonnet".
-	model := req.Model
-	if model == "" {
-		model = "sonnet"
+	if cfg, ok := s.config.ModelConfigs[model]; ok && cfg.CLIModel == "" {
+		return fmt.Errorf("spawn_observer: model %q does not support cli mode", model)
 	}
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 	_, modelName := parseModelID(modelID)
@@ -139,8 +139,8 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 
 	var mappedModel, reasoningEffort string
 	if cfg, ok := s.config.ModelConfigs[model]; ok {
-		mappedModel = cfg.MappedModel
-		reasoningEffort = cfg.ReasoningEffort
+		mappedModel = cfg.CLIModel
+		reasoningEffort = cfg.DefaultEffort
 	}
 
 	prep := &prepResult{

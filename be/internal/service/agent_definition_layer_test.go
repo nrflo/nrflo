@@ -36,8 +36,8 @@ func setupLayerTestEnv(t *testing.T) (*db.Pool, *AgentDefinitionService, *Workfl
 		t.Fatalf("workflow create: %v", err)
 	}
 
-	cliModelSvc := NewCLIModelService(pool, clock.Real())
-	svc := NewAgentDefinitionService(pool, clock.Real(), cliModelSvc, NewAPIModelService(pool, clock.Real()), nil)
+	modelSvc := NewModelService(pool, clock.Real())
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, nil)
 	return pool, svc, wfSvc
 }
 

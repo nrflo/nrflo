@@ -44,7 +44,7 @@ func TestAgentHistoryDurationBothTimestamps(t *testing.T) {
 	startTime := env.Clock.Now()
 	endTime := startTime.Add(5 * time.Minute)
 	insertSessionWithTimestamps(t, env, "dur-sess-1", "DUR-1", wfiID,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass",
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass",
 		startTime, endTime)
 
 	// Get workflow status
@@ -97,7 +97,7 @@ func TestAgentHistoryDurationOnlyStarted(t *testing.T) {
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?)`,
 		"dur-sess-2", env.ProjectID, "DUR-2", wfiID, "analyzer", "setup-analyzer",
-		"claude:sonnet", "completed", "pass",
+		"claude:sonnet-5", "completed", "pass",
 		startedAtStr, now, now,
 	)
 	if err != nil {
@@ -155,7 +155,7 @@ func TestAgentHistoryDurationOnlyEnded(t *testing.T) {
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, ?, ?, ?)`,
 		"dur-sess-3", env.ProjectID, "DUR-3", wfiID, "analyzer", "setup-analyzer",
-		"claude:sonnet", "completed", "pass",
+		"claude:sonnet-5", "completed", "pass",
 		endedAtStr, now, now,
 	)
 	if err != nil {
@@ -211,7 +211,7 @@ func TestAgentHistoryDurationNeitherTimestamp(t *testing.T) {
 			restart_count, started_at, ended_at, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)`,
 		"dur-sess-4", env.ProjectID, "DUR-4", wfiID, "analyzer", "setup-analyzer",
-		"claude:sonnet", "completed", "pass",
+		"claude:sonnet-5", "completed", "pass",
 		now, now,
 	)
 	if err != nil {
@@ -264,7 +264,7 @@ func TestAgentHistoryDurationNegativeClockSkew(t *testing.T) {
 	startTime := env.Clock.Now()
 	endTime := startTime.Add(-2 * time.Minute) // 2 minutes before start
 	insertSessionWithTimestamps(t, env, "dur-sess-5", "DUR-5", wfiID,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass",
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass",
 		startTime, endTime)
 
 	// Get workflow status
@@ -310,17 +310,17 @@ func TestAgentHistoryDurationMultipleEntries(t *testing.T) {
 	// Insert three sessions with different durations
 	// Agent 1: 2 minutes (120 seconds)
 	insertSessionWithTimestamps(t, env, "dur-sess-6a", "DUR-6", wfiID,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass",
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass",
 		baseTime, baseTime.Add(2*time.Minute))
 
 	// Agent 2: 10 minutes (600 seconds)
 	insertSessionWithTimestamps(t, env, "dur-sess-6b", "DUR-6", wfiID,
-		"builder", "implementor", "claude:opus", "completed", "pass",
+		"builder", "implementor", "claude:opus-4-7", "completed", "pass",
 		baseTime.Add(2*time.Minute), baseTime.Add(12*time.Minute))
 
 	// Agent 3: 30 seconds
 	insertSessionWithTimestamps(t, env, "dur-sess-6c", "DUR-6", wfiID,
-		"analyzer", "qa-verifier", "claude:sonnet", "completed", "pass",
+		"analyzer", "qa-verifier", "claude:sonnet-5", "completed", "pass",
 		baseTime.Add(12*time.Minute), baseTime.Add(12*time.Minute+30*time.Second))
 
 	// Get workflow status
@@ -380,7 +380,7 @@ func TestAgentHistoryDurationPrecision(t *testing.T) {
 	startTime := env.Clock.Now()
 	endTime := startTime.Add(1500 * time.Millisecond) // 1.5 seconds
 	insertSessionWithTimestamps(t, env, "dur-sess-7", "DUR-7", wfiID,
-		"analyzer", "setup-analyzer", "claude:sonnet", "completed", "pass",
+		"analyzer", "setup-analyzer", "claude:sonnet-5", "completed", "pass",
 		startTime, endTime)
 
 	// Get workflow status

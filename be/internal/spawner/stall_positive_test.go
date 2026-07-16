@@ -149,7 +149,7 @@ func TestCheckStall_StallEventBroadcast(t *testing.T) {
 		doneCh:             doneCh,
 		sessionID:          "stall-pos-sess",
 		agentType:          "implementor",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		projectID:          "proj-pos",
 		ticketID:           "T-pos",
 		workflowName:       "feature",

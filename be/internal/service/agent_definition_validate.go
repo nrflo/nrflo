@@ -100,22 +100,25 @@ func validateDescription(nodeRole, description string) error {
 // supported_efforts list. nil effort is always valid (inherit from the model
 // row). A model row that no longer exists is left to the caller's own model
 // validation.
-func validateDefReasoningEffort(cliSvc *CLIModelService, apiSvc *APIModelService, executionMode, modelName string, effort *string) error {
+func registryMode(executionMode string) string {
+	if executionMode == "api" {
+		return "api"
+	}
+	return "cli"
+}
+
+func validateDefReasoningEffort(modelSvc *ModelService, executionMode, modelName string, effort *string) error {
 	if effort == nil {
 		return nil
 	}
-	if executionMode == "api" {
-		am, err := apiSvc.Get(modelName)
-		if err != nil {
-			return nil
-		}
-		return ValidateEffortAllowed(*effort, am.SupportedEfforts)
-	}
-	cm, err := cliSvc.Get(modelName)
+	m, err := modelSvc.Get(modelName)
 	if err != nil {
 		return nil
 	}
-	return ValidateEffortAllowed(*effort, cm.SupportedEfforts)
+	if executionMode == "api" {
+		return ValidateEffortAllowed(*effort, m.APIEfforts)
+	}
+	return ValidateEffortAllowed(*effort, m.CLIEfforts)
 }
 
 // validateConsultantAndNodeRole re-validates the consultant+execution_mode+node_role
@@ -190,7 +193,16 @@ func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, work
 	if req.ReasoningEffort != nil {
 		effectiveEffort = req.ReasoningEffort
 	}
-	return validateDefReasoningEffort(s.cliModelSvc, s.apiModelSvc, effectiveMode, effectiveModel, effectiveEffort)
+	if effectiveMode != "script" {
+		valid, err := s.modelSvc.IsValidModelForMode(effectiveModel, registryMode(effectiveMode))
+		if err != nil {
+			return fmt.Errorf("failed to validate model: %w", err)
+		}
+		if !valid {
+			return fmt.Errorf("invalid model: %q", effectiveModel)
+		}
+	}
+	return validateDefReasoningEffort(s.modelSvc, effectiveMode, effectiveModel, effectiveEffort)
 }
 
 // revalidatePlannerTools re-checks that a system agent def whose effective

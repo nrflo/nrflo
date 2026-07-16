@@ -71,7 +71,6 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 
 	// Build model configs and claude safety settings (read once; mid-consult changes have no effect).
 	modelConfigs, _ := o.loadModelConfigs(pool)
-	apiModelConfigs, _ := o.loadAPIModelConfigs(pool)
 	claudeSettingsJSON := ""
 	if raw, _ := pool.GetProjectConfig(projectID, "claude_safety_hook"); raw != "" {
 		claudeSettingsJSON = spawner.BuildSafetySettingsJSON(raw)
@@ -89,7 +88,6 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 		APIMode:            true,
 		ClaudeSettingsJSON: claudeSettingsJSON,
 		ModelConfigs:       modelConfigs,
-		APIModelConfigs:    apiModelConfigs,
 		ErrorSvc:           o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
 			return consultBuildAPIProvider(ctx, consultPool, o.clock, providerName, projectID)

@@ -57,7 +57,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	// Set session result to callback with callback_level and callback_instructions findings
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -76,7 +76,7 @@ func TestFinalizePhase_CallbackDetection(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -117,7 +117,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
@@ -134,7 +134,7 @@ func TestFinalizePhase_CallbackLevelZero(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -166,7 +166,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
@@ -183,7 +183,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -218,8 +218,8 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 	defer env.cleanup()
 
 	// Create two sessions: one PASS, one CALLBACK
-	sess1 := env.createSessionWithID(t, "sess-pass", "claude:sonnet")
-	sess2 := env.createSessionWithID(t, "sess-callback", "claude:opus")
+	sess1 := env.createSessionWithID(t, "sess-pass", "claude:sonnet-5")
+	sess2 := env.createSessionWithID(t, "sess-callback", "claude:opus-4-7")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 
@@ -243,7 +243,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 		cmd:                cmd1,
 		sessionID:          sess1,
 		agentID:            "agent-pass",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -256,7 +256,7 @@ func TestFinalizePhase_PassTakesPrecedenceOverCallback(t *testing.T) {
 		cmd:                cmd2,
 		sessionID:          sess2,
 		agentID:            "agent-callback",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -290,7 +290,7 @@ func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "pass", "explicit")
@@ -302,7 +302,7 @@ func TestFinalizePhase_NoCallback_Pass(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -330,7 +330,7 @@ func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:opus")
+	env.createSession(t, "claude:opus-4-7")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "fail", "explicit")
@@ -342,7 +342,7 @@ func TestFinalizePhase_NoCallback_Fail(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:opus",
+		modelID:            "claude:opus-4-7",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -376,7 +376,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku")
+	env.createSession(t, "claude:haiku-4-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "skip", "explicit")
@@ -388,7 +388,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:haiku",
+		modelID:            "claude:haiku-4-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -416,7 +416,7 @@ func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:sonnet")
+	env.createSession(t, "claude:sonnet-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	// JSON numbers unmarshal to float64
@@ -434,7 +434,7 @@ func TestFinalizePhase_CallbackLevelFloat(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:sonnet",
+		modelID:            "claude:sonnet-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

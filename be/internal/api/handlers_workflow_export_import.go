@@ -5,16 +5,13 @@ import (
 	"net/http"
 	"strings"
 
-	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/types"
 )
 
 func (s *Server) workflowExportService() *service.WorkflowExportService {
 	wfSvc := service.NewWorkflowService(s.pool, s.clock)
-	cliModelSvc := service.NewCLIModelService(s.pool, s.clock)
-	pythonScriptRepo := repo.NewPythonScriptRepo(s.pool, s.clock)
-	agentDefSvc := service.NewAgentDefinitionService(s.pool, s.clock, cliModelSvc, service.NewAPIModelService(s.pool, s.clock), pythonScriptRepo)
+	agentDefSvc := s.agentDefinitionService()
 	layerPolicySvc := service.NewWorkflowLayerPolicyService(s.pool, s.clock)
 	notifySvc := service.NewNotificationService(s.pool, s.clock, s.wsHub, s.notifyWaker, wfSvc)
 	pythonScriptSvc := service.NewPythonScriptService(s.pool, s.clock)

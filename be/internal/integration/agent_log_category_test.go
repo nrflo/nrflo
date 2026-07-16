@@ -48,7 +48,7 @@ func seedCategoryMessages(t *testing.T, dbPath, projectID, sessionID string) {
 	}
 	if _, err := database.Exec(
 		`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		sessionID, projectID, ticketID, wfiID, "implementation", "implementor", "claude:sonnet", "running", now, now, now,
+		sessionID, projectID, ticketID, wfiID, "implementation", "implementor", "claude:sonnet-5", "running", now, now, now,
 	); err != nil {
 		t.Fatalf("seed session: %v", err)
 	}
@@ -78,7 +78,7 @@ func seedCategoryMessages(t *testing.T, dbPath, projectID, sessionID string) {
 	legacySessionID := sessionID + "-legacy"
 	if _, err := database.Exec(
 		`INSERT INTO agent_sessions (id, project_id, ticket_id, workflow_instance_id, phase, agent_type, model_id, status, started_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		legacySessionID, projectID, ticketID, wfiID, "implementation", "implementor", "claude:sonnet", "running", now, now, now,
+		legacySessionID, projectID, ticketID, wfiID, "implementation", "implementor", "claude:sonnet-5", "running", now, now, now,
 	); err != nil {
 		t.Fatalf("seed legacy session: %v", err)
 	}

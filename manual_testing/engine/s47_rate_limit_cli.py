@@ -91,7 +91,7 @@ def run(ctx: Ctx) -> Result:
         client.create_workflow(pid, wid, scope_type="project")
         client.create_agent_def(
             pid, wid, "main",
-            model="haiku", layer=0, timeout=30, prompt=PROMPT,
+            model="haiku-4-5", layer=0, timeout=30, prompt=PROMPT,
         )
 
         with WSClient(sub.base_url, client._jar) as ws:

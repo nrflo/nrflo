@@ -64,7 +64,7 @@ func TestTicketListAPI_WorkflowProgressEndToEnd(t *testing.T) {
 		{"investigation", 0}, {"test-design", 1}, {"implementation", 2}, {"verification", 3},
 	} {
 		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-			VALUES (?, 'testproj', 'feature', 'sonnet', 20, '', ?, ?, ?)`,
+			VALUES (?, 'testproj', 'feature', 'sonnet-5', 20, '', ?, ?, ?)`,
 			ad.id, ad.layer, now, now)
 		if err != nil {
 			database.Close()
@@ -233,7 +233,7 @@ func TestTicketListAPI_InProgressFilter_ShowsWorkflowProgress(t *testing.T) {
 		{"phase1", 0}, {"phase2", 1}, {"phase3", 2}, {"phase4", 3}, {"phase5", 4},
 	} {
 		_, err = database.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
-			VALUES (?, 'testproj2', 'feature', 'sonnet', 20, '', ?, ?, ?)`,
+			VALUES (?, 'testproj2', 'feature', 'sonnet-5', 20, '', ?, ?, ?)`,
 			ad.id, ad.layer, now, now)
 		if err != nil {
 			database.Close()

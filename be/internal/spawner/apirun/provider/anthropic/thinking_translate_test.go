@@ -108,12 +108,12 @@ func TestTranslateRequest_BudgetThinking_SufficientMaxTokens(t *testing.T) {
 	}
 }
 
-// TestTranslateRequest_AdaptiveThinking_46Plus verifies 4.6+ models use adaptive
-// thinking + the effort output-config (never the budget shape, which 400s on
-// Opus 4.7/4.8) and that MaxTokens is left untouched.
-func TestTranslateRequest_AdaptiveThinking_46Plus(t *testing.T) {
+// TestTranslateRequest_AdaptiveThinkingModels verifies current adaptive models
+// use the effort output-config, never the legacy budget shape.
+func TestTranslateRequest_AdaptiveThinkingModels(t *testing.T) {
 	for _, model := range []string{
 		"claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-5",
+		"claude-fable-5", "claude-mythos-5",
 	} {
 		t.Run(model, func(t *testing.T) {
 			params, err := translateRequest(provider.Request{
@@ -141,7 +141,7 @@ func TestTranslateRequest_AdaptiveThinking_46Plus(t *testing.T) {
 				t.Errorf("expected effort on the wire; body=%s", out)
 			}
 			if strings.Contains(out, `"budget_tokens"`) {
-				t.Errorf("budget_tokens must be absent for 4.6+; body=%s", out)
+				t.Errorf("budget_tokens must be absent for adaptive models; body=%s", out)
 			}
 		})
 	}

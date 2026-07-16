@@ -248,23 +248,7 @@ Only worth doing if `--resume` depends on CC's on-disk session transcripts. If n
 
 ---
 
-## 7. Register Fable 5 as a selectable model
-
-### Motivation
-Claude Code 2.1.170 introduced Fable 5 (`claude-fable-5`). nrflo's `models` registry should offer it for CLI selection and as a fallback-chain entry (pairs with the `--fallback-model` work).
-
-### Design
-Seed migration adding a `claude` `models` row mapped to `claude-fable-5`, with the appropriate CLI fields populated. Confirm default effort and whether any model-family effort restriction needs to include Fable 5.
-
-### Surface area
-- DB seed migration; possibly the UI model list (auto-driven from the table).
-
-### Open questions
-- Default reasoning effort and `xhigh` eligibility for Fable 5.
-
----
-
-## 8. Disable Claude Code bundled skills for nrflo agents (`disableBundledSkills`)
+## 7. Disable Claude Code bundled skills for nrflo agents (`disableBundledSkills`)
 
 ### Motivation
 Claude Code 2.1.169 added `disableBundledSkills` / `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS`. nrflo agents run on custom system prompts + MCP tools; CC's bundled skills add context/token overhead and can surface behaviors nrflo doesn't drive.

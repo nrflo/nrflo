@@ -32,7 +32,7 @@ func TestModelServiceSeedAndModeValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.CLIModel != "gpt-5.6-sol" || m.APIModel != "gpt-5.6-sol" || m.DefaultEffort != "medium" {
+	if m.CLIModel != "gpt-5.6-sol" || m.APIModel != "gpt-5.6-sol" || m.DefaultEffort != "low" {
 		t.Fatalf("unexpected seeded model: %+v", m)
 	}
 	for _, mode := range []string{"cli", "api"} {
@@ -42,7 +42,7 @@ func TestModelServiceSeedAndModeValidation(t *testing.T) {
 		}
 	}
 	valid, err := svc.IsValidModelForMode("gpt-5.6-terra", "api")
-	if err != nil || valid {
+	if err != nil || !valid {
 		t.Fatalf("api-only check: valid=%v err=%v", valid, err)
 	}
 }

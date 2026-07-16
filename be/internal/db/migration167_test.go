@@ -17,6 +17,7 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	want := map[string]string{
+		"fable-5":       "anthropic|claude-fable-5|claude-fable-5|1000000|1000000|claude-opus-4-8|",
 		"sonnet-5":      "anthropic|claude-sonnet-5|claude-sonnet-5|1000000|1000000||",
 		"haiku-4-5":     "anthropic|claude-haiku-4-5|claude-haiku-4-5|200000|200000||",
 		"opus-4-6":      "anthropic|claude-opus-4-6|claude-opus-4-6|200000|1000000||",
@@ -25,14 +26,15 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 		"opus-4-7-1m":   "anthropic|claude-opus-4-7[1m]|claude-opus-4-7[1m]|1000000|1000000|claude-opus-4-7|",
 		"opus-4-8":      "anthropic|claude-opus-4-8|claude-opus-4-8|200000|1000000||",
 		"opus-4-8-1m":   "anthropic|claude-opus-4-8[1m]|claude-opus-4-8[1m]|1000000|1000000|claude-opus-4-8|",
-		"gpt-5.3-codex": "openai|gpt-5.3-codex|gpt-5.3-codex|200000|200000||high",
-		"gpt-5.4":       "openai|gpt-5.4|gpt-5.4|200000|200000||medium",
-		"gpt-5.4-mini":  "openai|gpt-5.4-mini||200000|200000||low",
-		"gpt-5.5":       "openai|gpt-5.5|gpt-5.5|200000|200000||medium",
+		"gpt-5.2":       "openai|gpt-5.2|gpt-5.2|200000|400000||medium",
+		"gpt-5.3-codex": "openai||gpt-5.3-codex|200000|400000||high",
+		"gpt-5.4":       "openai|gpt-5.4|gpt-5.4|200000|1050000||medium",
+		"gpt-5.4-mini":  "openai|gpt-5.4-mini|gpt-5.4-mini|200000|400000||medium",
+		"gpt-5.5":       "openai|gpt-5.5|gpt-5.5|200000|1050000||medium",
 		"gpt-5.5-mini":  "openai|gpt-5.5-mini||200000|200000||low",
-		"gpt-5.6-sol":   "openai|gpt-5.6-sol|gpt-5.6-sol|372000|372000||medium",
-		"gpt-5.6-terra": "openai|gpt-5.6-terra||372000|200000||medium",
-		"gpt-5.6-luna":  "openai|gpt-5.6-luna||372000|200000||low",
+		"gpt-5.6-sol":   "openai|gpt-5.6-sol|gpt-5.6-sol|372000|1050000||low",
+		"gpt-5.6-terra": "openai|gpt-5.6-terra|gpt-5.6-terra|372000|1050000||medium",
+		"gpt-5.6-luna":  "openai|gpt-5.6-luna|gpt-5.6-luna|372000|1050000||medium",
 	}
 
 	rows, err := pool.Query(`SELECT id, provider, cli_model, api_model, cli_context,
@@ -65,7 +67,9 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 	}
 
 	assertEfforts(t, pool, "gpt-5.6-sol", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\",\"ultra\"]", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\"]")
+	assertEfforts(t, pool, "gpt-5.3-codex", "[]", "[\"low\",\"medium\",\"high\",\"xhigh\"]")
 	assertEfforts(t, pool, "opus-4-6", "[\"low\",\"medium\",\"high\",\"max\"]", "[\"low\",\"medium\",\"high\",\"max\"]")
+	assertScalar(t, pool.DB, `SELECT enabled FROM models WHERE id = 'gpt-5.5-mini'`, "0")
 }
 
 func assertEfforts(t *testing.T, pool *Pool, id, wantCLI, wantAPI string) {

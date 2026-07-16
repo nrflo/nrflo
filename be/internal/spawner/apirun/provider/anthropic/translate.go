@@ -43,12 +43,12 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 		MaxTokens: int64(req.MaxTokens),
 	}
 
-	// Thinking is opt-in via reasoning_effort. 4.6+ models use adaptive thinking
+	// Thinking is opt-in via reasoning_effort. Current 1M-native models use adaptive thinking
 	// + the effort output-config (the enabled+budget shape is rejected with a 400
 	// on Opus 4.7/4.8). Haiku 4.5 and older keep the enabled+budget path — they
 	// have no adaptive mode and reject the effort parameter.
 	if req.ReasoningEffort != "" {
-		if is46Plus(model) {
+		if isAdaptiveMillionModel(model) {
 			params.Thinking = sdk.ThinkingConfigParamUnion{OfAdaptive: &sdk.ThinkingConfigAdaptiveParam{}}
 			params.OutputConfig = sdk.OutputConfigParam{Effort: effortParam(req.ReasoningEffort)}
 		} else if budget := thinkingBudget(req.ReasoningEffort); budget > 0 {

@@ -10,7 +10,7 @@ import (
 )
 
 // TestTranslateRequest_MaxEffort_AdaptiveAndBudget verifies the "max" effort
-// maps to the SDK OutputConfig effort "max" on a 4.6+ (adaptive) model and to a
+// maps to the SDK OutputConfig effort "max" on an adaptive model and to a
 // 32768-token budget on Haiku 4.5 (budget path).
 func TestTranslateRequest_MaxEffort_AdaptiveAndBudget(t *testing.T) {
 	t.Run("adaptive_opus-4-8", func(t *testing.T) {

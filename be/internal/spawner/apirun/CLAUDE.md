@@ -69,7 +69,7 @@ The concrete provider is selected per-agent from the unified `models` row (`prov
 
 ## Extended Thinking (Anthropic)
 
-Opt-in via the unified model row's API reasoning effort. 4.6+ models get adaptive thinking + `OutputConfig.Effort`; Haiku 4.5 and older keep budgeted `thinking` blocks. Thinking/redacted blocks are replayed in later turns; `capture_thinking_enabled` gates display-only rows. Shapes, budgets, and the `[1m]` strip: [REFERENCE.md](REFERENCE.md#extended-thinking-anthropic).
+Opt-in via the unified model row's API reasoning effort. Adaptive 1M models (Fable 5, Mythos 5, Sonnet 5, Opus 4.6/4.7/4.8) get adaptive thinking + `OutputConfig.Effort`; Haiku 4.5 and older keep budgeted `thinking` blocks. Thinking/redacted blocks are replayed in later turns; `capture_thinking_enabled` gates display-only rows. Shapes, budgets, and the `[1m]` strip: [REFERENCE.md](REFERENCE.md#extended-thinking-anthropic).
 
 ## Prompt Caching (Anthropic)
 

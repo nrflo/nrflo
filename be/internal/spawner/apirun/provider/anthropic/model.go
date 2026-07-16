@@ -18,27 +18,26 @@ func stripContextSuffix(model string) string {
 	return strings.TrimSuffix(model, contextSuffix1M)
 }
 
-// is46Plus reports whether the bare (suffix-stripped) model id is one of the
-// 4.6+ Anthropic families that are BOTH 1M-context-native AND adaptive-thinking
-// capable. Those two capabilities coincide for the current lineup; a future
-// model that splits them needs a separate predicate. The long-term fix is to
+// isAdaptiveMillionModel reports whether the bare model id is both
+// 1M-context-native and adaptive-thinking capable. The long-term fix is to
 // query the Models API for capabilities instead of hardcoding ids here.
-func is46Plus(base string) bool {
+func isAdaptiveMillionModel(base string) bool {
 	switch base {
-	case "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-5":
+	case "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
+		"claude-sonnet-5", "claude-fable-5", "claude-mythos-5":
 		return true
 	}
 	return false
 }
 
 // contextWindow returns the input context window in tokens for a model id. A
-// "[1m]" suffix or a 4.6+ family yields 1M; everything else (Haiku 4.5, unknown)
-// defaults to 200k.
+// "[1m]" suffix or an adaptive 1M family yields 1M; everything else defaults
+// to 200k.
 func contextWindow(model string) int {
 	if strings.HasSuffix(model, contextSuffix1M) {
 		return 1_000_000
 	}
-	if is46Plus(model) {
+	if isAdaptiveMillionModel(model) {
 		return 1_000_000
 	}
 	return 200_000

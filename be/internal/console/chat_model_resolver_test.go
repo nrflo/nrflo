@@ -63,8 +63,8 @@ func TestAPIModelResolverRejectsUnknownDisabledAndUnsupported(t *testing.T) {
 	if err := resolver.Resolve(pool, clk, &spawner.EngineSpec{}, "no-such-model", ""); err == nil {
 		t.Fatal("unknown model: want error")
 	}
-	if err := resolver.Resolve(pool, clk, &spawner.EngineSpec{}, "gpt-5.4-mini", ""); err == nil {
-		t.Fatal("CLI-only model: want error")
+	if err := resolver.Resolve(pool, clk, &spawner.EngineSpec{}, "gpt-5.5-mini", ""); err == nil {
+		t.Fatal("disabled model: want error")
 	}
 
 	models := service.NewModelService(pool, clk)
@@ -91,7 +91,7 @@ func TestModelResolversApplyDefaultAndValidateOverride(t *testing.T) {
 		name, engine, id, wantDefault, allowed, rejected string
 	}{
 		{name: "api", engine: "api", id: "gpt-5.4", wantDefault: "medium", allowed: "xhigh", rejected: "ultra"},
-		{name: "cli", engine: "codex", id: "gpt-5.6-sol", wantDefault: "medium", allowed: "ultra", rejected: "impossible"},
+		{name: "cli", engine: "codex", id: "gpt-5.6-sol", wantDefault: "low", allowed: "ultra", rejected: "impossible"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			spec := &spawner.EngineSpec{}

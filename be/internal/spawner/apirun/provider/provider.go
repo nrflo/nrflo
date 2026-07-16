@@ -107,7 +107,7 @@ type EventSink interface {
 // complete assistant message reconstructed from the streamed deltas — callers
 // pass it back as the next turn's assistant Message.
 type FinalResponse struct {
-	StopReason string // "end_turn" | "tool_use" | "max_tokens" | "stop_sequence"
+	StopReason string // "end_turn" | "tool_use" | "max_tokens" | "stop_sequence" | "refusal"
 	Content    []ContentBlock
 	Usage      Usage
 }

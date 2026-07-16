@@ -9,8 +9,8 @@ import (
 
 // lcValidModels is the set of low_consumption_model values accepted by validation.
 var lcValidModels = []string{
-	"opus-4-6", "opus-4-6-1m", "opus-4-7", "opus-4-7-1m", "sonnet-5", "haiku-4-5",
-	"gpt-5.3-codex", "gpt-5.4", "gpt-5.4-mini",
+	"fable-5", "opus-4-6", "opus-4-6-1m", "opus-4-7", "opus-4-7-1m", "sonnet-5", "haiku-4-5",
+	"gpt-5.2", "gpt-5.4", "gpt-5.4-mini",
 }
 
 // lcInvalidModels is a set of values that must be rejected by validation.

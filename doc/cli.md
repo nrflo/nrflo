@@ -13,35 +13,31 @@ interactive telemetry.
 
 | CLI | Adapter | Model Format | Context Tracking |
 |-----|---------|--------------|-----------------|
-| `claude` | `ClaudeAdapter` | Versioned IDs (`opus_4_7`, `sonnet`) | `--settings` hooks |
-| `codex` | `CodexAdapter` | Model aliases with reasoning levels | app-server JSON-RPC (token usage) |
+| `claude` | `ClaudeAdapter` | Unified model IDs mapped to Claude model names | `--settings` hooks |
+| `codex` | `CodexAdapter` | Unified model IDs with per-agent reasoning effort | app-server JSON-RPC (token usage) |
 
 ---
 
 ## Supported Models
 
-### Claude (`claude` CLI)
+The `model` value is the unified registry ID shown under **Settings → Models**.
+The seeded CLI-capable rows are:
 
-| `model` value | Maps to |
-|---------------|---------|
-| `opus_4_6` | `claude-opus-4-6` (200k context) |
-| `opus_4_6_1m` | `claude-opus-4-6` (1M context) |
-| `opus_4_7` | `claude-opus-4-7` (200k context) |
-| `opus_4_7_1m` | `claude-opus-4-7` (1M context) |
-| `opus_4_8` | `claude-opus-4-8` (200k context) |
-| `opus_4_8_1m` | `claude-opus-4-8` (1M context) |
-| `sonnet` | Claude Sonnet |
-| `haiku` | Claude Haiku |
+| provider | id | CLI model | context | default effort |
+|----------|----|-----------|---------|----------------|
+| anthropic | `fable-5` | `claude-fable-5` | 1M | provider default |
+| anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | provider default |
+| anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | provider default |
+| anthropic | `opus-4-6`, `opus-4-7`, `opus-4-8` | matching Claude model | 200k | provider default |
+| anthropic | `opus-4-6-1m`, `opus-4-7-1m`, `opus-4-8-1m` | matching Claude model with `[1m]` | 1M | provider default |
+| openai | `gpt-5.2` | `gpt-5.2` | 200k | medium |
+| openai | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.5` | matching GPT model | 200k | medium |
+| openai | `gpt-5.6-sol` | `gpt-5.6-sol` | 372k | low |
+| openai | `gpt-5.6-terra`, `gpt-5.6-luna` | matching GPT model | 372k | medium |
 
-### Codex (`codex` CLI)
-
-| `model` value | Maps to |
-|---------------|---------|
-| `codex_gpt_normal` | `gpt-5.3-codex` (effort "high") |
-| `codex_gpt_high` | `gpt-5.3-codex` (effort "high") |
-| `codex_gpt54_normal` | `gpt-5.4` (effort "medium") |
-| `codex_gpt54_high` | `gpt-5.4` (effort "high") |
-| `codex_gpt54_mini_low` | `gpt-5.4-mini` (effort "low") |
+`reasoning_effort` may override the row default when the selected model supports
+that level. The API exposes the exact per-mode effort lists; custom enabled rows
+appear alongside the seeded rows.
 
 ---
 

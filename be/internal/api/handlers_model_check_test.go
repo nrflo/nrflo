@@ -28,7 +28,7 @@ func TestHandleTestModelRoutesByProvider(t *testing.T) {
 		id, cliType, mapped, effort string
 	}{
 		{"sonnet-5", "claude", "claude-sonnet-5", ""},
-		{"gpt-5.6-sol", "codex", "gpt-5.6-sol", "medium"},
+		{"gpt-5.6-sol", "codex", "gpt-5.6-sol", "low"},
 	} {
 		rr := httptest.NewRecorder()
 		s.handleTestModel(rr, modelRequest(http.MethodPost, "/api/v1/models/"+tc.id+"/test", tc.id, ""))

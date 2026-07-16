@@ -83,6 +83,9 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 		case "max_tokens", "stop_sequence":
 			r.fail(proc, fmt.Sprintf("stop_reason=%s", resp.StopReason))
 			return msgs, "FAIL"
+		case "refusal":
+			r.fail(proc, "provider refusal")
+			return msgs, "FAIL"
 		case "tool_use":
 			toolResults, terminalStatus := r.dispatchTools(ctx, proc, resp.Content)
 			if terminalStatus != "" {

@@ -45,14 +45,16 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 	case "PostToolUseFailure":
 		return h.recordPostToolFailure(ctx, req, params.SessionID, event)
 	case "UserPromptSubmit":
-		// A live console engine already persisted this user turn itself
+		// A live console engine that submitted this exact turn itself
 		// (claudeEngine.SendUserTurn writes the user_input row before typing
-		// the prompt into the PTY) — recording the hook echo would double
-		// every user message in a console chat.
-		if h.consoleHooks != nil && h.consoleHooks.ConsoleSessionLive(params.SessionID) {
+		// the prompt into the PTY) owns the row — recording the hook echo
+		// would double it. Human-typed prompts from an attached terminal
+		// return handled=false and are recorded here, their only writer.
+		prompt := asString(event["prompt"])
+		if h.consoleHooks != nil && h.consoleHooks.ConsoleUserPrompt(params.SessionID, prompt) {
 			return MakeResponse(req.ID, map[string]interface{}{"recorded": false})
 		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, asString(event["prompt"]), "user_input")
+		return h.recordSimpleEvent(ctx, req, params.SessionID, prompt, "user_input")
 	case "UserPromptExpansion":
 		cmd := asString(event["command_name"])
 		args := asString(event["command_args"])

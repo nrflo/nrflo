@@ -26,7 +26,8 @@ type fakeConsoleHooks struct {
 	contextLeftHandled bool
 	contextLeftCalls   []contextLeftCall
 
-	sessionLive bool
+	userPromptOwn   bool
+	userPromptCalls []string
 }
 
 type approveCall struct {
@@ -67,10 +68,11 @@ func (f *fakeConsoleHooks) ConsoleContextLeft(sessionID string, pct int) bool {
 	return f.contextLeftHandled
 }
 
-func (f *fakeConsoleHooks) ConsoleSessionLive(string) bool {
+func (f *fakeConsoleHooks) ConsoleUserPrompt(sessionID, prompt string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.sessionLive
+	f.userPromptCalls = append(f.userPromptCalls, prompt)
+	return f.userPromptOwn
 }
 
 // TestRecordEvent_PreToolUse_ConsoleApprovalHandled_AddsPermissionDecision
@@ -267,7 +269,7 @@ func TestRecordEvent_UserPromptSubmit_ConsoleSessionLive_SkipsUserInputRow(t *te
 	sessionID := "sess-console-ups-1"
 	insertAgentSession(t, env, "CONSOLE-UPS-1", sessionID, wfiID)
 
-	fake := &fakeConsoleHooks{sessionLive: true}
+	fake := &fakeConsoleHooks{userPromptOwn: true}
 	env.handler.consoleHooks = fake
 
 	req := buildRecordEventReq(t, "req-console-ups-1", sessionID, map[string]interface{}{
@@ -283,7 +285,7 @@ func TestRecordEvent_UserPromptSubmit_ConsoleSessionLive_SkipsUserInputRow(t *te
 	}
 
 	fake.mu.Lock()
-	fake.sessionLive = false
+	fake.userPromptOwn = false
 	fake.mu.Unlock()
 	resp = env.handler.Handle(buildRecordEventReq(t, "req-console-ups-2", sessionID, map[string]interface{}{
 		"hook_event_name": "UserPromptSubmit",

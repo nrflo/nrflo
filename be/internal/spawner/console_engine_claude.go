@@ -53,6 +53,15 @@ type claudeEngine struct {
 	// flushMu serializes flushTranscript (ticker + hook goroutines race).
 	flushMu sync.Mutex
 
+	// pendingEcho (mu-guarded) is the last SendUserTurn text awaiting its
+	// UserPromptSubmit hook echo — see NotifyUserPrompt.
+	pendingEcho string
+
+	// viewer (viewerMu-guarded) is the attached raw-terminal sink, nil when
+	// no terminal is attached — see console_engine_claude_viewer.go.
+	viewerMu sync.Mutex
+	viewer   *consoleViewer
+
 	readyCh   chan struct{}
 	readyOnce sync.Once
 
@@ -180,7 +189,11 @@ func (e *claudeEngine) ferry(sess ptySessionIface) {
 	defer e.ferryOnce.Do(func() { close(e.ferryDone) })
 	buf := make([]byte, 4096)
 	for {
-		if _, err := sess.Read(buf); err != nil {
+		n, err := sess.Read(buf)
+		if n > 0 {
+			e.forwardToViewer(buf[:n])
+		}
+		if err != nil {
 			select {
 			case <-e.stopping:
 			default:

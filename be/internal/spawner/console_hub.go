@@ -14,6 +14,10 @@ type consoleTarget interface {
 	NotifyTurnEnd()
 	NotifySessionReady()
 	NotifyContextLeft(pct int)
+	// NotifyUserPrompt reports whether a UserPromptSubmit hook echo is the
+	// engine's own submitted turn (true → the socket handler must not persist
+	// it again) or human-typed input from an attached terminal (false).
+	NotifyUserPrompt(prompt string) (own bool)
 }
 
 // ConsoleHub is a mutex-guarded sessionID -> live console engine registry. It
@@ -84,12 +88,16 @@ func (h *ConsoleHub) ConsoleSessionReady(sessionID string) (handled bool) {
 	return true
 }
 
-// ConsoleSessionLive reports whether a live engine is registered for
-// sessionID (see socket.ConsoleHooks — used to suppress hook-side writes the
-// engine already owns).
-func (h *ConsoleHub) ConsoleSessionLive(sessionID string) bool {
-	_, ok := h.get(sessionID)
-	return ok
+// ConsoleUserPrompt routes a UserPromptSubmit hook echo to the live engine
+// (if any). handled=true means the engine owns the row (its own SendUserTurn
+// echo) and the caller must not persist it; false covers no-live-engine AND
+// human-typed prompts from an attached terminal, which the caller records.
+func (h *ConsoleHub) ConsoleUserPrompt(sessionID, prompt string) (handled bool) {
+	t, ok := h.get(sessionID)
+	if !ok {
+		return false
+	}
+	return t.NotifyUserPrompt(prompt)
 }
 
 // ConsoleContextLeft forwards a context_update to the live engine (if any).

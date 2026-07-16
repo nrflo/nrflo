@@ -30,6 +30,11 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, text string) error {
 	if e.sink != nil {
 		emitMessage(spec.SessionID, text, "user_input", e.sink)
 	}
+	// Arm the echo dedupe: the UserPromptSubmit hook for THIS text is our own
+	// submission and must not be persisted twice (NotifyUserPrompt).
+	e.mu.Lock()
+	e.pendingEcho = text
+	e.mu.Unlock()
 
 	if _, err := sess.Write([]byte(text)); err != nil {
 		e.mu.Lock()

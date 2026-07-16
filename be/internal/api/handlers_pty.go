@@ -52,6 +52,13 @@ func (s *Server) handlePtyWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Console chats get the viewer-only relay: no PTY ownership, no
+	// completion flow, detach on disconnect (handlers_pty_console.go).
+	if session.Kind == model.AgentSessionKindConsoleChat {
+		s.handleConsolePtyAttach(w, r, session)
+		return
+	}
+
 	// Allow attaching to user_interactive sessions (normal take-control flow) OR
 	// to running sessions that already have an active PTY (interactive CLI backend
 	// viewer-attach). For the latter, completePtyInteractive is skipped on disconnect.

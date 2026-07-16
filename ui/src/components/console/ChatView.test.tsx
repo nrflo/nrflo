@@ -21,9 +21,9 @@ vi.mock('@/hooks/useConsoleChatStream', () => ({
   useConsoleChatStream: vi.fn(),
 }))
 
-function makeStream(turn: 'idle' | 'running') {
+function makeStream(turn: 'idle' | 'running', transcript: unknown[] = []) {
   return {
-    transcript: [],
+    transcript,
     turn,
     approvals: [],
     resolvedApprovals: new Map(),
@@ -72,6 +72,30 @@ describe('ChatView turn controls', () => {
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Stop' }))
     expect(interrupt).toHaveBeenCalledWith('s1')
+  })
+
+  it('search filters the transcript and shows a match count; Esc clears', async () => {
+    setup('idle')
+    const transcript = [
+      { kind: 'message', message: { content: 'find the needle here', category: 'text', created_at: '' } },
+      { kind: 'message', message: { content: 'nothing relevant', category: 'text', created_at: '' } },
+    ]
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', transcript) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    const user = userEvent.setup()
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+
+    expect(screen.getByText(/nothing relevant/)).toBeInTheDocument()
+
+    const box = screen.getByLabelText('Search transcript')
+    await user.type(box, 'needle')
+
+    expect(screen.getByText('1 match')).toBeInTheDocument()
+    expect(screen.queryByText(/nothing relevant/)).not.toBeInTheDocument()
+    expect(screen.getByText(/find the needle here/)).toBeInTheDocument()
+
+    await user.type(box, '{Escape}')
+    expect(screen.getByText(/nothing relevant/)).toBeInTheDocument()
   })
 
   it('Detach deselects without closing; Close tears the chat down', async () => {

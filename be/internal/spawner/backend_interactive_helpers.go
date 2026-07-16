@@ -8,16 +8,6 @@ import (
 	ptyPkg "be/internal/pty"
 )
 
-// ptySessionIface abstracts *pty.Session so tests can inject a mock PTY session.
-type ptySessionIface interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-	Kill() error
-	Done() <-chan struct{}
-	Pid() int
-}
-
 // ptyManagerIface abstracts *pty.Manager so tests can inject a mock PTY manager.
 type ptyManagerIface interface {
 	RegisterLaunch(sessionID string, l ptyPkg.Launch)

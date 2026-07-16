@@ -22,10 +22,13 @@ type mockPtySession struct {
 	pidVal       int
 	readChunks   []string
 	readIdx      int
+	// feedCh lets a test push output chunks (feed) to a blocked Read after
+	// the pre-loaded readChunks drain.
+	feedCh chan string
 }
 
 func newMockSession() *mockPtySession {
-	return &mockPtySession{done: make(chan struct{})}
+	return &mockPtySession{done: make(chan struct{}), feedCh: make(chan string, 16)}
 }
 
 func (m *mockPtySession) Read(p []byte) (int, error) {
@@ -36,9 +39,24 @@ func (m *mockPtySession) Read(p []byte) (int, error) {
 		m.mu.Unlock()
 		return copy(p, data), nil
 	}
+	feed := m.feedCh
 	m.mu.Unlock()
-	<-m.done
-	return 0, io.EOF
+	select {
+	case data, ok := <-feed:
+		if !ok {
+			return 0, io.EOF
+		}
+		return copy(p, data), nil
+	case <-m.done:
+		return 0, io.EOF
+	}
+}
+
+func (m *mockPtySession) feed(data string) {
+	m.mu.Lock()
+	ch := m.feedCh
+	m.mu.Unlock()
+	ch <- data
 }
 
 func (m *mockPtySession) Write(p []byte) (int, error) {
@@ -63,6 +81,8 @@ func (m *mockPtySession) Kill() error {
 	m.doneOnce.Do(func() { close(m.done) })
 	return nil
 }
+
+func (m *mockPtySession) Resize(rows, cols uint16) error { return nil }
 
 func (m *mockPtySession) Done() <-chan struct{} { return m.done }
 func (m *mockPtySession) ExitCode() int         { return m.exitCodeVal }

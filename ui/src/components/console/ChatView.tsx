@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
 import {
@@ -12,6 +13,10 @@ import {
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
 import { TurnActiveError } from '@/api/consoleChats'
 import { ChatMessageList } from './ChatMessageList'
+
+const XTerminal = lazy(() =>
+  import('@/components/workflow/XTerminal').then((m) => ({ default: m.XTerminal }))
+)
 
 interface ChatViewProps {
   sid: string
@@ -31,7 +36,26 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
   const closeMutation = useCloseConsoleChat()
   const interruptMutation = useInterruptConsoleChat()
   const [text, setText] = useState('')
+  const [showTerminal, setShowTerminal] = useState(false)
+  const [search, setSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Client-side transcript search: a non-empty query filters the merged
+  // transcript by substring (case-insensitive) — mirrors the TUI's Ctrl+F.
+  const searchActive = search.trim().length > 0
+  const visibleTranscript = useMemo(() => {
+    if (!searchActive) return stream.transcript
+    const q = search.trim().toLowerCase()
+    return stream.transcript.filter((item) =>
+      item.kind === 'message'
+        ? (item.message.content ?? '').toLowerCase().includes(q)
+        : item.text.toLowerCase().includes(q)
+    )
+  }, [stream.transcript, search, searchActive])
+
+  // Raw-terminal attach exists only for the claude engine (PTY-backed); the
+  // relay is a viewer — closing the panel detaches without touching the chat.
+  const canAttachTerminal = detail?.engine === 'claude' && detail?.live === true
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
@@ -78,8 +102,35 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
           {stream.workDir && <div className="truncate text-xs text-muted-foreground">{stream.workDir}</div>}
         </div>
         <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setSearch('')
+              }}
+              placeholder="Search transcript…"
+              className="h-8 w-44 text-xs"
+              aria-label="Search transcript"
+            />
+            {searchActive && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {visibleTranscript.length} match{visibleTranscript.length === 1 ? '' : 'es'}
+              </span>
+            )}
+          </div>
           {stream.contextLeft != null && (
             <span className="text-xs text-muted-foreground">Context left: {stream.contextLeft}%</span>
+          )}
+          {canAttachTerminal && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTerminal((v) => !v)}
+              title="Attach a raw terminal to the underlying claude CLI"
+            >
+              {showTerminal ? 'Hide terminal' : 'Terminal'}
+            </Button>
           )}
           <Button
             variant="outline"
@@ -95,6 +146,14 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
         </div>
       </div>
 
+      {showTerminal && canAttachTerminal && (
+        <div className="h-80 shrink-0 border-b border-border bg-black">
+          <Suspense fallback={<div className="p-3 text-xs text-muted-foreground">Loading terminal…</div>}>
+            <XTerminal sessionId={sid} onExit={() => setShowTerminal(false)} />
+          </Suspense>
+        </div>
+      )}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
         {stream.isLoadingHistory ? (
           <div className="flex justify-center py-8">
@@ -103,7 +162,7 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
         ) : (
           <ChatMessageList
             sid={sid}
-            transcript={stream.transcript}
+            transcript={visibleTranscript}
             approvals={stream.approvals}
             resolvedApprovals={stream.resolvedApprovals}
             liveThinking={stream.thinking}

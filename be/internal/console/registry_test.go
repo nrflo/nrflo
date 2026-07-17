@@ -28,6 +28,7 @@ var wantConsoleOnly = []string{
 	"workflow_stop",
 	"workflow_retry_failed",
 	"workflow_get",
+	"workflow_wait",
 	"workflow_list",
 	"project_list",
 	"project_status",

@@ -16,6 +16,10 @@ Because those ids are caller-supplied, **every** tool taking an `instance_id` is
 
 `env.go`'s `NewToolEnv` leaves `ToolEnv.ArtifactSvc` nil: `artifacts.workflow_instance_id` is `NOT NULL REFERENCES workflow_instances(id)` with `foreign_keys(1)` on, and a console session owns no instance, so any write through the shared `web_fetch`/etc. artifact path would FK-fail after already writing the blob. `web_fetch` takes its documented nil-artifact-store branch instead. The console `artifact_list`/`artifact_get` tools (`tools_artifact.go`) hold their **own** `*service.ArtifactService` from `Deps` and take an explicit `instance_id`, so they are unaffected.
 
+## workflow_wait
+
+`workflow_wait` (`tools_workflow_wait.go`) long-polls a guarded instance's v4 state: it blocks until a transition-relevant digest (status, current phase, per-phase status+result, active-agent session ids, plan status — volatile telemetry like `context_left` deliberately excluded) differs from `since_digest`, or times out with `changed=false`. Wakes come from `WaitBroker` (`wait_broker.go`), registered once as a `ws.Hub` listener at server startup (`RegisterListener` is pre-Run-only) and fanning non-blocking hints to per-call subscribers keyed by lowercase project id; the waiter subscribes **before** its first digest read so no broadcast is missed. Terminal responses include the def's `next_workflow_on_success` name when set — the chained run starts as a new instance with no back-link.
+
 ## Dispatch
 
 `Dispatch(ctx, reg, env, name, args)` (`dispatch.go`) is the one call site `api.handleCallConsoleTool` uses; `ErrToolNotFound` maps to the endpoint's 404. `Specs(reg)` backs the catalogue endpoint, sorted by name.

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -28,7 +27,6 @@ import (
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/static"
-	"be/internal/venv"
 	"be/internal/ws"
 )
 
@@ -60,6 +58,7 @@ type Server struct {
 	observerSvc           *service.ObserverService
 	consoleHub            *spawner.ConsoleHub
 	consoleChat           *console.ChatService
+	waitBroker            *console.WaitBroker
 }
 
 // NewServer creates a new API server.
@@ -95,51 +94,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	sched := scheduler.New(pool, orch, hub, clk, wfChainRunSvc, wfChainRunner)
 
 	// Notification subsystem
-	notifyWakeCh := make(chan struct{}, 8)
-	channelRepo := repo.NewNotificationChannelRepo(pool, clk)
-	deliveryRepo := repo.NewNotificationDeliveryRepo(pool, clk)
-	projectRepoForNotify := repo.NewProjectRepo(pool, clk)
-	ticketRepoForNotify := repo.NewTicketRepo(pool, clk)
-	dispatcher := notify.NewDispatcher(
-		channelRepo,
-		deliveryRepo,
-		notify.ProjectLookupFunc(func(id string) (string, bool, error) {
-			p, err := projectRepoForNotify.Get(id)
-			if err != nil {
-				return "", false, err
-			}
-			return p.Name, true, nil
-		}),
-		notify.TicketLookupFunc(func(pid, tid string) (string, bool, error) {
-			t, err := ticketRepoForNotify.Get(pid, tid)
-			if err != nil {
-				return "", false, err
-			}
-			return t.Title, true, nil
-		}),
-		notifyWakeCh,
-	)
-	hub.RegisterListener(dispatcher)
-	waker := service.NewChanWaker(notifyWakeCh)
-	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)
+	waker, notifyWorker := buildNotifySubsystem(pool, clk, hub, errorSvc, dataPath, sdkDir)
 
-	// Script notification transport runtime.
-	{
-		dataDir := ""
-		if dataPath != "" {
-			dataDir = filepath.Dir(dataPath)
-		}
-		notify.RegisterScriptRuntime(&notify.ScriptRuntime{
-			ProjectRepo: repo.NewProjectRepo(pool, clk),
-			VenvMgr:     venv.New(dataDir, clk),
-			EnvVarRepo:  repo.NewProjectEnvVarRepo(pool, clk),
-			SessionRepo: repo.NewAgentSessionRepo(pool, clk),
-			Clock:       clk,
-			SDKDir:      sdkDir,
-			SocketPath:  os.Getenv("NRFLO_SOCKET"),
-			NrfloHome:   dataDir,
-		})
-	}
+	// workflow_wait wake broker (console tools); RegisterListener is pre-Run only.
+	waitBroker := console.NewWaitBroker()
+	hub.RegisterListener(waitBroker)
 
 	// Auth subsystem
 	sessionMgr := auth.NewManager(pool.DB, insecureCookies)
@@ -188,6 +147,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		rateLimiter:   newLoginRateLimiter(),
 		observerSvc:   observerSvc,
 		consoleHub:    consoleHub,
+		waitBroker:    waitBroker,
 	}
 
 	s.consoleChat = newConsoleChatService(s, cfg, pool, clk, hub, ptyMgr, consoleHub, errorSvc)

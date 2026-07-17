@@ -16,7 +16,7 @@ type workflowRunHandler struct{ d Deps }
 func (workflowRunHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_run",
-		Description: "Start a workflow run. Returns {\"instance_id\":...}. Set ticket_id for a ticket-scoped workflow — prefer ticket_current (the session's ticket, from the git branch), else pick one with ticket_list — or omit it for a project-scoped one; workflow_list shows each definition's scope_type. A ticket-scoped definition requires ticket_id; a project-scoped one must omit it.",
+		Description: "Start a workflow run. Returns {\"instance_id\":...}. Set ticket_id for a ticket-scoped workflow — prefer ticket_current (the session's ticket, from the git branch), else pick one with ticket_list — or omit it for a project-scoped one; workflow_list shows each definition's scope_type. A ticket-scoped definition requires ticket_id; a project-scoped one must omit it. Track the run with workflow_wait (long-poll per transition) rather than polling workflow_get.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

@@ -43,4 +43,5 @@ type Deps struct {
 	ProjectFindingsSvc *service.ProjectFindingsService
 	ArtifactSvc        *service.ArtifactService
 	WorkflowControl    apirun.WorkflowController
+	WaitBroker         *WaitBroker
 }

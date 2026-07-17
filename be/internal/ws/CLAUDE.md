@@ -62,7 +62,7 @@ Listener fan-out: After broadcastEvent stamps seq, a single goroutine iterates a
 
 ## Listener Extension Point
 
-`Hub.RegisterListener(l Listener)` registers an out-of-band receiver for every broadcast event. Must be called before `Hub.Run()`. The `internal/notify` Dispatcher is registered here.
+`Hub.RegisterListener(l Listener)` registers an out-of-band receiver for every broadcast event. Must be called before `Hub.Run()`. Registered here: the `internal/notify` Dispatcher and the `internal/console` WaitBroker (`workflow_wait` long-poll wakes).
 
 Fan-out is non-blocking: a goroutine is spawned per broadcast, iterating all listeners sequentially. Slow or blocking OnEvent implementations affect only each other, never the WS broadcast pipeline.
 

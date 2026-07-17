@@ -54,6 +54,7 @@ func BuildRegistry(d Deps) (apirun.Registry, error) {
 	reg["workflow_stop"] = workflowStopHandler{d: d}
 	reg["workflow_retry_failed"] = workflowRetryFailedHandler{d: d}
 	reg["workflow_get"] = workflowGetHandler{d: d}
+	reg["workflow_wait"] = workflowWaitHandler{d: d}
 	reg["workflow_list"] = workflowListHandler{d: d}
 	reg["project_list"] = projectListHandler{d: d}
 	reg["project_status"] = projectStatusHandler{d: d}

@@ -60,6 +60,7 @@ func (s *Server) consoleDeps() console.Deps {
 		TicketSvc:          s.ticketService(),
 		ProjectFindingsSvc: service.NewProjectFindingsService(s.pool, s.clock),
 		ArtifactSvc:        service.NewArtifactService(s.pool, s.clock, s.wsHub, s.dataPath),
+		WaitBroker:         s.waitBroker,
 	}
 	if s.orchestrator != nil {
 		d.Orch = s.orchestrator

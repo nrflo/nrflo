@@ -72,6 +72,7 @@ func newConsoleTestEnv(t *testing.T) *consoleTestEnv {
 		TicketSvc:          service.NewTicketService(pool, clk),
 		ProjectFindingsSvc: service.NewProjectFindingsService(pool, clk),
 		ArtifactSvc:        service.NewArtifactService(pool, clk, hub, dbPath),
+		WaitBroker:         NewWaitBroker(),
 	}
 	return &consoleTestEnv{pool: pool, deps: deps, hub: hub, clk: clk, home: home}
 }

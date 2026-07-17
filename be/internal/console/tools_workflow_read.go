@@ -16,7 +16,7 @@ type workflowGetHandler struct{ d Deps }
 func (workflowGetHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_get",
-		Description: "Get the v4 status state of a workflow instance.",
+		Description: "Get the v4 status state of a workflow instance (one snapshot). To follow a run's progress, use workflow_wait instead — it blocks until the state changes, so you spend one call per transition instead of polling this.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{"instance_id":{"type":"string"}},

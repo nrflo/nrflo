@@ -42,6 +42,7 @@ func Builtins() map[string]apirun.ToolHandler {
 		"chain_next_ticket":       chainNextTicketHandler{},
 
 		"ticket_create":         ticketCreateHandler{},
+		"ticket_update":         ticketUpdateHandler{},
 		"ticket_add_dependency": ticketAddDependencyHandler{},
 
 		"artifact_add":  artifactAddHandler{},

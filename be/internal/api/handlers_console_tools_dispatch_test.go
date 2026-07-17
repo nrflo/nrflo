@@ -27,6 +27,7 @@ var toolArgsForDispatchTest = map[string]string{
 	"workflow_continue":            `{"instance_id":"wfi-nope"}`,
 	"workflow_fail":                `{"instance_id":"wfi-nope","reason":"r"}`,
 	"ticket_create":                `{"title":"t"}`,
+	"ticket_update":                `{"ticket_id":"t-nope","title":"t2"}`,
 	"ticket_add_dependency":        `{"ticket_id":"a","depends_on_id":"b"}`,
 	"workflow_run":                 `{"workflow":"w"}`,
 	"workflow_stop":                `{"instance_id":"wfi-nope"}`,

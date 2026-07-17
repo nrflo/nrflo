@@ -105,7 +105,7 @@ func TestHandleListConsoleTools_ValidBearer_Returns200WithFullProfile(t *testing
 var wantReusedBuiltinsForTest = []string{
 	"project_findings_add", "project_findings_add_bulk", "project_findings_append",
 	"project_findings_append_bulk", "project_findings_get", "project_findings_delete",
-	"workflow_continue", "workflow_fail", "ticket_create", "ticket_add_dependency",
+	"workflow_continue", "workflow_fail", "ticket_create", "ticket_update", "ticket_add_dependency",
 	"web_search", "web_fetch",
 }
 

@@ -17,6 +17,7 @@ var wantReusedBuiltins = []string{
 	"workflow_continue",
 	"workflow_fail",
 	"ticket_create",
+	"ticket_update",
 	"ticket_add_dependency",
 	"web_search",
 	"web_fetch",

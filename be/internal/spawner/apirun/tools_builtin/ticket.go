@@ -72,6 +72,91 @@ func (ticketCreateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input
 	return string(out), false, nil
 }
 
+// ticketUpdateHandler applies a partial update to an existing ticket in the
+// agent's own project. It mirrors PATCH /api/v1/tickets/{id}: only provided
+// fields change.
+type ticketUpdateHandler struct{}
+
+func (ticketUpdateHandler) Spec() provider.ToolSpec {
+	return provider.ToolSpec{
+		Name: "ticket_update",
+		Description: "Update fields of an existing ticket in the current project. " +
+			"Only the provided fields change; omitted fields keep their current value.",
+		InputSchema: json.RawMessage(`{
+"type":"object",
+"properties":{
+"ticket_id":{"type":"string","description":"the ticket to update"},
+"title":{"type":"string","description":"new title"},
+"description":{"type":"string","description":"new full description (markdown ok)"},
+"status":{"type":"string","enum":["open","in_progress","closed"]},
+"type":{"type":"string","enum":["bug","feature","task","epic"]},
+"priority":{"type":"integer","minimum":1,"maximum":4,"description":"1=critical .. 4=low"}
+},
+"required":["ticket_id"],
+"additionalProperties":false
+}`),
+	}
+}
+
+func (ticketUpdateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
+	var args struct {
+		TicketID    string  `json:"ticket_id"`
+		Title       *string `json:"title"`
+		Description *string `json:"description"`
+		Status      *string `json:"status"`
+		Type        *string `json:"type"`
+		Priority    *int    `json:"priority"`
+	}
+	if err := json.Unmarshal(input, &args); err != nil {
+		return invalidArgs(err)
+	}
+	if strings.TrimSpace(args.TicketID) == "" {
+		return "ticket_id is required", true, nil
+	}
+	if args.Title == nil && args.Description == nil && args.Status == nil && args.Type == nil && args.Priority == nil {
+		return "at least one field to update is required", true, nil
+	}
+	if args.Status != nil {
+		switch *args.Status {
+		case "open", "in_progress", "closed":
+		default:
+			return "invalid status: must be open, in_progress, or closed", true, nil
+		}
+	}
+	if args.Type != nil {
+		switch *args.Type {
+		case "bug", "feature", "task", "epic":
+		default:
+			return "invalid type: must be bug, feature, task, or epic", true, nil
+		}
+	}
+	if args.Priority != nil && (*args.Priority < 1 || *args.Priority > 4) {
+		return "invalid priority: must be 1..4", true, nil
+	}
+	if env.Ticket == nil {
+		return missingService("ticket")
+	}
+	if err := env.Ticket.Update(env.ProjectID, args.TicketID, &types.TicketUpdateRequest{
+		Title:       args.Title,
+		Description: args.Description,
+		Status:      args.Status,
+		Type:        args.Type,
+		Priority:    args.Priority,
+	}); err != nil {
+		return err.Error(), true, nil
+	}
+	updated, err := env.Ticket.Get(env.ProjectID, args.TicketID)
+	if err != nil {
+		return err.Error(), true, nil
+	}
+	service.BroadcastFromCtx(env.WSHub, ws.EventTicketUpdated, service.BroadcastCtx{ProjectID: env.ProjectID, TicketID: updated.ID}, map[string]interface{}{
+		"status": string(updated.Status),
+		"action": "updated",
+	})
+	out, _ := json.Marshal(map[string]string{"ticket_id": updated.ID, "status": string(updated.Status)})
+	return string(out), false, nil
+}
+
 // ticketAddDependencyHandler records that ticket_id is blocked by depends_on_id
 // (depends_on_id must complete first). Mirrors POST /api/v1/dependencies.
 type ticketAddDependencyHandler struct{}

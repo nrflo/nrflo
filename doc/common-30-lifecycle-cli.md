@@ -52,11 +52,12 @@ you can read it with your native file tools.
 ## Ticket tools
 
 For project-scoped agents that plan and create work (e.g. a ticket-creator).
-Both act on the agent's own project.
+All act on the agent's own project.
 
 | Tool | Input | Purpose |
 |------|-------|---------|
 | `ticket_create` | `{title, description?, type?, priority?, parent_id?, id?}` | Create a ticket; returns `{ticket_id, title}`. `type` ∈ `bug\|feature\|task\|epic` (default `task`); `priority` 1–4 (default 2); `id` sets an explicit id (e.g. an external/Jira id), auto-generated when omitted |
+| `ticket_update` | `{ticket_id, title?, description?, status?, type?, priority?}` | Partial update of an existing ticket; only provided fields change. `status` ∈ `open\|in_progress\|closed`; returns `{ticket_id, status}` |
 | `ticket_add_dependency` | `{ticket_id, depends_on_id}` | `ticket_id` is blocked by `depends_on_id` (the blocker must complete first); both must already exist |
 
 Capture the `ticket_id` returned by `ticket_create` and pass it to

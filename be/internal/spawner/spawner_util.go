@@ -47,6 +47,18 @@ func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, dat
 	s.config.WSHub.Broadcast(event)
 }
 
+// broadcastSessionCost emits a project-scoped EventSessionCostUpdated for
+// proc's session — the debounced broadcast callback autonomous spawns
+// register with the cost store (mirrors broadcastLedgerEpoch's project-scope
+// routing; console sessions register their own session-channel callback).
+func (s *Spawner) broadcastSessionCost(proc *processInfo, snap CostSnapshot) {
+	s.broadcast(ws.EventSessionCostUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+		"session_id":    proc.sessionID,
+		"cost_estimate": snap.CostUSD,
+		"pricing_known": snap.PricingKnown,
+	})
+}
+
 // logAgent logs an INFO-level agent message with the agent's trx and prefix.
 func (s *Spawner) logAgent(proc *processInfo, msg string) {
 	ctx := logger.WithTrx(context.Background(), proc.trx)
@@ -113,6 +125,16 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 		return fmt.Errorf("unknown execution_mode %q for agent %q", prep.executionMode, proc.agentType)
 	}
 	proc.backend = backend
+
+	// Register the session's running cost accounting for every mode that
+	// tracks context (script agents never report usage, so registering for
+	// them would sit permanently idle). Pricing resolves once here from
+	// proc.modelID; addUsage/setUsage feed in from each engine's usage hook.
+	if prep.executionMode != "script" {
+		RegisterSessionCost(proc.sessionID, proc.modelID, s.pool(), s.config.Clock, func(snap CostSnapshot) {
+			s.broadcastSessionCost(proc, snap)
+		})
+	}
 
 	var effectiveMode string
 	switch prep.executionMode {
@@ -183,6 +205,7 @@ func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo
 		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 			proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
 		globalLedgerStore.drop(proc.sessionID)
+		FinalizeSessionCost(proc.sessionID)
 		completed = append(completed, proc)
 	}
 	return completed

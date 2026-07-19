@@ -72,11 +72,15 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Context Ledger
 
-`contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks (dialog/tool_use/tool_result/file_read/image/injected), written EXACT from apirun's `Config.Observer` in api mode, EXACT-ish by tail-parsing the Claude transcript from the `monitorAll` tick in cli mode, and APPROX from codex app-server events. Token estimates are a bytes/4 heuristic reconciled against per-turn provider usage; same-sha/path re-entry marks the prior entry superseded, and a debounced `agent.context_ledger` WS event carries totals-by-kind — `GET /api/v1/sessions/{id}/context-ledger` snapshots it, and the ledger drops when the session ends.
+`contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks, written EXACT from apirun's `Config.Observer` (api), EXACT-ish via Claude transcript tailing (cli), APPROX from codex events. Mechanics: [REFERENCE.md](REFERENCE.md#context-ledger).
 
 ## Context Watcher
 
-`context_watcher*.go`: an api-mode policy engine over the context ledger. `agent_definitions.context_budget_tokens` (NULL → config `context_budget_default`, 0 = disabled) triggers selective GC over budget, evicting superseded → stale tool_results/file_reads (unreferenced ≥ `context_decay_turns`, default 20) → completed dialog, keeping the pinned prefix + recent window verbatim; idle gaps ≥ `cache_ttl_sec` (default 300) bypass the `min_epoch_interval_calls` (default 20) throttle for a free deferred rewrite. Wired via the nil-safe `apirun.Config.Watcher` seam (mirrors `Observer`); CLI/codex restart policy is out of scope here.
+`context_watcher*.go`: an api-mode policy engine over the context ledger, budget/decay/idle-gated selective GC wired via the nil-safe `apirun.Config.Watcher` seam; its `ContextCostEstimator` (`context_watcher_cost.go`) prices evicted tokens at the cache-read rate from `models.price_*`. Mechanics: [REFERENCE.md](REFERENCE.md#context-watcher).
+
+## Session Cost
+
+`sessioncost.go` is the process-global per-session running cost store (token counters + USD, debounced flush to `agent_sessions.tokens_json`/`cost_estimate`, debounced `session.cost_updated` WS push); pricing resolved from `models.price_*` via `model.PriceClass()`. Mechanics: [REFERENCE.md](REFERENCE.md#session-cost).
 
 ## Consult
 

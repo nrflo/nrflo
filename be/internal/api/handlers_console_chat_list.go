@@ -1,9 +1,12 @@
 package api
 
 import (
+	"database/sql"
 	"net/http"
 
+	"be/internal/db"
 	"be/internal/repo"
+	"be/internal/spawner"
 )
 
 // consoleChatListItem is one row in GET /api/v1/console/chats.
@@ -95,6 +98,11 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 	if sess.ContextLeft.Valid {
 		resp["context_left"] = int(sess.ContextLeft.Int64)
 	}
+	if cost, ok := spawner.SessionCost(sess.ID); ok && cost.PricingKnown {
+		resp["cost_estimate"] = cost.CostUSD
+	} else if v, ok := lastFlushedCostEstimate(s.pool, sess.ID); ok {
+		resp["cost_estimate"] = v
+	}
 
 	snap, live := s.consoleChat.Snapshot(sess.ID)
 	resp["live"] = live
@@ -128,4 +136,16 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// lastFlushedCostEstimate reads agent_sessions.cost_estimate directly — that
+// column is deliberately not part of sessionCols/scanSession (avoids the
+// 30-column ripple), so a non-live session's last debounced flush is read
+// with a raw query instead.
+func lastFlushedCostEstimate(pool *db.Pool, sessionID string) (float64, bool) {
+	var v sql.NullFloat64
+	if err := pool.QueryRow(`SELECT cost_estimate FROM agent_sessions WHERE id = ?`, sessionID).Scan(&v); err != nil {
+		return 0, false
+	}
+	return v.Float64, v.Valid
 }

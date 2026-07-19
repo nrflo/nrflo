@@ -51,7 +51,7 @@ func newAPIContextWatcher(pool *db.Pool, clk clock.Clock, sessionID, modelID str
 		sessionID:    sessionID,
 		model:        modelID,
 		clock:        clk,
-		cost:         zeroCostEstimator{},
+		cost:         newPricingCostEstimator(pool, clk),
 		budgetTokens: budgetTokens,
 		decayTurns:   contextConfigInt(pool, "context_decay_turns", defaultContextDecayTurns),
 		cacheTTL:     time.Duration(contextConfigInt(pool, "cache_ttl_sec", defaultCacheTTLSec)) * time.Second,

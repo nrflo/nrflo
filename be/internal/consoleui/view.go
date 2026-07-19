@@ -56,6 +56,10 @@ func (m *model) header() string {
 	if m.detail.ContextLeft != nil {
 		contextText = fmt.Sprintf("  context %d%%", *m.detail.ContextLeft)
 	}
+	costText := ""
+	if m.detail.CostEstimate != nil {
+		costText = fmt.Sprintf("  ~$%.2f", *m.detail.CostEstimate)
+	}
 	allowedText := ""
 	if len(m.detail.SessionApprovals) > 0 {
 		allowedText = "  always:" + strings.Join(m.detail.SessionApprovals, ",")
@@ -64,7 +68,7 @@ func (m *model) header() string {
 	if modelName == "" {
 		modelName = "default"
 	}
-	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, allowedText))
+	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, allowedText))
 }
 
 func (m *model) footer() string {

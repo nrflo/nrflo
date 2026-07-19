@@ -88,6 +88,7 @@ export interface DailyStats {
   tickets_closed: number
   tokens_spent: number
   agent_time_sec: number
+  cost_estimate?: number
 }
 
 export interface StatusResponse {

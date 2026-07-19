@@ -47,6 +47,58 @@ func TestModelServiceSeedAndModeValidation(t *testing.T) {
 	}
 }
 
+// TestModelServiceGet_SeededPricingRoundTrips verifies scanModel decodes the
+// nullable price_* columns correctly for both a fully-priced row (seeded by
+// migration 000183) and a row with no seeded pricing (NULL across all four).
+func TestModelServiceGet_SeededPricingRoundTrips(t *testing.T) {
+	t.Parallel()
+	svc := setupModelService(t)
+
+	sonnet, err := svc.Get("sonnet-5")
+	if err != nil {
+		t.Fatalf("Get(sonnet-5): %v", err)
+	}
+	if sonnet.PriceIn == nil || *sonnet.PriceIn != 3 {
+		t.Errorf("sonnet-5 PriceIn = %v, want 3", sonnet.PriceIn)
+	}
+	if sonnet.PriceOut == nil || *sonnet.PriceOut != 15 {
+		t.Errorf("sonnet-5 PriceOut = %v, want 15", sonnet.PriceOut)
+	}
+	if sonnet.PriceCacheWrite == nil || *sonnet.PriceCacheWrite != 3.75 {
+		t.Errorf("sonnet-5 PriceCacheWrite = %v, want 3.75", sonnet.PriceCacheWrite)
+	}
+	if sonnet.PriceCacheRead == nil || *sonnet.PriceCacheRead != 0.3 {
+		t.Errorf("sonnet-5 PriceCacheRead = %v, want 0.3", sonnet.PriceCacheRead)
+	}
+
+	// gpt-5.5 exists in the registry but was not touched by migration 000183
+	// (only the ticket's named model families were seeded) — all four price
+	// columns must read back nil, not zero.
+	unpriced, err := svc.Get("gpt-5.5")
+	if err != nil {
+		t.Fatalf("Get(gpt-5.5): %v", err)
+	}
+	if unpriced.PriceIn != nil || unpriced.PriceOut != nil || unpriced.PriceCacheWrite != nil || unpriced.PriceCacheRead != nil {
+		t.Errorf("gpt-5.5 pricing = in:%v out:%v cw:%v cr:%v, want all nil", unpriced.PriceIn, unpriced.PriceOut, unpriced.PriceCacheWrite, unpriced.PriceCacheRead)
+	}
+}
+
+// TestModelServiceCreate_NewRowHasNoPricing verifies a freshly Create()'d
+// model has all four price columns nil (INSERT hardcodes NULL,NULL,NULL,NULL).
+func TestModelServiceCreate_NewRowHasNoPricing(t *testing.T) {
+	t.Parallel()
+	svc := setupModelService(t)
+	created, err := svc.Create(types.ModelCreateRequest{
+		ID: "no-pricing-model", Provider: "openai", DisplayName: "No Pricing", CLIModel: "no-pricing",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.PriceIn != nil || created.PriceOut != nil || created.PriceCacheWrite != nil || created.PriceCacheRead != nil {
+		t.Errorf("newly created model pricing = in:%v out:%v cw:%v cr:%v, want all nil", created.PriceIn, created.PriceOut, created.PriceCacheWrite, created.PriceCacheRead)
+	}
+}
+
 func TestModelServiceCreateUpdateDelete(t *testing.T) {
 	t.Parallel()
 	svc := setupModelService(t)

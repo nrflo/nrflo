@@ -195,3 +195,34 @@ func TestAPILedgerObserver_ToolResult_ImageClassifiesAsImage(t *testing.T) {
 		t.Errorf("Entries[1].Kind = %q, want image", snap.Entries[1].Kind)
 	}
 }
+
+// TestAPILedgerObserver_OnUsage_FeedsSessionCost verifies the real
+// apiLedgerObserver.OnUsage (not the store directly) feeds the per-turn
+// Usage delta into the session cost store alongside its ledger reconcile.
+func TestAPILedgerObserver_OnUsage_FeedsSessionCost(t *testing.T) {
+	t.Parallel()
+	pool := setupTestDB(t)
+	insertCostTestSession(t, pool, "sess-api-cost", "sonnet-5")
+
+	clk := clock.NewTest(time.Now())
+	t.Cleanup(func() { globalCostStore.drop("sess-api-cost") })
+	RegisterSessionCost("sess-api-cost", "sonnet-5", pool, clk, nil)
+
+	store := newLedgerStore(clk)
+	observer := &apiLedgerObserver{store: store, sessionID: "sess-api-cost"}
+
+	observer.OnUsage(provider.Usage{InputTokens: 8_000, OutputTokens: 2_000, CacheReadTokens: 1_000, CacheCreationTokens: 500})
+
+	snap, ok := SessionCost("sess-api-cost")
+	if !ok {
+		t.Fatal("SessionCost ok = false after apiLedgerObserver.OnUsage")
+	}
+	if snap.InputTokens != 8_000 || snap.OutputTokens != 2_000 || snap.CacheReadTokens != 1_000 || snap.CacheWriteTokens != 500 {
+		t.Errorf("token snapshot = %+v, want in:8000 out:2000 cacheRd:1000 cacheWr:500", snap)
+	}
+	// sonnet-5: price_in=3, price_out=15, cache_write=3.75, cache_read=0.3 per MTok.
+	want := 8_000.0/1e6*3 + 2_000.0/1e6*15 + 500.0/1e6*3.75 + 1_000.0/1e6*0.3
+	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
+		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
+	}
+}

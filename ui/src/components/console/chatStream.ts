@@ -6,6 +6,7 @@ import type { WSEvent } from '@/hooks/useWebSocket'
 import type {
   ConsoleChatApprovalRequestPayload,
   ConsoleChatApprovalResolvedPayload,
+  ConsoleChatCostPayload,
   ConsoleChatDeltaPayload,
   ConsoleChatErrorPayload,
   ConsoleChatSessionApprovalsPayload,
@@ -38,6 +39,7 @@ export interface SessionStreamState {
   // a consumer can prefer the detail snapshot's seed until then.
   sessionApprovals: string[] | null
   contextLeft?: number
+  cost?: number
   errors: ConsoleChatErrorPayload[]
 }
 
@@ -101,6 +103,13 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
       // the socket path.
       const { context_left } = data as { context_left?: number }
       return context_left == null ? state : { ...state, contextLeft: context_left }
+    }
+    case 'session.cost_updated': {
+      const { cost_estimate, pricing_known } = data as ConsoleChatCostPayload
+      // pricing_known === false means the model has no seeded pricing, so
+      // cost_estimate=0 is unknown, not free — don't overwrite with a fake $0.
+      if (cost_estimate == null || pricing_known === false) return state
+      return { ...state, cost: cost_estimate }
     }
     default:
       return state

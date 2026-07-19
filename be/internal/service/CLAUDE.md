@@ -26,13 +26,14 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `chain_preview.go` | `PreviewChain`, custom order validation |
 | `chain_append.go` | Append tickets to running chains |
 | `chain_remove.go` | Remove pending items from running chains |
-| `daily_stats.go` | Daily stats computation (workflow_agent sessions only) |
+| `daily_stats.go` | Daily stats computation (workflow_agent sessions only); `cost_estimate` sums `agent_sessions.cost_estimate` alongside `tokens_spent` |
 | `console.go` | Console session lifecycle: Create (kind='console' row + bearer), Close, SweepIdle (`console_idle_ttl_hours`) |
 | `git.go` | Paginated commit listing and commit detail (os/exec) |
 | `worktree.go` (+ `_context.go`) | Git worktree lifecycle: Setup, MergeAndCleanup, Cleanup; Setup seeds untracked/gitignored agent context into the worktree (CLAUDE.md/AGENTS.md copied, `.claude` dirs symlinked, any depth, absent-only) |
 | `system_agent_definition.go` (+ `_read.go`) | System agent definition CRUD (global) |
 | `default_template.go` | Default template CRUD (global, readonly enforcement) |
-| `model.go` + `model_update.go` + `model_reasoning.go` (+ `model_inuse.go`) | Unified model CRUD: one provider row enables CLI/API through non-empty mode model IDs and carries per-mode contexts/effort lists plus one default effort. `IsValidModelForMode` validates enabled mode support for definitions; readonly rows only accept `default_effort`/`fallback_models`, fallback models are anthropic-only and capped at 3. `ModelInUseCheck` blocks disable/delete while any agent/system def, or observer setting (global/project `observer_model` config, `workflows.observer_model`) references the id; clearing a mode's model id is blocked per execution mode (observers count as cli) |
+| `model.go` + `model_update.go` + `model_reasoning.go` (+ `model_inuse.go`) | Unified model CRUD: one provider row enables CLI/API through non-empty mode model IDs and carries per-mode contexts/effort lists, one default effort, and nullable per-MTok `price_*` columns. `IsValidModelForMode` validates enabled mode support for definitions; readonly rows only accept `default_effort`/`fallback_models`, fallback models are anthropic-only and capped at 3. `ModelInUseCheck` blocks disable/delete while any agent/system def, or observer setting (global/project `observer_model` config, `workflows.observer_model`) references the id; clearing a mode's model id is blocked per execution mode (observers count as cli) |
+| `plan_validate_premium.go` | `PlanModelTierClass` (single classifier, Rule 6): consults `model.PriceClass()` (price_in thresholds) when the row has seeded pricing, else falls back to name-class (opus/fable=premium, haiku=cheap, else mid) |
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking + TestSend + ListDeliveries |

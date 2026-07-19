@@ -17,6 +17,17 @@ import (
 // findings, project/ticket, web_search/web_fetch).
 const consoleAPISystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, and research topics via web_search/web_fetch. You have NO file, edit, or shell/bash tools: you cannot read or write files on the user's machine and cannot execute commands. Use the tools available to you to answer the user's requests.`
 
+// costOnlyObserver feeds a console api session's running cost from turn
+// usage without touching the context ledger — a console chat has no context
+// watcher-driven GC to reconcile against, so only OnUsage does anything.
+type costOnlyObserver struct{ sessionID string }
+
+func (o costOnlyObserver) OnMessage(role string, blocks []provider.ContentBlock) {}
+
+func (o costOnlyObserver) OnUsage(u provider.Usage) {
+	AddSessionCostUsage(o.sessionID, u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheCreationTokens)
+}
+
 // newConsoleAPIProvider is a test seam (the same package-level factory idiom as
 // lookPath/dialAppServer) so tests can inject a fake provider without a
 // network call or real credentials.
@@ -137,6 +148,7 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		ReasoningEffort: spec.ReasoningEffort,
 		CaptureThinking: captureThinking,
 		Stream:          &apiEngineStream{e: e},
+		Observer:        costOnlyObserver{sessionID: spec.SessionID},
 		// Console chats have no agent definition, so the budget is always the
 		// global default; idle-gap GC is still driven by cache_ttl_sec.
 		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, contextConfigInt(e.api.Pool, "context_budget_default", 0)),

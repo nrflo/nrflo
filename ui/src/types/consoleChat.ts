@@ -31,6 +31,7 @@ export interface ConsoleChatDetail extends ConsoleChatSummary {
   // server-side allowlist; codex resolves acceptForSession natively and
   // reports none). Revocable via DELETE .../session-approvals/{tool}.
   session_approvals?: string[]
+  cost_estimate?: number
 }
 
 export interface ConsoleChatListResponse {
@@ -142,4 +143,19 @@ export interface ConsoleChatErrorPayload {
 // (approve_for_session resolution or a revoke).
 export interface ConsoleChatSessionApprovalsPayload {
   tools: string[]
+}
+
+// session.cost_updated session-channel push (be/internal/spawner sessioncost
+// broadcast) — debounced running-cost estimate for the session.
+export interface ConsoleChatCostPayload {
+  cost_estimate: number
+  // false when the session's model has no seeded pricing — cost_estimate is
+  // then 0 meaning "unknown", not "free", so the readout must be suppressed.
+  pricing_known?: boolean
+  tokens?: {
+    input?: number
+    output?: number
+    cache_write?: number
+    cache_read?: number
+  }
 }

@@ -23,10 +23,10 @@ func (r *DailyStatsRepo) Upsert(projectID, date string, stats model.DailyStats) 
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	_, err := r.db.Exec(`
 		INSERT OR REPLACE INTO daily_stats
-			(project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			(project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, cost_estimate, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		projectID, date,
-		stats.TicketsCreated, stats.TicketsClosed, stats.TokensSpent, stats.AgentTimeSec,
+		stats.TicketsCreated, stats.TicketsClosed, stats.TokensSpent, stats.AgentTimeSec, stats.CostEstimate,
 		now,
 	)
 	return err
@@ -37,11 +37,11 @@ func (r *DailyStatsRepo) Upsert(projectID, date string, stats model.DailyStats) 
 func (r *DailyStatsRepo) GetByDate(projectID, date string) (model.DailyStats, error) {
 	var s model.DailyStats
 	err := r.db.QueryRow(`
-		SELECT id, project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, updated_at
+		SELECT id, project_id, date, tickets_created, tickets_closed, tokens_spent, agent_time_sec, cost_estimate, updated_at
 		FROM daily_stats
 		WHERE project_id = ? AND date = ?`,
 		projectID, date,
-	).Scan(&s.ID, &s.ProjectID, &s.Date, &s.TicketsCreated, &s.TicketsClosed, &s.TokensSpent, &s.AgentTimeSec, &s.UpdatedAt)
+	).Scan(&s.ID, &s.ProjectID, &s.Date, &s.TicketsCreated, &s.TicketsClosed, &s.TokensSpent, &s.AgentTimeSec, &s.CostEstimate, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return model.DailyStats{}, nil
 	}

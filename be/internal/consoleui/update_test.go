@@ -34,6 +34,18 @@ func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
 	}
 }
 
+// TestApplyStream_SessionCostUpdated verifies a session.cost_updated event
+// sets m.detail.CostEstimate from the event's cost_estimate field.
+func TestApplyStream_SessionCostUpdated(t *testing.T) {
+	m := &model{detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{}}
+	m.applyStream(streamUpdate{Events: []Event{
+		event("session.cost_updated", "s1", map[string]any{"cost_estimate": 1.5, "pricing_known": true}),
+	}})
+	if m.detail.CostEstimate == nil || *m.detail.CostEstimate != 1.5 {
+		t.Fatalf("CostEstimate = %v, want 1.5", m.detail.CostEstimate)
+	}
+}
+
 // TestWorkingIndicator: a running turn renders an animated "working…" line
 // at the transcript tail, and the tick chain starts exactly on the
 // idle→running transition.

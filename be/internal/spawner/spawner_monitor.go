@@ -48,6 +48,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
 		registeredSessions[newProc.sessionID] = struct{}{}
 		globalLedgerStore.drop(oldProc.sessionID)
+		FinalizeSessionCost(oldProc.sessionID)
 		DropProactiveRestartState(oldProc.sessionID)
 		return newProc, nil
 	}

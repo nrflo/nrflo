@@ -108,10 +108,22 @@ func (e *claudeEngine) processTranscriptLine(line []byte) {
 		Type    string `json:"type"`
 		Message struct {
 			Content json.RawMessage `json:"content"`
+			Usage   *struct {
+				InputTokens         int `json:"input_tokens"`
+				CacheReadTokens     int `json:"cache_read_input_tokens"`
+				CacheCreationTokens int `json:"cache_creation_input_tokens"`
+				OutputTokens        int `json:"output_tokens"`
+			} `json:"usage"`
 		} `json:"message"`
 	}
 	if json.Unmarshal(line, &entry) != nil || entry.Type != "assistant" {
 		return
+	}
+	if u := entry.Message.Usage; u != nil {
+		e.mu.Lock()
+		sessionID := e.spec.SessionID
+		e.mu.Unlock()
+		AddSessionCostUsage(sessionID, u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheCreationTokens)
 	}
 
 	var blocks []struct {

@@ -59,7 +59,7 @@ help (currently `low, medium, high, xhigh, max`) is the CLI-side truth.
 Run against the real DB (honor `NRFLO_HOME`):
 
 ```bash
-sqlite3 "${NRFLO_HOME:-$HOME/.nrflo}/nrflo.data" "SELECT provider, id, cli_model, api_model, cli_context, api_context, cli_efforts, api_efforts, default_effort, enabled FROM models ORDER BY provider, id"
+sqlite3 "${NRFLO_HOME:-$HOME/.nrflo}/nrflo.data" "SELECT provider, id, cli_model, api_model, cli_context, api_context, cli_efforts, api_efforts, default_effort, enabled, price_in, price_out, price_cache_write, price_cache_read FROM models ORDER BY provider, id"
 ```
 
 Also read the current seeds so the report distinguishes "user DB drift" from
@@ -79,6 +79,7 @@ One table per surface (codex CLI, claude CLI, anthropic API, openai API):
 | **context drift** | `cli_context` or `api_context` differs from that surface's documented context window |
 | **duplicate** | two enabled rows have the same non-empty `(provider, cli_model)` or `(provider, api_model)` mapping |
 | **stale default** | `default_effort` no longer matches the provider default (informational) |
+| **pricing drift** | `price_in`/`price_out`/`price_cache_write`/`price_cache_read` no longer match the provider's published per-MTok rates — these drive `model.PriceClass()` and `PlanModelTierClass`'s premium/mid/cheap tiering |
 
 End with: (a) a verdict line `MODEL AUDIT: CLEAN` or `MODEL AUDIT: N findings`;
 (b) for confirmed drift / missing models, a ready-to-paste draft of `models`

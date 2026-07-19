@@ -8,5 +8,6 @@ type DailyStats struct {
 	TicketsClosed  int     `json:"tickets_closed"`
 	TokensSpent    int64   `json:"tokens_spent"`
 	AgentTimeSec   float64 `json:"agent_time_sec"`
+	CostEstimate   float64 `json:"cost_estimate"`
 	UpdatedAt      string  `json:"updated_at"`
 }

@@ -101,3 +101,32 @@ func TestNewAPIContextWatcher_DefaultsFromNilPool(t *testing.T) {
 		t.Errorf("sessionID/model = %q/%q, want sess-1/claude-x", w.sessionID, w.model)
 	}
 }
+
+// TestNewAPIContextWatcher_DefaultCostEstimator_UsesSeededPricing verifies the
+// constructor wires a real pricingCostEstimator (not swapped for a fake, as
+// context_watcher_gc_test.go's newTestWatcher does) that resolves actual
+// seeded per-MTok pricing when given a real pool and a known model id.
+func TestNewAPIContextWatcher_DefaultCostEstimator_UsesSeededPricing(t *testing.T) {
+	pool := setupTestDB(t)
+	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	w := newAPIContextWatcher(pool, clk, "sess-cost-default", "sonnet-5", 1000)
+
+	// sonnet-5 cache_read = 0.3 per MTok (migration 000183 seed).
+	got := w.cost.EstCostSaved("sonnet-5", 2_000_000)
+	want := 2_000_000.0 / 1e6 * 0.3
+	if got != want {
+		t.Errorf("default cost estimator EstCostSaved = %v, want %v (seeded sonnet-5 cache_read rate)", got, want)
+	}
+}
+
+// TestNewAPIContextWatcher_DefaultCostEstimator_NilPoolDegradesGracefully
+// verifies the nil-pool construction used throughout context_watcher_gc_test.go
+// (before it swaps in fakeCostEstimator) never panics and reports 0.
+func TestNewAPIContextWatcher_DefaultCostEstimator_NilPoolDegradesGracefully(t *testing.T) {
+	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	w := newAPIContextWatcher(nil, clk, "sess-cost-nilpool", "claude-x", 1000)
+
+	if got := w.cost.EstCostSaved("claude-x", 1_000_000); got != 0 {
+		t.Errorf("EstCostSaved with nil-pool watcher = %v, want 0", got)
+	}
+}

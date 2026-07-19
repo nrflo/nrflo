@@ -22,6 +22,7 @@ type ChatDetail struct {
 	Turn             string     `json:"turn"`
 	WorkDir          string     `json:"work_dir"`
 	ContextLeft      *int       `json:"context_left"`
+	CostEstimate     *float64   `json:"cost_estimate"`
 	Live             bool       `json:"live"`
 	PendingApprovals []Approval `json:"pending_approvals"`
 	SessionApprovals []string   `json:"session_approvals"`
@@ -86,6 +87,18 @@ func eventString(ev Event, key string) string {
 
 func eventInt(ev Event, key string) int {
 	var value int
+	_ = json.Unmarshal(ev.Data[key], &value)
+	return value
+}
+
+func eventFloat(ev Event, key string) float64 {
+	var value float64
+	_ = json.Unmarshal(ev.Data[key], &value)
+	return value
+}
+
+func eventBool(ev Event, key string) bool {
+	var value bool
 	_ = json.Unmarshal(ev.Data[key], &value)
 	return value
 }

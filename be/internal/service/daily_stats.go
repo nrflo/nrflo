@@ -73,6 +73,18 @@ func (s *DailyStatsService) ComputeAndStore(projectID, date string) (model.Daily
 		return stats, fmt.Errorf("sum agent time: %w", err)
 	}
 
+	// Cost estimate from completed agent sessions ending today
+	err = s.pool.QueryRow(`
+		SELECT COALESCE(SUM(cost_estimate), 0)
+		FROM agent_sessions
+		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) = ?
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'`,
+		projectID, date,
+	).Scan(&stats.CostEstimate)
+	if err != nil {
+		return stats, fmt.Errorf("sum cost estimate: %w", err)
+	}
+
 	// Only persist if the project exists (avoids FK violation on fresh installs)
 	var projectExists int
 	_ = s.pool.QueryRow(`SELECT 1 FROM projects WHERE id = ?`, projectID).Scan(&projectExists)
@@ -173,6 +185,18 @@ func (s *DailyStatsService) GetRange(projectID, rangeType string) (model.DailySt
 	).Scan(&stats.AgentTimeSec)
 	if err != nil {
 		return stats, fmt.Errorf("sum agent time: %w", err)
+	}
+
+	// Cost estimate in range
+	err = s.pool.QueryRow(`
+		SELECT COALESCE(SUM(cost_estimate), 0)
+		FROM agent_sessions
+		WHERE LOWER(project_id) = LOWER(?) AND date(ended_at) >= ? AND date(ended_at) <= ?
+		AND status NOT IN ('running', 'continued') AND kind = 'workflow_agent'`,
+		projectID, fromDate, todayDate,
+	).Scan(&stats.CostEstimate)
+	if err != nil {
+		return stats, fmt.Errorf("sum cost estimate: %w", err)
 	}
 
 	return stats, nil

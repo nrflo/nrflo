@@ -33,6 +33,9 @@ type statusLinePayload struct {
 		FiveHour *rlWindow `json:"five_hour"`
 		SevenDay *rlWindow `json:"seven_day"`
 	} `json:"rate_limits"`
+	Cost *struct {
+		TotalCostUSD float64 `json:"total_cost_usd"`
+	} `json:"cost"`
 }
 
 // rateLimitsUpdateParams is the agent.rate_limits_update payload sent to the server.
@@ -84,6 +87,10 @@ var agentStatuslineCmd = &cobra.Command{
 		// Render status line to stdout before any potential early-returns.
 		out := cmd.OutOrStdout()
 		useColor := isatty.IsTerminal(os.Stdout.Fd())
+		costSuffix := ""
+		if payload.Cost != nil && payload.Cost.TotalCostUSD > 0 {
+			costSuffix = fmt.Sprintf(" ~$%.2f", payload.Cost.TotalCostUSD)
+		}
 		if payload.ContextWindow.UsedPercentage != nil {
 			pct := *payload.ContextWindow.UsedPercentage
 			pctStr := fmt.Sprintf("%.0f%%", pct)
@@ -97,15 +104,15 @@ var agentStatuslineCmd = &cobra.Command{
 				default:
 					color = "\x1b[31m"
 				}
-				fmt.Fprintf(out, "%s%s %s Ctx: %s\x1b[0m\n", color, model, cwd, pctStr)
+				fmt.Fprintf(out, "%s%s %s Ctx: %s%s\x1b[0m\n", color, model, cwd, pctStr, costSuffix)
 			} else {
-				fmt.Fprintf(out, "%s %s Ctx: %s\n", model, cwd, pctStr)
+				fmt.Fprintf(out, "%s %s Ctx: %s%s\n", model, cwd, pctStr, costSuffix)
 			}
 		} else {
 			if useColor {
-				fmt.Fprintf(out, "\x1b[32m%s %s Ctx: ?\x1b[0m\n", model, cwd)
+				fmt.Fprintf(out, "\x1b[32m%s %s Ctx: ?%s\x1b[0m\n", model, cwd, costSuffix)
 			} else {
-				fmt.Fprintf(out, "%s %s Ctx: ?\n", model, cwd)
+				fmt.Fprintf(out, "%s %s Ctx: ?%s\n", model, cwd, costSuffix)
 			}
 		}
 

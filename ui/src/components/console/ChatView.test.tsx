@@ -22,7 +22,12 @@ vi.mock('@/hooks/useConsoleChatStream', () => ({
   useConsoleChatStream: vi.fn(),
 }))
 
-function makeStream(turn: 'idle' | 'running', transcript: unknown[] = [], sessionApprovals: string[] = []) {
+function makeStream(
+  turn: 'idle' | 'running',
+  transcript: unknown[] = [],
+  sessionApprovals: string[] = [],
+  cost: number | undefined = undefined
+) {
   return {
     transcript,
     turn,
@@ -32,6 +37,7 @@ function makeStream(turn: 'idle' | 'running', transcript: unknown[] = [], sessio
     thinking: [],
     errors: [],
     contextLeft: undefined,
+    cost,
     workDir: '/tmp/w',
     isLoadingHistory: false,
   }
@@ -116,6 +122,20 @@ describe('ChatView turn controls', () => {
 
     await user.click(screen.getByRole('button', { name: 'Revoke bash' }))
     expect(revoke).toHaveBeenCalledWith({ sid: 's1', tool: 'bash' })
+  })
+
+  it('shows ~$X.XX when the stream has a cost and omits it when cost is unset', () => {
+    setup('idle')
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', [], [], 1.234) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    const { unmount } = renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+    expect(screen.getByText('~$1.23')).toBeInTheDocument()
+    unmount()
+
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle') as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+    expect(screen.queryByText(/^~\$/)).not.toBeInTheDocument()
   })
 
   it('Detach deselects without closing; Close tears the chat down', async () => {

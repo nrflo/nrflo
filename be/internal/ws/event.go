@@ -28,6 +28,7 @@ const (
 	EventChainUpdated                = "chain.updated"
 	EventProjectFindingsUpdated      = "project_findings.updated"
 	EventAgentContextUpdated         = "agent.context_updated"
+	EventSessionCostUpdated          = "session.cost_updated"
 	EventAgentContextLedger          = "agent.context_ledger"
 	EventAgentTakeControl            = "agent.take_control"
 	EventAgentKilled                 = "agent.killed"

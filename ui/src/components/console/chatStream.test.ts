@@ -110,6 +110,34 @@ describe('sessionEventReducer', () => {
     })
     expect(unchanged.contextLeft).toBe(42)
   })
+
+  it('session.cost_updated sets cost, ignoring a null payload', () => {
+    let state = initialSessionStreamState()
+    state = sessionEventReducer(state, {
+      type: 'session.cost_updated',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { cost_estimate: 1.23 },
+    })
+    expect(state.cost).toBe(1.23)
+
+    const unchanged = sessionEventReducer(state, {
+      type: 'session.cost_updated',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: {},
+    })
+    expect(unchanged.cost).toBe(1.23)
+  })
+
+  it('an unrelated event leaves cost undefined', () => {
+    const state = sessionEventReducer(initialSessionStreamState(), turnEvent('running'))
+    expect(state.cost).toBeUndefined()
+  })
 })
 
 describe('mergeStream', () => {

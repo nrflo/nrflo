@@ -86,6 +86,10 @@ func (s *Spawner) updateClaudeContext(proc *processInfo, data map[string]interfa
 	if totalUsed == 0 {
 		return
 	}
+	// Only the assistant event reaches this function (output.go's "result"
+	// case is explicitly skipped, its usage being cumulative), so this is
+	// exactly one turn's delta.
+	AddSessionCostUsage(proc.sessionID, int(input), int(output), int(cacheRead), int(cacheCreate))
 	pctLeft := ComputeContextLeftPct(totalUsed, proc.maxContext)
 	if proc.contextLeft == 0 || pctLeft < proc.contextLeft {
 		proc.contextLeft = pctLeft

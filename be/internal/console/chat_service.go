@@ -193,6 +193,17 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		return "", "", fmt.Errorf("start console engine: %w", err)
 	}
 
+	// modelID is the registry slug the caller supplied to create() (see
+	// ModelID's doc comment) — the same id chatModelResolver looked pricing
+	// up under, so it resolves the identical models row here.
+	spawner.RegisterSessionCost(sessionID, modelID, s.deps.Pool, s.deps.Clock, func(snap spawner.CostSnapshot) {
+		pushSessionEvent(s.deps.WSHub, sessionID, projectID, ws.EventSessionCostUpdated, map[string]interface{}{
+			"session_id":    sessionID,
+			"cost_estimate": snap.CostUSD,
+			"pricing_known": snap.PricingKnown,
+		})
+	})
+
 	if s.deps.RefineryMgr != nil && s.refineryEffective(refineryEnabled) {
 		s.deps.RefineryMgr.Start(sessionID, projectID)
 	}
@@ -224,6 +235,7 @@ func (s *ChatService) engineExited(sid string) {
 	if s.deps.RefineryMgr != nil {
 		s.deps.RefineryMgr.Stop(sid)
 	}
+	spawner.FinalizeSessionCost(sid)
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		logger.Error(context.Background(), "console chat: close row after engine exit", "session_id", sid, "error", err)
 	}
@@ -245,6 +257,7 @@ func (s *ChatService) Close(sid string) error {
 	if s.deps.RefineryMgr != nil {
 		s.deps.RefineryMgr.Stop(sid)
 	}
+	spawner.FinalizeSessionCost(sid)
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		return fmt.Errorf("close console_chat session: %w", err)
 	}

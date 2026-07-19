@@ -250,6 +250,13 @@ func (m *model) applyStream(update streamUpdate) {
 		case "agent.context_updated":
 			value := eventInt(event, "context_left")
 			m.detail.ContextLeft = &value
+		case "session.cost_updated":
+			// Ignore updates for models with no seeded pricing — the BE emits
+			// cost_estimate=0/pricing_known=false there, which is unknown, not free.
+			if eventBool(event, "pricing_known") {
+				value := eventFloat(event, "cost_estimate")
+				m.detail.CostEstimate = &value
+			}
 		}
 	}
 	if len(update.Events) > 0 {

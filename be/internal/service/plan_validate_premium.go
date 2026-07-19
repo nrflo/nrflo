@@ -49,11 +49,21 @@ const (
 
 // PlanModelTierClass is the SINGLE place a model row is mapped to a cost
 // tier (Rule 6 — polymorphism/classification lives in one place, never as
-// scattered name-checks at call sites). Name-class today: the fable/opus
-// family is premium, haiku is cheap, everything else (sonnet, gpt-*) is mid.
-// TODO(nrworkflow-187d35): swap to the models registry's pricing columns
-// once they land — this is the only function that needs to change.
+// scattered name-checks at call sites). It consults the registry's per-MTok
+// pricing (model.PriceClass) when seeded; a row with no pricing (PriceIn
+// NULL) falls back to name-class: the fable/opus family is premium, haiku is
+// cheap, everything else (sonnet, gpt-*) is mid.
 func PlanModelTierClass(m *model.Model) ModelTier {
+	if tier, ok := m.PriceClass(); ok {
+		switch tier {
+		case model.PricePremium:
+			return ModelTierPremium
+		case model.PriceMid:
+			return ModelTierMid
+		default:
+			return ModelTierCheap
+		}
+	}
 	id := strings.ToLower(m.ID)
 	switch {
 	case strings.Contains(id, "opus"), strings.Contains(id, "fable"):

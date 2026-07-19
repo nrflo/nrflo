@@ -39,10 +39,12 @@ func (o *apiLedgerObserver) OnMessage(role string, blocks []provider.ContentBloc
 }
 
 // OnUsage reconciles the ledger's current bytes/4 estimate against the
-// provider-reported input-token total for the request that just returned.
+// provider-reported input-token total for the request that just returned,
+// and feeds the same per-turn usage into the session's running cost.
 func (o *apiLedgerObserver) OnUsage(u provider.Usage) {
 	total := u.InputTokens + u.CacheReadTokens + u.CacheCreationTokens
 	o.store.get(o.sessionID).reconcileUsage(total)
+	AddSessionCostUsage(o.sessionID, u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheCreationTokens)
 	o.maybeBroadcast()
 }
 

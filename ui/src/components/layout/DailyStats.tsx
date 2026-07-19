@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { PlusCircle, CheckCircle2, Cpu, Clock, Check } from 'lucide-react'
+import { PlusCircle, CheckCircle2, Cpu, Clock, Check, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDailyStats } from '@/hooks/useTickets'
 import { formatTokenCount, formatDurationSec } from '@/lib/utils'
@@ -97,6 +97,12 @@ export function DailyStats() {
           <Clock className="h-3.5 w-3.5" />
           <span>{formatDurationSec(data.agent_time_sec)}</span>
         </div>
+        {data.cost_estimate != null && (
+          <div className="flex items-center gap-1">
+            <DollarSign className="h-3.5 w-3.5" />
+            <span>~${data.cost_estimate.toFixed(2)}</span>
+          </div>
+        )}
         {range !== 'today' && (
           <span className="text-[10px] text-muted-foreground/70 font-medium">
             ({RANGE_BADGES[range]})

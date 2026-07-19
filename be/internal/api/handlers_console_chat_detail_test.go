@@ -188,3 +188,77 @@ func TestHandleGetConsoleChat_Detail_ReturnsRunningTurnAndPendingApproval(t *tes
 		t.Fatalf("Thinking = %+v", body.Thinking)
 	}
 }
+
+// TestHandleGetConsoleChat_CostEstimate_LiveAndAfterEngineExit is the full
+// flow for the ticket's console surface: create a real chat session (which
+// registers RegisterSessionCost against the request's model, exactly as
+// ChatService.Create does in production), feed usage through the same
+// spawner.AddSessionCostUsage entry point a real engine's usage hook calls,
+// then assert the detail route surfaces the live in-memory cost — and, after
+// the engine exits (FinalizeSessionCost flushes to the DB row), that the same
+// value is still readable via the raw-query fallback (lastFlushedCostEstimate).
+func TestHandleGetConsoleChat_CostEstimate_LiveAndAfterEngineExit(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	startTestHub(t, s)
+	seedConsoleProject(t, s, "proj-chat-cost")
+	adminID := createTestUser(t, s, "chat-cost-admin@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleCreateConsoleChat)))
+	req := createChatReq("proj-chat-cost", `{"engine":"codex","model":"gpt-5.6-sol"}`)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create chat status = %d, want 201; body=%s", rr.Code, rr.Body.String())
+	}
+	var createBody map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &createBody); err != nil {
+		t.Fatalf("unmarshal create chat response: %v", err)
+	}
+	sid := createBody["session_id"]
+	eng := factory.last()
+
+	// gpt-5.6-sol: price_in=5, price_out=30 per MTok (migration 000183 seed).
+	spawner.AddSessionCostUsage(sid, 1_000_000, 200_000, 0, 0)
+	wantCost := 1_000_000.0/1e6*5 + 200_000.0/1e6*30
+
+	getChain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleGetConsoleChat)))
+	liveReq := getChatReq(sid)
+	liveReq.AddCookie(cookie)
+	liveRR := httptest.NewRecorder()
+	getChain.ServeHTTP(liveRR, liveReq)
+	if liveRR.Code != http.StatusOK {
+		t.Fatalf("get chat (live) status = %d, want 200; body=%s", liveRR.Code, liveRR.Body.String())
+	}
+	var liveBody struct {
+		CostEstimate float64 `json:"cost_estimate"`
+	}
+	if err := json.Unmarshal(liveRR.Body.Bytes(), &liveBody); err != nil {
+		t.Fatalf("unmarshal live body: %v", err)
+	}
+	if diff := liveBody.CostEstimate - wantCost; diff < -0.0001 || diff > 0.0001 {
+		t.Errorf("live cost_estimate = %v, want %v", liveBody.CostEstimate, wantCost)
+	}
+
+	// Tear the engine down: engineExited calls FinalizeSessionCost, forcing an
+	// immediate DB flush of the last snapshot before dropping the in-memory entry.
+	waitForChatEngineExit(t, s, sid, eng)
+
+	afterReq := getChatReq(sid)
+	afterReq.AddCookie(cookie)
+	afterRR := httptest.NewRecorder()
+	getChain.ServeHTTP(afterRR, afterReq)
+	if afterRR.Code != http.StatusOK {
+		t.Fatalf("get chat (after exit) status = %d, want 200; body=%s", afterRR.Code, afterRR.Body.String())
+	}
+	var afterBody struct {
+		CostEstimate float64 `json:"cost_estimate"`
+	}
+	if err := json.Unmarshal(afterRR.Body.Bytes(), &afterBody); err != nil {
+		t.Fatalf("unmarshal after-exit body: %v", err)
+	}
+	if diff := afterBody.CostEstimate - wantCost; diff < -0.0001 || diff > 0.0001 {
+		t.Errorf("after-exit cost_estimate (raw DB fallback) = %v, want %v", afterBody.CostEstimate, wantCost)
+	}
+}

@@ -212,7 +212,9 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 				InputTokens int `json:"inputTokens"`
 			} `json:"last"`
 			Total struct {
-				InputTokens int `json:"inputTokens"`
+				InputTokens       int `json:"inputTokens"`
+				CachedInputTokens int `json:"cachedInputTokens"`
+				OutputTokens      int `json:"outputTokens"`
 			} `json:"total"`
 			ModelContextWindow int `json:"modelContextWindow"`
 		} `json:"tokenUsage"`
@@ -221,6 +223,12 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 		sink.BumpLastMessage(sessionID)
 		return
 	}
+	// codex reports cumulative totals per event, not per-turn deltas, and
+	// inputTokens already includes cachedInputTokens — split fresh vs cached
+	// so cost is not double-billed at the full input rate.
+	fresh := p.TokenUsage.Total.InputTokens - p.TokenUsage.Total.CachedInputTokens
+	SetSessionCostUsage(sessionID, fresh, p.TokenUsage.Total.OutputTokens, p.TokenUsage.Total.CachedInputTokens, 0)
+
 	ctxWindow := p.TokenUsage.ModelContextWindow
 	if ctxWindow <= 0 {
 		ctxWindow = maxCtx

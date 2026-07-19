@@ -132,6 +132,9 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
           {stream.contextLeft != null && (
             <span className="text-xs text-muted-foreground">Context left: {stream.contextLeft}%</span>
           )}
+          {stream.cost != null && (
+            <span className="text-xs text-muted-foreground">~${stream.cost.toFixed(2)}</span>
+          )}
           {canAttachTerminal && (
             <Button
               variant="outline"

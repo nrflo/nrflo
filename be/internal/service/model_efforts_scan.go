@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -38,10 +39,12 @@ func scanModel(row rowScanner) (*model.Model, error) {
 	m := &model.Model{}
 	var createdAt, updatedAt, cliEfforts, apiEfforts string
 	var readOnly, enabled int
+	var priceIn, priceOut, priceCacheWrite, priceCacheRead sql.NullFloat64
 
 	err := row.Scan(&m.ID, &m.Provider, &m.DisplayName, &m.CLIModel, &m.APIModel,
 		&cliEfforts, &apiEfforts, &m.CLIContext, &m.APIContext, &m.FallbackModels,
-		&m.DefaultEffort, &readOnly, &enabled, &createdAt, &updatedAt)
+		&m.DefaultEffort, &readOnly, &enabled, &createdAt, &updatedAt,
+		&priceIn, &priceOut, &priceCacheWrite, &priceCacheRead)
 	if err != nil {
 		return nil, err
 	}
@@ -52,5 +55,17 @@ func scanModel(row rowScanner) (*model.Model, error) {
 	m.Enabled = enabled == 1
 	m.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
 	m.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
+	if priceIn.Valid {
+		m.PriceIn = &priceIn.Float64
+	}
+	if priceOut.Valid {
+		m.PriceOut = &priceOut.Float64
+	}
+	if priceCacheWrite.Valid {
+		m.PriceCacheWrite = &priceCacheWrite.Float64
+	}
+	if priceCacheRead.Valid {
+		m.PriceCacheRead = &priceCacheRead.Float64
+	}
 	return m, nil
 }

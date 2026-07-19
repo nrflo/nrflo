@@ -19,4 +19,11 @@ type Model struct {
 	Enabled        bool      `json:"enabled"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+
+	// Per-MTok USD pricing (nullable — a row with no seeded pricing has all
+	// four nil). Drives PriceClass and cost accounting.
+	PriceIn         *float64 `json:"price_in,omitempty"`
+	PriceOut        *float64 `json:"price_out,omitempty"`
+	PriceCacheWrite *float64 `json:"price_cache_write,omitempty"`
+	PriceCacheRead  *float64 `json:"price_cache_read,omitempty"`
 }

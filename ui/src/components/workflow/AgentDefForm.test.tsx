@@ -7,6 +7,10 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
+vi.mock('@/hooks/useDefaultTemplates', () => ({
+  useInjectableTemplates: () => ({ data: [] }),
+}))
+
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
     { label: 'Anthropic', options: [
@@ -187,7 +191,7 @@ describe('AgentDefForm', () => {
         api_max_iterations: undefined, api_max_tokens: undefined,
         validation_commands: [],
         consultant: undefined, node_role: undefined, description: undefined,
-        reasoning_effort: null,
+        reasoning_effort: null, system_template_id: undefined,
       })
     })
 
@@ -221,7 +225,7 @@ describe('AgentDefForm', () => {
         api_max_iterations: undefined, api_max_tokens: undefined,
         validation_commands: [],
         consultant: undefined, node_role: undefined, description: undefined,
-        reasoning_effort: null,
+        reasoning_effort: null, system_template_id: '',
       })
     })
 

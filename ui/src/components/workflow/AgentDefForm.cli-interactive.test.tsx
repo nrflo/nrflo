@@ -9,6 +9,10 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: mockUseAPIModeEnabled,
 }))
 
+vi.mock('@/hooks/useDefaultTemplates', () => ({
+  useInjectableTemplates: () => ({ data: [] }),
+}))
+
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: (mode: string) => mode === 'cli' ? [
     { label: 'Anthropic', options: [{ value: 'sonnet-5', label: 'Anthropic: Sonnet' }] },

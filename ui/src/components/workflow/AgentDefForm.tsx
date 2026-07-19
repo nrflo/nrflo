@@ -8,6 +8,7 @@ import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
 import { AgentDefEffortField } from './AgentDefEffortField'
+import { AgentDefSystemTemplateField } from './AgentDefSystemTemplateField'
 import { AgentDefToolsField } from './AgentDefToolsField'
 import { AgentDefNativeToolsField } from './AgentDefNativeToolsField'
 import { AgentDefSandboxField } from './AgentDefSandboxField'
@@ -57,6 +58,7 @@ export function AgentDefForm({
   const [nodeRole, setNodeRole] = useState<NodeRole>((initial?.node_role as NodeRole) || 'static')
   const [description, setDescription] = useState(initial?.description || '')
   const [reasoningEffort, setReasoningEffort] = useState(initial?.reasoning_effort ?? '')
+  const [systemTemplateId, setSystemTemplateId] = useState(initial?.system_template_id ?? '')
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions('cli')
   const apiModelOptions = useModelOptions('api')
@@ -120,7 +122,7 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null }
+    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null, system_template_id: isCreate ? (systemTemplateId || undefined) : systemTemplateId }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -161,6 +163,9 @@ export function AgentDefForm({
           </div>
         )}
         <AgentDefEffortField executionMode={executionMode} model={model} value={reasoningEffort} onChange={setReasoningEffort} />
+        {executionMode !== 'script' && (
+          <AgentDefSystemTemplateField value={systemTemplateId} onChange={setSystemTemplateId} />
+        )}
         <div className="w-32">
           <label className="block text-xs font-medium text-muted-foreground mb-1">Timeout (min)</label>
           <input type="number" value={timeout} onChange={(e) => setTimeout(Number(e.target.value))} min={1} className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm" />

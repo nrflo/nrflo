@@ -26,6 +26,7 @@ export interface AgentDef {
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
   reasoning_effort?: string | null
+  system_template_id?: string
   created_at: string
   updated_at: string
 }
@@ -52,6 +53,7 @@ export interface AgentDefCreateRequest {
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
   reasoning_effort?: string | null
+  system_template_id?: string
 }
 
 export interface AgentDefUpdateRequest {
@@ -75,4 +77,5 @@ export interface AgentDefUpdateRequest {
   node_role?: 'static' | 'planner' | 'fanout_template'
   description?: string
   reasoning_effort?: string | null
+  system_template_id?: string
 }

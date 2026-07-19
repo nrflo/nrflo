@@ -30,14 +30,16 @@ import (
 type codexEngine struct {
 	sink Sink
 
-	mu         sync.Mutex
-	spec       EngineSpec
-	cancel     context.CancelFunc
-	client     *appServerClient
-	profileDir string
-	threadID   string
-	turnID     string
-	turnActive bool
+	mu            sync.Mutex
+	spec          EngineSpec
+	cancel        context.CancelFunc
+	client        *appServerClient
+	profileDir    string
+	threadID      string
+	turnID        string
+	turnActive    bool
+	systemPrompt  string
+	firstTurnSent bool
 
 	events       chan EngineEvent
 	loopDone     chan struct{}
@@ -134,6 +136,7 @@ func (e *codexEngine) Start(ctx context.Context, spec EngineSpec) error {
 	e.client = client
 	e.profileDir = profileDir
 	e.threadID = threadResp.Thread.ID
+	e.systemPrompt = spec.SystemPrompt
 	e.mu.Unlock()
 
 	go e.runLoop(runCtx)
@@ -155,15 +158,19 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 	}
 	e.turnActive = true
 	e.turnID = ""
+	turnText := text
+	if !e.firstTurnSent && e.systemPrompt != "" {
+		turnText = e.systemPrompt + "\n\n" + text
+	}
 	e.mu.Unlock()
 
-	// Persist the user row BEFORE issuing turn/start: the agent rows this turn
-	// produces are written from runLoop's goroutine, which would otherwise race
-	// ahead of this one and land an assistant message before the user message
-	// it answers.
+	// Persist the user row (original text, no system-prompt prefix) BEFORE
+	// issuing turn/start: the agent rows this turn produces are written from
+	// runLoop's goroutine, which would otherwise race ahead of this one and
+	// land an assistant message before the user message it answers.
 	emitMessage(spec.SessionID, text, "user_input", e.sink)
 
-	resp, err := client.call(ctx, "turn/start", turnStartParams(threadID, text, spec.ReasoningEffort, spec.Model))
+	resp, err := client.call(ctx, "turn/start", turnStartParams(threadID, turnText, spec.ReasoningEffort, spec.Model))
 	if err != nil {
 		e.mu.Lock()
 		e.turnActive = false
@@ -183,6 +190,10 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 	}
 	e.mu.Lock()
 	e.turnID = started.Turn.ID
+	// Mark the first turn consumed only after turn/start succeeds: a failed
+	// first turn must still prepend the system prompt on retry, since this is
+	// codex's only system-prompt delivery channel.
+	e.firstTurnSent = true
 	e.mu.Unlock()
 	return nil
 }

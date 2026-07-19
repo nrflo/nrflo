@@ -7,6 +7,10 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => true,
 }))
 
+vi.mock('@/hooks/useDefaultTemplates', () => ({
+  useInjectableTemplates: () => ({ data: [] }),
+}))
+
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: (mode: string) => mode === 'api' ? [
     { label: 'Anthropic', options: [

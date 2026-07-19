@@ -223,7 +223,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, regErr
 		}
 
-		prep.apiSystem = apiSystemPromptWithSuffix(ctx, s.pool(), stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars), suffix, defaultAPISystemPrompt)
+		prep.apiSystem = apiSystemPromptWithSuffix(ctx, s.pool(), stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars), suffix, defaultAPISystemPrompt, agentDefSystemTemplateID(agentDef))
 		prep.apiInitialPrompt = prompt
 		prep.apiTools = specs
 		prep.apiHandlers = handlers
@@ -238,11 +238,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 	// CLI mode: write prompt to temp file and assemble SpawnOptions.
 
-	// For adapters without system-prompt-file support (Codex), prepend
-	// the suffix directly into the prompt body so it is delivered via the prompt file.
+	// Adapters without system-prompt-file support (Codex) get the override +
+	// suffix prepended into the prompt body instead — see noSystemPromptFilePrefix.
 	promptBody := prompt
-	if suffix != "" && !adapter.SupportsSystemPromptFile() {
-		promptBody = suffix + "\n\n" + prompt
+	if prefix := noSystemPromptFilePrefix(suffix, systemPromptOverride, adapter); prefix != "" {
+		promptBody = prefix + "\n\n" + prompt
 	}
 
 	// Backends that consume `prep.prompt` directly (cliInteractiveBackend

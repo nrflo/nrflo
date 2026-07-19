@@ -111,8 +111,11 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		env.WorkDir = spec.WorkDir
 		fallback = consoleAPIFSSystem
 	}
-	sysVars := map[string]string{"PROJECT_ID": spec.ProjectID, "MODEL": spec.Model, "NODE_ID": spec.SessionID}
-	system := renderAPISystemPrompt(runCtx, e.api.Pool, "api-console-system-prompt", sysVars, fallback)
+	system := spec.SystemPrompt
+	if system == "" {
+		sysVars := map[string]string{"PROJECT_ID": spec.ProjectID, "MODEL": spec.Model, "NODE_ID": spec.SessionID}
+		system = renderAPISystemPrompt(runCtx, e.api.Pool, "api-console-system-prompt", sysVars, fallback)
+	}
 
 	e.conv = apirun.NewConversation(apirun.Config{
 		Provider: prov,

@@ -2,6 +2,7 @@ package console
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,6 +155,81 @@ func TestBuildChatEngineSpec_UnknownProject_Errors(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("buildChatEngineSpec with unknown project: want error, got nil")
+	}
+}
+
+// TestBuildChatEngineSpec_SystemTemplateID_RendersIntoSystemPrompt verifies a
+// non-empty SystemTemplateID is rendered (via spawner.RenderInjectable) into
+// spec.SystemPrompt, using the PROJECT_ID/MODEL/NODE_ID vars.
+func TestBuildChatEngineSpec_SystemTemplateID_RendersIntoSystemPrompt(t *testing.T) {
+	t.Parallel()
+	pool, clk := newSpecTestPool(t)
+	seedSpecProject(t, pool, "proj-spec-systempl", "")
+
+	spec, err := buildChatEngineSpec(pool, clk, chatSpecParams{
+		SessionID: "s1", ProjectID: "proj-spec-systempl", Engine: "codex", ModelID: "",
+		SpawnToken: "tok", SystemTemplateID: "tier-t2-extractor",
+	})
+	if err != nil {
+		t.Fatalf("buildChatEngineSpec: %v", err)
+	}
+	if spec.SystemPrompt == "" {
+		t.Fatal("spec.SystemPrompt is empty, want the rendered tier-t2-extractor template")
+	}
+	if !strings.Contains(spec.SystemPrompt, "T2 Extractor") {
+		t.Errorf("spec.SystemPrompt = %q, want it to contain the tier-t2-extractor role text", spec.SystemPrompt)
+	}
+}
+
+// TestBuildChatEngineSpec_EmptySystemTemplateID_LeavesSystemPromptEmpty is the
+// byte-identical regression: an unset SystemTemplateID must not touch
+// spec.SystemPrompt at all, leaving each engine's own default in play.
+func TestBuildChatEngineSpec_EmptySystemTemplateID_LeavesSystemPromptEmpty(t *testing.T) {
+	t.Parallel()
+	pool, clk := newSpecTestPool(t)
+	seedSpecProject(t, pool, "proj-spec-nosystempl", "")
+
+	spec, err := buildChatEngineSpec(pool, clk, chatSpecParams{
+		SessionID: "s1", ProjectID: "proj-spec-nosystempl", Engine: "codex", ModelID: "", SpawnToken: "tok",
+	})
+	if err != nil {
+		t.Fatalf("buildChatEngineSpec: %v", err)
+	}
+	if spec.SystemPrompt != "" {
+		t.Errorf("spec.SystemPrompt = %q, want empty when SystemTemplateID is unset", spec.SystemPrompt)
+	}
+}
+
+// TestBuildChatEngineSpec_SystemTemplateID_UsesResolvedModelInVars verifies
+// the MODEL var fed into the injectable render is the resolved CLI model
+// (mapped_model), not the raw registry id, when a known model is selected.
+func TestBuildChatEngineSpec_SystemTemplateID_UsesResolvedModelInVars(t *testing.T) {
+	t.Parallel()
+	pool, clk := newSpecTestPool(t)
+	seedSpecProject(t, pool, "proj-spec-systempl-model", "")
+
+	modelSvc := service.NewModelService(pool, clk)
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "codex-fast2", Provider: "openai", DisplayName: "Codex Fast 2", CLIModel: "gpt-5.5",
+		CLIEfforts: []string{"high"}, DefaultEffort: "high", CLIContext: 200000,
+	}); err != nil {
+		t.Fatalf("seed models row: %v", err)
+	}
+
+	// Seed a custom injectable that echoes ${MODEL} so the resolved value is observable.
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	mustExec(t, pool, `INSERT INTO default_templates (id, name, template, default_template, readonly, type, created_at, updated_at) VALUES (?, ?, ?, ?, 0, 'injectable', ?, ?)`,
+		"chat-spec-model-echo", "Model Echo", "MODEL=${MODEL}", "MODEL=${MODEL}", now, now)
+
+	spec, err := buildChatEngineSpec(pool, clk, chatSpecParams{
+		SessionID: "s1", ProjectID: "proj-spec-systempl-model", Engine: "codex", ModelID: "codex-fast2",
+		SpawnToken: "tok", SystemTemplateID: "chat-spec-model-echo",
+	})
+	if err != nil {
+		t.Fatalf("buildChatEngineSpec: %v", err)
+	}
+	if spec.SystemPrompt != "MODEL=gpt-5.5" {
+		t.Errorf("spec.SystemPrompt = %q, want MODEL=gpt-5.5 (resolved CLI model)", spec.SystemPrompt)
 	}
 }
 

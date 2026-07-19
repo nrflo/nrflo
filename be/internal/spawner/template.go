@@ -235,8 +235,9 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	// Render the system-prompt-suffix injectable using the same vars
 	suffix := s.expandInjectable("system-prompt-suffix", stdVars)
 
-	// Compute system-prompt override (non-empty only for claude models with the toggle enabled)
-	systemPromptOverride := s.systemPromptOverrideFor(model, stdVars)
+	// Compute system-prompt override: agent def's system_template_id wins when
+	// set and renders non-empty; else the existing claude_system_prompt_override_enabled gate.
+	systemPromptOverride := s.resolveSystemPromptOverride(agentType, projectID, workflowName, model, stdVars)
 
 	// Expand ticket context variables (skip DB fetch for project scope)
 	if strings.Contains(template, "${TICKET_TITLE}") || strings.Contains(template, "${TICKET_DESCRIPTION}") {

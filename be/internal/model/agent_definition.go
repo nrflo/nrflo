@@ -29,6 +29,7 @@ type AgentDefinition struct {
 	NodeRole               string    `json:"node_role"`                  // static|planner|fanout_template; non-static defs never auto-execute as a phase
 	Description            string    `json:"description"`                // required (non-empty) when node_role='fanout_template'; the plan catalog's selection text
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"` // nil = inherit from the model row; non-nil (incl. "") overrides it
+	SystemTemplateID       string    `json:"system_template_id"`         // id of an injectable default_templates row; "" = mode default / global override gate
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -12,13 +13,14 @@ import (
 
 // chatSpecParams bundles what buildChatEngineSpec needs beyond the DB pool.
 type chatSpecParams struct {
-	SessionID       string
-	ProjectID       string
-	Engine          string // "claude" | "codex" | "api"
-	ModelID         string // models registry id, a raw CLI model name, or ""
-	ReasoningEffort string // optional override; must be in the selected mode's effort list
-	SpawnToken      string
-	ServerURL       string // loopback base, e.g. http://127.0.0.1:6587
+	SessionID        string
+	ProjectID        string
+	Engine           string // "claude" | "codex" | "api"
+	ModelID          string // models registry id, a raw CLI model name, or ""
+	ReasoningEffort  string // optional override; must be in the selected mode's effort list
+	SpawnToken       string
+	ServerURL        string // loopback base, e.g. http://127.0.0.1:6587
+	SystemTemplateID string // optional agent-def/profile injectable id, rendered into spec.SystemPrompt
 }
 
 // buildChatEngineSpec resolves the project workdir and (when ModelID names
@@ -49,11 +51,13 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 		// Engine-default model: the effort override passes through for the
 		// engine/provider to validate.
 		spec.ReasoningEffort = p.ReasoningEffort
-		return spec, nil
+	} else if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID, p.ReasoningEffort); err != nil {
+		return spawner.EngineSpec{}, err
 	}
 
-	if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID, p.ReasoningEffort); err != nil {
-		return spawner.EngineSpec{}, err
+	if p.SystemTemplateID != "" {
+		vars := map[string]string{"PROJECT_ID": p.ProjectID, "MODEL": spec.Model, "NODE_ID": p.SessionID}
+		spec.SystemPrompt = spawner.RenderInjectable(context.Background(), pool, p.SystemTemplateID, vars)
 	}
 
 	return spec, nil

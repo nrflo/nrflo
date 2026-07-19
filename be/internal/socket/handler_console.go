@@ -93,11 +93,12 @@ func (h *Handler) handleConsoleChat(ctx context.Context, req Request) Response {
 		return MakeErrorResponse(req.ID, NewInternalError("console chat service unavailable"))
 	}
 	var params struct {
-		Project string `json:"project"`
-		Cwd     string `json:"cwd"`
-		Engine  string `json:"engine"`
-		Model   string `json:"model"`
-		Effort  string `json:"reasoning_effort"`
+		Project          string `json:"project"`
+		Cwd              string `json:"cwd"`
+		Engine           string `json:"engine"`
+		Model            string `json:"model"`
+		Effort           string `json:"reasoning_effort"`
+		SystemTemplateID string `json:"system_template_id"`
 	}
 	if err := json.Unmarshal(req.Params, &params); err != nil {
 		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
@@ -108,7 +109,7 @@ func (h *Handler) handleConsoleChat(ctx context.Context, req Request) Response {
 		return MakeErrorResponse(req.ID, NewValidationError("engine is required"))
 	}
 	projectID := h.resolveConsoleProject(ctx, strings.TrimSpace(params.Project), params.Cwd)
-	sid, token, err := h.consoleChat.CreateAuthenticated(engine, modelID, strings.TrimSpace(params.Effort), projectID)
+	sid, token, err := h.consoleChat.CreateAuthenticated(engine, modelID, strings.TrimSpace(params.Effort), projectID, strings.TrimSpace(params.SystemTemplateID))
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			return MakeErrorResponse(req.ID, NewNotFoundError("project not found: "+projectID))

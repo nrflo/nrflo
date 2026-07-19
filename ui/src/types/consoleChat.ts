@@ -43,6 +43,9 @@ export interface CreateConsoleChatRequest {
   // Optional create-time effort override; must be in the model's
   // supported_efforts.
   reasoning_effort?: string
+  // Optional injectable system-template override; empty/omitted preserves
+  // today's mode-default behavior.
+  system_template_id?: string
 }
 
 export interface CreateConsoleChatResponse {

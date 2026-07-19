@@ -5,7 +5,34 @@ import (
 	"os"
 
 	"be/internal/logger"
+	"be/internal/model"
 )
+
+// agentDefSystemTemplateID returns def.SystemTemplateID, or "" for a nil def
+// (global workflows / defs not yet loaded).
+func agentDefSystemTemplateID(def *model.AgentDefinition) string {
+	if def == nil {
+		return ""
+	}
+	return def.SystemTemplateID
+}
+
+// noSystemPromptFilePrefix builds the prompt-body prefix for adapters without
+// --system-prompt-file support (Codex): override first, then suffix, so both
+// are delivered via the prompt file instead of a dedicated flag. Returns ""
+// (no-op) for adapters that do support the flag, or when both are empty.
+func noSystemPromptFilePrefix(suffix, systemPromptOverride string, adapter CLIAdapter) string {
+	if adapter.SupportsSystemPromptFile() {
+		return ""
+	}
+	if systemPromptOverride == "" {
+		return suffix
+	}
+	if suffix == "" {
+		return systemPromptOverride
+	}
+	return systemPromptOverride + "\n\n" + suffix
+}
 
 // writeSuffixAndOverrideFiles writes the system-prompt-suffix and
 // system-prompt-override injectables to temp files for adapters that support

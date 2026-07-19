@@ -88,12 +88,19 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		}
 	}
 
-	// Write defaultAPISystemPrompt to a temp file for --system-prompt-file.
+	// Write the def-template-resolved system prompt (else defaultAPISystemPrompt,
+	// byte-identical to today) to a temp file for --system-prompt-file.
+	systemPromptBody := defaultAPISystemPrompt
+	if agentDef != nil && agentDef.SystemTemplateID != "" {
+		if rendered := s.expandInjectable(agentDef.SystemTemplateID, stdTemplateVars(req.AgentType, proc.nodeID, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, proc.modelID, req.ExtraVars)); rendered != "" {
+			systemPromptBody = rendered
+		}
+	}
 	spf, spfErr := createScratchTemp("api-via-cli-system-*.md")
 	if spfErr != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: create system prompt file: %w", spfErr)
 	}
-	if _, err := spf.WriteString(defaultAPISystemPrompt); err != nil {
+	if _, err := spf.WriteString(systemPromptBody); err != nil {
 		spf.Close()
 		os.Remove(spf.Name())
 		return nil, nil, fmt.Errorf("api-via-cli: write system prompt file: %w", err)

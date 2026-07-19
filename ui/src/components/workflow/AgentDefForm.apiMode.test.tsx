@@ -15,6 +15,10 @@ vi.mock('@/hooks/useGlobalSettings', () => ({
   useAPIModeEnabled: () => mockUseAPIModeEnabled(),
 }))
 
+vi.mock('@/hooks/useDefaultTemplates', () => ({
+  useInjectableTemplates: () => ({ data: [] }),
+}))
+
 
 vi.mock('@/components/ui/MarkdownEditor', () => ({
   MarkdownEditor: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (

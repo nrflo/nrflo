@@ -155,6 +155,56 @@ func TestHandleCreateConsoleChat_AdminCookie_Returns201AndStartsEngine(t *testin
 	}
 }
 
+// TestHandleCreateConsoleChat_SystemTemplateID_ReachesEngineSpec verifies the
+// REST body's system_template_id field flows through
+// ChatService.Create/buildChatEngineSpec into the started engine's
+// EngineSpec.SystemPrompt, rendered against the migrated tier-t2-extractor
+// injectable.
+func TestHandleCreateConsoleChat_SystemTemplateID_ReachesEngineSpec(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-systempl")
+	adminID := createTestUser(t, s, "chat-admin-systempl@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+
+	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleCreateConsoleChat)))
+	req := createChatReq("proj-chat-systempl", `{"engine":"codex","model":"","system_template_id":"tier-t2-extractor"}`)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("status = %d, want 201; body=%s", rr.Code, rr.Body.String())
+	}
+
+	eng := factory.last()
+	if eng == nil {
+		t.Fatal("no fake engine constructed")
+	}
+	if !strings.Contains(eng.startSpec.SystemPrompt, "T2 Extractor") {
+		t.Errorf("startSpec.SystemPrompt = %q, want it to contain the tier-t2-extractor role text", eng.startSpec.SystemPrompt)
+	}
+}
+
+// TestHandleCreateConsoleChat_EmptySystemTemplateID_LeavesSystemPromptEmpty is
+// the byte-identical regression: omitting system_template_id must leave
+// EngineSpec.SystemPrompt empty.
+func TestHandleCreateConsoleChat_EmptySystemTemplateID_LeavesSystemPromptEmpty(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-nosystempl")
+	adminID := createTestUser(t, s, "chat-admin-nosystempl@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+
+	sid, eng := createChatSession(t, s, factory, "proj-chat-nosystempl", cookie)
+	if eng == nil {
+		t.Fatal("no fake engine constructed")
+	}
+	if eng.startSpec.SessionID != sid {
+		t.Fatalf("engine started with wrong session")
+	}
+	if eng.startSpec.SystemPrompt != "" {
+		t.Errorf("startSpec.SystemPrompt = %q, want empty when system_template_id is omitted", eng.startSpec.SystemPrompt)
+	}
+}
+
 // TestHandleCreateConsoleChat_APIEngine_APIModeDisabled_Returns400 drives the
 // real spawner.GetConsoleEngine (consoleChatEngineFunc left nil, unlike every
 // other test in this file) so engine="api" reaches the real apiConsoleEngine

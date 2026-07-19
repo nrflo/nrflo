@@ -61,13 +61,42 @@ func renderAPISystemPrompt(ctx context.Context, pool *db.Pool, id string, vars m
 
 // apiSystemPromptWithSuffix renders the api-system-prompt injectable (via
 // renderAPISystemPrompt) and appends the already-rendered system-prompt-suffix
-// when non-empty, matching CLI-mode's suffix behavior.
-func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[string]string, suffix, fallback string) string {
-	sys := renderAPISystemPrompt(ctx, pool, "api-system-prompt", vars, fallback)
+// when non-empty, matching CLI-mode's suffix behavior. overrideID, when
+// non-empty, is the agent def's system_template_id: it is rendered and used in
+// place of the api-system-prompt/fallback base when non-empty — the def/profile
+// template wins over api mode's own default, same precedence as CLI mode.
+func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[string]string, suffix, fallback, overrideID string) string {
+	sys := ""
+	if overrideID != "" {
+		sys = renderInjectable(ctx, pool, overrideID, vars)
+	}
+	if strings.TrimSpace(sys) == "" {
+		sys = renderAPISystemPrompt(ctx, pool, "api-system-prompt", vars, fallback)
+	}
 	if strings.TrimSpace(suffix) != "" {
 		sys = sys + "\n\n" + suffix
 	}
 	return sys
+}
+
+// resolveSystemPromptOverride prefers the agent def's own system_template_id
+// (rendered as an injectable) over the global claude_system_prompt_override_enabled
+// gate: a non-empty def/profile template wins outright; otherwise falls back
+// to systemPromptOverrideFor's existing gate + mode default.
+func (s *Spawner) resolveSystemPromptOverride(agentType, projectID, workflowName, model string, vars map[string]string) string {
+	if def := s.loadAgentDefinition(agentType, projectID, workflowName); def != nil && def.SystemTemplateID != "" {
+		if rendered := s.expandInjectable(def.SystemTemplateID, vars); rendered != "" {
+			return rendered
+		}
+	}
+	return s.systemPromptOverrideFor(model, vars)
+}
+
+// RenderInjectable is the exported wrapper over renderInjectable for callers
+// outside this package (the console package, which cannot import unexported
+// spawner symbols) that already hold a *db.Pool.
+func RenderInjectable(ctx context.Context, pool *db.Pool, id string, vars map[string]string) string {
+	return renderInjectable(ctx, pool, id, vars)
 }
 
 // systemPromptOverrideFor returns the expanded system-prompt injectable when the model

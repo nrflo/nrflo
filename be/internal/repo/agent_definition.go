@@ -37,7 +37,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_definitions (`+agentDefColumns+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -63,6 +63,7 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		nodeRole,
 		def.Description,
 		def.ReasoningEffort,
+		def.SystemTemplateID,
 		now,
 		now,
 	)

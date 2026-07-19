@@ -12,11 +12,11 @@ import (
 )
 
 type fakeConsoleChatCreator struct {
-	engine, model, project, attached string
+	engine, model, project, attached, systemTemplateID string
 }
 
-func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project string) (string, string, error) {
-	f.engine, f.model, f.project = engine, model, project
+func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID string) (string, string, error) {
+	f.engine, f.model, f.project, f.systemTemplateID = engine, model, project, systemTemplateID
 	return "chat-session-1", "chat-token-1", nil
 }
 
@@ -174,6 +174,43 @@ func TestConsoleChat_MintsScopedBearer(t *testing.T) {
 	}
 	if creator.engine != "codex" || creator.model != "gpt-5.3-codex" || creator.project != env.project {
 		t.Fatalf("creator args = engine=%q model=%q project=%q", creator.engine, creator.model, creator.project)
+	}
+}
+
+// TestConsoleChat_PlumbsSystemTemplateID verifies the socket handler forwards
+// a non-empty system_template_id param through to CreateAuthenticated.
+func TestConsoleChat_PlumbsSystemTemplateID(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{
+		"project": env.project, "engine": "codex", "model": "gpt-5.3-codex",
+		"system_template_id": "tier-t2-extractor",
+	})
+	resp := env.handler.Handle(Request{ID: "chat-2", Method: "console.chat", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if creator.systemTemplateID != "tier-t2-extractor" {
+		t.Errorf("creator.systemTemplateID = %q, want %q", creator.systemTemplateID, "tier-t2-extractor")
+	}
+}
+
+// TestConsoleChat_EmptySystemTemplateID verifies the default (unset) case
+// forwards an empty string, not a placeholder.
+func TestConsoleChat_EmptySystemTemplateID(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{
+		"project": env.project, "engine": "codex", "model": "gpt-5.3-codex",
+	})
+	resp := env.handler.Handle(Request{ID: "chat-3", Method: "console.chat", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if creator.systemTemplateID != "" {
+		t.Errorf("creator.systemTemplateID = %q, want empty", creator.systemTemplateID)
 	}
 }
 

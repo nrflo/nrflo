@@ -3,6 +3,7 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { Button } from '@/components/ui/Button'
 import { useConsoleCatalog, useCreateConsoleChat } from '@/hooks/useConsoleChats'
+import { useInjectableTemplates } from '@/hooks/useDefaultTemplates'
 import { useProjectStore } from '@/stores/projectStore'
 
 interface NewChatFormProps {
@@ -22,11 +23,13 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
   const currentProject = useProjectStore((s) => s.currentProject)
   const setCurrentProject = useProjectStore((s) => s.setCurrentProject)
   const { data: catalog } = useConsoleCatalog()
+  const { data: systemTemplates = [] } = useInjectableTemplates()
   const createMutation = useCreateConsoleChat()
 
   const [engine, setEngine] = useState('claude')
   const [model, setModel] = useState('')
   const [effort, setEffort] = useState('')
+  const [systemTemplateId, setSystemTemplateId] = useState('')
 
   const engines = catalog?.engines ?? []
   const selectedEngine = engines.find((e) => e.id === engine)
@@ -59,6 +62,7 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
     setEngine(value)
     setModel('')
     setEffort('')
+    setSystemTemplateId('')
   }
 
   const handleModelChange = (value: string) => {
@@ -71,6 +75,11 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
     ...supportedEfforts.map((e) => ({ value: e, label: e.charAt(0).toUpperCase() + e.slice(1) })),
   ]
 
+  const systemTemplateOptions = [
+    { value: '', label: 'Default (global rules)' },
+    ...systemTemplates.map((t) => ({ value: t.id, label: t.name })),
+  ]
+
   const canCreate =
     !!selectedEngine?.enabled && (!!model || !selectedEngine.requires_model)
 
@@ -80,6 +89,7 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
       engine,
       model,
       ...(effort ? { reasoning_effort: effort } : {}),
+      ...(systemTemplateId ? { system_template_id: systemTemplateId } : {}),
     })
     onCreated(resp.session_id)
   }
@@ -106,6 +116,10 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
           <Dropdown value={effort} onChange={setEffort} options={effortOptions} />
         </div>
       )}
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">System template</label>
+        <Dropdown value={systemTemplateId} onChange={setSystemTemplateId} options={systemTemplateOptions} />
+      </div>
       {engine === 'api' && (
         <div className="text-xs text-muted-foreground">
           No file/edit/bash tools — nrflo control + web research only; use a CLI engine for local coding.

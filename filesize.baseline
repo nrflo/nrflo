@@ -167,8 +167,8 @@ ui/src/components/settings/ProjectForm.test.tsx	305
 ui/src/components/tickets/TicketCard.test.tsx	310
 ui/src/components/ui/TicketSearchDropdown.test.tsx	326
 ui/src/components/workflow/ActiveAgentsPanel.retry.test.tsx	415
-ui/src/components/workflow/AgentDefForm.restart-threshold.test.tsx	385
-ui/src/components/workflow/AgentDefForm.test.tsx	552
+ui/src/components/workflow/AgentDefForm.restart-threshold.test.tsx	389
+ui/src/components/workflow/AgentDefForm.test.tsx	556
 ui/src/components/workflow/AgentLogDetail.errorResult.test.tsx	306
 ui/src/components/workflow/AgentLogDetail.test.tsx	962
 ui/src/components/workflow/AgentLogImprovements.e2e.test.tsx	405

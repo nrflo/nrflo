@@ -253,6 +253,13 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "reasoning_effort = ?")
 		args = append(args, *req.ReasoningEffort)
 	}
+	if req.SystemTemplateID != nil {
+		if err := s.validateSystemTemplateID(*req.SystemTemplateID); err != nil {
+			return err
+		}
+		updates = append(updates, "system_template_id = ?")
+		args = append(args, *req.SystemTemplateID)
+	}
 
 	if len(updates) == 0 {
 		return nil

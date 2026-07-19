@@ -25,6 +25,7 @@ type AgentDefCreateRequest struct {
 	NodeRole               string    `json:"node_role,omitempty"`
 	Description            string    `json:"description,omitempty"`
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"`
+	SystemTemplateID       string    `json:"system_template_id,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -51,6 +52,7 @@ type AgentDefUpdateRequest struct {
 	NodeRole               *string   `json:"node_role,omitempty"`
 	Description            *string   `json:"description,omitempty"`
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"`
+	SystemTemplateID       *string   `json:"system_template_id,omitempty"`
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

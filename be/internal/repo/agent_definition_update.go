@@ -33,7 +33,8 @@ type AgentDefUpdateFields struct {
 	// ReasoningEffort: nil = untouched; non-nil with Valid=false writes NULL
 	// (revert to inherit-from-model-row); non-nil with Valid=true writes the
 	// string (incl. "" for an explicit no-effort override).
-	ReasoningEffort *sql.NullString
+	ReasoningEffort  *sql.NullString
+	SystemTemplateID *string
 }
 
 // Update updates an agent definition
@@ -132,6 +133,11 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 		} else {
 			args = append(args, nil)
 		}
+	}
+
+	if fields.SystemTemplateID != nil {
+		updates = append(updates, "system_template_id = ?")
+		args = append(args, *fields.SystemTemplateID)
 	}
 
 	if len(updates) == 0 {

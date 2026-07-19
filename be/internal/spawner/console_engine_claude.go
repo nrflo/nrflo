@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -144,6 +145,14 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 	}
 	if spec.FallbackModels != "" {
 		args = append(args, "--fallback-model", spec.FallbackModels)
+	}
+	if spec.SystemPrompt != "" {
+		sysPromptPath := filepath.Join(tempDir, "system-prompt.md")
+		if err := os.WriteFile(sysPromptPath, []byte(spec.SystemPrompt), 0o600); err != nil {
+			_ = os.RemoveAll(tempDir)
+			return fmt.Errorf("claude console engine: write system prompt file: %w", err)
+		}
+		args = append(args, "--system-prompt-file", sysPromptPath)
 	}
 	args = append(args, "--settings", BuildConsoleSettingsJSON(e.nrfloPath), "--mcp-config", mcpPath)
 

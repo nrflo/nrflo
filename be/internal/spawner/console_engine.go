@@ -82,6 +82,10 @@ type EngineSpec struct {
 	// APIProvider is "anthropic" or "openai", resolved from the unified model row.
 	// (chat_model_resolver.go). Empty for claude/codex specs.
 	APIProvider string
+	// SystemPrompt is the rendered def/profile system_template_id text, resolved
+	// by buildChatEngineSpec (console package). Empty = engine default (api
+	// falls back to its own injectable/constant; codex/claude add nothing).
+	SystemPrompt string
 }
 
 // EventType identifies the kind of a normalized console event.

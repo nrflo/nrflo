@@ -166,6 +166,10 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		return nil, err
 	}
 
+	if err := s.validateSystemTemplateID(req.SystemTemplateID); err != nil {
+		return nil, err
+	}
+
 	nativeTools, nErr := normalizeNativeTools(req.NativeTools)
 	if nErr != nil {
 		return nil, nErr
@@ -192,9 +196,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, req.SystemTemplateID, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -227,10 +231,29 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		PythonScriptID:         req.PythonScriptID,
 		ValidationCommands:     validationCommandsJSON,
 		ReasoningEffort:        req.ReasoningEffort,
+		SystemTemplateID:       req.SystemTemplateID,
 		Consultant:             req.Consultant,
 		NodeRole:               nodeRole,
 		Description:            req.Description,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
+}
+
+// validateSystemTemplateID allows an empty id (mode default / global override
+// gate) and otherwise requires it to resolve to an injectable default_templates row.
+func (s *AgentDefinitionService) validateSystemTemplateID(id string) error {
+	if id == "" {
+		return nil
+	}
+	var count int
+	if err := s.pool.QueryRow(
+		"SELECT COUNT(*) FROM default_templates WHERE id = ? AND type = 'injectable'", id,
+	).Scan(&count); err != nil {
+		return fmt.Errorf("failed to validate system_template_id: %w", err)
+	}
+	if count == 0 {
+		return validationErrorf("invalid system_template_id: %q", id)
+	}
+	return nil
 }

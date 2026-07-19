@@ -27,8 +27,11 @@ func CheckSafetyHook(cfg SafetyHookConfig, command string) (bool, string, error)
 
 	script := buildSafetyCommand(cfg)
 
-	// Build mock tool-call JSON that the script expects on stdin.
+	// Build mock tool-call JSON that the script expects on stdin — the exact
+	// Claude Code PreToolUse contract shared with the external tool_safety_script
+	// path (safety_gate.go's runSafetyScript).
 	toolInput := map[string]interface{}{
+		"tool_name": "Bash",
 		"tool_input": map[string]interface{}{
 			"command": command,
 		},

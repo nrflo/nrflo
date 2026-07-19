@@ -71,7 +71,10 @@ func TestToolResultOffload_ReadFileEndToEnd(t *testing.T) {
 	e := newBuiltinTestEnv(t)
 	e.env.WorkDir = t.TempDir()
 
-	big := strings.Repeat("A", 9000)
+	// Many short lines, not one giant line: read_file's per-line truncation
+	// cap (readFileMaxLineLen) would otherwise shrink a single huge line well
+	// below the offload threshold before quarantine ever sees it.
+	big := strings.Repeat("some line of file content that is not tiny\n", 400)
 	if err := os.WriteFile(filepath.Join(e.env.WorkDir, "big.txt"), []byte(big), 0o644); err != nil {
 		t.Fatalf("write big.txt: %v", err)
 	}

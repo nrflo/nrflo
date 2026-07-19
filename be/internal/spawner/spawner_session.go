@@ -239,7 +239,9 @@ func (s *Spawner) lookupSessionProc(sessionID string) *processInfo {
 	return s.sessionProcs[sessionID]
 }
 
-// unregisterSessionProcs removes completed procs from the session proc map.
+// unregisterSessionProcs removes completed procs from the session proc map
+// and kills any background shells they left running (native fs bash
+// run_in_background) so none outlive the session.
 func (s *Spawner) unregisterSessionProcs(procs []*processInfo) {
 	if len(procs) == 0 {
 		return
@@ -249,4 +251,7 @@ func (s *Spawner) unregisterSessionProcs(procs []*processInfo) {
 		delete(s.sessionProcs, proc.sessionID)
 	}
 	s.sessionProcsMu.Unlock()
+	for _, proc := range procs {
+		proc.apiToolEnv.FS.KillAll()
+	}
 }

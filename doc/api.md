@@ -144,6 +144,21 @@ compatible). For in-process `api` agents an empty field means no tools
 | `revise_plan` | Revise a sub-workflow's plan (edited manifest, or planner feedback/answers). Input: `{instance_id, revision, plan?, feedback?, answers?}` |
 | `approve_plan` | Approve+materialize a sub-workflow's plan at a revision. Input: `{instance_id, revision}` |
 
+**Native fs tools** (workdir-jailed, offered only when `native_tools=none` on a claude def — bridge — or the `api_native_tools_enabled` global setting is on — in-process/console; see `tools_builtin.FSTools()`):
+
+| Tool | Description |
+|------|-------------|
+| `read_file` | Read a file (line-numbered `cat -n` text, or an image content block for PNG/JPEG). Input: `{path, offset?, limit?}` |
+| `edit_file` | Exact-string replacement on a file already `read_file`'d this session. Input: `{path, old_string, new_string, replace_all?}` |
+| `write_file` | Create a file, or overwrite one already `read_file`'d this session. Input: `{path, content}` |
+| `glob` | Fast filename pattern matching (`**` supported), mtime-sorted. Input: `{pattern}` |
+| `grep` | Regex content search: `files_with_matches`\|`count`\|`content` modes, line numbers + `-A`/`-B`/`-C` context, optional `glob` filter. Input: `{pattern, glob?, output_mode?, -i?, -A?, -B?, -C?}` |
+| `bash` | Run `sh -c`; set `run_in_background` for a long-running command. Input: `{command, timeout_ms?, run_in_background?}` |
+| `bash_output` | Poll a background shell for new output + status/exit code. Input: `{shell_id, filter?}` |
+| `kill_shell` | Kill a background shell. Input: `{shell_id}` |
+
+`bash` runs every command through a server-side script safety gate first (project `tool_safety_script` config key > global `tool_safety_script` > the project's `claude_safety_hook` config > allow) — a check only, not an interactive permission system; a block surfaces as an `isError` tool result, never a turn failure.
+
 **`read_document`** materializes a named input artifact and returns its bytes
 as an image or document content block so the model can read it natively (OCR
 scanned PDFs, photos). PDF → document block; PNG/JPEG → image block. Capped

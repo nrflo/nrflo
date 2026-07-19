@@ -167,6 +167,17 @@ type ToolEnv struct {
 	// (read_file/edit_file/bash, tools_builtin/fs*.go) are jailed to. Empty
 	// means no filesystem access — those tools error.
 	WorkDir string
+	// FS holds per-session state for the native fs tools: the read-before-
+	// edit/write tracking set and the background-shell registry (bash's
+	// run_in_background + bash_output/kill_shell). Nil when not wired (e.g.
+	// console sessions, tests) — handlers skip read-checks and background
+	// tools error clearly when this is nil.
+	FS *FSSession
+	// SafetyCheck runs before every bash command when non-nil: returns
+	// (allowed, reason, err). !allowed or a non-nil err both surface as a
+	// blocking isError tool result, never a turn-fatal Go error. Nil = allow
+	// (e.g. console sessions, tests).
+	SafetyCheck func(command string) (allowed bool, reason string, err error)
 }
 
 // TerminalSignal is returned by handlers that end the runner loop.

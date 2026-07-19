@@ -9,17 +9,25 @@ import (
 	"be/internal/spawner/apirun"
 )
 
-// FSTools returns the native filesystem/shell handlers (read_file /
-// edit_file / bash). Deliberately NOT part of Builtins(): they execute
-// model-authored operations on the server's filesystem, so call sites merge
-// them only when the `api_native_tools_enabled` global setting is on — and
-// the console api engine additionally wraps edit_file/bash in a human
-// approval gate (spawner/console_engine_api_approval.go).
+// FSTools returns the native filesystem/shell handlers offered toward Claude
+// Code parity: read_file / edit_file / write_file / glob / grep (workdir-
+// jailed) plus bash / bash_output / kill_shell (foreground and background
+// shell). Deliberately NOT part of Builtins(): they execute model-authored
+// operations on the server's filesystem, so call sites merge them only when
+// the `api_native_tools_enabled` global setting is on — and the console api
+// engine additionally wraps edit_file/bash in a human approval gate
+// (spawner/console_engine_api_approval.go). bash additionally runs through
+// ToolEnv.SafetyCheck (a script gate, resolved by the spawner) when wired.
 func FSTools() map[string]apirun.ToolHandler {
 	return map[string]apirun.ToolHandler{
-		"read_file": readFileHandler{},
-		"edit_file": editFileHandler{},
-		"bash":      bashHandler{},
+		"read_file":   readFileHandler{},
+		"edit_file":   editFileHandler{},
+		"write_file":  writeFileHandler{},
+		"glob":        globHandler{},
+		"grep":        grepHandler{},
+		"bash":        bashHandler{},
+		"bash_output": bashOutputHandler{},
+		"kill_shell":  killShellHandler{},
 	}
 }
 

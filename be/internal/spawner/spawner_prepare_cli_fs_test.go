@@ -101,22 +101,21 @@ func TestPrepareSpawn_CLIInteractiveClaude_NativeToolsNone_FSBridge(t *testing.T
 		}
 	}
 
-	// End-to-end edit_file via DispatchTool: creates a file under ProjectRoot.
+	// End-to-end write_file via DispatchTool: creates a file under ProjectRoot.
 	s.registerSessionProc(proc.sessionID, proc)
-	editArgs, _ := json.Marshal(map[string]any{
-		"path":       "created.txt",
-		"old_string": "",
-		"new_string": "hello from fs bridge",
+	writeArgs, _ := json.Marshal(map[string]any{
+		"path":    "created.txt",
+		"content": "hello from fs bridge",
 	})
-	out, _, isErr, terminal, dispatchErr := s.DispatchTool(proc.sessionID, "edit_file", editArgs)
+	out, _, isErr, terminal, dispatchErr := s.DispatchTool(proc.sessionID, "write_file", writeArgs)
 	if dispatchErr != nil {
-		t.Fatalf("DispatchTool edit_file error: %v", dispatchErr)
+		t.Fatalf("DispatchTool write_file error: %v", dispatchErr)
 	}
 	if isErr {
-		t.Fatalf("edit_file isError=true: %s", out)
+		t.Fatalf("write_file isError=true: %s", out)
 	}
 	if terminal != "" {
-		t.Fatalf("edit_file terminal = %q, want empty", terminal)
+		t.Fatalf("write_file terminal = %q, want empty", terminal)
 	}
 	data, readErr := os.ReadFile(filepath.Join(workDir, "created.txt"))
 	if readErr != nil || string(data) != "hello from fs bridge" {

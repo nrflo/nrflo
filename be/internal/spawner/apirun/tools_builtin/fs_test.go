@@ -14,7 +14,7 @@ import (
 
 func fsEnv(t *testing.T) apirun.ToolEnv {
 	t.Helper()
-	return apirun.ToolEnv{WorkDir: t.TempDir()}
+	return apirun.ToolEnv{WorkDir: t.TempDir(), FS: apirun.NewFSSession()}
 }
 
 func invokeFS(t *testing.T, name string, env apirun.ToolEnv, args string) (string, bool) {
@@ -67,11 +67,8 @@ func TestFSTools_WorkdirJail(t *testing.T) {
 func TestFSTools_EditCreateReadRoundtrip(t *testing.T) {
 	env := fsEnv(t)
 
-	if out, isErr := invokeFS(t, "edit_file", env, `{"path":"sub/a.txt","old_string":"","new_string":"one\ntwo\nthree"}`); isErr {
+	if out, isErr := invokeFS(t, "write_file", env, `{"path":"sub/a.txt","content":"one\ntwo\nthree"}`); isErr {
 		t.Fatalf("create = (%q, %v)", out, isErr)
-	}
-	if out, isErr := invokeFS(t, "edit_file", env, `{"path":"sub/a.txt","old_string":"","new_string":"x"}`); !isErr || !strings.Contains(out, "already exists") {
-		t.Errorf("re-create = (%q, %v), want already-exists error", out, isErr)
 	}
 
 	out, isErr := invokeFS(t, "read_file", env, `{"path":"sub/a.txt","offset":2,"limit":1}`)

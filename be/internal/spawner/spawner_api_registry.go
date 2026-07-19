@@ -123,6 +123,8 @@ func (s *Spawner) buildAPIRegistry(
 		Subworkflows:       s.config.Subworkflows,
 		Heartbeat:          func() { s.BumpLastMessage(proc.sessionID) },
 		WorkDir:            proc.workDir,
+		FS:                 apirun.NewFSSession(),
+		SafetyCheck:        s.resolveSafetyCheck(req.ProjectID),
 	}
 
 	return specs, handlers, toolEnv, nil

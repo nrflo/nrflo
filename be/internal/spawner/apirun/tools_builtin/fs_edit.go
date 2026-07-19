@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"be/internal/spawner/apirun"
@@ -15,20 +14,20 @@ import (
 const editFileMaxBytes = 4 << 20 // refuse to edit files larger than this
 
 // editFileHandler implements edit_file: exact-string replacement (the
-// Claude-Code-shaped Edit contract) plus file creation when old_string is
-// empty and the file does not exist.
+// Claude-Code-shaped Edit contract) against an existing file that has already
+// been read this session. Creating a new file is write_file's job.
 type editFileHandler struct{}
 
 func (editFileHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "edit_file",
-		Description: "Edit a file inside the working directory by exact string replacement. old_string must match exactly once (use replace_all for every occurrence). An empty old_string creates the file with new_string (errors if it already exists). Parent directories are created as needed.",
+		Description: "Edit an existing file inside the working directory by exact string replacement. You must read_file the file in this session before editing it. old_string must match exactly once in the file (use replace_all to replace every occurrence) and must differ from new_string. Use write_file to create a new file.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
 "path":{"type":"string","description":"File path, relative to the working directory"},
-"old_string":{"type":"string","description":"Exact text to replace; empty to create a new file"},
-"new_string":{"type":"string","description":"Replacement text (or full content for a new file)"},
+"old_string":{"type":"string","description":"Exact text to replace; must match uniquely unless replace_all is set"},
+"new_string":{"type":"string","description":"Replacement text"},
 "replace_all":{"type":"boolean","description":"Replace every occurrence instead of requiring a unique match"}
 },
 "required":["path","old_string","new_string"],
@@ -47,27 +46,26 @@ func (editFileHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
 	}
+	if args.OldString == args.NewString {
+		return "old_string and new_string are identical — nothing to change", true, nil
+	}
 	abs, err := resolveFSPath(env, args.Path)
 	if err != nil {
 		return err.Error(), true, nil
 	}
 
-	if args.OldString == "" {
-		if _, statErr := os.Stat(abs); statErr == nil {
-			return fmt.Sprintf("%s already exists — pass the exact old_string to edit it", args.Path), true, nil
-		}
-		if mkErr := os.MkdirAll(filepath.Dir(abs), 0o755); mkErr != nil {
-			return mkErr.Error(), true, nil
-		}
-		if writeErr := os.WriteFile(abs, []byte(args.NewString), 0o644); writeErr != nil {
-			return writeErr.Error(), true, nil
-		}
-		return fmt.Sprintf("created %s (%d bytes)", args.Path, len(args.NewString)), false, nil
-	}
-
 	fi, err := os.Stat(abs)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Sprintf("%s does not exist — use write_file to create it", args.Path), true, nil
+		}
 		return err.Error(), true, nil
+	}
+	if fi.IsDir() {
+		return fmt.Sprintf("%s is a directory", args.Path), true, nil
+	}
+	if env.FS != nil && !env.FS.WasRead(abs) {
+		return fmt.Sprintf("%s has not been read in this session — read_file it first before editing", args.Path), true, nil
 	}
 	if fi.Size() > editFileMaxBytes {
 		return fmt.Sprintf("%s is too large to edit (%d bytes)", args.Path, fi.Size()), true, nil
@@ -96,5 +94,6 @@ func (editFileHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.
 	if err := os.WriteFile(abs, []byte(content), fi.Mode().Perm()); err != nil {
 		return err.Error(), true, nil
 	}
+	env.FS.MarkRead(abs)
 	return fmt.Sprintf("edited %s (%d replacement(s))", args.Path, replaced), false, nil
 }

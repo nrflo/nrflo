@@ -30,7 +30,7 @@ Each terminal handler also calls the corresponding `AgentService` method, so DB 
 
 ## Builtins
 
-Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal there is the canonical list. `tools_builtin.FSTools()` (`fs*.go`) is deliberately separate: workdir-jailed `read_file`/`edit_file`/`bash` (symlink-resolved jail via `resolveFSPath`), merged only when the `api_native_tools_enabled` global setting is on, except cli_interactive claude defs resolving `native_tools=="none"` which bypass that global — pure in-process api spawns get them via `buildAPIRegistry(includeFS=true)`, console api chats via the engine's approval gate (`spawner/console_engine_api_approval.go`, `FSApprovalRequired` = edit_file/bash).
+Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal there is the canonical list. `tools_builtin.FSTools()` (`fs*.go`) offers the native fs/shell tools toward Claude Code parity (read_file/edit_file/write_file/glob/grep/bash/bash_output/kill_shell), workdir-jailed via `resolveFSPath`; merged only when `api_native_tools_enabled` is on, except cli_interactive claude defs resolving `native_tools=="none"`. Per-session read-set + background-shell state lives on `ToolEnv.FS`; `bash` also runs through `ToolEnv.SafetyCheck`, a script-only gate (not a permission system). Mechanics: [REFERENCE.md](REFERENCE.md#native-fs-tools).
 
 `read_document` (`tools_builtin/read_document.go`) inlines a named input artifact as media (OCR): PDF → document block, PNG/JPEG → image block, others → text error; 32 MiB cap. Implements `MediaToolHandler` (see below).
 

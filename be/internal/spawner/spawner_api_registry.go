@@ -27,10 +27,13 @@ import (
 //
 // includeFS additionally offers the native filesystem/shell tools
 // (tools_builtin.FSTools — read_file/edit_file/bash, jailed to the workdir).
-// Only the pure in-process api branch passes true, and only when the
-// `api_native_tools_enabled` global setting is on: CLI-backed agents have
-// their CLI's own native tools, so granting a second bash over MCP would be
-// redundant surface.
+// The pure in-process api branch passes true only when the
+// `api_native_tools_enabled` global setting is on (bypassNativeGate=false):
+// CLI-backed agents have their CLI's own native tools, so granting a second
+// bash over MCP would be redundant surface. The cli_interactive path passes
+// true with bypassNativeGate=true when the resolved def opts out of native
+// tools (native_tools=="none") — an explicit per-def opt-out is unambiguous
+// intent and skips the global gate.
 func (s *Spawner) buildAPIRegistry(
 	req SpawnRequest,
 	wfiID string,
@@ -39,6 +42,7 @@ func (s *Spawner) buildAPIRegistry(
 	toolsCSVOverride string,
 	forceBaseline bool,
 	includeFS bool,
+	bypassNativeGate bool,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
 	toolsCSV := toolsCSVOverride
 	if toolsCSV == "" {
@@ -52,7 +56,7 @@ func (s *Spawner) buildAPIRegistry(
 	pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
 
 	builtins := tools_builtin.Builtins()
-	if includeFS && proc.workDir != "" && apiNativeToolsEnabled(s.config.Pool, s.config.Clock) {
+	if includeFS && proc.workDir != "" && (bypassNativeGate || apiNativeToolsEnabled(s.config.Pool, s.config.Clock)) {
 		for name, handler := range tools_builtin.FSTools() {
 			builtins[name] = handler
 		}

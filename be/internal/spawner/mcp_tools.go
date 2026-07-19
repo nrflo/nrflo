@@ -64,10 +64,14 @@ func substituteReadDocument(specs []provider.ToolSpec, handlers apirun.Registry,
 // tools/call. The agent definition's tools field is honored (empty → "*", the
 // full set, for backward compatibility); the agent_* lifecycle baseline is
 // force-merged so a restrictive tools CSV can never strip an agent's ability to
-// signal findings/lifecycle. read_document is swapped per adapter capability:
-// path-returning variant when the CLI reads documents natively (Claude), else
-// the hybrid path+image-media variant (codex). Used for both Claude (which
-// gets --mcp-config) and codex (config.toml).
+// signal findings/lifecycle. When the def resolves native_tools=="none", the
+// jailed FS trio (read_file/edit_file/bash) is merged in too — bypassing the
+// api_native_tools_enabled global, since an explicit def opt-out is
+// unambiguous intent — so results still flow through DispatchTool quarantine.
+// read_document is swapped per adapter capability: path-returning variant when
+// the CLI reads documents natively (Claude), else the hybrid path+image-media
+// variant (codex). Used for both Claude (which gets --mcp-config) and codex
+// (config.toml).
 func (s *Spawner) attachNrfloToolRegistry(
 	req SpawnRequest,
 	wfiID string,
@@ -79,7 +83,13 @@ func (s *Spawner) attachNrfloToolRegistry(
 	if agentDef != nil && strings.TrimSpace(agentDef.Tools) != "" {
 		toolsCSV = agentDef.Tools
 	}
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true, false)
+	adapterName := ""
+	if adapter != nil {
+		adapterName = adapter.Name()
+	}
+	nativeToolsCSV, _ := nativeSpawnFields(agentDef, adapterName)
+	includeFS := nativeToolsCSV == model.NativeToolsNone
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true, includeFS, true)
 	if regErr != nil {
 		return regErr
 	}
@@ -96,7 +106,9 @@ func (s *Spawner) attachNrfloToolRegistry(
 
 // configureClaudeMCPTools attaches the registry (attachNrfloToolRegistry) and
 // returns the --mcp-config + --allowedTools values for a Claude spawn. Native
-// coding tools are left untouched (NativeToolsCSV stays empty).
+// --tools/--disallowedTools flags are computed separately (cli_adapter_claude.go)
+// and left untouched here; the bridge registry itself gains nrflo's FS tools
+// when the def's native_tools=="none" strips the CLI's own native ones.
 func (s *Spawner) configureClaudeMCPTools(
 	req SpawnRequest,
 	wfiID string,

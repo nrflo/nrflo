@@ -39,7 +39,7 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 ## Native Tool Restriction
 
-Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` → `--tools`; the `none` sentinel maps to `--tools ""` (MCP-only agent), empty = unrestricted. Agent-def `sandbox` (codex-only) rides `SpawnOptions.Sandbox` into the app-server thread/start sandbox param, empty → danger-full-access. Constants (`model.Sandbox*`, `model.NativeToolsNone`) live in `be/internal/model`; per-adapter resolution is `nativeSpawnFields` (`spawner_prepare_native.go`), nil-def (global workflows) = unrestricted.
+Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` → `--tools`; the `none` sentinel maps to `--tools ""` (MCP-only agent), empty = unrestricted. Agent-def `sandbox` (codex-only) rides `SpawnOptions.Sandbox` into the app-server thread/start sandbox param, empty → danger-full-access. Constants (`model.Sandbox*`, `model.NativeToolsNone`) live in `be/internal/model`; per-adapter resolution is `nativeSpawnFields` (`spawner_prepare_native.go`), nil-def (global workflows) = unrestricted. A claude def resolving `native_tools=="none"` also gets the jailed nrflo FS trio (read_file/edit_file/bash) served over the bridge (`attachNrfloToolRegistry`, `includeFS`), bypassing the `api_native_tools_enabled` global since the def opt-out is explicit; results still flow through `DispatchTool` quarantine.
 
 ## Console Engine
 

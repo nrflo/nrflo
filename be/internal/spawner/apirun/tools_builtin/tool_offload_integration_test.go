@@ -5,6 +5,9 @@ package tools_builtin
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -57,6 +60,48 @@ func TestToolResultOffload_EndToEnd(t *testing.T) {
 	arts2, _ := e.env.ArtifactSvc.List(context.Background(), testWFIID)
 	if len(arts2) != len(arts) {
 		t.Errorf("duplicate artifact rows created: %d -> %d", len(arts), len(arts2))
+	}
+}
+
+// TestToolResultOffload_ReadFileEndToEnd verifies the native FS bridge's
+// read_file result quarantines through the same offload path as any other
+// tool: a >8KB file read gets stored as a toolres_read_file_ artifact and
+// replaced by a bounded excerpt.
+func TestToolResultOffload_ReadFileEndToEnd(t *testing.T) {
+	e := newBuiltinTestEnv(t)
+	e.env.WorkDir = t.TempDir()
+
+	big := strings.Repeat("A", 9000)
+	if err := os.WriteFile(filepath.Join(e.env.WorkDir, "big.txt"), []byte(big), 0o644); err != nil {
+		t.Fatalf("write big.txt: %v", err)
+	}
+
+	h := FSTools()["read_file"]
+	out, isErr, err := h.Invoke(context.Background(), e.env, json.RawMessage(`{"path":"big.txt"}`))
+	if err != nil || isErr {
+		t.Fatalf("read_file = (%q, %v, %v)", out, isErr, err)
+	}
+
+	offloaded := apirun.MaybeOffloadToolResult(context.Background(), e.env, "read_file", out)
+	if offloaded == out {
+		t.Fatal("large read_file result was not offloaded")
+	}
+	if !strings.Contains(offloaded, "toolres_read_file_") {
+		t.Fatalf("excerpt missing toolres_read_file_ artifact pointer: %q", offloaded[:200])
+	}
+
+	arts, err := e.env.ArtifactSvc.List(context.Background(), testWFIID)
+	if err != nil {
+		t.Fatalf("list artifacts: %v", err)
+	}
+	var found bool
+	for _, a := range arts {
+		if strings.HasPrefix(a.Name, "toolres_read_file_") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no toolres_read_file_ artifact row created")
 	}
 }
 

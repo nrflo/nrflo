@@ -61,7 +61,7 @@ func (e *claudeEngine) flushTranscript() {
 	offset := e.transcriptOffset
 	e.mu.Unlock()
 
-	path := claudeTranscriptPath(spec.Env, spec.WorkDir, spec.SessionID)
+	path := claudeTranscriptPath(spec.Env, spec.WorkDir, spec.effectiveCLISessionID())
 	if path == "" {
 		return
 	}

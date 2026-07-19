@@ -48,6 +48,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
 		registeredSessions[newProc.sessionID] = struct{}{}
 		globalLedgerStore.drop(oldProc.sessionID)
+		DropProactiveRestartState(oldProc.sessionID)
 		return newProc, nil
 	}
 
@@ -290,7 +291,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 				// Check for continuation
 				if proc.finalStatus == "CONTINUE" {
-					if proc.restartCount < defaultMaxContinuations {
+					// A proactive rotation has already killed+saved the agent, so
+					// the continuation cap must not convert it into a phase FAIL
+					// (the rotation itself resets restartCount on relaunch). When
+					// proactiveRotationPending is false this is byte-identical to
+					// the emergency/manual continuation cap.
+					if proc.proactiveRotationPending || proc.restartCount < defaultMaxContinuations {
 						logger.Info(ctx, "continuation relaunching", "model", proc.modelID, "count", proc.restartCount+1, "max", defaultMaxContinuations)
 						newProc, err := relaunchAndRegister(proc)
 						if err != nil {
@@ -336,6 +342,9 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				}
 				// Idle/nudge loop — send reminder or auto-fail unresponsive agent
 				s.checkIdleNudge(ctx, proc, req)
+				// Watcher-triggered proactive restart-with-digest — fires only
+				// at a task boundary while idle; never mid-tool-chain.
+				s.checkProactiveRestart(ctx, proc, req)
 				// Still running - check timeout
 				if elapsed > proc.timeout {
 					s.handleGracefulTimeout(ctx, proc, req)

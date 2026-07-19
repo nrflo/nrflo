@@ -91,6 +91,7 @@ const (
 	EventConsoleChatError            = "console_chat.error"
 	EventConsoleChatThinking         = "console_chat.thinking"
 	EventConsoleChatSessionApprovals = "console_chat.session_approvals"
+	EventConsoleContextRotated       = "console.context_rotated"
 )
 
 // Event represents a WebSocket event to broadcast

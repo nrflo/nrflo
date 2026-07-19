@@ -168,9 +168,9 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 		return nil, err
 	}
 
-	// Carry over continuation tracking
-	newProc.ancestorSessionID = ancestorID
-	newProc.restartCount = oldProc.restartCount + 1
+	// Carry over continuation tracking (proactive rotations reset the counter
+	// instead of incrementing it — see applyProactiveRotationCarry).
+	applyProactiveRotationCarry(ctx, oldProc, newProc, ancestorID)
 	newProc.restartThreshold = oldProc.restartThreshold
 	newProc.maxFailRestarts = oldProc.maxFailRestarts
 	newProc.failRestartCount = oldProc.failRestartCount

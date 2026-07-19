@@ -31,19 +31,30 @@ import (
 // died mid-turn would leave the turn pinned "running" and every later
 // SendMessage rejected with ErrTurnActive against a process that no longer
 // exists.
-func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSession, onEngineExit func()) {
+//
+// maybeRotate is consulted on every EventTurnCompleted (the idle task
+// boundary): when it performs a proactive-restart rotation it returns true,
+// and this pump's normal channel-close teardown is skipped for the rest of
+// its lifetime — rotate already started a fresh engine + a new pump, which
+// owns teardown/idle-push from here on. maybeRotate may be nil (no
+// rotation support wired, e.g. tests) — nil is a no-op, never a rotation.
+func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSession, onEngineExit func(), maybeRotate func(*chatSession) bool) {
 	auditRepo := repo.NewAuditRepo(pool, clk)
+	rotated := false
 	// The turn-idle push comes LAST, after the session is torn down: a
 	// subscriber that sees it knows the row is already closed.
 	defer func() {
 		sess.endTurn()
+		if rotated {
+			return
+		}
 		if onEngineExit != nil {
 			onEngineExit()
 		}
 		pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 	}()
 
-	for ev := range sess.engine.Events() {
+	for ev := range sess.getEngine().Events() {
 		switch ev.Type {
 		case spawner.EventTextDelta:
 			sess.appendLive(ev.ItemID, ev.Text)
@@ -58,6 +69,11 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 		case spawner.EventTurnCompleted:
 			sess.endTurn()
 			sess.clearLive()
+			if maybeRotate != nil && maybeRotate(sess) {
+				rotated = true
+				appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
+				continue
+			}
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 			appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
 
@@ -98,6 +114,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			})
 
 		case spawner.EventTokenUsage:
+			sess.noteContextLeft(ev.ContextLeftPct)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventAgentContextUpdated, map[string]interface{}{
 				"session_id":   sess.id,
 				"context_left": ev.ContextLeftPct,
@@ -138,7 +155,7 @@ func clientDecision(d spawner.ApprovalDecision) string {
 // — sent whenever the list changes (approve_for_session resolution, revoke),
 // always as the full list so consumers never have to merge deltas.
 func pushSessionApprovals(wsHub *ws.Hub, sess *chatSession) {
-	tools := sess.engine.SessionApprovals()
+	tools := sess.getEngine().SessionApprovals()
 	if tools == nil {
 		tools = []string{}
 	}

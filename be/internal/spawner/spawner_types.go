@@ -138,6 +138,11 @@ type processInfo struct {
 	failRestartCount  int    // How many times this agent has been auto-restarted on failure
 	// Low-context save state
 	lowContextSaving bool // True while initiateContextSave is running
+	// Proactive restart-with-digest (watcher-triggered, task-boundary + idle)
+	proactiveRestartThreshold int  // Resolved ledger-token ceiling; 0 = disabled
+	proactiveRestartCount     int  // How many times this session has proactively rotated
+	proactiveRotationPending  bool // Set on the OLD proc before its relaunch; tells relaunchForContinuation to reset restartCount instead of incrementing it
+	proactiveTokensBefore     int  // Ledger tokens at the moment the rotation fired (for tokens-before/after logging)
 	// Stall detection
 	lastMessageTime     time.Time     // set on spawn, updated on every trackMessage()
 	hasReceivedMessage  bool          // distinguishes "no messages yet" from "had messages, now stalled"

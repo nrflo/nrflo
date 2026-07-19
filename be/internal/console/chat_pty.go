@@ -19,7 +19,7 @@ func (s *ChatService) AttachPTY(sid string, sink func([]byte)) (spawner.ConsoleP
 	if !ok {
 		return nil, nil, ErrChatSessionNotFound
 	}
-	target, ok := sess.engine.(spawner.ConsolePTYTarget)
+	target, ok := sess.getEngine().(spawner.ConsolePTYTarget)
 	if !ok {
 		return nil, nil, ErrChatNoPTY
 	}

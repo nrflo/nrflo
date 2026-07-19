@@ -125,6 +125,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		validationCommands:  validationCommands,
 		workDir:             workDir,
 	}
+	proc.proactiveRestartThreshold = resolveProactiveRestartThreshold(agentDef, ProactiveRestartThresholdDefault(s.pool()))
 	logger.Info(ctx, "agent spawned with validation commands", "agent", req.AgentType, "count", len(proc.validationCommands))
 
 	// Populate idle/nudge fields only for cliInteractiveBackend agents.
@@ -158,11 +159,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	prep := &prepResult{
-		cliName:       cliName,
-		prompt:        prompt,
-		phase:         phase,
-		nodeID:        phase,
-		executionMode: executionMode,
+		cliName: cliName, prompt: prompt, phase: phase, nodeID: phase,
+		executionMode: executionMode, proactiveRestartThreshold: proc.proactiveRestartThreshold,
 	}
 
 	if executionMode == "api" {

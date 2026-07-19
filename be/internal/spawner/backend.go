@@ -64,21 +64,22 @@ type prepResult struct {
 	pythonPath string // resolved venv python; empty → fall back to "python3" on PATH
 
 	// API-mode fields. executionMode is "cli" (default), "api", or "script".
-	executionMode      string
-	apiSystem          string
-	apiInitialPrompt   string
-	apiTools           []provider.ToolSpec
-	apiHandlers        apirun.Registry
-	apiToolEnv         apirun.ToolEnv
-	apiMaxIterations   int
-	apiMaxTokens       int
-	apiDeadline        time.Time
-	apiModelID         string // mapped model name, e.g. "claude-haiku-4-5-20251001"
-	apiMaxContext      int
-	apiProvider        provider.Provider // resolved per-spawn from ModelConfigs + BuildAPIProvider
-	apiReasoningEffort string            // resolved against the model's API-mode efforts
-	apiCaptureThinking bool              // from capture_thinking_enabled setting
-	apiContextBudget   int               // resolveContextBudget(agentDef, context_budget_default); 0 = disabled
+	executionMode             string
+	apiSystem                 string
+	apiInitialPrompt          string
+	apiTools                  []provider.ToolSpec
+	apiHandlers               apirun.Registry
+	apiToolEnv                apirun.ToolEnv
+	apiMaxIterations          int
+	apiMaxTokens              int
+	apiDeadline               time.Time
+	apiModelID                string // mapped model name, e.g. "claude-haiku-4-5-20251001"
+	apiMaxContext             int
+	apiProvider               provider.Provider // resolved per-spawn from ModelConfigs + BuildAPIProvider
+	apiReasoningEffort        string            // resolved against the model's API-mode efforts
+	apiCaptureThinking        bool              // from capture_thinking_enabled setting
+	apiContextBudget          int               // resolveContextBudget(agentDef, context_budget_default); 0 = disabled
+	proactiveRestartThreshold int               // resolveProactiveRestartThreshold(agentDef, proactive_restart_threshold_default); 0 = disabled; set for every execution mode
 }
 
 // apiBackend executes an agent in-process via the apirun.Runner. There is no

@@ -133,6 +133,10 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	refineryMgr := refinery.NewManager(pool, clk)
 	hub.RegisterListener(refineryMgr)
 
+	// Proactive-restart task-boundary coordinator (findings.updated stamps a
+	// session's ledger turn as a task boundary); RegisterListener is pre-Run only.
+	hub.RegisterListener(spawner.NewProactiveRestartCoordinator(clk))
+
 	s := &Server{
 		config:        cfg,
 		dataPath:      dataPath,

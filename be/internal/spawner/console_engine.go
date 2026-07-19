@@ -67,7 +67,14 @@ func sortedKeys(m map[string]bool) []string {
 
 // EngineSpec carries the per-session parameters an engine needs to start.
 type EngineSpec struct {
-	SessionID       string
+	SessionID string
+	// CLISessionID is the fresh underlying CLI --session-id (claude) identity
+	// for a rotated engine; empty defaults to SessionID. SessionID stays the
+	// stable console identity used for hub registration, MCPEnv
+	// NRFLO_CONSOLE_SESSION_ID, and WS — only the CLI's own session/transcript
+	// identity changes on a proactive-restart rotation. Codex needs no
+	// equivalent split: thread/start mints a fresh thread on every Start.
+	CLISessionID    string
 	ProjectID       string
 	WorkDir         string
 	Model           string
@@ -86,6 +93,15 @@ type EngineSpec struct {
 	// by buildChatEngineSpec (console package). Empty = engine default (api
 	// falls back to its own injectable/constant; codex/claude add nothing).
 	SystemPrompt string
+}
+
+// effectiveCLISessionID returns CLISessionID when set, else SessionID — the
+// CLI session identity a claude engine launches with.
+func (s EngineSpec) effectiveCLISessionID() string {
+	if s.CLISessionID != "" {
+		return s.CLISessionID
+	}
+	return s.SessionID
 }
 
 // EventType identifies the kind of a normalized console event.

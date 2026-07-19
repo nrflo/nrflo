@@ -37,7 +37,7 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		WorkDir:          sess.WorkDir(),
 		Turn:             string(state.Turn),
 		PendingApprovals: state.Pending,
-		SessionApprovals: sess.engine.SessionApprovals(),
+		SessionApprovals: sess.getEngine().SessionApprovals(),
 		LiveItems:        state.Live,
 		Thinking:         state.Thinking,
 	}, true
@@ -52,7 +52,7 @@ func (s *ChatService) RevokeSessionApproval(sid, tool string) error {
 	if !ok {
 		return ErrChatSessionNotFound
 	}
-	if err := sess.engine.RevokeSessionApproval(tool); err != nil {
+	if err := sess.getEngine().RevokeSessionApproval(tool); err != nil {
 		return err
 	}
 	pushSessionApprovals(s.deps.WSHub, sess)
@@ -79,6 +79,6 @@ func (s *ChatService) StopAll() {
 	s.mu.Unlock()
 
 	for _, sess := range sessions {
-		sess.engine.Stop()
+		sess.getEngine().Stop()
 	}
 }

@@ -43,9 +43,7 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` �
 
 ## Console Engine
 
-`ConsoleEngine` (`console_engine.go`, via `GetConsoleEngine`) is the provider-agnostic conversation driver used by console chats; `InterruptTurn` cancels only the active turn and preserves the engine's conversation. Engine death remains observable through `Events()`, so `console.ChatService` cannot leave a dead turn pinned; engines hold no `processInfo`, making nudge/stall/restart policies structurally unreachable. Codex uses app-server, Claude uses the PTY + hooks path, and `apiConsoleEngine` uses an in-process `apirun.Conversation`; mechanics: [REFERENCE.md](REFERENCE.md#console-engine). `apiConsoleEngine.Start` renders its system prompt from the `api-console-system-prompt` injectable — a distinct id from the worker's `api-system-prompt`, left unseeded so a fresh DB falls back to the `consoleAPISystem`/`consoleAPIFSSystem` constants.
-
-An agent def's or chat profile's `system_template_id` resolves ahead of both: the global `claude_system_prompt_override_enabled` gate and the mode default (`resolveSystemPromptOverride`/`EngineSpec.SystemPrompt`). Delivery stays per-channel — claude via `--system-prompt-file`, api via its conversation `System` — except codex, which has no system-prompt flag anywhere (autonomous or console) and instead gets the rendered text prepended to the first turn's prompt body, so its byte cap is the initial-turn/prompt-file limit, not a dedicated one.
+`ConsoleEngine` (`console_engine.go`, via `GetConsoleEngine`) is the provider-agnostic conversation driver used by console chats; `InterruptTurn` cancels only the active turn and preserves the engine's conversation. Engine death remains observable through `Events()`, so `console.ChatService` cannot leave a dead turn pinned; engines hold no `processInfo`, making nudge/stall/restart policies structurally unreachable. Codex uses app-server, Claude uses the PTY + hooks path, and `apiConsoleEngine` uses an in-process `apirun.Conversation`; mechanics incl. system-prompt resolution: [REFERENCE.md](REFERENCE.md#console-engine). `apiConsoleEngine.Start` renders its system prompt from the `api-console-system-prompt` injectable — a distinct id from the worker's `api-system-prompt`, left unseeded so a fresh DB falls back to the `consoleAPISystem`/`consoleAPIFSSystem` constants.
 
 ## Host Process Probing
 
@@ -87,6 +85,10 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 ## Planner
 
 `Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner).
+
+## Proactive Restart
+
+At an idle task boundary (a finding recorded), `checkProactiveRestart` (gated on `TracksContext()` + `proactive_restart_threshold_tokens`) fires the low-context kill→save→relaunch chain but resets the continuation counter. Console chats rotate their engine in place under the same `agent_sessions.id` via the refinery digest, emitting `console.context_rotated`. Safety rails live in `context_restart*.go`; mechanics: [REFERENCE.md](REFERENCE.md#proactive-restart).
 
 ## Rate-Limit Restart
 

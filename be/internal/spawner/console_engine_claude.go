@@ -136,7 +136,7 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 		return fmt.Errorf("claude console engine: write mcp config: %w", err)
 	}
 
-	args := []string{"--session-id", spec.SessionID}
+	args := []string{"--session-id", spec.effectiveCLISessionID()}
 	if spec.Model != "" {
 		args = append(args, "--model", spec.Model)
 	}

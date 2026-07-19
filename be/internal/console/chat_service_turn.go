@@ -18,7 +18,7 @@ func (s *ChatService) SendMessage(sid, text string) error {
 	if err := sess.beginTurn(); err != nil {
 		return err
 	}
-	if err := sess.engine.SendUserTurn(context.Background(), text); err != nil {
+	if err := sess.getEngine().SendUserTurn(context.Background(), text); err != nil {
 		sess.endTurn()
 		return err
 	}
@@ -37,7 +37,7 @@ func (s *ChatService) ReplyApproval(sid, approvalID string, decision spawner.App
 	if !ok {
 		return ErrChatSessionNotFound
 	}
-	return sess.engine.ReplyApproval(approvalID, decision)
+	return sess.getEngine().ReplyApproval(approvalID, decision)
 }
 
 // Interrupt cancels the active turn without closing the chat session.
@@ -46,5 +46,5 @@ func (s *ChatService) Interrupt(ctx context.Context, sid string) error {
 	if !ok {
 		return ErrChatSessionNotFound
 	}
-	return sess.engine.InterruptTurn(ctx)
+	return sess.getEngine().InterruptTurn(ctx)
 }

@@ -197,12 +197,12 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		s.deps.RefineryMgr.Start(sessionID, projectID)
 	}
 
-	sess := newChatSession(sessionID, projectID, engine, modelID, spec.WorkDir, eng)
+	sess := newChatSession(sessionID, projectID, engine, modelID, effort, systemTemplateID, spec.WorkDir, spec.MaxContext, eng)
 	s.mu.Lock()
 	s.sessions[sessionID] = sess
 	s.mu.Unlock()
 
-	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sessionID) })
+	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sessionID) }, s.maybeRotate)
 
 	return sessionID, token, nil
 }
@@ -241,7 +241,7 @@ func (s *ChatService) Close(sid string) error {
 	if !ok {
 		return ErrChatSessionNotFound
 	}
-	sess.engine.Stop()
+	sess.getEngine().Stop()
 	if s.deps.RefineryMgr != nil {
 		s.deps.RefineryMgr.Stop(sid)
 	}

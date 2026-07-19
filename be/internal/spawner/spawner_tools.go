@@ -90,5 +90,8 @@ func (s *Spawner) DispatchTool(sessionID, name string, input json.RawMessage) (o
 			media = data
 		}
 	}
+	if !isErr {
+		out = apirun.MaybeOffloadToolResult(context.Background(), proc.apiToolEnv, name, out)
+	}
 	return out, media, isErr, "", nil
 }

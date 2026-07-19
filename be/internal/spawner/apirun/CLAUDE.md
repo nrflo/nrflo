@@ -13,6 +13,7 @@ In-process tool-use loop for API-mode agents. Files: `runner.go` (Run + Config),
 - `Provider.Run` returns `StopReason`: `end_turn` → `SetFinalStatus("PASS")`; `max_tokens` → fail with system message.
 - On `tool_use`: tool_use blocks dispatch concurrently (cap 4, `maxParallelToolDispatch`), results assembled in original block order; the first `TerminalSignal` in block order sets `proc.finalStatus` and returns early.
 - Non-terminal results appended as tool_result messages; loop continues for next turn.
+- Blob quarantine: successful text results over `tool_result_offload_threshold_bytes` (default 8KB, project>global config; `tool_result_offload_enabled` gate) are stored as a content-addressed `toolres_*` artifact and replaced inline by a head+tail excerpt with an `artifact_get` pointer (`MaybeOffloadToolResult`, `tool_offload.go`). Applies to in-process api dispatch and the bridge path (`spawner.DispatchTool`); exempt: `artifact_get`, `web_fetch`/`web_search`, `read_document`, `agent_*`; sessions without artifact scope (nil svc / no workflow instance) pass through unchanged.
 - Trace tool spans: the streaming sink emits invoke rows via `MessageSink.TrackToolInvoke` (payload carries `tool_use_id`); after each handler returns, the runner calls `MessageSink.CloseToolSpan` to stamp `ended_at` (spawner side: in-memory pending-buffer stamp, DB fallback — `spawner/output_tool_span.go`).
 
 ## Terminal Signals

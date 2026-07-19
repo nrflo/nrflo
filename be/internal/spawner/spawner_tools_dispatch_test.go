@@ -197,3 +197,24 @@ func TestDispatchTool_MediaWire(t *testing.T) {
 		t.Errorf("wire = %+v", wire)
 	}
 }
+
+// TestDispatchTool_LargeResultWithoutArtifactScope: the offload quarantine
+// must pass large results through unchanged when the session has no artifact
+// scope (nil ArtifactSvc / no workflow instance) — never destroy data it
+// cannot offload. The positive offload path is covered end-to-end in
+// tools_builtin/tool_offload_integration_test.go.
+func TestDispatchTool_LargeResultWithoutArtifactScope(t *testing.T) {
+	s := newTestSpawner()
+	spec := makeSpec("big", "big output tool")
+	big := strings.Repeat("x", 100_000)
+	h := &plainToolHandler{spec: spec, output: big, isError: false}
+	registerProc(s, "sess-big", []provider.ToolSpec{spec}, apirun.Registry{"big": h})
+
+	out, _, isErr, _, err := s.DispatchTool("sess-big", "big", json.RawMessage(`{}`))
+	if err != nil || isErr {
+		t.Fatalf("unexpected error: err=%v isErr=%v", err, isErr)
+	}
+	if out != big {
+		t.Errorf("large result without artifact scope must pass through unchanged (got %d bytes)", len(out))
+	}
+}

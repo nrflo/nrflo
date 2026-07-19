@@ -205,6 +205,9 @@ func (r *Runner) invokeTool(ctx context.Context, block provider.ContentBlock) to
 		isErr = true
 		media = nil
 	}
+	if !isErr {
+		out = MaybeOffloadToolResult(ctx, r.cfg.Env, block.ToolName, out)
+	}
 	category := "tool"
 	if isErr {
 		category = "error"

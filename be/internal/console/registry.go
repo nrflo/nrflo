@@ -16,7 +16,11 @@ import (
 // read_document, artifact_add and the builtin artifact_list/artifact_get) is
 // session-bound (needs WorkflowInstanceID, session-scoped findings, or
 // lifecycle semantics a console session has none of) and is deliberately
-// excluded — see CLAUDE.md.
+// excluded — see CLAUDE.md. delegate/get_delegation are the one exception:
+// they are console-only reimplementations (tools_delegate.go), not reused
+// from this map, because they route through Deps.Delegator instead of
+// env.Delegator (a console ToolEnv has no WorkflowInstanceID for the builtin
+// handler to key off).
 func reusedBuiltins() []string {
 	return []string{
 		"project_findings_add",
@@ -63,6 +67,8 @@ func BuildRegistry(d Deps) (apirun.Registry, error) {
 	reg["ticket_current"] = ticketCurrentHandler{d: d}
 	reg["artifact_list"] = artifactListHandler{d: d}
 	reg["artifact_get"] = artifactGetHandler{d: d}
+	reg["delegate"] = delegateHandler{d: d}
+	reg["get_delegation"] = getDelegationHandler{d: d}
 
 	return reg, nil
 }

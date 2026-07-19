@@ -129,4 +129,11 @@ type Config struct {
 	// Subworkflows starts/polls callable sub-workflows for the run_subworkflow /
 	// get_subworkflow builtins. Optional (nil-safe); set by the orchestrator.
 	Subworkflows apirun.SubworkflowRunner
+	// DelegateDepth is this spawner's position in a delegate chain: 0 for a
+	// top-level (non-delegate) spawner, N for a spawner running a delegate
+	// worker N levels down. Threaded in-memory down the spawn tree (never a
+	// shared DB counter), so it is per-chain and race-free: buildAPIRegistry
+	// strips `delegate` once DelegateDepth+1 exceeds the cap, and Delegate
+	// stamps each worker's child spawner with DelegateDepth+1.
+	DelegateDepth int
 }

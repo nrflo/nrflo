@@ -36,6 +36,8 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `consult` (`tools_builtin/consult.go`) synchronously spawns a named consultant agent via `apirun.ConsultantSpawner` and returns the `_consult_answer` finding inline; see [doc/api.md § Consultants](../../../../doc/api.md#consultants) for authoring requirements.
 
+`delegate` / `get_delegation` (`tools_builtin/delegate.go`, `get_delegation.go`) spawn tier-resolved (`extractor`/`executor`) workers downward via `apirun.Delegator`, async-with-poll like the sub-workflow builtins; mechanics: [REFERENCE.md](REFERENCE.md#delegate--get_delegation-builtins).
+
 `web_search` / `web_fetch` (`tools_builtin/web_search.go`, `web_fetch.go`) call the provider-agnostic `tools_web` layer (Exa search + Jina fetch by default; provider selected via `web_search_provider`/`web_fetch_provider` config, API keys via project/server env). `web_fetch` SSRF-guards every URL (`tools_web/urlguard.go`), returns an excerpt inline and offloads full markdown to an artifact; blocked/failed fetches surface as `ok:false` rather than failing the turn. These are backend-agnostic (available to cli/codex agents over the MCP bridge too).
 
 `run_subworkflow` / `get_subworkflow` / `dynamic_workflow` / `revise_plan` / `approve_plan` start/poll/drive child workflows via `ToolEnv.Subworkflows` — async-with-poll, bounded `wait_sec` ≤240 (heartbeated). Server-side guards + plan statuses: [orchestrator/REFERENCE.md](../../orchestrator/REFERENCE.md#sub-workflow-runner); payload shapes + depth-based tool strip: [REFERENCE.md](REFERENCE.md#sub-workflow--dynamic-workflow-builtins). Feature-gated by `subworkflow_tools_enabled` (default on).
@@ -46,7 +48,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Python Tool Handler
 
-`tools_python.New(row, pythonPath, sdkDir, projectEnv)` returns a handler for a `python_scripts` row with `kind=tool`. Each Invoke compiles the JSON schema once (Draft 2020), validates input, writes the script to a temp `.py` (`FilePath` preferred over `Code` when absolute and `.py`), and execs `pythonPath` with input on stdin. Env mirrors `prepareScriptSpawn`: inherits the server env (`os.Environ()` minus `CLAUDECODE`/`CLAUDE_CODE_*`, so the SDK socket resolves via `NRFLO_SOCKET`/`NRFLO_HOME`/`HOME`), then sets `NRFLO_PROJECT`/`NRF_SESSION_ID`/`NRF_WORKFLOW_INSTANCE_ID`/`NRF_TRX`/`NRF_SPAWNED=1`/`NRF_EXTERNAL_ID`/`NRF_EXTERNAL_CONTEXT` (external refs present-but-empty when unset) and `NRFLO_SDK_DIR` (so tool scripts can `import nrflo_sdk`; skipped when `sdkDir` empty), then `projectEnv` (last-wins). Timeout from `row.TimeoutSec` (default 30s); non-zero exit surfaces stderr; stdout capped at 16 KB. Schema/timeout/exit failures return `isError=true` with no Go error. Each Invoke inserts a `tool_dispatches` row and broadcasts `ws.EventToolDispatched`.
+`tools_python.New(row, pythonPath, sdkDir, projectEnv)` returns a handler for a `python_scripts` row with `kind=tool`; mechanics (schema validation, env, timeout, offload): [REFERENCE.md](REFERENCE.md#python-tool-handler).
 
 ## Per-Agent Registry Resolution
 

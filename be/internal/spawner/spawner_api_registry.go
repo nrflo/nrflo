@@ -82,6 +82,16 @@ func (s *Spawner) buildAPIRegistry(
 		specs = stripTool(specs, handlers, "run_subworkflow")
 		specs = stripTool(specs, handlers, "dynamic_workflow")
 	}
+	// Nesting guard: delegate workers at the delegate-depth cap may not
+	// delegate further. _t2_extractor never has "delegate" in its tools CSV
+	// to begin with (native guard); this only bites _t1_executor once its
+	// chain depth reaches the cap. Depth is this spawner's own in-memory
+	// Config.DelegateDepth (0 for a top-level spawner, N for an N-levels-down
+	// delegate worker's child spawner) — per-chain and race-free, unlike a
+	// shared instance counter. Same shape as the subworkflow guard above.
+	if s.config.DelegateDepth+1 > service.DelegateMaxDepth(s.config.Pool, req.ProjectID) {
+		specs = stripTool(specs, handlers, "delegate")
+	}
 	toolEnv := apirun.ToolEnv{
 		Pool:               s.config.Pool,
 		WSHub:              s.config.WSHub,
@@ -104,6 +114,7 @@ func (s *Spawner) buildAPIRegistry(
 		ArtifactSvc:        s.config.ArtifactSvc,
 		WorkflowControl:    s.config.WorkflowControl,
 		Consultant:         s,
+		Delegator:          s,
 		ChainRun:           service.NewWorkflowChainRunService(s.config.Pool, s.config.Clock),
 		Subworkflows:       s.config.Subworkflows,
 		Heartbeat:          func() { s.BumpLastMessage(proc.sessionID) },

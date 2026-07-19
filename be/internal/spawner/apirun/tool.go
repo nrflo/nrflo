@@ -43,6 +43,35 @@ type ConsultantSpawner interface {
 	Consult(ctx context.Context, callerSessionID, consultantID, question string) (string, error)
 }
 
+// DelegateRequest is the delegate builtin's parsed input, threaded through to
+// the Delegator implementation unchanged. The bounded sync wait (wait_sec) is
+// owned by the delegate/get_delegation builtin handlers around the two
+// non-blocking Delegator calls, so it is not carried here.
+type DelegateRequest struct {
+	Tier      string   // "extractor" (_t2_extractor) or "executor" (_t1_executor)
+	Brief     string   // required; templated per fanout item
+	Context   string   // inline context, capped at 4KB by the handler
+	Artifacts []string // artifact names materialized for the worker(s)
+	Fanout    []string // one worker per item; empty = a single worker
+}
+
+// Delegator lets API-mode agents spawn tier-resolved delegate workers
+// (single or fanout) downward and poll async delegations, mirroring
+// ConsultantSpawner/SubworkflowRunner's async-with-poll shape. Nil-safe;
+// guard with env.Delegator == nil. Neither method blocks — the delegate/
+// get_delegation builtin handlers own the bounded, heartbeated wait (mirrors
+// run_subworkflow's pollSubworkflow around SubworkflowRunner.GetSubworkflow).
+type Delegator interface {
+	// Delegate spawns one detached worker per fanout item (or a single worker
+	// when Fanout is empty) under the caller's context and returns
+	// immediately: {"delegation_id":...,"status":"running"}.
+	Delegate(ctx context.Context, callerSessionID string, req DelegateRequest) (string, error)
+	// GetDelegation returns the delegation's current aggregated status
+	// without blocking: worker findings for finished workers, "running" while
+	// any are still in flight.
+	GetDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error)
+}
+
 // ChainRunController lets agents set the next step's instructions/ticket in a
 // workflow chain run. Nil-safe; guard with env.ChainRun == nil before calling.
 type ChainRunController interface {
@@ -121,6 +150,10 @@ type ToolEnv struct {
 	// Consultant allows the consult builtin to spawn a named consultant inline.
 	// Nil when not wired (e.g. tests, or when agent is itself a consultant).
 	Consultant ConsultantSpawner
+	// Delegator allows the delegate/get_delegation builtins to spawn
+	// tier-resolved workers downward. Nil when not wired (e.g. tests, or when
+	// the delegate tool was stripped for this agent's tier/depth).
+	Delegator Delegator
 	// ChainRun lets the chain_next_* builtins set the next chain step's
 	// instructions/ticket. Nil outside chain runs / in tests.
 	ChainRun ChainRunController

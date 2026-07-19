@@ -65,6 +65,7 @@ func (s *Server) consoleDeps() console.Deps {
 	if s.orchestrator != nil {
 		d.Orch = s.orchestrator
 		d.WorkflowControl = s.orchestrator.APIWorkflowControl(s.pool)
+		d.Delegator = s.orchestrator.APIDelegator(s.pool)
 	}
 	return d
 }

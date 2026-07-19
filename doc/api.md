@@ -136,6 +136,8 @@ compatible). For in-process `api` agents an empty field means no tools
 | `workflow_continue` | Resume a paused (waiting) workflow instance. Input: `{instance_id, instructions?}` |
 | `workflow_fail` | Fail a workflow instance with a reason. Input: `{instance_id, reason}` |
 | `consult` | Ask a named consultant agent a question and receive an inline answer (api-mode only). Input: `{consultant, question}` |
+| `delegate` | Spawn tier-resolved worker(s) downward (async-with-poll). Input: `{tier: "extractor"\|"executor", brief, context?, artifacts?, wait_sec?, fanout?}` |
+| `get_delegation` | Poll a delegation started via `delegate`. Input: `{delegation_id, wait_sec?}` |
 | `run_subworkflow` | Start a callable workflow as a detached sub-workflow; returns `{instance_id, status}`. Input: `{workflow, instructions, result_key?, wait_sec?}` |
 | `get_subworkflow` | Poll a sub-workflow; terminal statuses include the result finding/failure reason, plan-boundary statuses include `{plan, revision, questions}`. Input: `{instance_id, result_key?, wait_sec?}` |
 | `dynamic_workflow` | Start the bundled plan-driven `dynamic` workflow as a sub-workflow; a planner drafts a manifest from `instructions`. Input: `{instructions, mode?: "approve"\|"auto", wait_sec?}` |
@@ -244,3 +246,30 @@ A consultant is a named api-mode agent that a caller invokes inline via the `con
 - The `_consult` phase is hidden from the v4 read model; the caller's run timeline is uninterrupted.
 
 **Caller usage:** pass `{consultant: "<agent_id>", question: "<text>"}` to the `consult` builtin tool. The call blocks until the consultant finishes and returns the `_consult_answer` value as the tool result.
+
+---
+
+## Delegation
+
+`delegate` spawns one or more downward workers to do execution work a decider/executor agent shouldn't do itself, returning their structured findings — never a transcript.
+
+**Tiers** — `tier` resolves to a fixed system agent definition, not a caller-chosen model:
+- `extractor` → `_t2_extractor` (haiku-4-5, low effort, read-only tools). Answers exactly one question; cannot itself call `delegate`.
+- `executor` → `_t1_executor` (sonnet-5, medium effort, full tool set). Owns a slice of work end to end and may itself call `delegate` (tier `extractor`) one level further down.
+
+**Inputs:**
+- `brief` (required) — what the worker should do; templated identically per fanout item.
+- `context` (optional) — inline context, capped at 4KB; larger context belongs in an artifact.
+- `artifacts` (optional) — names of artifacts already materialized for this run.
+- `wait_sec` (optional, default 0) — block inline up to this many seconds (max 240) for the result; `0` returns immediately with a `delegation_id` to poll via `get_delegation`.
+- `fanout` (optional) — spawn one worker per item (same brief, templated once per item) instead of a single worker; capped by `delegate_max_fanout` (default 20, project-override, else global).
+
+**Result:** each worker's structured findings (its `_delegate_findings` finding), aggregated per fanout item — never the worker's transcript. The `_delegate` worker phase is hidden from the v4 read model, same as `_consult`.
+
+**Recursion guard:** `_t2_extractor` never has `delegate` in its tool set. `_t1_executor` keeps it until `delegate_max_depth` (default 2) is reached, tracked per delegation chain (each worker inherits the caller's depth + 1) — a worker spawned past the cap has `delegate` stripped from its registry. A top-level agent and every fresh top-level `delegate` call start a new chain at depth 0.
+
+**Async polling:** `get_delegation` takes `{delegation_id, wait_sec?}` and returns the current aggregated status (`running`/`completed`/`failed`) plus per-worker results; `wait_sec` blocks up to 240s for still-running workers, heartbeated so the caller's stall timer stays quiet.
+
+**Console usage:** `delegate`/`get_delegation` are also available to console (T0) sessions — the one instance-creating tool intentionally exposed there, since a console session has no bound workflow instance for a worker to spawn under.
+
+WebSocket events: `delegate.started`, `delegate.completed`, `delegate.failed`.

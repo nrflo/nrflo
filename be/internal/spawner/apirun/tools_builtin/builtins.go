@@ -53,6 +53,9 @@ func Builtins() map[string]apirun.ToolHandler {
 
 		"consult": consultHandler{},
 
+		"delegate":       delegateHandler{},
+		"get_delegation": getDelegationHandler{},
+
 		"web_search": webSearchHandler{},
 		"web_fetch":  webFetchHandler{},
 

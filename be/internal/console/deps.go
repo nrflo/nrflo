@@ -44,4 +44,9 @@ type Deps struct {
 	ArtifactSvc        *service.ArtifactService
 	WorkflowControl    apirun.WorkflowController
 	WaitBroker         *WaitBroker
+	// Delegator lets a console session's delegate/get_delegation tools spawn
+	// tier-resolved workers even though the session has no bound
+	// WorkflowInstanceID — the implementation mints a hidden host instance
+	// for the call. Nil when not wired (e.g. tests).
+	Delegator apirun.Delegator
 }

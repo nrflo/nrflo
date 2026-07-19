@@ -82,6 +82,10 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 `Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline: validates the target (`consultant=true`, `execution_mode=api`), truncates the caller transcript, then synchronously spawns a child `Spawner` running a one-phase `_consult` workflow under the caller's instance+ticket. The consultant's `_consult_answer` finding (read+deleted by session id) is returned as the `consult` tool result. `prepareSpawn` strips `consult` from a consultant's own toolset (recursion guard). Broadcasts `consult.started/answered/failed`; `_consult` is hidden from the v4 read model.
 
+## Delegate
+
+`Spawner.Delegate`/`GetDelegation` (`delegate.go`, `delegate_poll.go`) implement `apirun.Delegator`: spawn tier workers downward, async-with-poll, depth-capped per-chain (in-memory). Mechanics: [REFERENCE.md](REFERENCE.md#delegate).
+
 ## Planner
 
 `Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner).
@@ -118,7 +122,7 @@ Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`,
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 
-`WorkingSetInjector` (`console_context_injector.go`) implements `socket.ContextInjector`: it reads the latest per-session refinery digest (`repo.RefineryDigestRepo`, see [refinery/CLAUDE.md](../refinery/CLAUDE.md)) as the `${DIGEST}` content source and renders it through the `working-set` injectable wrapper into a console session's UserPromptSubmit `additionalContext`, capped at 8KB with truncation logged. No digest (or empty content) → `""`, a backward-silent no-op.
+`WorkingSetInjector` (`console_context_injector.go`) implements `socket.ContextInjector`, rendering the per-session refinery digest into a console session's UserPromptSubmit `additionalContext`; mechanics: [REFERENCE.md](REFERENCE.md#template-variables).
 
 `SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars. `${EXTERNAL_ID}`/`${EXTERNAL_CONTEXT}` are auto-injected from the workflow instance.
 

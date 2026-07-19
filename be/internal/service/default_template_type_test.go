@@ -36,12 +36,13 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(templates) != 7 {
-		t.Fatalf("List(injectable) len = %d, want 7", len(templates))
+	if len(templates) != 8 {
+		t.Fatalf("List(injectable) len = %d, want 8", len(templates))
 	}
 	wantIDs := map[string]bool{
 		"low-context": true, "callback": true, "user-instructions": true,
 		"system-prompt-suffix": true, "finish-reminder": true, "system-prompt": true, "working-set": true,
+		"api-system-prompt": true,
 	}
 	for _, tmpl := range templates {
 		if tmpl.Type != "injectable" {
@@ -76,8 +77,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(templates) != 13 {
-		t.Fatalf("List() len = %d, want 13", len(templates))
+	if len(templates) != 14 {
+		t.Fatalf("List() len = %d, want 14", len(templates))
 	}
 	agentCount, injectableCount := 0, 0
 	for _, tmpl := range templates {
@@ -93,8 +94,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if agentCount != 6 {
 		t.Errorf("agent count = %d, want 6", agentCount)
 	}
-	if injectableCount != 7 {
-		t.Errorf("injectable count = %d, want 7", injectableCount)
+	if injectableCount != 8 {
+		t.Errorf("injectable count = %d, want 8", injectableCount)
 	}
 }
 
@@ -344,15 +345,15 @@ func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(injectables) != 8 {
-		t.Errorf("List(injectable) len = %d, want 8 (7 seeded + 1 created)", len(injectables))
+	if len(injectables) != 9 {
+		t.Errorf("List(injectable) len = %d, want 9 (8 seeded + 1 created)", len(injectables))
 	}
 
 	all, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(all) != 15 {
-		t.Errorf("List() len = %d, want 15 (13 seeded + 2 created)", len(all))
+	if len(all) != 16 {
+		t.Errorf("List() len = %d, want 16 (14 seeded + 2 created)", len(all))
 	}
 }

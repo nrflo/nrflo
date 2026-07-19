@@ -72,8 +72,8 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 13 {
-		t.Fatalf("len = %d, want 13 (pre-filled readonly templates)", len(list))
+	if len(list) != 14 {
+		t.Fatalf("len = %d, want 14 (pre-filled readonly templates)", len(list))
 	}
 	for _, tmpl := range list {
 		if !tmpl.Readonly {
@@ -81,8 +81,9 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 		}
 	}
 	// Ordered by name ascending (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds
-	// system-prompt; migration 176 adds working-set, sorting last as "Working set").
-	wantOrder := []string{"callback", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "user-instructions", "working-set"}
+	// system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt, sorting first as
+	// "API system prompt" — uppercase letters sort before lowercase under SQLite's default binary collation).
+	wantOrder := []string{"api-system-prompt", "callback", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "user-instructions", "working-set"}
 	for i, want := range wantOrder {
 		if list[i].ID != want {
 			t.Errorf("list[%d].ID = %q, want %q", i, list[i].ID, want)
@@ -102,8 +103,8 @@ func TestHandleListDefaultTemplates_IncludesUserCreated(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 14 {
-		t.Errorf("len = %d, want 14 (13 readonly + 1 user-created)", len(list))
+	if len(list) != 15 {
+		t.Errorf("len = %d, want 15 (14 readonly + 1 user-created)", len(list))
 	}
 }
 

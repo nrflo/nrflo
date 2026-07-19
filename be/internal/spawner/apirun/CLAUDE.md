@@ -60,6 +60,8 @@ The concrete provider is selected per-agent from the unified `models` row (`prov
 
 `prepareSpawn` (api branch) calls `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
 
+The api-mode system prompt renders from the `api-system-prompt` injectable (fallback to the `defaultAPISystemPrompt` constant), with `system-prompt-suffix` appended for autonomous workers.
+
 ## Provider Error Classification
 
 `errors.go:classifyProviderError` maps typed SDK errors (never string matching) to `(status, message, RetryClass)`: rate-limit/overload → `RATE_LIMITED` (spawner retry dance), 401/403 → auth fail, 5xx → provider fail, JSON decode → protocol fail; `ctx.Err()` wins as `CANCELLED`. Full matrix: [REFERENCE.md](REFERENCE.md#provider-error-classification).

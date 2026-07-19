@@ -216,11 +216,11 @@ func TestHandleDeleteDefaultTemplate_NotFound(t *testing.T) {
 func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 	s := newDefaultTemplateServer(t)
 
-	// 1. List — 13 pre-seeded readonly (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds system-prompt; migration 176 adds working-set).
+	// 1. List — 14 pre-seeded readonly (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt).
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR); len(got) != 13 {
-		t.Fatalf("initial list len = %d, want 13", len(got))
+	if got := decodeDefaultTemplateList(t, listRR); len(got) != 14 {
+		t.Fatalf("initial list len = %d, want 14", len(got))
 	}
 
 	// 2. Create.
@@ -229,11 +229,11 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Errorf("newly created Readonly = true, want false")
 	}
 
-	// 3. List — 14.
+	// 3. List — 15.
 	listRR2 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR2, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 14 {
-		t.Fatalf("after create list len = %d, want 14", len(got))
+	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 15 {
+		t.Fatalf("after create list len = %d, want 15", len(got))
 	}
 
 	// 4. Update.
@@ -278,10 +278,10 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Fatalf("delete status = %d, want 200", delRR.Code)
 	}
 
-	// 8. Back to 13.
+	// 8. Back to 14.
 	listRR3 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR3, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 13 {
-		t.Errorf("after delete list len = %d, want 13", len(got))
+	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 14 {
+		t.Errorf("after delete list len = %d, want 14", len(got))
 	}
 }

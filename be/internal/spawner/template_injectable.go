@@ -11,6 +11,65 @@ import (
 
 var injectablePlaceholderRe = regexp.MustCompile(`\$\{[^}]+\}`)
 
+// stdTemplateVars builds the standard ${VAR} map shared by the template body,
+// the system-prompt-suffix injectable, and (for api-mode) the api-system-prompt
+// injectable, so all three render from identical vars. nodeID falls back to
+// agentType when unset (Preview, interactive L0 starts); modelID's model part
+// falls back to "sonnet-5" when parseModelID yields none. extraVars is merged
+// last (caller-injected vars win on key collision).
+func stdTemplateVars(agentType, nodeID, ticketID, projectID, workflowName, parentSession, childSession, modelID string, extraVars map[string]string) map[string]string {
+	_, model := parseModelID(modelID)
+	if model == "" {
+		model = "sonnet-5"
+	}
+
+	nodeVar := nodeID
+	if nodeVar == "" {
+		nodeVar = agentType
+	}
+
+	vars := map[string]string{
+		"AGENT":          agentType,
+		"NODE_ID":        nodeVar,
+		"TICKET_ID":      ticketID,
+		"PROJECT_ID":     projectID,
+		"WORKFLOW":       workflowName,
+		"PARENT_SESSION": parentSession,
+		"CHILD_SESSION":  childSession,
+		"MODEL_ID":       modelID,
+		"MODEL":          model,
+	}
+	for k, v := range extraVars {
+		vars[k] = v
+	}
+	return vars
+}
+
+// renderAPISystemPrompt renders the named api-mode system-prompt injectable,
+// falling back to the caller-supplied constant when the row is missing or
+// empty. Autonomous workers use "api-system-prompt" (seeded byte-identical to
+// defaultAPISystemPrompt by migration 000177); the console uses its own
+// "api-console-system-prompt" id, which is intentionally unseeded so a fresh DB
+// falls back to the console-specific constants (consoleAPISystem/FSSystem).
+func renderAPISystemPrompt(ctx context.Context, pool *db.Pool, id string, vars map[string]string, fallback string) string {
+	body := renderInjectable(ctx, pool, id, vars)
+	if strings.TrimSpace(body) == "" {
+		return fallback
+	}
+	return body
+}
+
+// apiSystemPromptWithSuffix renders the api-system-prompt injectable (via
+// renderAPISystemPrompt) and appends the already-rendered system-prompt-suffix
+// when non-empty, matching CLI-mode's suffix behavior.
+func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[string]string, suffix, fallback string) string {
+	sys := renderAPISystemPrompt(ctx, pool, "api-system-prompt", vars, fallback)
+	if strings.TrimSpace(suffix) != "" {
+		sys = sys + "\n\n" + suffix
+	}
+	return sys
+}
+
 // systemPromptOverrideFor returns the expanded system-prompt injectable when the model
 // belongs to Anthropic, supports CLI mode, and the global claude_system_prompt_override_enabled setting is
 // on; returns "" otherwise. The setting is read freshly from the pool at spawn time.

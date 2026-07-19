@@ -102,14 +102,17 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 	// Native fs tools (read_file/edit_file/bash) join the console profile
 	// when the api_native_tools_enabled global setting is on and the chat has
 	// a workdir; the mutating ones are approval-gated
-	// (console_engine_api_approval.go). The system prompt swaps to the
-	// variant that stops claiming "no local tools".
-	system, tools, handlers, env := consoleAPISystem, e.api.Tools, e.api.Handlers, e.api.ToolEnv
+	// (console_engine_api_approval.go). The system prompt fallback swaps to
+	// the variant that stops claiming "no local tools".
+	tools, handlers, env := e.api.Tools, e.api.Handlers, e.api.ToolEnv
+	fallback := consoleAPISystem
 	if spec.WorkDir != "" && apiNativeToolsEnabled(e.api.Pool, e.api.Clock) {
 		tools, handlers = e.withFSTools(tools, handlers)
 		env.WorkDir = spec.WorkDir
-		system = consoleAPIFSSystem
+		fallback = consoleAPIFSSystem
 	}
+	sysVars := map[string]string{"PROJECT_ID": spec.ProjectID, "MODEL": spec.Model, "NODE_ID": spec.SessionID}
+	system := renderAPISystemPrompt(runCtx, e.api.Pool, "api-console-system-prompt", sysVars, fallback)
 
 	e.conv = apirun.NewConversation(apirun.Config{
 		Provider: prov,

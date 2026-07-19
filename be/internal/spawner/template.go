@@ -214,20 +214,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	}
 
 	// Build the standard vars map (used for both template body and suffix expansion)
-	stdVars := map[string]string{
-		"AGENT":          agentType,
-		"NODE_ID":        nodeVar,
-		"TICKET_ID":      ticketID,
-		"PROJECT_ID":     projectID,
-		"WORKFLOW":       workflowName,
-		"PARENT_SESSION": parentSession,
-		"CHILD_SESSION":  childSession,
-		"MODEL_ID":       modelID,
-		"MODEL":          model,
-	}
-	for k, v := range extraVars {
-		stdVars[k] = v
-	}
+	stdVars := stdTemplateVars(agentType, nodeID, ticketID, projectID, workflowName, parentSession, childSession, modelID, extraVars)
 
 	// Expand variables
 	template = strings.ReplaceAll(template, "${AGENT}", agentType)

@@ -55,12 +55,16 @@ func (c *Conversation) SendTurn(ctx context.Context, proc ProcState, text string
 	capture := ctxCaptureProc{ProcState: proc, c: c}
 	c.maybeCompact(ctx, capture)
 
+	userBlocks := []provider.ContentBlock{{Type: "text", Text: text}}
 	c.mu.Lock()
 	msgs := append(append([]provider.Message{}, c.msgs...), provider.Message{
 		Role:    "user",
-		Content: []provider.ContentBlock{{Type: "text", Text: text}},
+		Content: userBlocks,
 	})
 	c.mu.Unlock()
+	if c.cfg.Observer != nil {
+		c.cfg.Observer.OnMessage("user", userBlocks)
+	}
 
 	return c.run(ctx, capture, msgs)
 }

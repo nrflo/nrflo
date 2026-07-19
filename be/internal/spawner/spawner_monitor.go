@@ -47,6 +47,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		delete(registeredSessions, oldProc.sessionID)
 		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
 		registeredSessions[newProc.sessionID] = struct{}{}
+		globalLedgerStore.drop(oldProc.sessionID)
 		return newProc, nil
 	}
 
@@ -54,26 +55,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		// Check for context cancellation or manual restart signal
 		select {
 		case <-ctx.Done():
-			// Kill all running processes
-			logger.Warn(ctx, "agents cancelled", "count", len(running))
-			for _, proc := range running {
-				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
-			}
-			// Wait for each process to exit gracefully (up to 2s each) before SIGKILL.
-			// Per-process select avoids a fixed sleep when processes exit quickly.
-			for _, proc := range running {
-				select {
-				case <-proc.doneCh:
-				case <-time.After(2 * time.Second):
-					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
-					<-proc.doneCh
-				}
-				proc.finalStatus = "CANCELLED"
-				s.saveMessages(proc)
-				s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-					proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
-				completed = append(completed, proc)
-			}
+			completed = append(completed, s.cancelRunningProcs(ctx, running, req)...)
 			s.unregisterSessionProcs(completed)
 			return ctx.Err()
 		case restartSessionID := <-s.restartCh:
@@ -261,6 +243,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 
 		// Read context_left from DB once per iteration
 		readContextLeftFromDB(s.pool(), running)
+		s.tailClaudeLedgers(running)
 
 		// Check each process using doneCh (no double-wait bug)
 		var stillRunning []*processInfo

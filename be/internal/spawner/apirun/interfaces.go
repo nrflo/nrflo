@@ -8,6 +8,8 @@
 // (spawner -> apirun -> spawner).
 package apirun
 
+import "be/internal/spawner/apirun/provider"
+
 // MessageSink receives streaming events from the runner. The sink is bound
 // to a single agent process (the spawner adapter captures *processInfo);
 // callers do not pass the process again per call.
@@ -45,4 +47,18 @@ type AgentSvc interface {
 // spawner package.
 type ErrorRecorder interface {
 	RecordError(projectID, errorType, instanceID, message string) error
+}
+
+// LedgerObserver receives every content block the runner appends to the
+// conversation and each turn's provider usage, so the spawner's external
+// context ledger can track context blocks EXACTLY as they enter the
+// conversation without apirun importing spawner. Nil-safe: Config.Observer
+// is optional and every call site guards it, mirroring EventEmitter.emit.
+type LedgerObserver interface {
+	// OnMessage reports blocks newly appended under role ("user" | "assistant").
+	// Callers pass only new appends, never pre-existing history, so a
+	// Conversation's replayed turns are not double-counted.
+	OnMessage(role string, blocks []provider.ContentBlock)
+	// OnUsage reports one turn's provider-side token accounting.
+	OnUsage(u provider.Usage)
 }

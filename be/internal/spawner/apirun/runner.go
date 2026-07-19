@@ -46,6 +46,10 @@ type Config struct {
 	// runner sink's chunked buffering. Nil for autonomous agents (Run); a
 	// console chat engine (Conversation) passes a live consumer.
 	Stream StreamHook
+	// Observer receives every content block newly appended to the
+	// conversation and each turn's usage, feeding the spawner's external
+	// context ledger. Nil-safe — every call site guards it.
+	Observer LedgerObserver
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner
@@ -88,13 +92,14 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 		return
 	}
 
+	initialBlocks := []provider.ContentBlock{
+		{Type: "text", Text: r.cfg.InitialPrompt},
+	}
 	msgs := []provider.Message{
-		{
-			Role: "user",
-			Content: []provider.ContentBlock{
-				{Type: "text", Text: r.cfg.InitialPrompt},
-			},
-		},
+		{Role: "user", Content: initialBlocks},
+	}
+	if r.cfg.Observer != nil {
+		r.cfg.Observer.OnMessage("user", initialBlocks)
 	}
 
 	r.runTurns(ctx, proc, msgs)
@@ -108,6 +113,9 @@ func (r *Runner) Run(ctx context.Context, proc ProcState) {
 // (pct, true) when a percentage was computed — runTurns feeds it into the
 // in-loop compaction check.
 func (r *Runner) updateContext(ctx context.Context, proc ProcState, u provider.Usage) (int, bool) {
+	if r.cfg.Observer != nil {
+		r.cfg.Observer.OnUsage(u)
+	}
 	total := u.InputTokens + u.CacheReadTokens + u.CacheCreationTokens
 	if total <= 0 {
 		return 0, false

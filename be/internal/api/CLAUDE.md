@@ -54,6 +54,8 @@ grep -rn "protected\|admin(\|mux.HandleFunc" be/internal/api/server*.go
 
 Errors are returned as `{"error":"code","message":"..."}` for structured failures, or plain text on framework-level 4xx rejections.
 
+`GET /api/v1/sessions/{id}/context-ledger` (`protected`) is a read-only debug snapshot of the spawner's in-memory context ledger for that session (`spawner.LedgerSnapshot`); 404 once the session's ledger is dropped.
+
 Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models/{id}/test`; the test route probes CLI mode only and rejects API-only rows. Writes are admin-only; reads and the test route are protected.
 
 `GET /api/v1/import/jira/search` and `GET /api/v1/import/github/search` return 400 when `X-Project` is missing (matching `POST /api/v1/import/spec`).

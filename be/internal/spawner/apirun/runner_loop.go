@@ -78,6 +78,9 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 			// Do NOT filter resp.Content — thinking blocks must ride along for
 			// required API replay, same as the tool_use branch below.
 			msgs = append(msgs, provider.Message{Role: "assistant", Content: resp.Content})
+			if r.cfg.Observer != nil {
+				r.cfg.Observer.OnMessage("assistant", resp.Content)
+			}
 			proc.SetFinalStatus("PASS")
 			return msgs, "PASS"
 		case "max_tokens", "stop_sequence":
@@ -100,6 +103,10 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 				provider.Message{Role: "assistant", Content: resp.Content},
 				provider.Message{Role: "user", Content: toolResults},
 			)
+			if r.cfg.Observer != nil {
+				r.cfg.Observer.OnMessage("assistant", resp.Content)
+				r.cfg.Observer.OnMessage("user", toolResults)
+			}
 			continue
 		default:
 			r.fail(proc, fmt.Sprintf("unexpected stop_reason=%q", resp.StopReason))

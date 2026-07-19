@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"be/internal/db"
@@ -157,6 +158,34 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 		proc.agentID, proc.agentType, proc.modelID, proc.sessionID, prep.phase,
 		proc.spawnCommand, pid, proc.restartThreshold)
 	return nil
+}
+
+// cancelRunningProcs kills every proc in running (SIGTERM, then SIGKILL after
+// a 2s grace per process — a per-process select avoids a fixed sleep when
+// processes exit quickly), marks each CANCELLED, flushes its messages, drops
+// its context ledger, and registers the session stop. Called from
+// monitorAll's ctx.Done() branch, which does not reach finalizePhase.
+func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo, req SpawnRequest) []*processInfo {
+	logger.Warn(ctx, "agents cancelled", "count", len(running))
+	for _, proc := range running {
+		proc.backend.Kill(ctx, proc, syscall.SIGTERM)
+	}
+	completed := make([]*processInfo, 0, len(running))
+	for _, proc := range running {
+		select {
+		case <-proc.doneCh:
+		case <-time.After(2 * time.Second):
+			proc.backend.Kill(ctx, proc, syscall.SIGKILL)
+			<-proc.doneCh
+		}
+		proc.finalStatus = "CANCELLED"
+		s.saveMessages(proc)
+		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
+			proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
+		globalLedgerStore.drop(proc.sessionID)
+		completed = append(completed, proc)
+	}
+	return completed
 }
 
 // HostEnvWithoutClaudeMarkers returns os.Environ() minus the nested-Claude

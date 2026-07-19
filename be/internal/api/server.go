@@ -613,6 +613,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/agents/recent", s.handleGetRecentAgents)
 	protected("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
 	protected("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)
+	protected("GET /api/v1/sessions/{id}/context-ledger", s.handleGetContextLedger)
 
 	// Dependencies
 	protected("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)

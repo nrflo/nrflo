@@ -46,6 +46,7 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 
 	for _, proc := range completed {
 		logger.Info(ctx, "agent result", "phase", phase, "model", proc.modelID, "status", proc.finalStatus, "duration", proc.elapsed.Round(time.Second))
+		globalLedgerStore.drop(proc.sessionID)
 	}
 
 	passCount := 0

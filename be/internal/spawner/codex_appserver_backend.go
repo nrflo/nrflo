@@ -168,6 +168,7 @@ func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, p
 func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context.Context, proc *processInfo, req SpawnRequest, client *appServerClient, threadID, effort string, sink Sink) {
 	maxCtx := proc.maxContext
 	turnActive := true // turn/start already issued
+	ledgerEmit := b.s.codexLedgerEmitter(proc)
 
 	for {
 		idleCh := b.armIdleTimer(proc, turnActive)
@@ -189,7 +190,7 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 			}
 
 		case n := <-client.notifyCh:
-			sig := dispatchAppServerEvent(proc.sessionID, n, sink, maxCtx, nil)
+			sig := dispatchAppServerEvent(proc.sessionID, n, sink, maxCtx, ledgerEmit)
 			if sig.turnStarted {
 				turnActive = true
 			}

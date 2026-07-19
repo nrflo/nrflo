@@ -72,6 +72,10 @@ Script-mode agents are exempt (`TracksContext()=false`).
 
 When context usage crosses the threshold, the spawner kills the agent, saves context via the path above, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go` and `context_save_resume.go`.
 
+## Context Ledger
+
+`contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks (dialog/tool_use/tool_result/file_read/image/injected), written EXACT from apirun's `Config.Observer` in api mode, EXACT-ish by tail-parsing the Claude transcript from the `monitorAll` tick in cli mode, and APPROX from codex app-server events. Token estimates are a bytes/4 heuristic reconciled against per-turn provider usage; same-sha/path re-entry marks the prior entry superseded, and a debounced `agent.context_ledger` WS event carries totals-by-kind — `GET /api/v1/sessions/{id}/context-ledger` snapshots it, and the ledger drops when the session ends.
+
 ## Consult
 
 `Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline: validates the target (`consultant=true`, `execution_mode=api`), truncates the caller transcript, then synchronously spawns a child `Spawner` running a one-phase `_consult` workflow under the caller's instance+ticket. The consultant's `_consult_answer` finding (read+deleted by session id) is returned as the `consult` tool result. `prepareSpawn` strips `consult` from a consultant's own toolset (recursion guard). Broadcasts `consult.started/answered/failed`; `_consult` is hidden from the v4 read model.

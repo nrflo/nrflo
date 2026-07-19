@@ -21,6 +21,7 @@ import (
 	"be/internal/notify"
 	"be/internal/orchestrator"
 	ptyPkg "be/internal/pty"
+	"be/internal/refinery"
 	"be/internal/repo"
 	"be/internal/scheduler"
 	pythonsdk "be/internal/sdk/python"
@@ -127,6 +128,11 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 
 	consoleHub := spawner.NewConsoleHub()
 
+	// Refinery sidecar manager (console-chat working-set digest folding);
+	// RegisterListener is pre-Run only.
+	refineryMgr := refinery.NewManager(pool, clk)
+	hub.RegisterListener(refineryMgr)
+
 	s := &Server{
 		config:        cfg,
 		dataPath:      dataPath,
@@ -150,7 +156,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 		waitBroker:    waitBroker,
 	}
 
-	s.consoleChat = newConsoleChatService(s, cfg, pool, clk, hub, ptyMgr, consoleHub, errorSvc)
+	s.consoleChat = newConsoleChatService(s, cfg, pool, clk, hub, ptyMgr, consoleHub, errorSvc, refineryMgr)
 	return s
 }
 

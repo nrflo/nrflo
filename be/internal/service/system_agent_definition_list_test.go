@@ -21,6 +21,7 @@ func TestSystemAgentDef_List(t *testing.T) {
 	_ = svc.Delete("spec-normalizer")
 	_ = svc.Delete("planner-system")
 	_ = svc.Delete("planner-system-api")
+	_ = svc.Delete("_refinery")
 
 	// Initially empty.
 	defs, err := svc.List()

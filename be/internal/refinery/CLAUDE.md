@@ -1,0 +1,11 @@
+# refinery Package
+
+Per-console-session sidecar that folds WS-driven events into a bounded working-set digest.
+
+## Invariant
+
+Event-driven, never polling: `Manager` (`manager.go`) is a `ws.Listener` routed by `Event.ProjectID` to per-session `sidecar`s (`sidecar.go`), which coalesce triggers behind a `>=30s` `clock.After` debounce (never `time.Sleep`) and fold immediately on `orchestration.completed`/`failed`. A fold (`fold.go`) is a single direct `provider.Run` call — no spawned `agent_sessions` row, no `workflow_instance` — resolved from the `_refinery` `system_agent_definitions` row (`role='refinery'`, `execution_mode='api'`) via `SystemAgentDefinitionService.GetForBackend`. The digest is keyed to the console-chat `agent_sessions` id (not the engine), so it survives engine rotation within that chat, and is capped to 4KB before the single-row `repo.RefineryDigestRepo.Upsert`. `refinery_enabled` (global default off, per-console-chat opt-in) gates `Manager.Start`/`Stop` calls entirely in `console.ChatService` — this package has no gate of its own.
+
+## Import Hygiene
+
+`refinery` imports `service`/`repo`/`ws`/`spawner/apirun/provider`/`clock`/`logger`/`model` only. `service` and `spawner` must never import `refinery` back — the `WorkingSetInjector` (spawner) reads the digest through the concrete `repo.RefineryDigestRepo.Get`, so it depends on `repo`, not this package. (`repo.DigestGetter` is a read-only contract reserved for future restart wiring.)

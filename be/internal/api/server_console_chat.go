@@ -9,6 +9,7 @@ import (
 	"be/internal/console"
 	"be/internal/db"
 	ptyPkg "be/internal/pty"
+	"be/internal/refinery"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner"
@@ -19,17 +20,20 @@ import (
 // engine-factory seam to s.consoleChatEngineFunc (nil = spawner.GetConsoleEngine)
 // so tests can substitute a fake engine after NewServer returns — same
 // injectable-seam pattern as cliAdapterFunc/specImportAdapterFunc. Split out
-// of server.go to keep that file's line count under its baseline.
-func newConsoleChatService(s *Server, cfg *config.Config, pool *db.Pool, clk clock.Clock, hub *ws.Hub, ptyMgr *ptyPkg.Manager, consoleHub *spawner.ConsoleHub, errorSvc *service.ErrorService) *console.ChatService {
+// of server.go to keep that file's line count under its baseline. refineryMgr
+// is registered as a hub listener by the caller (NewServer, pre-Run) and
+// threaded here only as ChatDeps.RefineryMgr's Start/Stop handle.
+func newConsoleChatService(s *Server, cfg *config.Config, pool *db.Pool, clk clock.Clock, hub *ws.Hub, ptyMgr *ptyPkg.Manager, consoleHub *spawner.ConsoleHub, errorSvc *service.ErrorService, refineryMgr *refinery.Manager) *console.ChatService {
 	svc := console.NewChatService(console.ChatDeps{
-		Pool:      pool,
-		Clock:     clk,
-		WSHub:     hub,
-		PTY:       ptyMgr,
-		Hub:       consoleHub,
-		ErrorSvc:  errorSvc,
-		ServerURL: fmt.Sprintf("http://127.0.0.1:%d", cfg.Server.Port),
-		Tools:     s.consoleDeps(),
+		Pool:        pool,
+		Clock:       clk,
+		WSHub:       hub,
+		PTY:         ptyMgr,
+		Hub:         consoleHub,
+		ErrorSvc:    errorSvc,
+		ServerURL:   fmt.Sprintf("http://127.0.0.1:%d", cfg.Server.Port),
+		Tools:       s.consoleDeps(),
+		RefineryMgr: refineryMgr,
 	})
 	svc.SetEngineFactory(func(name string, deps spawner.EngineDeps) (spawner.ConsoleEngine, error) {
 		if s.consoleChatEngineFunc != nil {

@@ -20,7 +20,7 @@ func TestChatSink_UpdateContextLeft_PersistsWithoutItsOwnBroadcast(t *testing.T)
 	t.Parallel()
 	svc, pool, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestChatSink_RecordError_NilErrorSvc_NoOp(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestChatSink_RecordError_WithErrorSvc_Persists(t *testing.T) {
 	svc, pool, hub, factory := newChatTestService(t)
 	svc.deps.ErrorSvc = service.NewErrorService(pool, svc.deps.Clock, hub)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

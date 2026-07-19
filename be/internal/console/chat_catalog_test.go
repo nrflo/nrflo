@@ -12,7 +12,7 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	if err := service.NewGlobalSettingsService(pool, svc.deps.Clock).Set("api_mode_enabled", "true"); err != nil {
 		t.Fatalf("enable API mode: %v", err)
 	}
-	sid, token, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "")
+	sid, token, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 
 func TestChatService_AttachAuthenticatedRejectsProjectMismatch(t *testing.T) {
 	svc, _, _, _ := newChatTestService(t)
-	sid, _, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "")
+	sid, _, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}

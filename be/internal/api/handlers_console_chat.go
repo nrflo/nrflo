@@ -28,6 +28,7 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		Model            string `json:"model"`
 		ReasoningEffort  string `json:"reasoning_effort"`
 		SystemTemplateID string `json:"system_template_id"`
+		RefineryEnabled  bool   `json:"refinery_enabled"`
 	}
 	raw, _ := io.ReadAll(r.Body)
 	r.Body.Close() //nolint:errcheck
@@ -42,7 +43,7 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, body.ReasoningEffort, projectID, body.SystemTemplateID)
+	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, body.ReasoningEffort, projectID, body.SystemTemplateID, body.RefineryEnabled)
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			writeError(w, http.StatusNotFound, "project not found")

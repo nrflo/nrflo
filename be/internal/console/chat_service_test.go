@@ -58,7 +58,7 @@ func TestChatService_Create_MintsSessionAndStartsEngine(t *testing.T) {
 	t.Parallel()
 	svc, pool, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestChatService_Create_MintsSessionAndStartsEngine(t *testing.T) {
 func TestChatService_CreateAuthenticated_ReturnsOwnBearer(t *testing.T) {
 	t.Parallel()
 	svc, pool, _, _ := newChatTestService(t)
-	sid, token, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "")
+	sid, token, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestChatService_Create_InjectsAPIToolProfileUnconditionally(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestChatService_Create_UnknownProject_ReturnsErrConsoleProjectNotFound(t *t
 	t.Parallel()
 	svc, _, _, _ := newChatTestService(t)
 
-	_, err := svc.Create("codex", "", "", "no-such-project", "")
+	_, err := svc.Create("codex", "", "", "no-such-project", "", false)
 	if err == nil {
 		t.Fatal("Create with unknown project: want error, got nil")
 	}
@@ -175,7 +175,7 @@ func TestChatService_Close_StopsEngineAndKillsToken(t *testing.T) {
 	t.Parallel()
 	svc, pool, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -222,11 +222,11 @@ func TestChatService_StopAll_StopsEveryEngineAndClearsSessions(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid1, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid1, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create 1: %v", err)
 	}
-	sid2, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid2, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create 2: %v", err)
 	}

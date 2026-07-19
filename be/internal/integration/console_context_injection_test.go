@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/clock"
 	"be/internal/model"
+	"be/internal/repo"
 	"be/internal/spawner"
 )
 
@@ -55,6 +57,9 @@ func TestConsoleContextInjection_MultiTurn_StableAdditionalContext(t *testing.T)
 
 	sessionID := "sess-console-multi-turn"
 	insertConsoleChatSession(t, env, sessionID, "CHAT-TICKET-1")
+	if _, err := repo.NewRefineryDigestRepo(env.Pool, clock.Real()).Upsert(sessionID, env.ProjectID, "digest content"); err != nil {
+		t.Fatalf("seed refinery digest: %v", err)
+	}
 
 	var first userPromptSubmitResult
 	env.MustExecute(t, "agent.record_event", map[string]interface{}{

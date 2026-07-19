@@ -6,8 +6,20 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"be/internal/clock"
 	"be/internal/model"
+	"be/internal/repo"
 )
+
+// seedDigest upserts a refinery_digests row for sessionID so
+// WorkingSetInjector's digest-gate passes. Refinery folding is otherwise
+// covered by be/internal/refinery; here we only need a digest to exist.
+func seedDigest(t *testing.T, env *spawnerTestEnv, sessionID, content string) {
+	t.Helper()
+	if _, err := repo.NewRefineryDigestRepo(env.pool, clock.Real()).Upsert(sessionID, env.project, content); err != nil {
+		t.Fatalf("seed digest for %s: %v", sessionID, err)
+	}
+}
 
 // insertConsoleSession inserts a raw agent_sessions row with the given kind.
 // agent_sessions has no FK on project_id/ticket_id, so callers may pass
@@ -37,6 +49,7 @@ func TestWorkingSetInjector_ConsoleChat_RendersAndSubstitutes(t *testing.T) {
 	env := newSpawnerTestEnv(t)
 	setWorkingSetTemplate(t, env, "session=${SESSION_ID} project=${PROJECT} ticket=${TICKET} prompt=${PROMPT}")
 	insertConsoleSession(t, env, "sess-cc-1", model.AgentSessionKindConsoleChat, "TICK-1")
+	seedDigest(t, env, "sess-cc-1", "goal: ship it")
 
 	inj := NewWorkingSetInjector(env.pool)
 	got := inj.InjectUserPromptContext(context.Background(), "sess-cc-1", "hello there")
@@ -66,6 +79,9 @@ func TestWorkingSetInjector_KindVariants(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sessionID := "sess-kind-" + tc.kind
 			insertConsoleSession(t, env, sessionID, tc.kind, "TICK-KIND")
+			if !tc.wantEmpty {
+				seedDigest(t, env, sessionID, "digest content")
+			}
 
 			inj := NewWorkingSetInjector(env.pool)
 			got := inj.InjectUserPromptContext(context.Background(), sessionID, "p")
@@ -93,16 +109,39 @@ func TestWorkingSetInjector_UnknownSession_ReturnsEmpty(t *testing.T) {
 	}
 }
 
-func TestWorkingSetInjector_EmptyTemplate_ReturnsEmpty(t *testing.T) {
+// TestWorkingSetInjector_NoDigest_ReturnsEmpty is the byte-identical no-op
+// regression: a console_chat session with no refinery_digests row (refinery
+// disabled, or not yet folded) must render "" even against the real migrated
+// `working-set` template — the digest gate short-circuits before rendering.
+func TestWorkingSetInjector_NoDigest_ReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	env := newSpawnerTestEnv(t)
-	// Migration 000176 seeds the working-set row with an empty body — leave it as-is.
 	insertConsoleSession(t, env, "sess-empty-tpl", model.AgentSessionKindConsoleChat, "TICK-EMPTY")
 
 	inj := NewWorkingSetInjector(env.pool)
 	got := inj.InjectUserPromptContext(context.Background(), "sess-empty-tpl", "p")
 	if got != "" {
 		t.Errorf("InjectUserPromptContext(empty template) = %q, want empty (backward-silent no-op)", got)
+	}
+}
+
+// TestWorkingSetInjector_DigestPresent_WrapsDigestInDefaultTemplate verifies
+// the real migrated `working-set` template (not overridden here) wraps a
+// seeded digest's content into the injected additionalContext.
+func TestWorkingSetInjector_DigestPresent_WrapsDigestInDefaultTemplate(t *testing.T) {
+	t.Parallel()
+	env := newSpawnerTestEnv(t)
+	insertConsoleSession(t, env, "sess-digest-1", model.AgentSessionKindConsoleChat, "TICK-DIGEST")
+	seedDigest(t, env, "sess-digest-1", "goal: ship the refinery\nopen questions: none")
+
+	inj := NewWorkingSetInjector(env.pool)
+	got := inj.InjectUserPromptContext(context.Background(), "sess-digest-1", "p")
+
+	if !strings.Contains(got, "goal: ship the refinery") {
+		t.Errorf("InjectUserPromptContext = %q, want it to contain the seeded digest content", got)
+	}
+	if !strings.Contains(got, "Working Set") {
+		t.Errorf("InjectUserPromptContext = %q, want it wrapped by the working-set template", got)
 	}
 }
 
@@ -116,6 +155,7 @@ func TestWorkingSetInjector_TruncatesOnRuneBoundary(t *testing.T) {
 	body := prefix + "€" + "END"                             // € is 3 bytes: lands at 8190-8192
 	setWorkingSetTemplate(t, env, body)
 	insertConsoleSession(t, env, "sess-trunc", model.AgentSessionKindConsoleChat, "TICK-TRUNC")
+	seedDigest(t, env, "sess-trunc", "digest content")
 
 	buf := captureLog(t)
 	inj := NewWorkingSetInjector(env.pool)

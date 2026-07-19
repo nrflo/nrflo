@@ -3,9 +3,11 @@ package spawner
 import (
 	"context"
 
+	"be/internal/clock"
 	"be/internal/db"
 	"be/internal/logger"
 	"be/internal/model"
+	"be/internal/repo"
 )
 
 // maxInjectedContextBytes caps additionalContext injected into a console
@@ -42,11 +44,20 @@ func (w *WorkingSetInjector) InjectUserPromptContext(ctx context.Context, sessio
 		return ""
 	}
 
+	digest := ""
+	if d, derr := repo.NewRefineryDigestRepo(w.pool, clock.Real()).Get(sessionID); derr == nil && d != nil {
+		digest = d.Content
+	}
+	if digest == "" {
+		return ""
+	}
+
 	vars := map[string]string{
 		"SESSION_ID": sessionID,
 		"PROJECT":    projectID,
 		"TICKET":     ticketID,
 		"PROMPT":     prompt,
+		"DIGEST":     digest,
 	}
 	out := renderInjectable(ctx, w.pool, "working-set", vars)
 	if out == "" {

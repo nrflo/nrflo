@@ -17,7 +17,7 @@ func TestChatService_Thinking_PushesConsoleChatThinking(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestChatService_ApprovalResolved_NormalizesDecisionToClientVocabulary(t *te
 			t.Parallel()
 			svc, _, hub, factory := newChatTestService(t)
 
-			sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+			sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 			if err != nil {
 				t.Fatalf("Create: %v", err)
 			}
@@ -85,7 +85,7 @@ func TestChatService_TokenUsage_PushesAgentContextUpdated(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestChatService_ApprovalResolved_RemovesFromSnapshotAndCarriesDecisionReaso
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestChatService_ReplyApproval_DoesNotPushDirectly_OnlyTheEngineEventDoes(t 
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "")
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

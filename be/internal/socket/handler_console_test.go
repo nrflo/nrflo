@@ -13,10 +13,12 @@ import (
 
 type fakeConsoleChatCreator struct {
 	engine, model, project, attached, systemTemplateID string
+	refineryEnabled                                    bool
 }
 
-func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID string) (string, string, error) {
+func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID string, refineryEnabled bool) (string, string, error) {
 	f.engine, f.model, f.project, f.systemTemplateID = engine, model, project, systemTemplateID
+	f.refineryEnabled = refineryEnabled
 	return "chat-session-1", "chat-token-1", nil
 }
 
@@ -211,6 +213,44 @@ func TestConsoleChat_EmptySystemTemplateID(t *testing.T) {
 	}
 	if creator.systemTemplateID != "" {
 		t.Errorf("creator.systemTemplateID = %q, want empty", creator.systemTemplateID)
+	}
+}
+
+// TestConsoleChat_PlumbsRefineryEnabled verifies a true refinery_enabled
+// param forwards through to CreateAuthenticated's trailing bool.
+func TestConsoleChat_PlumbsRefineryEnabled(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]interface{}{
+		"project": env.project, "engine": "codex", "model": "gpt-5.3-codex",
+		"refinery_enabled": true,
+	})
+	resp := env.handler.Handle(Request{ID: "chat-4", Method: "console.chat", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if !creator.refineryEnabled {
+		t.Error("creator.refineryEnabled = false, want true")
+	}
+}
+
+// TestConsoleChat_OmittedRefineryEnabled_DefaultsFalse is the byte-identical
+// regression: omitting refinery_enabled must forward false, not a zero-value
+// surprise from some other decode path.
+func TestConsoleChat_OmittedRefineryEnabled_DefaultsFalse(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	creator := &fakeConsoleChatCreator{}
+	env.handler.consoleChat = creator
+	params, _ := json.Marshal(map[string]string{
+		"project": env.project, "engine": "codex", "model": "gpt-5.3-codex",
+	})
+	resp := env.handler.Handle(Request{ID: "chat-5", Method: "console.chat", Params: params})
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %v", resp.Error)
+	}
+	if creator.refineryEnabled {
+		t.Error("creator.refineryEnabled = true, want false when omitted")
 	}
 }
 

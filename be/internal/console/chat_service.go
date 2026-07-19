@@ -43,6 +43,10 @@ type ChatDeps struct {
 	ErrorSvc  *service.ErrorService
 	ServerURL string
 	Tools     Deps
+	// RefineryMgr starts/stops the per-session refinery sidecar. Nil-safe —
+	// tests and any server wiring that never sets it get today's behavior
+	// (no digest folding). See chat_service_refinery.go.
+	RefineryMgr RefineryLifecycle
 }
 
 // ChatService owns kind='console_chat' agent_sessions lifecycle: the
@@ -89,19 +93,19 @@ func (s *ChatService) SetEngineFactory(f func(name string, deps spawner.EngineDe
 // tools/list through `agent mcp-external`, a SessionStart hook — authenticates
 // against this row. A failed Start closes it again rather than leaving an open
 // session with no engine.
-func (s *ChatService) Create(engine, modelID, effort, projectID, systemTemplateID string) (sessionID string, err error) {
-	sessionID, _, err = s.create(engine, modelID, effort, projectID, systemTemplateID)
+func (s *ChatService) Create(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID string, err error) {
+	sessionID, _, err = s.create(engine, modelID, effort, projectID, systemTemplateID, refineryEnabled)
 	return sessionID, err
 }
 
 // CreateAuthenticated is the trusted-local variant used by the Unix socket.
 // It returns the session bearer so a native TUI can drive only the chat it
 // just created. HTTP callers use Create and never receive this credential.
-func (s *ChatService) CreateAuthenticated(engine, modelID, effort, projectID, systemTemplateID string) (sessionID, token string, err error) {
-	return s.create(engine, modelID, effort, projectID, systemTemplateID)
+func (s *ChatService) CreateAuthenticated(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID, token string, err error) {
+	return s.create(engine, modelID, effort, projectID, systemTemplateID, refineryEnabled)
 }
 
-func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateID string) (sessionID, token string, err error) {
+func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID, token string, err error) {
 	exists, err := repo.NewProjectRepo(s.deps.Pool, s.deps.Clock).Exists(projectID)
 	if err != nil {
 		return "", "", fmt.Errorf("check project: %w", err)
@@ -189,6 +193,10 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		return "", "", fmt.Errorf("start console engine: %w", err)
 	}
 
+	if s.deps.RefineryMgr != nil && s.refineryEffective(refineryEnabled) {
+		s.deps.RefineryMgr.Start(sessionID, projectID)
+	}
+
 	sess := newChatSession(sessionID, projectID, engine, modelID, spec.WorkDir, eng)
 	s.mu.Lock()
 	s.sessions[sessionID] = sess
@@ -213,52 +221,12 @@ func (s *ChatService) engineExited(sid string) {
 	if !ok {
 		return
 	}
+	if s.deps.RefineryMgr != nil {
+		s.deps.RefineryMgr.Stop(sid)
+	}
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		logger.Error(context.Background(), "console chat: close row after engine exit", "session_id", sid, "error", err)
 	}
-}
-
-// SendMessage submits one user turn. Returns spawner.ErrTurnActive when a
-// turn is already in flight (the REST handler maps this to 409) — rejected
-// locally via chatSession.beginTurn before ever reaching the engine, so the
-// reject is deterministic without a round trip.
-func (s *ChatService) SendMessage(sid, text string) error {
-	sess, ok := s.get(sid)
-	if !ok {
-		return ErrChatSessionNotFound
-	}
-	if err := sess.beginTurn(); err != nil {
-		return err
-	}
-	if err := sess.engine.SendUserTurn(context.Background(), text); err != nil {
-		sess.endTurn()
-		return err
-	}
-	return nil
-}
-
-// ReplyApproval forwards an already-mapped decision to the engine. The
-// engine's own EventApprovalResolved (handled once, by pumpChatEvents) is
-// what resolves the pending approval and pushes console_chat.approval_resolved
-// — this method does not duplicate that, since the same resolution can also
-// arrive via a timeout or engine stop that never goes through here. The REST
-// layer maps allow|deny to the spawner.ApprovalDecision wire vocabulary; this
-// method never touches that mapping itself.
-func (s *ChatService) ReplyApproval(sid, approvalID string, decision spawner.ApprovalDecision) error {
-	sess, ok := s.get(sid)
-	if !ok {
-		return ErrChatSessionNotFound
-	}
-	return sess.engine.ReplyApproval(approvalID, decision)
-}
-
-// Interrupt cancels the active turn without closing the chat session.
-func (s *ChatService) Interrupt(ctx context.Context, sid string) error {
-	sess, ok := s.get(sid)
-	if !ok {
-		return ErrChatSessionNotFound
-	}
-	return sess.engine.InterruptTurn(ctx)
 }
 
 // Close stops the engine (its Events channel closing ends the event pump)
@@ -274,6 +242,9 @@ func (s *ChatService) Close(sid string) error {
 		return ErrChatSessionNotFound
 	}
 	sess.engine.Stop()
+	if s.deps.RefineryMgr != nil {
+		s.deps.RefineryMgr.Stop(sid)
+	}
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		return fmt.Errorf("close console_chat session: %w", err)
 	}

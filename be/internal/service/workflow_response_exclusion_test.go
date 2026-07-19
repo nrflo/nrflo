@@ -64,6 +64,7 @@ var transientCases = []excludedSessionCase{
 	{name: "underscore_agent_type_finalize", agentType: "_finalize"},
 	{name: "underscore_agent_type_pause", agentType: "_pause"},
 	{name: "underscore_agent_type_notification", agentType: "_notification"},
+	{name: "underscore_agent_type_refinery", agentType: "_refinery"},
 	{name: "underscore_phase_consult", agentType: "architect", phase: "_consult"},
 }
 

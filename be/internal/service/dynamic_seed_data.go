@@ -32,7 +32,11 @@ type dynAgent struct {
 
 // dynAgents is the seeded roster: the workflow-local planner override plus
 // the 10 fanout_template building blocks. Node ids in a plan's manifest
-// reference the fanout_template entries by `template`.
+// reference the fanout_template entries by `template`. Non-codex worker/
+// verifier templates default ReasoningEffort to "low" (synthesizer
+// "medium") — a cheap-tier default that is the soft complement to the
+// EnforcePremiumWorkerCap guardrail (plan_validate_premium.go), which caps
+// premium (opus/fable) nodes server-side regardless of what the planner picks.
 var dynAgents = []dynAgent{
 	{
 		ID:          "dynamic-planner",
@@ -42,18 +46,20 @@ var dynAgents = []dynAgent{
 		Description: "Workflow-local planner for the dynamic workflow: decomposes a goal into a layered manifest bound to the templates below.",
 	},
 	{
-		ID:          "codebase-explorer",
-		Model:       "haiku-4-5",
-		Tools:       "findings_add,findings_get,artifact_get",
-		Description: "Fast, lean-context codebase exploration: locates files/symbols/patterns and reports back without editing anything. Read-only by prompt discipline, not sandboxing. Emits to finding key `map`.",
-		FindingKey:  "map",
+		ID:              "codebase-explorer",
+		Model:           "haiku-4-5",
+		ReasoningEffort: "low",
+		Tools:           "findings_add,findings_get,artifact_get",
+		Description:     "Fast, lean-context codebase exploration: locates files/symbols/patterns and reports back without editing anything. Read-only by prompt discipline, not sandboxing. Emits to finding key `map`.",
+		FindingKey:      "map",
 	},
 	{
-		ID:          "module-reviewer",
-		Model:       "sonnet-5",
-		Tools:       "emit_findings,findings_get,artifact_get,artifact_list,read_document",
-		Description: "Reviews a module, change, or another node's finding critically and reports a pass/fail/concerns verdict; read-only by prompt discipline. Emits to finding key `report`.",
-		FindingKey:  "report",
+		ID:              "module-reviewer",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "emit_findings,findings_get,artifact_get,artifact_list,read_document",
+		Description:     "Reviews a module, change, or another node's finding critically and reports a pass/fail/concerns verdict; read-only by prompt discipline. Emits to finding key `report`.",
+		FindingKey:      "report",
 	},
 	{
 		ID:              "module-reviewer-codex",
@@ -64,25 +70,28 @@ var dynAgents = []dynAgent{
 		FindingKey:      "report",
 	},
 	{
-		ID:          "implementor-worker",
-		Model:       "sonnet-5",
-		Tools:       "*",
-		Description: "General-purpose implementation node with full tool access — writes code, runs commands, edits files in the shared working tree. Emits to finding key `work_log`.",
-		FindingKey:  "work_log",
+		ID:              "implementor-worker",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "*",
+		Description:     "General-purpose implementation node with full tool access — writes code, runs commands, edits files in the shared working tree. Emits to finding key `work_log`.",
+		FindingKey:      "work_log",
 	},
 	{
-		ID:          "web-researcher",
-		Model:       "sonnet-5",
-		Tools:       "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
-		Description: "Web research node: searches, fetches, and extracts falsifiable claims with verbatim quotes and sources. Emits to finding key `claims`.",
-		FindingKey:  "claims",
+		ID:              "web-researcher",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
+		Description:     "Web research node: searches, fetches, and extracts falsifiable claims with verbatim quotes and sources. Emits to finding key `claims`.",
+		FindingKey:      "claims",
 	},
 	{
-		ID:          "finding-verifier",
-		Model:       "sonnet-5",
-		Tools:       "emit_findings,findings_get,web_search",
-		Description: "Adversarial, refute-oriented verifier: checks an earlier node's findings and returns a CONFIRMED|PLAUSIBLE|REFUTED verdict per item (plausible-by-default). Emits to finding key `verdicts`.",
-		FindingKey:  "verdicts",
+		ID:              "finding-verifier",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "emit_findings,findings_get,web_search",
+		Description:     "Adversarial, refute-oriented verifier: checks an earlier node's findings and returns a CONFIRMED|PLAUSIBLE|REFUTED verdict per item (plausible-by-default). Emits to finding key `verdicts`.",
+		FindingKey:      "verdicts",
 	},
 	{
 		ID:              "finding-verifier-codex",
@@ -93,25 +102,28 @@ var dynAgents = []dynAgent{
 		FindingKey:      "verdicts",
 	},
 	{
-		ID:          "generic-worker",
-		Model:       "sonnet-5",
-		Tools:       "findings_add,findings_get,artifact_get,artifact_list,read_document",
-		Description: "Moderate, read-leaning general-purpose node for tasks that don't fit the other templates (analysis, drafting, light investigation). Emits to finding key `notes`.",
-		FindingKey:  "notes",
+		ID:              "generic-worker",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "findings_add,findings_get,artifact_get,artifact_list,read_document",
+		Description:     "Moderate, read-leaning general-purpose node for tasks that don't fit the other templates (analysis, drafting, light investigation). Emits to finding key `notes`.",
+		FindingKey:      "notes",
 	},
 	{
-		ID:          "cross-checker",
-		Model:       "sonnet-5",
-		Tools:       "emit_findings,findings_get",
-		Description: "Reads two prior nodes' findings (bind via #{NODE_FINDINGS:<a>} / #{NODE_FINDINGS:<b>} in its instructions) and reports where they agree or disagree. Emits to finding key `cross_check`.",
-		FindingKey:  "cross_check",
+		ID:              "cross-checker",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "emit_findings,findings_get",
+		Description:     "Reads two prior nodes' findings (bind via #{NODE_FINDINGS:<a>} / #{NODE_FINDINGS:<b>} in its instructions) and reports where they agree or disagree. Emits to finding key `cross_check`.",
+		FindingKey:      "cross_check",
 	},
 	{
-		ID:          "synthesizer",
-		Model:       "opus-4-8",
-		Tools:       "emit_findings,findings_get",
-		Description: "Final, result-carrying node: merges semantic duplicates across earlier findings, ranks by confidence, and emits exactly once. Emits to finding key `workflow_final_result`.",
-		FindingKey:  "workflow_final_result",
+		ID:              "synthesizer",
+		Model:           "opus-4-8",
+		ReasoningEffort: "medium",
+		Tools:           "emit_findings,findings_get",
+		Description:     "Final, result-carrying node: merges semantic duplicates across earlier findings, ranks by confidence, and emits exactly once. Emits to finding key `workflow_final_result`.",
+		FindingKey:      "workflow_final_result",
 	},
 }
 

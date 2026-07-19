@@ -102,6 +102,42 @@ func TestDynAgents_PromptsResolveAndCarryNodeInstructions(t *testing.T) {
 	}
 }
 
+// TestDynAgents_ReasoningEffortDefaults pins the cheap-tier-default effort
+// assignments: the 7 non-codex worker/verifier templates default to "low",
+// the synthesizer (the single mid-tier synthesis node) to "medium" — the soft
+// complement to the server-side EnforcePremiumWorkerCap guardrail. Codex
+// twins staying "high" is locked separately by
+// TestDynAgents_ModelsResolveToEnabledCLIModels.
+func TestDynAgents_ReasoningEffortDefaults(t *testing.T) {
+	t.Parallel()
+	lowEffortIDs := map[string]bool{
+		"codebase-explorer": true, "module-reviewer": true, "implementor-worker": true,
+		"web-researcher": true, "finding-verifier": true, "generic-worker": true, "cross-checker": true,
+	}
+	byID := make(map[string]dynAgent, len(dynAgents))
+	for _, a := range dynAgents {
+		byID[a.ID] = a
+	}
+
+	for id := range lowEffortIDs {
+		a, ok := byID[id]
+		if !ok {
+			t.Fatalf("dynAgents missing expected low-effort worker/verifier id %q", id)
+		}
+		if a.ReasoningEffort != "low" {
+			t.Errorf("dynAgents[%q].ReasoningEffort = %q, want %q", id, a.ReasoningEffort, "low")
+		}
+	}
+
+	synth, ok := byID["synthesizer"]
+	if !ok {
+		t.Fatal("dynAgents missing the synthesizer entry")
+	}
+	if synth.ReasoningEffort != "medium" {
+		t.Errorf("dynAgents[%q].ReasoningEffort = %q, want %q", "synthesizer", synth.ReasoningEffort, "medium")
+	}
+}
+
 // TestDynAgents_RosterShape pins the catalog size the plan specifies: 10
 // fanout templates + 1 workflow-local planner override, 11 total.
 func TestDynAgents_RosterShape(t *testing.T) {

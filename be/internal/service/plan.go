@@ -157,6 +157,9 @@ func (s *PlanService) Revise(ctx context.Context, instanceID string, req types.P
 // Revision-pinned (stale -> ErrStalePlanRevision) and re-validates the
 // manifest before approving — a referenced template's model may have been
 // disabled since the draft was made. Open questions never block approval.
+// Also rejects a manifest binding more than dynwf_max_premium_workers nodes to
+// a premium-tier template (EnforcePremiumWorkerCap, canRevise=true) — the
+// unattended counterpart is ApproveAuto, which downgrades instead of rejects.
 func (s *PlanService) Approve(instanceID string, revision int) (*model.PlanRevision, error) {
 	head, err := s.planRepo.GetHead(instanceID)
 	if err == sql.ErrNoRows {
@@ -185,6 +188,9 @@ func (s *PlanService) Approve(instanceID string, revision int) (*model.PlanRevis
 		return nil, err
 	}
 	if err := ValidatePlanManifest(s.pool, wfi.ProjectID, wfi.WorkflowID, m); err != nil {
+		return nil, err
+	}
+	if _, _, err := EnforcePremiumWorkerCap(s.pool, s.clock, wfi.ProjectID, wfi.WorkflowID, m, true); err != nil {
 		return nil, err
 	}
 

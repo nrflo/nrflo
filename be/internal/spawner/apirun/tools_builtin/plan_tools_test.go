@@ -15,6 +15,16 @@ import (
 
 // --- revise_plan ---
 
+// TestRevisePlanHandler_SpecDescriptionMentionsPremiumCap guards the
+// tier-policy/premium-cap prompt text against drift, mirroring
+// TestReadDocumentPathHandler_SpecDescriptionMentionsPath's convention.
+func TestRevisePlanHandler_SpecDescriptionMentionsPremiumCap(t *testing.T) {
+	spec := (revisePlanHandler{}).Spec()
+	if !strings.Contains(spec.Description, service.PremiumWorkerCapKey) {
+		t.Errorf("Spec().Description = %q; want to mention %q", spec.Description, service.PremiumWorkerCapKey)
+	}
+}
+
 func TestRevisePlan_HappyPath(t *testing.T) {
 	r := stubSubworkflows{
 		revisePlan: func(context.Context, string, string, string, types.PlanReviseRequest) (*model.PlanRevision, error) {

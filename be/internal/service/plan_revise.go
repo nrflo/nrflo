@@ -18,6 +18,13 @@ func (s *PlanService) reviseWithManifest(instanceID, projectID, workflowID strin
 	if err := ValidatePlanManifest(s.pool, projectID, workflowID, m); err != nil {
 		return nil, err
 	}
+	// A caller-edited manifest (revise_plan tool, or the UI) is rejected
+	// outright when it binds too many premium nodes — reviseWithPlanner
+	// deliberately skips this (planner output is handled at the approve
+	// boundary instead, see plan.go Approve / plan_approve_auto.go).
+	if _, _, err := EnforcePremiumWorkerCap(s.pool, s.clock, projectID, workflowID, m, true); err != nil {
+		return nil, err
+	}
 	canonical, err := json.Marshal(m)
 	if err != nil {
 		return nil, err

@@ -45,6 +45,15 @@ ${PREVIOUS_MANIFEST}
 - Only add a second, differently-modeled map node plus a cross-checker layer when the caller's goal or instructions explicitly ask you to cross-validate or double-check a result — it doubles cost and most goals do not need it.
 - Never invent a template, model, tool, or finding key that is not in the library above. If the library is missing something you need, do not substitute a similar template silently — emit a question in questions[] describing the gap instead.
 
+## Tier Policy
+
+- Default every worker node to the cheap tier (haiku, low effort) unless the node genuinely needs deep reasoning to do its job — justify anything above sonnet-medium in the node's instructions or the plan's rationale.
+- Fan-out/per-file/per-item sweep nodes are ALWAYS cheap tier — a wide fan-out of premium nodes is never justified by breadth alone.
+- Reserve at most one synthesis/judge node at mid tier (sonnet) for merging or adjudicating other nodes' output.
+- Premium tier (opus/fable) is reserved for final adjudication only, and only when the caller's task genuinely demands it — not a default choice.
+- Verification nodes belong at sonnet-low and should be provider/perspective-diverse (see Delegation Doctrine above), never premium.
+- Premium nodes are capped server-side (dynwf_max_premium_workers, default 2): a plan that binds more than the cap to a premium-tier template is rejected at interactive approval, or auto-downgraded to a cheaper template with a warning finding in unattended (mode=auto) runs. Stay under the cap.
+
 ## Manifest Schema (version 1)
 
 Emit a JSON object via the emit_findings tool, key ` + "`_workflow_plan`" + `:

@@ -89,9 +89,10 @@ func (o *Orchestrator) reloadPlanLayers(
 // `planning`, then runs the planner inline — RunPlanner is synchronous and the
 // run has no live layer at this point, so blocking the run goroutine here is
 // safe (mirrors RunPlanner's own doc comment). On success: mode=auto
-// (req.PlanAutoApprove, gated by service.DynamicAutoEnabled) auto-approves and
-// falls straight through to materializeAndSplice so the run never visibly
-// suspends; otherwise it suspends in the freshly-derived plan status
+// (req.PlanAutoApprove, gated by service.DynamicAutoEnabled) calls ApproveAuto
+// (downgrades a premium-heavy plan + writes a warning finding instead of
+// rejecting it) and falls straight through to materializeAndSplice so the run
+// never visibly suspends; otherwise it suspends in the freshly-derived plan status
 // (typically waiting_approval) for the caller to drive via
 // revise_plan/approve_plan (or the equivalent plan routes).
 func (o *Orchestrator) draftPlanAndProceed(
@@ -128,7 +129,7 @@ func (o *Orchestrator) draftPlanAndProceed(
 	}))
 
 	if req.PlanAutoApprove && service.DynamicAutoEnabled(pool, req.ProjectID) {
-		if _, err := planSvc.Approve(wfiID, rev.Revision); err != nil {
+		if _, err := planSvc.ApproveAuto(wfiID, rev.Revision); err != nil {
 			o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: auto-approve: %v", err))
 			return layerGroups, false, true, false
 		}

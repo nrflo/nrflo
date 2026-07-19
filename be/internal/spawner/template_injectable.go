@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"be/internal/db"
 	"be/internal/logger"
 )
 
@@ -36,11 +37,17 @@ func (s *Spawner) expandInjectable(id string, vars map[string]string) string {
 		logger.Warn(context.Background(), "no database pool for injectable template", "id", id)
 		return ""
 	}
+	return renderInjectable(context.Background(), pool, id, vars)
+}
 
+// renderInjectable loads an injectable template from default_templates and
+// expands vars, stripping any leftover ${...} placeholders that had no
+// matching var. Returns "" with a warning log if the template is not found.
+func renderInjectable(ctx context.Context, pool *db.Pool, id string, vars map[string]string) string {
 	var body string
 	err := pool.QueryRow(`SELECT template FROM default_templates WHERE id = ? AND type = 'injectable'`, id).Scan(&body)
 	if err != nil {
-		logger.Warn(context.Background(), "injectable template not found", "id", id, "error", err)
+		logger.Warn(ctx, "injectable template not found", "id", id, "error", err)
 		return ""
 	}
 

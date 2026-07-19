@@ -17,6 +17,7 @@ import (
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/socket"
+	"be/internal/spawner"
 
 	"github.com/spf13/cobra"
 )
@@ -159,6 +160,7 @@ func setupServer() (*serverComponents, error) {
 	socketServer.SetToolDispatcher(httpServer.GetOrchestrator())
 	socketServer.SetConsoleHooks(httpServer.ConsoleHub())
 	socketServer.SetConsoleChatCreator(httpServer.ConsoleChat())
+	socketServer.SetContextInjector(spawner.NewWorkingSetInjector(pool))
 	if err := socketServer.Start(); err != nil {
 		sockListener.Close()
 		pool.Close()

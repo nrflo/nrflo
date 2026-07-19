@@ -92,6 +92,7 @@ type hookRecordEventResponse struct {
 		Decision string `json:"decision"`
 		Reason   string `json:"reason"`
 	} `json:"permission_decision"`
+	AdditionalContext string `json:"additional_context,omitempty"`
 }
 
 // renderHookDecision renders a successful agent.record_event response into
@@ -116,6 +117,17 @@ func renderHookDecision(resp hookRecordEventResponse) string {
 		out, _ := json.Marshal(map[string]interface{}{
 			"decision": "block",
 			"reason":   resp.StopDecision.Reason,
+		})
+		return string(out)
+	}
+	// UserPromptSubmit (console only): additionalContext surfaces
+	// ContextInjector output ahead of the model's next turn.
+	if resp.AdditionalContext != "" {
+		out, _ := json.Marshal(map[string]interface{}{
+			"hookSpecificOutput": map[string]interface{}{
+				"hookEventName":     "UserPromptSubmit",
+				"additionalContext": resp.AdditionalContext,
+			},
 		})
 		return string(out)
 	}

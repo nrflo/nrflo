@@ -108,6 +108,8 @@ Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`,
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 
+`WorkingSetInjector` (`console_context_injector.go`) implements `socket.ContextInjector`: it renders the `working-set` injectable into a console session's UserPromptSubmit `additionalContext`, capped at 8KB with truncation logged.
+
 `SpawnRequest.ExtraVars` (`map[string]string`) injects caller-supplied `${KEY}` variables; expanded after standard vars. `${EXTERNAL_ID}`/`${EXTERNAL_CONTEXT}` are auto-injected from the workflow instance.
 
 ## Per-project Venv

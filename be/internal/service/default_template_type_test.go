@@ -36,16 +36,12 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(templates) != 6 {
-		t.Fatalf("List(injectable) len = %d, want 6", len(templates))
+	if len(templates) != 7 {
+		t.Fatalf("List(injectable) len = %d, want 7", len(templates))
 	}
 	wantIDs := map[string]bool{
-		"low-context":          true,
-		"callback":             true,
-		"user-instructions":    true,
-		"system-prompt-suffix": true,
-		"finish-reminder":      true,
-		"system-prompt":        true,
+		"low-context": true, "callback": true, "user-instructions": true,
+		"system-prompt-suffix": true, "finish-reminder": true, "system-prompt": true, "working-set": true,
 	}
 	for _, tmpl := range templates {
 		if tmpl.Type != "injectable" {
@@ -80,8 +76,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(templates) != 12 {
-		t.Fatalf("List() len = %d, want 12", len(templates))
+	if len(templates) != 13 {
+		t.Fatalf("List() len = %d, want 13", len(templates))
 	}
 	agentCount, injectableCount := 0, 0
 	for _, tmpl := range templates {
@@ -97,8 +93,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if agentCount != 6 {
 		t.Errorf("agent count = %d, want 6", agentCount)
 	}
-	if injectableCount != 6 {
-		t.Errorf("injectable count = %d, want 6", injectableCount)
+	if injectableCount != 7 {
+		t.Errorf("injectable count = %d, want 7", injectableCount)
 	}
 }
 
@@ -348,15 +344,15 @@ func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(injectables) != 7 {
-		t.Errorf("List(injectable) len = %d, want 7 (6 seeded + 1 created)", len(injectables))
+	if len(injectables) != 8 {
+		t.Errorf("List(injectable) len = %d, want 8 (7 seeded + 1 created)", len(injectables))
 	}
 
 	all, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(all) != 14 {
-		t.Errorf("List() len = %d, want 14 (12 seeded + 2 created)", len(all))
+	if len(all) != 15 {
+		t.Errorf("List() len = %d, want 15 (13 seeded + 2 created)", len(all))
 	}
 }

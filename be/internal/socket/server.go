@@ -259,6 +259,7 @@ type Handler struct {
 	toolDispatcher     ToolDispatcher       // optional; nil-safe
 	consoleHooks       ConsoleHooks         // optional; nil-safe
 	consoleChat        ConsoleChatCreator   // optional; trusted local TUI mint
+	contextInjector    ContextInjector      // optional; nil-safe
 	pool               *db.Pool
 	clk                clock.Clock
 

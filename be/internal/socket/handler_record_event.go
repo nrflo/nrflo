@@ -49,12 +49,10 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		// (claudeEngine.SendUserTurn writes the user_input row before typing
 		// the prompt into the PTY) owns the row — recording the hook echo
 		// would double it. Human-typed prompts from an attached terminal
-		// return handled=false and are recorded here, their only writer.
-		prompt := asString(event["prompt"])
-		if h.consoleHooks != nil && h.consoleHooks.ConsoleUserPrompt(params.SessionID, prompt) {
-			return MakeResponse(req.ID, map[string]interface{}{"recorded": false})
-		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, prompt, "user_input")
+		// return handled=false and are recorded here, their only writer. A
+		// wired ContextInjector additionally attaches additional_context for
+		// console-kind sessions — see handleUserPromptSubmit.
+		return h.handleUserPromptSubmit(ctx, req, params.SessionID, asString(event["prompt"]))
 	case "UserPromptExpansion":
 		cmd := asString(event["command_name"])
 		args := asString(event["command_args"])

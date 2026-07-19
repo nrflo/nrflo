@@ -53,6 +53,18 @@ type ConsoleHooks interface {
 	ConsoleUserPrompt(sessionID, prompt string) (handled bool)
 }
 
+// ContextInjector resolves additional context to attach to a console
+// session's UserPromptSubmit hook response. Optional, nil-safe — pass nil in
+// tests. Mirrors ConsoleHooks: only primitives cross the boundary so the
+// socket package stays free of spawner engine internals. An empty return
+// means "nothing to inject" — the caller adds no additional_context field.
+type ContextInjector interface {
+	// InjectUserPromptContext returns the context to surface for sessionID's
+	// current turn (prompt is the submitted text), or "" when there is none
+	// (non-console session, unknown session, empty template).
+	InjectUserPromptContext(ctx context.Context, sessionID, prompt string) string
+}
+
 // ConsoleChatCreator mints a server-owned chat for the trusted local TUI.
 type ConsoleChatCreator interface {
 	CreateAuthenticated(engine, modelID, effort, projectID string) (sessionID, token string, err error)

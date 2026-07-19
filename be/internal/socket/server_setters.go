@@ -19,3 +19,8 @@ func (s *Server) SetConsoleHooks(h ConsoleHooks) {
 func (s *Server) SetConsoleChatCreator(c ConsoleChatCreator) {
 	s.handler.consoleChat = c
 }
+
+// SetContextInjector wires the optional UserPromptSubmit context provider.
+func (s *Server) SetContextInjector(i ContextInjector) {
+	s.handler.contextInjector = i
+}

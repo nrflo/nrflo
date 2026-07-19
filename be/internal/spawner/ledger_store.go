@@ -59,6 +59,18 @@ func (s *ledgerStore) epochSummary(sessionID string) (LedgerEpochSummary, bool) 
 	return l.epochSummary(sessionID), true
 }
 
+// turnNow returns sessionID's current ledger turn counter, or ok=false when
+// the session has no tracked ledger.
+func (s *ledgerStore) turnNow(sessionID string) (int, bool) {
+	s.mu.Lock()
+	l, ok := s.sessions[sessionID]
+	s.mu.Unlock()
+	if !ok {
+		return 0, false
+	}
+	return l.turnNow(), true
+}
+
 func (s *ledgerStore) shouldBroadcast(sessionID string) bool {
 	s.mu.Lock()
 	l, ok := s.sessions[sessionID]

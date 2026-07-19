@@ -76,6 +76,10 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 `contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks (dialog/tool_use/tool_result/file_read/image/injected), written EXACT from apirun's `Config.Observer` in api mode, EXACT-ish by tail-parsing the Claude transcript from the `monitorAll` tick in cli mode, and APPROX from codex app-server events. Token estimates are a bytes/4 heuristic reconciled against per-turn provider usage; same-sha/path re-entry marks the prior entry superseded, and a debounced `agent.context_ledger` WS event carries totals-by-kind — `GET /api/v1/sessions/{id}/context-ledger` snapshots it, and the ledger drops when the session ends.
 
+## Context Watcher
+
+`context_watcher*.go`: an api-mode policy engine over the context ledger. `agent_definitions.context_budget_tokens` (NULL → config `context_budget_default`, 0 = disabled) triggers selective GC over budget, evicting superseded → stale tool_results/file_reads (unreferenced ≥ `context_decay_turns`, default 20) → completed dialog, keeping the pinned prefix + recent window verbatim; idle gaps ≥ `cache_ttl_sec` (default 300) bypass the `min_epoch_interval_calls` (default 20) throttle for a free deferred rewrite. Wired via the nil-safe `apirun.Config.Watcher` seam (mirrors `Observer`); CLI/codex restart policy is out of scope here.
+
 ## Consult
 
 `Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline: validates the target (`consultant=true`, `execution_mode=api`), truncates the caller transcript, then synchronously spawns a child `Spawner` running a one-phase `_consult` workflow under the caller's instance+ticket. The consultant's `_consult_answer` finding (read+deleted by session id) is returned as the `consult` tool result. `prepareSpawn` strips `consult` from a consultant's own toolset (recursion guard). Broadcasts `consult.started/answered/failed`; `_consult` is hidden from the v4 read model.
@@ -104,9 +108,7 @@ When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` to PTY stdin, broadcast `agent.nudged`, persist `nudge_count`. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.Idle*Sec`/`NudgeMax`.
-
-End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session.
+Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle windows the session force-fails, and the Claude Stop hook enforces end-of-turn completion in-band. Mechanics: [REFERENCE.md](REFERENCE.md#idlenudge-loop).
 
 ## Template Variables
 

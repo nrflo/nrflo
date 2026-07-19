@@ -62,3 +62,38 @@ type LedgerObserver interface {
 	// OnUsage reports one turn's provider-side token accounting.
 	OnUsage(u provider.Usage)
 }
+
+// WatcherState summarizes the live conversation for a ContextWatcher policy
+// decision: MessageCount is len(msgs) at the consult point, PctLeft/PctKnown
+// mirror the last turn's reported context-left percentage (PctKnown is false
+// before any turn has reported usage, or right after a compaction reset it).
+type WatcherState struct {
+	MessageCount int
+	PctLeft      int
+	PctKnown     bool
+}
+
+// CompactionPlan is a selective-GC decision returned by ContextWatcher.PlanGC:
+// the applier keeps msgs[:KeepPrefixMsgs] and msgs[len(msgs)-KeepSuffixMsgs:]
+// byte-identical and replaces everything between them with a single digest
+// message carrying ReferenceDigest — pointers back to the evicted content.
+type CompactionPlan struct {
+	KeepPrefixMsgs  int
+	KeepSuffixMsgs  int
+	ReferenceDigest string
+	PolicyName      string
+	TokensEvicted   int
+}
+
+// ContextWatcher is a policy engine consulted at the runner's compaction
+// checkpoints (mid-loop and pre-turn) to decide whether a selective GC should
+// run right now, in place of the uniform maybeCompactInLoop/maybeCompact
+// fallback. Nil-safe: Config.Watcher is optional and every call site guards
+// it, mirroring LedgerObserver — apirun must not import spawner, so the
+// spawner supplies an adapter over its context ledger + budget/idle/throttle
+// policy.
+type ContextWatcher interface {
+	// PlanGC returns (plan, true) when a GC should run now; (zero, false)
+	// tells the caller to fall back to its own uniform compaction check.
+	PlanGC(state WatcherState) (CompactionPlan, bool)
+}

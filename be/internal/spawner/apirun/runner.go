@@ -50,6 +50,11 @@ type Config struct {
 	// conversation and each turn's usage, feeding the spawner's external
 	// context ledger. Nil-safe — every call site guards it.
 	Observer LedgerObserver
+	// Watcher is consulted at the runner's compaction checkpoints to decide
+	// selective GC over Observer's ledger, in place of the uniform
+	// maybeCompactInLoop/maybeCompact fallback. Nil-safe — every call site
+	// guards it.
+	Watcher ContextWatcher
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner

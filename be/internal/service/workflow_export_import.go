@@ -185,6 +185,7 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				MaxFailRestarts:        agent.MaxFailRestarts,
 				StallStartTimeoutSec:   agent.StallStartTimeoutSec,
 				StallRunningTimeoutSec: agent.StallRunningTimeoutSec,
+				ContextBudgetTokens:    agent.ContextBudgetTokens,
 				Tag:                    agent.Tag,
 				LowConsumptionModel:    agent.LowConsumptionModel,
 				ExecutionMode:          agent.ExecutionMode,

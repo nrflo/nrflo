@@ -82,6 +82,6 @@ Opt-in via the unified model row's API reasoning effort. Adaptive 1M models (Fab
 
 `runner.go`/`sink.go` call `TrackMessage` on each text/tool-use event, identical to CLI agents. Stall detection in `stall_restart.go`; cap 15 restarts.
 
-`Config.Observer` (`LedgerObserver`, nil-safe) receives every newly appended `provider.ContentBlock` plus each turn's `provider.Usage`, feeding the spawner's external context ledger — see [spawner/CLAUDE.md](../CLAUDE.md#context-ledger).
+`Config.Observer` (`LedgerObserver`, nil-safe) receives every newly appended `provider.ContentBlock` plus each turn's `provider.Usage`, feeding the spawner's external context ledger — see [spawner/CLAUDE.md](../CLAUDE.md#context-ledger). `Config.Watcher` (`ContextWatcher`, nil-safe) is consulted alongside it at each compaction checkpoint and drives selective GC (`runner_compact_selective.go`) in place of the uniform fallback — see [spawner/CLAUDE.md](../CLAUDE.md#context-watcher).
 
 Run `make test-pkg PKG=spawner/apirun`.

@@ -137,6 +137,9 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		ReasoningEffort: spec.ReasoningEffort,
 		CaptureThinking: captureThinking,
 		Stream:          &apiEngineStream{e: e},
+		// Console chats have no agent definition, so the budget is always the
+		// global default; idle-gap GC is still driven by cache_ttl_sec.
+		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, contextConfigInt(e.api.Pool, "context_budget_default", 0)),
 	})
 
 	return nil

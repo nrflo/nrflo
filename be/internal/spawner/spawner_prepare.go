@@ -192,7 +192,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		}
 		prep.apiReasoningEffort = apiEffort
 		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
-
+		prep.apiContextBudget = resolveContextBudget(agentDef, contextConfigInt(s.pool(), "context_budget_default", 0))
 		apiModelID := am.APIModel
 
 		maxIter := defaultAPIMaxIterations

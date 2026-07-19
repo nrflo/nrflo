@@ -11,6 +11,7 @@ type AgentDefCreateRequest struct {
 	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
+	ContextBudgetTokens    *int      `json:"context_budget_tokens,omitempty"`
 	Tag                    string    `json:"tag,omitempty"`
 	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
 	ExecutionMode          string    `json:"execution_mode,omitempty"`
@@ -38,6 +39,7 @@ type AgentDefUpdateRequest struct {
 	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
+	ContextBudgetTokens    *int      `json:"context_budget_tokens,omitempty"`
 	Tag                    *string   `json:"tag,omitempty"`
 	LowConsumptionModel    *string   `json:"low_consumption_model,omitempty"`
 	ExecutionMode          *string   `json:"execution_mode,omitempty"`

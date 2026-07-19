@@ -96,6 +96,13 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "stall_running_timeout_sec = ?")
 		args = append(args, *req.StallRunningTimeoutSec)
 	}
+	if req.ContextBudgetTokens != nil {
+		if *req.ContextBudgetTokens < 0 {
+			return validationErrorf("context_budget_tokens must be >= 0")
+		}
+		updates = append(updates, "context_budget_tokens = ?")
+		args = append(args, *req.ContextBudgetTokens)
+	}
 	if req.Tag != nil {
 		if *req.Tag != "" {
 			// Validate tag against workflow groups

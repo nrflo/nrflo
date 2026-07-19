@@ -78,6 +78,7 @@ type prepResult struct {
 	apiProvider        provider.Provider // resolved per-spawn from ModelConfigs + BuildAPIProvider
 	apiReasoningEffort string            // resolved against the model's API-mode efforts
 	apiCaptureThinking bool              // from capture_thinking_enabled setting
+	apiContextBudget   int               // resolveContextBudget(agentDef, context_budget_default); 0 = disabled
 }
 
 // apiBackend executes an agent in-process via the apirun.Runner. There is no
@@ -158,6 +159,7 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		ReasoningEffort: prep.apiReasoningEffort,
 		CaptureThinking: prep.apiCaptureThinking,
 		Observer:        newAPILedgerObserver(b.s, proc),
+		Watcher:         newAPIContextWatcher(b.s.pool(), b.s.config.Clock, proc.sessionID, proc.modelID, prep.apiContextBudget),
 		// In-loop compaction fires just above the low-context kill threshold,
 		// so a long run compacts in-process instead of the kill+saver+relaunch
 		// dance (which stays as the fallback when compaction fails).

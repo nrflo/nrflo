@@ -108,6 +108,15 @@ func (l *ledger) nextTurn() {
 	l.mu.Unlock()
 }
 
+// turnNow returns the ledger's current turn counter — the context watcher
+// policy uses it to compute how long ago an entry was last referenced
+// (turnNow - LastRefTurn), the unreferenced-since basis for decay eviction.
+func (l *ledger) turnNow() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.turn
+}
+
 func (l *ledger) recordToolMeta(key string, meta toolCallMeta) {
 	if key == "" {
 		return

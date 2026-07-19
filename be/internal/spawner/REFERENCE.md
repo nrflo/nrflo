@@ -79,6 +79,12 @@ In-band: a 529 the Claude CLI prints as text without exiting is caught on idle b
 
 Config keys (project > global, via `pool.GetProjectConfig`/`GetConfig`): `rate_limit_enabled` (default `true`), `rate_limit_initial_backoff_sec` (`60`), `rate_limit_max_wait_sec` (`3600`), `<adapter>_limit_patterns`/`<adapter>_error_patterns` (extra comma-separated patterns).
 
+## Idle/Nudge Loop
+
+Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `idleStartTimeout` (default 2 min, no output yet) or `idleAfterMessageTimeout` (default 4 min, after first output). On idle: write `finish-reminder` to PTY stdin, broadcast `agent.nudged`, persist `nudge_count`. After `nudgeMax` nudges and another full idle window: `AgentSvcReal.Fail(reason="unresponsive_after_nudges")` + `RequestTerminalSignal(sessionID, "fail")`. Configurable via `Config.Idle*Sec`/`NudgeMax`.
+
+End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session.
+
 ## Agent Env Vars
 
 | Variable | Purpose |

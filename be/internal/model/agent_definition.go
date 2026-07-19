@@ -14,6 +14,7 @@ type AgentDefinition struct {
 	MaxFailRestarts        *int      `json:"max_fail_restarts,omitempty"`
 	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
+	ContextBudgetTokens    *int      `json:"context_budget_tokens,omitempty"` // api mode only; NULL = inherit config context_budget_default, 0 = disabled
 	Tag                    string    `json:"tag"`
 	LowConsumptionModel    string    `json:"low_consumption_model,omitempty"`
 	Layer                  int       `json:"layer"`

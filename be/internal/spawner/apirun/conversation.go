@@ -54,6 +54,7 @@ func NewConversation(cfg Config) *Conversation {
 func (c *Conversation) SendTurn(ctx context.Context, proc ProcState, text string) string {
 	capture := ctxCaptureProc{ProcState: proc, c: c}
 	c.maybeCompact(ctx, capture)
+	c.maybeWatcherGC(ctx)
 
 	userBlocks := []provider.ContentBlock{{Type: "text", Text: text}}
 	c.mu.Lock()

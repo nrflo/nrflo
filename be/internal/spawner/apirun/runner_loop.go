@@ -35,11 +35,24 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 			r.fail(proc, fmt.Sprintf("deadline exceeded (%s)", r.cfg.Deadline.Format(time.RFC3339)))
 			return msgs, "FAIL"
 		}
-		if pctKnown {
+		fallbackCompact := func() {
+			if !pctKnown {
+				return
+			}
 			var compacted bool
 			if msgs, compacted = r.maybeCompactInLoop(ctx, proc, msgs, pctLeft); compacted {
 				pctKnown = false // stale until the next turn reports fresh usage
 			}
+		}
+		if r.cfg.Watcher != nil {
+			if plan, ok := r.cfg.Watcher.PlanGC(WatcherState{MessageCount: len(msgs), PctLeft: pctLeft, PctKnown: pctKnown}); ok {
+				msgs = applyCompactionPlan(ctx, r.cfg, msgs, plan)
+				pctKnown = false // stale until the next turn reports fresh usage
+			} else {
+				fallbackCompact()
+			}
+		} else {
+			fallbackCompact()
 		}
 
 		sink := newRunnerSink(r.cfg.Sink, r.cfg.CaptureThinking, r.cfg.Stream)

@@ -9,7 +9,7 @@ import (
 
 // agentDefColumns is the shared SELECT column list; scanAgentDefRows scans
 // rows produced with exactly this list, in this order.
-const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, created_at, updated_at"
+const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, created_at, updated_at"
 
 func scanAgentDefRows(rows interface {
 	Next() bool
@@ -21,7 +21,7 @@ func scanAgentDefRows(rows interface {
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, apiMaxIter, apiMaxTokens sql.NullInt64
+		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, contextBudgetTokens, apiMaxIter, apiMaxTokens sql.NullInt64
 		var pythonScriptID, reasoningEffort sql.NullString
 
 		err := rows.Scan(
@@ -35,6 +35,7 @@ func scanAgentDefRows(rows interface {
 			&maxFailRestarts,
 			&stallStartTimeout,
 			&stallRunningTimeout,
+			&contextBudgetTokens,
 			&def.Tag,
 			&def.LowConsumptionModel,
 			&def.Layer,
@@ -75,6 +76,10 @@ func scanAgentDefRows(rows interface {
 		if stallRunningTimeout.Valid {
 			v := int(stallRunningTimeout.Int64)
 			def.StallRunningTimeoutSec = &v
+		}
+		if contextBudgetTokens.Valid {
+			v := int(contextBudgetTokens.Int64)
+			def.ContextBudgetTokens = &v
 		}
 		if apiMaxIter.Valid {
 			v := int(apiMaxIter.Int64)

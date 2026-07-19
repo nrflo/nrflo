@@ -17,6 +17,7 @@ type AgentDefUpdateFields struct {
 	MaxFailRestarts        *int
 	StallStartTimeoutSec   *int
 	StallRunningTimeoutSec *int
+	ContextBudgetTokens    *int
 	Tag                    *string
 	LowConsumptionModel    *string
 	ExecutionMode          *string
@@ -73,6 +74,10 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.StallRunningTimeoutSec != nil {
 		updates = append(updates, "stall_running_timeout_sec = ?")
 		args = append(args, *fields.StallRunningTimeoutSec)
+	}
+	if fields.ContextBudgetTokens != nil {
+		updates = append(updates, "context_budget_tokens = ?")
+		args = append(args, *fields.ContextBudgetTokens)
 	}
 	if fields.Tag != nil {
 		updates = append(updates, "tag = ?")

@@ -36,7 +36,7 @@ func setupWFChainSvcEnv(t *testing.T) (*db.Pool, *WorkflowChainService, *Workflo
 	}
 
 	workflowSvc := NewWorkflowService(pool, clk)
-	const wfName = "feature"
+	const wfName = "wf-chain" // avoids collision with the auto-seeded classic workflow set
 	if _, err := workflowSvc.CreateWorkflowDef(projectID, &types.WorkflowDefCreateRequest{
 		ID: wfName,
 	}); err != nil {

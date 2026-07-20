@@ -136,7 +136,7 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 	env := NewTestEnv(t)
 
 	// Create a second workflow definition for testing multiple workflows per ticket
-	createWorkflowWithAgents(t, env, "bugfix", []types.AgentDefCreateRequest{
+	createWorkflowWithAgents(t, env, "bugfix-wf", []types.AgentDefCreateRequest{
 		{ID: "investigation", Prompt: "investigate", Layer: 0},
 		{ID: "implementation", Prompt: "implement", Layer: 1},
 		{ID: "verification", Prompt: "verify", Layer: 2},
@@ -168,7 +168,7 @@ func TestAttachWorkflowProgress_MultipleWorkflows_MostRecentWins(t *testing.T) {
 		ID:         "wf-new",
 		ProjectID:  env.ProjectID,
 		TicketID:   "test-4",
-		WorkflowID: "bugfix",
+		WorkflowID: "bugfix-wf",
 		Status:     model.WorkflowInstanceActive,
 	}
 	err = wfiRepo.Create(wi2)

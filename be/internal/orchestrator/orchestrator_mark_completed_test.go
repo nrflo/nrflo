@@ -216,7 +216,7 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	// Create a second workflow definition for this test
 	workflowSvc := service.NewWorkflowService(env.pool, clock.Real())
 	_, err := workflowSvc.CreateWorkflowDef(env.project, &types.WorkflowDefCreateRequest{
-		ID:          "feature",
+		ID:          "custom-feature",
 		Description: "Feature workflow",
 	})
 	if err != nil {
@@ -226,26 +226,26 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	now := clock.Real().Now().UTC().Format("2006-01-02T15:04:05.999999999Z07:00")
 	_, err = env.pool.Exec(`INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, layer, created_at, updated_at)
 		VALUES (?, ?, ?, 'sonnet-5', 20, 'test prompt', 0, ?, ?)`,
-		"analyzer", env.project, "feature", now, now)
+		"analyzer", env.project, "custom-feature", now, now)
 	if err != nil {
 		t.Fatalf("failed to create agent definition: %v", err)
 	}
 
 	env.createTicket(t, "MC-7", "Workflow name in reason")
 
-	// Init the "feature" workflow
+	// Init the "custom-feature" workflow
 	_, err = workflowSvc.Init(env.project, "MC-7", &types.WorkflowInitRequest{
-		Workflow: "feature",
+		Workflow: "custom-feature",
 	})
 	if err != nil {
-		t.Fatalf("failed to init feature workflow: %v", err)
+		t.Fatalf("failed to init custom-feature workflow: %v", err)
 	}
 
 	var wfiID string
 	err = env.pool.QueryRow(`
 		SELECT id FROM workflow_instances
 		WHERE LOWER(project_id) = LOWER(?) AND LOWER(ticket_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)`,
-		env.project, "MC-7", "feature").Scan(&wfiID)
+		env.project, "MC-7", "custom-feature").Scan(&wfiID)
 	if err != nil {
 		t.Fatalf("failed to get workflow instance ID: %v", err)
 	}
@@ -253,12 +253,12 @@ func TestMarkCompletedCloseReasonIncludesWorkflowName(t *testing.T) {
 	env.orch.markCompleted(wfiID, RunRequest{
 		ProjectID:             env.project,
 		TicketID:              "MC-7",
-		WorkflowName:          "feature",
+		WorkflowName:          "custom-feature",
 		CloseTicketOnComplete: true,
 	})
 
 	ticket := env.getTicket(t, "MC-7")
-	expectedReason := "Workflow 'feature' completed successfully"
+	expectedReason := "Workflow 'custom-feature' completed successfully"
 	if !ticket.CloseReason.Valid || ticket.CloseReason.String != expectedReason {
 		t.Fatalf("expected close_reason %q, got %v", expectedReason, ticket.CloseReason)
 	}

@@ -77,6 +77,7 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 	project.UpdatedAt = project.CreatedAt
 
 	s.seedSpecImportWorkflow(projectID, now)
+	s.seedTieredWorkflows(projectID, now)
 
 	return project, nil
 }

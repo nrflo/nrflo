@@ -52,6 +52,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `dynamic_seed.go` (+ `_data`/`_prompts_*`/`_planner`/`_schemas.go`) | `EnsureGlobalDynamicWorkflow` — see "Global workflows" below |
 | `plan.go` (+ `plan_*`/`workflow_instance_nodes`.go) | Plan lifecycle: `PlanService` draft/revise/approve→materialize/cancel/TTL-sweep; schema+semantic validation; template-library availability recheck; hash-stamped idempotent `Materialize`; server-owned reserved key `_workflow_plan`. Full mechanics: [REFERENCE.md](REFERENCE.md#plan-lifecycle-plango--siblings) |
 | `workflow_export.go` + `workflow_export_import.go` | `WorkflowExportService`: `Export` builds a v1.0 `types.WorkflowBundle` (strips project_id/workflow_id, dedupes scripts); `CheckImport` probes ID conflicts; `Import` applies `overwrite`/`rename`/`cancel` |
+| `tiering.go` (+ `_report`/`_apply`/`_cost.go`) | `TierMap`/`ClassifyRole`: tier-map source of truth + admin re-tier report/apply (`GET`/`POST /api/v1/admin/tiering-*`); skips customized (model≠seed & ≠recommended, so re-apply is idempotent)/consultant/hotfix-implementor defs; `ProjectService.seedTieredWorkflows` (`project_seed.go`) births new projects tiered |
 
 ## Per-project env vars
 

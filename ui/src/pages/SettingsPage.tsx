@@ -14,9 +14,10 @@ import { AuditLogSection } from '@/components/settings/AuditLogSection'
 import { ServiceTokensSection } from '@/components/settings/ServiceTokensSection'
 import { ConnectionsSection } from '@/components/settings/ConnectionsSection'
 import { ModelsList } from '@/components/settings/ModelsList'
+import { TieringSection } from '@/components/settings/TieringSection'
 import type { ModelProvider } from '@/api/models'
 
-type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'logs' | 'connections' | 'administration'
+type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 
 const tabs: { id: SettingsTab; label: string }[] = [
@@ -26,6 +27,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'system-agents', label: 'System Agents' },
   { id: 'default-templates', label: 'Default Templates' },
   { id: 'models', label: 'Models' },
+  { id: 'tiering', label: 'Tiering' },
   { id: 'logs', label: 'Logs' },
   { id: 'connections', label: 'Connections' },
   { id: 'administration', label: 'Administration' },
@@ -175,6 +177,7 @@ export function SettingsPage() {
       {activeTab === 'system-agents' && <SystemAgentsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'models' && <ModelsList provider={activeProvider} />}
+      {activeTab === 'tiering' && <TieringSection />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
       {activeTab === 'connections' && <ConnectionsSection />}
       {activeTab === 'administration' && activeAdminSub === 'users' && <UsersSection />}

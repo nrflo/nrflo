@@ -1,0 +1,34 @@
+# Minimal SearXNG settings for nrflo's web_search provider.
+# Mounted at /etc/searxng/settings.yml by docker-compose.searxng.yml.
+#
+# The one non-default line that MATTERS for nrflo is `search.formats` including
+# `json` — nrflo calls /search?format=json, which SearXNG rejects with 403
+# unless json is an allowed format.
+
+use_default_settings: true
+
+general:
+  instance_name: "nrflo-searxng"
+  # Keep the instance private (no public metrics/stats surface).
+  enable_metrics: false
+
+server:
+  # CHANGE ME: any long random string. Generate one, e.g.:
+  #   openssl rand -hex 32
+  secret_key: "change-me-openssl-rand-hex-32"
+  # nrflo reaches SearXNG over the loopback-published port; no rate limiter
+  # needed for a single trusted local caller.
+  limiter: false
+  image_proxy: false
+
+search:
+  # REQUIRED for nrflo: json enables the /search?format=json API. Without it
+  # every nrflo web_search returns a 403 setup error.
+  formats:
+    - html
+    - json
+
+# Upstream engines SearXNG queries. The defaults (google, bing, duckduckgo,
+# …) are inherited via use_default_settings. A SearXNG on a datacenter IP may
+# get captcha'd by these upstreams — see REFERENCE.md#web-search-searxng for
+# the upstream-engine ceiling and how to front SearXNG's own egress.

@@ -85,3 +85,21 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 ## Docker image
 
 `ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction). Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+
+## Web search (SearXNG)
+
+`web_search` uses the self-hosted `searxng` provider by default and treats a missing `SEARXNG_BASE_URL` as a hard setup error, so agents that call `web_search` need a running SearXNG. `web_fetch` uses the `direct` provider (pure-Go fetch → readability → markdown behind an SSRF-guarded pinning dialer); neither needs a paid API key. Provider internals: [be/internal/spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md).
+
+**Run SearXNG** (optional, opt-in): [`docker-compose.searxng.yml`](docker-compose.searxng.yml) + [`searxng/settings.yml`](searxng/settings.yml).
+
+```
+docker compose -f docker-compose.searxng.yml up -d
+```
+
+Then set the env var (project or global): `SEARXNG_BASE_URL=http://localhost:8080` (or the compose service name on a shared network). The shipped `settings.yml` sets `search.formats: [html, json]` — **required**, since SearXNG answers `/search?format=json` with **403** when json output is off (the default). Change `server.secret_key` (`openssl rand -hex 32`).
+
+**Egress proxy** (optional): set `WEB_PROXY_URL` to route `web_fetch` egress through a proxy — `socks5://host:port` or `http://host:port`; empty = direct. The WARP recipe: `warp-cli mode proxy` (operator-run — nrflo does **not** manage the WARP daemon; `warp-cli registration new <team-token>` for Zero Trust is out of nrflo scope), then `WEB_PROXY_URL=socks5://127.0.0.1:40000`.
+
+**Ceilings** (honest limits):
+- **Anti-bot**: `direct` fetch is headers-only — it beats crude UA/header blocks but not TLS/h2 fingerprinting (v2) or JS challenges (Cloudflare/Turnstile → `ok:false`, not garbage markdown). WARP does **not** help: it yields Cloudflare datacenter IPs, not residential.
+- **Upstream engines**: nrflo cannot proxy the `SearXNG → Google/Bing` hop; a SearXNG on a datacenter IP gets captcha'd upstream and in-nrflo `WEB_PROXY_URL` does nothing for that leg. If upstream blocking bites, front SearXNG's **own** egress with a proxy.

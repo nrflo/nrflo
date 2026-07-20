@@ -1,0 +1,34 @@
+# Optional SearXNG instance for nrflo's self-hosted web_search provider.
+#
+# nrflo's web_search defaults to the `searxng` provider and treats a missing
+# SEARXNG_BASE_URL as a hard setup error, so run this if agents use web_search.
+# It is intentionally separate from the main deployment — bring it up on its
+# own and point nrflo at it:
+#
+#   docker compose -f docker-compose.searxng.yml up -d
+#   # then set (project or global) env var:
+#   SEARXNG_BASE_URL=http://localhost:8080     # or http://searxng:8080 on a shared compose network
+#
+# The mounted settings.yml enables the JSON API (formats: [html, json]); without
+# it SearXNG answers /search?format=json with 403. See searxng/settings.yml.
+# Operator notes (egress/anti-bot/upstream ceilings): REFERENCE.md#web-search-searxng.
+
+services:
+  searxng:
+    image: searxng/searxng:2026.7.19-6da6eee26
+    container_name: nrflo-searxng
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      # Must match the published address nrflo reaches it on; SearXNG uses it
+      # to build absolute URLs and validate the JSON API request origin.
+      - SEARXNG_BASE_URL=http://localhost:8080/
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID

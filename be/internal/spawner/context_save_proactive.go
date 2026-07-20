@@ -126,10 +126,11 @@ func applyProactiveRotationCarry(ctx context.Context, oldProc, newProc *processI
 }
 
 // initiateContextSaveProactive reuses the standard kill->flush->save chain
-// (initiateContextSave) for a watcher-triggered proactive restart. There is
-// no console/refinery digest for an autonomous spawned session, so it always
-// saves via the context-saver system agent, exactly as the emergency
-// low-context path does.
+// (initiateContextSave) for a watcher-triggered proactive restart. A fresh
+// autonomous refinery slot digest for this session skips the context-saver
+// spawn via the shared contextSaveViaAgent (see digest_freshness.go);
+// otherwise it saves via the context-saver system agent, exactly as the
+// emergency low-context path does.
 func (s *Spawner) initiateContextSaveProactive(ctx context.Context, proc *processInfo, req SpawnRequest, processDoneCh, completeCh chan struct{}) {
 	defer close(completeCh)
 

@@ -51,22 +51,33 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 
 // contextSaveViaAgent uses a system agent (haiku) to summarize the killed agent's
 // message history and save to_resume findings. Works for all CLI types.
+//
+// When a fresh autonomous refinery slot digest already exists for this
+// session's (workflow_instance_id, node_id) slot (see digest_freshness.go),
+// the context-saver spawn and its context_saving broadcast are skipped
+// entirely — fetchPreviousDataAndReason will read that same digest at
+// relaunch-prompt-assembly time, so nothing is lost. Otherwise this falls
+// back to the existing agent-save path unchanged.
 func (s *Spawner) contextSaveViaAgent(ctx context.Context, proc *processInfo, req SpawnRequest) {
-	// Broadcast context_saving event
-	if s.config.WSHub != nil {
-		s.config.WSHub.Broadcast(ws.NewEvent(ws.EventAgentContextSaving, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-			"session_id": proc.sessionID,
-			"agent_type": proc.agentType,
-		}))
-	}
+	if _, ok := freshSlotDigest(s.pool(), s.config.Clock, proc.workflowInstanceID, proc.nodeID, proc.startTime); ok {
+		logger.Info(ctx, "digest rotation: using slot digest, skipping context-saver spawn", "session_id", proc.sessionID)
+	} else {
+		// Broadcast context_saving event
+		if s.config.WSHub != nil {
+			s.config.WSHub.Broadcast(ws.NewEvent(ws.EventAgentContextSaving, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+				"session_id": proc.sessionID,
+				"agent_type": proc.agentType,
+			}))
+		}
 
-	// Spawn context-saver system agent
-	saved := s.spawnContextSaver(ctx, proc, req)
+		// Spawn context-saver system agent
+		saved := s.spawnContextSaver(ctx, proc, req)
 
-	// Check if to_resume findings were actually saved
-	findingsSaved := s.checkToResumeFindings(ctx, proc)
-	if saved && !findingsSaved {
-		logger.Warn(ctx, "context-saver completed but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
+		// Check if to_resume findings were actually saved
+		findingsSaved := s.checkToResumeFindings(ctx, proc)
+		if saved && !findingsSaved {
+			logger.Warn(ctx, "context-saver completed but to_resume findings not saved, previous data will be empty on relaunch", "session_id", proc.sessionID)
+		}
 	}
 
 	// Register stop
@@ -74,7 +85,7 @@ func (s *Spawner) contextSaveViaAgent(ctx context.Context, proc *processInfo, re
 		proc.sessionID, proc.agentID, "continue", "low_context", proc.modelID)
 
 	proc.finalStatus = "CONTINUE"
-	logger.Info(ctx, "context save flow complete, relaunching", "findings_saved", findingsSaved, "session_id", proc.sessionID)
+	logger.Info(ctx, "context save flow complete, relaunching", "session_id", proc.sessionID)
 }
 
 // spawnContextSaver loads the context-saver system agent and spawns it to save

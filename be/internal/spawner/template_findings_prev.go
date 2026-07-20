@@ -3,6 +3,7 @@ package spawner
 import (
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	"be/internal/repo"
 )
@@ -41,12 +42,12 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 	}
 
 	var sessionID string
-	var reasonStr sql.NullString
+	var reasonStr, startedAtStr sql.NullString
 	err = pool.QueryRow(`
-		SELECT id, result_reason FROM agent_sessions
+		SELECT id, result_reason, started_at FROM agent_sessions
 		WHERE workflow_instance_id = ? AND agent_type = ? AND model_id = ? AND node_id = ? AND status = 'continued'
 		ORDER BY ended_at DESC LIMIT 1`,
-		wfiID, agentType, modelID, phase).Scan(&sessionID, &reasonStr)
+		wfiID, agentType, modelID, phase).Scan(&sessionID, &reasonStr, &startedAtStr)
 	if err != nil {
 		return "", ""
 	}
@@ -54,6 +55,17 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 	reason := ""
 	if reasonStr.Valid {
 		reason = reasonStr.String
+	}
+
+	// Fresh autonomous refinery slot digest takes priority over the
+	// to_resume finding — one canonical source for the low-context
+	// injectable's data (see digest_freshness.go).
+	if startedAtStr.Valid {
+		if prevStarted, perr := time.Parse(time.RFC3339Nano, startedAtStr.String); perr == nil {
+			if content, ok := freshSlotDigest(pool, s.config.Clock, wfiID, phase, prevStarted); ok {
+				return content, reason
+			}
+		}
 	}
 
 	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)

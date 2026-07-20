@@ -63,11 +63,11 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` â
 
 ## Context Save
 
-The only kill-time save path (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for every backend (cli, api, codex app-server). Script-mode agents are exempt (`TracksContext()=false`).
+The kill-time save path (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for every backend (cli, api, codex app-server). Script-mode agents are exempt (`TracksContext()=false`). Skipped when a fresh autonomous refinery slot digest already covers the session (`digest_freshness.go`).
 
 ## Low-Context Relaunch
 
-When context usage crosses the threshold, the spawner kills the agent, saves context via the context-saver agent, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go`.
+When context usage crosses the threshold, the spawner kills the agent and calls `relaunchForContinuation`. `fetchPreviousDataAndReason` (`template_findings_prev.go`) supplies `${previous_data}` via the `low-context` injectable: a fresh autonomous refinery slot digest (folded at/after the killed session's start, non-empty) wins, else it falls back to the `to_resume` finding from the context-saver agent. Crash/fail-restart relaunches go through the same read path. Freshness criterion: `digest_freshness.go`.
 
 ## Context Ledger
 

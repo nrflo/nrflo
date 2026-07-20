@@ -76,6 +76,11 @@ type claudeEngine struct {
 	stopOnce     sync.Once
 	stoppingOnce sync.Once
 
+	// stopped + emitWG (mu-guarded) give Stop exclusive ownership of
+	// close(events): emit Adds to emitWG only while !stopped, under mu.
+	stopped bool
+	emitWG  sync.WaitGroup
+
 	approvals *claudeApprovals
 
 	// Injectable timeouts (tests override the zero-value defaults below).
@@ -239,21 +244,20 @@ func (e *claudeEngine) Events() <-chan EngineEvent { return e.events }
 
 // Stop tears down the engine: unregisters from the Hub, cancels the tailer's
 // context, closes the PTY session, waits for the ferry + tailer goroutines to
-// exit, removes the temp dir, and closes Events exactly once. `stopping` is
-// closed BEFORE any of that: RequestApproval and waitUntilReady both select on
-// it, so a blocked approval or a caller that stops draining Events cannot wedge
-// this teardown (same discipline as codexEngine.Stop).
-//
-// cancel is non-nil only once Start has committed to launching the ferry +
-// tailer goroutines, so it also gates the done-channel waits: Stop on an
-// engine whose Start failed (or never ran) would otherwise block forever on
-// channels nobody will close.
+// exit, drains in-flight emits, removes the temp dir, and closes Events
+// exactly once. `stopping` closes BEFORE any of that so a blocked approval or
+// a non-draining Events consumer cannot wedge this teardown; `stopped` is set
+// under the same lock emit checks, giving Stop exclusive ownership of the
+// close (same discipline as codexEngine.Stop / apiConsoleEngine.Stop). cancel
+// is non-nil only once Start has committed to launching the ferry + tailer
+// goroutines, so it also gates the done-channel waits.
 func (e *claudeEngine) Stop() {
 	e.stoppingOnce.Do(func() { close(e.stopping) })
 
 	e.mu.Lock()
 	sessionID := e.spec.SessionID
 	cancel, sess, tempDir := e.cancel, e.ptySession, e.tempDir
+	e.stopped = true
 	e.mu.Unlock()
 
 	if e.hub != nil && sessionID != "" {
@@ -270,13 +274,24 @@ func (e *claudeEngine) Stop() {
 	if tempDir != "" {
 		_ = os.RemoveAll(tempDir)
 	}
+	// stopped==true blocks new emitWG.Add calls, so this drains in-flight emits.
+	e.emitWG.Wait()
 	e.stopOnce.Do(func() { close(e.events) })
 }
 
-// emit delivers one EngineEvent to the buffered Events channel, abandoning
-// the send once Stop has begun so a non-draining consumer can never wedge a
-// caller blocked in emit.
+// emit delivers one EngineEvent to Events, returning immediately once Stop
+// has set stopped (no send can race the close), else abandoning the send
+// once stopping closes (a non-draining consumer can't wedge the caller).
 func (e *claudeEngine) emit(ev EngineEvent) {
+	e.mu.Lock()
+	if e.stopped {
+		e.mu.Unlock()
+		return
+	}
+	e.emitWG.Add(1)
+	e.mu.Unlock()
+	defer e.emitWG.Done()
+
 	select {
 	case e.events <- ev:
 	case <-e.stopping:

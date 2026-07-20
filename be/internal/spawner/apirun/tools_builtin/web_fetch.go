@@ -83,7 +83,7 @@ func (webFetchHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input jso
 			defer func() { <-sem }()
 
 			// SSRF guard before any provider call.
-			if verr := tools_web.ValidateFetchURL(u); verr != nil {
+			if verr := tools_web.ValidateFetchURLSyntax(u); verr != nil {
 				rows[i] = fetchRow{URL: u, OK: false, Error: "blocked_by_policy: " + verr.Error()}
 				return
 			}

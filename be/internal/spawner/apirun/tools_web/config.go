@@ -65,12 +65,12 @@ func (r *Resolver) settingInt(key string, def int) int {
 	return def
 }
 
-// SearchProvider returns the configured search provider (default "exa").
+// SearchProvider returns the configured search provider (default "searxng").
 func (r *Resolver) SearchProvider() (SearchProvider, error) {
 	return resolveSearch(r.setting("web_search_provider", defaultSearchProvider), r)
 }
 
-// FetchProvider returns the configured fetch provider (default "jina").
+// FetchProvider returns the configured fetch provider (default "direct").
 func (r *Resolver) FetchProvider() (FetchProvider, error) {
 	return resolveFetch(r.setting("web_fetch_provider", defaultFetchProvider), r)
 }
@@ -86,10 +86,23 @@ func (r *Resolver) MaxResultsPerQuery() int {
 	return r.settingInt("web_search_max_results_per_query", defaultMaxResultsPerQuery)
 }
 
+// SearchBaseURL is the SearXNG instance base URL (required for web_search).
+func (r *Resolver) SearchBaseURL() string { return r.secret("SEARXNG_BASE_URL") }
+
+// ProxyURL is the egress proxy (socks5:// or http://); empty means direct
+// egress, no proxy.
+func (r *Resolver) ProxyURL() string { return r.secret("WEB_PROXY_URL") }
+
+// MaxBytes is the response body cap applied by the guarded fetch client.
+func (r *Resolver) MaxBytes() int {
+	return r.settingInt("web_fetch_max_bytes", defaultMaxBytes)
+}
+
 const (
-	defaultSearchProvider     = "exa"
-	defaultFetchProvider      = "jina"
+	defaultSearchProvider     = "searxng"
+	defaultFetchProvider      = "direct"
 	defaultExcerptBytes       = 6000
 	defaultMaxPerDomain       = 3
 	defaultMaxResultsPerQuery = 6
+	defaultMaxBytes           = 5 << 20 // 5MB
 )

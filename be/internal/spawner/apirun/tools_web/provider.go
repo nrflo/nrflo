@@ -1,8 +1,11 @@
 // Package tools_web provides a provider-agnostic web search + fetch layer for
-// nrflo's in-process tools. The web_search / web_fetch builtin handlers
-// (tools_builtin) resolve the active provider by name from config and call
-// these interfaces, so swapping Exa -> Brave or Jina -> Firecrawl is a config
-// change with no handler edits (CLAUDE.md Rule 6: polymorphism in the impl).
+// nrflo's in-process tools. The default providers are a self-hosted SearXNG
+// instance (search) and a direct, SSRF-guarded readability fetch (fetch); the
+// web_search / web_fetch builtin handlers (tools_builtin) resolve the active
+// provider by name from config and call these interfaces, so swapping in a
+// different provider is a config change with no handler edits (CLAUDE.md
+// Rule 6: polymorphism in the impl). Egress (egress.go/egress_dial.go)
+// supplies each provider's http.Client and is proxy-aware via WEB_PROXY_URL.
 package tools_web
 
 import "context"
@@ -21,7 +24,7 @@ type SearchOpts struct {
 }
 
 // SearchProvider discovers URLs for a query. Implementations live in one file
-// each (exa.go, ...) and self-register via init() into the registry.
+// each (searxng.go, ...) and self-register via init() into the registry.
 type SearchProvider interface {
 	Name() string
 	Search(ctx context.Context, query string, opts SearchOpts) ([]Result, error)
@@ -37,8 +40,9 @@ type Page struct {
 	Err      string `json:"error,omitempty"`
 }
 
-// FetchProvider retrieves a single URL as clean markdown. The anti-bot /
-// JS-render burden lives here (e.g. Jina Reader).
+// FetchProvider retrieves a single URL as clean markdown. The anti-bot
+// burden lives here; the default (direct) provider does not render JS, so
+// JS-gated pages surface as Page{OK:false} rather than garbage markdown.
 type FetchProvider interface {
 	Name() string
 	Fetch(ctx context.Context, url string) Page

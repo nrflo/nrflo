@@ -51,8 +51,8 @@ func unquote(s string) string {
 // A missing file is not an error (returns nil, nil). Returns the keys applied.
 //
 // Loaded at `nrflo_server serve` startup so a gitignored .env in the launch
-// directory can supply secrets/config (e.g. EXA_API_KEY, JINA_API_KEY) that the
-// server resolves via os.Getenv — the global fallback for per-project secrets.
+// directory can supply secrets/config (e.g. SEARXNG_BASE_URL, WEB_PROXY_URL) that
+// the server resolves via os.Getenv — the global fallback for per-project secrets.
 func loadDotenv(path string) ([]string, error) {
 	f, err := os.Open(path)
 	if err != nil {

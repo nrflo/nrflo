@@ -49,7 +49,7 @@ No CGO required (pure Go SQLite via modernc.org/sqlite).
 
 ## .env loading
 
-At `serve` startup, `loadDotenv` (`cli/dotenv.go`) reads a `.env` file from the launch directory and injects `KEY=VALUE` lines into the process environment, **without overriding** vars already set (real env wins); a missing file is a no-op. This is the convenient way to supply server-env secrets/config — e.g. `EXA_API_KEY`/`JINA_API_KEY`, which the web tools resolve via `os.Getenv` as the global fallback (per-project `project_env_vars` still override). `.env` is gitignored; `.env.example` documents the format.
+At `serve` startup, `loadDotenv` (`cli/dotenv.go`) reads a `.env` file from the launch directory and injects `KEY=VALUE` lines into the process environment, **without overriding** vars already set (real env wins); a missing file is a no-op. This is the convenient way to supply server-env secrets/config — e.g. `SEARXNG_BASE_URL`/`WEB_PROXY_URL`, which the web tools resolve via `os.Getenv` as the global fallback (per-project `project_env_vars` still override). `.env` is gitignored; `.env.example` documents the format.
 
 ## Authentication
 

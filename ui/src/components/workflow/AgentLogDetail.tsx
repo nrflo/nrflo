@@ -11,6 +11,7 @@ import { AllFindingsPanel } from './AllFindingsPanel'
 import { ArtifactsPanel } from './ArtifactsPanel'
 import { AllArtifactsPanel } from './AllArtifactsPanel'
 import { ContextLedgerPanel } from './ContextLedgerPanel'
+import { HandoffDigestSection } from './HandoffDigestSection'
 import { normalizeApiMessages } from './normalizeApiMessages'
 import { MessageTable } from './MessageTable'
 import { cn } from '@/lib/utils'
@@ -205,7 +206,10 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             selectedAgentType={selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type || null}
           />
         ) : activeTab === 'ledger' ? (
-          <ContextLedgerPanel sessionId={sessionId} enabled={activeTab === 'ledger'} />
+          <div className="space-y-4">
+            <HandoffDigestSection sessionId={sessionId} enabled={activeTab === 'ledger'} />
+            <ContextLedgerPanel sessionId={sessionId} enabled={activeTab === 'ledger'} />
+          </div>
         ) : activeTab === 'context' ? (
           promptLoading ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

@@ -57,6 +57,11 @@ type Manager struct {
 	// running cost store. nil-safe: unset in tests that never call
 	// SetCostAttributor, so fold cost is simply not attributed there.
 	costAttributor func(sessionID string, in, out, cacheRead, cacheWrite int)
+
+	// broadcaster emits a WS event, injected from server.go (= hub.Broadcast).
+	// nil-safe: unset in tests that never call SetBroadcaster, so a fold
+	// simply doesn't broadcast there.
+	broadcaster func(*ws.Event)
 }
 
 // NewManager constructs a Manager over pool/clk. Shared by server wiring;
@@ -99,6 +104,15 @@ func (m *Manager) lockSlot(workflowInstanceID, nodeID string) *sync.Mutex {
 // unchanged. nil-safe: never called from a test, cost simply isn't attributed.
 func (m *Manager) SetCostAttributor(fn func(sessionID string, in, out, cacheRead, cacheWrite int)) {
 	m.costAttributor = fn
+}
+
+// SetBroadcaster injects the WS emission seam for the autonomous fold path
+// (= ws.Hub.Broadcast). Kept as a setter rather than a NewManager param so
+// existing fold_test.go/manager_test.go construction call sites stay
+// unchanged. nil-safe: never called from a test, a fold simply doesn't
+// broadcast.
+func (m *Manager) SetBroadcaster(fn func(*ws.Event)) {
+	m.broadcaster = fn
 }
 
 // Start launches a sidecar for a console-chat session. Idempotent — a second

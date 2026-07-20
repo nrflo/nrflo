@@ -10,6 +10,7 @@ import (
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/ws"
 )
 
 // maxFoldDeltaChars caps the message-delta text handed to a single
@@ -139,6 +140,8 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		return
 	}
 
+	m.broadcastHandoffDigest(ctx, sessionID, projectID, as.workflowInstanceID, as.nodeID)
+
 	as.mu.Lock()
 	as.lastFoldedCount = len(messages)
 	as.mu.Unlock()
@@ -152,6 +155,36 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		"fold_count", foldCount, "delta_messages", len(delta),
 		"input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens,
 		"digest_bytes", len(content))
+}
+
+// broadcastHandoffDigest re-reads the just-upserted slot row and, when a
+// broadcaster is wired, emits a project-scoped EventAgentHandoffDigest
+// carrying session_id (FE matches on it, mirroring context_ledger) so the
+// UI can pick up the new digest without polling. Debounce is inherited from
+// the fold cadence — one broadcast per successful UpsertSlot is already
+// server-side rate-limited by the sidecar's >=30s trigger coalescing, so no
+// extra per-slot timer is needed here. Best-effort: a re-read failure is
+// logged, never propagated.
+func (m *Manager) broadcastHandoffDigest(ctx context.Context, sessionID, projectID, workflowInstanceID, nodeID string) {
+	if m.broadcaster == nil {
+		return
+	}
+	digest, err := m.digestRepo.GetSlot(workflowInstanceID, nodeID)
+	if err != nil || digest == nil {
+		logger.Error(ctx, "refinery: autonomous re-read digest for broadcast failed",
+			"workflow_instance_id", workflowInstanceID, "node_id", nodeID, "error", err)
+		return
+	}
+	data := map[string]interface{}{
+		"session_id":           sessionID,
+		"workflow_instance_id": workflowInstanceID,
+		"node_id":              nodeID,
+		"version":              digest.Version,
+		"fold_count":           digest.FoldCount,
+		"updated_at":           digest.UpdatedAt.Format(time.RFC3339Nano),
+		"content":              digest.Content,
+	}
+	m.broadcaster(ws.NewEvent(ws.EventAgentHandoffDigest, projectID, "", "", data))
 }
 
 // formatMessageDelta joins delta messages with newlines, keeping only the

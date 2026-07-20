@@ -30,6 +30,7 @@ const (
 	EventAgentContextUpdated         = "agent.context_updated"
 	EventSessionCostUpdated          = "session.cost_updated"
 	EventAgentContextLedger          = "agent.context_ledger"
+	EventAgentHandoffDigest          = "agent.handoff_digest"
 	EventAgentTakeControl            = "agent.take_control"
 	EventAgentKilled                 = "agent.killed"
 	EventAgentTakeControlRejected    = "agent.take_control_rejected"

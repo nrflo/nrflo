@@ -133,6 +133,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	refineryMgr := refinery.NewManager(pool, clk)
 	hub.RegisterListener(refineryMgr)
 	refineryMgr.SetCostAttributor(spawner.AddSessionCostUsage)
+	refineryMgr.SetBroadcaster(hub.Broadcast)
 	orch.RefineryMgr = refineryMgr
 
 	// Proactive-restart task-boundary coordinator (findings.updated stamps a
@@ -624,6 +625,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/sessions/{id}/messages", s.handleGetSessionMessages)
 	protected("GET /api/v1/sessions/{id}/prompt", s.handleGetSessionPrompt)
 	protected("GET /api/v1/sessions/{id}/context-ledger", s.handleGetContextLedger)
+	protected("GET /api/v1/sessions/{id}/handoff-digest", s.handleGetHandoffDigest)
 
 	// Dependencies
 	protected("GET /api/v1/tickets/{id}/dependencies", s.handleGetDependencies)

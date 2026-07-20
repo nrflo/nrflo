@@ -49,7 +49,9 @@ func (s *TieringService) BuildReport() (*types.TieringReport, error) {
 			return nil, err
 		}
 
-		var defs []types.TieringDefRow
+		// Always non-nil: a project with no mapped defs must serialize as
+		// "defs": [] (null breaks list consumers).
+		defs := make([]types.TieringDefRow, 0, len(raws))
 		var totalDelta float64
 		var haveTotal bool
 

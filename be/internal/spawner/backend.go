@@ -239,8 +239,8 @@ func (p *procMessageSink) TrackMessage(content, category string) {
 	p.s.TrackMessage(p.proc, content, category)
 }
 
-func (p *procMessageSink) TrackToolInvoke(content, category, toolUseID string) {
-	p.s.TrackToolInvoke(p.proc, content, category, toolUseID)
+func (p *procMessageSink) TrackToolInvoke(content, category, toolUseID string, rawInput []byte) {
+	p.s.TrackToolInvoke(p.proc, content, category, toolUseID, rawInput)
 }
 
 func (p *procMessageSink) CloseToolSpan(toolUseID string) {

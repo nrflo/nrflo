@@ -23,6 +23,7 @@ type recordedMsg struct {
 	content   string
 	category  string
 	toolUseID string
+	rawInput  json.RawMessage
 }
 
 func (r *recordingSink) TrackMessage(content, category string) {
@@ -31,9 +32,9 @@ func (r *recordingSink) TrackMessage(content, category string) {
 	r.mu.Unlock()
 }
 
-func (r *recordingSink) TrackToolInvoke(content, category, toolUseID string) {
+func (r *recordingSink) TrackToolInvoke(content, category, toolUseID string, rawInput []byte) {
 	r.mu.Lock()
-	r.calls = append(r.calls, recordedMsg{content: content, category: category, toolUseID: toolUseID})
+	r.calls = append(r.calls, recordedMsg{content: content, category: category, toolUseID: toolUseID, rawInput: json.RawMessage(rawInput)})
 	r.mu.Unlock()
 }
 
@@ -103,5 +104,8 @@ func TestRunnerSink_ToolUseStopTracksToolUseID(t *testing.T) {
 	}
 	if calls[0].toolUseID != "tu_9" || calls[0].category != "tool" {
 		t.Errorf("call = %+v, want toolUseID tu_9 / category tool", calls[0])
+	}
+	if string(calls[0].rawInput) != `{"command":"ls"}` {
+		t.Errorf("call.rawInput = %q, want the full tool input passed through", calls[0].rawInput)
 	}
 }

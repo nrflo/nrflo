@@ -37,6 +37,17 @@ export function ChatToolCard({ pair }: ChatToolCardProps) {
         )}
       </div>
       {rest && <div className="mt-1 whitespace-pre-wrap break-words font-mono text-foreground/90">{rest}</div>}
+      {(pair.input != null || pair.inputTruncated) && (
+        <details className="mt-1">
+          <summary className="cursor-pointer select-none text-[10px] text-muted-foreground">
+            input
+            {pair.inputTruncated && <span className="ml-1 italic">(truncated)</span>}
+          </summary>
+          <div className="mt-1 whitespace-pre-wrap break-words font-mono text-foreground/90">
+            {pair.input != null ? JSON.stringify(pair.input, null, 2) : '(input too large to display)'}
+          </div>
+        </details>
+      )}
       {pair.result && (
         <details className="mt-1">
           <summary className="cursor-pointer select-none text-[10px] text-muted-foreground">result</summary>

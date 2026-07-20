@@ -56,12 +56,12 @@ func TestAPIConsoleEngine_ToolUse_DispatchesHandlerAndPersistsToolUseIDPayload(t
 		mock.Script{
 			Events: []mock.SinkEvent{
 				{Kind: mock.EventToolUseStart, ToolUseID: "tu_1", ToolName: "my_tool"},
-				{Kind: mock.EventToolUseStop, ToolUseID: "tu_1", FullInput: json.RawMessage(`{}`)},
+				{Kind: mock.EventToolUseStop, ToolUseID: "tu_1", FullInput: json.RawMessage(`{"arg":"val"}`)},
 			},
 			Final: provider.FinalResponse{
 				StopReason: "tool_use",
 				Content: []provider.ContentBlock{
-					{Type: "tool_use", ToolUseID: "tu_1", ToolName: "my_tool", Input: json.RawMessage(`{}`)},
+					{Type: "tool_use", ToolUseID: "tu_1", ToolName: "my_tool", Input: json.RawMessage(`{"arg":"val"}`)},
 				},
 			},
 		},
@@ -101,12 +101,16 @@ func TestAPIConsoleEngine_ToolUse_DispatchesHandlerAndPersistsToolUseIDPayload(t
 	if foundPayload == "" {
 		t.Fatalf("no tool-invoke row with tool_use_id in payload; recordedMsgs = %+v", sink.recordedMsgs)
 	}
-	var payloadObj map[string]string
+	var payloadObj map[string]any
 	if err := json.Unmarshal([]byte(foundPayload), &payloadObj); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
 	if payloadObj["tool_use_id"] != "tu_1" {
-		t.Errorf("payload tool_use_id = %q, want tu_1", payloadObj["tool_use_id"])
+		t.Errorf("payload tool_use_id = %v, want tu_1", payloadObj["tool_use_id"])
+	}
+	input, ok := payloadObj["input"].(map[string]any)
+	if !ok || input["arg"] != "val" {
+		t.Errorf("payload input = %v, want {arg: val}", payloadObj["input"])
 	}
 
 	// CloseToolSpan must have stamped ended_at on the pre-seeded DB row.

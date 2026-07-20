@@ -123,13 +123,15 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, 
 		sink.BumpLastMessage(sessionID)
 		emitCompletedThinkingEvent(sessionID, p.Item, emit)
 	case "commandExecution":
-		emitMessage(sessionID, formatAppServerCommand(p.Item), "tool", sink)
+		cmdInput, _ := json.Marshal(map[string]string{"command": p.Item.Command})
+		emitMessageWithPayload(sessionID, formatAppServerCommand(p.Item), "tool", BuildToolInvokePayload("", cmdInput), sink)
 		emitToolInvokeEvent(sessionID, "Bash", map[string]any{"command": p.Item.Command}, emit)
 		emitToolResultEvent(sessionID, "Bash", p.Item.AggregatedOutput, p.Item.ExitCode != nil && *p.Item.ExitCode != 0, emit)
 	case "mcpToolCall":
 		emitMcpToolCall(sessionID, p.Item, sink, emit)
 	case "webSearch":
-		emitMessage(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", sink)
+		queryInput, _ := json.Marshal(map[string]string{"query": p.Item.Query})
+		emitMessageWithPayload(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", BuildToolInvokePayload("", queryInput), sink)
 		emitToolInvokeEvent(sessionID, "WebSearch", map[string]any{"query": p.Item.Query}, emit)
 	default:
 		// userMessage, fileChange summaries, etc. — heartbeat only.
@@ -148,7 +150,7 @@ func emitMcpToolCall(sessionID string, it appServerItem, sink Sink, emit EventEm
 	if len(it.Arguments) > 0 {
 		_ = json.Unmarshal(it.Arguments, &args)
 	}
-	emitMessage(sessionID, FormatToolDetail(name, args), ToolCategory(name), sink)
+	emitMessageWithPayload(sessionID, FormatToolDetail(name, args), ToolCategory(name), BuildToolInvokePayload("", it.Arguments), sink)
 	emitToolInvokeEvent(sessionID, name, args, emit)
 
 	if it.Error != nil && it.Error.Message != "" {

@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"encoding/json"
 	"time"
 
 	"be/internal/clock"
@@ -25,16 +24,12 @@ func (s *apiEngineSink) TrackMessage(content, category string) {
 	emitMessage(s.sessionID, content, category, s.sink)
 }
 
-// TrackToolInvoke records a tool-invoke row carrying tool_use_id in its
-// payload — the exact shape output_tool_span.go writes for autonomous agents
-// — so the FE's tool-card pairing (chatStream.ts) works unchanged.
-func (s *apiEngineSink) TrackToolInvoke(content, category, toolUseID string) {
-	payload := ""
-	if toolUseID != "" {
-		if b, err := json.Marshal(map[string]string{"tool_use_id": toolUseID}); err == nil {
-			payload = string(b)
-		}
-	}
+// TrackToolInvoke records a tool-invoke row carrying tool_use_id and the raw
+// tool input in its payload — the exact shape output_tool_span.go writes for
+// autonomous agents — so the FE's tool-card pairing (chatStream.ts) works
+// unchanged.
+func (s *apiEngineSink) TrackToolInvoke(content, category, toolUseID string, rawInput []byte) {
+	payload := BuildToolInvokePayload(toolUseID, rawInput)
 	emitMessageWithPayload(s.sessionID, content, category, payload, s.sink)
 }
 

@@ -8,20 +8,21 @@ import (
 )
 
 // TrackToolInvoke queues a tool-invoke message whose payload carries the
-// tool_use_id, so CloseToolSpan can stamp ended_at when the tool returns and
-// the trace timeline can draw a duration bar.
-func (s *Spawner) TrackToolInvoke(proc *processInfo, msg, category, toolUseID string) {
+// tool_use_id and the raw tool input, so CloseToolSpan can stamp ended_at
+// when the tool returns and the trace timeline / UI tool card can render the
+// full invocation.
+func (s *Spawner) TrackToolInvoke(proc *processInfo, msg, category, toolUseID string, rawInput []byte) {
 	if toolUseID == "" {
 		s.TrackMessage(proc, msg, category)
 		return
 	}
-	payload, err := json.Marshal(map[string]string{"tool_use_id": toolUseID})
-	if err != nil {
+	payload := BuildToolInvokePayload(toolUseID, rawInput)
+	if payload == "" {
 		s.TrackMessage(proc, msg, category)
 		return
 	}
 	proc.messagesMutex.Lock()
-	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category, Payload: string(payload)})
+	proc.pendingMessages = append(proc.pendingMessages, repo.MessageEntry{Content: msg, Category: category, Payload: payload})
 	proc.lastMessage = msg
 	proc.messagesDirty = true
 	proc.lastMessageTime = s.config.Clock.Now()
@@ -56,16 +57,20 @@ func (s *Spawner) CloseToolSpan(proc *processInfo, toolUseID string) {
 }
 
 // stampPendingToolEnd sets ended_at inside an in-memory entry's payload when
-// it matches toolUseID and is not yet closed.
+// it matches toolUseID and is not yet closed. Uses map[string]any (not
+// map[string]string) because the payload now also carries a nested "input"
+// object, which a map[string]string unmarshal would reject.
 func stampPendingToolEnd(entry *repo.MessageEntry, toolUseID, endedAt string) bool {
 	if entry.Payload == "" {
 		return false
 	}
-	var p map[string]string
+	var p map[string]any
 	if json.Unmarshal([]byte(entry.Payload), &p) != nil {
 		return false
 	}
-	if p["tool_use_id"] != toolUseID || p["ended_at"] != "" {
+	id, _ := p["tool_use_id"].(string)
+	existingEnded, _ := p["ended_at"].(string)
+	if id != toolUseID || existingEnded != "" {
 		return false
 	}
 	p["ended_at"] = endedAt

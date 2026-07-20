@@ -15,9 +15,10 @@ import "be/internal/spawner/apirun/provider"
 // callers do not pass the process again per call.
 type MessageSink interface {
 	TrackMessage(content, category string)
-	// TrackToolInvoke records a tool-invoke row carrying tool_use_id in its
-	// payload so the trace timeline can pair it with the result.
-	TrackToolInvoke(content, category, toolUseID string)
+	// TrackToolInvoke records a tool-invoke row carrying tool_use_id and the
+	// raw tool input in its payload, so the trace timeline can pair it with
+	// the result and the UI tool card can render the full invocation.
+	TrackToolInvoke(content, category, toolUseID string, rawInput []byte)
 	// CloseToolSpan stamps ended_at on the invoke row once the tool returns.
 	CloseToolSpan(toolUseID string)
 }

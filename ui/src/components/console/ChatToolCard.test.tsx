@@ -63,4 +63,33 @@ describe('ChatToolCard', () => {
     expect(card.className).toContain('border-l-destructive')
     expect(screen.getByText('command not found')).toBeInTheDocument()
   })
+
+  it('renders a collapsible input section when the pair carries structured input', () => {
+    renderWithQuery(<ChatToolCard pair={pair({ input: { command: 'ls -la' } })} />)
+
+    expect(screen.getByText('input')).toBeInTheDocument()
+    expect(screen.getByText((_, el) => el?.textContent === '{\n  "command": "ls -la"\n}')).toBeInTheDocument()
+    expect(screen.queryByText('(truncated)')).not.toBeInTheDocument()
+  })
+
+  it('marks the input section as truncated when inputTruncated is set', () => {
+    renderWithQuery(<ChatToolCard pair={pair({ input: { command: 'ls' }, inputTruncated: true })} />)
+
+    expect(screen.getByText('(truncated)')).toBeInTheDocument()
+  })
+
+  it('renders a truncated placeholder when input was omitted for exceeding the size cap', () => {
+    renderWithQuery(<ChatToolCard pair={pair({ inputTruncated: true })} />)
+
+    expect(screen.getByText('input')).toBeInTheDocument()
+    expect(screen.getByText('(truncated)')).toBeInTheDocument()
+    expect(screen.getByText('(input too large to display)')).toBeInTheDocument()
+  })
+
+  it('renders no input section and falls back to the formatted content for older rows without input', () => {
+    renderWithQuery(<ChatToolCard pair={pair()} />)
+
+    expect(screen.queryByText('input')).not.toBeInTheDocument()
+    expect(screen.getByText('ls -la')).toBeInTheDocument()
+  })
 })

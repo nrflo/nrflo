@@ -17,9 +17,10 @@ import (
 // timeline.
 type ledgerNoopSink struct{}
 
-func (ledgerNoopSink) TrackMessage(content, category string)               {}
-func (ledgerNoopSink) TrackToolInvoke(content, category, toolUseID string) {}
-func (ledgerNoopSink) CloseToolSpan(toolUseID string)                      {}
+func (ledgerNoopSink) TrackMessage(content, category string) {}
+func (ledgerNoopSink) TrackToolInvoke(content, category, toolUseID string, rawInput []byte) {
+}
+func (ledgerNoopSink) CloseToolSpan(toolUseID string) {}
 
 // ledgerReadHandler is a ToolHandler standing in for a file-read tool (e.g.
 // Claude's builtin Read): it just returns a fixed output string.

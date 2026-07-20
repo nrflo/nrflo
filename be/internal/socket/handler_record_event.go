@@ -224,13 +224,14 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 	content := spawner.FormatToolDetail(toolName, toolInput)
 	category := spawner.ToolCategory(toolName)
 
-	// Persist tool_use_id so PostToolUse can close the span (trace tool bars).
-	payload := ""
-	if toolUseID, _ := event["tool_use_id"].(string); toolUseID != "" {
-		if b, jsonErr := json.Marshal(map[string]string{"tool_use_id": toolUseID}); jsonErr == nil {
-			payload = string(b)
-		}
+	// Persist tool_use_id + the raw tool input so PostToolUse can close the
+	// span (trace tool bars) and the UI tool card can render the invocation.
+	toolUseID, _ := event["tool_use_id"].(string)
+	var rawInput []byte
+	if len(toolInput) > 0 {
+		rawInput, _ = json.Marshal(toolInput)
 	}
+	payload := spawner.BuildToolInvokePayload(toolUseID, rawInput)
 
 	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, payload)
 	if err != nil {

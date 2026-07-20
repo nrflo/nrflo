@@ -155,6 +155,8 @@ function isCoveredByPersistedText(text: string, persisted: MessageWithTime[]): b
 interface ToolPayload {
   tool_use_id?: string
   ended_at?: string
+  input?: unknown
+  input_truncated?: boolean
 }
 
 // The API returns payload as a JSON *string* on the wire (repo.MessageWithTime
@@ -184,6 +186,8 @@ export interface ToolPair {
   toolUseId: string
   durationMs?: number
   running: boolean
+  input?: unknown
+  inputTruncated?: boolean
 }
 
 // pairToolMessages pairs an invoke row (category tool/skill/subagent,
@@ -219,6 +223,8 @@ export function pairToolMessages(messages: MessageWithTime[]): ToolPair[] {
       toolUseId: payload.tool_use_id,
       durationMs,
       running: payload.ended_at == null,
+      input: payload.input,
+      inputTruncated: payload.input_truncated,
     })
   }
 

@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 )
@@ -10,6 +11,11 @@ import (
 // sink.OnToolUseStop) so CLI-hook, codex app-server, and api agents render
 // tool activity at the same size.
 const maxInlineDetail = 2048
+
+// maxPayloadInput caps the raw tool input embedded in an invoke row's
+// structured "input" payload field. Larger than maxInlineDetail because the
+// structured input is the point of this field, not an afterthought.
+const maxPayloadInput = 8192
 
 // hiddenResultTools name the tools whose successful result row is dropped before
 // storage: the invoke row already names the file/command and the output (file
@@ -178,6 +184,52 @@ func compactInput(input map[string]interface{}) string {
 		return string(b[:maxInlineDetail])
 	}
 	return string(b)
+}
+
+// BuildToolInvokePayload builds the JSON payload for a tool-invoke
+// agent_messages row: {"tool_use_id":...,"input":...,"input_truncated":...}
+// (an "ended_at" field is stamped in later, once the tool returns, by
+// stampPendingToolEnd/SetToolEnded). rawInput is compacted; empty/"null"/"{}"
+// inputs are omitted entirely. Inputs over maxPayloadInput set
+// input_truncated:true instead of embedding a sliced (and therefore invalid)
+// JSON object. Returns "" when the resulting payload would be empty.
+func BuildToolInvokePayload(toolUseID string, rawInput []byte) string {
+	p := map[string]any{}
+	if toolUseID != "" {
+		p["tool_use_id"] = toolUseID
+	}
+	if compact := compactRawInput(rawInput); compact != "" {
+		if len(compact) <= maxPayloadInput {
+			p["input"] = json.RawMessage(compact)
+		} else {
+			p["input_truncated"] = true
+		}
+	}
+	if len(p) == 0 {
+		return ""
+	}
+	b, err := json.Marshal(p)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
+// compactRawInput compacts rawInput to single-line JSON, returning "" for
+// empty/null/empty-object input or a marshal failure.
+func compactRawInput(rawInput []byte) string {
+	if len(rawInput) == 0 {
+		return ""
+	}
+	var buf bytes.Buffer
+	if err := json.Compact(&buf, rawInput); err != nil {
+		return ""
+	}
+	s := buf.String()
+	if s == "" || s == "null" || s == "{}" {
+		return ""
+	}
+	return s
 }
 
 // FormatToolResult renders a tool's output as a log row, mirroring the api-mode

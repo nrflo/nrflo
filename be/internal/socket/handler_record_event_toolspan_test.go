@@ -46,12 +46,19 @@ func TestRecordEvent_ToolSpan_PreStoresToolUseID(t *testing.T) {
 		"tool_use_id":     "toolu_span_1",
 	})
 
-	var p map[string]string
+	var p map[string]any
 	if err := json.Unmarshal([]byte(firstMessagePayload(t, env, sessionID)), &p); err != nil {
 		t.Fatalf("payload not JSON: %v", err)
 	}
 	if p["tool_use_id"] != "toolu_span_1" {
-		t.Errorf("payload tool_use_id = %q, want toolu_span_1", p["tool_use_id"])
+		t.Errorf("payload tool_use_id = %v, want toolu_span_1", p["tool_use_id"])
+	}
+	input, ok := p["input"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload = %v, want an object at $.input", p)
+	}
+	if input["command"] != "ls" {
+		t.Errorf("payload input.command = %v, want ls", input["command"])
 	}
 }
 
@@ -82,12 +89,16 @@ func TestRecordEvent_ToolSpan_HiddenToolPostClosesSpan(t *testing.T) {
 	if n := countAgentMessages(t, env, sessionID); n != 1 {
 		t.Fatalf("agent_messages count = %d, want 1 (hidden result suppressed)", n)
 	}
-	var p map[string]string
+	var p map[string]any
 	if err := json.Unmarshal([]byte(firstMessagePayload(t, env, sessionID)), &p); err != nil {
 		t.Fatalf("payload not JSON: %v", err)
 	}
-	if p["ended_at"] == "" {
+	if p["ended_at"] == "" || p["ended_at"] == nil {
 		t.Error("ended_at not stamped on invoke row")
+	}
+	input, ok := p["input"].(map[string]any)
+	if !ok || input["command"] != "make test" {
+		t.Errorf("payload = %v, want input.command=\"make test\" preserved alongside ended_at", p)
 	}
 }
 
@@ -117,12 +128,16 @@ func TestRecordEvent_ToolSpan_FailureClosesSpan(t *testing.T) {
 	if n := countAgentMessages(t, env, sessionID); n != 2 {
 		t.Fatalf("agent_messages count = %d, want 2 (invoke + failure)", n)
 	}
-	var p map[string]string
+	var p map[string]any
 	if err := json.Unmarshal([]byte(firstMessagePayload(t, env, sessionID)), &p); err != nil {
 		t.Fatalf("payload not JSON: %v", err)
 	}
-	if p["ended_at"] == "" {
+	if p["ended_at"] == "" || p["ended_at"] == nil {
 		t.Error("ended_at not stamped on invoke row after failure")
+	}
+	input, ok := p["input"].(map[string]any)
+	if !ok || input["url"] != "http://x" {
+		t.Errorf("payload = %v, want input.url preserved alongside ended_at", p)
 	}
 }
 

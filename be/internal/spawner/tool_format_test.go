@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -75,6 +76,105 @@ func TestIsHiddenResultTool(t *testing.T) {
 		if IsHiddenResultTool(name) {
 			t.Errorf("IsHiddenResultTool(%q) = true, want false", name)
 		}
+	}
+}
+
+// TestBuildToolInvokePayload_OmitsEmptyInput verifies empty/"null"/"{}" raw
+// inputs never surface an "input" field, and a toolUseID with no usable input
+// still produces a payload carrying only tool_use_id.
+func TestBuildToolInvokePayload_OmitsEmptyInput(t *testing.T) {
+	t.Parallel()
+	for _, raw := range [][]byte{nil, []byte(""), []byte("null"), []byte("{}")} {
+		got := BuildToolInvokePayload("tu_1", raw)
+		var p map[string]any
+		if err := json.Unmarshal([]byte(got), &p); err != nil {
+			t.Fatalf("payload not JSON for input=%q: %v", raw, err)
+		}
+		if _, ok := p["input"]; ok {
+			t.Errorf("input=%q: payload = %q, want no input field", raw, got)
+		}
+		if _, ok := p["input_truncated"]; ok {
+			t.Errorf("input=%q: payload = %q, want no input_truncated field", raw, got)
+		}
+		if p["tool_use_id"] != "tu_1" {
+			t.Errorf("input=%q: tool_use_id = %v, want tu_1", raw, p["tool_use_id"])
+		}
+	}
+}
+
+// TestBuildToolInvokePayload_SmallInputEmbedded verifies a small raw input is
+// embedded verbatim (compacted) as a nested JSON object under "input".
+func TestBuildToolInvokePayload_SmallInputEmbedded(t *testing.T) {
+	t.Parallel()
+	got := BuildToolInvokePayload("tu_2", []byte(`{"command": "ls -la"}`))
+	var p map[string]any
+	if err := json.Unmarshal([]byte(got), &p); err != nil {
+		t.Fatalf("payload not JSON: %v", err)
+	}
+	input, ok := p["input"].(map[string]any)
+	if !ok {
+		t.Fatalf("payload = %q, want an object at $.input", got)
+	}
+	if input["command"] != "ls -la" {
+		t.Errorf("input.command = %v, want %q", input["command"], "ls -la")
+	}
+	if _, ok := p["input_truncated"]; ok {
+		t.Errorf("payload = %q, want no input_truncated for small input", got)
+	}
+}
+
+// TestBuildToolInvokePayload_OverCapTruncates verifies an over-cap raw input
+// yields input_truncated:true, still-valid JSON, and never a sliced/partial
+// object under "input".
+func TestBuildToolInvokePayload_OverCapTruncates(t *testing.T) {
+	t.Parallel()
+	huge := `{"blob":"` + strings.Repeat("z", maxPayloadInput+1000) + `"}`
+	got := BuildToolInvokePayload("tu_3", []byte(huge))
+
+	var p map[string]any
+	if err := json.Unmarshal([]byte(got), &p); err != nil {
+		t.Fatalf("payload not valid JSON: %v; got %q", err, got)
+	}
+	if p["input_truncated"] != true {
+		t.Errorf("input_truncated = %v, want true", p["input_truncated"])
+	}
+	if _, ok := p["input"]; ok {
+		t.Errorf("payload = %q, want no partial/sliced input object", got)
+	}
+	if p["tool_use_id"] != "tu_3" {
+		t.Errorf("tool_use_id = %v, want tu_3", p["tool_use_id"])
+	}
+}
+
+// TestBuildToolInvokePayload_NoToolUseIDOmitsField verifies a codex-style
+// invoke (no tool_use_id) yields a payload with only "input", no
+// "tool_use_id" key at all.
+func TestBuildToolInvokePayload_NoToolUseIDOmitsField(t *testing.T) {
+	t.Parallel()
+	got := BuildToolInvokePayload("", []byte(`{"query":"foo"}`))
+	var p map[string]any
+	if err := json.Unmarshal([]byte(got), &p); err != nil {
+		t.Fatalf("payload not JSON: %v", err)
+	}
+	if _, ok := p["tool_use_id"]; ok {
+		t.Errorf("payload = %q, want no tool_use_id key", got)
+	}
+	input, ok := p["input"].(map[string]any)
+	if !ok || input["query"] != "foo" {
+		t.Errorf("payload = %q, want input.query=foo", got)
+	}
+}
+
+// TestBuildToolInvokePayload_AllEmptyReturnsEmptyString verifies no
+// toolUseID + no usable input produces an empty payload string (falls back to
+// TrackMessage at the call site).
+func TestBuildToolInvokePayload_AllEmptyReturnsEmptyString(t *testing.T) {
+	t.Parallel()
+	if got := BuildToolInvokePayload("", nil); got != "" {
+		t.Errorf("BuildToolInvokePayload(\"\", nil) = %q, want \"\"", got)
+	}
+	if got := BuildToolInvokePayload("", []byte("{}")); got != "" {
+		t.Errorf("BuildToolInvokePayload(\"\", {}) = %q, want \"\"", got)
 	}
 }
 

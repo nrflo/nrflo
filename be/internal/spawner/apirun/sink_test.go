@@ -150,6 +150,9 @@ func TestRunnerSink_ToolUseStartStop_EmitsSingleRow(t *testing.T) {
 	if !strings.Contains(calls[0].content, `"command":"ls"`) {
 		t.Errorf("call[0].content = %q, want JSON input", calls[0].content)
 	}
+	if string(calls[0].rawInput) != `{"command":"ls"}` {
+		t.Errorf("call[0].rawInput = %q, want the raw tool input to reach the sink", calls[0].rawInput)
+	}
 }
 
 // TestRunnerSink_ToolUseStop_FlushesBufferThenEmitsInput verifies that

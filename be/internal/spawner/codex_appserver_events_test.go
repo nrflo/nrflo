@@ -188,11 +188,51 @@ func TestDispatchAppServer_McpToolCall_InvokeAndResult(t *testing.T) {
 	if len(sink.recordedMsgs) != 2 {
 		t.Fatalf("expected 2 rows (invoke + result), got %d: %+v", len(sink.recordedMsgs), sink.recordedMsgs)
 	}
-	if inv := sink.recordedMsgs[0]; inv.category != "tool" || inv.content != `[Mcp__nrflo__emit_findings] {"key":"summary"}` {
+	inv := sink.recordedMsgs[0]
+	if inv.category != "tool" || inv.content != `[Mcp__nrflo__emit_findings] {"key":"summary"}` {
 		t.Errorf("invoke row = %+v", inv)
+	}
+	if !strings.Contains(inv.payload, `"input":{"key":"summary"}`) {
+		t.Errorf("invoke row payload = %q, want input embedded", inv.payload)
 	}
 	if res := sink.recordedMsgs[1]; res.category != "tool" || res.content != "[Mcp__nrflo__emit_findings] → ok: 1 finding" {
 		t.Errorf("result row = %+v", res)
+	}
+}
+
+// TestDispatchAppServer_CommandExecution_PayloadCarriesInput verifies a
+// commandExecution item's invoke row payload embeds the command as structured
+// input (codex invoke rows have no tool_use_id, so payload is {input:...} only).
+func TestDispatchAppServer_CommandExecution_PayloadCarriesInput(t *testing.T) {
+	sink := &testSink{}
+	params := json.RawMessage(`{"item":{"type":"commandExecution","id":"i3","command":"echo hi","aggregatedOutput":"hi\n","exitCode":0}}`)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000, nil)
+
+	if len(sink.recordedMsgs) == 0 {
+		t.Fatal("expected at least one recorded message")
+	}
+	inv := sink.recordedMsgs[0]
+	if !strings.Contains(inv.payload, `"input":{"command":"echo hi"}`) {
+		t.Errorf("invoke row payload = %q, want input.command embedded", inv.payload)
+	}
+	if strings.Contains(inv.payload, "tool_use_id") {
+		t.Errorf("invoke row payload = %q, want no tool_use_id (codex invoke rows have none)", inv.payload)
+	}
+}
+
+// TestDispatchAppServer_WebSearch_PayloadCarriesInput verifies a webSearch
+// item's invoke row payload embeds the query as structured input.
+func TestDispatchAppServer_WebSearch_PayloadCarriesInput(t *testing.T) {
+	sink := &testSink{}
+	params := json.RawMessage(`{"item":{"type":"webSearch","id":"i4","query":"golang json"}}`)
+	dispatchAppServerEvent("s", rpcEnvelope{Method: "item/completed", Params: params}, sink, 200000, nil)
+
+	if len(sink.recordedMsgs) == 0 {
+		t.Fatal("expected at least one recorded message")
+	}
+	inv := sink.recordedMsgs[0]
+	if !strings.Contains(inv.payload, `"input":{"query":"golang json"}`) {
+		t.Errorf("invoke row payload = %q, want input.query embedded", inv.payload)
 	}
 }
 

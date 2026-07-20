@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"strings"
 	"testing"
 
 	"be/internal/clock"
@@ -85,6 +86,46 @@ func TestAgentMessageRepo_EmptyPayload_StoredAsNull(t *testing.T) {
 	}
 	if !isNull {
 		t.Errorf("payload should be NULL when empty string is inserted via NULLIF")
+	}
+}
+
+// TestAgentMessageRepo_SetToolEnded_PreservesNestedInput verifies the
+// json_set SQL used by SetToolEnded tolerates the widened payload shape
+// (a nested "input" object alongside tool_use_id): ended_at is added AND the
+// input object survives untouched.
+func TestAgentMessageRepo_SetToolEnded_PreservesNestedInput(t *testing.T) {
+	t.Parallel()
+	d := newTestDB(t)
+	const sessionID = "msg-sess-toolend-input"
+	setupMessageFixture(t, d, sessionID)
+
+	r := NewAgentMessageRepo(d, clock.Real())
+	if err := r.InsertBatch(sessionID, []MessageEntry{
+		{Content: "[Bash] ls", Category: "tool", Payload: `{"tool_use_id":"x","input":{"a":1}}`},
+	}); err != nil {
+		t.Fatalf("InsertBatch: %v", err)
+	}
+
+	updated, err := r.SetToolEnded(sessionID, "x", "2025-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatalf("SetToolEnded: %v", err)
+	}
+	if !updated {
+		t.Fatal("SetToolEnded reported no row updated")
+	}
+
+	msgs, err := r.GetBySessionPaginated(sessionID, 10, 0)
+	if err != nil {
+		t.Fatalf("GetBySessionPaginated: %v", err)
+	}
+	if len(msgs) != 1 {
+		t.Fatalf("got %d messages, want 1", len(msgs))
+	}
+	if !strings.Contains(msgs[0].Payload, `"ended_at":"2025-01-01T00:00:00Z"`) {
+		t.Errorf("Payload = %q, want ended_at stamped", msgs[0].Payload)
+	}
+	if !strings.Contains(msgs[0].Payload, `"input":{"a":1}`) {
+		t.Errorf("Payload = %q, want nested input object preserved", msgs[0].Payload)
 	}
 }
 

@@ -140,10 +140,12 @@ func decodeStream(stream *ssestream.Stream[responses.ResponseStreamEventUnion], 
 			accs[ev.OutputIndex] = acc
 
 		case "response.output_text.delta":
+			// Like function_call_arguments.delta, the chunk is in "delta";
+			// "text" is only populated on the ".done" variant.
 			if acc, ok := accs[ev.OutputIndex]; ok {
-				acc.text += ev.Text
+				acc.text += ev.Delta
 			}
-			sink.OnTextDelta(ev.Text)
+			sink.OnTextDelta(ev.Delta)
 
 		case "response.function_call_arguments.delta":
 			// The incremental chunk lives in the event's "delta" field;

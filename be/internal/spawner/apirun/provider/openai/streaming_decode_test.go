@@ -108,10 +108,12 @@ func TestRun_TextOnly(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(sseEvent("response.output_item.added",
 		`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_1","status":"in_progress"}}`))
+	// Real wire shape (OpenAI + OpenRouter): the chunk is in "delta"; "text"
+	// only appears on the ".done" variant.
 	b.WriteString(sseEvent("response.output_text.delta",
-		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"text":"Hel"}`))
+		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"delta":"Hel"}`))
 	b.WriteString(sseEvent("response.output_text.delta",
-		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"text":"lo"}`))
+		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"delta":"lo"}`))
 	b.WriteString(sseEvent("response.output_item.done",
 		`{"type":"response.output_item.done","output_index":0,"item":{"type":"message","id":"msg_1","status":"completed"}}`))
 	b.WriteString(sseEvent("response.completed", completedJSON("completed", "", 10, 3)))
@@ -188,7 +190,7 @@ func TestRun_MaxTokens(t *testing.T) {
 	b.WriteString(sseEvent("response.output_item.added",
 		`{"type":"response.output_item.added","output_index":0,"item":{"type":"message","id":"msg_1","status":"in_progress"}}`))
 	b.WriteString(sseEvent("response.output_text.delta",
-		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"text":"partial"}`))
+		`{"type":"response.output_text.delta","output_index":0,"content_index":0,"delta":"partial"}`))
 	b.WriteString(sseEvent("response.output_item.done",
 		`{"type":"response.output_item.done","output_index":0,"item":{"type":"message","id":"msg_1","status":"completed"}}`))
 	b.WriteString(sseEvent("response.completed",

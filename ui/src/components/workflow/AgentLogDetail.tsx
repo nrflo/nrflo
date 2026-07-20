@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText, Tag, Layers, Paperclip, Files } from 'lucide-react'
+import { ArrowLeft, MessageSquare, Loader2, CheckCircle, XCircle, Cpu, Timer, Terminal, FileText, Tag, Layers, Paperclip, Files, Gauge } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { ResultIcon } from '@/components/ui/ResultIcon'
@@ -10,6 +10,7 @@ import { FindingsPanel } from './FindingsPanel'
 import { AllFindingsPanel } from './AllFindingsPanel'
 import { ArtifactsPanel } from './ArtifactsPanel'
 import { AllArtifactsPanel } from './AllArtifactsPanel'
+import { ContextLedgerPanel } from './ContextLedgerPanel'
 import { normalizeApiMessages } from './normalizeApiMessages'
 import { MessageTable } from './MessageTable'
 import { cn } from '@/lib/utils'
@@ -19,10 +20,11 @@ import type { MessageCategory, WorkflowFindings } from '@/types/workflow'
 import type { LucideIcon } from 'lucide-react'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
-type DetailTab = 'messages' | 'context' | 'findings' | 'all-findings' | 'artifacts' | 'all-artifacts'
+type DetailTab = 'messages' | 'context' | 'ledger' | 'findings' | 'all-findings' | 'artifacts' | 'all-artifacts'
 const DETAIL_TABS: { value: DetailTab; label: string; icon: LucideIcon }[] = [
   { value: 'messages', label: 'Messages', icon: MessageSquare },
   { value: 'context', label: 'Context', icon: FileText },
+  { value: 'ledger', label: 'Ledger', icon: Gauge },
   { value: 'findings', label: 'Findings', icon: Tag },
   { value: 'all-findings', label: 'All Findings', icon: Layers },
   { value: 'artifacts', label: 'Artifacts', icon: Paperclip },
@@ -202,6 +204,8 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             agentFindings={agentFindings}
             selectedAgentType={selectedAgent.agent?.agent_type || selectedAgent.historyEntry?.agent_type || null}
           />
+        ) : activeTab === 'ledger' ? (
+          <ContextLedgerPanel sessionId={sessionId} enabled={activeTab === 'ledger'} />
         ) : activeTab === 'context' ? (
           promptLoading ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">

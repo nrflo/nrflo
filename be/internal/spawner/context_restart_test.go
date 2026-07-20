@@ -186,6 +186,53 @@ func TestProactiveRestartCoordinator_IgnoresUnrelatedEventsAndMissingSession(t *
 	}
 }
 
+// TestProactiveRestartCoordinator_IgnoresPrunedBoundaryEventTypes documents
+// the proactiveBoundaryEventTypes prune: orchestration/plan events that used
+// to be members (kept "for parity/future-proofing") never carried a
+// SessionID in practice, so dropping them from the set is a runtime no-op —
+// verified here by driving OnEvent with a SessionID attached anyway and
+// confirming no boundary gets stamped, plus a direct membership check on the
+// map itself.
+func TestProactiveRestartCoordinator_IgnoresPrunedBoundaryEventTypes(t *testing.T) {
+	t.Parallel()
+	clk := clock.NewTest(time.Now())
+	coord := NewProactiveRestartCoordinator(clk)
+
+	pruned := []string{
+		ws.EventOrchestrationCompleted,
+		ws.EventOrchestrationFailed,
+		ws.EventPlanMaterialized,
+	}
+	for _, evType := range pruned {
+		if proactiveBoundaryEventTypes[evType] {
+			t.Errorf("proactiveBoundaryEventTypes[%q] = true, want false (pruned)", evType)
+		}
+	}
+	if !proactiveBoundaryEventTypes[ws.EventFindingsUpdated] {
+		t.Errorf("proactiveBoundaryEventTypes[%q] = false, want true (only remaining member)", ws.EventFindingsUpdated)
+	}
+	if len(proactiveBoundaryEventTypes) != 1 {
+		t.Errorf("len(proactiveBoundaryEventTypes) = %d, want 1", len(proactiveBoundaryEventTypes))
+	}
+
+	for _, evType := range pruned {
+		sessionID := "sess-pruned-" + evType + "-" + t.Name()
+		t.Cleanup(func() { DropProactiveRestartState(sessionID) })
+
+		// Give it a tracked ledger too, so a false-positive membership check
+		// would actually stamp a boundary rather than bailing earlier on the
+		// "no tracked ledger" branch.
+		l := globalLedgerStore.get(sessionID)
+		l.nextTurn()
+		t.Cleanup(func() { globalLedgerStore.drop(sessionID) })
+
+		coord.OnEvent(&ws.Event{Type: evType, SessionID: sessionID})
+		if st := globalRestartStore.snapshot(sessionID); !st.lastBoundaryAt.IsZero() {
+			t.Errorf("OnEvent stamped a boundary for pruned event type %q", evType)
+		}
+	}
+}
+
 // newRestartConfigPool builds a real, per-test migrated DB pool (never
 // migrated more than once per package — copies the shared template) so
 // ProactiveRestartDecision's contextConfigInt reads exercise the real

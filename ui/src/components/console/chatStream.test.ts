@@ -158,6 +158,33 @@ describe('sessionEventReducer', () => {
     })
   })
 
+  it('console.context_rotated appends a rotation notice, in arrival order', () => {
+    let state = initialSessionStreamState()
+    expect(state.rotations).toEqual([])
+
+    state = sessionEventReducer(state, {
+      type: 'console.context_rotated',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { session_id: 'sid-1', tokens_before: 9000, tokens_after: 1200 },
+    })
+    state = sessionEventReducer(state, {
+      type: 'console.context_rotated',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:05:00Z',
+      data: { session_id: 'sid-1', tokens_before: 8500, tokens_after: 1100 },
+    })
+
+    expect(state.rotations).toEqual([
+      { session_id: 'sid-1', tokens_before: 9000, tokens_after: 1200 },
+      { session_id: 'sid-1', tokens_before: 8500, tokens_after: 1100 },
+    ])
+  })
+
 })
 
 describe('mergeStream', () => {

@@ -9,14 +9,6 @@ import (
 	"be/internal/model"
 )
 
-// DigestGetter is the read-only contract consumed by WorkingSetInjector and
-// reserved for future restart-with-digest wiring — narrower than the full
-// RefineryDigestRepo so callers outside the refinery package depend only on
-// the read path.
-type DigestGetter interface {
-	Get(consoleSessionID string) (*model.RefineryDigest, error)
-}
-
 // RefineryDigestRepo handles the single-row-per-console-session
 // refinery_digests head table.
 type RefineryDigestRepo struct {

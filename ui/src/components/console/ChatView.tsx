@@ -226,6 +226,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
             resolvedApprovals={stream.resolvedApprovals}
             liveThinking={stream.thinking}
             turn={stream.turn}
+            rotations={stream.rotations}
           />
         )}
       </div>

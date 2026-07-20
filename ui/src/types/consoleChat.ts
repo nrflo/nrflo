@@ -194,3 +194,12 @@ export interface ConsoleChatCostPayload {
     cache_read?: number
   }
 }
+
+// console.context_rotated session-channel push (chat_service_rotate.go) —
+// fired when a proactive restart rotates the engine in place under the same
+// session id.
+export interface ConsoleContextRotatedPayload {
+  session_id: string
+  tokens_before: number
+  tokens_after: number
+}

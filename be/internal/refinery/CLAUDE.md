@@ -8,4 +8,4 @@ Event-driven, never polling: `Manager` (`manager.go`) is a `ws.Listener` routed 
 
 ## Import Hygiene
 
-`refinery` imports `service`/`repo`/`ws`/`spawner/apirun/provider`/`clock`/`logger`/`model` only. `service` and `spawner` must never import `refinery` back — the `WorkingSetInjector` (spawner) reads the digest through the concrete `repo.RefineryDigestRepo.Get`, so it depends on `repo`, not this package. (`repo.DigestGetter` is a read-only contract reserved for future restart wiring.)
+`refinery` imports `service`/`repo`/`ws`/`spawner/apirun/provider`/`clock`/`logger`/`model` only. `service` and `spawner` must never import `refinery` back — the `WorkingSetInjector` (spawner) reads the digest through the concrete `repo.RefineryDigestRepo.Get`, so it depends on `repo`, not this package.

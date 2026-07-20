@@ -174,17 +174,11 @@ func DropProactiveRestartState(sessionID string) {
 }
 
 // proactiveBoundaryEventTypes are the WS event types that can stamp a
-// task-boundary turn — mirrors refinery.Manager's relevantEventTypes set.
-// Only findings.updated currently carries a session id
-// (service.BroadcastFromCtx stamps Event.SessionID from BroadcastCtx);
-// orchestration/plan events are instance-scoped, not session-scoped, so
-// OnEvent below cannot attribute them to one session and they are no-ops in
-// practice — kept in the set for parity/future-proofing.
+// task-boundary turn. Only findings.updated carries a session id
+// (service.BroadcastFromCtx stamps Event.SessionID from BroadcastCtx), so
+// it's the only entry OnEvent below can ever attribute to a session.
 var proactiveBoundaryEventTypes = map[string]bool{
-	ws.EventFindingsUpdated:        true,
-	ws.EventOrchestrationCompleted: true,
-	ws.EventOrchestrationFailed:    true,
-	ws.EventPlanMaterialized:       true,
+	ws.EventFindingsUpdated: true,
 }
 
 // ProactiveRestartCoordinator implements ws.Listener: it stamps a

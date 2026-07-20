@@ -24,7 +24,7 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 ## Agent Log Panel
 
-`AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail` (Messages / Context / Findings / All Findings tabs), with a multi-agent tabbed view and collapse-to-bar. Details: [REFERENCE.md](REFERENCE.md#agent-log-panel) — read before changing tab selection or panel collapse behaviour.
+`AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail` (Messages / Context / Ledger / Findings / All Findings tabs), with a multi-agent tabbed view and collapse-to-bar. The Ledger tab (`ContextLedgerPanel.tsx`) shows per-kind token breakdown, superseded entries, and an optional budget bar, fed by `GET /api/v1/sessions/{id}/context-ledger` plus live `agent.context_ledger` WS totals via `useSessionContextLedger`. Details: [REFERENCE.md](REFERENCE.md#agent-log-panel) — read before changing tab selection or panel collapse behaviour.
 
 ## Findings
 

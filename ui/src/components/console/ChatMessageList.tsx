@@ -4,7 +4,7 @@ import { ChatThinking } from './ChatThinking'
 import { ChatToolCard } from './ChatToolCard'
 import { ApprovalCard } from './ApprovalCard'
 import { pairToolMessages, type MergedTranscriptItem, type ResolvedApproval } from './chatStream'
-import type { PendingApproval } from '@/types/consoleChat'
+import type { ConsoleContextRotatedPayload, PendingApproval } from '@/types/consoleChat'
 import type { MessageWithTime } from '@/types/workflow'
 
 interface ChatMessageListProps {
@@ -14,13 +14,14 @@ interface ChatMessageListProps {
   resolvedApprovals: Map<string, ResolvedApproval>
   liveThinking: string[]
   turn: 'idle' | 'running'
+  rotations: ConsoleContextRotatedPayload[]
 }
 
 // Renders the merged item list: user_input as user bubbles, text as assistant
 // markdown, the in-flight delta buffer as a streaming bubble, thinking via
 // ChatThinking, tool pairs via ChatToolCard, error rows in destructive
 // styling — mirroring MessageTable's category styling (not refactoring it).
-export function ChatMessageList({ sid, transcript, approvals, resolvedApprovals, liveThinking, turn }: ChatMessageListProps) {
+export function ChatMessageList({ sid, transcript, approvals, resolvedApprovals, liveThinking, turn, rotations }: ChatMessageListProps) {
   // mergeStream orders persisted rows first, live deltas appended after — so
   // the two kinds can be split and rendered as two passes without tracking a
   // running index across a single mixed iteration.
@@ -44,6 +45,10 @@ export function ChatMessageList({ sid, transcript, approvals, resolvedApprovals,
         return <PersistedMessageRow key={idx} message={item.message} />
       })}
 
+      {rotations.map((rotation, idx) => (
+        <ContextRotatedDivider key={`rotation-${idx}`} rotation={rotation} />
+      ))}
+
       {liveItems.map((item) => (
         <div key={`live-${item.itemId}`} className="rounded-md border border-border bg-background px-3 py-2">
           <RenderedMarkdown content={item.text} />
@@ -55,6 +60,20 @@ export function ChatMessageList({ sid, transcript, approvals, resolvedApprovals,
       {approvals.map((a) => (
         <ApprovalCard key={a.approval_id} sid={sid} approval={a} resolved={resolvedApprovals.get(a.approval_id)} />
       ))}
+    </div>
+  )
+}
+
+// Distinct system styling: a centered muted rule marking an in-place engine
+// rotation (proactive context restart), rather than a message bubble.
+function ContextRotatedDivider({ rotation }: { rotation: ConsoleContextRotatedPayload }) {
+  return (
+    <div className="flex items-center gap-2 py-1 text-[10px] text-muted-foreground">
+      <div className="h-px flex-1 bg-border" />
+      <span className="whitespace-nowrap">
+        context rotated · {rotation.tokens_before.toLocaleString()} → {rotation.tokens_after.toLocaleString()} tokens
+      </span>
+      <div className="h-px flex-1 bg-border" />
     </div>
   )
 }

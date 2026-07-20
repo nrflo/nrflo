@@ -36,6 +36,7 @@ function makeStream(
     sessionApprovals,
     thinking: [],
     errors: [],
+    rotations: [],
     contextLeft: undefined,
     cost,
     workDir: '/tmp/w',

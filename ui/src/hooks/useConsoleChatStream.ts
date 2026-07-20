@@ -71,6 +71,7 @@ export function useConsoleChatStream(sid: string | undefined) {
     thinking: stream.thinking,
     errors: stream.errors,
     siblingOpened: stream.siblingOpened,
+    rotations: stream.rotations,
     contextLeft,
     cost,
     workDir: detailQuery.data?.work_dir,

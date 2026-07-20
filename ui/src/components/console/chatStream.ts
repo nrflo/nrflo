@@ -13,6 +13,7 @@ import type {
   ConsoleChatSiblingOpenedPayload,
   ConsoleChatThinkingPayload,
   ConsoleChatTurnPayload,
+  ConsoleContextRotatedPayload,
   PendingApproval,
 } from '@/types/consoleChat'
 
@@ -45,6 +46,9 @@ export interface SessionStreamState {
   // Set when a model-switch or hands-sibling spawn opens a sibling chat from
   // this session — ChatView watches it to auto-select the new chat.
   siblingOpened?: ConsoleChatSiblingOpenedPayload
+  // Every console.context_rotated notice seen this session, in arrival order
+  // — rendered as inline transcript dividers by ChatMessageList.
+  rotations: ConsoleContextRotatedPayload[]
 }
 
 export function initialSessionStreamState(): SessionStreamState {
@@ -57,6 +61,7 @@ export function initialSessionStreamState(): SessionStreamState {
     resolvedApprovals: new Map(),
     sessionApprovals: null,
     errors: [],
+    rotations: [],
   }
 }
 
@@ -110,6 +115,10 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
       // the socket path.
       const { context_left } = data as { context_left?: number }
       return context_left == null ? state : { ...state, contextLeft: context_left }
+    }
+    case 'console.context_rotated': {
+      const rotation = data as ConsoleContextRotatedPayload
+      return { ...state, rotations: [...state.rotations, rotation] }
     }
     case 'session.cost_updated': {
       const { cost_estimate, pricing_known } = data as ConsoleChatCostPayload

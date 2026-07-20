@@ -62,10 +62,16 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 	if implementor.EstMonthlyDelta == nil || *implementor.EstMonthlyDelta >= 0 {
 		t.Errorf("stock implementor EstMonthlyDelta = %v, want non-nil and negative", implementor.EstMonthlyDelta)
 	}
+	if !implementor.GrantsDelegation {
+		t.Errorf("implementor GrantsDelegation = false, want true (T1 executor role)")
+	}
 
 	docUpdater := findDefRow(t, proj.Defs, "feature", "doc-updater")
 	if docUpdater.RecommendedModel != "haiku-4-5" || docUpdater.Customized || docUpdater.SkipReason != "" {
 		t.Errorf("doc-updater row = %+v", docUpdater)
+	}
+	if docUpdater.GrantsDelegation {
+		t.Errorf("doc-updater GrantsDelegation = true, want false (terminal T2 role)")
 	}
 	if docUpdater.EstMonthlyDelta != nil {
 		t.Errorf("doc-updater EstMonthlyDelta = %v, want nil (no usage -> na)", *docUpdater.EstMonthlyDelta)
@@ -167,14 +173,30 @@ func TestBuildReport_WorkerTemplateAssignment(t *testing.T) {
 		"setup-analyzer": "tier-t2-extractor",
 		"qa-verifier":    "tier-t2-extractor",
 	}
+	wantGrants := map[string]bool{
+		"implementor":    true,
+		"test-writer":    true,
+		"setup-analyzer": true,
+		"doc-updater":    false,
+		"qa-verifier":    false,
+	}
 	for defID, want := range wantTemplate {
 		row := findDefRow(t, proj.Defs, "feature", defID)
 		if row.RecommendedTemplate != want {
 			t.Errorf("%s RecommendedTemplate = %q, want %q", defID, row.RecommendedTemplate, want)
 		}
+		if row.GrantsDelegation != wantGrants[defID] {
+			t.Errorf("%s GrantsDelegation = %v, want %v", defID, row.GrantsDelegation, wantGrants[defID])
+		}
 	}
 
 	if !strings.Contains(report.Markdown, "# Tiering Report") || !strings.Contains(report.Markdown, "gamma") {
 		t.Errorf("Markdown missing expected content: %s", report.Markdown)
+	}
+	if !strings.Contains(report.Markdown, "+delegation") {
+		t.Errorf("Markdown missing '+delegation' marker for granted roles: %s", report.Markdown)
+	}
+	if strings.Contains(report.Markdown, "haiku-4-5 +delegation") {
+		t.Errorf("Markdown must not mark the non-granted doc-updater row with +delegation: %s", report.Markdown)
 	}
 }

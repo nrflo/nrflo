@@ -72,6 +72,7 @@ func (s *TieringService) BuildReport() (*types.TieringReport, error) {
 				RecommendedTemplate: target.SystemTemplateID,
 				Customized:          isTierCustomized(raw.model, target),
 				IsWorker:            target.IsWorker,
+				GrantsDelegation:    target.GrantsDelegation,
 			}
 			row.SkipReason = tieringSkipReason(raw, role, row.Customized)
 
@@ -142,8 +143,12 @@ func renderTieringMarkdown(projects []types.TieringProjectReport) string {
 			if skip == "" {
 				skip = "-"
 			}
+			recommended := d.RecommendedModel
+			if d.GrantsDelegation {
+				recommended += " +delegation"
+			}
 			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %t | %s | %s |\n",
-				d.WorkflowID, d.DefID, d.Role, d.CurrentModel, d.RecommendedModel, d.Customized, skip, delta)
+				d.WorkflowID, d.DefID, d.Role, d.CurrentModel, recommended, d.Customized, skip, delta)
 		}
 		b.WriteString("\n")
 	}

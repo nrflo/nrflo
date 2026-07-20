@@ -112,6 +112,10 @@ func TestApplyForProject_SkipsCustomizedConsultantHotfixNonStatic(t *testing.T) 
 		if model != c.origModel {
 			t.Errorf("%s/%s model = %q, want unchanged %q", c.workflowID, c.defID, model, c.origModel)
 		}
+		tools := getAgentDefTools(t, pool, "skip", c.workflowID, c.defID)
+		if tools != "" {
+			t.Errorf("%s/%s tools = %q, want empty (skipped defs never get the delegation grant)", c.workflowID, c.defID, tools)
+		}
 	}
 	for _, o := range result.Applied {
 		t.Errorf("Applied must be empty for an all-skip project, got %+v", o)

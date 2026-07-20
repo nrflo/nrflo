@@ -11,13 +11,13 @@ func TestTierMap_MatchesTicket(t *testing.T) {
 	cases := []struct {
 		role                                              string
 		wantOriginal, wantModel, wantEffort, wantTemplate string
-		wantWorker                                        bool
+		wantWorker, wantGrants                            bool
 	}{
-		{"setup-analyzer", "sonnet-5", "sonnet-5", "low", "tier-t2-extractor", true},
-		{"test-writer", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true},
-		{"implementor", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true},
-		{"qa-verifier", "opus-4-8", "sonnet-5", "low", "tier-t2-extractor", true},
-		{"doc-updater", "sonnet-5", "haiku-4-5", "low", "tier-t1-executor", true},
+		{"setup-analyzer", "sonnet-5", "sonnet-5", "low", "tier-t2-extractor", true, true},
+		{"test-writer", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true, true},
+		{"implementor", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true, true},
+		{"qa-verifier", "opus-4-8", "sonnet-5", "low", "tier-t2-extractor", true, false},
+		{"doc-updater", "sonnet-5", "haiku-4-5", "low", "tier-t1-executor", true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.role, func(t *testing.T) {
@@ -39,6 +39,9 @@ func TestTierMap_MatchesTicket(t *testing.T) {
 			}
 			if target.IsWorker != c.wantWorker {
 				t.Errorf("IsWorker = %v, want %v", target.IsWorker, c.wantWorker)
+			}
+			if target.GrantsDelegation != c.wantGrants {
+				t.Errorf("GrantsDelegation = %v, want %v", target.GrantsDelegation, c.wantGrants)
 			}
 		})
 	}

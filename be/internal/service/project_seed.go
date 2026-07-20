@@ -69,6 +69,10 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 		for _, phase := range wf.phases {
 			target := TierMap[phase.role]
 			model, effort, systemTemplateID := target.RecommendedModel, target.RecommendedEffort, target.SystemTemplateID
+			tools := ""
+			if target.GrantsDelegation && !IsHotfixImplementor(wf.id, phase.role) {
+				tools = delegationToolsCSV
+			}
 			if IsHotfixImplementor(wf.id, phase.role) {
 				effort, systemTemplateID = "", ""
 			}
@@ -79,9 +83,9 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 
 			_, err := s.pool.Exec(`
 				INSERT OR IGNORE INTO agent_definitions
-					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, created_at, updated_at)
-				VALUES (?, ?, ?, ?, 20, ?, ?, ?, ?, ?, ?)`,
-				phase.role, projectID, wf.id, model, templates[phase.role], phase.layer, effortVal, systemTemplateID, now, now,
+					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, tools, created_at, updated_at)
+				VALUES (?, ?, ?, ?, 20, ?, ?, ?, ?, ?, ?, ?)`,
+				phase.role, projectID, wf.id, model, templates[phase.role], phase.layer, effortVal, systemTemplateID, tools, now, now,
 			)
 			if err != nil {
 				logger.Warn(context.Background(), "seedTieredWorkflows: failed to insert agent_definition", "project_id", projectID, "workflow_id", wf.id, "def_id", phase.role, "err", err)

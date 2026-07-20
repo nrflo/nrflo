@@ -87,6 +87,7 @@ function TieringProjectTable({ project }: { project: TieringProjectReport }) {
                 <TableCell className="text-xs whitespace-nowrap">
                   {def.recommended_model} / {def.recommended_effort || '—'}
                   <span className="text-muted-foreground"> · {def.recommended_template}</span>
+                  {def.grants_delegation && <span className="text-muted-foreground"> +delegation</span>}
                 </TableCell>
                 <TableCell className="text-xs">{formatDelta(def.est_monthly_delta)}</TableCell>
                 <TableCell>

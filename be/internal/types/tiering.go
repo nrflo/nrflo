@@ -15,6 +15,7 @@ type TieringDefRow struct {
 	SkipReason          string   `json:"skip_reason,omitempty"`
 	EstMonthlyDelta     *float64 `json:"est_monthly_delta,omitempty"`
 	IsWorker            bool     `json:"is_worker"`
+	GrantsDelegation    bool     `json:"grants_delegation"`
 }
 
 // TieringProjectReport is one project's slice of the tiering report.

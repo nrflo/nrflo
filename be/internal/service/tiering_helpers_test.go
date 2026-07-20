@@ -14,6 +14,7 @@ import (
 type tieringDefSeed struct {
 	projectID, workflowID, defID, model string
 	effort, nodeRole, systemTemplateID  string
+	tools                               string
 	consultant                          bool
 }
 
@@ -36,9 +37,9 @@ func seedTieringDef(t *testing.T, pool *db.Pool, s tieringDefSeed) {
 	}
 	_, err := pool.Exec(`
 		INSERT INTO agent_definitions
-			(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, node_role, consultant, system_template_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 20, '', 0, ?, ?, ?, ?, ?, ?)`,
-		s.defID, s.projectID, s.workflowID, s.model, effort, nodeRole, consultant, s.systemTemplateID, now, now,
+			(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, node_role, consultant, system_template_id, tools, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 20, '', 0, ?, ?, ?, ?, ?, ?, ?)`,
+		s.defID, s.projectID, s.workflowID, s.model, effort, nodeRole, consultant, s.systemTemplateID, s.tools, now, now,
 	)
 	if err != nil {
 		t.Fatalf("seedTieringDef(%s/%s/%s): %v", s.projectID, s.workflowID, s.defID, err)
@@ -129,4 +130,17 @@ func getAgentDefFields(t *testing.T, pool *db.Pool, projectID, workflowID, defID
 		effort = *effortNS
 	}
 	return
+}
+
+// getAgentDefTools reads back the tools CSV for one def row.
+func getAgentDefTools(t *testing.T, pool *db.Pool, projectID, workflowID, defID string) string {
+	t.Helper()
+	var tools string
+	if err := pool.QueryRow(`
+		SELECT tools FROM agent_definitions WHERE project_id = ? AND workflow_id = ? AND id = ?`,
+		projectID, workflowID, defID,
+	).Scan(&tools); err != nil {
+		t.Fatalf("getAgentDefTools(%s/%s/%s): %v", projectID, workflowID, defID, err)
+	}
+	return tools
 }

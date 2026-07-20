@@ -58,9 +58,15 @@ func (s *TieringService) ApplyForProject(confirmation types.TieringApplyConfirma
 			continue
 		}
 
+		wantTools, toolsChanged := raw.tools, false
+		if target.GrantsDelegation {
+			wantTools, toolsChanged = grantDelegationTools(raw.tools)
+		}
+
 		if strings.EqualFold(raw.model, target.RecommendedModel) &&
 			raw.effort.String == target.RecommendedEffort &&
-			raw.systemTemplateID == target.SystemTemplateID {
+			raw.systemTemplateID == target.SystemTemplateID &&
+			!toolsChanged {
 			outcome.Outcome = "unchanged"
 			result.Applied = append(result.Applied, outcome)
 			continue
@@ -85,9 +91,9 @@ func (s *TieringService) ApplyForProject(confirmation types.TieringApplyConfirma
 		}
 
 		if _, err := s.pool.Exec(`
-			UPDATE agent_definitions SET model = ?, reasoning_effort = ?, system_template_id = ?, updated_at = ?
+			UPDATE agent_definitions SET model = ?, reasoning_effort = ?, system_template_id = ?, tools = ?, updated_at = ?
 			WHERE project_id = ? AND workflow_id = ? AND id = ?`,
-			target.RecommendedModel, target.RecommendedEffort, target.SystemTemplateID, now,
+			target.RecommendedModel, target.RecommendedEffort, target.SystemTemplateID, wantTools, now,
 			confirmation.ProjectID, raw.workflowID, raw.id,
 		); err != nil {
 			return nil, fmt.Errorf("failed to apply tiering to %s/%s: %w", raw.workflowID, raw.id, err)
@@ -115,11 +121,12 @@ func tieringDefKey(workflowID, defID string) string {
 type tieringDefRowForUpdate struct {
 	tieringDefRowRaw
 	systemTemplateID string
+	tools            string
 }
 
 func (s *TieringService) loadDefsForUpdate(projectID string) ([]tieringDefRowForUpdate, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, workflow_id, model, reasoning_effort, consultant, node_role, system_template_id
+		SELECT id, workflow_id, model, reasoning_effort, consultant, node_role, system_template_id, tools
 		FROM agent_definitions WHERE project_id = ?`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agent definitions for project %s: %w", projectID, err)
@@ -129,7 +136,7 @@ func (s *TieringService) loadDefsForUpdate(projectID string) ([]tieringDefRowFor
 	var out []tieringDefRowForUpdate
 	for rows.Next() {
 		var raw tieringDefRowForUpdate
-		if err := rows.Scan(&raw.id, &raw.workflowID, &raw.model, &raw.effort, &raw.consultant, &raw.nodeRole, &raw.systemTemplateID); err != nil {
+		if err := rows.Scan(&raw.id, &raw.workflowID, &raw.model, &raw.effort, &raw.consultant, &raw.nodeRole, &raw.systemTemplateID, &raw.tools); err != nil {
 			return nil, err
 		}
 		out = append(out, raw)

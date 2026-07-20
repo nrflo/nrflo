@@ -11,6 +11,44 @@ type TierTarget struct {
 	RecommendedEffort string // "" = do not force an override (inherit the model's default)
 	SystemTemplateID  string // resolves to a type='injectable' default_templates row
 	IsWorker          bool
+	// GrantsDelegation marks T0/T1 executor roles that benefit from spawning
+	// T2 extractors (setup-analyzer/test-writer/implementor). Terminal T2
+	// roles (qa-verifier/doc-updater) never receive the delegation tools.
+	GrantsDelegation bool
+}
+
+// delegationToolsCSV is the tools CSV value granted to GrantsDelegation
+// roles. Bare builtin tool names registered in
+// be/internal/spawner/apirun/tools_builtin/builtins.go.
+const delegationToolsCSV = "delegate,get_delegation"
+
+// delegationTools is delegationToolsCSV split for membership checks.
+var delegationTools = strings.Split(delegationToolsCSV, ",")
+
+// grantDelegationTools appends any missing delegation tools to an existing
+// tools CSV, preserving order and existing entries. Empty-safe ("" ->
+// delegationToolsCSV). Returns changed=false when both delegation tools are
+// already present (idempotent: no duplicate append).
+func grantDelegationTools(existing string) (csv string, changed bool) {
+	var entries []string
+	present := make(map[string]bool)
+	for _, e := range strings.Split(existing, ",") {
+		e = strings.TrimSpace(e)
+		if e == "" {
+			continue
+		}
+		entries = append(entries, e)
+		present[e] = true
+	}
+
+	for _, t := range delegationTools {
+		if !present[t] {
+			entries = append(entries, t)
+			changed = true
+		}
+	}
+
+	return strings.Join(entries, ","), changed
 }
 
 // TierMap is the canonical role -> recommendation table. It is the single
@@ -20,17 +58,17 @@ var TierMap = map[string]TierTarget{
 	"setup-analyzer": {
 		Role: "setup-analyzer", OriginalSeedModel: "sonnet-5",
 		RecommendedModel: "sonnet-5", RecommendedEffort: "low",
-		SystemTemplateID: "tier-t2-extractor", IsWorker: true,
+		SystemTemplateID: "tier-t2-extractor", IsWorker: true, GrantsDelegation: true,
 	},
 	"test-writer": {
 		Role: "test-writer", OriginalSeedModel: "opus-4-8",
 		RecommendedModel: "sonnet-5", RecommendedEffort: "medium",
-		SystemTemplateID: "tier-t1-executor", IsWorker: true,
+		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"implementor": {
 		Role: "implementor", OriginalSeedModel: "opus-4-8",
 		RecommendedModel: "sonnet-5", RecommendedEffort: "medium",
-		SystemTemplateID: "tier-t1-executor", IsWorker: true,
+		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"qa-verifier": {
 		Role: "qa-verifier", OriginalSeedModel: "opus-4-8",

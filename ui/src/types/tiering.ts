@@ -10,6 +10,7 @@ export interface TieringDefRow {
   recommended_model: string
   recommended_effort?: string
   recommended_template: string
+  grants_delegation: boolean
   customized: boolean
   skip_reason?: string
   est_monthly_delta: number | null

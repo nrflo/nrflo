@@ -20,6 +20,7 @@ function makeDef(overrides: Partial<TieringDefRow> = {}): TieringDefRow {
     recommended_model: 'sonnet-5',
     recommended_effort: 'medium',
     recommended_template: 'tier-t1-executor',
+    grants_delegation: false,
     customized: false,
     est_monthly_delta: -12.5,
     ...overrides,
@@ -123,6 +124,24 @@ describe('TieringSection', () => {
     expect(screen.getByText('Applicable')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apply (1)' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Apply (0)' })).toBeInTheDocument()
+  })
+
+  it('shows a +delegation marker only for defs that grant delegation tools', () => {
+    const project = makeProject({
+      project_id: 'proj-a',
+      defs: [
+        makeDef({ def_id: 'implementor', grants_delegation: true }),
+        makeDef({ def_id: 'qa-verifier', role: 'qa-verifier', grants_delegation: false }),
+      ],
+    })
+    vi.mocked(useTieringReport).mockReturnValue({
+      isLoading: false,
+      error: null,
+      data: makeReport([project]),
+    } as any)
+    renderSection()
+
+    expect(screen.getAllByText(/\+delegation/).length).toBe(1)
   })
 
   it('renders a dash for defs and projects with a null estimated delta', () => {

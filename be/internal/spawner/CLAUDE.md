@@ -57,6 +57,10 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` â
 
 `cliInteractiveBackend` (`backend_interactive.go`) spawns CLI agents in a PTY; per-adapter divergence lives entirely in the adapter methods (no name-checks). Claude `--settings` merge keeps hooks + statusLine intact. Adapter method semantics, codex profile, settings merge: [REFERENCE.md](REFERENCE.md#interactive-cli-backend).
 
+## Autonomous Refinery Sidecar
+
+`Config.RefinerySidecar` (nil-safe) drives a per-session working-set fold around every `cli_interactive` spawn, mirroring `RegisterSessionCost`/`FinalizeSessionCost` lifecycle sites. Mechanics: [REFERENCE.md](REFERENCE.md#autonomous-refinery-sidecar).
+
 ## Context Save
 
 The only kill-time save path (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for every backend (cli, api, codex app-server). Script-mode agents are exempt (`TracksContext()=false`).

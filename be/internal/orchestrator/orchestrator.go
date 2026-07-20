@@ -104,6 +104,13 @@ type Orchestrator struct {
 	// PTYManager is the shared PTY session manager. Passed to spawner.Config.PTYManager
 	// so the interactive CLI backend can create and manage PTY sessions directly.
 	PTYManager *ptyPkg.Manager
+
+	// RefineryMgr drives the autonomous refinery fold sidecar's
+	// StartSession/StopSession lifecycle. Typed as the spawner-declared
+	// interface (not *refinery.Manager) so orchestrator never imports
+	// refinery; wired into every main-workflow spawner.Config so system
+	// one-off spawners built elsewhere never see it.
+	RefineryMgr spawner.RefinerySidecar
 }
 
 // New creates a new Orchestrator.

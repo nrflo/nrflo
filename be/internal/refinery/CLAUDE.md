@@ -9,3 +9,7 @@ Event-driven, never polling: `Manager` (`manager.go`) is a `ws.Listener` routed 
 ## Import Hygiene
 
 `refinery` imports `service`/`repo`/`ws`/`spawner/apirun/provider`/`clock`/`logger`/`model` only. `service` and `spawner` must never import `refinery` back — the `WorkingSetInjector` (spawner) reads the digest through the concrete `repo.RefineryDigestRepo.Get`, so it depends on `repo`, not this package.
+
+## Autonomous Sidecar
+
+`Manager.StartSession`/`StopSession` (`session_sidecar.go`) run a per-autonomous-session sidecar driven by the spawner lifecycle (start on `cli_interactive` spawn, stop before `FinalizeSessionCost`), gated on `refinery_autonomous_enabled` (default ON). Each fold reads the `agent_messages` delta since the last fold (not console event strings) and folds via the shared `runFoldCore` (`fold.go`), writing to a relaunch-stable digest keyed by `(workflow_instance_id, node_id)` in `refinery_autonomous_digests` — the same slot survives a kill->relaunch chain. Fold token usage is attributed to the folding session's running cost via the injected `costAttributor` seam (`SetCostAttributor`, = `spawner.AddSessionCostUsage`).

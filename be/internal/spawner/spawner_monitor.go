@@ -48,6 +48,13 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
 		registeredSessions[newProc.sessionID] = struct{}{}
 		globalLedgerStore.drop(oldProc.sessionID)
+		// Final-fold the old session before its cost entry is finalized so
+		// the fold's usage still attributes to a live running-cost row; the
+		// new session's StartSession fires automatically inside startBackend
+		// on relaunch, same slot (workflow_instance_id, node_id).
+		if s.config.RefinerySidecar != nil {
+			s.config.RefinerySidecar.StopSession(oldProc.sessionID)
+		}
 		FinalizeSessionCost(oldProc.sessionID)
 		DropProactiveRestartState(oldProc.sessionID)
 		return newProc, nil

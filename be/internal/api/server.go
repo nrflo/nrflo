@@ -132,6 +132,8 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	// RegisterListener is pre-Run only.
 	refineryMgr := refinery.NewManager(pool, clk)
 	hub.RegisterListener(refineryMgr)
+	refineryMgr.SetCostAttributor(spawner.AddSessionCostUsage)
+	orch.RefineryMgr = refineryMgr
 
 	// Proactive-restart task-boundary coordinator (findings.updated stamps a
 	// session's ledger turn as a task boundary); RegisterListener is pre-Run only.

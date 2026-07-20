@@ -179,6 +179,14 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	s.markAgentStarted(proc.projectID, proc.ticketID, proc.workflowName,
 		proc.agentID, proc.agentType, proc.modelID, proc.sessionID, prep.phase,
 		proc.spawnCommand, pid, proc.restartThreshold)
+
+	// Autonomous refinery sidecar: only cli_interactive spawns (the
+	// long-running autonomous session shape) get one, and only when the
+	// orchestrator wired a sidecar into this config (system one-offs never
+	// do). See spawner/REFERENCE.md.
+	if s.config.RefinerySidecar != nil && prep.executionMode == "cli_interactive" {
+		s.config.RefinerySidecar.StartSession(proc.sessionID, proc.projectID, proc.workflowInstanceID, proc.nodeID)
+	}
 	return nil
 }
 
@@ -205,6 +213,9 @@ func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo
 		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
 			proc.sessionID, proc.agentID, "fail", "cancelled", proc.modelID)
 		globalLedgerStore.drop(proc.sessionID)
+		if s.config.RefinerySidecar != nil {
+			s.config.RefinerySidecar.StopSession(proc.sessionID)
+		}
 		FinalizeSessionCost(proc.sessionID)
 		completed = append(completed, proc)
 	}

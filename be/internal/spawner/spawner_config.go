@@ -13,6 +13,16 @@ import (
 	"be/internal/ws"
 )
 
+// RefinerySidecar starts/stops a per-autonomous-session refinery fold
+// sidecar, keyed by the slot the session runs in. Satisfied by
+// *refinery.Manager; declared here (not imported) so spawner never depends
+// on the refinery package's internals — mirrors console's locally-declared
+// RefineryLifecycle (be/internal/console/chat_service_refinery.go).
+type RefinerySidecar interface {
+	StartSession(sessionID, projectID, workflowInstanceID, nodeID string)
+	StopSession(sessionID string)
+}
+
 // ModelConfig holds one enabled row from the unified model registry.
 type ModelConfig struct {
 	Provider       string
@@ -132,4 +142,11 @@ type Config struct {
 	// strips `delegate` once DelegateDepth+1 exceeds the cap, and Delegate
 	// stamps each worker's child spawner with DelegateDepth+1.
 	DelegateDepth int
+	// RefinerySidecar drives the autonomous refinery fold sidecar's
+	// StartSession/StopSession lifecycle around cli_interactive spawns.
+	// Optional (nil-safe): only the main-workflow orchestrator config sets
+	// it, so system one-off spawns (context-saver/consult/planner/observer),
+	// which build their own Config, get no sidecar — by omission, not a
+	// name-check.
+	RefinerySidecar RefinerySidecar
 }

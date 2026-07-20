@@ -166,6 +166,7 @@ func (o *Orchestrator) runLoop(
 		ArtifactSvc:        artifactSvcRun,
 		WorkflowControl:    apiWorkflowControl{o: o, pool: pool},
 		Subworkflows:       o,
+		RefinerySidecar:    o.RefineryMgr,
 	}
 
 	// Use index-based loop to support plan-driven jumps and forward iteration.

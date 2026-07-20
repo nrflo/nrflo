@@ -26,28 +26,6 @@ var buildProvider = service.BuildAPIProvider
 // result to maxDigestBytes, and upserts it. Best-effort: errors are logged,
 // never propagated (a sidecar's caller does not block on fold outcome).
 func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events []string) {
-	def, err := m.systemAgentSvc.GetForBackend("refinery", "api")
-	if err != nil {
-		logger.Warn(ctx, "refinery: _refinery def not found, skipping fold", "session_id", sessionID, "error", err)
-		return
-	}
-
-	modelRow, err := m.modelSvc.Get(def.Model)
-	if err != nil {
-		logger.Error(ctx, "refinery: resolve model row failed", "session_id", sessionID, "model", def.Model, "error", err)
-		return
-	}
-	if modelRow.APIModel == "" {
-		logger.Error(ctx, "refinery: model row has no api_model", "session_id", sessionID, "model", def.Model)
-		return
-	}
-
-	prov, err := buildProvider(ctx, m.pool, m.clock, modelRow.Provider, projectID)
-	if err != nil {
-		logger.Error(ctx, "refinery: build provider failed", "session_id", sessionID, "provider", modelRow.Provider, "error", err)
-		return
-	}
-
 	prevDigest, err := m.digestRepo.Get(sessionID)
 	if err != nil {
 		logger.Error(ctx, "refinery: read previous digest failed", "session_id", sessionID, "error", err)
@@ -56,6 +34,52 @@ func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events 
 	prevContent := ""
 	if prevDigest != nil {
 		prevContent = prevDigest.Content
+	}
+
+	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, buildFoldUserText(prevContent, events))
+	if !ok {
+		return
+	}
+
+	foldCount, err := m.digestRepo.Upsert(sessionID, projectID, content)
+	if err != nil {
+		logger.Error(ctx, "refinery: upsert digest failed", "session_id", sessionID, "error", err)
+		return
+	}
+
+	logger.Info(ctx, "refinery fold complete",
+		"session_id", sessionID, "fold_count", foldCount,
+		"input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens,
+		"digest_bytes", len(content))
+}
+
+// runFoldCore is the provider-run core shared by the console fold above and
+// the autonomous fold (session_sidecar.go): load the `_refinery` api-mode
+// def, resolve its model row, run one direct provider.Run (no tools) over
+// userText, and cap the result to maxDigestBytes. logKey is the id (session
+// id or workflow-instance:node slot) used in log lines. Best-effort: errors
+// are logged and reported via ok=false, never propagated.
+func (m *Manager) runFoldCore(ctx context.Context, logKey, projectID, userText string) (content string, usage provider.Usage, ok bool) {
+	def, err := m.systemAgentSvc.GetForBackend("refinery", "api")
+	if err != nil {
+		logger.Warn(ctx, "refinery: _refinery def not found, skipping fold", "key", logKey, "error", err)
+		return "", provider.Usage{}, false
+	}
+
+	modelRow, err := m.modelSvc.Get(def.Model)
+	if err != nil {
+		logger.Error(ctx, "refinery: resolve model row failed", "key", logKey, "model", def.Model, "error", err)
+		return "", provider.Usage{}, false
+	}
+	if modelRow.APIModel == "" {
+		logger.Error(ctx, "refinery: model row has no api_model", "key", logKey, "model", def.Model)
+		return "", provider.Usage{}, false
+	}
+
+	prov, err := buildProvider(ctx, m.pool, m.clock, modelRow.Provider, projectID)
+	if err != nil {
+		logger.Error(ctx, "refinery: build provider failed", "key", logKey, "provider", modelRow.Provider, "error", err)
+		return "", provider.Usage{}, false
 	}
 
 	maxTokens := defaultFoldMaxTokens
@@ -69,7 +93,7 @@ func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events 
 			Role: "user",
 			Content: []provider.ContentBlock{{
 				Type: "text",
-				Text: buildFoldUserText(prevContent, events),
+				Text: userText,
 			}},
 		}},
 		MaxTokens: maxTokens,
@@ -78,21 +102,11 @@ func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events 
 
 	resp, err := prov.Run(ctx, req, noopSink{})
 	if err != nil {
-		logger.Error(ctx, "refinery: provider run failed", "session_id", sessionID, "error", err)
-		return
+		logger.Error(ctx, "refinery: provider run failed", "key", logKey, "error", err)
+		return "", provider.Usage{}, false
 	}
 
-	content := capBytes(extractText(resp.Content), maxDigestBytes)
-	foldCount, err := m.digestRepo.Upsert(sessionID, projectID, content)
-	if err != nil {
-		logger.Error(ctx, "refinery: upsert digest failed", "session_id", sessionID, "error", err)
-		return
-	}
-
-	logger.Info(ctx, "refinery fold complete",
-		"session_id", sessionID, "fold_count", foldCount,
-		"input_tokens", resp.Usage.InputTokens, "output_tokens", resp.Usage.OutputTokens,
-		"digest_bytes", len(content))
+	return capBytes(extractText(resp.Content), maxDigestBytes), resp.Usage, true
 }
 
 func buildFoldUserText(prevDigest string, events []string) string {

@@ -149,9 +149,6 @@ func TestPrepareSpawn_APIViaCLI_CLIInteractiveMode(t *testing.T) {
 	if proc.nudgeMax != 0 {
 		t.Errorf("proc.nudgeMax = %d, want 0 (api-via-cli disables nudge)", proc.nudgeMax)
 	}
-	if !proc.apiViaCLI {
-		t.Error("proc.apiViaCLI = false; want true")
-	}
 	if len(proc.apiTools) == 0 {
 		t.Error("proc.apiTools is empty; want populated registry")
 	}

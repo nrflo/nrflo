@@ -128,9 +128,8 @@ func applyProactiveRotationCarry(ctx context.Context, oldProc, newProc *processI
 // initiateContextSaveProactive reuses the standard kill->flush->save chain
 // (initiateContextSave) for a watcher-triggered proactive restart. There is
 // no console/refinery digest for an autonomous spawned session, so it always
-// falls through to the existing context-saver/resume save path —
-// shouldUseAgentSave decides between them exactly as it does for the
-// emergency low-context path.
+// saves via the context-saver system agent, exactly as the emergency
+// low-context path does.
 func (s *Spawner) initiateContextSaveProactive(ctx context.Context, proc *processInfo, req SpawnRequest, processDoneCh, completeCh chan struct{}) {
 	defer close(completeCh)
 
@@ -146,11 +145,7 @@ func (s *Spawner) initiateContextSaveProactive(ctx context.Context, proc *proces
 
 	s.saveMessages(proc)
 
-	if s.shouldUseAgentSave(proc) {
-		s.contextSaveViaAgent(ctx, proc, req)
-	} else {
-		s.contextSaveViaResume(ctx, proc, req)
-	}
+	s.contextSaveViaAgent(ctx, proc, req)
 
 	logger.Info(ctx, "proactive restart: context save complete", "session_id", proc.sessionID,
 		"final_status", proc.finalStatus)

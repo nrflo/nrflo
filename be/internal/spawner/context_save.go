@@ -23,7 +23,7 @@ const (
 // initiateContextSave handles the low-context save flow:
 // 1. Kill the running agent
 // 2. Flush messages
-// 3. Delegate to either system-agent or resume-based save depending on config
+// 3. Save context via the context-saver system agent
 //
 // processDoneCh is the original process's done channel (closed by the wait goroutine).
 // completeCh is the replacement channel; closed when the full flow finishes, signaling monitorAll.
@@ -45,45 +45,8 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	// 2. Flush messages from the killed process
 	s.saveMessages(proc)
 
-	// 3. Save context via configured method.
-	if s.shouldUseAgentSave(proc) {
-		s.contextSaveViaAgent(ctx, proc, req)
-	} else {
-		s.contextSaveViaResume(ctx, proc, req)
-	}
-}
-
-// shouldUseAgentSave decides whether the system-agent context-saver path is
-// required, regardless of the global `context_save_via_agent` setting.
-//
-// The running backend is the source of truth: agent-based save is used whenever
-// the backend can't resume the live session in place. `contextSaveViaResume`
-// needs `--resume <session>`, which only the Claude PTY backend offers — api,
-// script, and codex/app-server all return SupportsResume()=false and must use
-// the agent-save path (it reads `agent_messages` rather than resuming).
-// The agent path works for every backend; the previous default for
-// non-resumable backends was silent carryover loss.
-//
-// Falls back to the adapter only when no backend is attached yet (pre-spawn).
-func (s *Spawner) shouldUseAgentSave(proc *processInfo) bool {
-	if s.config.ContextSaveViaAgent {
-		return true
-	}
-	if proc.apiViaCLI {
-		return true
-	}
-	if proc.backend != nil {
-		return !proc.backend.SupportsResume()
-	}
-	cliName, _ := parseModelID(proc.modelID)
-	if cliName == "" {
-		return false
-	}
-	adapter, err := GetCLIAdapter(cliName)
-	if err != nil {
-		return false
-	}
-	return !adapter.SupportsResume()
+	// 3. Save context via the context-saver system agent.
+	s.contextSaveViaAgent(ctx, proc, req)
 }
 
 // contextSaveViaAgent uses a system agent (haiku) to summarize the killed agent's

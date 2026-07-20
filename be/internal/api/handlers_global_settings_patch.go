@@ -10,7 +10,6 @@ import (
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		LowConsumptionMode                *bool           `json:"low_consumption_mode"`
-		ContextSaveViaAgent               *bool           `json:"context_save_via_agent"`
 		SimplifiedAgentsGraph             *bool           `json:"simplified_agents_graph"`
 		Experimental                      *bool           `json:"experimental"`
 		APIModeEnabled                    *bool           `json:"api_mode_enabled"`
@@ -41,17 +40,6 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 			val = "true"
 		}
 		if err := svc.Set("low_consumption_mode", val); err != nil {
-			writeError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-	}
-
-	if req.ContextSaveViaAgent != nil {
-		val := "false"
-		if *req.ContextSaveViaAgent {
-			val = "true"
-		}
-		if err := svc.Set("context_save_via_agent", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

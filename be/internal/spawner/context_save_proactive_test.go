@@ -104,16 +104,20 @@ func waitForDoneCh(t *testing.T, ch chan struct{}, timeout time.Duration) {
 // acceptance case (1)/(3): a cli-fake and a codex-shaped fake, both over
 // threshold at an idle boundary with no in-flight plan item, fire the
 // kill->save->CONTINUE chain and reset the restart's rotation-pending state.
-// Both backends are configured SupportsResume=false so the save flow takes
-// the agent-save path (contextSaveViaAgent) — the resume path spawns a real
-// PTY and is intentionally never exercised here (repo rule: no real CLI).
+// The context-saver system agent is the only save path now, so the
+// kill->save->CONTINUE chain fires the same way regardless of whether the
+// backend reports SupportsResume — one case flips it to true to prove
+// resume-capable backends take the agent-save path too (acceptance:
+// proactive + emergency both spawn the context-saver agent).
 func TestCheckProactiveRestart_IdleBoundaryCrossing_FiresFullChain(t *testing.T) {
 	backends := []struct {
-		name        string
-		backendName string
+		name           string
+		backendName    string
+		supportsResume bool
 	}{
-		{name: "cli-shaped backend", backendName: "cli_interactive"},
-		{name: "codex-shaped backend", backendName: "codex_appserver"},
+		{name: "cli-shaped backend", backendName: "cli_interactive", supportsResume: false},
+		{name: "codex-shaped backend", backendName: "codex_appserver", supportsResume: false},
+		{name: "resume-capable backend", backendName: "cli_interactive", supportsResume: true},
 	}
 	for _, bc := range backends {
 		t.Run(bc.name, func(t *testing.T) {
@@ -126,7 +130,7 @@ func TestCheckProactiveRestart_IdleBoundaryCrossing_FiresFullChain(t *testing.T)
 				DropProactiveRestartState(sessionID)
 			})
 
-			proc, backend := newProactiveTestProc(env, clk, sessionID, bc.backendName, false)
+			proc, backend := newProactiveTestProc(env, clk, sessionID, bc.backendName, bc.supportsResume)
 			globalLedgerStore.get(sessionID).append(LedgerKindDialog, 300000, "", "", false)
 
 			req := SpawnRequest{ProjectID: env.projectID, TicketID: env.ticketID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}

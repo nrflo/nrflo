@@ -415,12 +415,8 @@ func (env *contextSaveTestEnv) createSessionWithInvalidJSON(t *testing.T) string
 	return sessionID
 }
 
-// =============================================================================
-// shouldUseAgentSave tests
-// =============================================================================
-
-// fakeBackend implements ExecutionBackend purely for shouldUseAgentSave tests
-// (the function only reads Name()).
+// fakeBackend implements ExecutionBackend for spawner tests (ledger, stall,
+// rate_limit, idle_nudge, etc.); the function only reads Name().
 type fakeBackend struct {
 	name           string
 	supportsResume bool
@@ -435,60 +431,3 @@ func (b fakeBackend) ParsesStructuredOutput() bool                              
 func (b fakeBackend) NaturalExitGrace() time.Duration                                { return 0 }
 func (b fakeBackend) Start(_ context.Context, _ *processInfo, _ *prepResult) error   { return nil }
 func (b fakeBackend) Kill(_ context.Context, _ *processInfo, _ syscall.Signal) error { return nil }
-
-func TestShouldUseAgentSave_GlobalSettingForcesAgent(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: true, Clock: clock.Real()})
-	proc := &processInfo{modelID: "claude:sonnet-5"}
-	if !s.shouldUseAgentSave(proc) {
-		t.Error("global setting=true must force agent save regardless of adapter")
-	}
-}
-
-func TestShouldUseAgentSave_APIBackendForcesAgent(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
-	proc := &processInfo{
-		modelID: "claude:sonnet-5",
-		backend: fakeBackend{name: "api"},
-	}
-	if !s.shouldUseAgentSave(proc) {
-		t.Error("api backend must force agent save (no resume path for in-process API runs)")
-	}
-}
-
-// TestShouldUseAgentSave_CodexUsesAgent verifies that codex on the app-server
-// backend (SupportsResume=false) uses the agent-save path, not the PTY resume
-// path (which can't resume an app-server thread in place).
-func TestShouldUseAgentSave_CodexUsesAgent(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
-	proc := &processInfo{
-		modelID: "codex:gpt-5.4",
-		backend: newCodexAppServerBackend(s),
-	}
-	if !s.shouldUseAgentSave(proc) {
-		t.Error("codex app-server backend must use agent save (SupportsResume=false)")
-	}
-}
-
-func TestShouldUseAgentSave_ClaudeUsesResume(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
-	proc := &processInfo{
-		modelID: "claude:sonnet-5",
-		backend: fakeBackend{name: "cli_interactive", supportsResume: true},
-	}
-	if s.shouldUseAgentSave(proc) {
-		t.Error("claude with default settings must use resume path; got forced agent save")
-	}
-}
-
-func TestShouldUseAgentSave_UnknownAdapterFallsThrough(t *testing.T) {
-	t.Parallel()
-	s := New(Config{ContextSaveViaAgent: false, Clock: clock.Real()})
-	proc := &processInfo{modelID: "unknown:weird"}
-	if s.shouldUseAgentSave(proc) {
-		t.Error("unknown adapter must NOT force agent save (graceful fallback to resume; resume itself will warn)")
-	}
-}

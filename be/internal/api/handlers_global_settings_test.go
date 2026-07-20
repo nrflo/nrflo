@@ -41,7 +41,6 @@ func decodeSettingsResponse(t *testing.T, rr *httptest.ResponseRecorder) map[str
 // in a fresh (template) DB.
 var globalSettingsBoolFields = []string{
 	"low_consumption_mode",
-	"context_save_via_agent",
 	"simplified_agents_graph",
 	"experimental",
 	"api_mode_enabled",
@@ -105,18 +104,18 @@ func TestGlobalSettings_BoolFields(t *testing.T) {
 func TestGlobalSettings_BoolFieldAbsentPreserves(t *testing.T) {
 	s := newGlobalSettingsServer(t)
 
-	// Enable context_save_via_agent.
-	patchSettings(t, s, `{"context_save_via_agent":true}`)
+	// Enable simplified_agents_graph.
+	patchSettings(t, s, `{"simplified_agents_graph":true}`)
 
-	// PATCH only a different field — context_save_via_agent must be preserved.
+	// PATCH only a different field — simplified_agents_graph must be preserved.
 	patchSettings(t, s, `{"low_consumption_mode":true}`)
 
 	// An empty PATCH must likewise preserve everything.
 	patchSettings(t, s, `{}`)
 
 	resp := getSettings(t, s)
-	if resp["context_save_via_agent"] != true {
-		t.Errorf("context_save_via_agent = %v, want true (should be preserved)", resp["context_save_via_agent"])
+	if resp["simplified_agents_graph"] != true {
+		t.Errorf("simplified_agents_graph = %v, want true (should be preserved)", resp["simplified_agents_graph"])
 	}
 	if resp["low_consumption_mode"] != true {
 		t.Errorf("low_consumption_mode = %v, want true (should be preserved)", resp["low_consumption_mode"])

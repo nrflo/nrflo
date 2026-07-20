@@ -18,7 +18,6 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     api_via_cli_enabled: false,
     claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
-    context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
     capture_thinking_enabled: false,
@@ -29,7 +28,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
 }
 
 // Toggle DOM order: [0]=api_mode, [1]=api_native_tools, [2]=system_prompt_override, [3]=low_consumption,
-// [3]=context_save, [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer, [8]=capture_thinking.
+// [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer, [8]=capture_thinking, [9]=dynamic_workflow_auto.
 describe('GlobalSettingsSection boolean toggles', () => {
   beforeEach(() => vi.clearAllMocks())
 
@@ -80,7 +79,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[6]).toHaveAttribute('aria-checked', 'false')
+    expect(toggles[5]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Experimental features')).toBeInTheDocument()
   })
 
@@ -88,7 +87,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ experimental: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[6]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[5]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clicking Experimental toggle calls updateGlobalSettings({ experimental: true })', async () => {
@@ -98,7 +97,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[6])
+    await user.click(toggles[5])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: true })
@@ -112,7 +111,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[6])
+    await user.click(toggles[5])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ experimental: false })
@@ -123,7 +122,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[7]).toHaveAttribute('aria-checked', 'false')
+    expect(toggles[6]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Route API agents via Claude CLI')).toBeInTheDocument()
   })
 
@@ -131,7 +130,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ api_via_cli_enabled: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[7]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[6]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clicking api_via_cli_enabled toggle (false→true) calls updateGlobalSettings({ api_via_cli_enabled: true })', async () => {
@@ -141,7 +140,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[7])
+    await user.click(toggles[6])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_via_cli_enabled: true })
@@ -155,7 +154,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[7])
+    await user.click(toggles[6])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ api_via_cli_enabled: false })
@@ -210,7 +209,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: false }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[9]).toHaveAttribute('aria-checked', 'false')
+    expect(toggles[8]).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByText('Capture model thinking')).toBeInTheDocument()
   })
 
@@ -218,7 +217,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
     vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ capture_thinking_enabled: true }))
     renderWithQuery(<GlobalSettingsSection />)
     const toggles = await screen.findAllByRole('switch')
-    expect(toggles[9]).toHaveAttribute('aria-checked', 'true')
+    expect(toggles[8]).toHaveAttribute('aria-checked', 'true')
   })
 
   it('clicking capture_thinking_enabled toggle (false→true) calls updateGlobalSettings({ capture_thinking_enabled: true })', async () => {
@@ -228,7 +227,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[9])
+    await user.click(toggles[8])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ capture_thinking_enabled: true })
@@ -242,7 +241,7 @@ describe('GlobalSettingsSection boolean toggles', () => {
 
     const user = userEvent.setup()
     const toggles = await screen.findAllByRole('switch')
-    await user.click(toggles[9])
+    await user.click(toggles[8])
 
     await waitFor(() => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ capture_thinking_enabled: false })

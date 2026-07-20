@@ -31,7 +31,7 @@ Selection precedence in `startBackend`: `api` → `script` → `cli_interactive`
 
 ### api-via-cli hybrid
 
-When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Because the CLI picks its context window from the `--model` string (not `proc.maxContext`), the `APIModel` gets a `[1m]` suffix when `APIContext` is 1M and exceeds `CLIContext`, so the real window matches the reported one. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped; `proc.apiViaCLI=true` forces agent-based context save. OpenAI models stay on the in-process runner.
+When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Because the CLI picks its context window from the `--model` string (not `proc.maxContext`), the `APIModel` gets a `[1m]` suffix when `APIContext` is 1M and exceeds `CLIContext`, so the real window matches the reported one. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped. OpenAI models stay on the in-process runner.
 
 ### Codex app-server backend
 
@@ -59,16 +59,11 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` �
 
 ## Context Save
 
-Two paths, selected by `shouldUseAgentSave(proc)` in `context_save.go`:
-
-- **Resume-based** (`context_save_resume.go`): spawns a one-shot `cli_interactive` session with `--resume <external_session_id>` and the save prompt; reuses the standard interactive backend + hook completion. Used when `proc.backend.SupportsResume() == true` (Claude PTY only). Falls back to the agent path on any failure (missing external session ID, start error, non-zero exit, timeout, missing `to_resume` findings).
-- **System agent** (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for api-mode, codex (app-server backend), and when `Config.ContextSaveViaAgent == true`.
-
-Script-mode agents are exempt (`TracksContext()=false`).
+The only kill-time save path (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for every backend (cli, api, codex app-server). Script-mode agents are exempt (`TracksContext()=false`).
 
 ## Low-Context Relaunch
 
-When context usage crosses the threshold, the spawner kills the agent, saves context via the path above, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go` and `context_save_resume.go`.
+When context usage crosses the threshold, the spawner kills the agent, saves context via the context-saver agent, then calls `relaunchForContinuation`. The new session inherits `to_resume` findings via the `low-context` injectable block. Core logic lives in `context_save.go`.
 
 ## Context Ledger
 

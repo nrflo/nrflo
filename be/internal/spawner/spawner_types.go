@@ -79,7 +79,7 @@ type processInfo struct {
 	backend ExecutionBackend
 	pid     int // OS pid; set by backends when proc.cmd is nil (e.g. PTY-owned process)
 	// env is the full process env assembled in prepareSpawn (nrflo-controlled vars +
-	// per-project vars). Stored separately from cmd.Env so contextSaveViaResume can
+	// per-project vars). Stored separately from cmd.Env so context save can
 	// reach it for PTY-owned processes where cmd is nil by design.
 	env []string
 	// sessionStartCh is closed (idempotently) when Claude's SessionStart hook
@@ -175,7 +175,6 @@ type processInfo struct {
 	adapter             CLIAdapter // nil for api/script backends
 	// API-via-CLI tool registry: populated by apiBackend when APIViaCLI is enabled.
 	// Read by spawner_tools.go to serve MCP tool list/dispatch over the socket bridge.
-	apiViaCLI   bool
 	apiTools    []provider.ToolSpec
 	apiHandlers apirun.Registry
 	apiToolEnv  apirun.ToolEnv

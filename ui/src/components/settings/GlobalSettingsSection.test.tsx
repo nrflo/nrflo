@@ -17,7 +17,6 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     api_native_tools_enabled: false,
     claude_system_prompt_override_enabled: false,
     low_consumption_mode: false,
-    context_save_via_agent: false,
     simplified_agents_graph: false,
     experimental: false,
     stall_start_timeout_sec: null,

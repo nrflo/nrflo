@@ -74,7 +74,6 @@ func newTestSpawner() *Spawner {
 func registerProc(s *Spawner, sessionID string, tools []provider.ToolSpec, handlers apirun.Registry) {
 	proc := &processInfo{
 		sessionID:   sessionID,
-		apiViaCLI:   true,
 		apiTools:    tools,
 		apiHandlers: handlers,
 	}

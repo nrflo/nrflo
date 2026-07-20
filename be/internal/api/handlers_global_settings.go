@@ -18,12 +18,6 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	contextSaveViaAgentVal, err := svc.Get("context_save_via_agent")
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	simplifiedAgentsGraphVal, err := svc.Get("simplified_agents_graph")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -106,7 +100,6 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 
 	resp := map[string]interface{}{
 		"low_consumption_mode":                  val == "true",
-		"context_save_via_agent":                contextSaveViaAgentVal == "true",
 		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
 		"experimental":                          experimentalVal == "true",
 		"api_mode_enabled":                      apiModeVal == "true",

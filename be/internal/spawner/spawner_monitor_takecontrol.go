@@ -17,6 +17,17 @@ func (s *Spawner) rejectTakeControl(req SpawnRequest, proc *processInfo, session
 	s.signalTakeControlReady(sessionID)
 }
 
+// sessionIDForResume returns the session ID to pass as ResumeSessionID to
+// BuildInteractiveCommand. Uses proc.sessionID when the adapter tracks custom
+// session IDs (Claude), and proc.externalSessionID (codex-assigned thread_id)
+// otherwise.
+func sessionIDForResume(adapter CLIAdapter, proc *processInfo) string {
+	if adapter.SupportsSessionID() {
+		return proc.sessionID
+	}
+	return proc.externalSessionID
+}
+
 // canResumeTakeControl reports whether proc's backend/adapter can be resumed
 // after a take-control kill. False means the PTY manager would have nothing
 // to launch when the viewer connects — Create() errors honestly instead of

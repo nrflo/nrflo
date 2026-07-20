@@ -144,7 +144,7 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 	if val, _ := pool.GetProjectConfig(wi.ProjectID, "push_after_merge"); val == "true" {
 		pushAfterMerge = true
 	}
-	lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
+	lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
 	projectEnv := loadProjectEnv(ctx, pool, wi.ProjectID, o.clock)
 
 	spawnWorkflows := convertToSpawnerWorkflows(svcWorkflows)
@@ -180,7 +180,7 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 	}))
 
 	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf,
-		resumeIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent,
+		resumeIdx, wt, agentTags, nil, lowConsumptionMode,
 		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON,
 		pushAfterMerge, projectEnv, layerPolicies, layerPause)
 

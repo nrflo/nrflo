@@ -174,7 +174,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 	}
 
 	// Read consumption-mode and stall-timeout settings (once at workflow start)
-	lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
+	lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout := readRunConsumptionSettings(pool)
 
 	// Load the unified model registry once at workflow start.
 	modelConfigs, err := o.loadModelConfigs(pool)
@@ -271,7 +271,7 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 
 	// Run orchestration loop in goroutine
 	launched = true
-	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, contextSaveViaAgent, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
+	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf, 0, wt, agentTags, pre, lowConsumptionMode, globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON, pushAfterMerge, projectEnv, layerPolicies, layerPause)
 
 	status := "started"
 	sessionID := ""

@@ -80,10 +80,6 @@ func TestPrepareSpawn_CLIInteractiveClaude_MCPTools(t *testing.T) {
 	if prep.opts.AllowedToolsCSV != "mcp__nrflo__*" {
 		t.Errorf("AllowedToolsCSV = %q, want mcp__nrflo__*", prep.opts.AllowedToolsCSV)
 	}
-	if proc.apiViaCLI {
-		t.Error("proc.apiViaCLI = true; want false for regular cli_interactive Claude")
-	}
-
 	// MCP config points at the nrflo agent mcp bridge.
 	var mcpCfg struct {
 		MCPServers map[string]struct {

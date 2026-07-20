@@ -176,10 +176,6 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	if val, _ := pool.GetConfig("low_consumption_mode"); val == "true" {
 		lowConsumptionMode = true
 	}
-	contextSaveViaAgent := false
-	if val, _ := pool.GetConfig("context_save_via_agent"); val == "true" {
-		contextSaveViaAgent = true
-	}
 	var globalStallStartTimeout, globalStallRunningTimeout *int
 	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
 		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {
@@ -225,7 +221,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 	}))
 
 	go o.runLoop(orchCtx, wi.ID, req, parentSession, projectRoot, spawnWorkflows, spawnAgents, svcWf,
-		resumeIdx, wt, agentTags, nil, lowConsumptionMode, contextSaveViaAgent,
+		resumeIdx, wt, agentTags, nil, lowConsumptionMode,
 		globalStallStartTimeout, globalStallRunningTimeout, modelConfigs, claudeSettingsJSON,
 		pushAfterMerge, projectEnv, layerPolicies, layerPause)
 

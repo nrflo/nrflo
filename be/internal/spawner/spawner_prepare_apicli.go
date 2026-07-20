@@ -48,7 +48,6 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	// Read so it can access materialized artifacts by path directly.
 	substituteReadDocumentPath(specs, handlers)
 
-	proc.apiViaCLI = true
 	proc.nudgeMax = 0
 	proc.adapter = adapter
 	// modelID must start "claude:" so BuildInteractiveSettingsJSON emits hooks+statusLine

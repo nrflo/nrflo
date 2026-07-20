@@ -168,12 +168,9 @@ func (o *Orchestrator) forceStopInstance(instanceID string) error {
 
 // readRunConsumptionSettings reads consumption-mode and stall-timeout settings from the
 // shared pool. Read once at workflow start and retry.
-func readRunConsumptionSettings(pool *db.Pool) (lowConsumptionMode, contextSaveViaAgent bool, globalStallStartTimeout, globalStallRunningTimeout *int) {
+func readRunConsumptionSettings(pool *db.Pool) (lowConsumptionMode bool, globalStallStartTimeout, globalStallRunningTimeout *int) {
 	if val, _ := pool.GetConfig("low_consumption_mode"); val == "true" {
 		lowConsumptionMode = true
-	}
-	if val, _ := pool.GetConfig("context_save_via_agent"); val == "true" {
-		contextSaveViaAgent = true
 	}
 	if val, _ := pool.GetConfig("stall_start_timeout_sec"); val != "" {
 		if parsed, parseErr := strconv.Atoi(val); parseErr == nil {

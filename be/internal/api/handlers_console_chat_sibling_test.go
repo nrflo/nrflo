@@ -24,7 +24,7 @@ func handsSiblingReq(sid string) *http.Request {
 
 // createT0DeciderChatSession mirrors createChatSession but starts a
 // t0-decider profile chat under the claude engine (matching the profile's
-// DefaultEngine) so the sibling-flow gate (t0-decider-only) is satisfied.
+// DefaultEngine) so the sibling-flow gate (Profile.SiblingFlows) is satisfied.
 func createT0DeciderChatSession(t *testing.T, s *Server, factory *fakeEngineFactory, project string, cookie *http.Cookie) string {
 	t.Helper()
 	chain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleCreateConsoleChat)))
@@ -73,7 +73,7 @@ func TestHandleSwitchConsoleChatModel_HappyPath_Returns201WithSiblingID(t *testi
 	}
 }
 
-func TestHandleSwitchConsoleChatModel_NonT0Decider_Returns400(t *testing.T) {
+func TestHandleSwitchConsoleChatModel_NoProfile_Returns400(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-switch-nont0")
 	adminID := createTestUser(t, s, "chat-switch2@test.com", model.UserRoleAdmin, false)
@@ -105,12 +105,9 @@ func TestHandleSwitchConsoleChatModel_UnknownSession_Returns404(t *testing.T) {
 	}
 }
 
-// TestHandleOpenHandsSibling_NonT0Decider_Returns400 exercises the
-// well-defined (non-buggy) part of the hands-sibling flow: the profile gate
-// rejects a non-t0-decider origin before ever reaching the broken
-// engine-resolution path (see console.chat_service_sibling_test.go's
-// documented OpenHandsSibling production bug).
-func TestHandleOpenHandsSibling_NonT0Decider_Returns400(t *testing.T) {
+// TestHandleOpenHandsSibling_NoProfile_Returns400 verifies the
+// Profile.SiblingFlows gate rejects a profileless origin chat.
+func TestHandleOpenHandsSibling_NoProfile_Returns400(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-hands-nont0")
 	adminID := createTestUser(t, s, "chat-hands1@test.com", model.UserRoleAdmin, false)

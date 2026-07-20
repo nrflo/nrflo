@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { useConsoleCatalog, useSwitchConsoleChatModel, useOpenHandsSibling } from '@/hooks/useConsoleChats'
 
-// Profiles whose chats get the sibling affordances below: 't0-decider' picks
-// a model and spawns a sibling with it (the engine is never mutated in
-// place); 'Open hands sibling' works for any t0 profile since it always
-// targets the t0-hands companion.
-const T0_PROFILES = new Set(['t0-decider', 't0-hands'])
+// Profiles that support sibling flows (backend Profile.SiblingFlows): their
+// chats never mutate their live engine in place, so switching model or
+// opening the t0-hands companion always spawns a sibling instead.
+const T0_PROFILES = new Set(['t0-decider', 't0-hands', 't0-bare'])
 
 export function isT0Profile(profile: string | undefined): boolean {
   return !!profile && T0_PROFILES.has(profile)

@@ -40,15 +40,15 @@ func TestHandleListDefaultTemplates_FilterByTypeInjectable(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 12 {
-		t.Fatalf("len = %d, want 12 (injectable-type templates)", len(list))
+	if len(list) != 13 {
+		t.Fatalf("len = %d, want 13 (injectable-type templates)", len(list))
 	}
 	wantIDs := map[string]bool{
 		"low-context": true, "callback": true, "user-instructions": true,
 		"system-prompt-suffix": true, "finish-reminder": true, "system-prompt": true, "working-set": true,
 		"api-system-prompt": true,
 		"tier-t0-decider":   true, "tier-t1-executor": true, "tier-t2-extractor": true,
-		"delegation-guidance": true,
+		"delegation-guidance": true, "tier-t0-bare": true,
 	}
 	for _, tmpl := range list {
 		if tmpl.Type != "injectable" {
@@ -318,8 +318,8 @@ func TestHandleListDefaultTemplates_FilterAfterCRUD(t *testing.T) {
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, listReq)
 	list := decodeDefaultTemplateList(t, listRR)
-	if len(list) != 13 {
-		t.Errorf("injectable count = %d, want 13 (12 seeded + 1 created)", len(list))
+	if len(list) != 14 {
+		t.Errorf("injectable count = %d, want 14 (13 seeded + 1 created)", len(list))
 	}
 
 	agentReq := httptest.NewRequest(http.MethodGet, "/api/v1/default-templates?type=agent", nil)

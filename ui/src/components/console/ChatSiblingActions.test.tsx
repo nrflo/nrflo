@@ -64,9 +64,10 @@ function setup({
 }
 
 describe('isT0Profile', () => {
-  it('is true only for the t0-decider/t0-hands profiles, gating ChatView render', () => {
+  it('is true only for the t0-decider/t0-hands/t0-bare profiles, gating ChatView render', () => {
     expect(isT0Profile('t0-decider')).toBe(true)
     expect(isT0Profile('t0-hands')).toBe(true)
+    expect(isT0Profile('t0-bare')).toBe(true)
     expect(isT0Profile('some-other-profile')).toBe(false)
     expect(isT0Profile(undefined)).toBe(false)
   })

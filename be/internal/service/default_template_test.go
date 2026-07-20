@@ -36,8 +36,8 @@ func TestDefaultTemplate_List_ReadonlyHasDefaultTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if len(templates) != 18 {
-		t.Fatalf("List len = %d, want 18 pre-seeded readonly templates", len(templates))
+	if len(templates) != 19 {
+		t.Fatalf("List len = %d, want 19 pre-seeded readonly templates", len(templates))
 	}
 	for _, tmpl := range templates {
 		if !tmpl.Readonly {

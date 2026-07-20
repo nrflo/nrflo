@@ -43,6 +43,11 @@ type Profile struct {
 	// catalogue (today's pre-profile behavior, e.g. a chat created with no
 	// profile).
 	Catalogue []string
+	// SiblingFlows marks a profile as a valid origin for
+	// ChatService.SwitchModel/OpenHandsSibling (chat_service_sibling.go) — a
+	// chat running under a profile with this set false (or the zero Profile)
+	// refuses those calls with ErrSiblingUnsupportedProfile.
+	SiblingFlows bool
 }
 
 // t0DeciderCatalogue is the T0 decider's tool allowlist: delegation +
@@ -62,6 +67,16 @@ var t0DeciderCatalogue = []string{
 	"ticket_create", "ticket_update", "ticket_add_dependency", "ticket_list", "ticket_get", "ticket_current",
 	"artifact_list", "artifact_get",
 	"web_search", "consult",
+}
+
+// t0BareCatalogue is the T0 bare profile's tool allowlist: pure delegation +
+// read/drive access to workflows, sub-workflow plans, and tickets — no
+// findings, artifacts, web search/consult, or fs/bash. Exactly 13 tools.
+var t0BareCatalogue = []string{
+	"delegate", "get_delegation",
+	"dynamic_workflow", "get_subworkflow", "revise_plan", "approve_plan",
+	"workflow_run", "workflow_list", "workflow_get", "workflow_continue", "workflow_stop",
+	"ticket_list", "ticket_current",
 }
 
 // builtinProfiles is the registry populated by init(). Unexported: callers go
@@ -85,6 +100,7 @@ func init() {
 		SystemTemplateID:    "tier-t0-decider",
 		NativeToolPolicy:    NativeToolPolicyNone,
 		Catalogue:           t0DeciderCatalogue,
+		SiblingFlows:        true,
 	})
 	registerProfile(Profile{
 		Name:                "t0-hands",
@@ -98,6 +114,21 @@ func init() {
 		SystemTemplateID:    "",
 		NativeToolPolicy:    NativeToolPolicyFull,
 		Catalogue:           nil,
+		SiblingFlows:        true,
+	})
+	registerProfile(Profile{
+		Name:                "t0-bare",
+		DisplayName:         "T0 Bare",
+		Description:         "Pure-delegation T0: decides and delegates only, with the narrowest tool catalogue of the three t0 profiles.",
+		DefaultEngine:       "claude",
+		DefaultModelID:      "opus-4-8",
+		DefaultEffort:       "xhigh",
+		ContextBudgetTokens: 30000,
+		RefineryDefault:     true,
+		SystemTemplateID:    "tier-t0-bare",
+		NativeToolPolicy:    NativeToolPolicyNone,
+		Catalogue:           t0BareCatalogue,
+		SiblingFlows:        true,
 	})
 }
 

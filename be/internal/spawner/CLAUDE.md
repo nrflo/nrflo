@@ -121,7 +121,7 @@ Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle win
 
 ## Template Variables
 
-Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The readonly `delegation-guidance` injectable is appended (via `appendDelegationGuidance` in `template_injectable.go`) to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, and cli_interactive — whenever the def's effective tool specs include `delegate`; absent that tool, the prompt is unchanged.
+Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The readonly `delegation-guidance` injectable is appended to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, cli_interactive, and the console chat-spec seam (`buildChatEngineSpec` via `spawner.AppendDelegationGuidanceForTools`, `template_injectable.go`) — whenever the effective tool set includes `delegate`; absent that tool, the prompt is unchanged.
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 

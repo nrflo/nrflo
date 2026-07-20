@@ -10,10 +10,10 @@ import (
 	"be/internal/console"
 )
 
-// handleSwitchConsoleChatModel opens a sibling t0-decider chat under a
-// different engine/model/effort, seeded with {sid}'s refinery digest, and
-// leaves {sid}'s own engine live — a model change never mutates a
-// t0-decider chat's running engine mid-conversation.
+// handleSwitchConsoleChatModel opens a sibling chat under {sid}'s own
+// SiblingFlows-enabled profile with a different engine/model/effort, seeded
+// with {sid}'s refinery digest, and leaves {sid}'s own engine live — a model
+// change never mutates the origin chat's running engine mid-conversation.
 // POST /api/v1/console/chats/{sid}/switch-model
 func (s *Server) handleSwitchConsoleChatModel(w http.ResponseWriter, r *http.Request) {
 	sess, ok := s.loadConsoleChatSession(w, r)
@@ -65,13 +65,14 @@ func (s *Server) handleOpenHandsSibling(w http.ResponseWriter, r *http.Request) 
 }
 
 // writeSiblingError maps the sibling-flow error vocabulary: an unknown live
-// session is 404, a non-t0-decider origin (the sibling flows' profile gate)
-// or unknown profile is 400, anything else is a 500.
+// session is 404, an origin chat whose profile doesn't allow sibling flows
+// (Profile.SiblingFlows) or an unknown profile is 400, anything else is a
+// 500.
 func writeSiblingError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, console.ErrChatSessionNotFound):
 		writeError(w, http.StatusNotFound, "console chat session not found")
-	case errors.Is(err, console.ErrUnknownProfile), errors.Is(err, console.ErrSiblingRequiresT0Decider):
+	case errors.Is(err, console.ErrUnknownProfile), errors.Is(err, console.ErrSiblingUnsupportedProfile):
 		writeError(w, http.StatusBadRequest, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, err.Error())

@@ -4,7 +4,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ## Console-Chat Profiles
 
-`Profile` (`profiles.go`) fields: `Name`, `DisplayName`, `Description`, `DefaultEngine`, `DefaultModelID`, `DefaultEffort`, `ContextBudgetTokens`, `RefineryDefault`, `SystemTemplateID`, `NativeToolPolicy`, `Catalogue []string`. `ProfileByName("")` returns the zero `Profile` (no restriction, no defaults) — the pre-profile behavior every existing chat-create call keeps by passing an empty profile name; `ProfileByName(unknown)` returns `ErrUnknownProfile`.
+`Profile` (`profiles.go`) fields: `Name`, `DisplayName`, `Description`, `DefaultEngine`, `DefaultModelID`, `DefaultEffort`, `ContextBudgetTokens`, `RefineryDefault`, `SystemTemplateID`, `NativeToolPolicy`, `Catalogue []string`, `SiblingFlows bool`. `ProfileByName("")` returns the zero `Profile` (no restriction, no defaults, `SiblingFlows=false`) — the pre-profile behavior every existing chat-create call keeps by passing an empty profile name; `ProfileByName(unknown)` returns `ErrUnknownProfile`.
 
 ### t0-decider
 
@@ -13,6 +13,14 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 ### t0-hands
 
 `engine=claude`, `model=sonnet-5` (already 1M-context natively, no `[1m]` row needed), `budget=150000`, `refinery=false`, `native_tool_policy=full`, `Catalogue=nil` (full console catalogue). Opened only via `OpenHandsSibling`, never created top-level by the picker's default flow (though the profile itself imposes no such restriction — the UI is what steers this).
+
+### t0-bare
+
+`engine=claude`, `model=opus-4-8`, `effort=xhigh`, `budget=30000`, `refinery=true`, `system_template_id=tier-t0-bare` (seeded by migration 000190), `native_tool_policy=none`. Catalogue (`t0BareCatalogue`, exactly 13 tools): `delegate`, `get_delegation`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `workflow_run`, `workflow_list`, `workflow_get`, `workflow_continue`, `workflow_stop`, `ticket_list`, `ticket_current`. Narrower than `t0-decider`: no `project_findings_*`, `artifact_list`/`artifact_get`, `web_search`, `consult`, or `ticket_create`/`_update`/`_add_dependency`/`_get` — a pure-delegation profile that decides and delegates only, nothing else.
+
+### Console-side delegation-guidance append
+
+`buildChatEngineSpec` (`chat_spec.go`) computes the standard `vars` map once, renders `SystemTemplateID` into `spec.SystemPrompt` when set, then unconditionally calls `spawner.AppendDelegationGuidanceForTools(ctx, pool, spec.SystemPrompt, p.Catalogue, vars)` — the same guard (delegate-membership check + render `delegation-guidance` + `TrimSpace`-empty guard + `"\n\n"` join) the spawner's own api/api-via-cli/cli_interactive seams use, gated on `p.Catalogue` (the profile's enumerated tool-name list) rather than the resolved registry, so a nil/empty catalogue (no profile, `t0-hands`) is a no-op and only `t0-decider`/`t0-bare` (which enumerate `delegate`) see the append. `chat_service.go`'s `create()` and `chat_service_rotate.go`'s `rotate()` both pass `Catalogue: profile.Catalogue` into `chatSpecParams`.
 
 ### Threading into the engine
 

@@ -22,6 +22,12 @@ type chatSpecParams struct {
 	SpawnToken       string
 	ServerURL        string // loopback base, e.g. http://127.0.0.1:6587
 	SystemTemplateID string // optional agent-def/profile injectable id, rendered into spec.SystemPrompt
+	// Catalogue is the profile's BuildRegistry allowlist (nil for no
+	// profile/full tool set). Passed to
+	// spawner.AppendDelegationGuidanceForTools so a profile enumerating
+	// `delegate` (t0-decider, t0-bare) gets the same readonly
+	// delegation-guidance append every other prompt-assembly seam applies.
+	Catalogue []string
 
 	// Profile-derived fields (console.Profile, resolved by the caller —
 	// chat_service.go's create()). Zero values are "no profile", byte-
@@ -98,10 +104,11 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 		return spawner.EngineSpec{}, err
 	}
 
+	vars := map[string]string{"PROJECT_ID": p.ProjectID, "MODEL": spec.Model, "NODE_ID": p.SessionID}
 	if p.SystemTemplateID != "" {
-		vars := map[string]string{"PROJECT_ID": p.ProjectID, "MODEL": spec.Model, "NODE_ID": p.SessionID}
 		spec.SystemPrompt = spawner.RenderInjectable(context.Background(), pool, p.SystemTemplateID, vars)
 	}
+	spec.SystemPrompt = spawner.AppendDelegationGuidanceForTools(context.Background(), pool, spec.SystemPrompt, p.Catalogue, vars)
 
 	return spec, nil
 }

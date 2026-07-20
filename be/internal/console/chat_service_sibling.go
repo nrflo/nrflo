@@ -7,46 +7,50 @@ import (
 	"be/internal/ws"
 )
 
-// t0DeciderProfile is the one profile name the sibling flows below are gated
-// on: SwitchModel/OpenHandsSibling exist because a t0-decider chat must never
-// have its live engine mutated mid-conversation (see profiles.go) — for any
-// other profile (or no profile) there is no such invariant to protect, so
-// these calls are refused rather than silently no-oping.
-const t0DeciderProfile = "t0-decider"
+// ErrSiblingUnsupportedProfile is returned by SwitchModel/OpenHandsSibling
+// when sid's chat is not running under a profile with SiblingFlows set.
+var ErrSiblingUnsupportedProfile = errors.New("console: sibling flow requires a SiblingFlows-enabled origin chat")
 
-// ErrSiblingRequiresT0Decider is returned by SwitchModel/OpenHandsSibling
-// when sid's chat is not running under the t0-decider profile.
-var ErrSiblingRequiresT0Decider = errors.New("console: sibling flow requires a t0-decider origin chat")
-
-// SwitchModel opens a sibling t0-decider chat under a different
-// engine/model/effort, seeded with origin sid's refinery digest, and leaves
-// sid's own engine live and untouched — a model change on a t0-decider chat
-// must never mutate the running engine mid-conversation. Returns the
-// sibling's session id.
-func (s *ChatService) SwitchModel(sid, engine, modelID, effort string) (string, error) {
+// siblingOrigin resolves sid to its live chat session and the console.Profile
+// it is running under, and requires that profile to allow the sibling flows
+// (Profile.SiblingFlows) — the one gate SwitchModel/OpenHandsSibling share,
+// generalized from the old hardcoded t0-decider name-check (Rule 6:
+// polymorphism lives in the profile, not the call site).
+func (s *ChatService) siblingOrigin(sid string) (*chatSession, Profile, error) {
 	origin, ok := s.get(sid)
 	if !ok {
-		return "", ErrChatSessionNotFound
+		return nil, Profile{}, ErrChatSessionNotFound
 	}
-	if origin.Profile() != t0DeciderProfile {
-		return "", ErrSiblingRequiresT0Decider
+	profile, err := ProfileByName(origin.Profile())
+	if err != nil || !profile.SiblingFlows {
+		return nil, Profile{}, ErrSiblingUnsupportedProfile
+	}
+	return origin, profile, nil
+}
+
+// SwitchModel opens a sibling chat under origin's own profile with a
+// different engine/model/effort, seeded with origin sid's refinery digest,
+// and leaves sid's own engine live and untouched — a model change must never
+// mutate the running engine mid-conversation. Returns the sibling's session
+// id.
+func (s *ChatService) SwitchModel(sid, engine, modelID, effort string) (string, error) {
+	origin, profile, err := s.siblingOrigin(sid)
+	if err != nil {
+		return "", err
 	}
 	if engine == "" {
 		engine = origin.EngineName()
 	}
-	return s.openSibling(origin, engine, modelID, effort, t0DeciderProfile, "model_switch")
+	return s.openSibling(origin, engine, modelID, effort, profile.Name, "model_switch")
 }
 
 // OpenHandsSibling opens a t0-hands sibling chat (full tools, no
 // restrictions) seeded with origin sid's refinery digest, and leaves sid's
 // own engine live and untouched. Returns the sibling's session id.
 func (s *ChatService) OpenHandsSibling(sid string) (string, error) {
-	origin, ok := s.get(sid)
-	if !ok {
-		return "", ErrChatSessionNotFound
-	}
-	if origin.Profile() != t0DeciderProfile {
-		return "", ErrSiblingRequiresT0Decider
+	origin, _, err := s.siblingOrigin(sid)
+	if err != nil {
+		return "", err
 	}
 	return s.openSibling(origin, "", "", "", "t0-hands", "hands_sibling")
 }

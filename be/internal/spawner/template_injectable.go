@@ -80,23 +80,34 @@ func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[stri
 	return appendDelegationGuidance(ctx, pool, sys, specs, vars)
 }
 
-// hasToolSpec reports whether specs contains a tool named name.
-func hasToolSpec(specs []provider.ToolSpec, name string) bool {
-	for _, spec := range specs {
-		if spec.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
 // appendDelegationGuidance appends the readonly "delegation-guidance"
 // injectable to sys when specs include the `delegate` tool, matching
 // apiSystemPromptWithSuffix's "\n\n" join + TrimSpace-empty guards. Returns
 // sys byte-identical when delegate is absent or the injectable renders empty,
 // so defs without the tool see an unchanged prompt.
 func appendDelegationGuidance(ctx context.Context, pool *db.Pool, sys string, specs []provider.ToolSpec, vars map[string]string) string {
-	if !hasToolSpec(specs, "delegate") {
+	names := make([]string, 0, len(specs))
+	for _, spec := range specs {
+		names = append(names, spec.Name)
+	}
+	return AppendDelegationGuidanceForTools(ctx, pool, sys, names, vars)
+}
+
+// AppendDelegationGuidanceForTools is the exported form of
+// appendDelegationGuidance for callers outside this package that hold a tool
+// name list rather than []provider.ToolSpec (the console package, whose
+// chat-spec seam gates on a console.Profile's Catalogue) — the single guard
+// this delegate-membership + render + append logic lives in (project rule:
+// no duplicated guard logic across seams).
+func AppendDelegationGuidanceForTools(ctx context.Context, pool *db.Pool, sys string, toolNames []string, vars map[string]string) string {
+	hasDelegate := false
+	for _, name := range toolNames {
+		if name == "delegate" {
+			hasDelegate = true
+			break
+		}
+	}
+	if !hasDelegate {
 		return sys
 	}
 	guidance := renderInjectable(ctx, pool, "delegation-guidance", vars)

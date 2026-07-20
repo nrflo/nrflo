@@ -79,6 +79,7 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 		ReasoningEffort:     sess.ReasoningEffort(),
 		ServerURL:           s.deps.ServerURL,
 		SystemTemplateID:    sess.SystemTemplateID(),
+		Catalogue:           profile.Catalogue,
 		NativeToolPolicy:    profile.NativeToolPolicy,
 		ContextBudgetTokens: profile.ContextBudgetTokens,
 	})

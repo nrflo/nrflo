@@ -116,6 +116,9 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 	if err != nil {
 		return "", "", err
 	}
+	if engine == "" {
+		engine = profile.DefaultEngine
+	}
 
 	sessionID = uuid.New().String()
 	token = id.MintToken()
@@ -136,6 +139,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		SpawnToken:          token,
 		ServerURL:           s.deps.ServerURL,
 		SystemTemplateID:    systemTemplateID,
+		Catalogue:           profile.Catalogue,
 		NativeToolPolicy:    profile.NativeToolPolicy,
 		ContextBudgetTokens: profile.ContextBudgetTokens,
 		DefaultModelID:      profile.DefaultModelID,

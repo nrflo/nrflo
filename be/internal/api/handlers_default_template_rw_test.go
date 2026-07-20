@@ -216,11 +216,11 @@ func TestHandleDeleteDefaultTemplate_NotFound(t *testing.T) {
 func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 	s := newDefaultTemplateServer(t)
 
-	// 1. List — 18 pre-seeded readonly (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt; migration 178 adds the three tier-t* templates; migration 188 adds delegation-guidance).
+	// 1. List — 19 pre-seeded readonly (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt; migration 178 adds the three tier-t* templates; migration 188 adds delegation-guidance; migration 190 adds tier-t0-bare).
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR); len(got) != 18 {
-		t.Fatalf("initial list len = %d, want 18", len(got))
+	if got := decodeDefaultTemplateList(t, listRR); len(got) != 19 {
+		t.Fatalf("initial list len = %d, want 19", len(got))
 	}
 
 	// 2. Create.
@@ -229,11 +229,11 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Errorf("newly created Readonly = true, want false")
 	}
 
-	// 3. List — 19.
+	// 3. List — 20.
 	listRR2 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR2, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 19 {
-		t.Fatalf("after create list len = %d, want 19", len(got))
+	if got := decodeDefaultTemplateList(t, listRR2); len(got) != 20 {
+		t.Fatalf("after create list len = %d, want 20", len(got))
 	}
 
 	// 4. Update.
@@ -278,10 +278,10 @@ func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 		t.Fatalf("delete status = %d, want 200", delRR.Code)
 	}
 
-	// 8. Back to 18.
+	// 8. Back to 19.
 	listRR3 := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR3, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
-	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 18 {
-		t.Errorf("after delete list len = %d, want 18", len(got))
+	if got := decodeDefaultTemplateList(t, listRR3); len(got) != 19 {
+		t.Errorf("after delete list len = %d, want 19", len(got))
 	}
 }

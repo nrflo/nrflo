@@ -116,6 +116,13 @@ type EngineSpec struct {
 	// context-watcher budget fallback (console_engine_api.go). 0 = engine/
 	// global default.
 	ContextBudgetTokens int
+	// SeededContext is the rotation-carried refinery digest, seeded into the
+	// FIRST provider request by engines that do NOT fire the
+	// UserPromptSubmit hook (api, codex). The claude engine must NOT read
+	// it — its WorkingSetInjector hook already re-injects the digest from the
+	// DB by session id, so consuming this too would double-inject. Empty on
+	// a fresh Create (no digest folded yet).
+	SeededContext string
 }
 
 // effectiveCLISessionID returns CLISessionID when set, else SessionID — the

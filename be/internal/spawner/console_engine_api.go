@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"be/internal/db"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
@@ -53,6 +52,7 @@ type apiConsoleEngine struct {
 	turnActive        bool
 	turnCancel        context.CancelFunc
 	stopped           bool
+	seedConsumed      bool
 	lastTurnStatus    string
 	lastCallbackLevel int
 	turnWG            sync.WaitGroup
@@ -166,17 +166,6 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 	return nil
 }
 
-// watcherBudget returns profileBudget when set, else the derived per-model
-// default budget (context_budget_fraction * maxContext, or the
-// context_budget_default absolute override) — the api console engine's
-// context-watcher budget.
-func watcherBudget(pool *db.Pool, profileBudget, maxContext int) int {
-	if profileBudget > 0 {
-		return profileBudget
-	}
-	return deriveContextBudgetDefault(pool, maxContext)
-}
-
 // SendUserTurn persists the user_input row BEFORE starting the turn goroutine
 // — same ordering rationale as codexEngine (console_engine_codex.go:156-160)
 // — emits turn_started, runs the shared tool-use loop on e.runCtx, then emits
@@ -203,15 +192,24 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error 
 	turnCtx, turnCancel := context.WithCancel(runCtx)
 	e.turnCancel = turnCancel
 	e.turnWG.Add(1)
+	providerText := text
+	if !e.seedConsumed && spec.SeededContext != "" {
+		providerText = seededTurnText(spec.SeededContext, text)
+	}
+	e.seedConsumed = true
 	e.mu.Unlock()
 
+	// emitMessage persists the ORIGINAL user text (not providerText), so the
+	// UI/DB row shows only what the user typed — the seeded digest is
+	// model-visible context, not a persisted user message (matching codex's
+	// original-text persistence and claude's hook additionalContext).
 	emitMessage(spec.SessionID, text, "user_input", e.sink)
 	e.emit(EngineEvent{Type: EventTurnStarted, SessionID: spec.SessionID})
 
 	go func() {
 		defer e.turnWG.Done()
 		proc := &apiEngineProcState{e: e}
-		status := conv.SendTurn(turnCtx, proc, text)
+		status := conv.SendTurn(turnCtx, proc, providerText)
 
 		// Bounded in-turn retry on rate limits: unlike autonomous api agents
 		// (which relaunch via the spawner's backoff dance), a console chat

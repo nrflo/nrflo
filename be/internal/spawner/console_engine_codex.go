@@ -39,6 +39,7 @@ type codexEngine struct {
 	turnID        string
 	turnActive    bool
 	systemPrompt  string
+	seededContext string
 	firstTurnSent bool
 
 	events       chan EngineEvent
@@ -137,6 +138,7 @@ func (e *codexEngine) Start(ctx context.Context, spec EngineSpec) error {
 	e.profileDir = profileDir
 	e.threadID = threadResp.Thread.ID
 	e.systemPrompt = spec.SystemPrompt
+	e.seededContext = spec.SeededContext
 	e.mu.Unlock()
 
 	go e.runLoop(runCtx)
@@ -158,10 +160,7 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 	}
 	e.turnActive = true
 	e.turnID = ""
-	turnText := text
-	if !e.firstTurnSent && e.systemPrompt != "" {
-		turnText = e.systemPrompt + "\n\n" + text
-	}
+	turnText := codexFirstTurnText(text, e.systemPrompt, e.seededContext, e.firstTurnSent)
 	e.mu.Unlock()
 
 	// Persist the user row (original text, no system-prompt prefix) BEFORE

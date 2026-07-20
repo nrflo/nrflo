@@ -35,6 +35,8 @@ Deep mechanics for this package. The auto-loaded map lives in [CLAUDE.md](CLAUDE
 
 **Delegation blocking.** `appServerArgs()` keeps `--disable multi_agent --disable multi_agent_v2 --disable enable_fanout` for `codexEngine`: an app-server-spawned child is invisible to nrflo, so native delegation must stay disabled for server-owned console conversations.
 
+**Rotation digest seeding.** `EngineSpec.SeededContext` is the rotation digest-seeding seam: `console.rotate()` sets it unconditionally (no engine-name branch); the api/codex engines consume it once into their first post-rotation request (`console_engine_api_seed.go`/`console_engine_codex_seed.go`), while `claudeEngine` never reads the field since its `UserPromptSubmit` hook already re-injects the digest — consuming it there too would double-inject.
+
 **System-prompt resolution + delivery.** An agent def's or chat profile's `system_template_id` resolves ahead of both the global `claude_system_prompt_override_enabled` gate and the mode default (`resolveSystemPromptOverride`/`EngineSpec.SystemPrompt`). Delivery stays per-channel — claude via `--system-prompt-file`, api via its conversation `System` — except codex, which has no system-prompt flag anywhere (autonomous or console) and instead gets the rendered text prepended to the first turn's prompt body, so its byte cap is the initial-turn/prompt-file limit, not a dedicated one.
 
 ### claudeEngine (console_engine_claude*.go)

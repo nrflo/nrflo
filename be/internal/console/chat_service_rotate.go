@@ -43,7 +43,7 @@ func (s *ChatService) maybeRotate(sess *chatSession) bool {
 		return false
 	}
 
-	return s.rotate(sess, tokensBefore)
+	return s.rotate(sess, tokensBefore, digest.Content)
 }
 
 // rotate stops sess's current engine, starts a fresh engine of the same
@@ -59,7 +59,7 @@ func (s *ChatService) maybeRotate(sess *chatSession) bool {
 // returns false: the old engine is now dead, so its pump's channel-close
 // teardown (which the caller runs precisely because rotate returned false)
 // closes the session cleanly instead of orphaning it.
-func (s *ChatService) rotate(sess *chatSession, tokensBefore int) bool {
+func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest string) bool {
 	ctx := context.Background()
 	oldEngine := sess.getEngine()
 
@@ -87,6 +87,7 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int) bool {
 		return false
 	}
 	spec.CLISessionID = uuid.New().String()
+	spec.SeededContext = seedDigest
 
 	newEngine, err := s.engineFactory(sess.EngineName(), spawner.EngineDeps{
 		Sink: &chatSink{

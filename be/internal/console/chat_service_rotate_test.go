@@ -180,6 +180,12 @@ func TestChatService_Rotation_FullFlow(t *testing.T) {
 	if newEng.spec().SessionID != sid {
 		t.Errorf("new engine spec.SessionID = %q, want %q (stable console identity)", newEng.spec().SessionID, sid)
 	}
+	// rotate() must populate spec.SeededContext from the upserted digest with
+	// no engine-name branch (Rule 6): the seam lives in each engine's Start/
+	// SendUserTurn, not at this call site.
+	if got := newEng.spec().SeededContext; got != "carried-forward working set" {
+		t.Errorf("new engine spec.SeededContext = %q, want the upserted digest content", got)
+	}
 
 	// Session row stays open under the same id (chat history preserved).
 	row, err := repo.NewAgentSessionRepo(pool, svc.deps.Clock).GetConsoleChat(sid)

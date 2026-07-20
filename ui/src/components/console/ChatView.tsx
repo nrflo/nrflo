@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
 import {
   useConsoleChat,
@@ -10,11 +9,14 @@ import {
   useCloseConsoleChat,
   useInterruptConsoleChat,
   useRevokeSessionApproval,
+  useConsoleCatalog,
 } from '@/hooks/useConsoleChats'
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
 import { TurnActiveError } from '@/api/consoleChats'
 import { ChatMessageList } from './ChatMessageList'
 import { ChatSiblingActions, isT0Profile } from './ChatSiblingActions'
+import { ChatComposer } from './ChatComposer'
+import { ChatStatusBar } from './ChatStatusBar'
 
 const XTerminal = lazy(() =>
   import('@/components/workflow/XTerminal').then((m) => ({ default: m.XTerminal }))
@@ -38,12 +40,13 @@ interface ChatViewProps {
 // Auto-scroll on new items.
 export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewProps) {
   const { data: detail } = useConsoleChat(sid)
+  const { data: catalog } = useConsoleCatalog()
+  const profileDisplayName = catalog?.profiles.find((p) => p.name === detail?.profile)?.display_name
   const stream = useConsoleChatStream(sid)
   const sendMutation = useSendConsoleChatMessage()
   const closeMutation = useCloseConsoleChat()
   const interruptMutation = useInterruptConsoleChat()
   const revokeMutation = useRevokeSessionApproval()
-  const [text, setText] = useState('')
   const [showTerminal, setShowTerminal] = useState(false)
   const [search, setSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -78,10 +81,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
 
   const isRunning = stream.turn === 'running'
 
-  const handleSend = async () => {
-    const value = text.trim()
-    if (!value || isRunning) return
-    setText('')
+  const handleSend = async (value: string) => {
     try {
       await sendMutation.mutateAsync({ sid, text: value })
     } catch (e) {
@@ -116,14 +116,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold">
-            {detail?.engine}
-            {detail?.model && <span className="font-normal text-muted-foreground"> · {detail.model}</span>}
-          </div>
-          {stream.workDir && <div className="truncate text-xs text-muted-foreground">{stream.workDir}</div>}
-        </div>
+      <div className="flex items-center justify-end border-b border-border px-4 py-3">
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-1.5">
             <Input
@@ -142,12 +135,6 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
               </span>
             )}
           </div>
-          {stream.contextLeft != null && (
-            <span className="text-xs text-muted-foreground">Context left: {stream.contextLeft}%</span>
-          )}
-          {stream.cost != null && (
-            <span className="text-xs text-muted-foreground">~${stream.cost.toFixed(2)}</span>
-          )}
           {detail && isT0Profile(detail.profile) && (
             <ChatSiblingActions
               sid={sid}
@@ -231,32 +218,22 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
         )}
       </div>
 
-      <div className="border-t border-border p-3">
-        <div className="flex items-end gap-2">
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-            placeholder={isRunning ? 'Waiting for the agent to finish its turn…' : 'Message the agent…'}
-            disabled={isRunning}
-            className="min-h-[44px]"
-          />
-          {isRunning ? (
-            <Button variant="destructive" onClick={handleInterrupt} disabled={interruptMutation.isPending}>
-              {interruptMutation.isPending ? <Spinner size="sm" /> : 'Stop'}
-            </Button>
-          ) : (
-            <Button onClick={handleSend} disabled={!text.trim() || sendMutation.isPending}>
-              Send
-            </Button>
-          )}
-        </div>
-      </div>
+      <ChatComposer
+        isRunning={isRunning}
+        sendPending={sendMutation.isPending}
+        stopPending={interruptMutation.isPending}
+        onSend={handleSend}
+        onStop={handleInterrupt}
+      />
+      <ChatStatusBar
+        engine={detail?.engine}
+        model={detail?.model}
+        profile={profileDisplayName}
+        workDir={stream.workDir}
+        contextLeft={stream.contextLeft}
+        cost={stream.cost}
+        turn={stream.turn}
+      />
     </div>
   )
 }

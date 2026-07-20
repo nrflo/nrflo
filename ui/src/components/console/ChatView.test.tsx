@@ -139,6 +139,15 @@ describe('ChatView turn controls', () => {
     expect(screen.queryByText(/^~\$/)).not.toBeInTheDocument()
   })
 
+  it('renders the status bar below the composer with engine·model and workdir', () => {
+    setup('idle')
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+
+    expect(screen.getByText('claude')).toBeInTheDocument()
+    expect(screen.getByText('· sonnet')).toBeInTheDocument()
+    expect(screen.getByText('/tmp/w')).toBeInTheDocument()
+  })
+
   it('Detach deselects without closing; Close tears the chat down', async () => {
     const { close } = setup('idle')
     const onDetach = vi.fn()

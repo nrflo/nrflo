@@ -10,6 +10,7 @@ import (
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/provider/anthropic"
 	"be/internal/spawner/apirun/provider/openai"
+	"be/internal/spawner/apirun/provider/openrouter"
 )
 
 // projectEnvAdapter implements anthropic.ProjectEnvVarRepo/openai.ProjectEnvVarRepo
@@ -38,7 +39,7 @@ func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
 }
 
 // BuildAPIProvider resolves credentials and constructs a provider.Provider for
-// the given providerName ("anthropic" or "openai"). Shared by the
+// the given providerName ("anthropic", "openai", or "openrouter"). Shared by the
 // orchestrator (autonomous api-mode agents) and the console api engine (chat
 // sessions) so there is exactly one credential-resolution path. Returns an
 // error if credentials are missing or the provider name is unknown.
@@ -59,6 +60,13 @@ func BuildAPIProvider(ctx context.Context, pool *db.Pool, clk clock.Clock, provi
 		}
 		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName)
 		return openai.New(creds), nil
+	case "openrouter":
+		creds, err := openrouter.Resolve(ctx, envRepo, projectID)
+		if err != nil {
+			return nil, err
+		}
+		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName)
+		return openrouter.New(creds), nil
 	default:
 		return nil, fmt.Errorf("unknown provider %q", providerName)
 	}

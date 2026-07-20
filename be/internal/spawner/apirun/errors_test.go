@@ -189,6 +189,18 @@ func TestClassifyProviderError(t *testing.T) {
 			wantClass:     RetryClassError,
 			wantMsgSubstr: "auth_error",
 		},
+		// OpenRouter surfaces credit exhaustion as HTTP 402 through the openai
+		// SDK. It must classify as a terminal provider failure, never a
+		// rate-limit retry (RetryClassRateLimit would loop forever on an
+		// unfunded key).
+		{
+			name:          "openai_402_openrouter_credit_exhaustion",
+			ctx:           context.Background(),
+			err:           makeOpenAIErr(402),
+			wantStatus:    "FAIL",
+			wantClass:     RetryClassError,
+			wantMsgSubstr: "provider_error",
+		},
 	}
 
 	for _, tc := range cases {
@@ -204,5 +216,19 @@ func TestClassifyProviderError(t *testing.T) {
 				t.Errorf("msg = %q, want to contain %q", msg, tc.wantMsgSubstr)
 			}
 		})
+	}
+}
+
+// TestClassifyProviderError_402NeverRateLimit is an explicit guard (beyond
+// the table case above) that a 402 can never be classified as
+// RetryClassRateLimit — the spawner's retry dance would loop forever
+// retrying an unfunded key instead of surfacing a terminal failure.
+func TestClassifyProviderError_402NeverRateLimit(t *testing.T) {
+	_, _, class := classifyProviderError(context.Background(), makeOpenAIErr(402))
+	if class == RetryClassRateLimit {
+		t.Fatal("402 classified as RetryClassRateLimit, want RetryClassError (terminal)")
+	}
+	if class != RetryClassError {
+		t.Errorf("class = %v, want RetryClassError", class)
 	}
 }

@@ -44,9 +44,10 @@ const ADMIN_SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))
 const PROVIDER_SUB_TABS: { id: ModelProvider; label: string }[] = [
   { id: 'anthropic', label: 'Anthropic' },
   { id: 'openai', label: 'OpenAI' },
+  { id: 'openrouter', label: 'OpenRouter' },
 ]
 
-const PROVIDER_IDS = new Set<string>(['anthropic', 'openai'])
+const PROVIDER_IDS = new Set<string>(['anthropic', 'openai', 'openrouter'])
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 

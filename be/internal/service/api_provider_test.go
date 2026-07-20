@@ -187,3 +187,43 @@ func TestBuildAPIProvider_OpenAI_ReturnsProviderFromProjectEnv(t *testing.T) {
 		t.Error("BuildAPIProvider = nil, want non-nil provider when OPENAI_API_KEY is in project env")
 	}
 }
+
+// TestBuildAPIProvider_OpenRouter_NoKey_ReturnsError verifies BuildAPIProvider
+// errors when no OpenRouter credential is resolvable.
+func TestBuildAPIProvider_OpenRouter_NoKey_ReturnsError(t *testing.T) {
+	t.Setenv("OPENROUTER_API_KEY", "")
+	pool, projectID := setupAPIProviderTest(t)
+
+	got, err := BuildAPIProvider(context.Background(), pool, clock.Real(), "openrouter", projectID)
+	if err == nil {
+		t.Error("BuildAPIProvider = nil error, want error when no OpenRouter key is configured")
+	}
+	if got != nil {
+		t.Error("BuildAPIProvider = non-nil provider, want nil on error")
+	}
+}
+
+// TestBuildAPIProvider_OpenRouter_ReturnsProviderFromProjectEnv verifies
+// OPENROUTER_API_KEY set as a per-project env var resolves to a non-nil
+// provider named "openrouter" (the thin wrapper, not "openai").
+func TestBuildAPIProvider_OpenRouter_ReturnsProviderFromProjectEnv(t *testing.T) {
+	t.Setenv("OPENROUTER_API_KEY", "")
+	pool, projectID := setupAPIProviderTest(t)
+
+	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	r := repo.NewProjectEnvVarRepo(pool, clk)
+	if _, err := r.Upsert(projectID, "OPENROUTER_API_KEY", "sk-or-test-key"); err != nil {
+		t.Fatalf("Upsert OPENROUTER_API_KEY: %v", err)
+	}
+
+	got, err := BuildAPIProvider(context.Background(), pool, clk, "openrouter", projectID)
+	if err != nil {
+		t.Fatalf("BuildAPIProvider error: %v", err)
+	}
+	if got == nil {
+		t.Fatal("BuildAPIProvider = nil, want non-nil provider when OPENROUTER_API_KEY is in project env")
+	}
+	if got.Name() != "openrouter" {
+		t.Errorf("provider.Name() = %q, want %q", got.Name(), "openrouter")
+	}
+}

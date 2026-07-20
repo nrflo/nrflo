@@ -46,6 +46,9 @@ func (s *ModelService) Update(id string, req types.ModelUpdateRequest) (*model.M
 	if err := validateModelModes(cliModel, apiModel); err != nil {
 		return nil, err
 	}
+	if err := validateProviderModes(current.Provider, cliModel); err != nil {
+		return nil, err
+	}
 	if err := validateDefaultEffort(defaultEffort, cliModel, apiModel, cliEfforts, apiEfforts); err != nil {
 		return nil, err
 	}

@@ -8,6 +8,33 @@ import (
 	"be/internal/types"
 )
 
+// TestCreateAgentDef_CLIInteractive_OpenRouterModel_Rejected verifies that
+// cli_interactive is rejected for an openrouter model: openrouter rows have
+// no cli_model, so IsValidModelForMode("cli") returns false and
+// registryMode maps cli_interactive -> "cli".
+func TestCreateAgentDef_CLIInteractive_OpenRouterModel_Rejected(t *testing.T) {
+	t.Parallel()
+	pool, _, wfID := setupAgentDefTestEnv(t, nil)
+	modelSvc := NewModelService(pool, clock.Real())
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "or-cli-int-test", Provider: "openrouter", DisplayName: "OR CLI Int Test",
+		APIModel: "openai/gpt-4o",
+	}); err != nil {
+		t.Fatalf("create openrouter model: %v", err)
+	}
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, nil)
+
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID:            "agent-cli-int-openrouter",
+		Prompt:        "do stuff",
+		ExecutionMode: "cli_interactive",
+		Model:         "or-cli-int-test",
+	})
+	if err == nil {
+		t.Fatal("CreateAgentDef(cli_interactive, openrouter model): expected error, got nil")
+	}
+}
+
 // setupAgentDefCLIInteractiveEnv returns a service and workflow ID for cli_interactive tests.
 // Delegates to the shared setupAgentDefTestEnv helper (no workflow groups needed).
 func setupAgentDefCLIInteractiveEnv(t *testing.T) (*AgentDefinitionService, string) {

@@ -6,13 +6,14 @@ import {
   updateModel,
   type CreateModelRequest,
   type ModelMode,
+  type ModelProvider,
   type UpdateModelRequest,
 } from '@/api/models'
 import type { DropdownOptionGroup } from '@/components/ui/Dropdown'
 
-const PROVIDER_LABELS = { anthropic: 'Anthropic', openai: 'OpenAI' } as const
+const PROVIDER_LABELS = { anthropic: 'Anthropic', openai: 'OpenAI', openrouter: 'OpenRouter' } as const
 
-export function cliTypeForProvider(provider: 'anthropic' | 'openai') {
+export function cliTypeForProvider(provider: ModelProvider) {
   return provider === 'anthropic' ? 'claude' : 'codex'
 }
 

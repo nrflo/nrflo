@@ -89,10 +89,12 @@ export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, i
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <ModeFields mode="CLI" model={formData.cli_model} context={formData.cli_context} efforts={formData.cli_efforts} disabled={locked}
-          onModel={(value) => update({ cli_model: value })}
-          onContext={(value) => update({ cli_context: value })}
-          onEfforts={(value) => update({ cli_efforts: value })} />
+        {formData.provider !== 'openrouter' && (
+          <ModeFields mode="CLI" model={formData.cli_model} context={formData.cli_context} efforts={formData.cli_efforts} disabled={locked}
+            onModel={(value) => update({ cli_model: value })}
+            onContext={(value) => update({ cli_context: value })}
+            onEfforts={(value) => update({ cli_efforts: value })} />
+        )}
         <ModeFields mode="Direct API" model={formData.api_model} context={formData.api_context} efforts={formData.api_efforts} disabled={locked}
           onModel={(value) => update({ api_model: value })}
           onContext={(value) => update({ api_context: value })}

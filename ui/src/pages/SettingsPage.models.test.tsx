@@ -22,4 +22,16 @@ describe('SettingsPage models tab', () => {
     await user.click(screen.getByRole('button', { name: 'OpenAI' }))
     expect(screen.getByTestId('models-list')).toHaveAttribute('data-provider', 'openai')
   })
+
+  it('routes the OpenRouter subtab to ModelsList', async () => {
+    const user = userEvent.setup()
+    renderPage('?tab=models')
+    await user.click(screen.getByRole('button', { name: 'OpenRouter' }))
+    expect(screen.getByTestId('models-list')).toHaveAttribute('data-provider', 'openrouter')
+  })
+
+  it('renders ModelsList directly from ?sub=openrouter', () => {
+    renderPage('?tab=models&sub=openrouter')
+    expect(screen.getByTestId('models-list')).toHaveAttribute('data-provider', 'openrouter')
+  })
 })

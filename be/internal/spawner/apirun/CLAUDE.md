@@ -58,7 +58,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 ## Wiring
 
-The concrete provider is selected per-agent from the unified `models` row (`provider` column); credentials are resolved per-provider — Anthropic uses OAuth/API-key (`provider/anthropic/credentials.go`), OpenAI uses API-key only (`provider/openai/credentials.go`). `OPENAI_BASE_URL` resolves per-project → server env, so one project can route through an OpenAI-compatible proxy (e.g. OpenRouter) without affecting others.
+The concrete provider is selected per-agent from the unified `models` row (`provider` column); credentials are resolved per-provider — Anthropic uses OAuth/API-key (`provider/anthropic/credentials.go`), OpenAI uses API-key only (`provider/openai/credentials.go`). `OPENAI_BASE_URL` resolves per-project → server env, so one project can route through an OpenAI-compatible proxy without affecting others. `provider/openrouter` is a third, api-mode-only provider: a thin wrapper constructing `openai.New` with the OpenRouter base URL, ladder-resolving its own `OPENROUTER_API_KEY`/`OPENROUTER_BASE_URL`.
 
 `prepareSpawn` (api branch) calls `loadProjectPythonTools` + `apirun.ResolveRegistry` → `prep.apiTools/apiHandlers`. `apiBackend.Start` builds an `apirun.Runner` in a goroutine. `mapFinalStatus` maps exit status: PASS→(pass,implicit), FAIL→(fail,api_error), CONTINUE→(continue,api_continue), CALLBACK→(callback,callback), CANCELLED→(fail,cancelled), RATE_LIMITED→(continue,rate_limit). See `spawner/api_backend.go`.
 

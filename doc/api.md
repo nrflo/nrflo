@@ -12,7 +12,7 @@ registry, multimodal tool results, and behavioral notes.
 ## What It Is
 
 API mode runs agents as an in-process tool-use loop rather than spawning a
-CLI process. The concrete provider (Anthropic or OpenAI) is selected
+CLI process. The concrete provider (Anthropic, OpenAI, or OpenRouter) is selected
 **per-agent** from the agent's unified `models` row — the `model` field on the
 agent definition is a `models.id`, and api mode requires that row's
 `api_model` to be non-empty. The spawner reads `provider`, `api_model`,
@@ -49,6 +49,7 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 |------------|---------|
 | `anthropic` | Anthropic Messages API (streaming) |
 | `openai` | OpenAI Responses API (streaming) |
+| `openrouter` | OpenAI Responses API via OpenRouter (thin wrapper over the openai decoder) |
 
 **Seeded API-capable rows** (read-only):
 

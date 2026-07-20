@@ -39,4 +39,14 @@ describe('useModelOptions', () => {
     await waitFor(() => expect(result.current).toHaveLength(2))
     expect(result.current.map((group) => group.label)).toEqual(['Anthropic', 'OpenAI'])
   })
+
+  it('groups an enabled openrouter api row under the OpenRouter label', async () => {
+    vi.mocked(api.listModels).mockResolvedValue([
+      model({ id: 'kimi', provider: 'openrouter', display_name: 'Kimi', cli_model: '', api_model: 'moonshotai/kimi-k3' }),
+    ])
+    const { result } = renderHook(() => useModelOptions('api'), { wrapper: createWrapper(createTestQueryClient()) })
+    await waitFor(() => expect(result.current).toHaveLength(1))
+    expect(result.current[0].label).toBe('OpenRouter')
+    expect(result.current[0].options).toEqual([{ value: 'kimi', label: 'OpenRouter: Kimi' }])
+  })
 })

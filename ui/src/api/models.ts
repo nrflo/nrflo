@@ -1,6 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 
-export type ModelProvider = 'anthropic' | 'openai'
+export type ModelProvider = 'anthropic' | 'openai' | 'openrouter'
 export type ModelMode = 'cli' | 'api'
 
 export interface Model {

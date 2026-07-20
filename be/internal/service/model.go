@@ -17,7 +17,7 @@ const modelColumns = `id, provider, display_name, cli_model, api_model,
 	default_effort, read_only, enabled, created_at, updated_at,
 	price_in, price_out, price_cache_write, price_cache_read`
 
-var validModelProviders = map[string]bool{"anthropic": true, "openai": true}
+var validModelProviders = map[string]bool{"anthropic": true, "openai": true, "openrouter": true}
 
 // ModelService owns the unified provider model registry.
 type ModelService struct {
@@ -90,6 +90,16 @@ func validateModelModes(cliModel, apiModel string) error {
 	return nil
 }
 
+// validateProviderModes enforces provider-specific mode restrictions.
+// openrouter is API-mode only: it has no CLI adapter, so a non-empty
+// cli_model is rejected.
+func validateProviderModes(provider, cliModel string) error {
+	if provider == "openrouter" && cliModel != "" {
+		return fmt.Errorf("openrouter models are API-mode only: cli_model must be empty")
+	}
+	return nil
+}
+
 func validateDefaultEffort(effort, cliModel, apiModel string, cliEfforts, apiEfforts []string) error {
 	if effort == "" {
 		return nil
@@ -115,9 +125,12 @@ func (s *ModelService) Create(req types.ModelCreateRequest) (*model.Model, error
 		return nil, fmt.Errorf("display_name is required")
 	}
 	if !validModelProviders[req.Provider] {
-		return nil, fmt.Errorf("invalid provider: must be one of anthropic, openai")
+		return nil, fmt.Errorf("invalid provider: must be one of anthropic, openai, openrouter")
 	}
 	if err := validateModelModes(req.CLIModel, req.APIModel); err != nil {
+		return nil, err
+	}
+	if err := validateProviderModes(req.Provider, req.CLIModel); err != nil {
 		return nil, err
 	}
 	cliEfforts, err := NormalizeSupportedEfforts(req.CLIEfforts)

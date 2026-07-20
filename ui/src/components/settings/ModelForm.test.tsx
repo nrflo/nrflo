@@ -52,6 +52,14 @@ describe('ModelForm', () => {
     )
   })
 
+  it('hides the CLI fieldset and CLI-fallback field for openrouter, and stays valid on api_model alone', () => {
+    renderForm({ provider: 'openrouter', cli_model: '', api_model: 'moonshotai/kimi-k3' })
+    expect(screen.queryByText('CLI')).not.toBeInTheDocument()
+    expect(screen.getByText('Direct API')).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('model-a, model-b')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
+  })
+
   it('locks built-in fields while leaving default effort and fallback editable', () => {
     const props = {
       formData: { ...emptyModelForm, id: 'sonnet-5', display_name: 'Sonnet', cli_model: 'sonnet', cli_efforts: ['high'] },

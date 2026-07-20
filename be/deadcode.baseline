@@ -129,4 +129,5 @@ be/internal/spawner processInfo.appendStderr
 be/internal/spawner writeCodexProfile
 be/internal/spawner/apirun/provider/anthropic NewWithHTTPClient
 be/internal/spawner/apirun/provider/openai NewWithHTTPClient
+be/internal/spawner/apirun/provider/openrouter NewWithHTTPClient
 be/internal/ws NewTestClient

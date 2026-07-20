@@ -14,6 +14,9 @@ const anthropic: Model = {
   fallback_models: '', default_effort: '', read_only: true, enabled: true, created_at: '', updated_at: '',
 }
 const openai: Model = { ...anthropic, id: 'gpt-5.4', provider: 'openai', display_name: 'GPT', api_model: '' }
+const openrouter: Model = {
+  ...anthropic, id: 'kimi-k3', provider: 'openrouter', display_name: 'Kimi', cli_model: '', api_model: 'moonshotai/kimi-k3',
+}
 
 describe('ModelsList', () => {
   const create = { mutate: vi.fn(), isPending: false, isError: false, error: null }
@@ -22,7 +25,7 @@ describe('ModelsList', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(hooks.useModels).mockReturnValue({ data: [anthropic, openai], isLoading: false, error: null } as never)
+    vi.mocked(hooks.useModels).mockReturnValue({ data: [anthropic, openai, openrouter], isLoading: false, error: null } as never)
     vi.mocked(hooks.useCreateModel).mockReturnValue(create as never)
     vi.mocked(hooks.useUpdateModel).mockReturnValue(update as never)
     vi.mocked(hooks.useDeleteModel).mockReturnValue(remove as never)
@@ -35,6 +38,15 @@ describe('ModelsList', () => {
     expect(screen.getByText('CLI ✓')).toBeInTheDocument()
     expect(screen.getByText('API ✓')).toBeInTheDocument()
     expect(screen.getByText('Check model')).toBeInTheDocument()
+  })
+
+  it('shows only the API badge and hides the CLI test action for an openrouter row', () => {
+    render(<ModelsList provider="openrouter" />)
+    expect(screen.getByText('kimi-k3')).toBeInTheDocument()
+    expect(screen.queryByText('sonnet-5')).not.toBeInTheDocument()
+    expect(screen.queryByText('CLI ✓')).not.toBeInTheDocument()
+    expect(screen.getByText('API ✓')).toBeInTheDocument()
+    expect(screen.queryByText('Check model')).not.toBeInTheDocument()
   })
 
   it('starts a new model form with the active provider', async () => {

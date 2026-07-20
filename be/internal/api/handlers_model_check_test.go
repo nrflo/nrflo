@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os/exec"
 	"testing"
+	"time"
 )
 
 func decodeModelTestResult(t *testing.T, rr *httptest.ResponseRecorder) modelTestResult {
@@ -69,6 +70,50 @@ func TestHandleTestModelRejectsAPIOnlyRow(t *testing.T) {
 		t.Fatalf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
 	}
 	assertErrorContains(t, rr, "does not support cli mode")
+}
+
+// TestHandleTestModelRejectsOpenRouter_EmptyCLIModel verifies the normal
+// creation path: an openrouter row always has an empty cli_model (enforced
+// by ModelService), so the pre-existing empty-cli_model guard rejects a test
+// request before the provider switch is ever reached.
+func TestHandleTestModelRejectsOpenRouter_EmptyCLIModel(t *testing.T) {
+	s := newModelsServer(t)
+	rr := httptest.NewRecorder()
+	s.handleCreateModel(rr, modelRequest(http.MethodPost, "/api/v1/models", "", `{"id":"or-check","provider":"openrouter","display_name":"OR Check","api_model":"openai/gpt-4o"}`))
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("setup status = %d; body: %s", rr.Code, rr.Body.String())
+	}
+	rr = httptest.NewRecorder()
+	s.handleTestModel(rr, modelRequest(http.MethodPost, "/api/v1/models/or-check/test", "or-check", ""))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+	}
+	assertErrorContains(t, rr, "does not support cli mode")
+}
+
+// TestHandleTestModelRejectsOpenRouter_ProviderSwitchGuard directly exercises
+// the openrouter case in the cliType switch by fabricating a row with a
+// non-empty cli_model via raw SQL (bypassing ModelService validation, which
+// would never allow this combination in practice) — the defensive guard must
+// still 400 with its own message rather than falling through.
+func TestHandleTestModelRejectsOpenRouter_ProviderSwitchGuard(t *testing.T) {
+	s := newModelsServer(t)
+	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := s.pool.Exec(`INSERT INTO models
+		(id, provider, display_name, cli_model, api_model, cli_efforts, api_efforts,
+		 cli_context, api_context, fallback_models, default_effort, read_only, enabled,
+		 created_at, updated_at)
+		VALUES ('or-fabricated', 'openrouter', 'OR Fabricated', 'openai/gpt-4o', 'openai/gpt-4o',
+		 '[]', '[]', 200000, 200000, '', '', 0, 1, ?, ?)`, now, now)
+	if err != nil {
+		t.Fatalf("seed fabricated row: %v", err)
+	}
+	rr := httptest.NewRecorder()
+	s.handleTestModel(rr, modelRequest(http.MethodPost, "/api/v1/models/or-fabricated/test", "or-fabricated", ""))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", rr.Code, rr.Body.String())
+	}
+	assertErrorContains(t, rr, "API-mode only")
 }
 
 func TestHandleTestModelNotFoundAndStartFailure(t *testing.T) {

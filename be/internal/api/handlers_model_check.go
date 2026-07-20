@@ -66,6 +66,9 @@ func (s *Server) handleTestModel(w http.ResponseWriter, r *http.Request) {
 		cliType = "claude"
 	case "openai":
 		cliType = "codex"
+	case "openrouter":
+		writeError(w, http.StatusBadRequest, "openrouter models are API-mode only and cannot be CLI-tested")
+		return
 	default:
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("unsupported model provider: %s", m.Provider))
 		return

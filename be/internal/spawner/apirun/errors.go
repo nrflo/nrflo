@@ -52,6 +52,10 @@ func classifyProviderError(ctx context.Context, err error) (status, message stri
 			return "RATE_LIMITED", fmt.Sprintf("rate_limit: %s", oaiErr.Error()), RetryClassRateLimit
 		case oaiErr.StatusCode == 401 || oaiErr.StatusCode == 403:
 			return "FAIL", fmt.Sprintf("auth_error: %s", oaiErr.Error()), RetryClassError
+		case oaiErr.StatusCode == 402:
+			// Explicit so a future reorder can never map an unfunded key
+			// (e.g. OpenRouter credit exhaustion) to RATE_LIMITED.
+			return "FAIL", fmt.Sprintf("provider_error: %s", oaiErr.Error()), RetryClassError
 		case oaiErr.StatusCode >= 500 && oaiErr.StatusCode < 600:
 			return "FAIL", fmt.Sprintf("provider_error: %s", oaiErr.Error()), RetryClassError
 		default:

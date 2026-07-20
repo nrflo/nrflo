@@ -5,6 +5,7 @@ import { Tooltip } from '@/components/ui/Tooltip'
 import { getGlobalSettings, updateGlobalSettings, settingsKeys } from '@/api/settings'
 import { ObserverSettingsSection } from './ObserverSettingsSection'
 import { GlobalStallSettings } from './GlobalStallSettings'
+import { WatcherTuningSettings } from './WatcherTuningSettings'
 import { Info } from 'lucide-react'
 
 export function GlobalSettingsSection() {
@@ -257,6 +258,7 @@ export function GlobalSettingsSection() {
               />
             </div>
             <GlobalStallSettings settings={settings} />
+            <WatcherTuningSettings settings={settings} />
           </div>
         )}
       </CardContent>

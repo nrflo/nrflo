@@ -128,6 +128,22 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		}
 		resp[ms.key] = v
 	}
+	for _, ws := range watcherIntSettings {
+		v, err := intWithDefault(svc, ws.key, ws.def)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp[ws.key] = v
+	}
+	for _, ws := range watcherFloatSettings {
+		v, err := floatWithDefault(svc, ws.key, ws.def)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		resp[ws.key] = v
+	}
 	if stallStartVal != "" {
 		if parsed, parseErr := strconv.Atoi(stallStartVal); parseErr == nil {
 			resp["stall_start_timeout_sec"] = parsed

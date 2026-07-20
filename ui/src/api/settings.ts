@@ -27,6 +27,16 @@ export interface GlobalSettings {
   menu_errors: boolean
   menu_agent_sessions: boolean
   dynamic_workflow_auto_enabled: boolean
+  context_budget_fraction: number | null
+  context_budget_default: number | null
+  context_decay_turns: number | null
+  cache_ttl_sec: number | null
+  min_epoch_interval_calls: number | null
+  proactive_restart_threshold_default: number | null
+  proactive_restart_min_interval_sec: number | null
+  proactive_restart_max_per_session: number | null
+  proactive_restart_boundary_window_turns: number | null
+  proactive_restart_console_pct: number | null
 }
 
 export const settingsKeys = {

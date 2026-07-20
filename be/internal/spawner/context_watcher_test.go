@@ -119,6 +119,88 @@ func TestNewAPIContextWatcher_DefaultCostEstimator_UsesSeededPricing(t *testing.
 	}
 }
 
+// TestContextConfigFloat_NilPool_ReturnsFallback mirrors
+// TestContextConfigInt_NilPool_ReturnsFallback for the float reader.
+func TestContextConfigFloat_NilPool_ReturnsFallback(t *testing.T) {
+	if got := contextConfigFloat(nil, "context_budget_fraction", 0.65); got != 0.65 {
+		t.Errorf("contextConfigFloat(nil pool) = %v, want fallback 0.65", got)
+	}
+}
+
+// TestContextConfigFloat_ReadsSeededValue mirrors
+// TestContextConfigInt_ReadsSeededValue for the float reader.
+func TestContextConfigFloat_ReadsSeededValue(t *testing.T) {
+	pool := setupTestDB(t)
+	if err := pool.SetConfig("context_budget_fraction", "0.5"); err != nil {
+		t.Fatalf("SetConfig: %v", err)
+	}
+	if got := contextConfigFloat(pool, "context_budget_fraction", 0.65); got != 0.5 {
+		t.Errorf("contextConfigFloat() = %v, want 0.5 (seeded value)", got)
+	}
+}
+
+// TestContextConfigFloat_UnsetKey_ReturnsFallback mirrors
+// TestContextConfigInt_UnsetKey_ReturnsFallback for the float reader.
+func TestContextConfigFloat_UnsetKey_ReturnsFallback(t *testing.T) {
+	pool := setupTestDB(t)
+	if got := contextConfigFloat(pool, "context_budget_fraction", 0.65); got != 0.65 {
+		t.Errorf("contextConfigFloat(unset key) = %v, want fallback 0.65", got)
+	}
+}
+
+// TestContextConfigFloat_UnparseableValue_ReturnsFallback mirrors
+// TestContextConfigInt_UnparseableValue_ReturnsFallback for the float reader.
+func TestContextConfigFloat_UnparseableValue_ReturnsFallback(t *testing.T) {
+	pool := setupTestDB(t)
+	if err := pool.SetConfig("context_budget_fraction", "not-a-float"); err != nil {
+		t.Fatalf("SetConfig: %v", err)
+	}
+	if got := contextConfigFloat(pool, "context_budget_fraction", 0.65); got != 0.65 {
+		t.Errorf("contextConfigFloat(unparseable) = %v, want fallback 0.65", got)
+	}
+}
+
+// TestDeriveContextBudgetDefault covers the precedence matrix: an absolute
+// context_budget_default>0 wins outright; else round(fraction*maxContext)
+// for both cohorts of the registry's bimodal api_context (200k/1M); a
+// non-positive maxContext or fraction disables the derived default (falls to
+// 0, since context_budget_default is unset in every non-absolute case here).
+func TestDeriveContextBudgetDefault(t *testing.T) {
+	cases := []struct {
+		name       string
+		absolute   string // context_budget_default; "" = unset
+		fraction   string // context_budget_fraction; "" = unset (code default 0.65)
+		maxContext int
+		want       int
+	}{
+		{"absolute override wins", "5000", "0.65", 200000, 5000},
+		{"fraction*200k (small cohort)", "", "0.65", 200000, 130000},
+		{"fraction*1M (large cohort)", "", "0.65", 1000000, 650000},
+		{"maxContext<=0 falls to absolute-or-0", "", "0.65", 0, 0},
+		{"maxContext<=0 with absolute set", "5000", "0.65", 0, 5000},
+		{"fraction<=0 disables derivation", "", "0", 200000, 0},
+		{"fraction untouched uses migration-seeded 0.65", "", "", 200000, 130000},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pool := setupTestDB(t)
+			if tc.absolute != "" {
+				if err := pool.SetConfig("context_budget_default", tc.absolute); err != nil {
+					t.Fatalf("SetConfig(context_budget_default): %v", err)
+				}
+			}
+			if tc.fraction != "" {
+				if err := pool.SetConfig("context_budget_fraction", tc.fraction); err != nil {
+					t.Fatalf("SetConfig(context_budget_fraction): %v", err)
+				}
+			}
+			if got := deriveContextBudgetDefault(pool, tc.maxContext); got != tc.want {
+				t.Errorf("deriveContextBudgetDefault() = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestNewAPIContextWatcher_DefaultCostEstimator_NilPoolDegradesGracefully
 // verifies the nil-pool construction used throughout context_watcher_gc_test.go
 // (before it swaps in fakeCostEstimator) never panics and reports 0.

@@ -92,7 +92,8 @@ func TestProfileByName_T0Decider_NotA1MModel(t *testing.T) {
 }
 
 // TestProfileByName_T0Hands_Defaults verifies the full-tools companion
-// profile: sonnet-5, full tools (nil catalogue), 150k budget, refinery off.
+// profile: sonnet-5, full tools (nil catalogue), 150k budget, refinery on
+// (per-profile, not the global refinery_enabled flag).
 func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 	t.Parallel()
 	p, err := ProfileByName("t0-hands")
@@ -108,8 +109,8 @@ func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 	if p.ContextBudgetTokens != 150000 {
 		t.Errorf("ContextBudgetTokens = %d, want 150000", p.ContextBudgetTokens)
 	}
-	if p.RefineryDefault {
-		t.Error("RefineryDefault = true, want false")
+	if !p.RefineryDefault {
+		t.Error("RefineryDefault = false, want true (per-profile refinery for t0-hands)")
 	}
 	if p.NativeToolPolicy != NativeToolPolicyFull {
 		t.Errorf("NativeToolPolicy = %q, want %q", p.NativeToolPolicy, NativeToolPolicyFull)

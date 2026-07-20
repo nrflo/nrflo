@@ -94,7 +94,7 @@ func init() {
 		DefaultModelID:      "sonnet-5",
 		DefaultEffort:       "",
 		ContextBudgetTokens: 150000,
-		RefineryDefault:     false,
+		RefineryDefault:     true,
 		SystemTemplateID:    "",
 		NativeToolPolicy:    NativeToolPolicyFull,
 		Catalogue:           nil,

@@ -156,21 +156,25 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		Stream:          &apiEngineStream{e: e},
 		Observer:        costOnlyObserver{sessionID: spec.SessionID},
 		// A profile's ContextBudgetTokens wins when set (e.g. t0-decider's
-		// 50k); otherwise the global default, same as a console chat with no
-		// profile always got. Idle-gap GC is still driven by cache_ttl_sec.
-		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, watcherBudget(e.api.Pool, spec.ContextBudgetTokens)),
+		// 50k); otherwise the derived per-model default (context_budget_fraction
+		// * MaxContext, or the context_budget_default absolute override), same
+		// as a console chat with no profile always got. Idle-gap GC is still
+		// driven by cache_ttl_sec.
+		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, watcherBudget(e.api.Pool, spec.ContextBudgetTokens, spec.MaxContext)),
 	})
 
 	return nil
 }
 
-// watcherBudget returns profileBudget when set, else the context_budget_default
-// global config — the api console engine's context-watcher budget.
-func watcherBudget(pool *db.Pool, profileBudget int) int {
+// watcherBudget returns profileBudget when set, else the derived per-model
+// default budget (context_budget_fraction * maxContext, or the
+// context_budget_default absolute override) — the api console engine's
+// context-watcher budget.
+func watcherBudget(pool *db.Pool, profileBudget, maxContext int) int {
 	if profileBudget > 0 {
 		return profileBudget
 	}
-	return contextConfigInt(pool, "context_budget_default", 0)
+	return deriveContextBudgetDefault(pool, maxContext)
 }
 
 // SendUserTurn persists the user_input row BEFORE starting the turn goroutine

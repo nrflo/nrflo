@@ -76,7 +76,7 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Context Watcher
 
-`context_watcher*.go`: an api-mode policy engine over the context ledger, budget/decay/idle-gated selective GC wired via the nil-safe `apirun.Config.Watcher` seam; its `ContextCostEstimator` (`context_watcher_cost.go`) prices evicted tokens at the cache-read rate from `models.price_*`. Mechanics: [REFERENCE.md](REFERENCE.md#context-watcher).
+`context_watcher*.go`: an api-mode policy engine over the context ledger, budget/decay/idle-gated selective GC wired via the nil-safe `apirun.Config.Watcher` seam; its `ContextCostEstimator` (`context_watcher_cost.go`) prices evicted tokens at the cache-read rate from `models.price_*`. Default budget derives per-model: `context_budget_fraction`(0.65)×max-context. Mechanics: [REFERENCE.md](REFERENCE.md#context-watcher).
 
 ## Session Cost
 

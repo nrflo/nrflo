@@ -85,8 +85,8 @@ func TestChatService_Catalog_ListsBuiltinProfiles(t *testing.T) {
 	if !ok {
 		t.Fatal("catalog.Profiles missing t0-hands")
 	}
-	if hands.DefaultModelID != "sonnet-5" || hands.ContextBudgetTokens != 150000 || hands.RefineryDefault {
-		t.Errorf("t0-hands profile option = %+v, want sonnet-5/150000/refinery-off", hands)
+	if hands.DefaultModelID != "sonnet-5" || hands.ContextBudgetTokens != 150000 || !hands.RefineryDefault {
+		t.Errorf("t0-hands profile option = %+v, want sonnet-5/150000/refinery-on", hands)
 	}
 }
 

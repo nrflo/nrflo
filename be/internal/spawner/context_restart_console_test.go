@@ -74,8 +74,8 @@ func TestWatcherBudget_ProfileBudgetWins(t *testing.T) {
 	if err := pool.SetConfig("context_budget_default", "9999"); err != nil {
 		t.Fatalf("SetConfig: %v", err)
 	}
-	if got := watcherBudget(pool, 50000); got != 50000 {
-		t.Errorf("watcherBudget(pool, 50000) = %d, want 50000", got)
+	if got := watcherBudget(pool, 50000, 200000); got != 50000 {
+		t.Errorf("watcherBudget(pool, 50000, 200000) = %d, want 50000", got)
 	}
 }
 
@@ -88,7 +88,18 @@ func TestWatcherBudget_NoProfile_FallsBackToGlobalDefault(t *testing.T) {
 	if err := pool.SetConfig("context_budget_default", "12345"); err != nil {
 		t.Fatalf("SetConfig: %v", err)
 	}
-	if got := watcherBudget(pool, 0); got != 12345 {
-		t.Errorf("watcherBudget(pool, 0) = %d, want 12345 (global default)", got)
+	if got := watcherBudget(pool, 0, 200000); got != 12345 {
+		t.Errorf("watcherBudget(pool, 0, 200000) = %d, want 12345 (global default, wins over derived fraction)", got)
+	}
+}
+
+// TestWatcherBudget_NoProfileNoAbsoluteDefault_DerivesFromFraction verifies
+// budget=0 and no context_budget_default falls all the way through to
+// deriveContextBudgetDefault's fraction*maxContext.
+func TestWatcherBudget_NoProfileNoAbsoluteDefault_DerivesFromFraction(t *testing.T) {
+	t.Parallel()
+	pool, _ := newRestartConfigPool(t)
+	if got, want := watcherBudget(pool, 0, 200000), 130000; got != want {
+		t.Errorf("watcherBudget(pool, 0, 200000) = %d, want %d (0.65*200000, code default fraction)", got, want)
 	}
 }

@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"context"
+	"math"
 	"strconv"
 	"sync"
 	"time"
@@ -14,9 +15,10 @@ import (
 )
 
 const (
-	defaultContextDecayTurns     = 20  // context_decay_turns: tool_result/file_read staleness window, in ledger turns
-	defaultCacheTTLSec           = 300 // cache_ttl_sec: idle gap before a deferred GC is free (cache already cold)
-	defaultMinEpochIntervalCalls = 20  // min_epoch_interval_calls: rewrites throttled to at most once per this many PlanGC consults, except idle-gap
+	defaultContextDecayTurns     = 20   // context_decay_turns: tool_result/file_read staleness window, in ledger turns
+	defaultCacheTTLSec           = 300  // cache_ttl_sec: idle gap before a deferred GC is free (cache already cold)
+	defaultMinEpochIntervalCalls = 20   // min_epoch_interval_calls: rewrites throttled to at most once per this many PlanGC consults, except idle-gap
+	defaultContextBudgetFraction = 0.65 // context_budget_fraction: fraction of a model's resolved max context used as the default live-token budget
 )
 
 // apiContextWatcher implements apirun.ContextWatcher: a policy engine over
@@ -87,6 +89,42 @@ func contextConfigInt(pool *db.Pool, key string, fallback int) int {
 		return fallback
 	}
 	return parsed
+}
+
+// contextConfigFloat reads a float global config key, falling back to
+// fallback when the pool is nil, the key is unset, or it doesn't parse.
+//
+//nolint:unparam // key mirrors contextConfigInt's shape for future float knobs; only one caller today.
+func contextConfigFloat(pool *db.Pool, key string, fallback float64) float64 {
+	if pool == nil {
+		return fallback
+	}
+	v, _ := pool.GetConfig(key)
+	if v == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+// deriveContextBudgetDefault resolves the default live-token budget passed
+// into resolveContextBudget: an absolute context_budget_default>0 wins
+// (hard override), else round(context_budget_fraction*maxContext) when both
+// are positive (the registry's api_context is bimodal — 200k/1M seeds — so a
+// single fixed absolute either never fires GC on 200k models or over-compacts
+// 1M models), else 0 (disabled).
+func deriveContextBudgetDefault(pool *db.Pool, maxContext int) int {
+	if abs := contextConfigInt(pool, "context_budget_default", 0); abs > 0 {
+		return abs
+	}
+	frac := contextConfigFloat(pool, "context_budget_fraction", defaultContextBudgetFraction)
+	if frac > 0 && maxContext > 0 {
+		return int(math.Round(frac * float64(maxContext)))
+	}
+	return 0
 }
 
 // PlanGC implements apirun.ContextWatcher. It stamps the idle-gap clock on

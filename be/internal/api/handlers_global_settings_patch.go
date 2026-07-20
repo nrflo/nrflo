@@ -26,6 +26,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ObserverProvider                  *string         `json:"observer_provider"`
 		ObserverModel                     *string         `json:"observer_model"`
 		menuPatchFields
+		watcherPatchFields
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -169,6 +170,10 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := applyMenuToggles(req.menuPatchFields, svc, w); err != nil {
+		return
+	}
+
+	if err := applyWatcherSettings(req.watcherPatchFields, svc, w); err != nil {
 		return
 	}
 

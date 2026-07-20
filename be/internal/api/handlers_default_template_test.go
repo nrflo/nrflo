@@ -72,8 +72,8 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 17 {
-		t.Fatalf("len = %d, want 17 (pre-filled readonly templates)", len(list))
+	if len(list) != 18 {
+		t.Fatalf("len = %d, want 18 (pre-filled readonly templates)", len(list))
 	}
 	for _, tmpl := range list {
 		if !tmpl.Readonly {
@@ -83,8 +83,9 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 	// Ordered by name ascending (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds
 	// system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt, sorting first as
 	// "API system prompt" — uppercase letters sort before lowercase under SQLite's default binary collation;
-	// migration 178 adds tier-t0-decider/tier-t1-executor/tier-t2-extractor, sorting after ticket-creator).
-	wantOrder := []string{"api-system-prompt", "callback", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-decider", "tier-t1-executor", "tier-t2-extractor", "user-instructions", "working-set"}
+	// migration 178 adds tier-t0-decider/tier-t1-executor/tier-t2-extractor, sorting after ticket-creator;
+	// migration 188 adds delegation-guidance, sorting right after api-system-prompt).
+	wantOrder := []string{"api-system-prompt", "callback", "delegation-guidance", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-decider", "tier-t1-executor", "tier-t2-extractor", "user-instructions", "working-set"}
 	for i, want := range wantOrder {
 		if list[i].ID != want {
 			t.Errorf("list[%d].ID = %q, want %q", i, list[i].ID, want)
@@ -104,8 +105,8 @@ func TestHandleListDefaultTemplates_IncludesUserCreated(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 18 {
-		t.Errorf("len = %d, want 18 (17 readonly + 1 user-created)", len(list))
+	if len(list) != 19 {
+		t.Errorf("len = %d, want 19 (18 readonly + 1 user-created)", len(list))
 	}
 }
 

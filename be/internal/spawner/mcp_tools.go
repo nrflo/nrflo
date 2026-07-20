@@ -126,6 +126,30 @@ func (s *Spawner) configureClaudeMCPTools(
 	return cfg, "mcp__nrflo__*", nil
 }
 
+// configureCLIToolRegistry attaches the nrflo tool registry for a
+// cli_interactive spawn, dispatching per adapter: Claude gets an
+// --mcp-config/--allowedTools pair (configureClaudeMCPTools); codex attaches
+// the registry directly onto proc for the app-server backend to serve via
+// config.toml. Extracted from prepareSpawn's cli tail to keep
+// spawner_prepare.go within its filesize baseline.
+func (s *Spawner) configureCLIToolRegistry(
+	req SpawnRequest,
+	wfiID string,
+	agentDef *model.AgentDefinition,
+	proc *processInfo,
+	adapter CLIAdapter,
+) (mcpConfigJSON, allowedToolsCSV string, err error) {
+	switch adapter.Name() {
+	case "claude":
+		return s.configureClaudeMCPTools(req, wfiID, agentDef, proc, adapter)
+	case "codex":
+		if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc, adapter); regErr != nil {
+			return "", "", regErr
+		}
+	}
+	return "", "", nil
+}
+
 // nrfloBridgeEnv returns the env the `nrflo_server agent mcp` bridge subprocess
 // needs to reach the running server's socket and identify the session. Claude
 // inherits these from the spawn env, but codex does NOT forward parent env to

@@ -96,6 +96,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 			systemPromptBody = rendered
 		}
 	}
+	systemPromptBody = appendDelegationGuidance(ctx, s.pool(), systemPromptBody, specs, stdTemplateVars(req.AgentType, proc.nodeID, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, proc.modelID, req.ExtraVars))
 	spf, spfErr := createScratchTemp("api-via-cli-system-*.md")
 	if spfErr != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: create system prompt file: %w", spfErr)

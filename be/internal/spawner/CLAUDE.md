@@ -23,7 +23,7 @@ The registry supplies the exact CLI model and effort; adapters do not maintain a
 
 `ExecutionBackend` interface is at `backend.go:21`. `startBackend` selects based on `prep.executionMode`:
 
-- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `attachNrfloToolRegistry` (`mcp_tools.go`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge. `read_document` swaps per `SupportsNativeDocRead()`: Claude → path variant; codex → `ReadDocumentHybridHandler` (path + image media → MCP image blocks, vision on codex ≥0.51; PDFs rasterized to page PNGs via host `pdftoppm`, path-only fallback). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`) plus `--disallowedTools` denying native delegation (`cli_adapter_claude.go`); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, codex doesn't forward parent env).
+- **`cli_interactive`** — spawns the CLI inside a PTY without batch flags (default for claude; **codex routes to the app-server backend below**, not the PTY). For both, `prepareSpawn`'s cli tail attaches the nrflo tool registry via `configureCLIToolRegistry` (`mcp_tools.go`, dispatches per adapter to `configureClaudeMCPTools`/`attachNrfloToolRegistry`): the agent def's `tools` CSV (empty → `"*"`) drives `buildAPIRegistry(…, forceBaseline=true)`, so the `agent_*` lifecycle tools + `findings_add` are always present; tools are served over `tools.list`/`tools.call` by the `nrflo_server agent mcp` bridge. `read_document` swap + transport per adapter: [REFERENCE.md](REFERENCE.md#cli-tool-registry-attach).
 - **`api`** — drives an in-process `apirun.Runner` (no child process). See [apirun/CLAUDE.md](apirun/CLAUDE.md).
 - **`script`** — executes a stored Python script; no prompt template, no context tracking.
 
@@ -122,7 +122,7 @@ Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle win
 
 ## Template Variables
 
-Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`.
+Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The readonly `delegation-guidance` injectable is appended (via `appendDelegationGuidance` in `template_injectable.go`) to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, and cli_interactive — whenever the def's effective tool specs include `delegate`; absent that tool, the prompt is unchanged.
 
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 

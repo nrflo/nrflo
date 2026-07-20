@@ -7,6 +7,7 @@ import (
 
 	"be/internal/db"
 	"be/internal/logger"
+	"be/internal/spawner/apirun/provider"
 )
 
 var injectablePlaceholderRe = regexp.MustCompile(`\$\{[^}]+\}`)
@@ -65,7 +66,7 @@ func renderAPISystemPrompt(ctx context.Context, pool *db.Pool, id string, vars m
 // non-empty, is the agent def's system_template_id: it is rendered and used in
 // place of the api-system-prompt/fallback base when non-empty — the def/profile
 // template wins over api mode's own default, same precedence as CLI mode.
-func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[string]string, suffix, fallback, overrideID string) string {
+func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[string]string, suffix, fallback, overrideID string, specs []provider.ToolSpec) string {
 	sys := ""
 	if overrideID != "" {
 		sys = renderInjectable(ctx, pool, overrideID, vars)
@@ -76,7 +77,33 @@ func apiSystemPromptWithSuffix(ctx context.Context, pool *db.Pool, vars map[stri
 	if strings.TrimSpace(suffix) != "" {
 		sys = sys + "\n\n" + suffix
 	}
-	return sys
+	return appendDelegationGuidance(ctx, pool, sys, specs, vars)
+}
+
+// hasToolSpec reports whether specs contains a tool named name.
+func hasToolSpec(specs []provider.ToolSpec, name string) bool {
+	for _, spec := range specs {
+		if spec.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// appendDelegationGuidance appends the readonly "delegation-guidance"
+// injectable to sys when specs include the `delegate` tool, matching
+// apiSystemPromptWithSuffix's "\n\n" join + TrimSpace-empty guards. Returns
+// sys byte-identical when delegate is absent or the injectable renders empty,
+// so defs without the tool see an unchanged prompt.
+func appendDelegationGuidance(ctx context.Context, pool *db.Pool, sys string, specs []provider.ToolSpec, vars map[string]string) string {
+	if !hasToolSpec(specs, "delegate") {
+		return sys
+	}
+	guidance := renderInjectable(ctx, pool, "delegation-guidance", vars)
+	if strings.TrimSpace(guidance) == "" {
+		return sys
+	}
+	return sys + "\n\n" + guidance
 }
 
 // resolveSystemPromptOverride prefers the agent def's own system_template_id

@@ -221,7 +221,8 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			return nil, nil, regErr
 		}
 
-		prep.apiSystem = apiSystemPromptWithSuffix(ctx, s.pool(), stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars), suffix, defaultAPISystemPrompt, agentDefSystemTemplateID(agentDef))
+		prep.apiSystem = apiSystemPromptWithSuffix(ctx, s.pool(), stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars), suffix, defaultAPISystemPrompt, agentDefSystemTemplateID(agentDef), specs)
+		proc.systemPrompt = prep.apiSystem
 		prep.apiInitialPrompt = prompt
 		prep.apiTools = specs
 		prep.apiHandlers = handlers
@@ -236,6 +237,21 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 
 	// CLI mode: write prompt to temp file and assemble SpawnOptions.
 
+	// Serve the nrflo agent commands as MCP tools (via the nrflo agent mcp
+	// bridge) instead of the nrflo CLI. Built before temp files so an error
+	// returns without leaking them, and before the promptBody/suffix assembly
+	// below so proc.apiTools is populated for appendDelegationGuidance. Claude
+	// consumes --mcp-config/--allowedTools (set here); codex consumes the
+	// registry via a config.toml [mcp_servers] table written by the codex
+	// app-server backend from proc.apiTools.
+	mcpConfigJSON, allowedToolsCSV, regErr := s.configureCLIToolRegistry(req, wfiID, agentDef, proc, adapter)
+	if regErr != nil {
+		return nil, nil, regErr
+	}
+
+	suffix = appendDelegationGuidance(ctx, s.pool(), suffix, proc.apiTools, stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars))
+	proc.systemPrompt = suffix
+
 	// Adapters without system-prompt-file support (Codex) get the override +
 	// suffix prepended into the prompt body instead — see noSystemPromptFilePrefix.
 	promptBody := prompt
@@ -249,24 +265,6 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// body for parity with the API backend; overwrite now that promptBody
 	// is final.
 	prep.prompt = promptBody
-
-	// Serve the nrflo agent commands as MCP tools (via the nrflo agent mcp
-	// bridge) instead of the nrflo CLI. Built before temp files so an error
-	// returns without leaking them. Claude consumes --mcp-config/--allowedTools
-	// (set here); codex consumes the registry via a config.toml [mcp_servers]
-	// table written by the codex app-server backend from proc.apiTools.
-	var mcpConfigJSON, allowedToolsCSV string
-	switch adapter.Name() {
-	case "claude":
-		var mcpErr error
-		if mcpConfigJSON, allowedToolsCSV, mcpErr = s.configureClaudeMCPTools(req, wfiID, agentDef, proc, adapter); mcpErr != nil {
-			return nil, nil, mcpErr
-		}
-	case "codex":
-		if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc, adapter); regErr != nil {
-			return nil, nil, regErr
-		}
-	}
 
 	filePrefix := req.TicketID
 	if req.IsProjectScope() {

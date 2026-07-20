@@ -3,7 +3,6 @@ package integration
 import (
 	"context"
 	"testing"
-	"time"
 
 	"be/internal/clock"
 	"be/internal/model"
@@ -87,11 +86,9 @@ func TestRerunCompletedProjectWorkflow(t *testing.T) {
 		t.Fatalf("expected new instance ID, got same as first: %s", result.InstanceID)
 	}
 
-	// Stop right away to avoid spawning actual agents
+	// Stop right away to avoid spawning actual agents. Stop drains the run's
+	// goroutine before returning, so no post-Stop poll is needed.
 	orch.Stop(result.InstanceID)
-	waitForCondition(t, 5*time.Second, func() bool {
-		return !orch.IsInstanceRunning(result.InstanceID)
-	})
 
 	// Verify the NEW instance was created with fresh state
 	newInstance, err := wfiRepo.Get(result.InstanceID)
@@ -166,12 +163,10 @@ func TestConcurrentProjectWorkflowsAllowed(t *testing.T) {
 		t.Fatalf("expected different instance IDs, got same: %s", result1.InstanceID)
 	}
 
-	// Stop both
+	// Stop both. Stop drains each run's goroutine before returning, so no
+	// post-Stop poll is needed.
 	orch.Stop(result1.InstanceID)
 	orch.Stop(result2.InstanceID)
-	waitForCondition(t, 5*time.Second, func() bool {
-		return !orch.IsInstanceRunning(result1.InstanceID) && !orch.IsInstanceRunning(result2.InstanceID)
-	})
 
 	// Verify both instances exist
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())
@@ -226,11 +221,9 @@ func TestCompletedTicketWorkflowUnaffected(t *testing.T) {
 		t.Fatalf("expected new instance ID, got same as first: %s", result.InstanceID)
 	}
 
-	// Stop immediately
+	// Stop immediately. Stop drains the run's goroutine before returning, so
+	// no post-Stop poll is needed.
 	orch.Stop(result.InstanceID)
-	waitForCondition(t, 5*time.Second, func() bool {
-		return !orch.IsInstanceRunning(result.InstanceID)
-	})
 
 	// Old instance should remain completed with its findings intact
 	oldInstance, err := wfiRepo.Get(firstInstanceID)

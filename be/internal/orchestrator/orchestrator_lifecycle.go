@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"be/internal/db"
 	"be/internal/logger"
@@ -73,8 +74,16 @@ func setupWorktree(project *model.Project, projectRoot, branchName, scopeType st
 	return wt, worktreePath, nil
 }
 
-// Stop cancels a running orchestration. If no in-memory orchestration exists
-// (e.g. after server restart), falls back to cleaning up DB state directly.
+// stopDrainTimeout bounds how long Stop/StopAll wait for a cancelled runLoop
+// goroutine to fully quiesce (pool.Close, venv writes, spawned-process
+// SIGTERM/SIGKILL) before giving up and returning anyway.
+const stopDrainTimeout = 10 * time.Second
+
+// Stop cancels a running orchestration and waits for its runLoop goroutine to
+// fully quiesce before returning (bounded by stopDrainTimeout), so callers
+// never observe residual writes to the run's working directory after Stop
+// returns. If no in-memory orchestration exists (e.g. after server restart),
+// falls back to cleaning up DB state directly.
 func (o *Orchestrator) Stop(instanceID string) error {
 	o.mu.Lock()
 	rs, ok := o.runs[instanceID]
@@ -83,6 +92,12 @@ func (o *Orchestrator) Stop(instanceID string) error {
 	if ok {
 		rs.cancel()
 		o.cancelDraftPlan(instanceID)
+		if rs.done != nil {
+			select {
+			case <-rs.done:
+			case <-time.After(stopDrainTimeout):
+			}
+		}
 		return nil
 	}
 

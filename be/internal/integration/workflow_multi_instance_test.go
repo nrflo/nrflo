@@ -96,11 +96,9 @@ func TestStopSpecificProjectWorkflowInstance(t *testing.T) {
 		t.Logf("Note: second instance status is %v (expected active)", wi2.Status)
 	}
 
-	// Clean up second instance
+	// Clean up second instance. Stop drains the run's goroutine before
+	// returning, so no post-Stop poll is needed.
 	orch.Stop(result2.InstanceID)
-	waitForCondition(t, 5*time.Second, func() bool {
-		return !orch.IsInstanceRunning(result2.InstanceID)
-	})
 
 	// Verify both instances exist in DB
 	instances, _ := wfiRepo.ListByProjectScope(env.ProjectID)
@@ -331,11 +329,9 @@ func TestRetryFailedProjectAgentWithInstanceID(t *testing.T) {
 	// The fact that the retry call succeeded without error indicates instance_id
 	// was handled correctly.
 
-	// Clean up
+	// Clean up. Stop drains the run's goroutine before returning, so no
+	// post-Stop poll is needed.
 	orch.Stop(wi.ID)
-	waitForCondition(t, time.Second, func() bool {
-		return !orch.IsInstanceRunning(wi.ID)
-	})
 }
 
 // TestListActiveByProjectAndWorkflow tests the new repo method that returns

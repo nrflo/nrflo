@@ -103,8 +103,9 @@ func (s *ServiceTokenService) Delete(id string) error {
 }
 
 // LookupByPlaintext hashes the supplied plaintext token and returns the matching
-// row, or (nil, nil) if no token matches. On hit, last_used_at is updated in a
-// background goroutine; lookup errors from the touch are ignored.
+// row, or (nil, nil) if no token matches. On hit, last_used_at is updated
+// synchronously before returning; touch errors are ignored (best-effort
+// bookkeeping must never fail a valid-token auth).
 func (s *ServiceTokenService) LookupByPlaintext(plaintext string) (*model.ServiceToken, error) {
 	if plaintext == "" || !strings.HasPrefix(plaintext, serviceTokenPrefix) {
 		return nil, nil
@@ -115,9 +116,7 @@ func (s *ServiceTokenService) LookupByPlaintext(plaintext string) (*model.Servic
 	if err != nil || tok == nil {
 		return nil, err
 	}
-	go func(id string) {
-		_ = repo.NewServiceTokenRepo(s.pool, s.clock).TouchLastUsed(id)
-	}(tok.ID)
+	_ = repo.NewServiceTokenRepo(s.pool, s.clock).TouchLastUsed(tok.ID)
 	return tok, nil
 }
 

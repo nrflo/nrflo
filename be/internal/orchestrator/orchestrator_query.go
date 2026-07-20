@@ -134,7 +134,7 @@ func (o *Orchestrator) StopAll() {
 	}
 	o.mu.Unlock()
 
-	deadline := time.After(10 * time.Second)
+	deadline := time.After(stopDrainTimeout)
 	for _, done := range doneChans {
 		select {
 		case <-done:

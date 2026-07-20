@@ -145,6 +145,34 @@ func (s *Spawner) SetLastMessage(sessionID, content string) {
 	proc.messagesMutex.Unlock()
 }
 
+// dispatchBumpMessage finds the running proc matching a bumpMessageCh signal
+// and updates its lastMessageTime/hasReceivedMessage so stall detection
+// treats the hook event as activity. No-op if the session already finished.
+func (s *Spawner) dispatchBumpMessage(running []*processInfo, sessionID string) {
+	for _, proc := range running {
+		if proc.sessionID == sessionID {
+			proc.messagesMutex.Lock()
+			proc.lastMessageTime = s.config.Clock.Now()
+			proc.hasReceivedMessage = true
+			proc.messagesMutex.Unlock()
+			return
+		}
+	}
+}
+
+// TriggerIdleNudge sends a non-blocking signal to monitorAll to fire the
+// existing idle-nudge machinery immediately for the matching proc — used by
+// the socket handler when a Claude Notification hook indicates the agent is
+// parked (idle-waiting or permission-prompt) instead of waiting out the
+// wall-clock idle window. reason is "idle" or "permission" for the log
+// marker. Silently dropped when channel is full.
+func (s *Spawner) TriggerIdleNudge(sessionID, reason string) {
+	select {
+	case s.nudgeRequestCh <- nudgeRequest{sessionID: sessionID, reason: reason}:
+	default:
+	}
+}
+
 // MarkSessionReady closes the matching proc's sessionStartCh — the canonical
 // TUI-ready signal from Claude's SessionStart hook. Idempotent. Called by the
 // socket handler when SessionStart arrives.

@@ -89,4 +89,9 @@ type TerminalSignaler interface {
 	// PTY prompt-delivery wait. Best-effort and idempotent — repeated calls,
 	// or calls for unknown sessions, are no-ops.
 	SignalSessionReady(sessionID string) error
+	// TriggerIdleNudge asks the active spawner to fire the idle nudge for
+	// sessionID immediately (in-band Notification-hook idle signal).
+	// Best-effort/nil-safe; unknown or non-cli_interactive sessions are
+	// no-ops. reason is "idle"|"permission" for the trace/log marker.
+	TriggerIdleNudge(sessionID, reason string) error
 }

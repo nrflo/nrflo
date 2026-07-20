@@ -83,6 +83,42 @@ func (o *Orchestrator) SetLastMessage(projectID, ticketID, workflow, sessionID, 
 	return nil
 }
 
+// TriggerIdleNudge asks the matching spawner to fire the idle nudge for
+// sessionID immediately (in-band Notification-hook idle signal). Best-effort:
+// returns nil when session, run, or spawner is not found — this is what
+// structurally excludes console/observer sessions (no run/spawner) from the
+// in-band nudge path. reason is "idle"|"permission" for the trace/log marker.
+func (o *Orchestrator) TriggerIdleNudge(sessionID, reason string) error {
+	database, err := db.Open(o.dataPath)
+	if err != nil {
+		return fmt.Errorf("failed to open database: %w", err)
+	}
+	defer database.Close()
+
+	asRepo := repo.NewAgentSessionRepo(database, o.clock)
+	session, err := asRepo.Get(sessionID)
+	if err != nil {
+		return nil // session may have already ended
+	}
+
+	o.mu.Lock()
+	rs, ok := o.runs[session.WorkflowInstanceID]
+	o.mu.Unlock()
+	if !ok {
+		return nil // run finished; no-op
+	}
+
+	o.mu.Lock()
+	sp := rs.spawners[sessionID]
+	o.mu.Unlock()
+	if sp == nil {
+		return nil // between phases
+	}
+
+	sp.TriggerIdleNudge(sessionID, reason)
+	return nil
+}
+
 // RequestTerminalSignal kills the active agent for the given session so
 // monitorAll exits and handleCompletion reads the DB result already written
 // by the socket handler. Best-effort: returns nil when session or run not found.

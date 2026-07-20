@@ -17,7 +17,7 @@ Methods by namespace; the full per-method params/behavior table is [REFERENCE.md
 - `ws.broadcast`, `script.context` (script-mode context dict), `artifact.add/list/get`, `tools.list/call` (api-via-cli in-process tool registry via the wired `ToolDispatcher`)
 - `observer.*` — workflow/project/global reads plus feature-gated mutate methods
 
-All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set from `NRF_WORKFLOW_INSTANCE_ID`/`NRF_SESSION_ID` env vars by the CLI). `agent.consult` and `observer.workflow.trigger`/`retry_failed` need a `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()`.
+All `findings.*` and `agent.*` requests require `instance_id` and `session_id` (set from `NRF_WORKFLOW_INSTANCE_ID`/`NRF_SESSION_ID` env vars by the CLI). `agent.consult` and `observer.workflow.trigger`/`retry_failed` need a `WorkflowOrchestrator` wired via `Server.SetWorkflowRunner()`. A `Notification` hook classified as idle-waiting or permission-prompt additionally fires an immediate idle nudge via `TerminalSignaler.TriggerIdleNudge` for autonomous `kind='workflow_agent'`, `cli_interactive` claude sessions only.
 
 ## Observer Authorization
 

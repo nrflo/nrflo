@@ -187,3 +187,12 @@ type terminalSignal struct {
 	SessionID string
 	Result    string
 }
+
+// nudgeRequest is routed via nudgeRequestCh so the monitorAll goroutine (the
+// single owner of proc.nudgeCount/lastMessageTime) fires an immediate nudge
+// requested by an in-band Claude Notification hook. reason is "idle" or
+// "permission" — used only for the trace/log marker.
+type nudgeRequest struct {
+	sessionID string
+	reason    string
+}

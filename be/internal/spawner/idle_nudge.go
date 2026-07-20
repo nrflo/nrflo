@@ -69,6 +69,43 @@ func (s *Spawner) checkIdleNudge(ctx context.Context, proc *processInfo, req Spa
 	s.handleNudgeAutoFail(ctx, proc, req)
 }
 
+// dispatchNudgeRequest finds the running proc matching an in-band nudge
+// request (drained from nudgeRequestCh by monitorAll) and fires
+// triggerImmediateNudge for it. No-op if the session already finished.
+func (s *Spawner) dispatchNudgeRequest(ctx context.Context, running []*processInfo, req SpawnRequest, nr nudgeRequest) {
+	for _, proc := range running {
+		if proc.sessionID == nr.sessionID {
+			s.triggerImmediateNudge(ctx, proc, req, nr.reason)
+			return
+		}
+	}
+}
+
+// triggerImmediateNudge fires the same sendNudge/handleNudgeAutoFail tail as
+// checkIdleNudge's idle-window-exceeded branch, but on-demand — invoked from
+// monitorAll's nudgeRequestCh drain when the socket handler classifies a
+// Claude Notification hook as idle-waiting or permission-prompt. Guards
+// mirror checkIdleNudge's scoping: only cli_interactive backends with
+// nudging enabled (nudgeMax>0) are eligible, which structurally excludes
+// codex (backend name "codex") and the nudge-less api-via-cli lane.
+// Deliberately does NOT call handleInBandRateLimit or any wall-clock check —
+// those stay exclusively in checkIdleNudge.
+func (s *Spawner) triggerImmediateNudge(ctx context.Context, proc *processInfo, req SpawnRequest, reason string) {
+	if proc.backend == nil || proc.backend.Name() != "cli_interactive" || proc.nudgeMax == 0 {
+		return
+	}
+
+	logger.Info(ctx, "idle nudge: in-band notification signal",
+		"session_id", proc.sessionID, "agent_type", proc.agentType, "reason", reason)
+
+	if proc.nudgeCount < proc.nudgeMax {
+		s.sendNudge(ctx, proc, req)
+		return
+	}
+
+	s.handleNudgeAutoFail(ctx, proc, req)
+}
+
 // sendNudge writes the finish-reminder injectable to the agent's PTY stdin and
 // records the nudge. Treats the write as activity so the idle window resets.
 func (s *Spawner) sendNudge(ctx context.Context, proc *processInfo, req SpawnRequest) {

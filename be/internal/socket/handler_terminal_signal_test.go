@@ -14,9 +14,12 @@ import (
 // fakeTerminalSignaler records RequestTerminalSignal calls for assertion.
 // All calls happen synchronously inside Handler.Handle, so no mutex is needed.
 type fakeTerminalSignaler struct {
-	calls []terminalSignalCall
-	err   error // if non-nil, returned from RequestTerminalSignal
+	calls      []terminalSignalCall
+	err        error // if non-nil, returned from RequestTerminalSignal
+	nudgeCalls []idleNudgeCall
 }
+
+type idleNudgeCall struct{ sessionID, reason string }
 
 type terminalSignalCall struct {
 	projectID string
@@ -46,6 +49,11 @@ func (f *fakeTerminalSignaler) SetLastMessage(projectID, ticketID, workflow, ses
 }
 
 func (f *fakeTerminalSignaler) SignalSessionReady(sessionID string) error { return nil }
+
+func (f *fakeTerminalSignaler) TriggerIdleNudge(sessionID, reason string) error {
+	f.nudgeCalls = append(f.nudgeCalls, idleNudgeCall{sessionID, reason})
+	return f.err
+}
 
 // insertAgentSession inserts a running agent_sessions row for terminal signal tests.
 func insertAgentSession(t *testing.T, env *handlerTestEnv, ticketID, sessionID, wfiID string) {

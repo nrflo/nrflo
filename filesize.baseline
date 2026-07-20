@@ -17,7 +17,7 @@
 #
 be/cmd/binaries_test.go	317
 be/internal/api/handlers_chains.go	388
-be/internal/api/handlers_default_template_type_test.go	333
+be/internal/api/handlers_default_template_type_test.go	332
 be/internal/api/handlers_git_test.go	670
 be/internal/api/handlers_observer_test.go	314
 be/internal/api/handlers_orchestrate.go	619
@@ -33,7 +33,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	732
+be/internal/api/server.go	711
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -64,17 +64,17 @@ be/internal/integration/ticket_sorting_test.go	474
 be/internal/integration/ticket_unblock_on_close_test.go	574
 be/internal/integration/ticket_ws_broadcast_test.go	589
 be/internal/integration/workflow_derive_phase_test.go	517
-be/internal/integration/workflow_multi_instance_test.go	504
+be/internal/integration/workflow_multi_instance_test.go	500
 be/internal/integration/workflow_progress_test.go	399
 be/internal/integration/workflow_project_scope_test.go	450
-be/internal/integration/workflow_rerun_project_test.go	334
+be/internal/integration/workflow_rerun_project_test.go	327
 be/internal/logger/logger_test.go	541
 be/internal/model/ticket_test.go	333
 be/internal/notify/notify_test.go	342
 be/internal/orchestrator/chain_runner.go	385
 be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	330
+be/internal/orchestrator/orchestrator_loop.go	329
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	485
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -101,7 +101,7 @@ be/internal/service/chain_preview_test.go	343
 be/internal/service/chain_remove_test.go	425
 be/internal/service/chain_test.go	723
 be/internal/service/daily_stats_test.go	604
-be/internal/service/default_template_type_test.go	362
+be/internal/service/default_template_type_test.go	361
 be/internal/service/findings_layer_test.go	338
 be/internal/service/git_test.go	696
 be/internal/service/scheduled_task_chain_test.go	381
@@ -116,9 +116,9 @@ be/internal/service/workflow_defs_next_on_success_test.go	373
 be/internal/service/workflow_derive_test.go	548
 be/internal/service/worktree_test.go	495
 be/internal/socket/handler.go	467
-be/internal/socket/handler_record_event_test.go	352
+be/internal/socket/handler_record_event_test.go	353
 be/internal/socket/handler_script_context_test.go	332
-be/internal/socket/handler_terminal_signal_test.go	337
+be/internal/socket/handler_terminal_signal_test.go	345
 be/internal/spawner/apirun/runner_test.go	450
 be/internal/spawner/apirun/runner_tools_test.go	335
 be/internal/spawner/apirun/tools_builtin/artifact_test.go	337
@@ -129,7 +129,7 @@ be/internal/spawner/backend_script_test.go	317
 be/internal/spawner/callback_instructions_test.go	384
 be/internal/spawner/completion.go	313
 be/internal/spawner/completion_test.go	473
-be/internal/spawner/context_save_test.go	494
+be/internal/spawner/context_save_test.go	433
 be/internal/spawner/fail_restart_test.go	308
 be/internal/spawner/finalize_phase_callback_test.go	461
 be/internal/spawner/output.go	374
@@ -139,10 +139,10 @@ be/internal/spawner/output_claude_events_test.go	313
 be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	325
 be/internal/spawner/safety_hook_test.go	316
-be/internal/spawner/spawner_monitor.go	399
-be/internal/spawner/spawner_prepare.go	347
+be/internal/spawner/spawner_monitor.go	392
+be/internal/spawner/spawner_prepare.go	343
 be/internal/spawner/stall_global_timeout_test.go	351
-be/internal/spawner/template.go	324
+be/internal/spawner/template.go	312
 be/internal/spawner/template_extra_vars_test.go	318
 be/internal/spawner/template_project_findings_test.go	436
 be/internal/spawner/to_resume_integration_test.go	361

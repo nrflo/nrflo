@@ -228,17 +228,10 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				// doneCh closed; next loop iteration picks it up via handleCompletion
 				break
 			}
-		case bumpSessionID := <-s.bumpMessageCh:
-			// Hook event signal: update lastMessageTime so stall detection is not triggered.
-			for _, proc := range running {
-				if proc.sessionID == bumpSessionID {
-					proc.messagesMutex.Lock()
-					proc.lastMessageTime = s.config.Clock.Now()
-					proc.hasReceivedMessage = true
-					proc.messagesMutex.Unlock()
-					break
-				}
-			}
+		case bumpSessionID := <-s.bumpMessageCh: // hook event signal, see dispatchBumpMessage
+			s.dispatchBumpMessage(running, bumpSessionID)
+		case nr := <-s.nudgeRequestCh: // in-band Notification-hook signal, see idle_nudge.go
+			s.dispatchNudgeRequest(ctx, running, req, nr)
 		default:
 		}
 

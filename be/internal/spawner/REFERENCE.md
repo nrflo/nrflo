@@ -103,6 +103,18 @@ Active for `cli_interactive` backends only (`proc.nudgeMax > 0`). Idle window: `
 
 End-of-turn completion is *also* enforced in-band by the Claude **Stop hook** (registered in `hooks_settings.go`; decided in `socket/handler_record_event.go` `handleStopHook`): when an autonomous turn ends without a completion tool, the server returns a `decision:block` carrying a finish-reminder (up to `stopBlockCap`=3 blocks), then fails the session.
 
+**Notification-triggered immediate nudge.** `socket/handler_record_event_notification.go`'s `handleNotification` classifies each Claude `Notification` hook payload via `classifyNotification` — a structured field first (`type`/`notification_type`), else a substring match on `message` ("waiting for your input"→idle; "needs your permission"/"permission to use <tool>"→permission, tool captured when present); anything else is `unknown` and recorded exactly as before this feature existed, with no downstream call. For `idle`/`permission`, after recording the row it calls `h.signaler.TriggerIdleNudge(sessionID, kind)` (nil-safe, best-effort). `Orchestrator.TriggerIdleNudge` resolves session→`o.runs[wfiID]`→`rs.spawners[sessionID]` exactly like `BumpLastMessage` (returning nil on any miss — this is what excludes console/observer sessions, which have no run/spawner entry); on a hit it calls `Spawner.TriggerIdleNudge`, a non-blocking send onto `nudgeRequestCh` (buffered 16, mirrors `bumpMessageCh`). `monitorAll`'s top-of-loop select drains `nudgeRequestCh` and calls `triggerImmediateNudge`, which re-guards `proc.backend.Name()=="cli_interactive"` and `proc.nudgeMax>0` (excluding codex app-server and the nudge-less api-via-cli lane — defense in depth alongside the orchestrator's run/spawner-miss guard) before picking the same `sendNudge`-vs-`handleNudgeAutoFail` branch `checkIdleNudge` uses; it does **not** call `handleInBandRateLimit` or any wall-clock check, which stay exclusively in `checkIdleNudge`. **No-double-nudge invariant:** `recordNudgeSent` resets `proc.lastMessageTime` on every nudge (in-band or wall-clock), so the immediate nudge defers the wall-clock `checkIdleNudge` path by a full idle window — the two paths cannot both fire for the same idle episode.
+
+## Stall Detection
+
+Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15).
+
+- `stall_start_timeout_sec` (agent_definitions) — seconds with no output before a start-stall; NULL = global default (120s), 0 = disabled.
+- `stall_running_timeout_sec` (agent_definitions) — seconds with no output after first message; NULL = global default (480s), 0 = disabled.
+- `Config.GlobalStallStartTimeout`/`GlobalStallRunningTimeout` — override hardcoded defaults when agent def has NULL. Priority: per-agent def > global config > hardcoded.
+
+On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue`, 15s delay, relaunch.
+
 ## Agent Env Vars
 
 | Variable | Purpose |

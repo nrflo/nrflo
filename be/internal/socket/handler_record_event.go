@@ -62,7 +62,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		}
 		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "user_input")
 	case "Notification":
-		return h.recordSimpleEvent(ctx, req, params.SessionID, asString(event["message"]), "text")
+		return h.handleNotification(ctx, req, params.SessionID, event)
 	case "SubagentStart":
 		agentType := asString(event["agent_type"])
 		prompt := asString(event["prompt"])

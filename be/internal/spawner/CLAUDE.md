@@ -103,13 +103,7 @@ Rate-limited agents (typed exit patterns, in-band 529 text, or api RetryClass) f
 
 ## Stall Detection
 
-Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15).
-
-- `stall_start_timeout_sec` (agent_definitions) — seconds with no output before a start-stall; NULL = global default (120s), 0 = disabled.
-- `stall_running_timeout_sec` (agent_definitions) — seconds with no output after first message; NULL = global default (480s), 0 = disabled.
-- `Config.GlobalStallStartTimeout`/`GlobalStallRunningTimeout` — override hardcoded defaults when agent def has NULL. Priority: per-agent def > global config > hardcoded.
-
-On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue`, 15s delay, relaunch.
+Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRestarts` (15). Timeouts, override priority, on-stall actions: [REFERENCE.md](REFERENCE.md#stall-detection).
 
 ## Validation Commands
 
@@ -117,7 +111,7 @@ When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle windows the session force-fails, and the Claude Stop hook enforces end-of-turn completion in-band. Mechanics: [REFERENCE.md](REFERENCE.md#idlenudge-loop).
+Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle windows the session force-fails, and the Claude Stop hook enforces end-of-turn completion in-band. A Claude Notification hook indicating the agent is parked (idle-waiting/permission-prompt) fires the same nudge immediately via `TerminalSignaler.TriggerIdleNudge`; wall-clock timers stay the fallback. Mechanics: [REFERENCE.md](REFERENCE.md#idlenudge-loop).
 
 ## Template Variables
 

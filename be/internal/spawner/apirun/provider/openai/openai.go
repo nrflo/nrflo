@@ -18,11 +18,12 @@ import (
 // New returns a provider.Provider backed by the OpenAI Responses API.
 // The api key from creds is applied via option.WithAPIKey; optional opts are
 // forwarded to the SDK client (e.g. for injecting a fake http.Client in tests).
-// OPENAI_BASE_URL and OPENAI_ORG_ID environment variables are applied when set.
+// creds.BaseURL (resolved per-project by Resolve, server env fallback) and the
+// OPENAI_ORG_ID environment variable are applied when set.
 func New(creds Credentials, opts ...option.RequestOption) provider.Provider {
 	all := []option.RequestOption{option.WithAPIKey(creds.Value)}
-	if base := os.Getenv("OPENAI_BASE_URL"); base != "" {
-		all = append(all, option.WithBaseURL(base))
+	if creds.BaseURL != "" {
+		all = append(all, option.WithBaseURL(creds.BaseURL))
 	}
 	if org := os.Getenv("OPENAI_ORG_ID"); org != "" {
 		all = append(all, option.WithOrganization(org))

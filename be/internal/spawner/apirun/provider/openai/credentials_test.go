@@ -131,3 +131,52 @@ func TestResolve_RepoError_Propagates(t *testing.T) {
 		t.Errorf("err = %v, want it to contain 'db unavailable'", err)
 	}
 }
+
+// Base-URL resolution: per-project env wins over server env; independent of
+// which source supplied the key; empty everywhere -> empty (SDK default).
+func TestResolve_BaseURL_PerProjectBeatsServerEnv(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "server-key")
+	t.Setenv("OPENAI_BASE_URL", "https://server.example/v1")
+	repo := &fakeEnvRepo{vars: map[string]string{
+		"p1|OPENAI_BASE_URL": "https://openrouter.ai/api/v1",
+	}}
+	got, err := Resolve(context.Background(), repo, "p1")
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got.BaseURL != "https://openrouter.ai/api/v1" {
+		t.Errorf("BaseURL = %q, want per-project override", got.BaseURL)
+	}
+	if got.Value != "server-key" {
+		t.Errorf("Value = %q — base URL must resolve independently of key source", got.Value)
+	}
+}
+
+func TestResolve_BaseURL_ServerEnvFallback(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "server-key")
+	t.Setenv("OPENAI_BASE_URL", "https://server.example/v1")
+	got, err := Resolve(context.Background(), &fakeEnvRepo{vars: map[string]string{}}, "p1")
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got.BaseURL != "https://server.example/v1" {
+		t.Errorf("BaseURL = %q, want server env fallback", got.BaseURL)
+	}
+}
+
+func TestResolve_BaseURL_EmptyDefault(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "server-key")
+	t.Setenv("OPENAI_BASE_URL", "")
+	got, err := Resolve(context.Background(), &fakeEnvRepo{vars: map[string]string{
+		"p1|OPENAI_API_KEY": "proj-key",
+	}}, "p1")
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+	if got.BaseURL != "" {
+		t.Errorf("BaseURL = %q, want empty (SDK default)", got.BaseURL)
+	}
+	if got.Value != "proj-key" {
+		t.Errorf("Value = %q, want per-project key", got.Value)
+	}
+}

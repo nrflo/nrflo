@@ -66,6 +66,7 @@ func (s *Server) consoleDeps() console.Deps {
 		d.Orch = s.orchestrator
 		d.WorkflowControl = s.orchestrator.APIWorkflowControl(s.pool)
 		d.Delegator = s.orchestrator.APIDelegator(s.pool)
+		d.Consultant = s.orchestrator.APIConsultant(s.pool)
 	}
 	return d
 }

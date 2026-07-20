@@ -131,6 +131,14 @@ type fakeOrchestrator struct {
 
 	retryFailedErr        error
 	retryFailedProjectErr error
+
+	runPlannerInstanceID string
+	runPlannerInput      service.PlannerInput
+	runPlannerSessionID  string
+	runPlannerErr        error
+
+	resumeInstanceID string
+	resumeErr        error
 }
 
 func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error) {
@@ -170,6 +178,23 @@ func (f *fakeOrchestrator) RetryFailed(ctx context.Context, projectID, ticketID,
 
 func (f *fakeOrchestrator) RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error {
 	return f.retryFailedProjectErr
+}
+
+func (f *fakeOrchestrator) RunPlanner(ctx context.Context, instanceID string, in service.PlannerInput) (string, error) {
+	f.runPlannerInstanceID = instanceID
+	f.runPlannerInput = in
+	if f.runPlannerErr != nil {
+		return "", f.runPlannerErr
+	}
+	if f.runPlannerSessionID == "" {
+		f.runPlannerSessionID = "sess-planner-fake"
+	}
+	return f.runPlannerSessionID, nil
+}
+
+func (f *fakeOrchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID string) error {
+	f.resumeInstanceID = instanceID
+	return f.resumeErr
 }
 
 var _ Orchestrator = (*fakeOrchestrator)(nil)

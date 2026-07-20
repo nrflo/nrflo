@@ -9,7 +9,7 @@ func TestWorkflowRun_TicketScoped_ValidatesAndStarts(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestWorkflowRun_TicketScoped_UnknownTicket_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestWorkflowRun_ProjectScoped_NoTicketID(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestWorkflowRun_ProjectScoped_NoTicketID(t *testing.T) {
 
 func TestWorkflowRun_MissingWorkflow_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestWorkflowRun_MissingWorkflow_Errors(t *testing.T) {
 
 func TestWorkflowRun_NilOrchestrator_MissingService(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestWorkflowStop_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-other-1")
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestWorkflowStop_ProjectScoped_HappyPath(t *testing.T) {
 	env.seedWorkflowInstance(t, testProjectID, "wfi-own-1")
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -153,7 +153,7 @@ func TestWorkflowStop_TicketScoped_UsesStopByTicket(t *testing.T) {
 	env.seedWorkflowInstance(t, testProjectID, "wfi-own-2")
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -176,7 +176,7 @@ func TestWorkflowRetryFailed_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-other-2")
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestWorkflowRetryFailed_CrossProjectInstanceID_Rejected(t *testing.T) {
 
 func TestWorkflowRetryFailed_MissingTicketAndInstance_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

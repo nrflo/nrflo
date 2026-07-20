@@ -36,7 +36,8 @@ func (s *ChatService) maybeRotate(sess *chatSession) bool {
 		return false
 	}
 
-	threshold := spawner.ProactiveRestartConsoleThreshold(s.deps.Pool, sess.MaxContext())
+	profile, _ := ProfileByName(sess.Profile())
+	threshold := spawner.ProactiveRestartConsoleThreshold(s.deps.Pool, sess.MaxContext(), profile.ContextBudgetTokens)
 	fire, tokensBefore := spawner.ProactiveRestartDecision(s.deps.Pool, s.deps.Clock, sess.id, currentTokens, threshold, 0, true, false)
 	if !fire {
 		return false
@@ -62,20 +63,24 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int) bool {
 	ctx := context.Background()
 	oldEngine := sess.getEngine()
 
-	reg, err := BuildRegistry(s.deps.Tools)
+	profile, _ := ProfileByName(sess.Profile())
+
+	reg, err := BuildRegistry(s.deps.Tools, profile.Catalogue)
 	if err != nil {
 		logger.Error(ctx, "console rotation: build tool registry failed", "session_id", sess.id, "error", err)
 		return false
 	}
 
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
-		SessionID:        sess.id,
-		ProjectID:        sess.ProjectID(),
-		Engine:           sess.EngineName(),
-		ModelID:          sess.ModelID(),
-		ReasoningEffort:  sess.ReasoningEffort(),
-		ServerURL:        s.deps.ServerURL,
-		SystemTemplateID: sess.SystemTemplateID(),
+		SessionID:           sess.id,
+		ProjectID:           sess.ProjectID(),
+		Engine:              sess.EngineName(),
+		ModelID:             sess.ModelID(),
+		ReasoningEffort:     sess.ReasoningEffort(),
+		ServerURL:           s.deps.ServerURL,
+		SystemTemplateID:    sess.SystemTemplateID(),
+		NativeToolPolicy:    profile.NativeToolPolicy,
+		ContextBudgetTokens: profile.ContextBudgetTokens,
 	})
 	if err != nil {
 		logger.Error(ctx, "console rotation: build engine spec failed", "session_id", sess.id, "error", err)

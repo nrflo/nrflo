@@ -38,6 +38,31 @@ export async function createConsoleChat(req: CreateConsoleChatRequest): Promise<
   return apiPost<CreateConsoleChatResponse>('/api/v1/console/chats', req)
 }
 
+export interface SwitchConsoleChatModelRequest {
+  engine?: string
+  model: string
+  reasoning_effort?: string
+}
+
+export interface SiblingChatResponse {
+  sibling_session_id: string
+}
+
+// Model changes never mutate the running engine — they spawn a sibling chat
+// seeded from the current session (chat_service_sibling.go) and return its id.
+export async function switchConsoleChatModel(
+  sid: string,
+  req: SwitchConsoleChatModelRequest
+): Promise<SiblingChatResponse> {
+  return apiPost<SiblingChatResponse>(`/api/v1/console/chats/${encodeURIComponent(sid)}/switch-model`, req)
+}
+
+// Opens a t0-hands sibling pre-seeded with the origin chat's refinery digest
+// as first-message context.
+export async function openConsoleChatHandsSibling(sid: string): Promise<SiblingChatResponse> {
+  return apiPost<SiblingChatResponse>(`/api/v1/console/chats/${encodeURIComponent(sid)}/hands-sibling`)
+}
+
 export async function sendConsoleChatMessage(sid: string, text: string): Promise<void> {
   try {
     await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/messages`, { text })

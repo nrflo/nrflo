@@ -30,7 +30,9 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
   const [model, setModel] = useState('')
   const [effort, setEffort] = useState('')
   const [systemTemplateId, setSystemTemplateId] = useState('')
+  const [profile, setProfile] = useState('')
 
+  const profiles = catalog?.profiles ?? []
   const engines = catalog?.engines ?? []
   const selectedEngine = engines.find((e) => e.id === engine)
   const selectedModel = selectedEngine?.models?.find((m) => m.id === model)
@@ -63,12 +65,33 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
     setModel('')
     setEffort('')
     setSystemTemplateId('')
+    setProfile('')
   }
 
   const handleModelChange = (value: string) => {
     setModel(value)
     setEffort('')
+    setProfile('')
   }
+
+  // Selecting a named profile (e.g. t0-decider) prefills the manual controls
+  // from its defaults and tags the create request with `profile` so the
+  // server resolves the profile's fixed tool catalogue/system prompt;
+  // 'Custom' (value '') clears it and leaves the manual controls as-is.
+  const handleProfileChange = (value: string) => {
+    setProfile(value)
+    const selected = profiles.find((p) => p.name === value)
+    if (!selected) return
+    setEngine(selected.default_engine)
+    setModel(selected.default_model_id)
+    setEffort(selected.default_effort ?? '')
+    setSystemTemplateId(selected.system_template_id ?? '')
+  }
+
+  const profileOptions = [
+    { value: '', label: 'Custom' },
+    ...profiles.map((p) => ({ value: p.name, label: p.display_name })),
+  ]
 
   const effortOptions = [
     { value: '', label: selectedModel?.reasoning_effort ? `Default (${selectedModel.reasoning_effort})` : 'Default' },
@@ -90,12 +113,19 @@ export function NewChatForm({ onCreated }: NewChatFormProps) {
       model,
       ...(effort ? { reasoning_effort: effort } : {}),
       ...(systemTemplateId ? { system_template_id: systemTemplateId } : {}),
+      ...(profile ? { profile } : {}),
     })
     onCreated(resp.session_id)
   }
 
   return (
     <div className="flex flex-col gap-3 border-b border-border p-3">
+      {profiles.length > 0 && (
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Profile</label>
+          <Dropdown value={profile} onChange={handleProfileChange} options={profileOptions} />
+        </div>
+      )}
       <div>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">Engine</label>
         <Dropdown value={engine} onChange={handleEngineChange} options={engineOptions} />

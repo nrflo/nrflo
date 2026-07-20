@@ -125,6 +125,34 @@ func (r *AgentDefinitionRepo) ListExecutable(projectID, workflowID string) ([]*m
 	return scanAgentDefRows(rows)
 }
 
+// FindConsultant resolves a consultant agent definition by id, searching
+// projectID's own agent_definitions first, then the reserved '__global__'
+// namespace — the console consult tool's hidden-host path has no single
+// caller-known workflow to scope the lookup to (unlike an in-run agent's
+// Consult, which reads workflow_id off its own workflow instance).
+func (r *AgentDefinitionRepo) FindConsultant(projectID, id string) (*model.AgentDefinition, error) {
+	rows, err := r.db.Query(`
+		SELECT `+agentDefColumns+`
+		FROM agent_definitions
+		WHERE LOWER(id) = LOWER(?) AND consultant = 1 AND (LOWER(project_id) = LOWER(?) OR project_id = '__global__')
+		ORDER BY CASE WHEN LOWER(project_id) = LOWER(?) THEN 0 ELSE 1 END
+		LIMIT 1`,
+		id, projectID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	defs, err := scanAgentDefRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	if len(defs) == 0 {
+		return nil, fmt.Errorf("consultant agent definition not found: %s", id)
+	}
+	return defs[0], nil
+}
+
 // Delete deletes an agent definition
 func (r *AgentDefinitionRepo) Delete(projectID, workflowID, id string) error {
 	result, err := r.db.Exec(

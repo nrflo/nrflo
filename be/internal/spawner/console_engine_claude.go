@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/model"
 	ptyPkg "be/internal/pty"
 )
 
@@ -145,6 +146,14 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 	}
 	if spec.FallbackModels != "" {
 		args = append(args, "--fallback-model", spec.FallbackModels)
+	}
+	if spec.NativeToolsCSV == model.NativeToolsNone {
+		// Sentinel: disable every native tool (MCP-only chat). Mirrors
+		// cli_adapter_claude.go's autonomous-spawn precedent — an empty
+		// --tools value means "no built-in tools".
+		args = append(args, "--tools", "")
+	} else if spec.NativeToolsCSV != "" {
+		args = append(args, "--tools", spec.NativeToolsCSV)
 	}
 	if spec.SystemPrompt != "" {
 		sysPromptPath := filepath.Join(tempDir, "system-prompt.md")

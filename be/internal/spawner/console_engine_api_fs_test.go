@@ -192,3 +192,80 @@ func TestAPIConsoleEngine_FSTools_AbsentWhenGateOff(t *testing.T) {
 		}
 	}
 }
+
+// TestAPIConsoleEngine_FSTools_PolicyNone_OverridesGlobalEnabled verifies a
+// console.Profile's NativeToolPolicy="none" (e.g. t0-decider) refuses fs
+// tools even when the api_native_tools_enabled global is on — the profile's
+// no-fs/bash invariant must not be bypassable through that global.
+func TestAPIConsoleEngine_FSTools_PolicyNone_OverridesGlobalEnabled(t *testing.T) {
+	pool, clk := newAPIEngineTestPool(t)
+	settings := service.NewGlobalSettingsService(pool, clk)
+	if err := settings.Set("api_mode_enabled", "true"); err != nil {
+		t.Fatal(err)
+	}
+	if err := settings.Set("api_native_tools_enabled", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	prov := newRecordingSpawnerProvider(
+		mock.Script{Final: provider.FinalResponse{StopReason: "end_turn", Content: []provider.ContentBlock{{Type: "text", Text: "hi"}}}},
+	)
+	installFakeAPIProvider(t, prov, nil)
+
+	eng := newAPIConsoleEngine(EngineDeps{Sink: &testSink{}, API: APIEngineDeps{Pool: pool, Clock: clk}})
+	spec := fsTestSpec("sess-fs-policy-none", t.TempDir())
+	spec.NativeToolPolicy = NativeToolPolicyNone
+	if err := eng.Start(context.Background(), spec); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(eng.Stop)
+
+	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+		t.Fatalf("SendUserTurn: %v", err)
+	}
+	waitForEventType(t, eng.Events(), EventTurnCompleted, 5*time.Second)
+
+	for _, spec := range prov.Requests()[0].Tools {
+		if spec.Name == "bash" || spec.Name == "edit_file" || spec.Name == "read_file" {
+			t.Errorf("tool %q offered under NativeToolPolicy=none despite api_native_tools_enabled=true", spec.Name)
+		}
+	}
+}
+
+// TestAPIConsoleEngine_FSTools_PolicyFull_AddsEvenWhenGlobalDisabled
+// verifies NativeToolPolicy="full" (e.g. t0-hands) offers fs tools even when
+// the api_native_tools_enabled global is off/unset.
+func TestAPIConsoleEngine_FSTools_PolicyFull_AddsEvenWhenGlobalDisabled(t *testing.T) {
+	pool, clk := newAPIEngineTestPool(t)
+	if err := service.NewGlobalSettingsService(pool, clk).Set("api_mode_enabled", "true"); err != nil {
+		t.Fatal(err)
+	}
+
+	prov := newRecordingSpawnerProvider(
+		mock.Script{Final: provider.FinalResponse{StopReason: "end_turn", Content: []provider.ContentBlock{{Type: "text", Text: "hi"}}}},
+	)
+	installFakeAPIProvider(t, prov, nil)
+
+	eng := newAPIConsoleEngine(EngineDeps{Sink: &testSink{}, API: APIEngineDeps{Pool: pool, Clock: clk}})
+	spec := fsTestSpec("sess-fs-policy-full", t.TempDir())
+	spec.NativeToolPolicy = NativeToolPolicyFull
+	if err := eng.Start(context.Background(), spec); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	t.Cleanup(eng.Stop)
+
+	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+		t.Fatalf("SendUserTurn: %v", err)
+	}
+	waitForEventType(t, eng.Events(), EventTurnCompleted, 5*time.Second)
+
+	found := false
+	for _, spec := range prov.Requests()[0].Tools {
+		if spec.Name == "bash" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("bash tool not offered under NativeToolPolicy=full despite api_native_tools_enabled being off")
+	}
+}

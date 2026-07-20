@@ -95,6 +95,7 @@ const (
 	EventConsoleChatError            = "console_chat.error"
 	EventConsoleChatThinking         = "console_chat.thinking"
 	EventConsoleChatSessionApprovals = "console_chat.session_approvals"
+	EventConsoleChatSiblingOpened    = "console_chat.sibling_opened"
 	EventConsoleContextRotated       = "console.context_rotated"
 )
 

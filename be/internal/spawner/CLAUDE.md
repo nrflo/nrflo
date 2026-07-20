@@ -43,7 +43,7 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` �
 
 ## Console Engine
 
-`ConsoleEngine` (`console_engine.go`, via `GetConsoleEngine`) is the provider-agnostic conversation driver used by console chats; `InterruptTurn` cancels only the active turn and preserves the engine's conversation. Engine death remains observable through `Events()`, so `console.ChatService` cannot leave a dead turn pinned; engines hold no `processInfo`, making nudge/stall/restart policies structurally unreachable. Codex uses app-server, Claude uses the PTY + hooks path, and `apiConsoleEngine` uses an in-process `apirun.Conversation`; mechanics incl. system-prompt resolution: [REFERENCE.md](REFERENCE.md#console-engine). `apiConsoleEngine.Start` renders its system prompt from the `api-console-system-prompt` injectable — a distinct id from the worker's `api-system-prompt`, left unseeded so a fresh DB falls back to the `consoleAPISystem`/`consoleAPIFSSystem` constants.
+`ConsoleEngine` (`console_engine.go`, via `GetConsoleEngine`) is the provider-agnostic conversation driver used by console chats; `InterruptTurn` cancels only the active turn and preserves the engine's conversation. Engine death remains observable through `Events()`, so `console.ChatService` cannot leave a dead turn pinned; engines hold no `processInfo`, making nudge/stall/restart policies structurally unreachable. Codex uses app-server, Claude uses the PTY + hooks path, and `apiConsoleEngine` uses an in-process `apirun.Conversation`; mechanics incl. system-prompt resolution: [REFERENCE.md](REFERENCE.md#console-engine). `apiConsoleEngine.Start` renders its system prompt from the `api-console-system-prompt` injectable — a distinct id from the worker's `api-system-prompt`, left unseeded so a fresh DB falls back to the `consoleAPISystem`/`consoleAPIFSSystem` constants. `EngineSpec.NativeToolsCSV`/`Sandbox`/`NativeToolPolicy`/`ContextBudgetTokens` carry a `console.Profile`'s native-tool/budget policy into each engine and the rotation threshold — profile owns these values; see [console/CLAUDE.md](../console/CLAUDE.md#console-chat-profiles).
 
 ## Host Process Probing
 
@@ -84,7 +84,7 @@ When context usage crosses the threshold, the spawner kills the agent, saves con
 
 ## Consult
 
-`Spawner.Consult` (`consult.go`, implements `apirun.ConsultantSpawner`) lets an api-mode agent ask a named consultant inline: validates the target (`consultant=true`, `execution_mode=api`), truncates the caller transcript, then synchronously spawns a child `Spawner` running a one-phase `_consult` workflow under the caller's instance+ticket. The consultant's `_consult_answer` finding (read+deleted by session id) is returned as the `consult` tool result. `prepareSpawn` strips `consult` from a consultant's own toolset (recursion guard). Broadcasts `consult.started/answered/failed`; `_consult` is hidden from the v4 read model.
+`Spawner.Consult`/`ConsultHost` (`consult.go`/`consult_host.go`, both implement `apirun.ConsultantSpawner` and share `runConsult`, `consult_run.go`) let an api-mode agent, or a console session via the hidden-host path, ask a named consultant inline; mechanics: [REFERENCE.md](REFERENCE.md#consult).
 
 ## Delegate
 

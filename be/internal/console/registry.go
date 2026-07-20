@@ -11,16 +11,16 @@ import (
 
 // reusedBuiltins lists the session-independent builtin tools reused as-is in
 // the console profile. Every other builtin (agent_*, findings_*,
-// emit_findings, workflow_skip, chain_next_*, run_subworkflow/
-// get_subworkflow, dynamic_workflow/revise_plan/approve_plan, consult,
-// read_document, artifact_add and the builtin artifact_list/artifact_get) is
-// session-bound (needs WorkflowInstanceID, session-scoped findings, or
-// lifecycle semantics a console session has none of) and is deliberately
-// excluded — see CLAUDE.md. delegate/get_delegation are the one exception:
-// they are console-only reimplementations (tools_delegate.go), not reused
-// from this map, because they route through Deps.Delegator instead of
-// env.Delegator (a console ToolEnv has no WorkflowInstanceID for the builtin
-// handler to key off).
+// emit_findings, workflow_skip, chain_next_*, run_subworkflow, read_document,
+// artifact_add and the builtin artifact_list/artifact_get) is session-bound
+// (needs WorkflowInstanceID, session-scoped findings, or lifecycle semantics
+// a console session has none of) and is deliberately excluded — see
+// CLAUDE.md. delegate/get_delegation/dynamic_workflow/get_subworkflow/
+// revise_plan/approve_plan/consult are the exception: they are console-only
+// reimplementations (tools_delegate.go, tools_dynamic.go, tools_plan.go,
+// tools_consult.go), not reused from this map, because they route through
+// Deps (Delegator/Consultant/Orch) or a project guard instead of the
+// session-bound WorkflowInstanceID the builtin handlers key off.
 func reusedBuiltins() []string {
 	return []string{
 		"project_findings_add",
@@ -40,10 +40,14 @@ func reusedBuiltins() []string {
 }
 
 // BuildRegistry composes the console tool profile: the allowlisted
-// session-independent builtins plus the console-only handlers. Errors when an
+// session-independent builtins plus the console-only handlers, then filters
+// to catalogue when it is non-empty (a Profile's tool allowlist — nil/empty
+// keeps every tool, today's pre-profile behavior used by the console-tools
+// endpoint, mcp-external, and any chat with no profile). Errors when an
 // allowlisted name is missing from tools_builtin.Builtins() — a rename guard,
-// not a runtime condition.
-func BuildRegistry(d Deps) (apirun.Registry, error) {
+// not a runtime condition — or when catalogue names a tool this registry
+// does not compose.
+func BuildRegistry(d Deps, catalogue []string) (apirun.Registry, error) {
 	builtins := tools_builtin.Builtins()
 	reg := make(apirun.Registry)
 	for _, name := range reusedBuiltins() {
@@ -69,8 +73,24 @@ func BuildRegistry(d Deps) (apirun.Registry, error) {
 	reg["artifact_get"] = artifactGetHandler{d: d}
 	reg["delegate"] = delegateHandler{d: d}
 	reg["get_delegation"] = getDelegationHandler{d: d}
+	reg["dynamic_workflow"] = dynamicWorkflowHandler{d: d}
+	reg["get_subworkflow"] = getSubworkflowHandler{d: d}
+	reg["revise_plan"] = revisePlanHandler{d: d}
+	reg["approve_plan"] = approvePlanHandler{d: d}
+	reg["consult"] = consultHandler{d: d}
 
-	return reg, nil
+	if len(catalogue) == 0 {
+		return reg, nil
+	}
+	filtered := make(apirun.Registry, len(catalogue))
+	for _, name := range catalogue {
+		h, ok := reg[name]
+		if !ok {
+			return nil, fmt.Errorf("console: profile catalogue names unknown tool %q", name)
+		}
+		filtered[name] = h
+	}
+	return filtered, nil
 }
 
 // Specs returns the catalogue: every handler's Spec(), sorted by name.

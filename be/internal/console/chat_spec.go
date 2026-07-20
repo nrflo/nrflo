@@ -7,6 +7,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/spawner"
 )
@@ -21,12 +22,40 @@ type chatSpecParams struct {
 	SpawnToken       string
 	ServerURL        string // loopback base, e.g. http://127.0.0.1:6587
 	SystemTemplateID string // optional agent-def/profile injectable id, rendered into spec.SystemPrompt
+
+	// Profile-derived fields (console.Profile, resolved by the caller —
+	// chat_service.go's create()). Zero values are "no profile", byte-
+	// identical to pre-profile behavior. NativeToolsCSV/Sandbox are the raw
+	// spawner.EngineSpec values mapped from Profile.NativeToolPolicy by
+	// nativeToolFieldsForPolicy; NativeToolPolicy passes the policy through
+	// unchanged for the api engine's own fs-tool gate.
+	NativeToolsCSV      string
+	Sandbox             string
+	NativeToolPolicy    string
+	ContextBudgetTokens int
+	// DefaultModelID/DefaultEffort apply only when the caller left
+	// ModelID/ReasoningEffort empty (a profile default, not an override).
+	DefaultModelID string
+	DefaultEffort  string
+}
+
+// nativeToolFieldsForPolicy maps a Profile.NativeToolPolicy onto the raw
+// spawner.EngineSpec fields each CLI engine reads: "none" locks the claude
+// engine to MCP-only tools (model.NativeToolsNone, console_engine_claude.go)
+// and the codex engine to a read-only sandbox; "full"/"" leave both at their
+// engine default (unrestricted).
+func nativeToolFieldsForPolicy(policy string) (nativeToolsCSV, sandbox string) {
+	if policy == NativeToolPolicyNone {
+		return model.NativeToolsNone, model.SandboxReadOnly
+	}
+	return "", ""
 }
 
 // buildChatEngineSpec resolves the project workdir and (when ModelID names
-// one) the model registry row into a spawner.EngineSpec for a console-chat
-// session, via modelResolverFor(p.Engine). API rows must resolve; unknown CLI
-// ids remain valid raw model names.
+// one, or falls back to DefaultModelID) the model registry row into a
+// spawner.EngineSpec for a console-chat session, via
+// modelResolverFor(p.Engine). API rows must resolve; unknown CLI ids remain
+// valid raw model names.
 func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spawner.EngineSpec, error) {
 	project, err := repo.NewProjectRepo(pool, clk).Get(p.ProjectID)
 	if err != nil {
@@ -37,21 +66,35 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 		workDir = project.RootPath.String
 	}
 
+	nativeToolsCSV, sandbox := nativeToolFieldsForPolicy(p.NativeToolPolicy)
 	spec := spawner.EngineSpec{
-		SessionID:     p.SessionID,
-		ProjectID:     p.ProjectID,
-		WorkDir:       workDir,
-		Model:         p.ModelID,
-		MCPServerPath: resolveNrfloPath(),
-		Env:           chatEnv(p.SessionID, p.ProjectID),
-		MCPEnv:        chatMCPEnv(p.ServerURL, p.ProjectID, p.SessionID, p.SpawnToken),
+		SessionID:           p.SessionID,
+		ProjectID:           p.ProjectID,
+		WorkDir:             workDir,
+		Model:               p.ModelID,
+		MCPServerPath:       resolveNrfloPath(),
+		Env:                 chatEnv(p.SessionID, p.ProjectID),
+		MCPEnv:              chatMCPEnv(p.ServerURL, p.ProjectID, p.SessionID, p.SpawnToken),
+		NativeToolsCSV:      nativeToolsCSV,
+		Sandbox:             sandbox,
+		NativeToolPolicy:    p.NativeToolPolicy,
+		ContextBudgetTokens: p.ContextBudgetTokens,
 	}
 
-	if p.ModelID == "" {
+	modelID := p.ModelID
+	if modelID == "" {
+		modelID = p.DefaultModelID
+	}
+	effort := p.ReasoningEffort
+	if effort == "" {
+		effort = p.DefaultEffort
+	}
+
+	if modelID == "" {
 		// Engine-default model: the effort override passes through for the
 		// engine/provider to validate.
-		spec.ReasoningEffort = p.ReasoningEffort
-	} else if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, p.ModelID, p.ReasoningEffort); err != nil {
+		spec.ReasoningEffort = effort
+	} else if err := modelResolverFor(p.Engine).Resolve(pool, clk, &spec, modelID, effort); err != nil {
 		return spawner.EngineSpec{}, err
 	}
 

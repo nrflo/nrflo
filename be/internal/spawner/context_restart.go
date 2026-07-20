@@ -105,14 +105,17 @@ func ProactiveRestartThresholdDefault(pool *db.Pool) int {
 	return contextConfigInt(pool, "proactive_restart_threshold_default", defaultProactiveRestartThreshold)
 }
 
-// ProactiveRestartConsoleThreshold resolves the console-rotation token ceiling
-// as a percentage (proactive_restart_console_pct, default 75) of the live
-// context window (maxContext). Console engines track usage as a fraction of
-// their window, not a ledger total, so the autonomous ledger-sized default
-// (250k) never applies here — it exceeds a claude window (200k) and would make
-// console rotation dead on arrival. pct<=0 (or an unknown window) returns 0,
-// which shouldRotate treats as disabled.
-func ProactiveRestartConsoleThreshold(pool *db.Pool, maxContext int) int {
+// ProactiveRestartConsoleThreshold resolves the console-rotation token
+// ceiling: a percentage (proactive_restart_console_pct, default 75) of the
+// live context window (maxContext), capped at budget when budget>0 (a
+// console.Profile's ContextBudgetTokens — e.g. t0-decider's 50k rotates a
+// 200k-window claude chat at 50k, well under the 75% pct-of-window ceiling).
+// Console engines track usage as a fraction of their window, not a ledger
+// total, so the autonomous ledger-sized default (250k) never applies here —
+// it exceeds a claude window (200k) and would make console rotation dead on
+// arrival. pct<=0 (or an unknown window) returns 0, which shouldRotate treats
+// as disabled — budget does not override that.
+func ProactiveRestartConsoleThreshold(pool *db.Pool, maxContext, budget int) int {
 	if maxContext <= 0 {
 		return 0
 	}
@@ -123,7 +126,11 @@ func ProactiveRestartConsoleThreshold(pool *db.Pool, maxContext int) int {
 	if pct > 100 {
 		pct = 100
 	}
-	return maxContext * pct / 100
+	threshold := maxContext * pct / 100
+	if budget > 0 && budget < threshold {
+		return budget
+	}
+	return threshold
 }
 
 // ProactiveRestartDecision evaluates the shared proactive-restart policy for

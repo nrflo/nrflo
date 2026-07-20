@@ -14,6 +14,7 @@ import {
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
 import { TurnActiveError } from '@/api/consoleChats'
 import { ChatMessageList } from './ChatMessageList'
+import { ChatSiblingActions, isT0Profile } from './ChatSiblingActions'
 
 const XTerminal = lazy(() =>
   import('@/components/workflow/XTerminal').then((m) => ({ default: m.XTerminal }))
@@ -23,6 +24,11 @@ interface ChatViewProps {
   sid: string
   onClosed: () => void
   onDetach: () => void
+  // Called with a newly-spawned sibling's session id — both the direct
+  // switch-model/hands-sibling mutation responses and the WS
+  // console_chat.sibling_opened event (for other tabs watching this
+  // session) drive it; ConsolePage passes selectSession.
+  onOpenSibling: (sid: string) => void
 }
 
 // Transcript + composer + header. Composer disables while turn==='running'
@@ -30,7 +36,7 @@ interface ChatViewProps {
 // cancels the turn, keeps the engine alive). Detach deselects the chat and
 // leaves the engine running for a later resume; Close tears it down.
 // Auto-scroll on new items.
-export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
+export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewProps) {
   const { data: detail } = useConsoleChat(sid)
   const stream = useConsoleChatStream(sid)
   const sendMutation = useSendConsoleChatMessage()
@@ -62,6 +68,13 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
   }, [stream.transcript.length])
+
+  // Direct switch-model/hands-sibling responses already call onOpenSibling;
+  // this covers the WS event for other tabs watching this session — an
+  // idempotent re-select when it's this tab that triggered the mutation.
+  useEffect(() => {
+    if (stream.siblingOpened) onOpenSibling(stream.siblingOpened.sibling_session_id)
+  }, [stream.siblingOpened, onOpenSibling])
 
   const isRunning = stream.turn === 'running'
 
@@ -134,6 +147,14 @@ export function ChatView({ sid, onClosed, onDetach }: ChatViewProps) {
           )}
           {stream.cost != null && (
             <span className="text-xs text-muted-foreground">~${stream.cost.toFixed(2)}</span>
+          )}
+          {detail && isT0Profile(detail.profile) && (
+            <ChatSiblingActions
+              sid={sid}
+              engine={detail.engine}
+              model={detail.model}
+              onOpenSibling={onOpenSibling}
+            />
           )}
           {canAttachTerminal && (
             <Button

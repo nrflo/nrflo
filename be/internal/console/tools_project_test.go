@@ -10,7 +10,7 @@ import (
 
 func TestProjectList_ReturnsSeededProjects(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestProjectStatus_ProjectScopedSession_IgnoresProjectOverride(t *testing.T)
 	env := newConsoleTestEnv(t)
 	env.seedExtraTicket(t, testOtherProjectID, "T-other-1")
 	env.seedExtraTicket(t, testOtherProjectID, "T-other-2")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestProjectStatus_GlobalScopeSession_HonorsProjectOverride(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedExtraTicket(t, testOtherProjectID, "T-other-3")
 	env.seedExtraTicket(t, testOtherProjectID, "T-other-4")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

@@ -20,7 +20,7 @@ func (e *consoleTestEnv) addArtifact(t *testing.T, projectID, wfiID, name, conte
 func TestArtifactList_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-art-other")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestArtifactList_HappyPath(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-art-own")
 	env.addArtifact(t, testProjectID, "wfi-art-own", "notes.txt", "text/plain", []byte("hello world"))
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestArtifactGet_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-artget-other")
 	env.addArtifact(t, testOtherProjectID, "wfi-artget-other", "secret.txt", "text/plain", []byte("nope"))
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -81,7 +81,7 @@ func TestArtifactGet_TextContent_InlinedAsText(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-artget-own")
 	env.addArtifact(t, testProjectID, "wfi-artget-own", "notes.txt", "text/plain", []byte("hello world"))
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestArtifactGet_BinaryContent_InlinedAsBase64(t *testing.T) {
 	env.seedWorkflowInstance(t, testProjectID, "wfi-artget-bin")
 	binary := []byte{0x00, 0x01, 0xff, 0xfe, 0x80}
 	env.addArtifact(t, testProjectID, "wfi-artget-bin", "blob.bin", "application/octet-stream", binary)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestArtifactGet_BinaryContent_InlinedAsBase64(t *testing.T) {
 func TestArtifactGet_NotFound_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-artget-missing")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

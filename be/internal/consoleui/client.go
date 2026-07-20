@@ -26,12 +26,16 @@ func NewClient(cfg Config) *Client {
 	}
 }
 
-func (c *Client) Create(ctx context.Context, engine, model, effort string) (string, error) {
+// Create starts a chat. profile is optional (empty preserves today's
+// no-profile behavior); non-empty must name a built-in console.Profile
+// (currently t0-decider/t0-hands), which the server applies as tool
+// catalogue/native-tool/budget/refinery/model-effort defaults.
+func (c *Client) Create(ctx context.Context, engine, model, effort, profile string) (string, error) {
 	var response struct {
 		SessionID string `json:"session_id"`
 	}
 	err := c.do(ctx, http.MethodPost, "/api/v1/console/chats", map[string]string{
-		"engine": engine, "model": model, "reasoning_effort": effort,
+		"engine": engine, "model": model, "reasoning_effort": effort, "profile": profile,
 	}, &response)
 	if err != nil {
 		return "", err

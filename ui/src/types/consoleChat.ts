@@ -10,6 +10,9 @@ export interface ConsoleChatSummary {
   ended_at?: string
   context_left?: number
   live: boolean
+  // Console profile the chat was created from (e.g. 't0-decider',
+  // 't0-hands'); omitted for chats created via the manual/Custom path.
+  profile?: string
 }
 
 export interface PendingApproval {
@@ -47,6 +50,10 @@ export interface CreateConsoleChatRequest {
   // Optional injectable system-template override; empty/omitted preserves
   // today's mode-default behavior.
   system_template_id?: string
+  // Optional console profile (e.g. 't0-decider', 't0-hands'); when set, the
+  // server resolves engine/model/effort/system-template/tool-catalogue
+  // defaults from the profile registry.
+  profile?: string
 }
 
 export interface CreateConsoleChatResponse {
@@ -54,6 +61,7 @@ export interface CreateConsoleChatResponse {
   engine: string
   model: string
   status: AgentSessionStatus
+  profile?: string
 }
 
 export interface ConsoleChatMessagesResponse {
@@ -101,12 +109,29 @@ export interface ConsoleSessionOption {
   status: string
   started_at?: string
   context_left?: number
+  profile?: string
+}
+
+// Named console profile presets (t0-decider / t0-hands) — picking one at
+// create time prefills engine/model/effort/system-template from these
+// defaults (NewChatForm.tsx) instead of the manual/Custom path.
+export interface ConsoleProfileOption {
+  name: string
+  display_name: string
+  description?: string
+  default_engine: string
+  default_model_id: string
+  default_effort?: string
+  context_budget_tokens: number
+  refinery_default: boolean
+  system_template_id?: string
 }
 
 export interface ConsoleCatalog {
   project_id: string
   engines: ConsoleEngineOption[]
   sessions: ConsoleSessionOption[]
+  profiles: ConsoleProfileOption[]
 }
 
 // WS session-channel payload shapes (be/internal/console/chat_events.go)
@@ -143,6 +168,16 @@ export interface ConsoleChatErrorPayload {
 // (approve_for_session resolution or a revoke).
 export interface ConsoleChatSessionApprovalsPayload {
   tools: string[]
+}
+
+// console_chat.sibling_opened session-channel push (chat_service_sibling.go)
+// — fired on the ORIGIN session when a model-switch or hands-sibling spawn
+// creates a sibling chat, so any other tab watching that session can also
+// jump to the new one.
+export interface ConsoleChatSiblingOpenedPayload {
+  origin_session_id: string
+  sibling_session_id: string
+  reason: 'model_switch' | 'hands_sibling'
 }
 
 // session.cost_updated session-channel push (be/internal/spawner sessioncost

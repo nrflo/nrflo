@@ -48,6 +48,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 - **Merge conflict auto-resolution / push-after-merge** → [orchestrator](be/internal/orchestrator/CLAUDE.md)
 - **Plan lifecycle & sub/dynamic workflows** (planner, revise/approve, self-drafting boundary, `run_subworkflow`/`dynamic_workflow`) → [orchestrator](be/internal/orchestrator/CLAUDE.md) + [service](be/internal/service/CLAUDE.md)
 - **Workflow progress long-poll** (`workflow_wait` console tool + WaitBroker) → [console](be/internal/console/CLAUDE.md)
+- **Console-chat profiles** (`t0-decider`/`t0-hands`, tool catalogue allowlist, native-tool policy, context budget, sibling chats) → [console](be/internal/console/CLAUDE.md)
 
 ### Agents, templates, and configuration
 - **Workflow / agent / system-agent definitions** → [spawner](be/internal/spawner/CLAUDE.md) + [service](be/internal/service/CLAUDE.md) + [doc/](doc/)

@@ -9,7 +9,7 @@ import (
 func TestWorkflowGet_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-get-other")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -27,7 +27,7 @@ func TestWorkflowGet_CrossProjectInstanceID_Rejected(t *testing.T) {
 func TestWorkflowGet_HappyPath_ReturnsV4State(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-get-own")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestWorkflowGet_HappyPath_ReturnsV4State(t *testing.T) {
 
 func TestWorkflowGet_MissingInstanceID_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -68,7 +68,7 @@ func TestWorkflowGet_MissingInstanceID_Errors(t *testing.T) {
 
 func TestWorkflowList_ReturnsProjectDefs(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

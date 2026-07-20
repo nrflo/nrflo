@@ -18,6 +18,9 @@ func (s *ChatService) SendMessage(sid, text string) error {
 	if err := sess.beginTurn(); err != nil {
 		return err
 	}
+	if seed := sess.takeSeedContext(); seed != "" {
+		text = seed + "\n\n" + text
+	}
 	if err := sess.getEngine().SendUserTurn(context.Background(), text); err != nil {
 		sess.endTurn()
 		return err

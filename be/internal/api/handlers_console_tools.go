@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"be/internal/console"
+	"be/internal/model"
 )
 
 // consoleToolSummary is one entry in the GET /api/v1/console/tools catalogue.
@@ -17,17 +18,36 @@ type consoleToolSummary struct {
 	InputSchema json.RawMessage `json:"input_schema"`
 }
 
+// catalogueForSession resolves sess's tool allowlist: a kind='console_chat'
+// row started under a profile restricts the `agent mcp-external` bridge's
+// HTTP-mediated tool routes (this file) to that profile's catalogue, exactly
+// like the api engine's in-process registry (chat_service.go) — a claude/
+// codex t0-decider chat must not regain the full catalogue just because its
+// tool calls take the HTTP path instead. A plain kind='console' session, or a
+// chat with no profile, gets nil (today's full-catalogue behavior).
+func catalogueForSession(sess *model.AgentSession) []string {
+	if sess.Kind != model.AgentSessionKindConsoleChat || sess.ConsoleProfile == "" {
+		return nil
+	}
+	profile, err := console.ProfileByName(sess.ConsoleProfile)
+	if err != nil {
+		return nil
+	}
+	return profile.Catalogue
+}
+
 // handleListConsoleTools serves GET /api/v1/console/tools: the console tool
 // catalogue, sorted by name. Auth is enforced in-handler by
 // requireConsoleSession (route is `protected`, not `projectAdmin` — a console
 // bearer never populates the user context).
 func (s *Server) handleListConsoleTools(w http.ResponseWriter, r *http.Request) {
-	if _, ok := requireConsoleSession(r); !ok {
+	sess, ok := requireConsoleSession(r)
+	if !ok {
 		writeError(w, http.StatusUnauthorized, "console session required")
 		return
 	}
 
-	reg, err := console.BuildRegistry(s.consoleDeps())
+	reg, err := console.BuildRegistry(s.consoleDeps(), catalogueForSession(sess))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -67,7 +87,7 @@ func (s *Server) handleCallConsoleTool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	deps := s.consoleDeps()
-	reg, err := console.BuildRegistry(deps)
+	reg, err := console.BuildRegistry(deps, catalogueForSession(sess))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

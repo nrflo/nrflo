@@ -9,7 +9,7 @@ import (
 
 func TestDispatch_UnknownTool_ReturnsErrToolNotFound(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -23,7 +23,7 @@ func TestDispatch_UnknownTool_ReturnsErrToolNotFound(t *testing.T) {
 
 func TestDispatch_KnownTool_EmptyArgsDefaultToEmptyObject(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestDispatch_KnownTool_ArgsForwarded(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	fake := &fakeOrchestrator{}
 	env.deps.Orch = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

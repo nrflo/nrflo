@@ -90,7 +90,7 @@ func TestChatService_RefineryEnabled_StartsOnCreateAndStopsOnClose(t *testing.T)
 	mgr := &fakeRefineryLifecycle{}
 	svc, _, _, _ := newChatTestServiceWithRefinery(t, mgr)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", true)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", true)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestChatService_RefineryDisabled_NeverStarts(t *testing.T) {
 	mgr := &fakeRefineryLifecycle{}
 	svc, _, _, _ := newChatTestServiceWithRefinery(t, mgr)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -140,7 +140,7 @@ func TestChatService_RefineryGlobalSetting_EnablesWithoutPerCreateFlag(t *testin
 		t.Fatalf("set global refinery_enabled: %v", err)
 	}
 
-	if _, err := svc.Create("codex", "", "", chatTestProjectID, "", false); err != nil {
+	if _, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	if mgr.startCount() != 1 {
@@ -155,7 +155,7 @@ func TestChatService_RefineryStop_FiresOnEngineExit(t *testing.T) {
 	mgr := &fakeRefineryLifecycle{}
 	svc, _, hub, factory := newChatTestServiceWithRefinery(t, mgr)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", true)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", true)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestChatService_NilRefineryMgr_IsANoop(t *testing.T) {
 	t.Parallel()
 	svc, _, _, _ := newChatTestServiceWithRefinery(t, nil)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", true)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", true)
 	if err != nil {
 		t.Fatalf("Create with nil RefineryMgr: %v", err)
 	}

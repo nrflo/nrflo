@@ -93,19 +93,19 @@ func (s *ChatService) SetEngineFactory(f func(name string, deps spawner.EngineDe
 // tools/list through `agent mcp-external`, a SessionStart hook — authenticates
 // against this row. A failed Start closes it again rather than leaving an open
 // session with no engine.
-func (s *ChatService) Create(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID string, err error) {
-	sessionID, _, err = s.create(engine, modelID, effort, projectID, systemTemplateID, refineryEnabled)
+func (s *ChatService) Create(engine, modelID, effort, projectID, systemTemplateID, profileName string, refineryEnabled bool) (sessionID string, err error) {
+	sessionID, _, err = s.create(engine, modelID, effort, projectID, systemTemplateID, profileName, refineryEnabled)
 	return sessionID, err
 }
 
 // CreateAuthenticated is the trusted-local variant used by the Unix socket.
 // It returns the session bearer so a native TUI can drive only the chat it
 // just created. HTTP callers use Create and never receive this credential.
-func (s *ChatService) CreateAuthenticated(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID, token string, err error) {
-	return s.create(engine, modelID, effort, projectID, systemTemplateID, refineryEnabled)
+func (s *ChatService) CreateAuthenticated(engine, modelID, effort, projectID, systemTemplateID, profileName string, refineryEnabled bool) (sessionID, token string, err error) {
+	return s.create(engine, modelID, effort, projectID, systemTemplateID, profileName, refineryEnabled)
 }
 
-func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateID string, refineryEnabled bool) (sessionID, token string, err error) {
+func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateID, profileName string, refineryEnabled bool) (sessionID, token string, err error) {
 	exists, err := repo.NewProjectRepo(s.deps.Pool, s.deps.Clock).Exists(projectID)
 	if err != nil {
 		return "", "", fmt.Errorf("check project: %w", err)
@@ -113,19 +113,34 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 	if !exists {
 		return "", "", service.ErrConsoleProjectNotFound
 	}
+	profile, err := ProfileByName(profileName)
+	if err != nil {
+		return "", "", err
+	}
 
 	sessionID = uuid.New().String()
 	token = id.MintToken()
 
+	// systemTemplateID and effort are per-create overrides; the profile's own
+	// system_template_id/default_effort apply only when the caller left them
+	// empty (t0-hands ships a blank SystemTemplateID/DefaultEffort, so this is
+	// a no-op for it).
+	if systemTemplateID == "" {
+		systemTemplateID = profile.SystemTemplateID
+	}
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
-		SessionID:        sessionID,
-		ProjectID:        projectID,
-		Engine:           engine,
-		ModelID:          modelID,
-		ReasoningEffort:  effort,
-		SpawnToken:       token,
-		ServerURL:        s.deps.ServerURL,
-		SystemTemplateID: systemTemplateID,
+		SessionID:           sessionID,
+		ProjectID:           projectID,
+		Engine:              engine,
+		ModelID:             modelID,
+		ReasoningEffort:     effort,
+		SpawnToken:          token,
+		ServerURL:           s.deps.ServerURL,
+		SystemTemplateID:    systemTemplateID,
+		NativeToolPolicy:    profile.NativeToolPolicy,
+		ContextBudgetTokens: profile.ContextBudgetTokens,
+		DefaultModelID:      profile.DefaultModelID,
+		DefaultEffort:       profile.DefaultEffort,
 	})
 	if err != nil {
 		return "", "", err
@@ -142,8 +157,9 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 
 	// Built unconditionally (no engine name-check) — a chat engine gets the
 	// same tool profile the mcp-external bridge serves; claude/codex simply
-	// ignore EngineDeps.API.
-	reg, err := BuildRegistry(s.deps.Tools)
+	// ignore EngineDeps.API. profile.Catalogue (nil for no profile) restricts
+	// it to the profile's allowlist.
+	reg, err := BuildRegistry(s.deps.Tools, profile.Catalogue)
 	if err != nil {
 		return "", "", fmt.Errorf("build console tool registry: %w", err)
 	}
@@ -165,22 +181,32 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		return "", "", fmt.Errorf("build console engine: %w", err)
 	}
 
+	// effectiveModelID is what actually started (profile default when the
+	// caller left modelID empty) — persisted on the row and used for cost
+	// registration so a profile-default chat (e.g. t0-decider with no
+	// explicit modelID) still gets priced.
+	effectiveModelID := modelID
+	if effectiveModelID == "" {
+		effectiveModelID = profile.DefaultModelID
+	}
+
 	sessionRepo := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock)
 	now := s.deps.Clock.Now().UTC().Format(time.RFC3339Nano)
 	row := &model.AgentSession{
-		ID:         sessionID,
-		ProjectID:  projectID,
-		TicketID:   "",
-		Phase:      "console_chat",
-		NodeID:     "console_chat",
-		AgentType:  "console_chat",
-		Status:     model.AgentSessionUserInteractive,
-		Kind:       model.AgentSessionKindConsoleChat,
-		SpawnToken: sql.NullString{String: token, Valid: true},
-		StartedAt:  sql.NullString{String: now, Valid: true},
+		ID:             sessionID,
+		ProjectID:      projectID,
+		TicketID:       "",
+		Phase:          "console_chat",
+		NodeID:         "console_chat",
+		AgentType:      "console_chat",
+		Status:         model.AgentSessionUserInteractive,
+		Kind:           model.AgentSessionKindConsoleChat,
+		SpawnToken:     sql.NullString{String: token, Valid: true},
+		StartedAt:      sql.NullString{String: now, Valid: true},
+		ConsoleProfile: profileName,
 	}
-	if modelID != "" {
-		row.ModelID = sql.NullString{String: modelID, Valid: true}
+	if effectiveModelID != "" {
+		row.ModelID = sql.NullString{String: effectiveModelID, Valid: true}
 	}
 	row.ConsoleEngine = sql.NullString{String: engine, Valid: true}
 	if err := sessionRepo.Create(row); err != nil {
@@ -193,10 +219,10 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		return "", "", fmt.Errorf("start console engine: %w", err)
 	}
 
-	// modelID is the registry slug the caller supplied to create() (see
-	// ModelID's doc comment) — the same id chatModelResolver looked pricing
-	// up under, so it resolves the identical models row here.
-	spawner.RegisterSessionCost(sessionID, modelID, s.deps.Pool, s.deps.Clock, func(snap spawner.CostSnapshot) {
+	// effectiveModelID is the registry slug the caller supplied (or the
+	// profile default) — the same id chatModelResolver looked pricing up
+	// under, so it resolves the identical models row here.
+	spawner.RegisterSessionCost(sessionID, effectiveModelID, s.deps.Pool, s.deps.Clock, func(snap spawner.CostSnapshot) {
 		pushSessionEvent(s.deps.WSHub, sessionID, projectID, ws.EventSessionCostUpdated, map[string]interface{}{
 			"session_id":    sessionID,
 			"cost_estimate": snap.CostUSD,
@@ -204,11 +230,11 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		})
 	})
 
-	if s.deps.RefineryMgr != nil && s.refineryEffective(refineryEnabled) {
+	if s.deps.RefineryMgr != nil && s.refineryEffective(refineryEnabled, profile.RefineryDefault) {
 		s.deps.RefineryMgr.Start(sessionID, projectID)
 	}
 
-	sess := newChatSession(sessionID, projectID, engine, modelID, effort, systemTemplateID, spec.WorkDir, spec.MaxContext, eng)
+	sess := newChatSession(sessionID, projectID, engine, effectiveModelID, effort, systemTemplateID, spec.WorkDir, profileName, spec.MaxContext, eng)
 	s.mu.Lock()
 	s.sessions[sessionID] = sess
 	s.mu.Unlock()

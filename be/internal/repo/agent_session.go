@@ -34,7 +34,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_sessions (`+sessionCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		session.ID,
 		strings.ToLower(session.ProjectID),
 		strings.ToLower(session.TicketID),
@@ -65,7 +65,7 @@ func (r *AgentSessionRepo) Create(session *model.AgentSession) error {
 		session.RateLimitUntilTs,
 		session.LastRetryClass,
 		kind,
-		session.ObserverScope, session.ObserverWorkflowID, session.ConsoleEngine,
+		session.ObserverScope, session.ObserverWorkflowID, session.ConsoleEngine, session.ConsoleProfile,
 	)
 	return err
 }

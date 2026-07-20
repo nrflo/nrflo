@@ -30,6 +30,7 @@ type chatSession struct {
 	reasoningEffort  string
 	systemTemplateID string
 	workDir          string
+	profile          string
 
 	mu             sync.Mutex
 	engine         spawner.ConsoleEngine
@@ -42,6 +43,10 @@ type chatSession struct {
 	maxContext     int
 	contextLeftPct int
 	hasContextInfo bool
+	// seedContext is prepended once to the first SendUserTurn text, then
+	// cleared — a sibling chat opened via OpenHandsSibling carries the
+	// origin's refinery digest here (chat_service_turn.go).
+	seedContext string
 }
 
 const (
@@ -49,7 +54,7 @@ const (
 	maxLiveItemBytes = 128 * 1024
 )
 
-func newChatSession(id, projectID, engineName, modelID, reasoningEffort, systemTemplateID, workDir string, maxContext int, engine spawner.ConsoleEngine) *chatSession {
+func newChatSession(id, projectID, engineName, modelID, reasoningEffort, systemTemplateID, workDir, profile string, maxContext int, engine spawner.ConsoleEngine) *chatSession {
 	return &chatSession{
 		id:               id,
 		projectID:        projectID,
@@ -58,6 +63,7 @@ func newChatSession(id, projectID, engineName, modelID, reasoningEffort, systemT
 		reasoningEffort:  reasoningEffort,
 		systemTemplateID: systemTemplateID,
 		workDir:          workDir,
+		profile:          profile,
 		engine:           engine,
 		turn:             turnIdle,
 		pending:          make(map[string]*spawner.ApprovalRequest),
@@ -74,6 +80,26 @@ func (c *chatSession) ProjectID() string        { return c.projectID }
 func (c *chatSession) ReasoningEffort() string  { return c.reasoningEffort }
 func (c *chatSession) SystemTemplateID() string { return c.systemTemplateID }
 func (c *chatSession) MaxContext() int          { return c.maxContext }
+func (c *chatSession) Profile() string          { return c.profile }
+
+// setSeedContext stashes text to prepend to the first SendUserTurn call —
+// used by OpenHandsSibling to seed the sibling's first turn with the
+// origin's refinery digest before the caller ever sends a message.
+func (c *chatSession) setSeedContext(text string) {
+	c.mu.Lock()
+	c.seedContext = text
+	c.mu.Unlock()
+}
+
+// takeSeedContext returns and clears the pending seed context — consumed
+// exactly once, by the first SendUserTurn.
+func (c *chatSession) takeSeedContext() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	text := c.seedContext
+	c.seedContext = ""
+	return text
+}
 
 // getEngine/setEngine guard sess.engine with mu — a proactive-restart
 // rotation (chat_service_rotate.go) swaps it from the event-pump goroutine

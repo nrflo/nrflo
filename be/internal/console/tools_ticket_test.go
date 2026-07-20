@@ -27,7 +27,7 @@ func (e *consoleTestEnv) seedDependency(t *testing.T, projectID, issueID, depend
 
 func listTickets(t *testing.T, env *consoleTestEnv, projectID, args string) []map[string]interface{} {
 	t.Helper()
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -156,7 +156,7 @@ func TestTicketList_CrossProjectIsolation(t *testing.T) {
 
 func TestTicketGet_ReturnsFullRow(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestTicketGet_ReturnsFullRow(t *testing.T) {
 func TestTicketGet_CrossProjectIsolation(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedTicket(t, testOtherProjectID, "T-foreign", "open", "task")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestTicketCurrent_ReturnsStampedTicket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestTicketCurrent_NoTicket_ReturnsNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestTicketCurrent_NoTicket_ReturnsNull(t *testing.T) {
 
 func TestTicketGet_MissingID(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

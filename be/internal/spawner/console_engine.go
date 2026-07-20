@@ -65,6 +65,14 @@ func sortedKeys(m map[string]bool) []string {
 	return out
 }
 
+// NativeToolPolicy values for EngineSpec.NativeToolPolicy — mirrors
+// console.NativeToolPolicyNone/Full by string value only (spawner must not
+// import console; console imports spawner).
+const (
+	NativeToolPolicyNone = "none"
+	NativeToolPolicyFull = "full"
+)
+
 // EngineSpec carries the per-session parameters an engine needs to start.
 type EngineSpec struct {
 	SessionID string
@@ -93,6 +101,21 @@ type EngineSpec struct {
 	// by buildChatEngineSpec (console package). Empty = engine default (api
 	// falls back to its own injectable/constant; codex/claude add nothing).
 	SystemPrompt string
+	// NativeToolsCSV is the claude engine's --tools value, mirroring the
+	// autonomous spawn path's SpawnOptions.NativeToolsCSV (cli_adapter_claude.go).
+	// Empty leaves the CLI's native tools unrestricted.
+	NativeToolsCSV string
+	// NativeToolPolicy is a console.Profile's native-tool policy
+	// ("none"/"full"/""): "none" gates the api engine's withFSTools off
+	// regardless of the api_native_tools_enabled global (console_engine_api.go)
+	// and (via NativeToolsCSV/Sandbox, set by the console package alongside
+	// this field) restricts claude/codex; "" keeps each engine's own default.
+	NativeToolPolicy string
+	// ContextBudgetTokens is a console.Profile's proactive-rotation budget
+	// (spawner.ProactiveRestartConsoleThreshold) and, for the api engine, its
+	// context-watcher budget fallback (console_engine_api.go). 0 = engine/
+	// global default.
+	ContextBudgetTokens int
 }
 
 // effectiveCLISessionID returns CLISessionID when set, else SessionID — the

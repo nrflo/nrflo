@@ -27,6 +27,15 @@ type Orchestrator interface {
 	StopByProject(projectID, workflowName, instanceID string) error
 	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
 	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error
+	// RunPlanner/ResumeAfterPlanApproval back the console-scoped revise_plan/
+	// approve_plan handlers (tools_plan.go), which drive service.PlanService
+	// directly (project-guarded via loadGuardedInstance) instead of through
+	// the parent-ownership-guarded apirun.SubworkflowRunner path — a console
+	// session has no parent workflow instance to own a child under. The
+	// signature matches service.PlannerRunner, so an Orchestrator value
+	// passes directly where that interface is expected.
+	RunPlanner(ctx context.Context, instanceID string, in service.PlannerInput) (sessionID string, err error)
+	ResumeAfterPlanApproval(ctx context.Context, instanceID string) error
 }
 
 // Deps bundles the injected dependencies every console tool handler needs.
@@ -49,4 +58,11 @@ type Deps struct {
 	// WorkflowInstanceID — the implementation mints a hidden host instance
 	// for the call. Nil when not wired (e.g. tests).
 	Delegator apirun.Delegator
+	// Consultant lets a console session's consult tool ask a named
+	// consultant a question even though the session has no bound
+	// WorkflowInstanceID — mirrors Delegator's hidden-host path (the
+	// implementation resolves the consultant across the project's
+	// agent_definitions rather than one caller-known workflow). Nil when not
+	// wired (e.g. tests).
+	Consultant apirun.ConsultantSpawner
 }

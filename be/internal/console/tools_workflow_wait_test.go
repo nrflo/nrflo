@@ -73,7 +73,7 @@ func receiveOutcome(t *testing.T, ch <-chan invokeOutcome) invokeOutcome {
 func TestWorkflowWait_BaselineReturnsImmediately(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-base")
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestWorkflowWait_TerminalInstanceReturnsImmediately(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-done")
 	mustExec(t, env.pool, `UPDATE workflow_instances SET status='completed' WHERE id='wfi-wait-done'`)
-	reg, _ := BuildRegistry(env.deps)
+	reg, _ := BuildRegistry(env.deps, nil)
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-done"}`)
@@ -116,7 +116,7 @@ func TestWorkflowWait_WakesOnBroadcastAndReportsTerminal(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-wake")
 	mustExec(t, env.pool, `UPDATE workflows SET next_workflow_on_success='triage-next' WHERE id='wf-wfi-wait-wake'`)
-	reg, _ := BuildRegistry(env.deps)
+	reg, _ := BuildRegistry(env.deps, nil)
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
 	base, _, _ := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-wake"}`)
@@ -148,7 +148,7 @@ func TestWorkflowWait_WakesOnBroadcastAndReportsTerminal(t *testing.T) {
 func TestWorkflowWait_TimeoutReturnsUnchanged(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-to")
-	reg, _ := BuildRegistry(env.deps)
+	reg, _ := BuildRegistry(env.deps, nil)
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
 	base, _, _ := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-to"}`)
@@ -176,7 +176,7 @@ func TestWorkflowWait_TimeoutReturnsUnchanged(t *testing.T) {
 func TestWorkflowWait_ContextCancelReturnsError(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-cancel")
-	reg, _ := BuildRegistry(env.deps)
+	reg, _ := BuildRegistry(env.deps, nil)
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
 	base, _, _ := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-cancel"}`)
@@ -200,7 +200,7 @@ func TestWorkflowWait_ContextCancelReturnsError(t *testing.T) {
 func TestWorkflowWait_CrossProjectInstanceID_Rejected(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testOtherProjectID, "wfi-wait-other")
-	reg, _ := BuildRegistry(env.deps)
+	reg, _ := BuildRegistry(env.deps, nil)
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-other"}`)

@@ -138,6 +138,27 @@ describe('sessionEventReducer', () => {
     const state = sessionEventReducer(initialSessionStreamState(), turnEvent('running'))
     expect(state.cost).toBeUndefined()
   })
+
+  it('console_chat.sibling_opened populates siblingOpened for the origin session', () => {
+    let state = initialSessionStreamState()
+    expect(state.siblingOpened).toBeUndefined()
+
+    state = sessionEventReducer(state, {
+      type: 'console_chat.sibling_opened',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { origin_session_id: 'sid-1', sibling_session_id: 'sid-2', reason: 'model_switch' },
+    })
+
+    expect(state.siblingOpened).toEqual({
+      origin_session_id: 'sid-1',
+      sibling_session_id: 'sid-2',
+      reason: 'model_switch',
+    })
+  })
+
 })
 
 describe('mergeStream', () => {

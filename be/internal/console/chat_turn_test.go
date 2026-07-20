@@ -61,7 +61,7 @@ func TestChatService_SendMessage_SecondCallWhileTurnActive_RejectsWithoutEngineR
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -90,7 +90,7 @@ func TestChatService_SendMessage_TurnCompleted_AllowsNextMessage(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestChatService_SendMessage_EngineError_RollsBackTurnState(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

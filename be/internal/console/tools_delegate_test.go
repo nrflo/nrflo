@@ -37,7 +37,7 @@ func TestConsoleDelegate_HappyPath_RoutesThroughDepsDelegator(t *testing.T) {
 		},
 	}
 	env.deps.Delegator = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestConsoleDelegate_HappyPath_RoutesThroughDepsDelegator(t *testing.T) {
 
 func TestConsoleDelegate_NilDelegator_MissingService(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestConsoleDelegate_NilDelegator_MissingService(t *testing.T) {
 func TestConsoleDelegate_InvalidTier_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.deps.Delegator = &fakeDelegator{}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestConsoleDelegate_InvalidTier_Errors(t *testing.T) {
 func TestConsoleDelegate_MissingBrief_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.deps.Delegator = &fakeDelegator{}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestConsoleDelegate_MissingBrief_Errors(t *testing.T) {
 func TestConsoleDelegate_ContextTooLarge_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.deps.Delegator = &fakeDelegator{}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -138,7 +138,7 @@ func TestConsoleDelegate_FanoutExceedsCap_Errors(t *testing.T) {
 			return "", nil
 		},
 	}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestConsoleGetDelegation_HappyPath_RoutesThroughDepsDelegator(t *testing.T)
 		},
 	}
 	env.deps.Delegator = fake
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestConsoleGetDelegation_HappyPath_RoutesThroughDepsDelegator(t *testing.T)
 
 func TestConsoleGetDelegation_NilDelegator_MissingService(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestConsoleGetDelegation_NilDelegator_MissingService(t *testing.T) {
 func TestConsoleGetDelegation_MissingID_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.deps.Delegator = &fakeDelegator{}
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

@@ -53,7 +53,7 @@ func TestChatService_MaybeRotate_NoDigest_NoOp(t *testing.T) {
 	svc, pool, _, factory := newChatTestService(t)
 	setProactiveRestartConsolePct(t, pool, "50")
 
-	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", false)
+	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestChatService_MaybeRotate_NoContextSignalYet_NoOp(t *testing.T) {
 	svc, pool, _, _ := newChatTestService(t)
 	setProactiveRestartConsolePct(t, pool, "50")
 
-	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", false)
+	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestChatService_MaybeRotate_UnderThreshold_NoOp(t *testing.T) {
 	svc, pool, _, _ := newChatTestService(t)
 	setProactiveRestartConsolePct(t, pool, "75") // opus-4-6 CLIContext=200000 => 150000 ceiling
 
-	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", false)
+	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -131,7 +131,7 @@ func TestChatService_Rotation_FullFlow(t *testing.T) {
 		t.Fatalf("set min interval: %v", err)
 	}
 
-	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", false)
+	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

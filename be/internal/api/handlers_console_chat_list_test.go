@@ -137,6 +137,57 @@ func TestHandleListConsoleChats_ShapeAndLiveFlag(t *testing.T) {
 	}
 }
 
+// TestHandleListConsoleChats_ProfileField_ReflectsCreatedProfile verifies a
+// t0-decider chat's profile name round-trips onto the list item, and a
+// plain (no-profile) chat's Profile stays empty.
+func TestHandleListConsoleChats_ProfileField_ReflectsCreatedProfile(t *testing.T) {
+	s, _ := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-list-profile")
+	adminID := createTestUser(t, s, "chat-list-profile-admin@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+
+	createChain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleCreateConsoleChat)))
+	req := createChatReq("proj-chat-list-profile", `{"engine":"claude","model":"","profile":"t0-decider"}`)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	createChain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, want 201; body=%s", rr.Code, rr.Body.String())
+	}
+	var created map[string]string
+	if err := json.Unmarshal(rr.Body.Bytes(), &created); err != nil {
+		t.Fatalf("unmarshal create response: %v", err)
+	}
+	sid := created["session_id"]
+
+	listChain := s.sessionMgr.LoadAndSave(s.requireProjectAdmin(http.HandlerFunc(s.handleListConsoleChats)))
+	listReq := listChatsReq("proj-chat-list-profile")
+	listReq.AddCookie(cookie)
+	listRR := httptest.NewRecorder()
+	listChain.ServeHTTP(listRR, listReq)
+	if listRR.Code != http.StatusOK {
+		t.Fatalf("list status = %d, want 200; body=%s", listRR.Code, listRR.Body.String())
+	}
+	var body struct {
+		Sessions []consoleChatListItem `json:"sessions"`
+	}
+	if err := json.Unmarshal(listRR.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal list response: %v", err)
+	}
+	var item *consoleChatListItem
+	for i := range body.Sessions {
+		if body.Sessions[i].SessionID == sid {
+			item = &body.Sessions[i]
+		}
+	}
+	if item == nil {
+		t.Fatalf("session %q not found in list response: %+v", sid, body.Sessions)
+	}
+	if item.Profile != "t0-decider" {
+		t.Errorf("Profile = %q, want t0-decider", item.Profile)
+	}
+}
+
 func TestHandleListConsoleChats_NonAdminHuman_Returns403(t *testing.T) {
 	s, _ := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-list-403")

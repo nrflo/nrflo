@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"be/internal/console"
 	"be/internal/model"
 	"be/internal/repo"
 )
@@ -85,6 +86,70 @@ func TestConsoleChatBearer_ToolCatalogue_MatchesConsoleProfile(t *testing.T) {
 	for _, name := range nonGoalTools {
 		if byName[name] {
 			t.Errorf("chat bearer catalogue unexpectedly contains lifecycle tool %q", name)
+		}
+	}
+}
+
+// TestConsoleChatBearer_ToolCatalogue_T0DeciderProfile_IsRestricted verifies
+// catalogueForSession (handlers_console_tools.go) actually restricts the
+// HTTP-mediated tool routes for a profiled chat: a t0-decider chat's bearer
+// must see exactly the profile's catalogue over GET /api/v1/console/tools,
+// not the full console set that TestConsoleChatBearer_ToolCatalogue_
+// MatchesConsoleProfile observes for a chat with no profile — otherwise a
+// claude/codex t0-decider chat would regain fs/bash-adjacent and
+// non-catalogued tools (e.g. workflow_wait, project_list) via the bridge
+// path even though the in-process api-engine registry is restricted.
+func TestConsoleChatBearer_ToolCatalogue_T0DeciderProfile_IsRestricted(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-t0-catalogue")
+	adminID := createTestUser(t, s, "chat-t0-catalogue-admin@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+	sid := createT0DeciderChatSession(t, s, factory, "proj-chat-t0-catalogue", cookie)
+
+	row, err := repo.NewAgentSessionRepo(s.pool, s.clock).GetConsoleChat(sid)
+	if err != nil || row == nil {
+		t.Fatalf("load session: row=%v err=%v", row, err)
+	}
+	if row.ConsoleProfile != "t0-decider" {
+		t.Fatalf("row.ConsoleProfile = %q, want t0-decider", row.ConsoleProfile)
+	}
+
+	chain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleListConsoleTools)))
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, catalogueReq(row.SpawnToken.String))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body catalogueResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	profile, err := console.ProfileByName("t0-decider")
+	if err != nil {
+		t.Fatalf("ProfileByName: %v", err)
+	}
+	if len(body.Tools) != len(profile.Catalogue) {
+		t.Fatalf("len(catalogue) = %d, want %d (exactly the t0-decider allowlist)", len(body.Tools), len(profile.Catalogue))
+	}
+	byName := make(map[string]bool, len(body.Tools))
+	for _, tool := range body.Tools {
+		byName[tool.Name] = true
+	}
+	for _, name := range profile.Catalogue {
+		if !byName[name] {
+			t.Errorf("t0-decider chat bearer catalogue missing catalogued tool %q", name)
+		}
+	}
+	for _, name := range append(append([]string{}, wantReusedBuiltinsForTest...), wantConsoleOnlyForTest...) {
+		inCatalogue := false
+		for _, c := range profile.Catalogue {
+			if c == name {
+				inCatalogue = true
+			}
+		}
+		if !inCatalogue && byName[name] {
+			t.Errorf("t0-decider chat bearer catalogue unexpectedly contains non-catalogued tool %q", name)
 		}
 	}
 }

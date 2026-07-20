@@ -12,13 +12,17 @@ import (
 )
 
 type fakeConsoleChatCreator struct {
-	engine, model, project, attached, systemTemplateID string
-	refineryEnabled                                    bool
+	engine, model, project, attached, systemTemplateID, profile string
+	refineryEnabled                                             bool
+	createErr                                                   error
 }
 
-func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID string, refineryEnabled bool) (string, string, error) {
-	f.engine, f.model, f.project, f.systemTemplateID = engine, model, project, systemTemplateID
+func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID, profile string, refineryEnabled bool) (string, string, error) {
+	f.engine, f.model, f.project, f.systemTemplateID, f.profile = engine, model, project, systemTemplateID, profile
 	f.refineryEnabled = refineryEnabled
+	if f.createErr != nil {
+		return "", "", f.createErr
+	}
 	return "chat-session-1", "chat-token-1", nil
 }
 

@@ -63,6 +63,7 @@ type AgentSession struct {
 	ObserverScope       sql.NullString     `json:"-"` // "workflow", "project", or "global"
 	ObserverWorkflowID  sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
 	ConsoleEngine       sql.NullString     `json:"-"` // For kind="console_chat": the engine name ('claude'|'codex') the row was started with
+	ConsoleProfile      string             `json:"-"` // For kind="console_chat": the console.Profile name the row was started with ('' = none)
 	CreatedAt           time.Time          `json:"created_at"`
 	UpdatedAt           time.Time          `json:"updated_at"`
 

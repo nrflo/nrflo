@@ -17,6 +17,7 @@ type ChatDetail struct {
 	SessionID        string     `json:"session_id"`
 	Engine           string     `json:"engine"`
 	Model            string     `json:"model"`
+	Profile          string     `json:"profile,omitempty"`
 	ProjectID        string     `json:"project_id"`
 	Status           string     `json:"status"`
 	Turn             string     `json:"turn"`

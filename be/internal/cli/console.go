@@ -128,7 +128,7 @@ func runConsole(ctx context.Context, choose bool) error {
 			client := consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID})
 			createCtx, createCancel := context.WithTimeout(ctx, 30*time.Second)
 			var err error
-			sessionID, err = client.Create(createCtx, selection.Engine, selection.Model, selection.Effort)
+			sessionID, err = client.Create(createCtx, selection.Engine, selection.Model, selection.Effort, "")
 			createCancel()
 			if err != nil {
 				return fmt.Errorf("start console chat for project %q: %w", projectID, err)

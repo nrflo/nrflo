@@ -13,11 +13,15 @@ import (
 
 // nonGoalTools are session-bound/lifecycle builtins that must never be
 // reachable through the console profile (acceptance criterion 1).
+// get_subworkflow/revise_plan/approve_plan/consult/dynamic_workflow are
+// deliberately NOT here: unlike the session-bound builtins they parallel,
+// they are console-only reimplementations intentionally exposed to console
+// sessions (console.BuildRegistry) — see wantConsoleOnlyForTest below.
 var nonGoalTools = []string{
 	"agent_finished", "agent_fail", "agent_continue", "agent_callback", "agent_context_update",
 	"findings_add", "findings_add_bulk", "findings_append", "findings_append_bulk",
 	"findings_get", "findings_delete", "emit_findings",
-	"run_subworkflow", "get_subworkflow", "consult", "read_document", "artifact_add",
+	"run_subworkflow", "read_document", "artifact_add",
 }
 
 func seedConsoleSession(t *testing.T, s *Server, projectID string) (sessionID, token string) {
@@ -112,6 +116,7 @@ var wantReusedBuiltinsForTest = []string{
 var wantConsoleOnlyForTest = []string{
 	"workflow_run", "workflow_stop", "workflow_retry_failed", "workflow_get", "workflow_list",
 	"project_list", "project_status", "ticket_list", "ticket_get", "ticket_current", "artifact_list", "artifact_get",
+	"delegate", "get_delegation", "dynamic_workflow", "get_subworkflow", "revise_plan", "approve_plan", "consult",
 }
 
 func TestHandleListConsoleTools_NoAuth_Returns401(t *testing.T) {

@@ -39,6 +39,11 @@ var wantConsoleOnly = []string{
 	"artifact_get",
 	"delegate",
 	"get_delegation",
+	"dynamic_workflow",
+	"get_subworkflow",
+	"revise_plan",
+	"approve_plan",
+	"consult",
 }
 
 // wantExcluded lists session-bound / lifecycle tools that must never appear
@@ -48,13 +53,12 @@ var wantExcluded = []string{
 	"findings_add", "findings_add_bulk", "findings_append", "findings_append_bulk",
 	"findings_get", "findings_delete", "emit_findings",
 	"workflow_skip", "chain_next_instructions", "chain_next_ticket",
-	"run_subworkflow", "get_subworkflow", "dynamic_workflow", "revise_plan", "approve_plan",
-	"consult", "read_document", "artifact_add",
+	"run_subworkflow", "read_document", "artifact_add",
 }
 
 func TestBuildRegistry_ResolvesAllowlist(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
@@ -75,9 +79,86 @@ func TestBuildRegistry_ResolvesAllowlist(t *testing.T) {
 	}
 }
 
+// TestBuildRegistry_NilCatalogue_KeepsFullSet verifies the pre-profile
+// behavior is unchanged: nil catalogue returns the same set as an explicit
+// empty allowlist.
+func TestBuildRegistry_NilCatalogue_KeepsFullSet(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	regNil, err := BuildRegistry(env.deps, nil)
+	if err != nil {
+		t.Fatalf("BuildRegistry(nil): %v", err)
+	}
+	regEmpty, err := BuildRegistry(env.deps, []string{})
+	if err != nil {
+		t.Fatalf("BuildRegistry(empty): %v", err)
+	}
+	if len(regNil) != len(regEmpty) {
+		t.Fatalf("len(regNil) = %d, len(regEmpty) = %d, want equal", len(regNil), len(regEmpty))
+	}
+	wantCount := len(wantReusedBuiltins) + len(wantConsoleOnly)
+	if len(regNil) != wantCount {
+		t.Errorf("len(regNil) = %d, want %d (unrestricted full console set)", len(regNil), wantCount)
+	}
+}
+
+// TestBuildRegistry_T0DeciderCatalogue_ExactSet verifies the t0-decider
+// profile's catalogue filters BuildRegistry down to exactly its allowlist —
+// no more, no less — and that fs/bash tools are structurally absent (not
+// merely refused at invoke time): they were never composed into reg at all,
+// so BuildRegistry(catalogue) can't accidentally leak them back in.
+func TestBuildRegistry_T0DeciderCatalogue_ExactSet(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	profile, err := ProfileByName("t0-decider")
+	if err != nil {
+		t.Fatalf("ProfileByName: %v", err)
+	}
+	reg, err := BuildRegistry(env.deps, profile.Catalogue)
+	if err != nil {
+		t.Fatalf("BuildRegistry(t0-decider catalogue): %v", err)
+	}
+	if len(reg) != len(profile.Catalogue) {
+		t.Fatalf("len(reg) = %d, want %d (exactly the catalogue)", len(reg), len(profile.Catalogue))
+	}
+	for _, name := range profile.Catalogue {
+		if _, ok := reg[name]; !ok {
+			t.Errorf("registry missing catalogued tool %q", name)
+		}
+	}
+	for _, banned := range []string{"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch"} {
+		if _, ok := reg[banned]; ok {
+			t.Errorf("t0-decider registry unexpectedly contains %q (structurally, this registry composes no fs/bash handler at all)", banned)
+		}
+	}
+	// Every non-catalogued tool from the full set (e.g. workflow_wait,
+	// project_list) must also be absent — the filter is exact, not additive.
+	for _, name := range wantConsoleOnly {
+		inCatalogue := false
+		for _, c := range profile.Catalogue {
+			if c == name {
+				inCatalogue = true
+			}
+		}
+		if !inCatalogue {
+			if _, ok := reg[name]; ok {
+				t.Errorf("t0-decider registry unexpectedly contains non-catalogued tool %q", name)
+			}
+		}
+	}
+}
+
+// TestBuildRegistry_CatalogueNamesUnknownTool_Errors verifies a catalogue
+// entry this registry does not compose is a hard error, not a silent drop.
+func TestBuildRegistry_CatalogueNamesUnknownTool_Errors(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	_, err := BuildRegistry(env.deps, []string{"no_such_tool"})
+	if err == nil {
+		t.Fatal("BuildRegistry with unknown catalogue entry: want error, got nil")
+	}
+}
+
 func TestSpecs_SortedByName_ValidObjectSchemas(t *testing.T) {
 	env := newConsoleTestEnv(t)
-	reg, err := BuildRegistry(env.deps)
+	reg, err := BuildRegistry(env.deps, nil)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}

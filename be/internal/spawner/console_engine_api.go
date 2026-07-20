@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/db"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
@@ -110,14 +111,19 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 	e.cancel = cancel
 	e.mu.Unlock()
 
-	// Native fs tools (read_file/edit_file/bash) join the console profile
-	// when the api_native_tools_enabled global setting is on and the chat has
-	// a workdir; the mutating ones are approval-gated
-	// (console_engine_api_approval.go). The system prompt fallback swaps to
-	// the variant that stops claiming "no local tools".
+	// Native fs tools (read_file/edit_file/bash) join the console profile when
+	// the chat has a workdir and the effective policy allows it: a profile's
+	// NativeToolPolicy="none" (e.g. t0-decider) always refuses them —
+	// bypassing api_native_tools_enabled would defeat the profile's no-fs/
+	// bash invariant — "full" always allows them, and "" (no profile) keeps
+	// today's api_native_tools_enabled global gate. The mutating ones are
+	// approval-gated (console_engine_api_approval.go). The system prompt
+	// fallback swaps to the variant that stops claiming "no local tools".
 	tools, handlers, env := e.api.Tools, e.api.Handlers, e.api.ToolEnv
 	fallback := consoleAPISystem
-	if spec.WorkDir != "" && apiNativeToolsEnabled(e.api.Pool, e.api.Clock) {
+	fsAllowed := spec.NativeToolPolicy == NativeToolPolicyFull ||
+		(spec.NativeToolPolicy == "" && apiNativeToolsEnabled(e.api.Pool, e.api.Clock))
+	if spec.WorkDir != "" && fsAllowed {
 		tools, handlers = e.withFSTools(tools, handlers)
 		env.WorkDir = spec.WorkDir
 		fallback = consoleAPIFSSystem
@@ -149,12 +155,22 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		CaptureThinking: captureThinking,
 		Stream:          &apiEngineStream{e: e},
 		Observer:        costOnlyObserver{sessionID: spec.SessionID},
-		// Console chats have no agent definition, so the budget is always the
-		// global default; idle-gap GC is still driven by cache_ttl_sec.
-		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, contextConfigInt(e.api.Pool, "context_budget_default", 0)),
+		// A profile's ContextBudgetTokens wins when set (e.g. t0-decider's
+		// 50k); otherwise the global default, same as a console chat with no
+		// profile always got. Idle-gap GC is still driven by cache_ttl_sec.
+		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, watcherBudget(e.api.Pool, spec.ContextBudgetTokens)),
 	})
 
 	return nil
+}
+
+// watcherBudget returns profileBudget when set, else the context_budget_default
+// global config — the api console engine's context-watcher budget.
+func watcherBudget(pool *db.Pool, profileBudget int) int {
+	if profileBudget > 0 {
+		return profileBudget
+	}
+	return contextConfigInt(pool, "context_budget_default", 0)
 }
 
 // SendUserTurn persists the user_input row BEFORE starting the turn goroutine

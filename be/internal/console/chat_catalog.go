@@ -47,7 +47,28 @@ func (s *ChatService) Catalog(projectID string) (types.ConsoleCatalog, error) {
 	if err != nil {
 		return types.ConsoleCatalog{}, err
 	}
-	return types.ConsoleCatalog{ProjectID: projectID, Engines: engines, Sessions: sessions}, nil
+	return types.ConsoleCatalog{ProjectID: projectID, Engines: engines, Sessions: sessions, Profiles: catalogProfiles()}, nil
+}
+
+// catalogProfiles maps the built-in console.Profile registry onto the
+// catalog's wire shape.
+func catalogProfiles() []types.ConsoleProfileOption {
+	profiles := ListProfiles()
+	out := make([]types.ConsoleProfileOption, 0, len(profiles))
+	for _, p := range profiles {
+		out = append(out, types.ConsoleProfileOption{
+			Name:                p.Name,
+			DisplayName:         p.DisplayName,
+			Description:         p.Description,
+			DefaultEngine:       p.DefaultEngine,
+			DefaultModelID:      p.DefaultModelID,
+			DefaultEffort:       p.DefaultEffort,
+			ContextBudgetTokens: p.ContextBudgetTokens,
+			RefineryDefault:     p.RefineryDefault,
+			SystemTemplateID:    p.SystemTemplateID,
+		})
+	}
+	return out
 }
 
 // brandOf maps a cli_type or api provider onto the model-family grouping key
@@ -137,7 +158,7 @@ func (s *ChatService) catalogSessions(projectID string) ([]types.ConsoleSessionO
 		}
 		item := types.ConsoleSessionOption{
 			SessionID: row.ID, Engine: row.ConsoleEngine.String, Model: row.ModelID.String,
-			Status: string(row.Status), StartedAt: row.StartedAt.String,
+			Status: string(row.Status), StartedAt: row.StartedAt.String, Profile: row.ConsoleProfile,
 		}
 		if row.ContextLeft.Valid {
 			value := int(row.ContextLeft.Int64)

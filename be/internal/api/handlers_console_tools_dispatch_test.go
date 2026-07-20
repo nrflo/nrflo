@@ -41,6 +41,13 @@ var toolArgsForDispatchTest = map[string]string{
 	"ticket_current":               `{}`,
 	"artifact_list":                `{"instance_id":"wfi-nope"}`,
 	"artifact_get":                 `{"instance_id":"wfi-nope","name":"n"}`,
+	"delegate":                     `{"tier":"extractor","brief":"b"}`,
+	"get_delegation":               `{"delegation_id":"wfi-nope"}`,
+	"dynamic_workflow":             `{"instructions":"do it"}`,
+	"get_subworkflow":              `{"instance_id":"wfi-nope"}`,
+	"revise_plan":                  `{"instance_id":"wfi-nope","revision":0}`,
+	"approve_plan":                 `{"instance_id":"wfi-nope","revision":0}`,
+	"consult":                      `{"consultant":"c","question":"q"}`,
 }
 
 func TestHandleCallConsoleTool_EveryListedTool_DispatchesNon404(t *testing.T) {

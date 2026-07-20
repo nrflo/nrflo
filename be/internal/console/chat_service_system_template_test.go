@@ -17,7 +17,7 @@ func TestChatService_Create_SystemTemplateID_ReachesEngineSpec(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "tier-t2-extractor", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "tier-t2-extractor", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestChatService_Create_EmptySystemTemplateID_LeavesSpecSystemPromptEmpty(t 
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", false)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestChatService_CreateAuthenticated_SystemTemplateID_ReachesEngineSpec(t *t
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
-	sid, _, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "tier-t1-executor", false)
+	sid, _, err := svc.CreateAuthenticated("codex", "", "", chatTestProjectID, "tier-t1-executor", "", false)
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}

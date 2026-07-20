@@ -10,6 +10,9 @@ import {
   closeConsoleChat,
   interruptConsoleChat,
   revokeConsoleChatSessionApproval,
+  switchConsoleChatModel,
+  openConsoleChatHandsSibling,
+  type SwitchConsoleChatModelRequest,
 } from '@/api/consoleChats'
 import { useProjectStore } from '@/stores/projectStore'
 import type { ApprovalDecision, CreateConsoleChatRequest } from '@/types/consoleChat'
@@ -114,6 +117,31 @@ export function useCloseConsoleChat() {
     mutationFn: (sid: string) => closeConsoleChat(sid),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: consoleChatKeys.list() })
+    },
+  })
+}
+
+// A model switch spawns a sibling chat rather than mutating the origin
+// engine — invalidate the list/catalog so the new session shows up.
+export function useSwitchConsoleChatModel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sid, req }: { sid: string; req: SwitchConsoleChatModelRequest }) =>
+      switchConsoleChatModel(sid, req),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.list() })
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.catalog() })
+    },
+  })
+}
+
+export function useOpenHandsSibling() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sid: string) => openConsoleChatHandsSibling(sid),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.list() })
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.catalog() })
     },
   })
 }

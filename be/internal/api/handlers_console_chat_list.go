@@ -20,6 +20,7 @@ type consoleChatListItem struct {
 	EndedAt     string `json:"ended_at,omitempty"`
 	ContextLeft *int   `json:"context_left,omitempty"`
 	Live        bool   `json:"live"`
+	Profile     string `json:"profile,omitempty"`
 }
 
 // handleListConsoleChats lists this project's kind='console_chat' sessions,
@@ -52,6 +53,7 @@ func (s *Server) handleListConsoleChats(w http.ResponseWriter, r *http.Request) 
 			StartedAt: row.StartedAt.String,
 			EndedAt:   row.EndedAt.String,
 			Live:      s.consoleChat.Live(row.ID),
+			Profile:   row.ConsoleProfile,
 		}
 		if row.ContextLeft.Valid {
 			v := int(row.ContextLeft.Int64)
@@ -94,6 +96,7 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 		"status":     string(sess.Status),
 		"started_at": sess.StartedAt.String,
 		"ended_at":   sess.EndedAt.String,
+		"profile":    sess.ConsoleProfile,
 	}
 	if sess.ContextLeft.Valid {
 		resp["context_left"] = int(sess.ContextLeft.Int64)

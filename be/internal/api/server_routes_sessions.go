@@ -43,4 +43,6 @@ func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http
 	protected("POST /api/v1/console/chats/{sid}/interrupt", s.handleInterruptConsoleChat)
 	protected("POST /api/v1/console/chats/{sid}/close", s.handleCloseConsoleChat)
 	protected("GET /api/v1/console/chats/{sid}/messages", s.handleGetConsoleChatMessages)
+	protected("POST /api/v1/console/chats/{sid}/switch-model", s.handleSwitchConsoleChatModel)
+	protected("POST /api/v1/console/chats/{sid}/hands-sibling", s.handleOpenHandsSibling)
 }

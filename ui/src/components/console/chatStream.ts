@@ -10,6 +10,7 @@ import type {
   ConsoleChatDeltaPayload,
   ConsoleChatErrorPayload,
   ConsoleChatSessionApprovalsPayload,
+  ConsoleChatSiblingOpenedPayload,
   ConsoleChatThinkingPayload,
   ConsoleChatTurnPayload,
   PendingApproval,
@@ -41,6 +42,9 @@ export interface SessionStreamState {
   contextLeft?: number
   cost?: number
   errors: ConsoleChatErrorPayload[]
+  // Set when a model-switch or hands-sibling spawn opens a sibling chat from
+  // this session — ChatView watches it to auto-select the new chat.
+  siblingOpened?: ConsoleChatSiblingOpenedPayload
 }
 
 export function initialSessionStreamState(): SessionStreamState {
@@ -96,6 +100,9 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
       // Always the full list (never a delta) — see chat_events.go.
       const { tools } = data as ConsoleChatSessionApprovalsPayload
       return { ...state, sessionApprovals: tools ?? [] }
+    }
+    case 'console_chat.sibling_opened': {
+      return { ...state, siblingOpened: data as ConsoleChatSiblingOpenedPayload }
     }
     case 'agent.context_updated': {
       // Pushed on the session channel too (pumpChatEvents, EventTokenUsage) —

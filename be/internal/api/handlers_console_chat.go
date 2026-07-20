@@ -28,6 +28,7 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		Model            string `json:"model"`
 		ReasoningEffort  string `json:"reasoning_effort"`
 		SystemTemplateID string `json:"system_template_id"`
+		Profile          string `json:"profile"`
 		RefineryEnabled  bool   `json:"refinery_enabled"`
 	}
 	raw, _ := io.ReadAll(r.Body)
@@ -43,7 +44,7 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, body.ReasoningEffort, projectID, body.SystemTemplateID, body.RefineryEnabled)
+	sessionID, err := s.consoleChat.Create(body.Engine, body.Model, body.ReasoningEffort, projectID, body.SystemTemplateID, body.Profile, body.RefineryEnabled)
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			writeError(w, http.StatusNotFound, "project not found")
@@ -51,6 +52,10 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 		}
 		if errors.Is(err, service.ErrAPIModeDisabled) {
 			writeError(w, http.StatusBadRequest, "api mode is disabled")
+			return
+		}
+		if errors.Is(err, console.ErrUnknownProfile) {
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		writeError(w, http.StatusInternalServerError, err.Error())

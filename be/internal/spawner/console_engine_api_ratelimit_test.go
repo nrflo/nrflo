@@ -62,7 +62,7 @@ func TestAPIConsoleEngine_RateLimitedTurn_RetriesAndCompletes(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hello"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 

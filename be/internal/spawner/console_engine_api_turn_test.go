@@ -56,7 +56,7 @@ func TestAPIConsoleEngine_SendUserTurn_WhileTurnActive_ReturnsErrTurnActive(t *t
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "first"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "first"}); err != nil {
 		t.Fatalf("first SendUserTurn: %v", err)
 	}
 	select {
@@ -65,7 +65,7 @@ func TestAPIConsoleEngine_SendUserTurn_WhileTurnActive_ReturnsErrTurnActive(t *t
 		t.Fatal("provider never started")
 	}
 
-	err := eng.SendUserTurn(context.Background(), "second")
+	err := eng.SendUserTurn(context.Background(), UserTurn{Text: "second"})
 	if !errors.Is(err, ErrTurnActive) {
 		t.Errorf("second SendUserTurn error = %v, want ErrTurnActive", err)
 	}
@@ -95,7 +95,7 @@ func TestAPIConsoleEngine_SendUserTurn_AfterStop_ReturnsErrEngineStopped(t *test
 	}
 	eng.Stop()
 
-	err := eng.SendUserTurn(context.Background(), "too late")
+	err := eng.SendUserTurn(context.Background(), UserTurn{Text: "too late"})
 	if !errors.Is(err, ErrEngineStopped) {
 		t.Errorf("SendUserTurn after Stop = %v, want ErrEngineStopped", err)
 	}
@@ -121,7 +121,7 @@ func TestAPIConsoleEngine_Stop_ClosesEventsAndCancelsInFlightTurn(t *testing.T) 
 		t.Fatalf("Start: %v", err)
 	}
 
-	if err := eng.SendUserTurn(context.Background(), "in flight"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "in flight"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	select {

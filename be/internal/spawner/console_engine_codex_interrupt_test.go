@@ -8,7 +8,7 @@ import (
 
 func TestCodexEngine_InterruptTurn_UsesThreadAndTurnIDs(t *testing.T) {
 	eng, fake := startTestCodexEngine(t, &testSink{}, EngineSpec{})
-	if err := eng.SendUserTurn(context.Background(), "work"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "work"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	paramsCh := make(chan json.RawMessage, 1)

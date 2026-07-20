@@ -51,6 +51,20 @@ type ConsoleModelOption struct {
 	SupportedEfforts []string `json:"supported_efforts,omitempty"`
 }
 
+// ConsoleSkill is one project skill discovered under
+// <project root_path>/.claude/skills/*/SKILL.md, surfaced for the console
+// chat "/" suggestion dropdown.
+type ConsoleSkill struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// ConsoleSkillsResponse is the GET /api/v1/console/skills payload.
+type ConsoleSkillsResponse struct {
+	ProjectID string         `json:"project_id"`
+	Skills    []ConsoleSkill `json:"skills"`
+}
+
 type ConsoleSessionOption struct {
 	SessionID   string `json:"session_id"`
 	Engine      string `json:"engine"`

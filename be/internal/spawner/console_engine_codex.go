@@ -147,7 +147,13 @@ func (e *codexEngine) Start(ctx context.Context, spec EngineSpec) error {
 
 // SendUserTurn issues turn/start and persists the user text through the Sink
 // (category "user_input", matching Spawner.RecordUserInput's category).
-func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
+// turn.Skill, when set, replaces the provider-visible base text with the
+// skill's expanded body (expandSkillTurn) before the first-turn system-prompt
+// prefix is applied — codex's side of the Rule 6 seam; the persisted row
+// still gets turn.Text unchanged (claude passes it through raw instead,
+// console_engine_claude_turn.go).
+func (e *codexEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
+	text := turn.Text
 	e.mu.Lock()
 	if e.turnActive {
 		e.mu.Unlock()
@@ -160,7 +166,11 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, text string) error {
 	}
 	e.turnActive = true
 	e.turnID = ""
-	turnText := codexFirstTurnText(text, e.systemPrompt, e.seededContext, e.firstTurnSent)
+	base := text
+	if turn.Skill != nil {
+		base = expandSkillTurn(turn.Skill)
+	}
+	turnText := codexFirstTurnText(base, e.systemPrompt, e.seededContext, e.firstTurnSent)
 	e.mu.Unlock()
 
 	// Persist the user row (original text, no system-prompt prefix) BEFORE
@@ -227,70 +237,4 @@ func (e *codexEngine) Stop() {
 		_ = os.RemoveAll(profileDir)
 	}
 	e.stopOnce.Do(func() { close(e.events) })
-}
-
-// emit delivers one EngineEvent to the buffered Events channel, matching the
-// EventEmitter signature so it can be passed directly to
-// dispatchAppServerEvent. Only called from within runLoop's own goroutine,
-// strictly before it closes loopDone/Stop closes the channel, so the send is
-// safe. It abandons the send once Stop has begun, so a non-draining consumer
-// can never wedge the run loop (see Stop).
-func (e *codexEngine) emit(ev EngineEvent) {
-	select {
-	case e.events <- ev:
-	case <-e.stopping:
-	}
-}
-
-// runLoop consumes notifications and server requests until ctx is cancelled
-// or the app-server connection closes. No idle timer, no nudge, no restart
-// cap, no rate-limit dance — see the type doc comment.
-func (e *codexEngine) runLoop(ctx context.Context) {
-	// Registered first, so it runs last: every emit happens on this goroutine,
-	// so once the loop is unwinding nothing can send on events again. Closing
-	// here (not only in Stop) is what Events() promises — "closed when the run
-	// loop exits" — and it is the only way a consumer learns the engine died on
-	// its own (app-server EOF) rather than blocking on a channel forever.
-	defer e.stopOnce.Do(func() { close(e.events) })
-	defer e.loopOnce.Do(func() { close(e.loopDone) })
-	// Once the loop is gone no turn/completed can ever arrive, so a turn left
-	// in flight (connection dropped mid-turn) would otherwise pin turnActive
-	// forever and reject every later SendUserTurn with ErrTurnActive.
-	defer func() {
-		e.mu.Lock()
-		e.turnActive = false
-		e.turnID = ""
-		e.mu.Unlock()
-	}()
-
-	e.mu.Lock()
-	client := e.client
-	e.mu.Unlock()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-client.closed:
-			e.emit(EngineEvent{Type: EventError, SessionID: e.spec.SessionID, Text: "app-server connection closed", IsError: true})
-			return
-		case req := <-client.reqCh:
-			e.onServerRequest(req)
-		case n := <-client.notifyCh:
-			if n.Method == "serverRequest/resolved" {
-				e.onServerRequestResolved(n.Params)
-				continue
-			}
-			sig := dispatchAppServerEvent(e.spec.SessionID, n, e.sink, e.spec.MaxContext, e.emit)
-			e.mu.Lock()
-			if sig.turnStarted {
-				e.turnActive = true
-			}
-			if sig.turnCompleted {
-				e.turnActive = false
-				e.turnID = ""
-			}
-			e.mu.Unlock()
-		}
-	}
 }

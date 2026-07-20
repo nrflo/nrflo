@@ -112,7 +112,7 @@ func TestClaudeEngine_Start_RegistersWithHub(t *testing.T) {
 
 func TestClaudeEngine_SendUserTurn_NotStarted_Errors(t *testing.T) {
 	e := &claudeEngine{events: make(chan EngineEvent, 4), stopping: make(chan struct{})}
-	if err := e.SendUserTurn(context.Background(), "x"); err == nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "x"}); err == nil {
 		t.Error("expected an error when SendUserTurn is called before Start")
 	}
 }
@@ -120,7 +120,7 @@ func TestClaudeEngine_SendUserTurn_NotStarted_Errors(t *testing.T) {
 func TestClaudeEngine_InterruptTurn_WritesCtrlC(t *testing.T) {
 	e, mgr := startTestClaudeEngine(t, &testSink{}, nil, EngineSpec{SessionID: "sess-interrupt-claude"})
 	e.NotifySessionReady()
-	if err := e.SendUserTurn(context.Background(), "work"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "work"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	if err := e.InterruptTurn(context.Background()); err != nil {
@@ -145,7 +145,7 @@ func TestClaudeEngine_SendUserTurn_AlreadyReady_WritesPromptly(t *testing.T) {
 	e.NotifySessionReady()
 
 	start := time.Now()
-	if err := e.SendUserTurn(context.Background(), "hello claude"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "hello claude"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	if elapsed := time.Since(start); elapsed >= e.sessionStartTimeout {
@@ -167,7 +167,7 @@ func TestClaudeEngine_SendUserTurn_WaitsForSessionStartTimeout(t *testing.T) {
 	e.sessionStartTimeout = 25 * time.Millisecond
 
 	start := time.Now()
-	if err := e.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	if elapsed := time.Since(start); elapsed < e.sessionStartTimeout {
@@ -185,7 +185,7 @@ func TestClaudeEngine_SendUserTurn_EmitsTurnStartedAndPersistsUserInput(t *testi
 	e, _ := startTestClaudeEngine(t, sink, nil, EngineSpec{})
 	e.NotifySessionReady()
 
-	if err := e.SendUserTurn(context.Background(), "do the thing"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "do the thing"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	ev := waitForEventType(t, e.Events(), EventTurnStarted, time.Second)
@@ -210,13 +210,13 @@ func TestClaudeEngine_SendUserTurn_ErrTurnActive_NoPTYWriteOnSecondCall(t *testi
 	sink := &testSink{}
 	e, mgr := startTestClaudeEngine(t, sink, nil, EngineSpec{})
 	e.NotifySessionReady()
-	if err := e.SendUserTurn(context.Background(), "first"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "first"}); err != nil {
 		t.Fatalf("first SendUserTurn: %v", err)
 	}
 	sess := mgr.sessions[e.spec.SessionID]
 	before := string(sess.writtenBytes)
 
-	if err := e.SendUserTurn(context.Background(), "second"); err != ErrTurnActive {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "second"}); err != ErrTurnActive {
 		t.Errorf("second SendUserTurn err = %v, want ErrTurnActive", err)
 	}
 	if got := string(sess.writtenBytes); got != before {

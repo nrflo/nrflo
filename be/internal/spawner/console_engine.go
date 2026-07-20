@@ -27,9 +27,13 @@ type ConsoleEngine interface {
 	Name() string
 	// Start spawns the underlying CLI process/session per spec.
 	Start(ctx context.Context, spec EngineSpec) error
-	// SendUserTurn submits one user turn. Returns ErrTurnActive when a turn
-	// is already in flight.
-	SendUserTurn(ctx context.Context, text string) error
+	// SendUserTurn submits one user turn. turn.Text is always what gets
+	// persisted as the user_input row; turn.Skill, when set, is a matched
+	// project skill and each engine decides for itself whether to pass
+	// turn.Text through raw (claude) or expand the skill into the
+	// provider-visible text (codex, api) — see UserTurn's doc comment.
+	// Returns ErrTurnActive when a turn is already in flight.
+	SendUserTurn(ctx context.Context, turn UserTurn) error
 	// Events returns the channel of normalized events for this session. It is
 	// closed when the engine's run loop exits (see Stop).
 	Events() <-chan EngineEvent

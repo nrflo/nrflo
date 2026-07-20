@@ -6,6 +6,8 @@ import type {
   ConsoleChatListResponse,
   ConsoleChatMessagesResponse,
   ConsoleChatSummary,
+  ConsoleSkill,
+  ConsoleSkillsResponse,
   CreateConsoleChatRequest,
   CreateConsoleChatResponse,
 } from '@/types/consoleChat'
@@ -24,6 +26,11 @@ export async function getConsoleCatalog(): Promise<ConsoleCatalog> {
 export async function listConsoleChats(): Promise<ConsoleChatSummary[]> {
   const resp = await apiGet<ConsoleChatListResponse>('/api/v1/console/chats')
   return resp.sessions ?? []
+}
+
+export async function getConsoleSkills(): Promise<ConsoleSkill[]> {
+  const resp = await apiGet<ConsoleSkillsResponse>('/api/v1/console/skills')
+  return resp.skills ?? []
 }
 
 export async function getConsoleChat(sid: string): Promise<ConsoleChatDetail> {

@@ -161,7 +161,7 @@ func TestAPIConsoleEngine_HappyPath_EmitsTurnLifecycleAndKeepsEventsOpen(t *test
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 
@@ -218,7 +218,7 @@ func TestAPIConsoleEngine_InterruptTurn_CancelsOnlyActiveTurn(t *testing.T) {
 		t.Fatalf("Start: %v", err)
 	}
 	t.Cleanup(eng.Stop)
-	if err := eng.SendUserTurn(context.Background(), "wait"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "wait"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	select {
@@ -230,7 +230,7 @@ func TestAPIConsoleEngine_InterruptTurn_CancelsOnlyActiveTurn(t *testing.T) {
 		t.Fatalf("InterruptTurn: %v", err)
 	}
 	_ = waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)
-	if err := eng.SendUserTurn(context.Background(), "next"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "next"}); err != nil {
 		t.Fatalf("next SendUserTurn: %v", err)
 	}
 }
@@ -255,7 +255,7 @@ func TestAPIConsoleEngine_ProviderError_EmitsEventError(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 

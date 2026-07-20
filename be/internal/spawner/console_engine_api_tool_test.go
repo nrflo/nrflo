@@ -83,7 +83,7 @@ func TestAPIConsoleEngine_ToolUse_DispatchesHandlerAndPersistsToolUseIDPayload(t
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "use the tool"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "use the tool"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)

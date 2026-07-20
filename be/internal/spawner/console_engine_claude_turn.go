@@ -3,6 +3,7 @@ package spawner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -11,7 +12,13 @@ import (
 // land first), writes the body + a submit CR, and marks a turn active. Only
 // the Stop hook (NotifyTurnEnd) clears turnActive, so a mid-turn turn is
 // rejected with ErrTurnActive rather than typed into a busy TUI.
-func (e *claudeEngine) SendUserTurn(ctx context.Context, text string) error {
+//
+// turn.Skill is ignored: the raw turn.Text (e.g. "/name args") is typed into
+// the TUI unchanged, letting claude's own slash-command handling resolve it —
+// pass-through is this engine's side of the Rule 6 seam (codex/api expand
+// instead, console_engine_codex.go/console_engine_api.go).
+func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
+	text := turn.Text
 	e.mu.Lock()
 	if e.turnActive {
 		e.mu.Unlock()
@@ -41,6 +48,21 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, text string) error {
 		e.turnActive = false
 		e.mu.Unlock()
 		return fmt.Errorf("console engine: write turn: %w", err)
+	}
+	// A leading '/' opens the TUI's own command-palette autocomplete, which
+	// would otherwise swallow the submit CR below as a palette-navigation
+	// keystroke instead of submitting the line. A trailing space dismisses
+	// the palette the same way a human typing a space after the command name
+	// would, without changing what is actually submitted. This write is
+	// isolated to claudeEngine: pendingEcho (armed below) stays the un-spaced
+	// text so NotifyUserPrompt dedupe still matches the hook's echoed line.
+	if strings.HasPrefix(text, "/") {
+		if _, err := sess.Write([]byte(" ")); err != nil {
+			e.mu.Lock()
+			e.turnActive = false
+			e.mu.Unlock()
+			return fmt.Errorf("console engine: write turn: %w", err)
+		}
 	}
 	// Gap before the submit CR: coalesced into a single PTY read, the TUI can
 	// swallow the CR and the turn is typed but never sent (deliverPrompt takes

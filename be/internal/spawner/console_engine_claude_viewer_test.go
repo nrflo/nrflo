@@ -97,7 +97,7 @@ func TestClaudeEngine_NotifyUserPrompt_EchoMatchedOnce(t *testing.T) {
 	e, _ := startTestClaudeEngine(t, &testSink{}, nil, EngineSpec{SessionID: "sess-echo-1"})
 	t.Cleanup(e.Stop)
 
-	if err := e.SendUserTurn(context.Background(), "hello echo"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "hello echo"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 

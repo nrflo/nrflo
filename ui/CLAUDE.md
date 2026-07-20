@@ -75,7 +75,7 @@ Tailwind CSS v4 with `@theme` CSS variables. Class-based dark mode via `.dark` o
 
 Features are documented where their primary component or hook lives:
 
-- Console chat (nrflo-rendered claude/codex/API-direct chat sessions; the new-chat picker is driven by `GET /console/catalog` — the same server-owned engine/model discovery the native TUI uses, with disabled engines carrying `disabled_reason`) → `src/components/console/`, `src/pages/ConsolePage.tsx`
+- Console chat (nrflo-rendered claude/codex/API-direct chat sessions; the new-chat picker is driven by `GET /console/catalog` — the same server-owned engine/model discovery the native TUI uses, with disabled engines carrying `disabled_reason`; the composer's '/' skill-suggestion dropdown is backed by `GET /console/skills`, fetched once per project) → `src/components/console/`, `src/pages/ConsolePage.tsx`
 - Interactive PTY sessions tray (docked, multi-tab, route-persistent) → `src/components/interactive/`, `src/stores/interactiveSessionsStore.ts`
 - Workflow visualization, phase graph, findings, agent panels → [workflow/CLAUDE.md](src/components/workflow/CLAUDE.md)
 - WebSocket protocol v2, event types, subscription patterns → [hooks/CLAUDE.md](src/hooks/CLAUDE.md)

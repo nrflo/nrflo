@@ -195,6 +195,19 @@ export interface ConsoleChatCostPayload {
   }
 }
 
+// GET /console/skills — per-project discovery of `.claude/skills/*/SKILL.md`
+// frontmatter (be/internal/types/console.go), backing the composer's '/'
+// suggestion dropdown.
+export interface ConsoleSkill {
+  name: string
+  description?: string
+}
+
+export interface ConsoleSkillsResponse {
+  project_id: string
+  skills: ConsoleSkill[]
+}
+
 // console.context_rotated session-channel push (chat_service_rotate.go) —
 // fired when a proactive restart rotates the engine in place under the same
 // session id.

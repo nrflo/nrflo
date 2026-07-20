@@ -16,10 +16,10 @@ func TestConsoleHub_ConsoleTurnEnd_EmitsTurnCompletedAndReopensSendUserTurn(t *t
 	e, _ := startTestClaudeEngine(t, sink, hub, EngineSpec{})
 	e.NotifySessionReady()
 
-	if err := e.SendUserTurn(context.Background(), "first turn"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "first turn"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
-	if err := e.SendUserTurn(context.Background(), "blocked"); err != ErrTurnActive {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "blocked"}); err != ErrTurnActive {
 		t.Fatalf("expected ErrTurnActive while a turn is live, got %v", err)
 	}
 
@@ -34,7 +34,7 @@ func TestConsoleHub_ConsoleTurnEnd_EmitsTurnCompletedAndReopensSendUserTurn(t *t
 		t.Errorf("Sink.OnTurnComplete calls = %d, want 1", sink.turnCompletes)
 	}
 
-	if err := e.SendUserTurn(context.Background(), "second turn"); err != nil {
+	if err := e.SendUserTurn(context.Background(), UserTurn{Text: "second turn"}); err != nil {
 		t.Errorf("SendUserTurn after ConsoleTurnEnd should succeed (turn re-opened), got %v", err)
 	}
 }
@@ -55,7 +55,7 @@ func TestConsoleHub_ConsoleSessionReady_UnblocksSendUserTurn(t *testing.T) {
 	e.sessionStartTimeout = 2 * time.Second // long enough that only the hook, not the timeout, can unblock in time
 
 	done := make(chan error, 1)
-	go func() { done <- e.SendUserTurn(context.Background(), "hi") }()
+	go func() { done <- e.SendUserTurn(context.Background(), UserTurn{Text: "hi"}) }()
 
 	if handled := hub.ConsoleSessionReady(e.spec.SessionID); !handled {
 		t.Fatal("ConsoleSessionReady handled = false, want true")

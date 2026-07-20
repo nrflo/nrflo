@@ -138,7 +138,7 @@ func TestCodexEngine_SendUserTurn_WireAndPersistence(t *testing.T) {
 		f.replyResult(*env.ID, `{"turn":{"id":"turn-wire-1"}}`)
 	})
 
-	if err := eng.SendUserTurn(context.Background(), "hello codex"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hello codex"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 
@@ -175,13 +175,13 @@ func TestCodexEngine_SendUserTurn_ErrTurnActive(t *testing.T) {
 	f.setOverride("turn/start", func(f *fakeAppServer, env rpcEnvelope) {})
 
 	done := make(chan error, 1)
-	go func() { done <- eng.SendUserTurn(context.Background(), "first") }()
+	go func() { done <- eng.SendUserTurn(context.Background(), UserTurn{Text: "first"}) }()
 
 	// SendUserTurn marks turnActive BEFORE it writes turn/start, so seeing the
 	// turn/start envelope on the wire already proves the flag is set — no poll.
 	waitForOutbound(t, f, "turn/start", 2*time.Second)
 
-	if err := eng.SendUserTurn(context.Background(), "second"); err != ErrTurnActive {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "second"}); err != ErrTurnActive {
 		t.Errorf("second SendUserTurn err = %v, want ErrTurnActive", err)
 	}
 

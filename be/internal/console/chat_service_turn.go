@@ -10,6 +10,15 @@ import (
 // turn is already in flight (the REST handler maps this to 409) — rejected
 // locally via chatSession.beginTurn before ever reaching the engine, so the
 // reject is deterministic without a round trip.
+//
+// A leading "/name" in the RAW text is matched against the session's
+// project skills (resolveSkill); when matched, the resolved
+// spawner.SkillMatch rides on UserTurn.Skill and the seed-context prepend is
+// deferred (a skill turn already carries its own body — see
+// spawner.expandSkillTurn) rather than applied to the persisted text. When
+// unmatched, the existing takeSeedContext prepend behavior is unchanged.
+// Pass-through-vs-expand for a matched skill is entirely an engine decision
+// (Rule 6) — this method never inspects sess.EngineName().
 func (s *ChatService) SendMessage(sid, text string) error {
 	sess, ok := s.get(sid)
 	if !ok {
@@ -18,10 +27,13 @@ func (s *ChatService) SendMessage(sid, text string) error {
 	if err := sess.beginTurn(); err != nil {
 		return err
 	}
-	if seed := sess.takeSeedContext(); seed != "" {
-		text = seed + "\n\n" + text
+	turn := spawner.UserTurn{Text: text}
+	if match := s.resolveSkill(sess.WorkDir(), text); match != nil {
+		turn.Skill = match
+	} else if seed := sess.takeSeedContext(); seed != "" {
+		turn.Text = seed + "\n\n" + text
 	}
-	if err := sess.getEngine().SendUserTurn(context.Background(), text); err != nil {
+	if err := sess.getEngine().SendUserTurn(context.Background(), turn); err != nil {
 		sess.endTurn()
 		return err
 	}

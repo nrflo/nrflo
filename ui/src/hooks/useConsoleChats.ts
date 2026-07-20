@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getConsoleCatalog,
+  getConsoleSkills,
   listConsoleChats,
   getConsoleChat,
   getConsoleChatMessages,
@@ -22,6 +23,7 @@ export const consoleChatKeys = {
   list: () => [...consoleChatKeys.all, 'list'] as const,
   detail: (sid: string) => [...consoleChatKeys.all, 'detail', sid] as const,
   catalog: () => [...consoleChatKeys.all, 'catalog'] as const,
+  skills: () => [...consoleChatKeys.all, 'skills'] as const,
 }
 
 // GET /console/catalog is project-scoped (X-Project) like the list below,
@@ -33,6 +35,18 @@ export function useConsoleCatalog() {
   return useQuery({
     queryKey: [...consoleChatKeys.catalog(), project],
     queryFn: getConsoleCatalog,
+    enabled: projectsLoaded,
+  })
+}
+
+// GET /console/skills is project-scoped like the catalog above; fetched once
+// per project (no polling) to back the composer's '/' suggestion dropdown.
+export function useProjectSkills() {
+  const project = useProjectStore((s) => s.currentProject)
+  const projectsLoaded = useProjectStore((s) => s.projectsLoaded)
+  return useQuery({
+    queryKey: [...consoleChatKeys.skills(), project],
+    queryFn: getConsoleSkills,
     enabled: projectsLoaded,
   })
 }

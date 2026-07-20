@@ -107,12 +107,12 @@ func TestAPIConsoleEngine_SeededContext_ReachesFirstProviderRequestOnly(t *testi
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "user question"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "user question"}); err != nil {
 		t.Fatalf("SendUserTurn 1: %v", err)
 	}
 	_ = waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)
 
-	if err := eng.SendUserTurn(context.Background(), "second question"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "second question"}); err != nil {
 		t.Fatalf("SendUserTurn 2: %v", err)
 	}
 	_ = waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)

@@ -70,7 +70,7 @@ func TestAPIConsoleEngine_SystemPrompt_RendersCustomInjectable(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)
@@ -112,7 +112,7 @@ func TestAPIConsoleEngine_SystemPrompt_FreshDBFallsBackToConsoleAPISystem(t *tes
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)

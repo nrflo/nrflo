@@ -71,9 +71,9 @@ func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) er
 	return nil
 }
 
-func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
+func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTurn) error {
 	f.mu.Lock()
-	f.turns = append(f.turns, text)
+	f.turns = append(f.turns, turn.Text)
 	f.turnActive = true
 	f.mu.Unlock()
 	return nil

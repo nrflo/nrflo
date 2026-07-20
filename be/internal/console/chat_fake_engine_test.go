@@ -28,6 +28,10 @@ type fakeConsoleEngine struct {
 	stopped    bool
 	turnActive bool
 	turns      []string
+	// skills mirrors turns index-for-index: the resolved spawner.SkillMatch
+	// (nil when the turn carried none) ChatService.SendMessage attached to
+	// UserTurn.Skill for that call.
+	skills     []*spawner.SkillMatch
 	sendErr    error // consumed once by the next SendUserTurn call
 	approvals  []fakeApprovalCall
 	approveErr error // consumed once by the next ReplyApproval call
@@ -87,10 +91,10 @@ func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) er
 	return nil
 }
 
-// SendUserTurn records the turn text. sendErr, if set via setSendErr, is
-// returned once (then cleared) instead of recording — lets a test simulate a
-// transport failure on exactly one call.
-func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
+// SendUserTurn records turn.Text (and turn.Skill, index-aligned in f.skills).
+// sendErr, if set via setSendErr, is returned once (then cleared) instead of
+// recording — lets a test simulate a transport failure on exactly one call.
+func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTurn) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.sendErr != nil {
@@ -98,7 +102,8 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, text string) error {
 		f.sendErr = nil
 		return err
 	}
-	f.turns = append(f.turns, text)
+	f.turns = append(f.turns, turn.Text)
+	f.skills = append(f.skills, turn.Skill)
 	f.turnActive = true
 	return nil
 }

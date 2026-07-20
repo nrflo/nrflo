@@ -169,8 +169,12 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 // SendUserTurn persists the user_input row BEFORE starting the turn goroutine
 // — same ordering rationale as codexEngine (console_engine_codex.go:156-160)
 // — emits turn_started, runs the shared tool-use loop on e.runCtx, then emits
-// turn_completed (PASS) or error (anything else).
-func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error {
+// turn_completed (PASS) or error (anything else). turn.Skill, when set,
+// replaces the provider-visible base text with the skill's expanded body
+// (expandSkillTurn) before the seed-context prepend — this engine's side of
+// the Rule 6 seam; the persisted row still gets turn.Text unchanged.
+func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
+	text := turn.Text
 	e.mu.Lock()
 	// A turn must never start once Stop has begun: Stop closes e.events after
 	// turnWG.Wait(), so a turnWG.Add racing that Wait is both WaitGroup misuse
@@ -192,9 +196,13 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, text string) error 
 	turnCtx, turnCancel := context.WithCancel(runCtx)
 	e.turnCancel = turnCancel
 	e.turnWG.Add(1)
-	providerText := text
+	base := text
+	if turn.Skill != nil {
+		base = expandSkillTurn(turn.Skill)
+	}
+	providerText := base
 	if !e.seedConsumed && spec.SeededContext != "" {
-		providerText = seededTurnText(spec.SeededContext, text)
+		providerText = seededTurnText(spec.SeededContext, base)
 	}
 	e.seedConsumed = true
 	e.mu.Unlock()
@@ -265,31 +273,3 @@ func (e *apiConsoleEngine) InterruptTurn(_ context.Context) error {
 
 // Events returns the normalized event channel, closed when Stop completes.
 func (e *apiConsoleEngine) Events() <-chan EngineEvent { return e.events }
-
-// Stop cancels runCtx, waits for any in-flight turn goroutine to finish, and
-// closes Events exactly once. `stopping` is closed BEFORE waiting so emit can
-// always unwind (codexEngine's Stop, console_engine_codex.go:185-201): a
-// caller that stops mid-drain must never deadlock a turn blocked on a full
-// events buffer.
-func (e *apiConsoleEngine) Stop() {
-	e.stoppingOnce.Do(func() { close(e.stopping) })
-	e.mu.Lock()
-	e.stopped = true
-	cancel := e.cancel
-	e.mu.Unlock()
-	if cancel != nil {
-		cancel()
-	}
-	e.turnWG.Wait()
-	e.stopOnce.Do(func() { close(e.events) })
-}
-
-// emit delivers one EngineEvent to the buffered Events channel, abandoning
-// the send once Stop has begun so a non-draining consumer can never wedge the
-// turn goroutine.
-func (e *apiConsoleEngine) emit(ev EngineEvent) {
-	select {
-	case e.events <- ev:
-	case <-e.stopping:
-	}
-}

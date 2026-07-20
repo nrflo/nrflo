@@ -87,7 +87,7 @@ func TestAPIConsoleEngine_FSTools_ApprovalRoundtrip(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "run echo"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "run echo"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 
@@ -146,7 +146,7 @@ func TestAPIConsoleEngine_FSTools_DenyBlocksExecution(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "touch it"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "touch it"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	req := waitForEventType(t, eng.Events(), EventApprovalRequest, 5*time.Second)
@@ -181,7 +181,7 @@ func TestAPIConsoleEngine_FSTools_AbsentWhenGateOff(t *testing.T) {
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hello"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 5*time.Second)
@@ -220,7 +220,7 @@ func TestAPIConsoleEngine_FSTools_PolicyNone_OverridesGlobalEnabled(t *testing.T
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hello"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 5*time.Second)
@@ -254,7 +254,7 @@ func TestAPIConsoleEngine_FSTools_PolicyFull_AddsEvenWhenGlobalDisabled(t *testi
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hello"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hello"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 5*time.Second)

@@ -99,7 +99,7 @@ func TestCodexEngine_SendUserTurn_SystemPromptPrependedFirstTurnOnly(t *testing.
 		firstParamsCh <- env.Params
 		f.replyResult(*env.ID, `{"turn":{"id":"turn-1"}}`)
 	})
-	if err := eng.SendUserTurn(context.Background(), "first message"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "first message"}); err != nil {
 		t.Fatalf("SendUserTurn (first): %v", err)
 	}
 	firstText := turnStartInputText(t, mustRecvParams(t, firstParamsCh))
@@ -119,7 +119,7 @@ func TestCodexEngine_SendUserTurn_SystemPromptPrependedFirstTurnOnly(t *testing.
 		secondParamsCh <- env.Params
 		f.replyResult(*env.ID, `{"turn":{"id":"turn-2"}}`)
 	})
-	if err := eng.SendUserTurn(context.Background(), "second message"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "second message"}); err != nil {
 		t.Fatalf("SendUserTurn (second): %v", err)
 	}
 	secondText := turnStartInputText(t, mustRecvParams(t, secondParamsCh))
@@ -141,7 +141,7 @@ func TestCodexEngine_SendUserTurn_EmptySystemPrompt_ByteIdentical(t *testing.T) 
 		paramsCh <- env.Params
 		f.replyResult(*env.ID, `{"turn":{"id":"turn-1"}}`)
 	})
-	if err := eng.SendUserTurn(context.Background(), "plain message"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "plain message"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	got := turnStartInputText(t, mustRecvParams(t, paramsCh))
@@ -180,7 +180,7 @@ func TestAPIConsoleEngine_Start_SystemPromptFromSpec_SkipsInjectableRender(t *te
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)
@@ -212,7 +212,7 @@ func TestAPIConsoleEngine_Start_EmptySystemPrompt_FallsBackToInjectable(t *testi
 	}
 	t.Cleanup(eng.Stop)
 
-	if err := eng.SendUserTurn(context.Background(), "hi"); err != nil {
+	if err := eng.SendUserTurn(context.Background(), UserTurn{Text: "hi"}); err != nil {
 		t.Fatalf("SendUserTurn: %v", err)
 	}
 	waitForEventType(t, eng.Events(), EventTurnCompleted, 2*time.Second)

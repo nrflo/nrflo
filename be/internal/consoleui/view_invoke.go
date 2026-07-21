@@ -2,6 +2,7 @@ package consoleui
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 )
@@ -27,11 +28,14 @@ func (m *model) invokeArgLine() string {
 		return ""
 	}
 	field := m.invoke.fields[m.invoke.index]
-	required := ""
+	parts := []string{field.Type}
 	if field.Required {
-		required = " (required)"
+		parts = append(parts, "required")
 	}
-	label := fmt.Sprintf("arg %s (%s)%s", field.Name, field.Type, required)
+	if field.Type == "object" {
+		parts = append(parts, "JSON")
+	}
+	label := fmt.Sprintf("%s (%s):", field.Name, strings.Join(parts, ", "))
 	return lipgloss.NewStyle().Bold(true).Foreground(accent).Render(label) +
 		"  " + mutedStyle.Render("enter accept · esc cancel")
 }

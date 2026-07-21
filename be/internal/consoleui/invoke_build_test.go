@@ -7,16 +7,9 @@ import (
 )
 
 // TestBuildInvokeArguments covers string quoting, numeric/bool passthrough,
-// and empty-optional omission; required fields are always included even when
-// empty.
-//
-// NOTE on non-scalar fields (array/object): the planner spec calls for
-// buildInvokeArguments to embed non-scalar values as raw JSON, but
-// typedArgValue only special-cases number/integer/boolean and falls through
-// to a plain string for every other type (including "object"/"array") — see
-// be_production_bugs. This test pins the code's actual current behavior
-// (string passthrough) so it doesn't spuriously fail; it is not an
-// endorsement of that behavior.
+// object JSON parsing, and empty-optional omission; required fields are
+// always included even when empty. Array coercion (typedArrayValue) has its
+// own dedicated test below.
 func TestBuildInvokeArguments(t *testing.T) {
 	fields := []argField{
 		{Name: "name", Type: "string", Required: true, Scalar: true},
@@ -91,6 +84,97 @@ func TestBuildInvokeArguments_MissingValueOmitted(t *testing.T) {
 	}
 	if _, present := got["name"]; present {
 		t.Errorf("field absent from values should be omitted, got %v", got["name"])
+	}
+}
+
+// TestTypedArrayValue covers the four array-coercion branches: empty
+// (required) input -> empty array, JSON-array passthrough, JSON-scalar wrap,
+// and plain non-JSON text wrap.
+func TestTypedArrayValue(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want any
+	}{
+		{"empty required -> empty array", "", []any{}},
+		{"plain text wraps as one-element string array", "foo bar", []any{"foo bar"}},
+		{"JSON array passes through unchanged", `["a","b"]`, []any{"a", "b"}},
+		{"JSON string scalar wraps", `"foo"`, []any{"foo"}},
+		{"JSON number scalar wraps", `42`, []any{float64(42)}},
+		{"JSON bool scalar wraps", `true`, []any{true}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := typedArrayValue(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("typedArrayValue(%q) = %#v, want %#v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestBuildInvokeArguments_ArrayField exercises the array case through the
+// full buildInvokeArguments/json.Marshal/json.Unmarshal round trip, matching
+// a web_search-style {"queries": [...]}-shaped tool.
+func TestBuildInvokeArguments_ArrayField(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []any
+	}{
+		{"plain text", "foo bar", []any{"foo bar"}},
+		{"JSON array passthrough", `["a","b"]`, []any{"a", "b"}},
+		{"JSON scalar wrap", `"foo"`, []any{"foo"}},
+		{"JSON number wrap", `42`, []any{float64(42)}},
+		{"empty required -> empty array", "", []any{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fields := []argField{{Name: "queries", Type: "array", Required: true, Scalar: false}}
+			raw := buildInvokeArguments(fields, map[string]string{"queries": tt.in})
+			var got map[string]any
+			if err := json.Unmarshal(raw, &got); err != nil {
+				t.Fatalf("buildInvokeArguments produced invalid JSON: %v (%s)", err, raw)
+			}
+			queries, ok := got["queries"]
+			if !ok {
+				t.Fatalf("queries field missing from %v", got)
+			}
+			if !reflect.DeepEqual(queries, tt.want) {
+				t.Errorf("queries = %#v, want %#v", queries, tt.want)
+			}
+		})
+	}
+}
+
+// TestFirstInvalidObjectField verifies the confirm-time object-JSON
+// validation: only object-typed fields are checked, empty values are
+// skipped, and the first non-empty invalid-JSON field's index is returned.
+func TestFirstInvalidObjectField(t *testing.T) {
+	fields := []argField{
+		{Name: "name", Type: "string"},
+		{Name: "meta", Type: "object"},
+		{Name: "extra", Type: "object"},
+	}
+	tests := []struct {
+		name   string
+		values map[string]string
+		want   int
+	}{
+		{"all valid/empty -> -1", map[string]string{"name": "x", "meta": `{"a":1}`, "extra": ""}, -1},
+		{"non-object field ignored even if garbage", map[string]string{"name": "not json at all", "meta": "", "extra": ""}, -1},
+		{"empty object field skipped", map[string]string{"meta": "", "extra": ""}, -1},
+		{"first invalid object field returned", map[string]string{"meta": "not json", "extra": `{"b":2}`}, 1},
+		{"second invalid object field returned when first is valid", map[string]string{"meta": `{"a":1}`, "extra": "{invalid"}, 2},
+		{"no values at all -> -1", map[string]string{}, -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := firstInvalidObjectField(fields, tt.values)
+			if got != tt.want {
+				t.Errorf("firstInvalidObjectField(%v) = %d, want %d", tt.values, got, tt.want)
+			}
+		})
 	}
 }
 

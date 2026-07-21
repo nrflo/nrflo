@@ -38,11 +38,18 @@ func (m *model) beginInvoke(name string) {
 	m.prefillInvokeComposer()
 }
 
-// prefillInvokeComposer loads the current arg field's default into the
-// composer during the args phase, or clears it once in confirm phase.
+// prefillInvokeComposer loads the current arg field's previously stored
+// value (e.g. when confirm sends the flow back for correction), falling
+// back to its default, into the composer during the args phase; it clears
+// the composer once in confirm phase.
 func (m *model) prefillInvokeComposer() {
 	if m.invoke.phase == invokePhaseArgs && m.invoke.index < len(m.invoke.fields) {
-		m.input.SetValue(m.invoke.fields[m.invoke.index].Default)
+		field := m.invoke.fields[m.invoke.index]
+		if v, ok := m.invoke.values[field.Name]; ok {
+			m.input.SetValue(v)
+		} else {
+			m.input.SetValue(field.Default)
+		}
 	} else {
 		m.input.Reset()
 	}
@@ -67,6 +74,13 @@ func (m *model) handleInvokeKey(key string) (tea.Cmd, bool) {
 	case invokePhaseConfirm:
 		switch key {
 		case "y":
+			if idx := firstInvalidObjectField(m.invoke.fields, m.invoke.values); idx >= 0 {
+				m.notice = m.invoke.fields[idx].Name + ": expected valid JSON"
+				m.invoke.phase = invokePhaseArgs
+				m.invoke.index = idx
+				m.prefillInvokeComposer()
+				return nil, true
+			}
 			tool, args, inform := m.invoke.tool, buildInvokeArguments(m.invoke.fields, m.invoke.values), m.invoke.inform
 			m.invoke = cancelInvoke()
 			m.input.Reset()

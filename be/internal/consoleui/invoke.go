@@ -215,6 +215,8 @@ func typedArgValue(fieldType, v string) any {
 		}
 	case "string":
 		return v
+	case "array":
+		return typedArrayValue(v)
 	default:
 		var parsed any
 		if err := json.Unmarshal([]byte(v), &parsed); err == nil {
@@ -222,4 +224,44 @@ func typedArgValue(fieldType, v string) any {
 		}
 	}
 	return v
+}
+
+// typedArrayValue coerces raw composer input for an "array" field into a Go
+// []any suitable for JSON-marshaling as a JSON array: an empty (required)
+// value becomes an empty array rather than a one-element array of "", a
+// value that already parses as a JSON array passes through unchanged, a
+// value that parses as a JSON scalar (string/number/bool/null) is wrapped in
+// a one-element array, and plain non-JSON text is wrapped as a one-element
+// string array.
+func typedArrayValue(v string) any {
+	if strings.TrimSpace(v) == "" {
+		return []any{}
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(v), &parsed); err == nil {
+		if arr, ok := parsed.([]any); ok {
+			return arr
+		}
+		return []any{parsed}
+	}
+	return []any{v}
+}
+
+// firstInvalidObjectField returns the index of the first object-typed field
+// whose stored value is non-empty and not valid JSON, or -1 if all
+// object-typed fields are either empty or valid JSON.
+func firstInvalidObjectField(fields []argField, values map[string]string) int {
+	for i, f := range fields {
+		if f.Type != "object" {
+			continue
+		}
+		v := values[f.Name]
+		if v == "" {
+			continue
+		}
+		if !json.Valid([]byte(v)) {
+			return i
+		}
+	}
+	return -1
 }

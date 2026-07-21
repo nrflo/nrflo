@@ -37,7 +37,7 @@ func (m *model) View() tea.View {
 	if m.searchMode {
 		composer = m.search.View()
 	} else if m.copyMode {
-		composer = "copy mode · navigate with arrows/j/k · y copies visible text · ctrl+p loads older"
+		composer = "copy mode · navigate with arrows/j/k · y visible · Y raw · ctrl+p loads older"
 	}
 	if normalMode && m.suggestionsOpen() {
 		sections = append(sections, m.suggestionView())

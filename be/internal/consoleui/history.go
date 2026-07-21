@@ -106,5 +106,29 @@ func (m *model) applySearch() {
 }
 
 func (m *model) visibleTranscript() string {
-	return strings.TrimSpace(ansi.Strip(m.viewport.View()))
+	return normalizeCopyText(ansi.Strip(m.viewport.View()))
+}
+
+// normalizeCopyText strips non-breaking spaces, trims trailing whitespace
+// from each line, and trims the overall result.
+func normalizeCopyText(s string) string {
+	s = strings.ReplaceAll(s, " ", " ")
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t")
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+// rawTranscript joins each message's non-empty raw Content with a blank-line
+// separator, bypassing the rendered viewport entirely.
+func rawTranscript(messages []Message) string {
+	parts := make([]string, 0, len(messages))
+	for _, message := range messages {
+		if message.Content == "" {
+			continue
+		}
+		parts = append(parts, message.Content)
+	}
+	return strings.Join(parts, "\n\n")
 }

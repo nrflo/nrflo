@@ -162,6 +162,11 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 			m.input.Focus()
 			m.notice = "copied visible transcript"
 			return tea.Raw(ansi.SetSystemClipboard(m.visibleTranscript())), true
+		case "shift+y":
+			m.copyMode = false
+			m.input.Focus()
+			m.notice = "copied raw transcript"
+			return tea.Raw(ansi.SetSystemClipboard(rawTranscript(m.messages))), true
 		case "ctrl+p":
 			if m.historyOffset > 0 {
 				return m.loadOlder(), true
@@ -191,6 +196,12 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	var cmd tea.Cmd
 	switch key {
 	case "pgup", "pgdown":
+		m.viewport, cmd = m.viewport.Update(msg)
+		return cmd, true
+	case "up", "down":
+		if len(m.approvals) > 0 || !singleLineComposer(m.input.Value()) {
+			return nil, false
+		}
 		m.viewport, cmd = m.viewport.Update(msg)
 		return cmd, true
 	case "ctrl+f":
@@ -236,4 +247,11 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
 	}
 	return nil, false
+}
+
+// singleLineComposer reports whether the composer's draft has no line
+// breaks, meaning arrow keys are safe to route to the transcript viewport
+// instead of textarea cursor movement.
+func singleLineComposer(value string) bool {
+	return !strings.Contains(value, "\n")
 }

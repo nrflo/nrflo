@@ -48,7 +48,6 @@ func (m *model) View() tea.View {
 	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.statusBar(), m.footer())
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
 	view.AltScreen = true
-	view.MouseMode = tea.MouseModeCellMotion
 	view.WindowTitle = "nrflo console"
 	return view
 }
@@ -136,11 +135,11 @@ func (m *model) refreshTranscript() {
 func renderMessage(message Message, width int) string {
 	switch message.Category {
 	case "user_input":
-		return userStyle.Render("you") + "\n" + message.Content
+		return userStyle.Render("you") + "\n" + wrapToWidth(message.Content, width)
 	case "tool", "tool_use", "tool_result":
-		return mutedStyle.Render("tool · " + message.Content)
+		return mutedStyle.Render(wrapToWidth("tool · "+prettyToolContent(message.Content), width))
 	case "thinking":
-		return mutedStyle.Italic(true).Render("thinking · " + message.Content)
+		return mutedStyle.Italic(true).Render(wrapToWidth("thinking · "+message.Content, width))
 	default:
 		renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(width))
 		if err == nil {

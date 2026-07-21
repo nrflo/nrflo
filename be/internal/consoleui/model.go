@@ -3,12 +3,17 @@ package consoleui
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 )
+
+// clearScreenSeq erases the visible screen (2J), erases scrollback (3J), and homes the cursor (H).
+const clearScreenSeq = "\x1b[2J\x1b[3J\x1b[H"
 
 type model struct {
 	ctx            context.Context
@@ -106,6 +111,7 @@ func Run(ctx context.Context, cfg Config) error {
 	}
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))
+	clearTerminal(os.Stdout)
 	_, err = program.Run()
 	if err == tea.ErrInterrupted {
 		return nil
@@ -151,4 +157,9 @@ func (m *model) syncState() tea.Cmd {
 
 func action(name string, call func() error) tea.Cmd {
 	return func() tea.Msg { return actionMsg{action: name, err: call()} }
+}
+
+// clearTerminal writes the erase-screen/scrollback/cursor-home sequence, best-effort.
+func clearTerminal(w io.Writer) {
+	_, _ = io.WriteString(w, clearScreenSeq)
 }

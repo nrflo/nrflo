@@ -120,6 +120,9 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	if m.handleSuggestionKey(key) {
 		return nil, true
 	}
+	if m.handleHistoryKey(key) {
+		return nil, true
+	}
 	if len(m.approvals) > 0 {
 		switch key {
 		case "y":
@@ -153,6 +156,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.skillsDismissed = false
 		m.skillDetails = false
 		m.pendingUser = text
+		m.history = m.history.record(text)
 		m.status = "running"
 		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
 	}

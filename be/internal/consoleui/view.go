@@ -86,6 +86,9 @@ func (m *model) footer() string {
 	if m.lastErr != "" {
 		return errorStyle.Render(" " + truncate(m.lastErr, max(20, m.width-2)))
 	}
+	if label, show := m.history.indicator(); show {
+		return mutedStyle.Render(" " + label)
+	}
 	if m.notice != "" {
 		return mutedStyle.Render(" " + m.notice)
 	}

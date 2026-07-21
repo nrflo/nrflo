@@ -38,8 +38,9 @@ type model struct {
 	ready     bool
 	notice    string
 
-	input textarea.Model
-	spin  spinner.Model
+	input   textarea.Model
+	spin    spinner.Model
+	history inputHistory
 
 	skills          []ConsoleSkill
 	skillIndex      int
@@ -107,7 +108,8 @@ func Run(ctx context.Context, cfg Config) error {
 		approvals:   detail.PendingApprovals,
 		deltas:      make(map[string]string), connected: false,
 		status: detail.Turn, input: input,
-		spin: spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
+		spin:    spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
+		history: newHistory(page.Messages),
 	}
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))

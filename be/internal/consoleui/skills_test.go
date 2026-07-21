@@ -33,12 +33,12 @@ func TestFilterSkills(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := skillNames(filterSkills(skills, tt.query))
+			got := skillNames(filterByName(skills, tt.query, func(s ConsoleSkill) string { return s.Name }))
 			if len(got) == 0 && len(tt.want) == 0 {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("filterSkills(%q) = %v, want %v", tt.query, got, tt.want)
+				t.Errorf("filterByName(%q) = %v, want %v", tt.query, got, tt.want)
 			}
 		})
 	}
@@ -52,10 +52,10 @@ func TestFilterSkills_PrefixBeatsSubstring(t *testing.T) {
 		{Name: "encode-helper"}, // substring match only: "code" appears mid-name
 		{Name: "code-review"},   // prefix match: starts with "code"
 	}
-	got := skillNames(filterSkills(skills, "code"))
+	got := skillNames(filterByName(skills, "code", func(s ConsoleSkill) string { return s.Name }))
 	want := []string{"code-review"}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("filterSkills(code) = %v, want %v (prefix must win over substring)", got, want)
+		t.Errorf("filterByName(code) = %v, want %v (prefix must win over substring)", got, want)
 	}
 }
 
@@ -66,10 +66,10 @@ func TestFilterSkills_SubstringFallback(t *testing.T) {
 		{Name: "encode-helper"},
 		{Name: "unrelated"},
 	}
-	got := skillNames(filterSkills(skills, "code"))
+	got := skillNames(filterByName(skills, "code", func(s ConsoleSkill) string { return s.Name }))
 	want := []string{"encode-helper"}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("filterSkills(code) = %v, want %v", got, want)
+		t.Errorf("filterByName(code) = %v, want %v", got, want)
 	}
 }
 

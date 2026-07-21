@@ -20,9 +20,12 @@ func (m *model) handleSuggestionKey(key string) bool {
 			m.skillIndex = 0
 		}
 		name := matches[m.skillIndex].Name
-		if m.suggestionKind() == suggestionKindTools {
+		switch {
+		case m.suggestionKind() == suggestionKindTools:
 			m.beginInvoke(name)
-		} else {
+		case name == invokeDirectiveName:
+			m.enterInvokeDirective()
+		default:
 			m.completeSkill(name)
 		}
 		return true
@@ -44,6 +47,17 @@ func (m *model) handleSuggestionKey(key string) bool {
 // the suggestion box on the next keystroke) and resets dropdown state.
 func (m *model) completeSkill(name string) {
 	m.input.SetValue("/" + name + " ")
+	m.skillIndex = 0
+	m.skillsDismissed = false
+	m.skillDetails = false
+}
+
+// enterInvokeDirective completes the reserved invoke directive row to
+// "/invoke " (mirrors completeSkill's dropdown-state reset) without calling
+// beginInvoke: the tool suggestion box opens naturally once invokeQuery
+// matches the new composer value.
+func (m *model) enterInvokeDirective() {
+	m.input.SetValue("/invoke ")
 	m.skillIndex = 0
 	m.skillsDismissed = false
 	m.skillDetails = false

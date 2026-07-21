@@ -28,6 +28,16 @@ type suggestionItem struct {
 	Description string
 }
 
+// invokeDirectiveName is the reserved row name that switches the composer
+// into tool mode, prepended to every bare-"/" skills suggestion list
+// (mirrors web INVOKE_DIRECTIVE, ChatComposer.tsx:20).
+const invokeDirectiveName = "invoke"
+
+var invokeDirective = suggestionItem{
+	Name:        invokeDirectiveName,
+	Description: "Run a tool directly, outside the model",
+}
+
 func toSuggestionItems[T any](items []T, name, desc func(T) string) []suggestionItem {
 	out := make([]suggestionItem, len(items))
 	for i, item := range items {
@@ -63,12 +73,23 @@ func filterByName[T any](items []T, query string, name func(T) string) []T {
 	return substring
 }
 
-func filterSkills(skills []ConsoleSkill, query string) []ConsoleSkill {
-	return filterByName(skills, query, func(s ConsoleSkill) string { return s.Name })
-}
-
 func filterTools(tools []ConsoleTool, query string) []ConsoleTool {
 	return filterByName(tools, query, func(t ConsoleTool) string { return t.Name })
+}
+
+// skillSuggestions prepends the reserved invoke directive to the project
+// skills (deduping any skill literally named "invoke" so it appears once,
+// first), then applies the same filter used for plain skill/tool queries.
+func skillSuggestions(skills []ConsoleSkill, query string) []suggestionItem {
+	items := make([]suggestionItem, 0, len(skills)+1)
+	items = append(items, invokeDirective)
+	for _, s := range skills {
+		if strings.EqualFold(s.Name, invokeDirectiveName) {
+			continue
+		}
+		items = append(items, suggestionItem{Name: s.Name, Description: s.Description})
+	}
+	return filterByName(items, query, func(i suggestionItem) string { return i.Name })
 }
 
 // slashQuery mirrors ChatComposer.tsx: the draft must start with '/', stay
@@ -127,9 +148,7 @@ func (m *model) suggestionMatches() []suggestionItem {
 			func(t ConsoleTool) string { return t.Description })
 	case suggestionKindSkills:
 		query, _ := slashQuery(m.input.Value())
-		return toSuggestionItems(filterSkills(m.skills, query),
-			func(s ConsoleSkill) string { return s.Name },
-			func(s ConsoleSkill) string { return s.Description })
+		return skillSuggestions(m.skills, query)
 	default:
 		return nil
 	}

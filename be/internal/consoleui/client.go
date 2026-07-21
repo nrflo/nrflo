@@ -64,6 +64,16 @@ func (c *Client) Skills(ctx context.Context) ([]ConsoleSkill, error) {
 	return result.Skills, err
 }
 
+// History fetches the project's recent console_chat 'user_input' contents
+// (oldest→newest), used to seed the composer's Up/Down recall ring across
+// the whole project rather than just the current chat's tail.
+func (c *Client) History(ctx context.Context, limit int) ([]string, error) {
+	var result types.ConsoleHistoryResponse
+	path := fmt.Sprintf("/api/v1/console/history?limit=%d", limit)
+	err := c.do(ctx, http.MethodGet, path, nil, &result)
+	return result.Messages, err
+}
+
 func (c *Client) MessagesPage(ctx context.Context, limit, offset int) (MessagePage, error) {
 	var result MessagePage
 	path := fmt.Sprintf("%s?limit=%d&offset=%d", c.chatPath("messages"), limit, offset)

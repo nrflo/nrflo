@@ -65,6 +65,14 @@ type ConsoleSkillsResponse struct {
 	Skills    []ConsoleSkill `json:"skills"`
 }
 
+// ConsoleHistoryResponse is the GET /api/v1/console/history payload: a
+// project-scoped aggregate of recent console_chat user_input contents,
+// oldest→newest, used to seed the native TUI's Up/Down recall.
+type ConsoleHistoryResponse struct {
+	ProjectID string   `json:"project_id"`
+	Messages  []string `json:"messages"`
+}
+
 type ConsoleSessionOption struct {
 	SessionID   string `json:"session_id"`
 	Engine      string `json:"engine"`

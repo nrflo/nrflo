@@ -83,6 +83,12 @@ func Run(ctx context.Context, cfg Config) error {
 		return fmt.Errorf("load console chat: %w", err)
 	}
 	page, err := client.TailMessages(loadCtx, historyPageSize)
+	inputHist := newHistory(page.Messages)
+	if err == nil && cfg.Project != "" {
+		if contents, histErr := client.History(loadCtx, historyLimit); histErr == nil {
+			inputHist = newHistoryFromContents(contents)
+		}
+	}
 	cancel()
 	if err != nil {
 		return fmt.Errorf("load console history: %w", err)
@@ -109,7 +115,7 @@ func Run(ctx context.Context, cfg Config) error {
 		deltas:      make(map[string]string), connected: false,
 		status: detail.Turn, input: input,
 		spin:    spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
-		history: newHistory(page.Messages),
+		history: inputHist,
 	}
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))

@@ -86,6 +86,8 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 
 `GET /api/v1/console/skills` follows the same `protected` route + in-handler auth pattern: a console/console_chat bearer is served its own session's project (`X-Project`/`?project=` ignored); admin users and service tokens keep `getProjectID`-based scoping.
 
+`GET /api/v1/console/history` returns the project's recent `console_chat` `user_input` message contents (`?limit`, default/clamp ≤100, oldest→newest), same `protected` route + in-handler auth as `/console/skills`.
+
 #### Console chats
 
 `GET /api/v1/console/catalog` discovers enabled engines/models and live resumable chats; `POST /api/v1/console/chats` starts a `ChatService`-owned engine. Path-scoped routes cover paginated history, approval, interruption, reconnect detail (including bounded in-flight output), and close under the shared chat authorization predicate. Live events stream over the WS session channel — see [ws/CLAUDE.md](../ws/CLAUDE.md). `GET /api/v1/pty/{sid}` on a `kind='console_chat'` row routes to the viewer-only relay (`handlers_pty_console.go`): raw terminal onto a live claude chat's PTY, detach-on-disconnect, never completes or kills anything. `GET .../tools` (the chat's own catalogue) and `POST .../invoke` (deterministic server-side dispatch, transcript rows + optional inform-model) live under the same shared chat auth predicate as the routes above.

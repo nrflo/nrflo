@@ -32,6 +32,36 @@ func newHistory(messages []Message) inputHistory {
 	return inputHistory{entries: entries, index: len(entries)}
 }
 
+// newHistoryFromContents seeds an inputHistory from a flat, oldest→newest
+// list of raw message contents (a project-scoped aggregate fetched via
+// Client.History), applying the same global keep-last dedup and
+// historyLimit cap as dedupSeed. The result starts at the draft slot.
+func newHistoryFromContents(contents []string) inputHistory {
+	entries := dedupSeed(contents)
+	return inputHistory{entries: entries, index: len(entries)}
+}
+
+// dedupSeed applies a global keep-last dedup (a duplicate entry is dropped in
+// favor of its most recent occurrence, order otherwise preserved) then caps
+// the result to the most recent historyLimit entries. Pure and independent
+// of appendEntry's consecutive-only dedup, which stays as-is for record().
+func dedupSeed(contents []string) []string {
+	last := make(map[string]int, len(contents))
+	for i, c := range contents {
+		last[c] = i
+	}
+	out := make([]string, 0, len(contents))
+	for i, c := range contents {
+		if last[c] == i {
+			out = append(out, c)
+		}
+	}
+	if len(out) > historyLimit {
+		out = out[len(out)-historyLimit:]
+	}
+	return out
+}
+
 // appendEntry appends msg to entries with consecutive-dedup (a repeat of the
 // last entry is a no-op) and drops the oldest entries beyond historyLimit.
 // Copy-on-write: never mutates the input slice.

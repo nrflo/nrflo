@@ -7,7 +7,7 @@
 #
 #   docker compose -f docker-compose.searxng.yml up -d
 #   # then set (project or global) env var:
-#   SEARXNG_BASE_URL=http://localhost:8080     # or http://searxng:8080 on a shared compose network
+#   SEARXNG_BASE_URL=http://localhost:47821    # or http://searxng:8080 on a shared compose network
 #
 # The mounted settings.yml enables the JSON API (formats: [html, json]); without
 # it SearXNG answers /search?format=json with 403. See searxng/settings.yml.
@@ -18,13 +18,13 @@ services:
     image: searxng/searxng:2026.7.19-6da6eee26
     container_name: nrflo-searxng
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:47821:8080"
     volumes:
       - ./searxng:/etc/searxng:rw
     environment:
       # Must match the published address nrflo reaches it on; SearXNG uses it
       # to build absolute URLs and validate the JSON API request origin.
-      - SEARXNG_BASE_URL=http://localhost:8080/
+      - SEARXNG_BASE_URL=http://localhost:47821/
     restart: unless-stopped
     cap_drop:
       - ALL

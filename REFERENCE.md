@@ -96,7 +96,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 docker compose -f docker-compose.searxng.yml up -d
 ```
 
-Then set the env var (project or global): `SEARXNG_BASE_URL=http://localhost:8080` (or the compose service name on a shared network). The shipped `settings.yml` sets `search.formats: [html, json]` — **required**, since SearXNG answers `/search?format=json` with **403** when json output is off (the default). Change `server.secret_key` (`openssl rand -hex 32`).
+Then set the env var (project or global): `SEARXNG_BASE_URL=http://localhost:47821` (or the compose service name on a shared network). The shipped `settings.yml` sets `search.formats: [html, json]` — **required**, since SearXNG answers `/search?format=json` with **403** when json output is off (the default). Change `server.secret_key` (`openssl rand -hex 32`).
 
 **Egress proxy** (optional): set `WEB_PROXY_URL` to route `web_fetch` egress through a proxy — `socks5://host:port` or `http://host:port`; empty = direct. The WARP recipe: `warp-cli mode proxy` (operator-run — nrflo does **not** manage the WARP daemon; `warp-cli registration new <team-token>` for Zero Trust is out of nrflo scope), then `WEB_PROXY_URL=socks5://127.0.0.1:40000`.
 

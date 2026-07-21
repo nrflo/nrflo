@@ -35,6 +35,8 @@ func (m *model) applyStream(update streamUpdate) {
 			if m.status == "idle" {
 				m.thinking = ""
 				m.thinkingID = ""
+				m.deltas = make(map[string]string)
+				m.deltaOrder = m.deltaOrder[:0]
 			}
 		case "console_chat.approval_request":
 			m.approvals = append(m.approvals, Approval{

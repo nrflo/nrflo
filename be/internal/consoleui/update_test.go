@@ -56,8 +56,8 @@ func TestWorkingIndicator(t *testing.T) {
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "running"}),
 	}})
-	if !strings.Contains(m.liveRegionView(), "working…") {
-		t.Fatalf("running live region = %q, want working indicator", m.liveRegionView())
+	if !strings.Contains(m.liveRegionView(m.height), "working…") {
+		t.Fatalf("running live region = %q, want working indicator", m.liveRegionView(m.height))
 	}
 	if m.tickOnRunning(false) == nil {
 		t.Fatal("idle→running must start the spinner tick chain")
@@ -68,8 +68,45 @@ func TestWorkingIndicator(t *testing.T) {
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),
 	}})
-	if strings.Contains(m.liveRegionView(), "working…") {
+	if strings.Contains(m.liveRegionView(m.height), "working…") {
 		t.Fatal("idle live region must drop the working indicator")
+	}
+}
+
+// TestApplyStream_IdleClearsDeltas verifies a finalized turn (console_chat.turn
+// state=idle) clears both live delta collections and thinking, mirroring the
+// backend's clearLive() at turn completion (chat_events.go), so a finalized
+// reply lives only once — in scrollback, never duplicated in the live region.
+// This exercises the codex/api path directly: claude never populates
+// m.deltas (it emits EventText only, no console_chat.delta), so no delta is
+// seeded via applyStream for that provider.
+func TestApplyStream_IdleClearsDeltas(t *testing.T) {
+	m := &model{
+		detail: ChatDetail{SessionID: "s1"},
+		deltas: map[string]string{"answer": "partial reply text", "other": "more text"},
+	}
+	m.deltaOrder = []string{"answer", "other"}
+	m.thinking = "considering options"
+	m.thinkingID = "thought-1"
+	m.width, m.height, m.ready = 80, 24, true
+
+	m.applyStream(streamUpdate{Events: []Event{
+		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),
+	}})
+
+	if len(m.deltas) != 0 {
+		t.Errorf("deltas = %+v, want empty after idle turn", m.deltas)
+	}
+	if len(m.deltaOrder) != 0 {
+		t.Errorf("deltaOrder = %+v, want empty after idle turn", m.deltaOrder)
+	}
+	if m.thinking != "" || m.thinkingID != "" {
+		t.Errorf("thinking=%q thinkingID=%q, want both cleared after idle turn", m.thinking, m.thinkingID)
+	}
+
+	live := m.liveRegionView(m.height)
+	if strings.Contains(live, "partial reply text") || strings.Contains(live, "more text") {
+		t.Errorf("liveRegionView() = %q, want no seeded delta text after idle-clear (no duplicate with scrollback)", live)
 	}
 }
 

@@ -28,17 +28,24 @@ func (m *model) View() tea.View {
 		view.AltScreen = true
 		return view
 	}
-	sections := []string{m.liveRegionView()}
+	chromeSections := []string{}
 	if len(m.approvals) > 0 {
-		sections = append(sections, m.approvalView())
+		chromeSections = append(chromeSections, m.approvalView())
 	}
 	if m.suggestionsOpen() {
-		sections = append(sections, m.suggestionView())
+		chromeSections = append(chromeSections, m.suggestionView())
 	}
 	if m.invoke.active {
-		sections = append(sections, m.invokeView())
+		chromeSections = append(chromeSections, m.invokeView())
 	}
-	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar(), m.footer())
+	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar(), m.footer())
+	chrome := lipgloss.JoinVertical(lipgloss.Left, chromeSections...)
+	budget := m.height - lipgloss.Height(chrome)
+	sections := []string{}
+	if live := m.liveRegionView(budget); live != "" {
+		sections = append(sections, live)
+	}
+	sections = append(sections, chrome)
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
 	view.AltScreen = false
 	view.WindowTitle = "nrflo console"
@@ -50,14 +57,17 @@ func (m *model) View() tea.View {
 // content width and tail-clipped to roughly the terminal height so the
 // managed region never grows unbounded (printed rows live in the terminal's
 // native scrollback, not here).
-func (m *model) liveRegionView() string {
+func (m *model) liveRegionView(maxLines int) string {
+	if maxLines < 1 {
+		return ""
+	}
 	parts := make([]string, 0, len(m.deltas)+2)
 	if m.pendingUser != "" {
 		parts = append(parts, userStyle.Render("you")+"\n"+wrapToWidth(m.pendingUser, m.contentWidth()))
 	}
 	for _, id := range m.deltaOrder {
 		if text := m.deltas[id]; text != "" {
-			parts = append(parts, headerStyle.Render("assistant")+"\n"+text)
+			parts = append(parts, headerStyle.Render("assistant")+"\n"+wrapToWidth(text, m.contentWidth()))
 		}
 	}
 	if m.thinking != "" {
@@ -71,7 +81,6 @@ func (m *model) liveRegionView() string {
 		return ""
 	}
 	lines := strings.Split(content, "\n")
-	maxLines := max(1, m.height-2)
 	if len(lines) > maxLines {
 		lines = lines[len(lines)-maxLines:]
 	}

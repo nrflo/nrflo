@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"be/internal/types"
 )
 
 type Client struct {
@@ -54,6 +56,12 @@ func (c *Client) Catalog(ctx context.Context) (Catalog, error) {
 	var result Catalog
 	err := c.do(ctx, http.MethodGet, "/api/v1/console/catalog", nil, &result)
 	return result, err
+}
+
+func (c *Client) Skills(ctx context.Context) ([]ConsoleSkill, error) {
+	var result types.ConsoleSkillsResponse
+	err := c.do(ctx, http.MethodGet, "/api/v1/console/skills", nil, &result)
+	return result.Skills, err
 }
 
 func (c *Client) MessagesPage(ctx context.Context, limit, offset int) (MessagePage, error) {

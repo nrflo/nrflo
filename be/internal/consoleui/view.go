@@ -1,7 +1,6 @@
 package consoleui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -29,46 +28,26 @@ func (m *model) View() tea.View {
 		view.AltScreen = true
 		return view
 	}
-	sections := []string{m.header(), m.viewport.View()}
+	sections := []string{m.viewport.View()}
 	if len(m.approvals) > 0 {
 		sections = append(sections, m.approvalView())
 	}
 	composer := m.input.View()
+	normalMode := !m.searchMode && !m.copyMode
 	if m.searchMode {
 		composer = m.search.View()
 	} else if m.copyMode {
 		composer = "copy mode · navigate with arrows/j/k · y copies visible text · ctrl+p loads older"
 	}
-	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.footer())
+	if normalMode && m.suggestionsOpen() {
+		sections = append(sections, m.suggestionView())
+	}
+	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.statusBar(), m.footer())
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	view.WindowTitle = "nrflo console"
 	return view
-}
-
-func (m *model) header() string {
-	connection := lipgloss.NewStyle().Foreground(bad).Render("offline")
-	if m.connected {
-		connection = lipgloss.NewStyle().Foreground(good).Render("connected")
-	}
-	contextText := ""
-	if m.detail.ContextLeft != nil {
-		contextText = fmt.Sprintf("  context %d%%", *m.detail.ContextLeft)
-	}
-	costText := ""
-	if m.detail.CostEstimate != nil {
-		costText = fmt.Sprintf("  ~$%.2f", *m.detail.CostEstimate)
-	}
-	allowedText := ""
-	if len(m.detail.SessionApprovals) > 0 {
-		allowedText = "  always:" + strings.Join(m.detail.SessionApprovals, ",")
-	}
-	modelName := m.detail.Model
-	if modelName == "" {
-		modelName = "default"
-	}
-	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, allowedText))
 }
 
 func (m *model) footer() string {
@@ -103,13 +82,7 @@ func (m *model) approvalView() string {
 func (m *model) resize(width, height int) {
 	m.width, m.height, m.ready = width, height, true
 	m.input.SetWidth(max(10, width-6))
-	approvalHeight := 0
-	if len(m.approvals) > 0 {
-		approvalHeight = 3
-	}
-	m.viewport.SetWidth(max(1, width))
-	m.viewport.SetHeight(max(1, height-8-approvalHeight))
-	m.refreshTranscript()
+	m.relayout()
 }
 
 func (m *model) refreshTranscript() {

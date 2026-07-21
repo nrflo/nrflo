@@ -45,6 +45,11 @@ type model struct {
 	search   textinput.Model
 	viewport viewport.Model
 	spin     spinner.Model
+
+	skills          []ConsoleSkill
+	skillIndex      int
+	skillsDismissed bool
+	skillsFetched   bool
 }
 
 type historyMsg struct {
@@ -82,7 +87,10 @@ func Run(ctx context.Context, cfg Config) error {
 	input := textarea.New()
 	input.Placeholder = "Ask nrflo…"
 	input.ShowLineNumbers = false
-	input.SetHeight(3)
+	input.MinHeight = 1
+	input.MaxHeight = 8
+	input.DynamicHeight = true
+	input.SetHeight(1)
 	input.CharLimit = 64 * 1024
 	input.KeyMap.InsertNewline.SetKeys("shift+enter", "alt+enter", "ctrl+j")
 	input.Focus()

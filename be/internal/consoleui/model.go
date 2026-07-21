@@ -97,6 +97,7 @@ func Run(ctx context.Context, cfg Config) error {
 	input := textarea.New()
 	input.Placeholder = "Ask nrflo…"
 	input.ShowLineNumbers = false
+	input.Prompt = ""
 	input.MinHeight = 1
 	input.MaxHeight = 8
 	input.DynamicHeight = true

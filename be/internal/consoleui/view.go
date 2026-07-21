@@ -53,7 +53,7 @@ func (m *model) View() tea.View {
 }
 
 func (m *model) footer() string {
-	help := "enter send · ctrl+f search · ctrl+g copy mode · ctrl+d detach · ctrl+x close"
+	help := "enter send · ctrl+f search · ctrl+g copy mode · ctrl+d detach · ctrl+x close · pgup/pgdn scroll"
 	if m.status == "running" {
 		help = "working… · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
 	}

@@ -7,7 +7,9 @@ import (
 	"testing"
 
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
@@ -127,6 +129,80 @@ func TestApplyHistory_BoundsTranscriptWindow(t *testing.T) {
 	m.applyHistory(MessagePage{Messages: messages, Total: len(messages)}, true, 0)
 	if len(m.messages) != historyWindowSize {
 		t.Fatalf("message window = %d, want %d", len(m.messages), historyWindowSize)
+	}
+}
+
+// newScrollTestModel builds a ready model with a small viewport filled with
+// many lines, scrolled to the bottom, mirroring TestWorkingIndicator's setup.
+func newScrollTestModel() *model {
+	m := &model{
+		detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{},
+		renderCache: map[string]string{}, viewport: viewport.New(),
+		input: textarea.New(), spin: spinner.New(spinner.WithSpinner(spinner.MiniDot)),
+	}
+	m.width, m.height, m.ready = 80, 24, true
+	m.viewport.SetWidth(20)
+	m.viewport.SetHeight(5)
+	lines := make([]string, 100)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("line-%d", i)
+	}
+	m.viewport.SetContent(strings.Join(lines, "\n"))
+	m.viewport.GotoBottom()
+	return m
+}
+
+// TestHandleKey_PgUpScrollsViewportKeepsComposer verifies pgup is routed to
+// the transcript viewport (scrolling it up from the bottom) while the
+// composer input is left untouched and the key is reported as handled.
+func TestHandleKey_PgUpScrollsViewportKeepsComposer(t *testing.T) {
+	m := newScrollTestModel()
+	m.input.SetValue("draft text")
+	before := m.input.Value()
+	atBottomBefore := m.viewport.AtBottom()
+	if !atBottomBefore {
+		t.Fatal("viewport should start at bottom")
+	}
+
+	cmd, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgUp})
+	_ = cmd
+	if !handled {
+		t.Fatal("handleKey(pgup) handled = false, want true")
+	}
+	if m.viewport.AtBottom() {
+		t.Error("handleKey(pgup) did not scroll the viewport away from the bottom")
+	}
+	if m.input.Value() != before {
+		t.Errorf("handleKey(pgup) mutated composer input: got %q, want %q", m.input.Value(), before)
+	}
+}
+
+// TestHandleKey_PgDownScrollsBack verifies pgdown, following a pgup, scrolls
+// the viewport back toward the bottom.
+func TestHandleKey_PgDownScrollsBack(t *testing.T) {
+	m := newScrollTestModel()
+	if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgUp}); !handled {
+		t.Fatal("setup pgup not handled")
+	}
+	if m.viewport.AtBottom() {
+		t.Fatal("setup pgup did not scroll away from bottom")
+	}
+	if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgDown}); !handled {
+		t.Fatal("handleKey(pgdown) handled = false, want true")
+	}
+	if !m.viewport.AtBottom() {
+		t.Error("handleKey(pgdown) should scroll back to the bottom")
+	}
+}
+
+// TestHandleKey_PlainRuneNotConsumedByScrollCase verifies a plain rune key
+// (e.g. "a") is not swallowed by the new pgup/pgdown case and falls through
+// unhandled to composer routing.
+func TestHandleKey_PlainRuneNotConsumedByScrollCase(t *testing.T) {
+	m := newScrollTestModel()
+	_, handled := m.handleKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	if handled {
+		t.Error("handleKey(\"a\") handled = true, want false (plain rune falls through to composer)")
 	}
 }
 

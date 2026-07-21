@@ -188,7 +188,11 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 			return action("approval", func() error { return m.client.Approve(m.ctx, approval.ID, "deny") }), true
 		}
 	}
+	var cmd tea.Cmd
 	switch key {
+	case "pgup", "pgdown":
+		m.viewport, cmd = m.viewport.Update(msg)
+		return cmd, true
 	case "ctrl+f":
 		m.searchMode = true
 		m.input.Blur()

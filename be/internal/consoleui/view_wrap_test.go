@@ -138,6 +138,57 @@ func TestPrettyToolContent_NoDelimiter(t *testing.T) {
 	}
 }
 
+// TestPrettyToolContent_XMLValid verifies a valid XML right-hand side is
+// re-indented (multi-line, still containing its tags/content) while the
+// left side and delimiter are preserved.
+func TestPrettyToolContent_XMLValid(t *testing.T) {
+	input := "t → <a><b>1</b></a>"
+	got := prettyToolContent(input)
+	if !strings.HasPrefix(got, "t → ") {
+		t.Fatalf("prettyToolContent XML result missing left+delimiter prefix: %q", got)
+	}
+	if !strings.Contains(got, "\n") {
+		t.Errorf("prettyToolContent XML result should be multi-line indented: %q", got)
+	}
+	if !strings.Contains(got, "<b>") || !strings.Contains(got, "1") {
+		t.Errorf("prettyToolContent XML result missing expected content: %q", got)
+	}
+	if got == input {
+		t.Errorf("prettyToolContent(%q) = unchanged, want re-indented", input)
+	}
+}
+
+// TestPrettyToolContent_XMLInvalidPassthrough verifies unclosed/invalid
+// markup and non-markup strings containing '<' pass through unchanged
+// (prettyXML failure falls back to the original content).
+func TestPrettyToolContent_XMLInvalidPassthrough(t *testing.T) {
+	for _, input := range []string{"t → <a><b>", "t → a < b"} {
+		if got := prettyToolContent(input); got != input {
+			t.Errorf("prettyToolContent(%q) = %q, want unchanged", input, got)
+		}
+	}
+}
+
+// TestPrettyToolContent_PlainTextWithGT verifies plain text containing '>'
+// (with no XML elements) passes through unchanged rather than being
+// escaped by an XML re-encode (CharData "&gt;" mangling guard).
+func TestPrettyToolContent_PlainTextWithGT(t *testing.T) {
+	for _, input := range []string{"t → a > b", "foo → done"} {
+		if got := prettyToolContent(input); got != input {
+			t.Errorf("prettyToolContent(%q) = %q, want unchanged", input, got)
+		}
+	}
+}
+
+// TestPrettyToolContent_JSONWinsOverXML verifies valid JSON on the right
+// side is still pretty-printed as JSON (ordering: JSON checked before XML).
+func TestPrettyToolContent_JSONWinsOverXML(t *testing.T) {
+	got := prettyToolContent(`foo → {"a":1}`)
+	if !strings.Contains(got, `"a": 1`) {
+		t.Errorf("prettyToolContent(%q) = %q, want indented JSON with \"a\": 1", `foo → {"a":1}`, got)
+	}
+}
+
 // TestRenderMessage_ToolLongJSONWrapped is an integration-lite check that
 // renderMessage wraps a very long tool result to the given width end to end.
 func TestRenderMessage_ToolLongJSONWrapped(t *testing.T) {

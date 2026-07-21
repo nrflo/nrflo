@@ -92,6 +92,25 @@ func consoleCatalogOverSocket(projectHint string) (types.ConsoleCatalog, error) 
 	return result, nil
 }
 
+// deleteConsoleChatOverSocket closes a live chat over the trusted Unix socket
+// — delete==close semantics, mirroring attachConsoleChatOverSocket's shape.
+func deleteConsoleChatOverSocket(projectHint, sessionID string) error {
+	cwd, _ := os.Getwd()
+	c := client.New(projectHint)
+	if !c.IsServerRunning() {
+		return client.ServerNotRunningError()
+	}
+	var result struct {
+		SessionID string `json:"session_id"`
+	}
+	if err := c.ExecuteAndUnmarshal("console.close", map[string]string{
+		"project": projectHint, "cwd": cwd, "session_id": sessionID,
+	}, &result); err != nil {
+		return fmt.Errorf("close console chat over socket: %w", err)
+	}
+	return nil
+}
+
 func attachConsoleChatOverSocket(projectHint, sessionID string) (consoleChatMint, error) {
 	cwd, _ := os.Getwd()
 	c := client.New(projectHint)

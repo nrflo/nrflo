@@ -9,7 +9,10 @@ import (
 )
 
 func newSelectionModelForTest(items []list.Item) *selectionModel {
-	model := &selectionModel{list: list.New(items, list.NewDefaultDelegate(), 80, 24)}
+	// deleteArmed must start at the -1 sentinel (no delete pending); the zero
+	// value 0 is itself a valid row index, and push/pop/enter unconditionally
+	// call cancelDelete(), which would otherwise wipe row 0's item.
+	model := &selectionModel{list: list.New(items, list.NewDefaultDelegate(), 80, 24), deleteArmed: -1}
 	model.list.Title = selectRootTitle
 	return model
 }

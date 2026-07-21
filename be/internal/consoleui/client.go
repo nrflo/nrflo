@@ -126,6 +126,14 @@ func (c *Client) Close(ctx context.Context) error {
 	return c.do(ctx, http.MethodPost, c.chatPath("close"), nil, nil)
 }
 
+// Delete closes an arbitrary live chat by id — delete==close semantics, reusing
+// the same server-side close route the current chat's Close() hits. Unlike
+// chatPath (bound to c.session), sessionID here is caller-supplied, e.g. a row
+// the picker highlighted that is not the chat this client is attached to.
+func (c *Client) Delete(ctx context.Context, sessionID string) error {
+	return c.do(ctx, http.MethodPost, "/api/v1/console/chats/"+url.PathEscape(sessionID)+"/close", nil, nil)
+}
+
 func (c *Client) chatPath(suffix string) string {
 	p := "/api/v1/console/chats/" + url.PathEscape(c.session)
 	if suffix != "" {

@@ -99,7 +99,13 @@ func runConsole(ctx context.Context, choose bool) error {
 			return fmt.Errorf("discover console options: %w", err)
 		}
 		projectID = catalog.ProjectID
-		selection, err = consoleui.Select(ctx, catalog)
+		deleteFn := func(deleteCtx context.Context, sid string) error {
+			if useSocket {
+				return deleteConsoleChatOverSocket(firstNonempty(projectID, projectHint), sid)
+			}
+			return consoleui.NewClient(consoleui.Config{BaseURL: server, Token: token, Project: projectID}).Delete(deleteCtx, sid)
+		}
+		selection, err = consoleui.Select(ctx, catalog, deleteFn)
 		if err != nil {
 			return err
 		}

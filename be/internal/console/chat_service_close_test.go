@@ -1,6 +1,7 @@
 package console
 
 import (
+	"errors"
 	"testing"
 
 	"be/internal/spawner"
@@ -83,5 +84,71 @@ func TestChatService_EngineExited_DropsProactiveRestartState(t *testing.T) {
 	fire, _ = spawner.ProactiveRestartDecision(pool, svc.deps.Clock, sid, 300000, 250000, 0, true, false)
 	if !fire {
 		t.Error("ProactiveRestartDecision after engine exit = false, want true (restart state must be dropped)")
+	}
+}
+
+// TestChatService_CloseAuthenticated_HappyPath closes a live session for the
+// matching project, mirroring AttachAuthenticated's guard but delegating to
+// Close instead of returning a bearer.
+func TestChatService_CloseAuthenticated_HappyPath(t *testing.T) {
+	t.Parallel()
+	svc, _, _, _ := newChatTestService(t)
+
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := svc.CloseAuthenticated(sid, chatTestProjectID); err != nil {
+		t.Fatalf("CloseAuthenticated: %v", err)
+	}
+
+	if _, ok := svc.get(sid); ok {
+		t.Error("session still live after CloseAuthenticated")
+	}
+	// A second close must report not-found, not silently succeed.
+	if err := svc.Close(sid); err != ErrChatSessionNotFound {
+		t.Errorf("Close after CloseAuthenticated = %v, want ErrChatSessionNotFound", err)
+	}
+}
+
+// TestChatService_CloseAuthenticated_ProjectMismatch must not close the
+// session when the caller's project does not match.
+func TestChatService_CloseAuthenticated_ProjectMismatch(t *testing.T) {
+	t.Parallel()
+	svc, _, _, _ := newChatTestService(t)
+
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := svc.CloseAuthenticated(sid, "another-project"); !errors.Is(err, ErrChatProjectMismatch) {
+		t.Fatalf("CloseAuthenticated project mismatch = %v, want ErrChatProjectMismatch", err)
+	}
+	if _, ok := svc.get(sid); !ok {
+		t.Error("session was closed despite project mismatch")
+	}
+}
+
+// TestChatService_CloseAuthenticated_UnknownSession covers both an entirely
+// unknown id and an id that is no longer live (already closed).
+func TestChatService_CloseAuthenticated_UnknownSession(t *testing.T) {
+	t.Parallel()
+	svc, _, _, _ := newChatTestService(t)
+
+	if err := svc.CloseAuthenticated("no-such-session", chatTestProjectID); err != ErrChatSessionNotFound {
+		t.Errorf("CloseAuthenticated(unknown) = %v, want ErrChatSessionNotFound", err)
+	}
+
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if err := svc.Close(sid); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if err := svc.CloseAuthenticated(sid, chatTestProjectID); err != ErrChatSessionNotFound {
+		t.Errorf("CloseAuthenticated(already-closed) = %v, want ErrChatSessionNotFound", err)
 	}
 }

@@ -3,6 +3,7 @@ package console
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"be/internal/logger"
 	"be/internal/repo"
@@ -55,4 +56,18 @@ func (s *ChatService) Close(sid string) error {
 		return fmt.Errorf("close console_chat session: %w", err)
 	}
 	return nil
+}
+
+// CloseAuthenticated closes a live chat on behalf of a trusted local socket
+// caller, guarding that the session belongs to the resolved project (mirrors
+// AttachAuthenticated's guard).
+func (s *ChatService) CloseAuthenticated(sid, projectID string) error {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ErrChatSessionNotFound
+	}
+	if !strings.EqualFold(sess.ProjectID(), projectID) {
+		return ErrChatProjectMismatch
+	}
+	return s.Close(sid)
 }

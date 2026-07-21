@@ -69,6 +69,7 @@ type ContextInjector interface {
 type ConsoleChatCreator interface {
 	CreateAuthenticated(engine, modelID, effort, projectID, systemTemplateID, profile string, refineryEnabled bool) (sessionID, token string, err error)
 	AttachAuthenticated(sessionID, projectID string) (token string, err error)
+	CloseAuthenticated(sessionID, projectID string) (err error)
 	Catalog(projectID string) (types.ConsoleCatalog, error)
 }
 

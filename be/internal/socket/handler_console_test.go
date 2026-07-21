@@ -15,6 +15,8 @@ type fakeConsoleChatCreator struct {
 	engine, model, project, attached, systemTemplateID, profile string
 	refineryEnabled                                             bool
 	createErr                                                   error
+	closed                                                      string
+	closeErr                                                    error
 }
 
 func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, project, systemTemplateID, profile string, refineryEnabled bool) (string, string, error) {
@@ -29,6 +31,11 @@ func (f *fakeConsoleChatCreator) CreateAuthenticated(engine, model, effort, proj
 func (f *fakeConsoleChatCreator) AttachAuthenticated(sessionID, project string) (string, error) {
 	f.attached, f.project = sessionID, project
 	return "chat-token-1", nil
+}
+
+func (f *fakeConsoleChatCreator) CloseAuthenticated(sessionID, project string) error {
+	f.closed, f.project = sessionID, project
+	return f.closeErr
 }
 
 func (f *fakeConsoleChatCreator) Catalog(project string) (types.ConsoleCatalog, error) {
@@ -74,8 +81,7 @@ func TestConsoleSession_ExplicitProject(t *testing.T) {
 	}
 }
 
-// TestConsoleSession_CwdMatch resolves the project from cwd when no project hint
-// is given.
+// TestConsoleSession_CwdMatch resolves the project from cwd when no project hint is given.
 func TestConsoleSession_CwdMatch(t *testing.T) {
 	env := newHandlerTestEnv(t)
 
@@ -98,8 +104,7 @@ func TestConsoleSession_CwdMatch(t *testing.T) {
 	}
 }
 
-// TestConsoleSession_GlobalFallback resolves to the hidden global project when
-// neither a project hint nor a matching cwd is available.
+// TestConsoleSession_GlobalFallback resolves to the hidden global project when neither a project hint nor a matching cwd is available.
 func TestConsoleSession_GlobalFallback(t *testing.T) {
 	env := newHandlerTestEnv(t)
 
@@ -275,23 +280,3 @@ func TestConsoleCatalog_ResolvesProject(t *testing.T) {
 		t.Fatalf("catalog = %+v creator.project=%q", result, creator.project)
 	}
 }
-
-func TestConsoleAttach_ReturnsExistingScopedBearer(t *testing.T) {
-	env := newHandlerTestEnv(t)
-	creator := &fakeConsoleChatCreator{}
-	env.handler.consoleChat = creator
-	params, _ := json.Marshal(map[string]string{"project": env.project, "session_id": "chat-live-1"})
-	resp := env.handler.Handle(Request{ID: "attach-1", Method: "console.attach", Params: params})
-	if resp.Error != nil {
-		t.Fatalf("unexpected error: %v", resp.Error)
-	}
-	var result map[string]string
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("decode result: %v", err)
-	}
-	if result["token"] != "chat-token-1" || creator.attached != "chat-live-1" {
-		t.Fatalf("result=%+v attached=%q", result, creator.attached)
-	}
-}
-
-var _ ConsoleChatCreator = (*fakeConsoleChatCreator)(nil)

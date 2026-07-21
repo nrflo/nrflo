@@ -15,10 +15,11 @@ import "net/http"
 // itself, something requireProjectAdmin could never satisfy since a bearer
 // request never populates the user context.
 //
-// The tools catalogue/dispatch routes are `protected` for the same reason:
-// authorization is enforced in-handler by requireConsoleSession (401 unless
-// the bearer resolves to a kind=console or kind=console_chat agent_sessions
-// row).
+// The tools catalogue/dispatch routes, and /console/skills, are `protected`
+// for the same reason: authorization is enforced in-handler by
+// requireConsoleSession (401 unless the bearer resolves to a kind=console or
+// kind=console_chat agent_sessions row), falling back to admin-user or
+// matching/global service-token semantics for non-console callers.
 func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http.HandlerFunc)) {
 	// Observer sessions
 	protected("POST /api/v1/observers", s.handleLaunchObserver)
@@ -34,7 +35,7 @@ func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http
 
 	// Console chats: server-managed console-chat sessions (kind='console_chat').
 	projectAdmin("GET /api/v1/console/catalog", s.handleGetConsoleCatalog)
-	projectAdmin("GET /api/v1/console/skills", s.handleListConsoleSkills)
+	protected("GET /api/v1/console/skills", s.handleListConsoleSkills)
 	projectAdmin("POST /api/v1/console/chats", s.handleCreateConsoleChat)
 	projectAdmin("GET /api/v1/console/chats", s.handleListConsoleChats)
 	protected("GET /api/v1/console/chats/{sid}", s.handleGetConsoleChat)

@@ -84,6 +84,8 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 
 `GET/POST /api/v1/console/tools*` expose a server-owned tool catalogue + dispatcher (`internal/console/`) to a console bearer, authenticated in-handler by `requireConsoleSession`. Mechanics: [REFERENCE.md](REFERENCE.md#console-tools).
 
+`GET /api/v1/console/skills` follows the same `protected` route + in-handler auth pattern: a console/console_chat bearer is served its own session's project (`X-Project`/`?project=` ignored); admin users and service tokens keep `getProjectID`-based scoping.
+
 #### Console chats
 
 `GET /api/v1/console/catalog` discovers enabled engines/models and live resumable chats; `POST /api/v1/console/chats` starts a `ChatService`-owned engine. Path-scoped routes cover paginated history, approval, interruption, reconnect detail (including bounded in-flight output), and close under the shared chat authorization predicate. Live events stream over the WS session channel — see [ws/CLAUDE.md](../ws/CLAUDE.md). `GET /api/v1/pty/{sid}` on a `kind='console_chat'` row routes to the viewer-only relay (`handlers_pty_console.go`): raw terminal onto a live claude chat's PTY, detach-on-disconnect, never completes or kills anything.

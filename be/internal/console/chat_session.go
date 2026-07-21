@@ -91,6 +91,21 @@ func (c *chatSession) setSeedContext(text string) {
 	c.mu.Unlock()
 }
 
+// appendSeedContext appends text to the pending seed context, joined by
+// "\n\n" (an empty slot behaves like a plain assign) — used to fold an
+// inform_model invoke digest into the NEXT SendUserTurn without disturbing
+// takeSeedContext's consume-once semantics or the skill-turn deferral
+// (chat_service_turn.go).
+func (c *chatSession) appendSeedContext(text string) {
+	c.mu.Lock()
+	if c.seedContext == "" {
+		c.seedContext = text
+	} else {
+		c.seedContext += "\n\n" + text
+	}
+	c.mu.Unlock()
+}
+
 // takeSeedContext returns and clears the pending seed context — consumed
 // exactly once, by the first SendUserTurn.
 func (c *chatSession) takeSeedContext() string {
@@ -165,6 +180,18 @@ func (c *chatSession) beginTurn() error {
 	}
 	c.turn = turnRunning
 	c.clearLiveLocked()
+	return nil
+}
+
+// guardIdle reports spawner.ErrTurnActive when a turn is already in flight,
+// WITHOUT transitioning state — unlike beginTurn, used by an invoke, which
+// never starts a model turn and so must not flip idle->running.
+func (c *chatSession) guardIdle() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.turn == turnRunning {
+		return spawner.ErrTurnActive
+	}
 	return nil
 }
 

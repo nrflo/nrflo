@@ -3,7 +3,6 @@ package console
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 
 	"be/internal/model"
@@ -96,7 +95,7 @@ func cliEngineOption(id, name string, models []*model.Model) types.ConsoleEngine
 			own = append(own, item)
 		}
 	}
-	sort.SliceStable(own, func(i, j int) bool { return own[i].CreatedAt.After(own[j].CreatedAt) })
+	service.SortModelsForPicker(own)
 	for _, item := range own {
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: result.Brand,
@@ -120,7 +119,7 @@ func apiEngineOption(enabled bool, models []*model.Model) types.ConsoleEngineOpt
 			sorted = append(sorted, item)
 		}
 	}
-	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].CreatedAt.After(sorted[j].CreatedAt) })
+	service.SortModelsForPicker(sorted)
 	for _, item := range sorted {
 		result.Models = append(result.Models, types.ConsoleModelOption{
 			ID: item.ID, DisplayName: item.DisplayName, Brand: brandOf(item.Provider),

@@ -40,11 +40,12 @@ func scanModel(row rowScanner) (*model.Model, error) {
 	var createdAt, updatedAt, cliEfforts, apiEfforts string
 	var readOnly, enabled int
 	var priceIn, priceOut, priceCacheWrite, priceCacheRead sql.NullFloat64
+	var releaseDate sql.NullString
 
 	err := row.Scan(&m.ID, &m.Provider, &m.DisplayName, &m.CLIModel, &m.APIModel,
 		&cliEfforts, &apiEfforts, &m.CLIContext, &m.APIContext, &m.FallbackModels,
 		&m.DefaultEffort, &readOnly, &enabled, &createdAt, &updatedAt,
-		&priceIn, &priceOut, &priceCacheWrite, &priceCacheRead)
+		&priceIn, &priceOut, &priceCacheWrite, &priceCacheRead, &releaseDate)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +67,9 @@ func scanModel(row rowScanner) (*model.Model, error) {
 	}
 	if priceCacheRead.Valid {
 		m.PriceCacheRead = &priceCacheRead.Float64
+	}
+	if releaseDate.Valid {
+		m.ReleaseDate = releaseDate.String
 	}
 	return m, nil
 }

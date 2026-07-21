@@ -15,7 +15,7 @@ import (
 const modelColumns = `id, provider, display_name, cli_model, api_model,
 	cli_efforts, api_efforts, cli_context, api_context, fallback_models,
 	default_effort, read_only, enabled, created_at, updated_at,
-	price_in, price_out, price_cache_write, price_cache_read`
+	price_in, price_out, price_cache_write, price_cache_read, release_date`
 
 var validModelProviders = map[string]bool{"anthropic": true, "openai": true, "openrouter": true}
 
@@ -157,7 +157,7 @@ func (s *ModelService) Create(req types.ModelCreateRequest) (*model.Model, error
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 	id := strings.ToLower(req.ID)
 	_, err = s.pool.Exec(`INSERT INTO models (`+modelColumns+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, NULL, NULL, NULL, NULL)`, id, req.Provider,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1, ?, ?, NULL, NULL, NULL, NULL, NULL)`, id, req.Provider,
 		req.DisplayName, req.CLIModel, req.APIModel, marshalSupportedEfforts(cliEfforts),
 		marshalSupportedEfforts(apiEfforts), req.CLIContext, req.APIContext, fallback,
 		req.DefaultEffort, now, now)

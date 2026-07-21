@@ -26,4 +26,8 @@ type Model struct {
 	PriceOut        *float64 `json:"price_out,omitempty"`
 	PriceCacheWrite *float64 `json:"price_cache_write,omitempty"`
 	PriceCacheRead  *float64 `json:"price_cache_read,omitempty"`
+
+	// ReleaseDate is the provider's ISO (YYYY-MM-DD) release date, nullable —
+	// ""=unknown. Drives newest-release-first ordering in the console picker.
+	ReleaseDate string `json:"release_date,omitempty"`
 }

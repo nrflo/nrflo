@@ -58,7 +58,7 @@ func Select(ctx context.Context, catalog Catalog, deleteFn func(context.Context,
 	if len(items) == 0 {
 		return Selection{}, fmt.Errorf("server reported no available console engines or sessions")
 	}
-	delegate := list.NewDefaultDelegate()
+	delegate := compactDelegate{}
 	model := &selectionModel{list: list.New(items, delegate, 80, 24), ctx: ctx, deleteFn: deleteFn, deleteArmed: -1}
 	model.list.Title = selectRootTitle
 	model.list.AdditionalShortHelpKeys = func() []key.Binding {

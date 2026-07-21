@@ -17,8 +17,9 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAuthenticated: %v", err)
 	}
-	// Newest-added models sort first; seeded rows share a timestamp, so bump one.
-	mustExec(t, pool, `UPDATE models SET created_at = '2099-01-01T00:00:00Z' WHERE id = 'haiku-4-5'`)
+	// Newest-release models sort first; bump one row's release_date so it
+	// wins ahead of the migration-seeded ordering.
+	mustExec(t, pool, `UPDATE models SET release_date = '2099-01-01' WHERE id = 'haiku-4-5'`)
 	catalog, err := svc.Catalog(chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Catalog: %v", err)

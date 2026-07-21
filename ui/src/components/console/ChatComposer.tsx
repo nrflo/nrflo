@@ -2,10 +2,14 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Textarea'
 import { Spinner } from '@/components/ui/Spinner'
-import { ChatComposerSuggestions, filterSkills } from './ChatComposerSuggestions'
+import { ChatComposerSuggestions, filterSuggestions, type SuggestionItem } from './ChatComposerSuggestions'
+import { ChatInvokeForm } from './ChatInvokeForm'
 import { useProjectSkills } from '@/hooks/useConsoleChats'
+import { useChatTools } from '@/hooks/useChatTools'
+import type { ConsoleTool } from '@/types/consoleChat'
 
 interface ChatComposerProps {
+  sid: string
   isRunning: boolean
   sendPending: boolean
   stopPending: boolean
@@ -13,26 +17,39 @@ interface ChatComposerProps {
   onStop: () => void
 }
 
+const INVOKE_DIRECTIVE: SuggestionItem = { name: 'invoke', description: 'Run a tool directly, outside the model' }
+const INVOKE_PREFIX = '/invoke '
+
 // Composer wrapper: owns the draft text + a JS autoresize (height='auto' then
 // scrollHeight) on the shared Textarea — not CSS field-sizing, and no edits
 // to the shared component. min-h/max-h overrides via twMerge cap growth to
 // ~8 lines, then overflow-y-auto scrolls internally.
 //
-// Skill suggestions: typing '/' at the start of an otherwise-empty draft
-// (no space yet typed) opens a dropdown of matching skills fetched once per
-// project via useProjectSkills. While open, Arrow/Enter/Tab/Escape are owned
-// by the dropdown instead of the normal send/newline handling.
-export function ChatComposer({ isRunning, sendPending, stopPending, onSend, onStop }: ChatComposerProps) {
+// '/' suggestions: typing '/' at the start of an otherwise-empty draft (no
+// space yet typed) opens a dropdown of matching skills plus a reserved
+// '/invoke' directive row, fetched once per project via useProjectSkills.
+// Selecting the directive (or typing '/invoke ') switches the dropdown to
+// the chat's tool list (useChatTools) — selecting a tool opens
+// ChatInvokeForm, a schema-driven argument form, instead of inserting text.
+// While a dropdown is open, Arrow/Enter/Tab/Escape are owned by it instead
+// of the normal send/newline handling.
+export function ChatComposer({ sid, isRunning, sendPending, stopPending, onSend, onStop }: ChatComposerProps) {
   const [text, setText] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [dismissed, setDismissed] = useState(false)
+  const [selectedTool, setSelectedTool] = useState<ConsoleTool | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const { data: skills = [] } = useProjectSkills()
+  const { data: tools = [] } = useChatTools(sid)
 
-  const slashQuery = text.startsWith('/') && !text.slice(1).includes(' ') ? text.slice(1) : null
-  const matches = slashQuery !== null ? filterSkills(skills, slashQuery) : []
-  const suggestionsOpen = slashQuery !== null && matches.length > 0 && !dismissed
+  const isToolMode = text.startsWith(INVOKE_PREFIX)
+  const isSkillMode = !isToolMode && text.startsWith('/') && !text.slice(1).includes(' ')
+
+  const query = isToolMode ? text.slice(INVOKE_PREFIX.length) : isSkillMode ? text.slice(1) : null
+  const items: SuggestionItem[] = isToolMode ? tools : [INVOKE_DIRECTIVE, ...skills]
+  const matches = query !== null ? filterSuggestions(items, query) : []
+  const suggestionsOpen = query !== null && matches.length > 0 && !dismissed && !selectedTool
 
   const resize = () => {
     const el = textareaRef.current
@@ -55,7 +72,22 @@ export function ChatComposer({ isRunning, sendPending, stopPending, onSend, onSt
     onSend(value)
   }
 
-  const selectSkill = (name: string) => {
+  const selectSuggestion = (name: string) => {
+    if (isToolMode) {
+      const tool = tools.find((t) => t.name === name)
+      if (tool) {
+        setSelectedTool(tool)
+        setText('')
+      }
+      closeSuggestions()
+      return
+    }
+    if (name === INVOKE_DIRECTIVE.name) {
+      setText(INVOKE_PREFIX)
+      setActiveIndex(0)
+      textareaRef.current?.focus()
+      return
+    }
     setText(`/${name} `)
     closeSuggestions()
     textareaRef.current?.focus()
@@ -65,12 +97,15 @@ export function ChatComposer({ isRunning, sendPending, stopPending, onSend, onSt
     <div className="border-t border-border p-3">
       {suggestionsOpen && (
         <ChatComposerSuggestions
-          skills={skills}
-          query={slashQuery ?? ''}
+          items={items}
+          query={query ?? ''}
           activeIndex={activeIndex}
-          onSelect={selectSkill}
+          onSelect={selectSuggestion}
           onHover={setActiveIndex}
         />
+      )}
+      {selectedTool && (
+        <ChatInvokeForm sid={sid} tool={selectedTool} onClose={() => setSelectedTool(null)} />
       )}
       <div className="flex items-end gap-2">
         <Textarea
@@ -97,7 +132,7 @@ export function ChatComposer({ isRunning, sendPending, stopPending, onSend, onSt
               }
               if (e.key === 'Enter' || e.key === 'Tab') {
                 e.preventDefault()
-                selectSkill(matches[activeIndex].name)
+                selectSuggestion(matches[activeIndex].name)
                 return
               }
               if (e.key === 'Escape') {

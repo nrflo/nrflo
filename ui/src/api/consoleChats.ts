@@ -3,11 +3,15 @@ import type {
   ApprovalDecision,
   ConsoleCatalog,
   ConsoleChatDetail,
+  ConsoleChatInvokeRequest,
+  ConsoleChatInvokeResponse,
   ConsoleChatListResponse,
   ConsoleChatMessagesResponse,
   ConsoleChatSummary,
+  ConsoleChatToolsResponse,
   ConsoleSkill,
   ConsoleSkillsResponse,
+  ConsoleTool,
   CreateConsoleChatRequest,
   CreateConsoleChatResponse,
 } from '@/types/consoleChat'
@@ -31,6 +35,25 @@ export async function listConsoleChats(): Promise<ConsoleChatSummary[]> {
 export async function getConsoleSkills(): Promise<ConsoleSkill[]> {
   const resp = await apiGet<ConsoleSkillsResponse>('/api/v1/console/skills')
   return resp.skills ?? []
+}
+
+export async function getConsoleChatTools(sid: string): Promise<ConsoleTool[]> {
+  const resp = await apiGet<ConsoleChatToolsResponse>(`/api/v1/console/chats/${encodeURIComponent(sid)}/tools`)
+  return resp.tools ?? []
+}
+
+export async function invokeConsoleChatTool(
+  sid: string,
+  body: ConsoleChatInvokeRequest
+): Promise<ConsoleChatInvokeResponse> {
+  try {
+    return await apiPost<ConsoleChatInvokeResponse>(`/api/v1/console/chats/${encodeURIComponent(sid)}/invoke`, body)
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      throw new TurnActiveError()
+    }
+    throw e
+  }
 }
 
 export async function getConsoleChat(sid: string): Promise<ConsoleChatDetail> {

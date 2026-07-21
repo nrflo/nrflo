@@ -24,6 +24,7 @@ export const consoleChatKeys = {
   detail: (sid: string) => [...consoleChatKeys.all, 'detail', sid] as const,
   catalog: () => [...consoleChatKeys.all, 'catalog'] as const,
   skills: () => [...consoleChatKeys.all, 'skills'] as const,
+  tools: (sid: string) => [...consoleChatKeys.all, 'tools', sid] as const,
 }
 
 // GET /console/catalog is project-scoped (X-Project) like the list below,

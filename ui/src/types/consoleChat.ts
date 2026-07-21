@@ -208,6 +208,51 @@ export interface ConsoleSkillsResponse {
   skills: ConsoleSkill[]
 }
 
+// Minimal JSON-schema shapes for a tool's input_schema — enough to drive
+// ChatInvokeForm's field generation without a full JSON-schema dependency.
+export interface JSONSchemaProperty {
+  type?: string | string[]
+  description?: string
+  enum?: unknown[]
+  default?: unknown
+  items?: unknown
+}
+
+export interface ConsoleToolInputSchema {
+  type?: string
+  properties?: Record<string, JSONSchemaProperty>
+  required?: string[]
+}
+
+// GET /console/chats/{sid}/tools — the chat's deterministic tool catalogue,
+// backing the composer's '/invoke' directive (nrworkflow-b64964).
+export interface ConsoleTool {
+  name: string
+  description?: string
+  input_schema?: ConsoleToolInputSchema
+}
+
+export interface ConsoleChatToolsResponse {
+  tools: ConsoleTool[]
+}
+
+// POST /console/chats/{sid}/invoke body/response — deterministic tool call
+// outside the model loop; inform_model controls whether the result is fed
+// back into the conversation. The resulting transcript rows arrive over the
+// existing messages.updated WS event, not this response.
+export interface ConsoleChatInvokeRequest {
+  tool: string
+  arguments: Record<string, unknown>
+  inform_model: boolean
+}
+
+export interface ConsoleChatInvokeResponse {
+  ok: boolean
+  result: unknown
+  duration_ms: number
+  informed: boolean
+}
+
 // console.context_rotated session-channel push (chat_service_rotate.go) —
 // fired when a proactive restart rotates the engine in place under the same
 // session id.

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ChatComposerSuggestions, filterSkills } from './ChatComposerSuggestions'
+import { ChatComposerSuggestions, filterSuggestions } from './ChatComposerSuggestions'
 import type { ConsoleSkill } from '@/types/consoleChat'
 
 const SKILLS: ConsoleSkill[] = [
@@ -15,7 +15,7 @@ function setup(overrides: Partial<Parameters<typeof ChatComposerSuggestions>[0]>
   const onHover = vi.fn()
   render(
     <ChatComposerSuggestions
-      skills={SKILLS}
+      items={SKILLS}
       query=""
       activeIndex={0}
       onSelect={onSelect}
@@ -26,21 +26,21 @@ function setup(overrides: Partial<Parameters<typeof ChatComposerSuggestions>[0]>
   return { onSelect, onHover }
 }
 
-describe('filterSkills', () => {
+describe('filterSuggestions', () => {
   it('returns all skills for an empty query', () => {
-    expect(filterSkills(SKILLS, '')).toEqual(SKILLS)
+    expect(filterSuggestions(SKILLS, '')).toEqual(SKILLS)
   })
 
   it('matches by case-insensitive name prefix', () => {
-    expect(filterSkills(SKILLS, 'FI')).toEqual([SKILLS[0], SKILLS[1]])
+    expect(filterSuggestions(SKILLS, 'FI')).toEqual([SKILLS[0], SKILLS[1]])
   })
 
   it('falls back to substring match when no prefix matches', () => {
-    expect(filterSkills(SKILLS, 'bugs')).toEqual([SKILLS[1]])
+    expect(filterSuggestions(SKILLS, 'bugs')).toEqual([SKILLS[1]])
   })
 
   it('returns an empty array when nothing matches', () => {
-    expect(filterSkills(SKILLS, 'zzz')).toEqual([])
+    expect(filterSuggestions(SKILLS, 'zzz')).toEqual([])
   })
 })
 
@@ -73,7 +73,7 @@ describe('ChatComposerSuggestions', () => {
   it('renders nothing when there are no matches', () => {
     const { container } = render(
       <ChatComposerSuggestions
-        skills={SKILLS}
+        items={SKILLS}
         query="zzz"
         activeIndex={0}
         onSelect={vi.fn()}

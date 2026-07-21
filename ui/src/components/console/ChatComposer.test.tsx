@@ -1,14 +1,20 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ChatComposer } from './ChatComposer'
 import * as useConsoleChats from '@/hooks/useConsoleChats'
+import * as useChatToolsHook from '@/hooks/useChatTools'
 import type { ConsoleSkill } from '@/types/consoleChat'
 
 vi.mock('@/hooks/useConsoleChats', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/useConsoleChats')>()
   return { ...actual, useProjectSkills: vi.fn() }
 })
+
+vi.mock('@/hooks/useChatTools', () => ({
+  useChatTools: vi.fn(),
+  useInvokeChatTool: vi.fn(),
+}))
 
 const SKILLS: ConsoleSkill[] = [
   { name: 'finalize', description: 'Close out a chunk of work' },
@@ -27,6 +33,7 @@ function setup(overrides: Partial<Parameters<typeof ChatComposer>[0]> = {}) {
   const onStop = vi.fn()
   render(
     <ChatComposer
+      sid="sid-1"
       isRunning={false}
       sendPending={false}
       stopPending={false}
@@ -39,6 +46,16 @@ function setup(overrides: Partial<Parameters<typeof ChatComposer>[0]> = {}) {
 }
 
 describe('ChatComposer', () => {
+  beforeEach(() => {
+    vi.mocked(useChatToolsHook.useChatTools).mockReturnValue({
+      data: [],
+    } as unknown as ReturnType<typeof useChatToolsHook.useChatTools>)
+    vi.mocked(useChatToolsHook.useInvokeChatTool).mockReturnValue({
+      mutateAsync: vi.fn().mockResolvedValue({ ok: true }),
+      isPending: false,
+    } as unknown as ReturnType<typeof useChatToolsHook.useInvokeChatTool>)
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
     delete (HTMLTextAreaElement.prototype as unknown as Record<string, unknown>).scrollHeight
@@ -155,14 +172,15 @@ describe('ChatComposer', () => {
       await user.type(box, '/')
       const rowFor = (name: string) => screen.getByText(`/${name}`).closest('div')
 
-      expect(rowFor('finalize')).toHaveClass('bg-muted')
+      // Row 0 is the reserved '/invoke' directive; skills follow.
+      expect(rowFor('invoke')).toHaveClass('bg-muted')
 
       await user.keyboard('{ArrowDown}')
-      expect(rowFor('find-bugs')).toHaveClass('bg-muted')
-      expect(rowFor('finalize')).not.toHaveClass('bg-muted')
+      expect(rowFor('finalize')).toHaveClass('bg-muted')
+      expect(rowFor('invoke')).not.toHaveClass('bg-muted')
 
       await user.keyboard('{ArrowUp}')
-      expect(rowFor('finalize')).toHaveClass('bg-muted')
+      expect(rowFor('invoke')).toHaveClass('bg-muted')
     })
 
     it('Enter selects the highlighted skill, inserts "/name ", and does not send', async () => {

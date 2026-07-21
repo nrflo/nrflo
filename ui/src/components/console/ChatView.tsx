@@ -219,6 +219,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
       </div>
 
       <ChatComposer
+        sid={sid}
         isRunning={isRunning}
         sendPending={sendMutation.isPending}
         stopPending={interruptMutation.isPending}

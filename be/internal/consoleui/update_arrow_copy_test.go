@@ -7,75 +7,66 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// TestSingleLineComposer covers the pure helper's line-break detection.
-func TestSingleLineComposer(t *testing.T) {
-	cases := []struct {
-		name  string
-		value string
-		want  bool
-	}{
-		{"empty", "", true},
-		{"single-line", "abc", true},
-		{"multi-line", "a\nb", false},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := singleLineComposer(tc.value); got != tc.want {
-				t.Errorf("singleLineComposer(%q) = %v, want %v", tc.value, got, tc.want)
-			}
-		})
+// TestHandleKey_PlainArrowFallsThrough verifies plain up/down always fall
+// through (handled=false) to composer/dropdown routing, unconditionally
+// (no singleLineComposer/approvals guard), leaving the viewport untouched.
+func TestHandleKey_PlainArrowFallsThrough(t *testing.T) {
+	for _, code := range []rune{tea.KeyUp, tea.KeyDown} {
+		m := newScrollTestModel()
+		m.input.SetValue("draft")
+		before := m.input.Value()
+		if !m.viewport.AtBottom() {
+			t.Fatal("viewport should start at bottom")
+		}
+
+		_, handled := m.handleKey(tea.KeyPressMsg{Code: code})
+		if handled {
+			t.Errorf("handleKey(%v) handled = true, want false", code)
+		}
+		if !m.viewport.AtBottom() {
+			t.Errorf("handleKey(%v) scrolled the viewport, want untouched", code)
+		}
+		if m.input.Value() != before {
+			t.Errorf("handleKey(%v) mutated composer input: got %q, want %q", code, m.input.Value(), before)
+		}
 	}
 }
 
-// TestHandleKey_ArrowUpScrollsSingleLineComposer verifies a lone up arrow
-// scrolls the transcript viewport (mirroring pgup) when the composer draft
-// has no line breaks, leaving the composer untouched.
-func TestHandleKey_ArrowUpScrollsSingleLineComposer(t *testing.T) {
+// TestHandleKey_ShiftArrowScrollsViewport verifies shift+up/shift+down are
+// intercepted by the new case (handled=true, unconditionally, even with a
+// multi-line composer draft, proving there is no line-break guard), actually
+// scroll the transcript viewport (via direct ScrollUp/ScrollDown calls, since
+// viewport.Update's DefaultKeyMap never matches shift-modified arrows), and
+// never mutate the composer.
+func TestHandleKey_ShiftArrowScrollsViewport(t *testing.T) {
 	m := newScrollTestModel()
-	m.input.SetValue("draft")
+	m.input.SetValue("a\nb")
 	before := m.input.Value()
 	if !m.viewport.AtBottom() {
 		t.Fatal("viewport should start at bottom")
 	}
 
-	cmd, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	cmd, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyUp, Mod: tea.ModShift})
 	_ = cmd
 	if !handled {
-		t.Fatal("handleKey(up) handled = false, want true")
+		t.Fatal("handleKey(shift+up) handled = false, want true")
 	}
 	if m.viewport.AtBottom() {
-		t.Error("handleKey(up) did not scroll the viewport away from the bottom")
+		t.Error("handleKey(shift+up) did not scroll the viewport")
 	}
 	if m.input.Value() != before {
-		t.Errorf("handleKey(up) mutated composer input: got %q, want %q", m.input.Value(), before)
+		t.Errorf("handleKey(shift+up) mutated composer input: got %q, want %q", m.input.Value(), before)
 	}
 
-	if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyDown}); !handled {
-		t.Fatal("handleKey(down) handled = false, want true")
-	}
-	if !m.viewport.AtBottom() {
-		t.Error("handleKey(down) should scroll back to the bottom")
-	}
-}
-
-// TestHandleKey_ArrowMultiLineComposerFallsThrough verifies arrow keys fall
-// through (handled=false) when the composer draft has embedded newlines, so
-// the textarea keeps native cursor-movement behavior.
-func TestHandleKey_ArrowMultiLineComposerFallsThrough(t *testing.T) {
-	m := newScrollTestModel()
-	m.input.SetValue("a\nb")
-
-	_, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyUp})
-	if handled {
-		t.Error("handleKey(up) handled = true with multi-line composer, want false")
-	}
-	if !m.viewport.AtBottom() {
-		t.Error("viewport should be untouched (still at bottom) when arrow falls through")
+	for !m.viewport.AtBottom() {
+		if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModShift}); !handled {
+			t.Fatal("handleKey(shift+down) handled = false, want true")
+		}
 	}
 }
 
 // TestHandleKey_ArrowWithDropdownOpenNavigatesSuggestions verifies the
-// suggestion dropdown interceptor wins over arrow-scroll: up/down move
+// suggestion dropdown interceptor wins over plain arrows: up/down move
 // m.skillIndex and leave the viewport untouched.
 func TestHandleKey_ArrowWithDropdownOpenNavigatesSuggestions(t *testing.T) {
 	skills := []ConsoleSkill{{Name: "deploy"}, {Name: "docs"}}
@@ -96,27 +87,10 @@ func TestHandleKey_ArrowWithDropdownOpenNavigatesSuggestions(t *testing.T) {
 	}
 }
 
-// TestHandleKey_ArrowWithApprovalsOpenFallsThrough verifies the len(approvals)
-// guard forces arrow keys to fall through (handled=false) while an approval
-// is pending, regardless of composer content.
-func TestHandleKey_ArrowWithApprovalsOpenFallsThrough(t *testing.T) {
-	m := newScrollTestModel()
-	m.input.SetValue("draft")
-	m.approvals = []Approval{{ID: "a1"}}
-
-	_, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyUp})
-	if handled {
-		t.Error("handleKey(up) handled = true with approvals pending, want false")
-	}
-	if !m.viewport.AtBottom() {
-		t.Error("viewport should be untouched when arrow falls through under approvals")
-	}
-}
-
 // TestNormalizeCopyText verifies NBSP removal, per-line trailing-whitespace
 // trimming, and preservation of interior single spaces.
 func TestNormalizeCopyText(t *testing.T) {
-	input := "a b\nline with trailing   \nc"
+	input := "a b\nline with trailing   \nc"
 	got := normalizeCopyText(input)
 	if got != "a b\nline with trailing\nc" {
 		t.Errorf("normalizeCopyText(%q) = %q, want %q", input, got, "a b\nline with trailing\nc")

@@ -3,8 +3,6 @@ package consoleui
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"time"
 
 	"charm.land/bubbles/v2/spinner"
@@ -12,7 +10,6 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
-	"github.com/mattn/go-isatty"
 )
 
 type model struct {
@@ -126,9 +123,6 @@ func Run(ctx context.Context, cfg Config) error {
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))
 	_, err = program.Run()
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		io.WriteString(os.Stdout, altScrollDisable) //nolint:errcheck // best-effort terminal mode reset
-	}
 	if err == tea.ErrInterrupted {
 		return nil
 	}
@@ -136,7 +130,7 @@ func Run(ctx context.Context, cfg Config) error {
 }
 
 func (m *model) Init() tea.Cmd {
-	commands := []tea.Cmd{m.input.Focus(), waitForStream(m.events), tea.Raw(altScrollEnable)}
+	commands := []tea.Cmd{m.input.Focus(), waitForStream(m.events)}
 	if m.status == "running" { // resumed mid-turn — animate immediately
 		commands = append(commands, m.spin.Tick)
 	}

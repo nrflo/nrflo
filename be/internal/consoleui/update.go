@@ -198,12 +198,12 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	case "pgup", "pgdown":
 		m.viewport, cmd = m.viewport.Update(msg)
 		return cmd, true
-	case "up", "down":
-		if len(m.approvals) > 0 || !singleLineComposer(m.input.Value()) {
-			return nil, false
-		}
-		m.viewport, cmd = m.viewport.Update(msg)
-		return cmd, true
+	case "shift+up":
+		m.viewport.ScrollUp(m.viewport.MouseWheelDelta)
+		return nil, true
+	case "shift+down":
+		m.viewport.ScrollDown(m.viewport.MouseWheelDelta)
+		return nil, true
 	case "ctrl+f":
 		m.searchMode = true
 		m.input.Blur()
@@ -247,11 +247,4 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
 	}
 	return nil, false
-}
-
-// singleLineComposer reports whether the composer's draft has no line
-// breaks, meaning arrow keys are safe to route to the transcript viewport
-// instead of textarea cursor movement.
-func singleLineComposer(value string) bool {
-	return !strings.Contains(value, "\n")
 }

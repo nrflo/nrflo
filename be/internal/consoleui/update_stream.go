@@ -6,7 +6,6 @@ import (
 )
 
 func (m *model) applyStream(update streamUpdate) {
-	approvalCount := len(m.approvals)
 	if update.Connected != nil {
 		m.connected = *update.Connected
 		if m.connected {
@@ -60,13 +59,6 @@ func (m *model) applyStream(update streamUpdate) {
 				value := eventFloat(event, "cost_estimate")
 				m.detail.CostEstimate = &value
 			}
-		}
-	}
-	if len(update.Events) > 0 {
-		if approvalCount != len(m.approvals) && m.ready {
-			m.resize(m.width, m.height)
-		} else {
-			m.refreshTranscript()
 		}
 	}
 }

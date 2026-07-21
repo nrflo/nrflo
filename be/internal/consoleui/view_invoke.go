@@ -48,18 +48,3 @@ func (m *model) invokeConfirmLine() string {
 	return lipgloss.NewStyle().Bold(true).Foreground(warn).Render("run "+m.invoke.tool+"?") +
 		"  " + lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("[y] run · [i] toggle inform (%s) · [esc] cancel", toggle))
 }
-
-// invokeChromeRows returns the exact row count invokeView reserves for the
-// current phase: content line + 2 approvalBox border rows while a flow is
-// active, 0 when inactive.
-func (m *model) invokeChromeRows() int {
-	if !m.invoke.active {
-		return 0
-	}
-	switch m.invoke.phase {
-	case invokePhaseArgs, invokePhaseConfirm:
-		return 3
-	default:
-		return 0
-	}
-}

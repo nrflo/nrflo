@@ -5,7 +5,6 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
@@ -14,6 +13,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
 		m.resize(msg.Width, msg.Height)
+		if !m.historyPrinted {
+			m.historyPrinted = true
+			commands = append(commands, m.printNewMessages(m.initialPage)...)
+		}
 	case tea.KeyPressMsg:
 		if cmd, handled := m.handleKey(msg); handled {
 			return m, tea.Batch(cmd, m.tickOnRunning(wasRunning))
@@ -24,7 +27,6 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if m.status == "running" {
 			var cmd tea.Cmd
 			m.spin, cmd = m.spin.Update(msg)
-			m.refreshTranscript()
 			return m, cmd
 		}
 		return m, nil
@@ -57,13 +59,14 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			m.applyHistory(msg.page, msg.prepend, msg.offset)
+			commands = append(commands, m.printNewMessages(msg.page)...)
 		}
 	case syncMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			m.applySync(msg.detail, msg.page)
+			commands = append(commands, m.printNewMessages(msg.page)...)
+			m.applySync(msg.detail)
 			m.lastErr = ""
 		}
 	case actionMsg:
@@ -71,11 +74,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastErr = msg.err.Error()
 			if msg.action == "send" {
 				m.status = "idle"
-				if n := len(m.messages); n > 0 && m.messages[n-1].Category == "user_input" {
-					m.messages = m.messages[:n-1]
-					m.historyDirty = true
-					m.refreshTranscript()
-				}
+				m.pendingUser = ""
 				commands = append(commands, m.loadHistory())
 			}
 		} else {
@@ -91,34 +90,14 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 
 	commands = append(commands, m.tickOnRunning(wasRunning))
 
-	_, keyMessage := message.(tea.KeyPressMsg)
 	var cmd tea.Cmd
-	if m.searchMode {
-		m.search, cmd = m.search.Update(message)
-		commands = append(commands, cmd)
-		if !keyMessage {
-			m.viewport, cmd = m.viewport.Update(message)
-			commands = append(commands, cmd)
-		}
-	} else if m.copyMode {
-		m.viewport, cmd = m.viewport.Update(message)
-		commands = append(commands, cmd)
-	} else {
-		before := m.input.Value()
-		m.input, cmd = m.input.Update(message)
-		commands = append(commands, cmd)
-		if m.input.Value() != before {
-			m.skillIndex = 0
-			m.skillsDismissed = false
-			m.skillDetails = false
-		}
-		if m.ready {
-			m.relayout()
-		}
-		if !keyMessage {
-			m.viewport, cmd = m.viewport.Update(message)
-			commands = append(commands, cmd)
-		}
+	before := m.input.Value()
+	m.input, cmd = m.input.Update(message)
+	commands = append(commands, cmd)
+	if m.input.Value() != before {
+		m.skillIndex = 0
+		m.skillsDismissed = false
+		m.skillDetails = false
 	}
 	return m, tea.Batch(commands...)
 }
@@ -135,45 +114,6 @@ func (m *model) tickOnRunning(wasRunning bool) tea.Cmd {
 func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	m.notice = ""
 	key := msg.Keystroke()
-	if m.searchMode {
-		switch key {
-		case "esc":
-			m.searchMode = false
-			m.search.Blur()
-			m.input.Focus()
-			return nil, true
-		case "enter":
-			m.applySearch()
-			m.searchMode = false
-			m.search.Blur()
-			m.input.Focus()
-			return nil, true
-		}
-		return nil, false
-	}
-	if m.copyMode {
-		switch key {
-		case "esc", "ctrl+g":
-			m.copyMode = false
-			m.input.Focus()
-			return nil, true
-		case "y":
-			m.copyMode = false
-			m.input.Focus()
-			m.notice = "copied visible transcript"
-			return tea.Raw(ansi.SetSystemClipboard(m.visibleTranscript())), true
-		case "shift+y":
-			m.copyMode = false
-			m.input.Focus()
-			m.notice = "copied raw transcript"
-			return tea.Raw(ansi.SetSystemClipboard(rawTranscript(m.messages))), true
-		case "ctrl+p":
-			if m.historyOffset > 0 {
-				return m.loadOlder(), true
-			}
-		}
-		return nil, false
-	}
 	if m.invoke.active {
 		return m.handleInvokeKey(key)
 	}
@@ -193,36 +133,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 			return action("approval", func() error { return m.client.Approve(m.ctx, approval.ID, "deny") }), true
 		}
 	}
-	var cmd tea.Cmd
 	switch key {
-	case "pgup", "pgdown":
-		m.viewport, cmd = m.viewport.Update(msg)
-		return cmd, true
-	case "shift+up":
-		m.viewport.ScrollUp(m.viewport.MouseWheelDelta)
-		return nil, true
-	case "shift+down":
-		m.viewport.ScrollDown(m.viewport.MouseWheelDelta)
-		return nil, true
-	case "ctrl+f":
-		m.searchMode = true
-		m.input.Blur()
-		m.search.Focus()
-		return nil, true
-	case "ctrl+g":
-		m.copyMode = true
-		m.input.Blur()
-		return nil, true
-	case "f3":
-		if m.searchStatus != "" {
-			m.viewport.HighlightNext()
-			return nil, true
-		}
-	case "shift+f3":
-		if m.searchStatus != "" {
-			m.viewport.HighlightPrevious()
-			return nil, true
-		}
 	case "ctrl+c":
 		if m.status == "running" {
 			return action("interrupt", func() error { return m.client.Interrupt(m.ctx) }), true
@@ -241,9 +152,8 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.skillIndex = 0
 		m.skillsDismissed = false
 		m.skillDetails = false
-		m.appendOptimisticMessage(Message{Content: text, Category: "user_input"})
+		m.pendingUser = text
 		m.status = "running"
-		m.refreshTranscript()
 		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
 	}
 	return nil, false

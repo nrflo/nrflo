@@ -178,9 +178,9 @@ func TestDetailLines_EmptyDescription(t *testing.T) {
 }
 
 // suggestionTestModel builds a *model literal sufficient to exercise
-// suggestionView()/chromeRows() without a running terminal: width, skills,
-// skillIndex, skillDetails, and an input textarea holding "/" so
-// suggestionMatches() returns every skill.
+// suggestionView() without a running terminal: width, skills, skillIndex,
+// skillDetails, and an input textarea holding "/" so suggestionMatches()
+// returns every skill.
 func suggestionTestModel(width int, skills []ConsoleSkill, skillIndex int, skillDetails bool) *model {
 	input := textarea.New()
 	input.SetValue("/")
@@ -190,77 +190,5 @@ func suggestionTestModel(width int, skills []ConsoleSkill, skillIndex int, skill
 		skillIndex:   skillIndex,
 		skillDetails: skillDetails,
 		input:        input,
-	}
-}
-
-func manySkills(n int) []ConsoleSkill {
-	skills := make([]ConsoleSkill, n)
-	for i := range skills {
-		skills[i] = ConsoleSkill{Name: strings.Repeat("s", 1) + string(rune('a'+i%26)) + "kill"}
-	}
-	return skills
-}
-
-// TestChromeAccounting_DetailsClosed verifies the rendered suggestionView()
-// line count matches suggestionRows(N) exactly (indicator slot included)
-// when N exceeds maxSuggestionRows and details are closed.
-func TestChromeAccounting_DetailsClosed(t *testing.T) {
-	skills := manySkills(12)
-	m := suggestionTestModel(60, skills, 0, false)
-	out := m.suggestionView()
-	gotLines := strings.Count(out, "\n") + 1
-	// suggestionView renders inside approvalBox (rounded border + padding),
-	// so the raw content line count is what suggestionRows describes; strip
-	// border rows for the comparison by rendering the join directly.
-	contentLines := suggestionWindowSize(len(skills)) + 1 // + indicator row
-	wantContentLines := suggestionRows(len(skills))
-	if contentLines != wantContentLines {
-		t.Fatalf("sanity: suggestionWindowSize+indicator (%d) != suggestionRows (%d)", contentLines, wantContentLines)
-	}
-	// The box adds top/bottom border rows (approvalBox RoundedBorder).
-	const boxBorderRows = 2
-	if gotLines != wantContentLines+boxBorderRows {
-		t.Errorf("rendered suggestionView() line count = %d, want suggestionRows(%d)=%d + %d border rows", gotLines, len(skills), wantContentLines, boxBorderRows)
-	}
-	chrome := chromeRows(1, len(m.suggestionMatches()), 0, 0, 0)
-	if chrome < wantContentLines {
-		t.Errorf("chromeRows(...) = %d, want it to include the suggestionRows(%d)=%d indicator slot contribution", chrome, len(skills), wantContentLines)
-	}
-}
-
-// TestChromeAccounting_DetailsOpen verifies that with details open, the
-// rendered line count grows by exactly len(detailLines(...)), and chromeRows
-// with detailRows set adds exactly that many rows over the closed case.
-func TestChromeAccounting_DetailsOpen(t *testing.T) {
-	skills := manySkills(12)
-	const width = 60
-	m := suggestionTestModel(width, skills, 3, true)
-	inner := max(1, width-6)
-	sel := clampInt(m.skillIndex, len(skills)-1)
-	detailRows := len(detailLines(skills[sel].Name, skills[sel].Description, inner))
-
-	closed := suggestionTestModel(width, skills, 3, false)
-	closedLines := strings.Count(closed.suggestionView(), "\n") + 1
-	openLines := strings.Count(m.suggestionView(), "\n") + 1
-
-	if openLines != closedLines+detailRows {
-		t.Errorf("open suggestionView() line count = %d, want closed(%d) + detailRows(%d) = %d", openLines, closedLines, detailRows, closedLines+detailRows)
-	}
-
-	chromeClosed := chromeRows(1, len(skills), 0, 0, 0)
-	chromeOpen := chromeRows(1, len(skills), 0, detailRows, 0)
-	if chromeOpen != chromeClosed+detailRows {
-		t.Errorf("chromeRows open-closed diff = %d, want exactly detailRows(%d)", chromeOpen-chromeClosed, detailRows)
-	}
-}
-
-// TestChromeAccounting_TinyTerminalViewportFloor verifies the derived
-// viewport height never drops below 1 even when a huge suggestion+detail
-// chrome would otherwise overflow a tiny terminal.
-func TestChromeAccounting_TinyTerminalViewportFloor(t *testing.T) {
-	chrome := chromeRows(8, 12, 1, maxDetailLines, 0)
-	viewportHeight := max(1, 3-chrome)
-	if viewportHeight != 1 {
-		t.Errorf("viewport height = %d, want clamped to 1 for tiny terminal with full chrome(%d)", viewportHeight, chrome)
 	}
 }

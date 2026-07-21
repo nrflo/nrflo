@@ -2,14 +2,10 @@ package consoleui
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/spinner"
-	"charm.land/bubbles/v2/textarea"
-	"charm.land/bubbles/v2/viewport"
-	tea "charm.land/bubbletea/v2"
 )
 
 func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
@@ -49,20 +45,19 @@ func TestApplyStream_SessionCostUpdated(t *testing.T) {
 }
 
 // TestWorkingIndicator: a running turn renders an animated "working…" line
-// at the transcript tail, and the tick chain starts exactly on the
+// in the live region, and the tick chain starts exactly on the
 // idle→running transition.
 func TestWorkingIndicator(t *testing.T) {
 	m := &model{
 		detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{},
-		renderCache: map[string]string{}, viewport: viewport.New(),
 		spin: spinner.New(spinner.WithSpinner(spinner.MiniDot)),
 	}
 	m.width, m.height, m.ready = 80, 24, true
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "running"}),
 	}})
-	if !strings.Contains(m.viewport.GetContent(), "working…") {
-		t.Fatalf("running transcript = %q, want working indicator", m.viewport.GetContent())
+	if !strings.Contains(m.liveRegionView(), "working…") {
+		t.Fatalf("running live region = %q, want working indicator", m.liveRegionView())
 	}
 	if m.tickOnRunning(false) == nil {
 		t.Fatal("idle→running must start the spinner tick chain")
@@ -73,8 +68,8 @@ func TestWorkingIndicator(t *testing.T) {
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),
 	}})
-	if strings.Contains(m.viewport.GetContent(), "working…") {
-		t.Fatal("idle transcript must drop the working indicator")
+	if strings.Contains(m.liveRegionView(), "working…") {
+		t.Fatal("idle live region must drop the working indicator")
 	}
 }
 
@@ -107,102 +102,26 @@ func TestApplyDetail_ReconcilesMissedLiveState(t *testing.T) {
 	}
 }
 
+// TestApplySync_PreservesRecoveredLiveStateAfterHistoryReplacement verifies
+// applySync re-seeds live deltas/thinking from the reconnect detail (dropping
+// stale entries), and that printNewMessages (called by the syncMsg branch
+// before applySync, per update.go) independently advances printedTotal from
+// the accompanying page.
 func TestApplySync_PreservesRecoveredLiveStateAfterHistoryReplacement(t *testing.T) {
-	m := &model{
-		deltas: map[string]string{"stale": "old"}, renderCache: map[string]string{},
-	}
-	m.applySync(
-		ChatDetail{SessionID: "s1", Turn: "running", LiveItems: []LiveItem{{ID: "answer", Text: "partial"}}},
-		MessagePage{Messages: []Message{{Category: "user_input", Content: "hello"}}, Total: 1},
-	)
-	if len(m.messages) != 1 || m.deltas["answer"] != "partial" || len(m.deltas) != 1 {
-		t.Fatalf("messages=%+v deltas=%+v", m.messages, m.deltas)
-	}
-}
-
-func TestApplyHistory_BoundsTranscriptWindow(t *testing.T) {
-	messages := make([]Message, historyWindowSize+50)
-	for i := range messages {
-		messages[i] = Message{Category: "text", Content: fmt.Sprintf("message-%d", i)}
-	}
-	m := &model{renderCache: map[string]string{}}
-	m.applyHistory(MessagePage{Messages: messages, Total: len(messages)}, true, 0)
-	if len(m.messages) != historyWindowSize {
-		t.Fatalf("message window = %d, want %d", len(m.messages), historyWindowSize)
-	}
-}
-
-// newScrollTestModel builds a ready model with a small viewport filled with
-// many lines, scrolled to the bottom, mirroring TestWorkingIndicator's setup.
-func newScrollTestModel() *model {
-	m := &model{
-		detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{},
-		renderCache: map[string]string{}, viewport: viewport.New(),
-		input: textarea.New(), spin: spinner.New(spinner.WithSpinner(spinner.MiniDot)),
-	}
+	m := &model{deltas: map[string]string{"stale": "old"}}
 	m.width, m.height, m.ready = 80, 24, true
-	m.viewport.SetWidth(20)
-	m.viewport.SetHeight(5)
-	lines := make([]string, 100)
-	for i := range lines {
-		lines[i] = fmt.Sprintf("line-%d", i)
-	}
-	m.viewport.SetContent(strings.Join(lines, "\n"))
-	m.viewport.GotoBottom()
-	return m
-}
 
-// TestHandleKey_PgUpScrollsViewportKeepsComposer verifies pgup is routed to
-// the transcript viewport (scrolling it up from the bottom) while the
-// composer input is left untouched and the key is reported as handled.
-func TestHandleKey_PgUpScrollsViewportKeepsComposer(t *testing.T) {
-	m := newScrollTestModel()
-	m.input.SetValue("draft text")
-	before := m.input.Value()
-	atBottomBefore := m.viewport.AtBottom()
-	if !atBottomBefore {
-		t.Fatal("viewport should start at bottom")
+	cmds := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hello"}}, Total: 1})
+	if len(cmds) != 1 {
+		t.Fatalf("printNewMessages returned %d cmds, want 1", len(cmds))
+	}
+	if m.printedTotal != 1 {
+		t.Fatalf("printedTotal = %d, want 1", m.printedTotal)
 	}
 
-	cmd, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgUp})
-	_ = cmd
-	if !handled {
-		t.Fatal("handleKey(pgup) handled = false, want true")
-	}
-	if m.viewport.AtBottom() {
-		t.Error("handleKey(pgup) did not scroll the viewport away from the bottom")
-	}
-	if m.input.Value() != before {
-		t.Errorf("handleKey(pgup) mutated composer input: got %q, want %q", m.input.Value(), before)
-	}
-}
-
-// TestHandleKey_PgDownScrollsBack verifies pgdown, following a pgup, scrolls
-// the viewport back toward the bottom.
-func TestHandleKey_PgDownScrollsBack(t *testing.T) {
-	m := newScrollTestModel()
-	if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgUp}); !handled {
-		t.Fatal("setup pgup not handled")
-	}
-	if m.viewport.AtBottom() {
-		t.Fatal("setup pgup did not scroll away from bottom")
-	}
-	if _, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyPgDown}); !handled {
-		t.Fatal("handleKey(pgdown) handled = false, want true")
-	}
-	if !m.viewport.AtBottom() {
-		t.Error("handleKey(pgdown) should scroll back to the bottom")
-	}
-}
-
-// TestHandleKey_PlainRuneNotConsumedByScrollCase verifies a plain rune key
-// (e.g. "a") is not swallowed by the new pgup/pgdown case and falls through
-// unhandled to composer routing.
-func TestHandleKey_PlainRuneNotConsumedByScrollCase(t *testing.T) {
-	m := newScrollTestModel()
-	_, handled := m.handleKey(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	if handled {
-		t.Error("handleKey(\"a\") handled = true, want false (plain rune falls through to composer)")
+	m.applySync(ChatDetail{SessionID: "s1", Turn: "running", LiveItems: []LiveItem{{ID: "answer", Text: "partial"}}})
+	if m.deltas["answer"] != "partial" || len(m.deltas) != 1 {
+		t.Fatalf("deltas=%+v, want only re-seeded answer=partial", m.deltas)
 	}
 }
 

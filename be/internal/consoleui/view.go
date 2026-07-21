@@ -28,32 +28,58 @@ func (m *model) View() tea.View {
 		view.AltScreen = true
 		return view
 	}
-	sections := []string{m.viewport.View()}
+	sections := []string{m.liveRegionView()}
 	if len(m.approvals) > 0 {
 		sections = append(sections, m.approvalView())
 	}
-	composer := m.input.View()
-	normalMode := !m.searchMode && !m.copyMode
-	if m.searchMode {
-		composer = m.search.View()
-	} else if m.copyMode {
-		composer = "copy mode · navigate with arrows/j/k · y visible · Y raw · ctrl+p loads older"
-	}
-	if normalMode && m.suggestionsOpen() {
+	if m.suggestionsOpen() {
 		sections = append(sections, m.suggestionView())
 	}
-	if normalMode && m.invoke.active {
+	if m.invoke.active {
 		sections = append(sections, m.invokeView())
 	}
-	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.statusBar(), m.footer())
+	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar(), m.footer())
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
-	view.AltScreen = true
+	view.AltScreen = false
 	view.WindowTitle = "nrflo console"
 	return view
 }
 
+// liveRegionView renders the bounded managed region: the optimistic pending
+// user line, in-flight deltas, thinking, and the working spinner, wrapped to
+// content width and tail-clipped to roughly the terminal height so the
+// managed region never grows unbounded (printed rows live in the terminal's
+// native scrollback, not here).
+func (m *model) liveRegionView() string {
+	parts := make([]string, 0, len(m.deltas)+2)
+	if m.pendingUser != "" {
+		parts = append(parts, userStyle.Render("you")+"\n"+wrapToWidth(m.pendingUser, m.contentWidth()))
+	}
+	for _, id := range m.deltaOrder {
+		if text := m.deltas[id]; text != "" {
+			parts = append(parts, headerStyle.Render("assistant")+"\n"+text)
+		}
+	}
+	if m.thinking != "" {
+		parts = append(parts, mutedStyle.Italic(true).Render("thinking · "+m.thinking))
+	}
+	if m.status == "running" {
+		parts = append(parts, m.spin.View()+mutedStyle.Render(" working…"))
+	}
+	content := strings.Join(parts, "\n\n")
+	if content == "" {
+		return ""
+	}
+	lines := strings.Split(content, "\n")
+	maxLines := max(1, m.height-2)
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
+	}
+	return strings.Join(lines, "\n")
+}
+
 func (m *model) footer() string {
-	help := "enter send · ctrl+f search · ctrl+g copy mode · ctrl+d detach · ctrl+x close · pgup/pgdn scroll"
+	help := "enter send · ctrl+d detach · ctrl+x close"
 	if m.status == "running" {
 		help = "working… · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
 	}
@@ -62,9 +88,6 @@ func (m *model) footer() string {
 	}
 	if m.notice != "" {
 		return mutedStyle.Render(" " + m.notice)
-	}
-	if m.searchStatus != "" {
-		return mutedStyle.Render(" " + m.searchStatus + " · F3/Shift+F3 next/previous")
 	}
 	return mutedStyle.Render(" " + help)
 }
@@ -84,52 +107,6 @@ func (m *model) approvalView() string {
 func (m *model) resize(width, height int) {
 	m.width, m.height, m.ready = width, height, true
 	m.input.SetWidth(max(10, width-6))
-	m.relayout()
-}
-
-func (m *model) refreshTranscript() {
-	if !m.ready {
-		return
-	}
-	atBottom := m.viewport.AtBottom()
-	contentWidth := max(20, m.width-4)
-	if m.historyDirty || m.renderedWidth != contentWidth {
-		history := make([]string, 0, len(m.messages))
-		for _, message := range m.messages {
-			key := renderCacheKey(message, contentWidth)
-			rendered, ok := m.renderCache[key]
-			if !ok {
-				rendered = renderMessage(message, contentWidth)
-				m.renderCache[key] = rendered
-			}
-			history = append(history, rendered)
-		}
-		m.renderedHistory = strings.Join(history, "\n\n")
-		m.renderedWidth = contentWidth
-		m.historyDirty = false
-	}
-	parts := make([]string, 0, len(m.deltas)+2)
-	if m.renderedHistory != "" {
-		parts = append(parts, m.renderedHistory)
-	}
-	for _, id := range m.deltaOrder {
-		if text := m.deltas[id]; text != "" {
-			parts = append(parts, headerStyle.Render("assistant")+"\n"+text)
-		}
-	}
-	if m.thinking != "" {
-		parts = append(parts, mutedStyle.Italic(true).Render("thinking · "+m.thinking))
-	}
-	if m.status == "running" {
-		parts = append(parts, m.spin.View()+mutedStyle.Render(" working…"))
-	}
-	m.viewport.SetContent(strings.Join(parts, "\n\n"))
-	if m.searchStatus != "" {
-		m.applySearch()
-	}
-	if atBottom || len(m.messages) <= 1 {
-		m.viewport.GotoBottom()
-	}
 }
 
 func renderMessage(message Message, width int) string {

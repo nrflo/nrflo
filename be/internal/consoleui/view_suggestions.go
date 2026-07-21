@@ -53,20 +53,6 @@ func suggestionWindow(total, selected, size int) (int, int) {
 	return start, start + size
 }
 
-// suggestionRows returns the rendered row count for n matches, capped at
-// maxSuggestionRows (used by chromeRows without re-rendering the box). When
-// n overflows the cap, the reserved indicator line already accounted for by
-// suggestionWindowSize is included in the returned total.
-func suggestionRows(n int) int {
-	if n <= 0 {
-		return 0
-	}
-	if n > maxSuggestionRows {
-		n = maxSuggestionRows
-	}
-	return n
-}
-
 // detailLines renders the ctrl+o full-description block: a header line
 // ("/name") followed by word-wrapped description lines, capped at
 // maxDetailLines total (the last line is truncated with an ellipsis when the

@@ -7,44 +7,34 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/textarea"
-	"charm.land/bubbles/v2/textinput"
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 )
 
 type model struct {
-	ctx           context.Context
-	client        *Client
-	events        <-chan streamUpdate
-	detail        ChatDetail
-	messages      []Message
-	historyOffset int
-	historyTotal  int
-	deltas        map[string]string
-	deltaOrder    []string
-	thinking      string
-	thinkingID    string
+	ctx            context.Context
+	client         *Client
+	events         <-chan streamUpdate
+	detail         ChatDetail
+	printedTotal   int
+	pendingUser    string
+	historyPrinted bool
+	initialPage    MessagePage
+	deltas         map[string]string
+	deltaOrder     []string
+	thinking       string
+	thinkingID     string
 
-	approvals       []Approval
-	connected       bool
-	status          string
-	lastErr         string
-	width           int
-	height          int
-	ready           bool
-	historyDirty    bool
-	renderedHistory string
-	renderedWidth   int
-	renderCache     map[string]string
-	copyMode        bool
-	searchMode      bool
-	searchStatus    string
-	notice          string
+	approvals []Approval
+	connected bool
+	status    string
+	lastErr   string
+	width     int
+	height    int
+	ready     bool
+	notice    string
 
-	input    textarea.Model
-	search   textinput.Model
-	viewport viewport.Model
-	spin     spinner.Model
+	input textarea.Model
+	spin  spinner.Model
 
 	skills          []ConsoleSkill
 	skillIndex      int
@@ -58,10 +48,8 @@ type model struct {
 }
 
 type historyMsg struct {
-	page    MessagePage
-	prepend bool
-	offset  int
-	err     error
+	page MessagePage
+	err  error
 }
 
 type syncMsg struct {
@@ -105,20 +93,16 @@ func Run(ctx context.Context, cfg Config) error {
 	input.CharLimit = 64 * 1024
 	input.KeyMap.InsertNewline.SetKeys("shift+enter", "alt+enter", "ctrl+j")
 	input.Focus()
-	search := textinput.New()
-	search.Prompt = "/"
-	search.Placeholder = "search transcript"
 	streamCtx, stopStream := context.WithCancel(ctx)
 	defer stopStream()
 
 	m := &model{
 		ctx: ctx, client: client, events: client.Stream(streamCtx), detail: detail,
-		messages: page.Messages, historyOffset: max(0, page.Total-len(page.Messages)), historyTotal: page.Total,
-		approvals: detail.PendingApprovals,
-		deltas:    make(map[string]string), connected: false,
-		status: detail.Turn, input: input, search: search, viewport: viewport.New(), historyDirty: true,
-		renderCache: make(map[string]string),
-		spin:        spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
+		initialPage: page,
+		approvals:   detail.PendingApprovals,
+		deltas:      make(map[string]string), connected: false,
+		status: detail.Turn, input: input,
+		spin: spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(mutedStyle)),
 	}
 	m.applyDetail(detail)
 	program := tea.NewProgram(m, tea.WithContext(ctx))
@@ -151,15 +135,6 @@ func (m *model) loadHistory() tea.Cmd {
 	return func() tea.Msg {
 		page, err := m.client.TailMessages(m.ctx, historyWindowSize)
 		return historyMsg{page: page, err: err}
-	}
-}
-
-func (m *model) loadOlder() tea.Cmd {
-	offset := max(0, m.historyOffset-historyPageSize)
-	limit := m.historyOffset - offset
-	return func() tea.Msg {
-		page, err := m.client.MessagesPage(m.ctx, limit, offset)
-		return historyMsg{page: page, prepend: true, offset: offset, err: err}
 	}
 }
 

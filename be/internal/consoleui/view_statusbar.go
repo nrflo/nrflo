@@ -47,8 +47,9 @@ func (m *model) composerContentRows() int {
 // chromeRows totals the fixed (non-viewport) rows the layout reserves:
 // composer box (content + 2 border rows), the "/" suggestion box when open
 // (content + reserved indicator row + detailRows + 2 border rows), the
-// approval box when present, plus the status bar and footer lines.
-func chromeRows(composerContent, suggestionMatches, approvalCount, detailRows int) int {
+// approval box when present, the /invoke flow chrome when active, plus the
+// status bar and footer lines.
+func chromeRows(composerContent, suggestionMatches, approvalCount, detailRows, invokeRows int) int {
 	rows := composerContent + 2 // composerBox border top/bottom
 	if suggestionMatches > 0 {
 		rows += suggestionRows(suggestionMatches) + detailRows + 2 // suggestion box border
@@ -56,12 +57,14 @@ func chromeRows(composerContent, suggestionMatches, approvalCount, detailRows in
 	if approvalCount > 0 {
 		rows += 3 // approvalBox
 	}
+	rows += invokeRows
 	rows += 2 // statusBar + footer
 	return rows
 }
 
-// relayout resizes the viewport from the actual composer/suggestion/approval
-// chrome instead of a fixed magic constant, then re-renders the transcript.
+// relayout resizes the viewport from the actual composer/suggestion/approval/
+// invoke chrome instead of a fixed magic constant, then re-renders the
+// transcript.
 func (m *model) relayout() {
 	suggestionMatches := 0
 	detailRows := 0
@@ -73,7 +76,11 @@ func (m *model) relayout() {
 			detailRows = len(detailLines(matches[sel].Name, matches[sel].Description, max(1, m.width-6)))
 		}
 	}
-	chrome := chromeRows(m.composerContentRows(), suggestionMatches, len(m.approvals), detailRows)
+	invokeRows := 0
+	if !m.searchMode && !m.copyMode && m.invoke.active {
+		invokeRows = m.invokeChromeRows()
+	}
+	chrome := chromeRows(m.composerContentRows(), suggestionMatches, len(m.approvals), detailRows, invokeRows)
 	m.viewport.SetWidth(max(1, m.width))
 	m.viewport.SetHeight(max(1, m.height-chrome))
 	m.refreshTranscript()

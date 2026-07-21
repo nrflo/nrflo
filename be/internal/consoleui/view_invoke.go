@@ -1,0 +1,61 @@
+package consoleui
+
+import (
+	"fmt"
+
+	"charm.land/lipgloss/v2"
+)
+
+// invokeView renders the /invoke flow's chrome for the current phase: an
+// args-phase field prompt, or a confirm-phase one-liner, both in the
+// approvalBox style (mirrors approvalView, view.go:70).
+func (m *model) invokeView() string {
+	var line string
+	switch m.invoke.phase {
+	case invokePhaseArgs:
+		line = m.invokeArgLine()
+	case invokePhaseConfirm:
+		line = m.invokeConfirmLine()
+	default:
+		return ""
+	}
+	return approvalBox.BorderForeground(accent).Width(max(1, m.width-2)).Render(line)
+}
+
+func (m *model) invokeArgLine() string {
+	if m.invoke.index < 0 || m.invoke.index >= len(m.invoke.fields) {
+		return ""
+	}
+	field := m.invoke.fields[m.invoke.index]
+	required := ""
+	if field.Required {
+		required = " (required)"
+	}
+	label := fmt.Sprintf("arg %s (%s)%s", field.Name, field.Type, required)
+	return lipgloss.NewStyle().Bold(true).Foreground(accent).Render(label) +
+		"  " + mutedStyle.Render("enter accept · esc cancel")
+}
+
+func (m *model) invokeConfirmLine() string {
+	toggle := "off"
+	if m.invoke.inform {
+		toggle = "on"
+	}
+	return lipgloss.NewStyle().Bold(true).Foreground(warn).Render("run "+m.invoke.tool+"?") +
+		"  " + lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("[y] run · [i] toggle inform (%s) · [esc] cancel", toggle))
+}
+
+// invokeChromeRows returns the exact row count invokeView reserves for the
+// current phase: content line + 2 approvalBox border rows while a flow is
+// active, 0 when inactive.
+func (m *model) invokeChromeRows() int {
+	if !m.invoke.active {
+		return 0
+	}
+	switch m.invoke.phase {
+	case invokePhaseArgs, invokePhaseConfirm:
+		return 3
+	default:
+		return 0
+	}
+}

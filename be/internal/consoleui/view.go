@@ -42,6 +42,9 @@ func (m *model) View() tea.View {
 	if normalMode && m.suggestionsOpen() {
 		sections = append(sections, m.suggestionView())
 	}
+	if normalMode && m.invoke.active {
+		sections = append(sections, m.invokeView())
+	}
 	sections = append(sections, composerBox.Width(max(1, m.width-2)).Render(composer), m.statusBar(), m.footer())
 	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
 	view.AltScreen = true

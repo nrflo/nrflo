@@ -90,6 +90,24 @@ func (c *Client) Approve(ctx context.Context, id, decision string) error {
 	return c.do(ctx, http.MethodPost, c.chatPath("approvals/"+url.PathEscape(id)), map[string]string{"decision": decision}, nil)
 }
 
+// Tools fetches the chat's own invokable tool catalogue.
+func (c *Client) Tools(ctx context.Context) ([]ConsoleTool, error) {
+	var result struct {
+		Tools []ConsoleTool `json:"tools"`
+	}
+	err := c.do(ctx, http.MethodGet, c.chatPath("tools"), nil, &result)
+	return result.Tools, err
+}
+
+// Invoke dispatches a deterministic, server-side tool call against the
+// chat's own catalogue. do() maps a 409 (turn active) into an error string.
+func (c *Client) Invoke(ctx context.Context, tool string, arguments json.RawMessage, inform bool) (InvokeResult, error) {
+	var result InvokeResult
+	body := map[string]any{"tool": tool, "arguments": arguments, "inform_model": inform}
+	err := c.do(ctx, http.MethodPost, c.chatPath("invoke"), body, &result)
+	return result, err
+}
+
 func (c *Client) Interrupt(ctx context.Context) error {
 	return c.do(ctx, http.MethodPost, c.chatPath("interrupt"), nil, nil)
 }

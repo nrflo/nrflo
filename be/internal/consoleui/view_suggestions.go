@@ -81,9 +81,23 @@ func detailLines(name, description string, width int) []string {
 	}
 	if len(lines) > maxDetailLines {
 		lines = lines[:maxDetailLines]
-		lines[maxDetailLines-1] = truncate(lines[maxDetailLines-1], width)
+		lines[maxDetailLines-1] = forceEllipsis(lines[maxDetailLines-1], width)
 	}
 	return lines
+}
+
+// forceEllipsis marks line as truncated by rewriting its tail to end in '…'
+// within width, regardless of whether line itself overflows width. Unlike
+// truncate() (which only appends '…' on a width overflow), this always
+// stamps the marker — used when a line is being cut for a line-count cap
+// rather than a width cap, so the cap itself must still be visible to the
+// user.
+func forceEllipsis(line string, width int) string {
+	width = max(1, width)
+	if width == 1 {
+		return "…"
+	}
+	return lipgloss.NewStyle().MaxWidth(width-1).Render(line) + "…"
 }
 
 // suggestionView renders the bordered "/" skill-suggestion box above the

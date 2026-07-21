@@ -19,7 +19,12 @@ func (m *model) handleSuggestionKey(key string) bool {
 		if m.skillIndex < 0 || m.skillIndex >= len(matches) {
 			m.skillIndex = 0
 		}
-		m.completeSkill(matches[m.skillIndex].Name)
+		name := matches[m.skillIndex].Name
+		if m.suggestionKind() == suggestionKindTools {
+			m.beginInvoke(name)
+		} else {
+			m.completeSkill(name)
+		}
 		return true
 	case "ctrl+o":
 		m.skillDetails = !m.skillDetails

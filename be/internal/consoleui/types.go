@@ -67,6 +67,22 @@ type Selection struct {
 
 type Catalog = types.ConsoleCatalog
 
+// ConsoleTool mirrors the GET .../tools payload entry (consoleToolSummary in
+// be/internal/api/handlers_console_tools.go).
+type ConsoleTool struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	InputSchema json.RawMessage `json:"input_schema"`
+}
+
+// InvokeResult mirrors the POST .../invoke response body.
+type InvokeResult struct {
+	OK         bool   `json:"ok"`
+	Result     string `json:"result"`
+	DurationMs int64  `json:"duration_ms"`
+	Informed   bool   `json:"informed"`
+}
+
 type Event struct {
 	Type      string                     `json:"type"`
 	ProjectID string                     `json:"project_id"`

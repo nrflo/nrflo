@@ -126,17 +126,9 @@ func TestRowTruncation_ViaSuggestionView(t *testing.T) {
 }
 
 // TestDetailLines_WordWrapAndCap verifies detailLines word-wraps a long
-// description at a narrow width, caps total lines at maxLines, and keeps the
-// header as the truncated "/name" line.
-//
-// NOTE: per the spec, the last line should carry a "…" truncation marker
-// when the body overflows maxLines. The current implementation truncates
-// the kept last line via truncate(lines[maxLines-1], width), but a
-// word-wrapped line is already <= width by construction, so truncate()'s
-// width check never fires and no marker is ever appended on a line-count
-// overflow (only on a width overflow, which can't happen here). This is a
-// production bug (see be_production_bugs); this test asserts the actual
-// current behavior rather than the spec'd one.
+// description at a narrow width, caps total lines at maxLines, keeps the
+// header as the truncated "/name" line, and marks the capped last line with
+// a "…" truncation marker (forceEllipsis) within width.
 func TestDetailLines_WordWrapAndCap(t *testing.T) {
 	desc := strings.Repeat("word ", 80)
 	const width = 20
@@ -155,6 +147,9 @@ func TestDetailLines_WordWrapAndCap(t *testing.T) {
 	last := lines[len(lines)-1]
 	if w := lipgloss.Width(last); w > width {
 		t.Errorf("detailLines last line width %d exceeds width %d", w, width)
+	}
+	if !strings.HasSuffix(last, "…") {
+		t.Errorf("detailLines capped last line = %q, want it to end in the '…' truncation marker", last)
 	}
 }
 
@@ -227,7 +222,7 @@ func TestChromeAccounting_DetailsClosed(t *testing.T) {
 	if gotLines != wantContentLines+boxBorderRows {
 		t.Errorf("rendered suggestionView() line count = %d, want suggestionRows(%d)=%d + %d border rows", gotLines, len(skills), wantContentLines, boxBorderRows)
 	}
-	chrome := chromeRows(1, len(m.suggestionMatches()), 0, 0)
+	chrome := chromeRows(1, len(m.suggestionMatches()), 0, 0, 0)
 	if chrome < wantContentLines {
 		t.Errorf("chromeRows(...) = %d, want it to include the suggestionRows(%d)=%d indicator slot contribution", chrome, len(skills), wantContentLines)
 	}
@@ -252,8 +247,8 @@ func TestChromeAccounting_DetailsOpen(t *testing.T) {
 		t.Errorf("open suggestionView() line count = %d, want closed(%d) + detailRows(%d) = %d", openLines, closedLines, detailRows, closedLines+detailRows)
 	}
 
-	chromeClosed := chromeRows(1, len(skills), 0, 0)
-	chromeOpen := chromeRows(1, len(skills), 0, detailRows)
+	chromeClosed := chromeRows(1, len(skills), 0, 0, 0)
+	chromeOpen := chromeRows(1, len(skills), 0, detailRows, 0)
 	if chromeOpen != chromeClosed+detailRows {
 		t.Errorf("chromeRows open-closed diff = %d, want exactly detailRows(%d)", chromeOpen-chromeClosed, detailRows)
 	}
@@ -263,7 +258,7 @@ func TestChromeAccounting_DetailsOpen(t *testing.T) {
 // viewport height never drops below 1 even when a huge suggestion+detail
 // chrome would otherwise overflow a tiny terminal.
 func TestChromeAccounting_TinyTerminalViewportFloor(t *testing.T) {
-	chrome := chromeRows(8, 12, 1, maxDetailLines)
+	chrome := chromeRows(8, 12, 1, maxDetailLines, 0)
 	viewportHeight := max(1, 3-chrome)
 	if viewportHeight != 1 {
 		t.Errorf("viewport height = %d, want clamped to 1 for tiny terminal with full chrome(%d)", viewportHeight, chrome)

@@ -51,6 +51,10 @@ type model struct {
 	skillsDismissed bool
 	skillsFetched   bool
 	skillDetails    bool
+
+	tools        []ConsoleTool
+	toolsFetched bool
+	invoke       invokeState
 }
 
 type historyMsg struct {
@@ -69,6 +73,11 @@ type syncMsg struct {
 type actionMsg struct {
 	action string
 	err    error
+}
+
+type toolsMsg struct {
+	tools []ConsoleTool
+	err   error
 }
 
 func Run(ctx context.Context, cfg Config) error {

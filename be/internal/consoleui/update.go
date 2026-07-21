@@ -37,6 +37,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				m.skillsFetched = true
 				commands = append(commands, m.loadSkills())
 			}
+			if !m.toolsFetched {
+				m.toolsFetched = true
+				commands = append(commands, m.loadTools())
+			}
 		}
 		if needsHistory(msg.Events) {
 			commands = append(commands, m.loadHistory())
@@ -44,6 +48,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case skillsMsg:
 		if msg.err == nil {
 			m.skills = msg.skills
+		}
+	case toolsMsg:
+		if msg.err == nil {
+			m.tools = msg.tools
 		}
 	case historyMsg:
 		if msg.err != nil {
@@ -160,6 +168,9 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 			}
 		}
 		return nil, false
+	}
+	if m.invoke.active {
+		return m.handleInvokeKey(key)
 	}
 	if m.handleSuggestionKey(key) {
 		return nil, true

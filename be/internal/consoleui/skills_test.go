@@ -105,7 +105,7 @@ func TestChromeRows_ViewportHeightNeverBelowOne(t *testing.T) {
 	for composer := 1; composer <= 8; composer++ {
 		for _, suggestionMatches := range []int{0, 3, 12} {
 			for _, approvalCount := range []int{0, 1} {
-				chrome := chromeRows(composer, suggestionMatches, approvalCount, 0)
+				chrome := chromeRows(composer, suggestionMatches, approvalCount, 0, 0)
 				viewportHeight := max(1, terminalHeight-chrome)
 				if viewportHeight < 1 {
 					t.Fatalf("composer=%d suggestions=%d approvals=%d: viewport height %d < 1", composer, suggestionMatches, approvalCount, viewportHeight)
@@ -123,7 +123,7 @@ func TestChromeRows_ViewportHeightNeverBelowOne(t *testing.T) {
 // TestChromeRows_ExtremelySmallTerminal verifies the viewport height clamps
 // to 1 (never goes negative) when chrome alone exceeds the terminal height.
 func TestChromeRows_ExtremelySmallTerminal(t *testing.T) {
-	chrome := chromeRows(8, 12, 1, 0) // composer maxed out + full suggestion box + approval
+	chrome := chromeRows(8, 12, 1, 0, 0) // composer maxed out + full suggestion box + approval
 	viewportHeight := max(1, 5-chrome)
 	if viewportHeight != 1 {
 		t.Errorf("viewport height = %d, want clamped to 1 when chrome(%d) > terminal(5)", viewportHeight, chrome)
@@ -134,10 +134,10 @@ func TestChromeRows_ExtremelySmallTerminal(t *testing.T) {
 // (suggestion box, approval box) adds a strictly positive, independent
 // contribution to the total.
 func TestChromeRows_ComponentsAdditive(t *testing.T) {
-	base := chromeRows(1, 0, 0, 0)
-	withSuggestions := chromeRows(1, 3, 0, 0)
-	withApproval := chromeRows(1, 0, 1, 0)
-	withBoth := chromeRows(1, 3, 1, 0)
+	base := chromeRows(1, 0, 0, 0, 0)
+	withSuggestions := chromeRows(1, 3, 0, 0, 0)
+	withApproval := chromeRows(1, 0, 1, 0, 0)
+	withBoth := chromeRows(1, 3, 1, 0, 0)
 
 	if withSuggestions <= base {
 		t.Errorf("chromeRows with suggestions (%d) must exceed base (%d)", withSuggestions, base)

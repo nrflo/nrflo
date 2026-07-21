@@ -50,6 +50,7 @@ type model struct {
 	skillIndex      int
 	skillsDismissed bool
 	skillsFetched   bool
+	skillDetails    bool
 }
 
 type historyMsg struct {

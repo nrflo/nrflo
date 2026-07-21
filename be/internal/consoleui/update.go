@@ -102,6 +102,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if m.input.Value() != before {
 			m.skillIndex = 0
 			m.skillsDismissed = false
+			m.skillDetails = false
 		}
 		if m.ready {
 			m.relayout()
@@ -213,6 +214,7 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.input.Reset()
 		m.skillIndex = 0
 		m.skillsDismissed = false
+		m.skillDetails = false
 		m.appendOptimisticMessage(Message{Content: text, Category: "user_input"})
 		m.status = "running"
 		m.refreshTranscript()

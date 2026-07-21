@@ -21,8 +21,15 @@ func (m *model) handleSuggestionKey(key string) bool {
 		}
 		m.completeSkill(matches[m.skillIndex].Name)
 		return true
+	case "ctrl+o":
+		m.skillDetails = !m.skillDetails
+		return true
 	case "esc":
-		m.skillsDismissed = true
+		if m.skillDetails {
+			m.skillDetails = false
+		} else {
+			m.skillsDismissed = true
+		}
 		return true
 	}
 	return false
@@ -34,4 +41,5 @@ func (m *model) completeSkill(name string) {
 	m.input.SetValue("/" + name + " ")
 	m.skillIndex = 0
 	m.skillsDismissed = false
+	m.skillDetails = false
 }

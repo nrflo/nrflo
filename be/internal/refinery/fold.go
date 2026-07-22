@@ -113,7 +113,19 @@ func (m *Manager) runFoldCore(ctx context.Context, logKey, projectID, userText s
 		return "", provider.Usage{}, false
 	}
 
-	return capBytes(extractText(resp.Content), maxDigestBytes), resp.Usage, true
+	text := extractText(resp.Content)
+	if strings.TrimSpace(text) == "" || isDegenerateStopReason(resp.StopReason) {
+		logger.Warn(ctx, "refinery: rejecting degenerate fold output", "key", logKey, "stop_reason", resp.StopReason, "text_bytes", len(text))
+		return "", provider.Usage{}, false
+	}
+
+	return capBytes(text, maxDigestBytes), resp.Usage, true
+}
+
+// isDegenerateStopReason reports whether sr indicates a truncated (max_tokens)
+// or refused response that should not be folded into the digest.
+func isDegenerateStopReason(sr string) bool {
+	return sr == "max_tokens" || sr == "refusal"
 }
 
 func buildFoldUserText(prevDigest string, events []string) string {

@@ -48,7 +48,7 @@ describe('SystemAgentsSection — warning banner', () => {
     vi.mocked(systemAgentDefsApi.listSystemAgentDefs).mockResolvedValue([])
     renderWithQuery(<SystemAgentsSection />)
     expect(
-      await screen.findByText(/System agents run under the Claude Code CLI/i)
+      await screen.findByText(/Mode determines how a system agent runs/i)
     ).toBeInTheDocument()
   })
 
@@ -57,14 +57,14 @@ describe('SystemAgentsSection — warning banner', () => {
     renderWithQuery(<SystemAgentsSection />)
     await screen.findByText('conflict-resolver')
     expect(
-      screen.getByText(/System agents run under the Claude Code CLI/i)
+      screen.getByText(/Mode determines how a system agent runs/i)
     ).toBeInTheDocument()
   })
 
   it('has no dismiss or close button', async () => {
     vi.mocked(systemAgentDefsApi.listSystemAgentDefs).mockResolvedValue([])
     renderWithQuery(<SystemAgentsSection />)
-    await screen.findByText(/System agents run under the Claude Code CLI/i)
+    await screen.findByText(/Mode determines how a system agent runs/i)
     // Only the "New System Agent" button should exist at this point
     const buttons = screen.getAllByRole('button')
     expect(buttons).toHaveLength(1)

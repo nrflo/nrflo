@@ -11,4 +11,5 @@ func (s *Server) registerCustomProviderRoutes(admin func(string, http.HandlerFun
 	admin("GET /api/v1/custom-providers/{name}", s.handleGetCustomProvider)
 	admin("PATCH /api/v1/custom-providers/{name}", s.handleUpdateCustomProvider)
 	admin("DELETE /api/v1/custom-providers/{name}", s.handleDeleteCustomProvider)
+	admin("POST /api/v1/custom-providers/check", s.handleCheckCustomProvider)
 }

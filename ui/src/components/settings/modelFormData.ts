@@ -1,8 +1,8 @@
-import type { Model, ModelProvider } from '@/api/models'
+import type { Model } from '@/api/models'
 
 export interface ModelFormData {
   id: string
-  provider: ModelProvider
+  provider: string
   display_name: string
   cli_model: string
   api_model: string

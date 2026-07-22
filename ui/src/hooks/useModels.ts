@@ -6,14 +6,13 @@ import {
   updateModel,
   type CreateModelRequest,
   type ModelMode,
-  type ModelProvider,
   type UpdateModelRequest,
 } from '@/api/models'
 import type { DropdownOptionGroup } from '@/components/ui/Dropdown'
 
-const PROVIDER_LABELS = { anthropic: 'Anthropic', openai: 'OpenAI', openrouter: 'OpenRouter' } as const
+const PROVIDER_LABELS: Record<string, string> = { anthropic: 'Anthropic', openai: 'OpenAI', openrouter: 'OpenRouter' }
 
-export function cliTypeForProvider(provider: ModelProvider) {
+export function cliTypeForProvider(provider: string) {
   return provider === 'anthropic' ? 'claude' : 'codex'
 }
 
@@ -56,7 +55,7 @@ export function useModelOptions(mode: ModelMode): DropdownOptionGroup[] {
   const grouped = new Map<string, DropdownOptionGroup>()
 
   for (const model of models.filter((row) => row.enabled && row[modeField])) {
-    const label = PROVIDER_LABELS[model.provider]
+    const label = PROVIDER_LABELS[model.provider] ?? model.provider
     const group = grouped.get(model.provider) ?? { label, options: [] }
     group.options.push({ value: model.id, label: `${label}: ${model.display_name}` })
     grouped.set(model.provider, group)

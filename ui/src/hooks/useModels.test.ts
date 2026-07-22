@@ -49,4 +49,15 @@ describe('useModelOptions', () => {
     expect(result.current[0].label).toBe('OpenRouter')
     expect(result.current[0].options).toEqual([{ value: 'kimi', label: 'OpenRouter: Kimi' }])
   })
+
+  it('falls back to the raw provider name for a custom provider with no PROVIDER_LABELS entry', async () => {
+    vi.mocked(api.listModels).mockResolvedValue([
+      model({ id: 'm1', provider: 'acme', display_name: 'Acme Model', cli_model: '', api_model: 'acme-model-1' }),
+    ])
+    const { result } = renderHook(() => useModelOptions('api'), { wrapper: createWrapper(createTestQueryClient()) })
+    await waitFor(() => expect(result.current).toHaveLength(1))
+    expect(result.current[0].label).toBe('acme')
+    expect(result.current[0].options).toEqual([{ value: 'm1', label: 'acme: Acme Model' }])
+    expect(result.current[0].label).not.toMatch(/^undefined/)
+  })
 })

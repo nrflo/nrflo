@@ -49,9 +49,10 @@ interface Props {
   mutation: { isPending: boolean; isError: boolean; error: Error | null }
   isCreate?: boolean
   readOnly?: boolean
+  apiOnly?: boolean
 }
 
-export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, isCreate, readOnly }: Props) {
+export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, isCreate, readOnly, apiOnly }: Props) {
   const locked = !!readOnly && !isCreate
   const defaultEfforts = validEfforts(formData)
   const valid = formData.id.trim() && formData.display_name.trim() &&
@@ -89,7 +90,7 @@ export function ModelForm({ formData, setFormData, onCancel, onSave, mutation, i
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {formData.provider !== 'openrouter' && (
+        {!apiOnly && (
           <ModeFields mode="CLI" model={formData.cli_model} context={formData.cli_context} efforts={formData.cli_efforts} disabled={locked}
             onModel={(value) => update({ cli_model: value })}
             onContext={(value) => update({ cli_context: value })}

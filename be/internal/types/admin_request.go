@@ -60,6 +60,20 @@ type CustomProviderUpdateRequest struct {
 	Enabled *bool   `json:"enabled,omitempty"`
 }
 
+// CustomProviderCheckRequest probes an OpenAI-compatible server's connectivity.
+type CustomProviderCheckRequest struct {
+	BaseURL string `json:"base_url"`
+	APIKey  string `json:"api_key"`
+	APIWire string `json:"api_wire"`
+}
+
+// CustomProviderCheckResponse reports the outcome of a connectivity probe.
+type CustomProviderCheckResponse struct {
+	OK     bool     `json:"ok"`
+	Models []string `json:"models"`
+	Error  string   `json:"error,omitempty"`
+}
+
 // InputArtifactRef references a staged upload to attach to a workflow run.
 type InputArtifactRef struct {
 	UploadID string `json:"upload_id"`

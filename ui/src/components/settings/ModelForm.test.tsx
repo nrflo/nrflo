@@ -52,8 +52,12 @@ describe('ModelForm', () => {
     )
   })
 
-  it('hides the CLI fieldset and CLI-fallback field for openrouter, and stays valid on api_model alone', () => {
-    renderForm({ provider: 'openrouter', cli_model: '', api_model: 'moonshotai/kimi-k3' })
+  it('hides the CLI fieldset and CLI-fallback field when apiOnly, and stays valid on api_model alone', () => {
+    const props = {
+      formData: { ...emptyModelForm, id: 'custom', display_name: 'Custom', provider: 'openrouter', cli_model: '', api_model: 'moonshotai/kimi-k3' },
+      setFormData: vi.fn(), onCancel: vi.fn(), onSave: vi.fn(), mutation, isCreate: true, apiOnly: true,
+    }
+    render(<ModelForm {...props} />)
     expect(screen.queryByText('CLI')).not.toBeInTheDocument()
     expect(screen.getByText('Direct API')).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('model-a, model-b')).not.toBeInTheDocument()

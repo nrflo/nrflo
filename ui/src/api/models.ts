@@ -5,7 +5,7 @@ export type ModelMode = 'cli' | 'api'
 
 export interface Model {
   id: string
-  provider: ModelProvider
+  provider: string
   display_name: string
   cli_model: string
   api_model: string
@@ -23,7 +23,7 @@ export interface Model {
 
 export interface CreateModelRequest {
   id: string
-  provider: ModelProvider
+  provider: string
   display_name: string
   cli_model: string
   api_model: string

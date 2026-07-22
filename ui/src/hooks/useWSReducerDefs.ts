@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { WSEventV2 } from './useWSProtocol'
 import { modelKeys } from './useModels'
+import { customProviderKeys } from './useCustomProviders'
 import type { WSEventType } from './useWebSocket'
 
 export type WSEventHandler = (
@@ -28,6 +29,11 @@ const invalidateModels = (_event: WSEventV2, qc: QueryClient) => {
   qc.invalidateQueries({ queryKey: modelKeys.list() })
 }
 
+const invalidateCustomProviders = (_event: WSEventV2, qc: QueryClient) => {
+  qc.invalidateQueries({ queryKey: customProviderKeys.list() })
+  qc.invalidateQueries({ queryKey: modelKeys.list() })
+}
+
 // Definition/registry events: global collections, no project/ticket scoping.
 export const defRegistryHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   'workflow_def.created': invalidateWorkflowDefs,
@@ -39,4 +45,7 @@ export const defRegistryHandlers: Partial<Record<WSEventType, WSEventHandler>> =
   'model.created': invalidateModels,
   'model.updated': invalidateModels,
   'model.deleted': invalidateModels,
+  'custom_provider.created': invalidateCustomProviders,
+  'custom_provider.updated': invalidateCustomProviders,
+  'custom_provider.deleted': invalidateCustomProviders,
 }

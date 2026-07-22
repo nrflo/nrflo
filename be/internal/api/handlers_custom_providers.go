@@ -105,6 +105,24 @@ func (s *Server) handleDeleteCustomProvider(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
+func (s *Server) handleCheckCustomProvider(w http.ResponseWriter, r *http.Request) {
+	var req types.CustomProviderCheckRequest
+	if err := readJSON(r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	models, err := service.NewCustomProviderService(s.pool, s.clock).CheckConnection(req.BaseURL, req.APIKey, req.APIWire)
+	if err != nil {
+		if isCustomProviderValidationErr(err) {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, types.CustomProviderCheckResponse{OK: false, Error: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, types.CustomProviderCheckResponse{OK: true, Models: models})
+}
+
 func (s *Server) broadcastCustomProviderEvent(eventType, name string) {
 	if s.wsHub == nil {
 		return

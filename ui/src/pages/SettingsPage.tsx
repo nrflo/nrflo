@@ -14,8 +14,9 @@ import { AuditLogSection } from '@/components/settings/AuditLogSection'
 import { ServiceTokensSection } from '@/components/settings/ServiceTokensSection'
 import { ConnectionsSection } from '@/components/settings/ConnectionsSection'
 import { ModelsList } from '@/components/settings/ModelsList'
+import { ModelsProviderTabs, BUILTIN_PROVIDERS } from '@/components/settings/ModelsProviderTabs'
 import { TieringSection } from '@/components/settings/TieringSection'
-import type { ModelProvider } from '@/api/models'
+import { useCustomProviders } from '@/hooks/useCustomProviders'
 
 type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
@@ -40,14 +41,6 @@ const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
 ]
 
 const ADMIN_SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))
-
-const PROVIDER_SUB_TABS: { id: ModelProvider; label: string }[] = [
-  { id: 'anthropic', label: 'Anthropic' },
-  { id: 'openai', label: 'OpenAI' },
-  { id: 'openrouter', label: 'OpenRouter' },
-]
-
-const PROVIDER_IDS = new Set<string>(['anthropic', 'openai', 'openrouter'])
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 
@@ -80,7 +73,10 @@ export function SettingsPage() {
   const subParam = searchParams.get('sub')
   const activeAdminSub: AdministrationSubTab =
     subParam && ADMIN_SUB_TAB_IDS.has(subParam) ? (subParam as AdministrationSubTab) : 'users'
-  const activeProvider: ModelProvider = (subParam && PROVIDER_IDS.has(subParam)) ? subParam as ModelProvider : 'anthropic'
+
+  const { data: customProviders = [] } = useCustomProviders()
+  const providerIds = new Set<string>([...BUILTIN_PROVIDERS.map((p) => p.id), ...customProviders.map((p) => p.name)])
+  const activeProvider: string = (subParam && providerIds.has(subParam)) ? subParam : 'anthropic'
 
   const handleTabClick = (id: SettingsTab) => {
     if (id === 'administration') {
@@ -96,7 +92,7 @@ export function SettingsPage() {
     setSearchParams({ tab: 'administration', sub }, { replace: true })
   }
 
-  const handleProviderSubTabClick = (provider: ModelProvider) => {
+  const handleProviderSubTabClick = (provider: string) => {
     setSearchParams({ tab: 'models', sub: provider }, { replace: true })
   }
 
@@ -152,24 +148,7 @@ export function SettingsPage() {
       )}
 
       {activeTab === 'models' && (
-        <div className="border-b border-border">
-          <div className="flex gap-1">
-            {PROVIDER_SUB_TABS.map(({ id, label }) => (
-              <button
-                key={id}
-                onClick={() => handleProviderSubTabClick(id)}
-                className={cn(
-                  'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
-                  activeProvider === id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <ModelsProviderTabs activeProvider={activeProvider} onSelect={handleProviderSubTabClick} />
       )}
 
       {activeTab === 'general' && <GlobalSettingsSection />}

@@ -37,6 +37,10 @@ type plannerAgentConfig struct {
 	APIMaxIterations *int
 	APIMaxTokens     *int
 	ReasoningEffort  *string
+	// Chain is the full resolved tier fallback chain (system-agent planner
+	// only; empty for a workflow-local node_role='planner' def, which has no
+	// chain concept — a single Model override never advances).
+	Chain []service.AgentChainEntry
 }
 
 // resolvePlannerDef resolves the planner agent definition for a workflow:
@@ -84,7 +88,7 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 	return plannerAgentConfig{
 		ID: sysDef.ID, Model: primary.ModelID, Timeout: sysDef.Timeout, ExecutionMode: primary.ExecutionMode,
 		Tools: sysDef.Tools, APIMaxIterations: sysDef.APIMaxIterations, APIMaxTokens: sysDef.APIMaxTokens,
-		ReasoningEffort: &effort,
+		ReasoningEffort: &effort, Chain: chain,
 	}, nil
 }
 
@@ -222,6 +226,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 				APIMaxIterations: plannerDef.APIMaxIterations,
 				APIMaxTokens:     plannerDef.APIMaxTokens,
 				ReasoningEffort:  plannerDef.ReasoningEffort,
+				Chain:            plannerDef.Chain,
 			},
 		},
 		DataPath:           o.dataPath,

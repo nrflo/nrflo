@@ -8,7 +8,7 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
-	"be/internal/ws"
+	"be/internal/service"
 )
 
 // monitorAll monitors all spawned processes until completion.
@@ -35,11 +35,13 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			s.unregisterTerminalSignal(sid)
 		}
 	}()
-	// relaunchAndRegister wraps relaunchForContinuation to keep the
-	// terminal-signal registry in sync across continuation relaunches:
-	// drop the old session ID and bind the new one to ownTerminalCh.
-	relaunchAndRegister := func(oldProc *processInfo) (*processInfo, error) {
-		newProc, err := s.relaunchForContinuation(ctx, oldProc, req, phase)
+	// relaunchWithBookkeeping runs spawnFn (either relaunchForContinuation or
+	// relaunchForFallback) and keeps the terminal-signal registry, context
+	// ledger, refinery sidecar, and session cost bookkeeping in sync across
+	// the swap — shared by every relaunch path so fallback relaunches are not
+	// a second, drifting copy of this plumbing.
+	relaunchWithBookkeeping := func(oldProc *processInfo, spawnFn func() (*processInfo, error)) (*processInfo, error) {
+		newProc, err := spawnFn()
 		if err != nil {
 			return nil, err
 		}
@@ -58,6 +60,16 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		FinalizeSessionCost(oldProc.sessionID)
 		DropProactiveRestartState(oldProc.sessionID)
 		return newProc, nil
+	}
+	relaunchAndRegister := func(oldProc *processInfo) (*processInfo, error) {
+		return relaunchWithBookkeeping(oldProc, func() (*processInfo, error) {
+			return s.relaunchForContinuation(ctx, oldProc, req, phase)
+		})
+	}
+	relaunchFallbackAndRegister := func(oldProc *processInfo, entry service.AgentChainEntry, nextPos int) (*processInfo, error) {
+		return relaunchWithBookkeeping(oldProc, func() (*processInfo, error) {
+			return s.relaunchForFallback(ctx, oldProc, req, phase, entry, nextPos)
+		})
 	}
 
 	for len(running) > 0 {
@@ -81,113 +93,12 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				}
 			}
 		case takeControlSessionID := <-s.takeControlCh:
-			// Take-control requested — find matching proc, validate, kill, and block
-			tcMatched := false
-			for i, proc := range running {
-				if proc.sessionID != takeControlSessionID {
-					continue
-				}
-				tcMatched = true
-				// Validate backend supports take-control
-				if proc.backend == nil || !proc.backend.SupportsTakeControl() {
-					cliName, _ := parseModelID(proc.modelID)
-					logger.Error(ctx, "take-control: backend does not support take-control", "cli", cliName, "session_id", takeControlSessionID)
-					s.rejectTakeControl(req, proc, takeControlSessionID, "api_mode_unsupported")
-					break
-				}
-
-				// Interactive backend: viewer-attach — broadcast but do NOT kill or block.
-				// The agent keeps running; the viewer connects via /api/v1/pty/{session_id}.
-				// No exit-interactive call is made on disconnect (completePtyInteractive is skipped).
-				if proc.backend.Name() == "cli_interactive" {
-					logger.Info(ctx, "take-control: viewer attach (interactive backend)", "session_id", takeControlSessionID)
-					s.broadcast(ws.EventAgentViewerAttached, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-						"session_id": proc.sessionID,
-						"agent_type": proc.agentType,
-						"model_id":   proc.modelID,
-					})
-					s.signalTakeControlReady(takeControlSessionID)
-					break
-				}
-
-				// Kill+resume needs adapter resume support — no hardcoded claude default left in the PTY manager.
-				if !canResumeTakeControl(proc) {
-					logger.Error(ctx, "take-control: resume unsupported for this session", "session_id", takeControlSessionID)
-					s.rejectTakeControl(req, proc, takeControlSessionID, "resume_unsupported")
-					break
-				}
-
-				logger.Info(ctx, "take-control: killing agent", "session_id", takeControlSessionID)
-
-				// Kill process: SIGTERM → grace → SIGKILL
-				proc.backend.Kill(ctx, proc, syscall.SIGTERM)
-				gracePeriod := time.Duration(s.config.TimeoutGraceSec) * time.Second
-				if gracePeriod == 0 {
-					gracePeriod = 5 * time.Second
-				}
-				select {
-				case <-proc.doneCh:
-				case <-time.After(gracePeriod):
-					proc.backend.Kill(ctx, proc, syscall.SIGKILL)
-					<-proc.doneCh
-				}
-
-				// Flush messages, register the resume launch, and register stop.
-				s.saveMessages(proc)
-				s.registerTakeControlResumeLaunch(proc)
-				s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-					proc.sessionID, proc.agentID, "user_interactive", "take_control", proc.modelID)
-
-				// Broadcast take-control event
-				s.broadcast(ws.EventAgentTakeControl, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-					"session_id": proc.sessionID,
-					"agent_type": proc.agentType,
-					"model_id":   proc.modelID,
-				})
-
-				// Status is now user_interactive and the agent is killed — unblock
-				// any HTTP caller waiting in WaitForTakeControlReady before settling into the interactive wait.
-				s.signalTakeControlReady(takeControlSessionID)
-
-				// Remove from running
-				running = append(running[:i], running[i+1:]...)
-
-				// Create interactive wait channel and block until interactive session completes
-				waitCh := make(chan struct{})
-				s.mu.Lock()
-				s.interactiveWaits[proc.sessionID] = waitCh
-				s.mu.Unlock()
-
-				logger.Info(ctx, "take-control: waiting for interactive session to complete", "session_id", takeControlSessionID)
-				select {
-				case <-waitCh:
-					logger.Info(ctx, "take-control: interactive session completed", "session_id", takeControlSessionID)
-				case <-ctx.Done():
-					logger.Warn(ctx, "take-control: cancelled while waiting for interactive session", "session_id", takeControlSessionID)
-				}
-
-				s.mu.Lock()
-				delete(s.interactiveWaits, proc.sessionID)
-				_, wasKilled := s.killedInteractive[proc.sessionID]
-				if wasKilled {
-					delete(s.killedInteractive, proc.sessionID)
-				}
-				s.mu.Unlock()
-
-				if wasKilled {
-					proc.finalStatus = "FAIL"
-				} else {
-					proc.finalStatus = "PASS"
-				}
-				proc.elapsed = time.Since(proc.startTime)
-				completed = append(completed, proc)
-				break
-			}
-			if !tcMatched {
-				// Session is not in our running list (already finished, or
-				// owned by a different spawner). Unblock any caller waiting
-				// on the readiness channel so it doesn't hang to its timeout.
-				s.signalTakeControlReady(takeControlSessionID)
+			// Take-control requested — find matching proc, validate, kill, and
+			// block (see spawner_monitor_takecontrol_case.go).
+			var tcCompleted *processInfo
+			running, tcCompleted = s.handleTakeControlRequest(ctx, running, req, takeControlSessionID)
+			if tcCompleted != nil {
+				completed = append(completed, tcCompleted)
 			}
 		case sig := <-ownTerminalCh:
 			// Terminal signal: DB result already written by socket handler.
@@ -272,6 +183,22 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				// If context save already set finalStatus, skip handleCompletion
 				if proc.finalStatus == "" {
 					s.handleCompletion(ctx, proc, req)
+				}
+
+				// Tier fallback: a HARD provider failure (never rate-limit)
+				// advances to the next chain entry before the ordinary
+				// same-model maxFailRestarts retry gets a chance; chain
+				// exhaustion leaves FAIL terminal. Guarded on hardProviderFail
+				// so an ordinary (non-provider) fail never takes this path.
+				if proc.finalStatus == "FAIL" && proc.hardProviderFail {
+					if newProc, advanced := s.tryChainFallback(ctx, proc, req, relaunchFallbackAndRegister); advanced {
+						if newProc != nil {
+							stillRunning = append(stillRunning, newProc)
+						} else {
+							completed = append(completed, proc)
+						}
+						continue
+					}
 				}
 
 				// Auto-restart failed agent if configured

@@ -162,7 +162,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 	formatted := formatMessagesForSave(messages, maxMessageChars)
 
 	defModel := sysDef.Model
-	if chain, chainErr := svc.ResolveAgentChain(sysDef); chainErr == nil && len(chain) > 0 {
+	chain, chainErr := svc.ResolveAgentChain(sysDef)
+	if chainErr == nil && len(chain) > 0 {
 		defModel = chain[0].ModelID
 	} else if chainErr != nil {
 		logger.Warn(ctx, "context-saver: resolve agent chain failed, using def model fallback", "err", chainErr, "session_id", proc.sessionID)
@@ -188,6 +189,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 				Tools:            sysDef.Tools,
 				APIMaxIterations: sysDef.APIMaxIterations,
 				APIMaxTokens:     sysDef.APIMaxTokens,
+				Chain:            chain,
 			},
 		},
 		DataPath:           s.config.DataPath,

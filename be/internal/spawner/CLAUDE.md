@@ -31,7 +31,7 @@ Selection precedence in `startBackend`: `api` → `script` → `cli_interactive`
 
 ### api-via-cli hybrid
 
-When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Because the CLI picks its context window from the `--model` string (not `proc.maxContext`), the `APIModel` gets a `[1m]` suffix when `APIContext` is 1M and exceeds `CLIContext`, so the real window matches the reported one. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped. OpenAI models stay on the in-process runner.
+When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` routes the api spawn through a `cli_interactive` Claude session instead, retaining the row's API model/context/efforts (tool registry, system prompt, and MCP bridge stay api-mode-shaped). Mechanics: [REFERENCE.md](REFERENCE.md#api-via-cli-hybrid).
 
 ### Codex app-server backend
 
@@ -69,13 +69,17 @@ The kill-time save path (`context_save.go`): spawns a fresh `context-saver` agen
 
 When context usage crosses the threshold, the spawner kills the agent and calls `relaunchForContinuation`. `fetchPreviousDataAndReason` (`template_findings_prev.go`) supplies `${previous_data}` via the `low-context` injectable: a fresh autonomous refinery slot digest (folded at/after the killed session's start, non-empty) wins, else it falls back to the `to_resume` finding from the context-saver agent. Crash/fail-restart relaunches go through the same read path. Freshness criterion: `digest_freshness.go`.
 
+## Tier Fallback
+
+A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics: [REFERENCE.md](REFERENCE.md#tier-fallback).
+
 ## Context Ledger
 
 `contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks, written EXACT from apirun's `Config.Observer` (api), EXACT-ish via Claude transcript tailing (cli), APPROX from codex events. Mechanics: [REFERENCE.md](REFERENCE.md#context-ledger).
 
 ## Context Watcher
 
-`context_watcher*.go`: an api-mode policy engine over the context ledger, budget/decay/idle-gated selective GC wired via the nil-safe `apirun.Config.Watcher` seam; its `ContextCostEstimator` (`context_watcher_cost.go`) prices evicted tokens at the cache-read rate from `models.price_*`. Default budget derives per-model: `context_budget_fraction`(0.65)×max-context. Mechanics: [REFERENCE.md](REFERENCE.md#context-watcher).
+`context_watcher*.go`: an api-mode policy engine over the context ledger, budget/decay/idle-gated selective GC wired via the nil-safe `apirun.Config.Watcher` seam; its `ContextCostEstimator` (`context_watcher_cost.go`) prices evicted tokens at the cache-read rate from `models.price_*`. Mechanics incl. default budget derivation: [REFERENCE.md](REFERENCE.md#context-watcher).
 
 ## Session Cost
 
@@ -99,7 +103,7 @@ At an idle task boundary (a finding recorded), `checkProactiveRestart` (gated on
 
 ## Rate-Limit Restart
 
-Rate-limited agents (typed exit patterns, in-band 529 text, or api RetryClass) flip to `CONTINUE` and relaunch on exponential/reset-aware backoff; `rateLimitRetryCount` is separate from `failRestartCount`. Config keys (project > global): `rate_limit_enabled` (`true`), `rate_limit_initial_backoff_sec` (`60`), `rate_limit_max_wait_sec` (`3600`), `<adapter>_limit_patterns`/`_error_patterns`. Mechanics: [REFERENCE.md](REFERENCE.md#rate-limit-restart).
+Rate-limited agents (typed exit patterns, in-band 529 text, or api RetryClass) flip to `CONTINUE` and relaunch on exponential/reset-aware backoff, never setting `hardProviderFail`; `rateLimitRetryCount` is separate from `failRestartCount`. Config keys + mechanics: [REFERENCE.md](REFERENCE.md#rate-limit-restart).
 
 ## Stall Detection
 

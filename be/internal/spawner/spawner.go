@@ -41,6 +41,13 @@ type SpawnRequest struct {
 	ScopeType          string            // "ticket" (default) or "project"
 	WorkflowInstanceID string            // when set, used directly instead of DB lookup
 	ExtraVars          map[string]string // Additional template variables (e.g., BRANCH_NAME, DEFAULT_BRANCH)
+	// ExecutionModeOverride/ReasoningEffortOverride, when non-empty, win over
+	// both agentDef and config.Agents resolution in prepareSpawn — set by the
+	// tier-fallback engine so a relaunch under a chain entry can force
+	// cross-mode execution + that entry's effort. Empty means "read config as
+	// usual" (every ordinary spawn leaves these unset).
+	ExecutionModeOverride   string
+	ReasoningEffortOverride string
 }
 
 // IsProjectScope returns true if this is a project-scoped spawn request
@@ -155,14 +162,22 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 	logger.Info(ctx, "spawning agent", "agent_type", req.AgentType, "target", spawnTarget, "model", modelID, "workflow", req.WorkflowName, "layer", phase.Layer)
 
-	// Spawn agent
-	proc, err := s.spawnSingle(ctx, req, modelID, phase.NodeID, wi.ID)
+	// Spawn agent. When the agent config carries a resolved tier fallback
+	// chain, a build-time provider-construct failure on an early entry
+	// advances to the next one before monitorAll ever sees it (clean
+	// restart, no work lost). Chain is empty/len-1 for the vast majority of
+	// (main workflow-phase) agents, which behaves byte-identical to the old
+	// single spawnSingle call.
+	chain := s.config.Agents[req.AgentType].Chain
+	proc, chainPos, err := s.spawnEntryWithBuildFallback(ctx, req, modelID, phase.NodeID, wi.ID, chain)
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
 	if proc.backend == nil {
 		return fmt.Errorf("internal: spawned proc has nil backend")
 	}
+	proc.chain = chain
+	proc.chainPos = chainPos
 	proc.trx = logger.TrxFromContext(ctx)
 	pid := proc.pid
 	if proc.cmd != nil && proc.cmd.Process != nil {

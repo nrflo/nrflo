@@ -44,6 +44,7 @@ const (
 	EventAgentRateLimitsUpdated      = "agent.rate_limits_updated"
 	EventAgentNudged                 = "agent.nudged"
 	EventAgentContextSaving          = "agent.context_saving"
+	EventAgentProviderFallback       = "agent.provider_fallback"
 	EventSkipTagAdded                = "skip_tag.added"
 	EventMergeConflictResolving      = "merge.conflict_resolving"
 	EventMergeConflictResolved       = "merge.conflict_resolved"

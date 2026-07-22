@@ -72,6 +72,10 @@ func (p *apiEngineProcState) SetCallbackLevel(level int) {
 	p.e.mu.Unlock()
 }
 
+// SetProviderHardFail is a no-op: console chat engines hold no processInfo
+// and never advance a tier fallback chain (there is no monitorAll for them).
+func (p *apiEngineProcState) SetProviderHardFail() {}
+
 // apiEngineStream adapts the api console engine to apirun.StreamHook: raw
 // text/thinking deltas stream to the console immediately, ahead of the
 // runner sink's ~4KB buffered persistence. ItemID carries the sink's

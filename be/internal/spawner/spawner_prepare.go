@@ -43,15 +43,22 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 			executionMode = agentCfg.ExecutionMode
 		}
 	}
+	// Tier-fallback override wins over both agentDef and config.Agents so a
+	// relaunch under the next chain entry can force cross-mode execution.
+	if req.ExecutionModeOverride != "" {
+		executionMode = req.ExecutionModeOverride
+	}
 
 	// Script mode: delegate to dedicated prep path (not gated by APIMode).
 	if executionMode == "script" {
 		return s.prepareScriptSpawn(ctx, req, phase, wfiID, agentID, sessionID, spawnToken, agentDef)
 	}
 
-	// Reject api-mode agents when api_mode_enabled is not set.
+	// Reject api-mode agents when api_mode_enabled is not set. This is a
+	// build-time provider-construct failure (not structural), so a chain
+	// carrying a non-api fallback entry can advance past it.
 	if executionMode == "api" && !s.config.APIMode {
-		return nil, nil, fmt.Errorf("api_mode_disabled")
+		return nil, nil, wrapProviderBuildErr(fmt.Errorf("api_mode_disabled"))
 	}
 
 	// Get CLI adapter (api/script modes skip this — there is no CLI process)
@@ -164,75 +171,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 
 	if executionMode == "api" {
-		// API mode always requires a supported registry row.
-		am, ok := s.config.ModelConfigs[model]
-		if !ok {
-			return nil, nil, fmt.Errorf("api mode: model %q not found in models", model)
-		}
-		if am.APIModel == "" {
-			return nil, nil, fmt.Errorf("api mode: model %q does not support api mode", model)
-		}
-
-		// api-via-cli hybrid: route Anthropic api-models through the Claude CLI.
-		if s.config.APIViaCLI && am.Provider == "anthropic" {
-			return s.prepareAPIViaCLISpawn(ctx, req, wfiID, sessionID, spawnToken, effectiveThreshold, extID, extCtx, prompt, am, agentDef, proc, prep)
-		}
-
-		// Build the provider for this spawn. Fail fast on missing credentials.
-		apiProv, provErr := s.config.BuildAPIProvider(ctx, am.Provider, req.ProjectID)
-		if provErr != nil {
-			return nil, nil, fmt.Errorf("api mode: %w", provErr)
-		}
-		prep.apiProvider = apiProv
-		apiEffort := s.resolveReasoningEffort(agentDef, req.AgentType, am.DefaultEffort)
-		if err := service.ValidateEffortAllowed(apiEffort, am.APIEfforts); err != nil {
-			return nil, nil, fmt.Errorf("api mode: %w", err)
-		}
-		prep.apiReasoningEffort, proc.resolvedEffort = apiEffort, apiEffort
-		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
-		apiModelID := am.APIModel
-
-		maxIter := defaultAPIMaxIterations
-		if agentDef != nil && agentDef.APIMaxIterations != nil && *agentDef.APIMaxIterations > 0 {
-			maxIter = *agentDef.APIMaxIterations
-		} else if agentDef == nil {
-			if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.APIMaxIterations != nil && *agentCfg.APIMaxIterations > 0 {
-				maxIter = *agentCfg.APIMaxIterations
-			}
-		}
-
-		maxTokens := defaultAPIMaxTokens
-		if agentDef != nil && agentDef.APIMaxTokens != nil && *agentDef.APIMaxTokens > 0 {
-			maxTokens = *agentDef.APIMaxTokens
-		} else if agentDef == nil {
-			if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.APIMaxTokens != nil && *agentCfg.APIMaxTokens > 0 {
-				maxTokens = *agentCfg.APIMaxTokens
-			}
-		}
-		maxCtx := am.APIContext // Registry context is authoritative; provider is fallback.
-		if maxCtx <= 0 {
-			maxCtx = apiProv.MaxContext(apiModelID)
-		}
-		proc.maxContext = maxCtx
-		prep.apiContextBudget = resolveContextBudget(agentDef, deriveContextBudgetDefault(s.pool(), maxCtx))
-
-		specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", false, true, false)
-		if regErr != nil {
-			return nil, nil, regErr
-		}
-
-		prep.apiSystem = apiSystemPromptWithSuffix(ctx, s.pool(), stdTemplateVars(req.AgentType, phase, req.TicketID, req.ProjectID, req.WorkflowName, req.ParentSession, sessionID, modelID, tmplVars), suffix, defaultAPISystemPrompt, agentDefSystemTemplateID(agentDef), specs)
-		proc.systemPrompt = prep.apiSystem
-		prep.apiInitialPrompt = prompt
-		prep.apiTools = specs
-		prep.apiHandlers = handlers
-		prep.apiToolEnv = toolEnv
-		prep.apiMaxIterations = maxIter
-		prep.apiMaxTokens = maxTokens
-		prep.apiDeadline = proc.startTime.Add(proc.timeout)
-		prep.apiModelID = apiModelID
-		prep.apiMaxContext = maxCtx
-		return proc, prep, nil
+		return s.prepareAPIModeSpawn(ctx, req, model, modelID, phase, wfiID, sessionID, spawnToken, effectiveThreshold, extID, extCtx, prompt, suffix, tmplVars, agentDef, proc, prep)
 	}
 
 	// CLI mode: write prompt to temp file and assemble SpawnOptions.
@@ -289,11 +228,14 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	// Known models must support CLI mode; unknown values are raw CLI passthrough strings.
 	cfg, modelFound := s.config.ModelConfigs[model]
 	if modelFound && cfg.CLIModel == "" {
-		return nil, nil, fmt.Errorf("cli mode: model %q does not support cli mode", model)
+		return nil, nil, wrapProviderBuildErr(fmt.Errorf("cli mode: model %q does not support cli mode", model))
 	}
 	mappedModel := cfg.CLIModel
 	fallbackModels := cfg.FallbackModels
 	proc.resolvedEffort = s.resolveReasoningEffort(agentDef, req.AgentType, cfg.DefaultEffort)
+	if req.ReasoningEffortOverride != "" {
+		proc.resolvedEffort = req.ReasoningEffortOverride
+	}
 	if modelFound {
 		if err := service.ValidateEffortAllowed(proc.resolvedEffort, cfg.CLIEfforts); err != nil {
 			return nil, nil, fmt.Errorf("cli mode: %w", err)

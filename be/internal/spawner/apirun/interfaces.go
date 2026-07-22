@@ -35,6 +35,10 @@ type ProcState interface {
 	SetFinalStatus(string)
 	SetContextLeft(int)
 	SetCallbackLevel(int)
+	// SetProviderHardFail flags a HARD (non-rate-limit) provider error so the
+	// spawner's tier-fallback engine can advance to the next chain entry on
+	// relaunch. Never called for RetryClassRateLimit — that stays in-band.
+	SetProviderHardFail()
 }
 
 // AgentSvc persists context_left and broadcasts the corresponding WS event.

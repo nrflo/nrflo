@@ -63,7 +63,7 @@ func (o *Orchestrator) attemptConflictResolution(
 			},
 		},
 		Agents: map[string]spawner.AgentConfig{
-			"conflict-resolver": {Model: primaryModel, Timeout: sysDef.Timeout},
+			"conflict-resolver": {Model: primaryModel, Timeout: sysDef.Timeout, Chain: chain},
 		},
 		DataPath:           o.dataPath,
 		ProjectRoot:        wt.projectRoot,

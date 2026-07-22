@@ -107,8 +107,7 @@ func (b *apiBackend) RequiresPrompt() bool         { return true }
 func (b *apiBackend) TracksContext() bool          { return true }
 func (b *apiBackend) ParsesStructuredOutput() bool { return false }
 
-// NaturalExitGrace returns 0 — api backend is in-process; there's no
-// child to wait for, doneCh closes synchronously with the runner exit.
+// NaturalExitGrace returns 0 — api backend is in-process; doneCh closes synchronously with the runner exit.
 func (b *apiBackend) NaturalExitGrace() time.Duration { return 0 }
 
 // Start launches the runner goroutine. The goroutine flushes messages and
@@ -207,7 +206,7 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		} else {
 			result, reason := mapFinalStatus(proc.finalStatus)
 			b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
-				proc.sessionID, proc.agentID, result, reason, proc.modelID)
+				proc.sessionID, proc.agentID, result, hardFailReason(proc, reason), proc.modelID)
 		}
 
 		logCtx := logger.WithTrx(context.Background(), proc.trx)
@@ -258,6 +257,7 @@ func (p *procStateAdapter) WorkflowInstanceID() string { return p.proc.workflowI
 func (p *procStateAdapter) SetFinalStatus(s string)    { p.proc.finalStatus = s }
 func (p *procStateAdapter) SetContextLeft(pct int)     { p.proc.contextLeft = pct }
 func (p *procStateAdapter) SetCallbackLevel(level int) { p.proc.callbackLevel = level }
+func (p *procStateAdapter) SetProviderHardFail()       { p.proc.hardProviderFail = true }
 
 // apirunErrorAdapter converts a spawner.ErrorRecorder into apirun.ErrorRecorder.
 // Returns nil when the input is nil so the runner skips error recording.

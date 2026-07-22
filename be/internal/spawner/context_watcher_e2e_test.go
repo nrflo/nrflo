@@ -84,6 +84,7 @@ func (p *e2eProcState) SetContextLeft(pct int) {
 	p.mu.Unlock()
 }
 func (p *e2eProcState) SetCallbackLevel(int) {}
+func (p *e2eProcState) SetProviderHardFail() {}
 func (p *e2eProcState) FinalStatus() string {
 	p.mu.Lock()
 	defer p.mu.Unlock()

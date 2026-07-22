@@ -122,6 +122,7 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 			}
 		case RetryClassError:
 			resultReason = "provider_error_pattern"
+			proc.hardProviderFail = true
 		}
 	}
 
@@ -183,6 +184,12 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.rateLimitTotalWait = oldProc.rateLimitTotalWait
 	newProc.rateLimitConfig = oldProc.rateLimitConfig
 	newProc.adapter = oldProc.adapter
+	// Same-model relaunches (low-context/stall/failRestart) never advance the
+	// tier chain — carry position forward but reset the hard-fail flag so a
+	// stale signal from the killed session can't trigger shouldAdvanceChain.
+	newProc.chain = oldProc.chain
+	newProc.chainPos = oldProc.chainPos
+	newProc.hardProviderFail = false
 
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {
@@ -243,55 +250,6 @@ func (s *Spawner) getAgentResultReason(proc *processInfo) string {
 		return session.ResultReason.String
 	}
 	return ""
-}
-
-// copyFindingsForContinuation merges findings from oldSessionID into newSessionID non-destructively
-// (new-session keys win on conflict). Covers both low-context and fail-restart relaunches.
-// All errors are logged as warnings so they never block the relaunch.
-func (s *Spawner) copyFindingsForContinuation(ctx context.Context, oldSessionID, newSessionID string) {
-	pool := s.pool()
-	if pool == nil {
-		return
-	}
-	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
-
-	oldFindings, err := findingRepo.GetOwn("session", oldSessionID)
-	if err != nil || len(oldFindings) == 0 {
-		return
-	}
-
-	newFindings, err := findingRepo.GetOwn("session", newSessionID)
-	if err != nil {
-		logger.Warn(ctx, "findings carryover: failed to load new session findings", "new_session_id", newSessionID, "err", err)
-		return
-	}
-
-	// Load new session for denorm
-	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-	newSession, err := sessionRepo.Get(newSessionID)
-	if err != nil {
-		logger.Warn(ctx, "findings carryover: failed to load new session", "new_session_id", newSessionID, "err", err)
-		return
-	}
-	modelID := ""
-	if newSession.ModelID.Valid {
-		modelID = newSession.ModelID.String
-	}
-	denorm := repo.Denorm{
-		ProjectID:          newSession.ProjectID,
-		WorkflowInstanceID: newSession.WorkflowInstanceID,
-		AgentType:          newSession.AgentType,
-		ModelID:            modelID,
-	}
-	actor := repo.Actor{Source: "system", ID: "continuation"}
-
-	for k, v := range oldFindings {
-		if _, exists := newFindings[k]; !exists {
-			if err := findingRepo.Upsert("session", newSessionID, k, v, denorm, actor); err != nil {
-				logger.Warn(ctx, "findings carryover: failed to copy key", "key", k, "err", err)
-			}
-		}
-	}
 }
 
 // maybeFlushMessages flushes messages to DB if interval elapsed

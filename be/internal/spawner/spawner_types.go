@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 )
@@ -37,6 +38,12 @@ type AgentConfig struct {
 	APIMaxIterations *int    `json:"api_max_iterations"`
 	APIMaxTokens     *int    `json:"api_max_tokens"`
 	ReasoningEffort  *string `json:"reasoning_effort,omitempty"`
+	// Chain is the full resolved tier fallback chain (ResolveAgentChain),
+	// index 0 = primary entry actually used to spawn. Empty or length-1 means
+	// there is nothing to advance to — shouldAdvanceChain always returns
+	// false. Only the 4 system-agent spawn sites that resolve a chain
+	// populate this; main workflow-phase agents leave it nil.
+	Chain []service.AgentChainEntry `json:"-"`
 }
 
 // ErrorRecorder records error events. Implemented by service.ErrorService.
@@ -174,6 +181,16 @@ type processInfo struct {
 	rateLimitTotalWait  time.Duration
 	rateLimitConfig     rateLimitConfig
 	adapter             CLIAdapter // nil for api/script backends
+	// Tier fallback chain state (see tier_fallback.go). chain is the full
+	// resolved chain carried from AgentConfig.Chain (empty/len-1 = never
+	// advances); chainPos is this proc's current index into it.
+	// hardProviderFail is set by the provider/adapter layer on a HARD
+	// (non-rate-limit) provider failure and consumed + reset by
+	// shouldAdvanceChain/every relaunch path so it can never re-trigger an
+	// advance from a stale flag on a same-model retry.
+	chain            []service.AgentChainEntry
+	chainPos         int
+	hardProviderFail bool
 	// API-via-CLI tool registry: populated by apiBackend when APIViaCLI is enabled.
 	// Read by spawner_tools.go to serve MCP tool list/dispatch over the socket bridge.
 	apiTools    []provider.ToolSpec

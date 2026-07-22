@@ -75,6 +75,9 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 				proc.SetFinalStatus("RATE_LIMITED")
 				return msgs, "RATE_LIMITED"
 			}
+			if class == RetryClassError {
+				proc.SetProviderHardFail()
+			}
 			if r.cfg.ErrorSvc != nil && status == "FAIL" {
 				r.cfg.ErrorSvc.RecordError(proc.ProjectID(), "agent", proc.SessionID(), msg)
 			}

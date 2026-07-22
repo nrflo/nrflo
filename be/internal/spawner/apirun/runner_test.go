@@ -15,13 +15,14 @@ import (
 // fakeProc satisfies ProcState. SetFinalStatus and SetContextLeft are
 // guarded so tests can read them concurrently with the runner goroutine.
 type fakeProc struct {
-	mu            sync.Mutex
-	sessionID     string
-	projectID     string
-	wfiID         string
-	finalStatus   string
-	contextLeft   int
-	callbackLevel int
+	mu               sync.Mutex
+	sessionID        string
+	projectID        string
+	wfiID            string
+	finalStatus      string
+	contextLeft      int
+	callbackLevel    int
+	providerHardFail bool
 }
 
 func (p *fakeProc) SessionID() string          { return p.sessionID }
@@ -32,16 +33,8 @@ func (p *fakeProc) SetFinalStatus(s string) {
 	p.finalStatus = s
 	p.mu.Unlock()
 }
-func (p *fakeProc) SetContextLeft(pct int) {
-	p.mu.Lock()
-	p.contextLeft = pct
-	p.mu.Unlock()
-}
-func (p *fakeProc) SetCallbackLevel(level int) {
-	p.mu.Lock()
-	p.callbackLevel = level
-	p.mu.Unlock()
-}
+func (p *fakeProc) SetContextLeft(pct int)     { p.mu.Lock(); p.contextLeft = pct; p.mu.Unlock() }
+func (p *fakeProc) SetCallbackLevel(level int) { p.mu.Lock(); p.callbackLevel = level; p.mu.Unlock() }
 func (p *fakeProc) CallbackLevel() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()

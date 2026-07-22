@@ -23,6 +23,7 @@ function agentToFormData(agent: SystemAgentDef): AgentFormData {
   return {
     id: agent.id,
     model: agent.model,
+    execution_mode: agent.execution_mode,
     timeout: String(agent.timeout),
     prompt: agent.prompt,
     restart_threshold: agent.restart_threshold != null ? String(agent.restart_threshold) : '',
@@ -95,6 +96,7 @@ export function SystemAgentsSection() {
     createMutation.mutate({
       id: formData.id.trim(),
       model: formData.model,
+      execution_mode: formData.execution_mode as 'cli_interactive' | 'api',
       timeout: parseInt(formData.timeout, 10) || 30,
       prompt: formData.prompt,
       restart_threshold: parseOptionalInt(formData.restart_threshold),
@@ -110,6 +112,7 @@ export function SystemAgentsSection() {
       id: editingId,
       data: {
         model: formData.model,
+        execution_mode: formData.execution_mode as 'cli_interactive' | 'api',
         timeout: parseInt(formData.timeout, 10) || 30,
         prompt: formData.prompt,
         restart_threshold: parseOptionalInt(formData.restart_threshold),
@@ -139,10 +142,11 @@ export function SystemAgentsSection() {
           <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <div>
-              <strong>System agents run under the Claude Code CLI.</strong>{' '}
-              The <code>claude</code> CLI binary is used regardless of the project default CLI. Ensure
-              Claude Code CLI is installed and authenticated on the server host, and that a Claude
-              model is configured under <strong>Models &rarr; Anthropic</strong> with CLI mode enabled.
+              <strong>Mode determines how a system agent runs.</strong>{' '}
+              CLI Interactive agents use the <code>claude</code> CLI binary regardless of the project
+              default CLI, so Claude Code CLI must be installed and authenticated on the server host
+              with a CLI-mode model configured under <strong>Models &rarr; Anthropic</strong>. API agents
+              call the model provider directly and only need an API-mode model configured.
             </div>
           </div>
           {isLoading && (
@@ -209,6 +213,7 @@ export function SystemAgentsSection() {
                       <div className="text-sm text-muted-foreground">
                         {[
                           `Model: ${agent.model}`,
+                          `Mode: ${agent.execution_mode}`,
                           `Timeout: ${agent.timeout}m`,
                         ].join(' | ')}
                       </div>

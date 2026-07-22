@@ -1,13 +1,24 @@
 import { X, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Dropdown } from '@/components/ui/Dropdown'
+import { Dropdown, type DropdownOption, type DropdownOptionGroup } from '@/components/ui/Dropdown'
 import { Textarea } from '@/components/ui/Textarea'
 import { useModelOptions } from '@/hooks/useModels'
+import type { ModelMode } from '@/api/models'
+
+function flattenModelOptions(groups: DropdownOptionGroup[]): DropdownOption[] {
+  return groups.flatMap((g) => g.options)
+}
+
+const EXECUTION_MODE_OPTIONS: DropdownOption[] = [
+  { value: 'cli_interactive', label: 'CLI Interactive' },
+  { value: 'api', label: 'API' },
+]
 
 export interface AgentFormData {
   id: string
   model: string
+  execution_mode: string
   timeout: string
   prompt: string
   restart_threshold: string
@@ -19,6 +30,7 @@ export interface AgentFormData {
 export const emptyAgentForm: AgentFormData = {
   id: '',
   model: 'sonnet-5',
+  execution_mode: 'cli_interactive',
   timeout: '30',
   prompt: '',
   restart_threshold: '',
@@ -50,11 +62,14 @@ export function AgentForm({
   mutation: { isPending: boolean; isError: boolean; error: any }
   isCreate?: boolean
 }) {
-  const modelOptions = useModelOptions('cli')
+  const modelMode: ModelMode = formData.execution_mode === 'api' ? 'api' : 'cli'
+  const modelOptions = useModelOptions(modelMode)
+  const cliModelOptions = useModelOptions('cli')
+  const apiModelOptions = useModelOptions('api')
 
   return (
     <div className={`space-y-3 ${isCreate ? 'border border-primary rounded-lg p-4 bg-muted/30' : ''}`}>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         <div>
           <label className="text-sm font-medium text-muted-foreground">
             ID {isCreate && <span className="text-destructive">*</span>}
@@ -68,6 +83,22 @@ export function AgentForm({
           ) : (
             <Input value={formData.id} disabled className="bg-muted" />
           )}
+        </div>
+        <div>
+          <label className="text-sm font-medium text-muted-foreground">Mode</label>
+          <Dropdown
+            value={formData.execution_mode}
+            onChange={(val) => {
+              const flatOptions = flattenModelOptions(val === 'api' ? apiModelOptions : cliModelOptions)
+              const stillValid = flatOptions.some((opt) => opt.value === formData.model)
+              setFormData({
+                ...formData,
+                execution_mode: val,
+                model: stillValid ? formData.model : flatOptions[0]?.value ?? '',
+              })
+            }}
+            options={EXECUTION_MODE_OPTIONS}
+          />
         </div>
         <div>
           <label className="text-sm font-medium text-muted-foreground">Model</label>

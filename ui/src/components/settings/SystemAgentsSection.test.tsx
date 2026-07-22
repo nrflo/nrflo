@@ -13,6 +13,7 @@ function makeAgent(overrides: Partial<SystemAgentDef> = {}): SystemAgentDef {
   return {
     id: 'conflict-resolver',
     model: 'sonnet-5',
+    execution_mode: 'cli_interactive',
     timeout: 30,
     prompt: 'Resolve merge conflicts in ${BRANCH_NAME}',
     restart_threshold: null,
@@ -116,6 +117,7 @@ describe('SystemAgentsSection', () => {
       expect(systemAgentDefsApi.createSystemAgentDef).toHaveBeenCalledWith({
         id: 'my-agent',
         model: 'sonnet-5',
+        execution_mode: 'cli_interactive',
         timeout: 30,
         prompt: 'My prompt',
         restart_threshold: null,

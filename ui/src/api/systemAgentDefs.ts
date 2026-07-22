@@ -3,6 +3,7 @@ import { apiGet, apiPost, apiPatch, apiDelete } from './client'
 export interface SystemAgentDef {
   id: string
   model: string
+  execution_mode: 'cli_interactive' | 'api'
   timeout: number
   prompt: string
   restart_threshold: number | null
@@ -16,6 +17,7 @@ export interface SystemAgentDef {
 export interface CreateSystemAgentDefRequest {
   id: string
   model?: string
+  execution_mode?: 'cli_interactive' | 'api'
   timeout?: number
   prompt: string
   restart_threshold?: number | null
@@ -26,6 +28,7 @@ export interface CreateSystemAgentDefRequest {
 
 export interface UpdateSystemAgentDefRequest {
   model?: string
+  execution_mode?: 'cli_interactive' | 'api'
   timeout?: number
   prompt?: string
   restart_threshold?: number | null

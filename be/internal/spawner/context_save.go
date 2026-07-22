@@ -49,7 +49,8 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 	s.contextSaveViaAgent(ctx, proc, req)
 }
 
-// contextSaveViaAgent uses a system agent (haiku) to summarize the killed agent's
+// contextSaveViaAgent uses a system agent, running the dying agent's own
+// inherited model (see contextSaverModel), to summarize the killed agent's
 // message history and save to_resume findings. Works for all CLI types.
 //
 // When a fresh autonomous refinery slot digest already exists for this
@@ -88,8 +89,33 @@ func (s *Spawner) contextSaveViaAgent(ctx context.Context, proc *processInfo, re
 	logger.Info(ctx, "context save flow complete, relaunching", "session_id", proc.sessionID)
 }
 
+// contextSaverModel returns the model + reasoning effort the context-saver
+// should run with, inherited from the dying agent's own resolved spawn state
+// — proc.modelID (bare model parsed out of the "cli:model" form actually
+// spawned, reflecting LowConsumptionMode overrides) and proc.resolvedEffort
+// (the resolveReasoningEffort winner actually used for this spawn, reflecting
+// per-project/workflow agentDef overrides) — mirroring the inline api
+// compaction at apirun/conversation_compact.go:118, which sets
+// Model/ReasoningEffort from the running agent's own Config. Falls back to
+// defModel (the context-saver system agent def's model) when the dying
+// agent's model is empty/unresolvable.
+func (s *Spawner) contextSaverModel(proc *processInfo, defModel string) (string, *string) {
+	_, bareModel := parseModelID(proc.modelID)
+	model := defModel
+	if bareModel != "" {
+		model = bareModel
+	}
+	var effort *string
+	if e := proc.resolvedEffort; e != "" {
+		effort = &e
+	}
+	return model, effort
+}
+
 // spawnContextSaver loads the context-saver system agent and spawns it to save
-// the original agent's message history. Returns true if the saver ran (regardless
+// the original agent's message history, running it on the dying agent's own
+// inherited model + reasoning effort (falling back to the system agent def's
+// model when unresolvable). Returns true if the saver ran (regardless
 // of whether it actually wrote findings). On any error, logs a warning and returns false.
 func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req SpawnRequest) bool {
 	pool := s.pool()
@@ -135,6 +161,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 
 	formatted := formatMessagesForSave(messages, maxMessageChars)
 
+	saverModel, saverEffort := s.contextSaverModel(proc, sysDef.Model)
+
 	// Construct one-off spawner (conflict-resolver pattern), forwarding API-mode
 	// dependencies so a context-saver-api variant can run via the in-process runner.
 	// PTYManager is forwarded so a context-saver with execution_mode='cli_interactive'
@@ -147,7 +175,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		},
 		Agents: map[string]AgentConfig{
 			"context-saver": {
-				Model:            sysDef.Model,
+				Model:            saverModel,
+				ReasoningEffort:  saverEffort,
 				Timeout:          sysDef.Timeout,
 				ExecutionMode:    sysDef.ExecutionMode,
 				Tools:            sysDef.Tools,

@@ -188,7 +188,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		if err := service.ValidateEffortAllowed(apiEffort, am.APIEfforts); err != nil {
 			return nil, nil, fmt.Errorf("api mode: %w", err)
 		}
-		prep.apiReasoningEffort = apiEffort
+		prep.apiReasoningEffort, proc.resolvedEffort = apiEffort, apiEffort
 		prep.apiCaptureThinking = s.projectOrGlobalBool(req.ProjectID, "capture_thinking_enabled")
 		apiModelID := am.APIModel
 
@@ -293,9 +293,9 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	}
 	mappedModel := cfg.CLIModel
 	fallbackModels := cfg.FallbackModels
-	reasoningEffort := s.resolveReasoningEffort(agentDef, req.AgentType, cfg.DefaultEffort)
+	proc.resolvedEffort = s.resolveReasoningEffort(agentDef, req.AgentType, cfg.DefaultEffort)
 	if modelFound {
-		if err := service.ValidateEffortAllowed(reasoningEffort, cfg.CLIEfforts); err != nil {
+		if err := service.ValidateEffortAllowed(proc.resolvedEffort, cfg.CLIEfforts); err != nil {
 			return nil, nil, fmt.Errorf("cli mode: %w", err)
 		}
 	}
@@ -321,7 +321,7 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 		Prompt:                   promptBody,
 		WorkDir:                  workDir,
 		MappedModel:              mappedModel,
-		ReasoningEffort:          reasoningEffort,
+		ReasoningEffort:          proc.resolvedEffort,
 		FallbackModels:           fallbackModels,
 		SettingsJSON:             s.config.ClaudeSettingsJSON,
 		SystemPromptFile:         suffixFilePath,

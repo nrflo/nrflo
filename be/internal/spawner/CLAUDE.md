@@ -63,7 +63,7 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` â
 
 ## Context Save
 
-The kill-time save path (`context_save.go`): spawns a fresh `context-saver` haiku agent that reads message history and writes `to_resume` findings. Used for every backend (cli, api, codex app-server). Script-mode agents are exempt (`TracksContext()=false`). Skipped when a fresh autonomous refinery slot digest already covers the session (`digest_freshness.go`).
+The kill-time save path (`context_save.go`): spawns a fresh `context-saver` agent (model inherited from the dying agent) that reads message history and writes `to_resume` findings. Script-mode agents are exempt (`TracksContext()=false`). Mechanics: [REFERENCE.md](REFERENCE.md#context-save).
 
 ## Low-Context Relaunch
 

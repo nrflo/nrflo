@@ -135,6 +135,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	if err := service.ValidateEffortAllowed(effort, am.APIEfforts); err != nil {
 		return nil, nil, fmt.Errorf("api-via-cli: %w", err)
 	}
+	proc.resolvedEffort = effort
 
 	opts := SpawnOptions{
 		Model: claudeModel,

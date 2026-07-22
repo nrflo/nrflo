@@ -46,6 +46,10 @@ Split files over 300 lines into sub-files (code and docs); `.go`/`.ts`/`.tsx` en
 
 When you find yourself writing `if x.Name() == "foo"` at a call site holding a polymorphic interface, push the divergence into the interface — don't accumulate name-checks at the call site.
 
+### 7. Comments: only where needed
+
+Don't add excessive comments. Comment only where intent is non-obvious; keep them short and descriptive — never narrate what the code already says.
+
 ## Key Files
 
 | File | Purpose |

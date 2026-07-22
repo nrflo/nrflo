@@ -5,6 +5,7 @@ import { Dropdown, type DropdownOption, type DropdownOptionGroup } from '@/compo
 import { Textarea } from '@/components/ui/Textarea'
 import { useModelOptions } from '@/hooks/useModels'
 import type { ModelMode } from '@/api/models'
+import { AgentModelOverrideField } from './AgentModelOverrideField'
 
 function flattenModelOptions(groups: DropdownOptionGroup[]): DropdownOption[] {
   return groups.flatMap((g) => g.options)
@@ -14,6 +15,8 @@ const EXECUTION_MODE_OPTIONS: DropdownOption[] = [
   { value: 'cli_interactive', label: 'CLI Interactive' },
   { value: 'api', label: 'API' },
 ]
+
+const TIER_OPTIONS: DropdownOption[] = [1, 2, 3, 4, 5].map((t) => ({ value: String(t), label: `Tier ${t}` }))
 
 export interface AgentFormData {
   id: string
@@ -25,11 +28,14 @@ export interface AgentFormData {
   max_fail_restarts: string
   stall_start_timeout_sec: string
   stall_running_timeout_sec: string
+  tier: string
+  override: boolean
+  reasoning_effort: string
 }
 
 export const emptyAgentForm: AgentFormData = {
   id: '',
-  model: 'sonnet-5',
+  model: '',
   execution_mode: 'cli_interactive',
   timeout: '30',
   prompt: '',
@@ -37,6 +43,9 @@ export const emptyAgentForm: AgentFormData = {
   max_fail_restarts: '',
   stall_start_timeout_sec: '',
   stall_running_timeout_sec: '',
+  tier: '1',
+  override: false,
+  reasoning_effort: '',
 }
 
 export function parseOptionalInt(val: string): number | null {
@@ -89,6 +98,10 @@ export function AgentForm({
           <Dropdown
             value={formData.execution_mode}
             onChange={(val) => {
+              if (!formData.override) {
+                setFormData({ ...formData, execution_mode: val })
+                return
+              }
               const flatOptions = flattenModelOptions(val === 'api' ? apiModelOptions : cliModelOptions)
               const stillValid = flatOptions.some((opt) => opt.value === formData.model)
               setFormData({
@@ -101,11 +114,11 @@ export function AgentForm({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-muted-foreground">Model</label>
+          <label className="text-sm font-medium text-muted-foreground">Tier</label>
           <Dropdown
-            value={formData.model}
-            onChange={(val) => setFormData({ ...formData, model: val })}
-            options={modelOptions}
+            value={formData.tier}
+            onChange={(val) => setFormData({ ...formData, tier: val })}
+            options={TIER_OPTIONS}
           />
         </div>
         <div>
@@ -118,6 +131,7 @@ export function AgentForm({
           />
         </div>
       </div>
+      <AgentModelOverrideField formData={formData} setFormData={setFormData} modelOptions={modelOptions} />
       <div>
         <label className="text-sm font-medium text-muted-foreground">
           Prompt {isCreate && <span className="text-destructive">*</span>}

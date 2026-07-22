@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Pencil, Trash2, Bot, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card'
 import {
   listSystemAgentDefs,
@@ -12,6 +13,7 @@ import {
   type CreateSystemAgentDefRequest,
   type UpdateSystemAgentDefRequest,
 } from '@/api/systemAgentDefs'
+import { resolveTierChain, useTierModels } from '@/hooks/useTierModels'
 import { AgentForm, emptyAgentForm, parseOptionalInt, type AgentFormData } from './AgentForm'
 
 const systemAgentKeys = {
@@ -30,6 +32,9 @@ function agentToFormData(agent: SystemAgentDef): AgentFormData {
     max_fail_restarts: agent.max_fail_restarts != null ? String(agent.max_fail_restarts) : '',
     stall_start_timeout_sec: agent.stall_start_timeout_sec != null ? String(agent.stall_start_timeout_sec) : '',
     stall_running_timeout_sec: agent.stall_running_timeout_sec != null ? String(agent.stall_running_timeout_sec) : '',
+    tier: agent.tier != null ? String(agent.tier) : '1',
+    override: !!agent.model,
+    reasoning_effort: agent.reasoning_effort ?? '',
   }
 }
 
@@ -45,6 +50,7 @@ export function SystemAgentsSection() {
     queryKey: systemAgentKeys.list(),
     queryFn: listSystemAgentDefs,
   })
+  const { data: tierModels = [] } = useTierModels()
 
   const createMutation = useMutation({
     mutationFn: (data: CreateSystemAgentDefRequest) => createSystemAgentDef(data),
@@ -95,7 +101,7 @@ export function SystemAgentsSection() {
     if (!formData.id.trim() || !formData.prompt.trim()) return
     createMutation.mutate({
       id: formData.id.trim(),
-      model: formData.model,
+      model: formData.override ? formData.model : '',
       execution_mode: formData.execution_mode as 'cli_interactive' | 'api',
       timeout: parseInt(formData.timeout, 10) || 30,
       prompt: formData.prompt,
@@ -103,6 +109,8 @@ export function SystemAgentsSection() {
       max_fail_restarts: parseOptionalInt(formData.max_fail_restarts),
       stall_start_timeout_sec: parseOptionalInt(formData.stall_start_timeout_sec),
       stall_running_timeout_sec: parseOptionalInt(formData.stall_running_timeout_sec),
+      tier: parseInt(formData.tier, 10) || 1,
+      reasoning_effort: formData.override ? formData.reasoning_effort || null : null,
     })
   }
 
@@ -111,7 +119,7 @@ export function SystemAgentsSection() {
     updateMutation.mutate({
       id: editingId,
       data: {
-        model: formData.model,
+        model: formData.override ? formData.model : '',
         execution_mode: formData.execution_mode as 'cli_interactive' | 'api',
         timeout: parseInt(formData.timeout, 10) || 30,
         prompt: formData.prompt,
@@ -119,6 +127,8 @@ export function SystemAgentsSection() {
         max_fail_restarts: parseOptionalInt(formData.max_fail_restarts),
         stall_start_timeout_sec: parseOptionalInt(formData.stall_start_timeout_sec),
         stall_running_timeout_sec: parseOptionalInt(formData.stall_running_timeout_sec),
+        tier: parseInt(formData.tier, 10) || 1,
+        reasoning_effort: formData.override ? formData.reasoning_effort || null : null,
       },
     })
   }
@@ -209,10 +219,14 @@ export function SystemAgentsSection() {
                   <div className="flex items-center gap-3 min-w-0">
                     <Bot className="h-5 w-5 text-muted-foreground shrink-0" />
                     <div className="min-w-0">
-                      <div className="font-medium">{agent.id}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{agent.id}</span>
+                        {agent.tier != null && <Badge variant="outline">Tier {agent.tier}</Badge>}
+                        {agent.model && <Badge variant="secondary">Override</Badge>}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {[
-                          `Model: ${agent.model}`,
+                          `Model: ${agent.model || resolveTierChain(tierModels, agent.tier)[0]?.model_id || '—'}`,
                           `Mode: ${agent.execution_mode}`,
                           `Timeout: ${agent.timeout}m`,
                         ].join(' | ')}

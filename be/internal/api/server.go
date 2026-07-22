@@ -525,7 +525,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("GET /api/v1/system-agents/{id}", s.handleGetSystemAgentDef)
 	admin("PATCH /api/v1/system-agents/{id}", s.handleUpdateSystemAgentDef)
 	admin("DELETE /api/v1/system-agents/{id}", s.handleDeleteSystemAgentDef)
-
+	s.registerTierModelRoutes(protected, admin)
 	// Models (global) — writes are admin-only
 	protected("GET /api/v1/models", s.handleListModels)
 	admin("POST /api/v1/models", s.handleCreateModel)

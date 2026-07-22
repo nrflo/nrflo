@@ -164,7 +164,7 @@ func TestHandleUpdateSystemAgentDef_NewFields(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	// Create an API-mode row.
-	createBody := `{"id":"context-saver-api","role":"context-saver","execution_mode":"api","prompt":"save it","tools":"findings_add","api_max_iterations":8}`
+	createBody := `{"id":"context-saver-api","role":"context-saver","execution_mode":"api","model":"sonnet-5","prompt":"save it","tools":"findings_add","api_max_iterations":8}`
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(createBody))
 	createRR := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(createRR, createReq)
@@ -229,7 +229,7 @@ func TestHandleUpdate_InvalidExecutionMode_400(t *testing.T) {
 
 	// Create a valid agent first.
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"mode-agent","prompt":"p"}`))
+		strings.NewReader(`{"id":"mode-agent","prompt":"p","model":"sonnet-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	// PATCH with invalid mode.
@@ -251,7 +251,7 @@ func TestHandleCreate_DuplicateRoleMode_Conflict(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	// First row with role=shared-role, execution_mode=cli_interactive.
-	body1 := `{"id":"role-agent-1","role":"shared-role","execution_mode":"cli_interactive","prompt":"p"}`
+	body1 := `{"id":"role-agent-1","role":"shared-role","execution_mode":"cli_interactive","prompt":"p","model":"sonnet-5"}`
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body1))
 	rr1 := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr1, req1)
@@ -260,7 +260,7 @@ func TestHandleCreate_DuplicateRoleMode_Conflict(t *testing.T) {
 	}
 
 	// Second row with different id but same role+mode → unique index violation → 409.
-	body2 := `{"id":"role-agent-2","role":"shared-role","execution_mode":"cli_interactive","prompt":"p"}`
+	body2 := `{"id":"role-agent-2","role":"shared-role","execution_mode":"cli_interactive","prompt":"p","model":"sonnet-5"}`
 	req2 := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body2))
 	rr2 := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr2, req2)

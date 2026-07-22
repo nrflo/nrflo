@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -31,9 +30,6 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 	}
 
 	modelName := req.Model
-	if modelName == "" {
-		modelName = "sonnet-5"
-	}
 	timeout := req.Timeout
 	if timeout == 0 {
 		timeout = 20
@@ -46,7 +42,11 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		return nil, err
 	}
 
-	if s.modelSvc != nil {
+	if modelName == "" {
+		if req.Tier == nil {
+			return nil, validationErrorf("model or tier is required")
+		}
+	} else if s.modelSvc != nil {
 		valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(executionMode))
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate model: %w", err)
@@ -75,11 +75,11 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		INSERT INTO system_agent_definitions
 			(id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 			 restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-			 execution_mode, reasoning_effort, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 execution_mode, reasoning_effort, tier, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		id, role, modelName, timeout, req.Prompt, req.Tools, req.APIMaxIterations, req.APIMaxTokens,
 		req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec,
-		executionMode, req.ReasoningEffort, now, now,
+		executionMode, req.ReasoningEffort, req.Tier, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -104,6 +104,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		StallStartTimeoutSec:   req.StallStartTimeoutSec,
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		ReasoningEffort:        req.ReasoningEffort,
+		Tier:                   req.Tier,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
@@ -132,7 +133,7 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		args = append(args, *req.ExecutionMode)
 	}
 	if req.Model != nil {
-		if s.modelSvc != nil {
+		if *req.Model != "" && s.modelSvc != nil {
 			// Determine effective execution_mode to branch validation
 			var currentMode string
 			if req.ExecutionMode != nil {
@@ -156,6 +157,10 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		}
 		updates = append(updates, "model = ?")
 		args = append(args, *req.Model)
+	}
+	if req.Tier != nil {
+		updates = append(updates, "tier = ?")
+		args = append(args, *req.Tier)
 	}
 	if req.Timeout != nil {
 		updates = append(updates, "timeout = ?")
@@ -239,40 +244,6 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 		return fmt.Errorf("system agent definition not found: %s", id)
 	}
 	return nil
-}
-
-func (s *SystemAgentDefinitionService) revalidateModel(id string, req *types.SystemAgentDefUpdateRequest) error {
-	if req.ExecutionMode == nil && req.Model == nil && req.ReasoningEffort == nil {
-		return nil
-	}
-	var mode, modelName string
-	var effort sql.NullString
-	if err := s.pool.QueryRow(`SELECT execution_mode, model, reasoning_effort
-		FROM system_agent_definitions WHERE LOWER(id) = LOWER(?)`, id).Scan(&mode, &modelName, &effort); err != nil {
-		return fmt.Errorf("failed to load system agent definition: %w", err)
-	}
-	if req.ExecutionMode != nil {
-		mode = *req.ExecutionMode
-	}
-	if req.Model != nil {
-		modelName = *req.Model
-	}
-	var effectiveEffort *string
-	if effort.Valid {
-		value := effort.String
-		effectiveEffort = &value
-	}
-	if req.ReasoningEffort != nil {
-		effectiveEffort = req.ReasoningEffort
-	}
-	valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(mode))
-	if err != nil {
-		return fmt.Errorf("failed to validate model: %w", err)
-	}
-	if !valid {
-		return fmt.Errorf("invalid model: %q", modelName)
-	}
-	return validateDefReasoningEffort(s.modelSvc, mode, modelName, effectiveEffort)
 }
 
 // Delete deletes a system agent definition

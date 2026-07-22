@@ -3,11 +3,13 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SystemAgentsSection } from './SystemAgentsSection'
 import * as systemAgentDefsApi from '@/api/systemAgentDefs'
+import * as tierModelsApi from '@/api/tierModels'
 import { renderWithQuery } from '@/test/utils'
 import { parseOptionalInt } from './AgentForm'
 import type { SystemAgentDef } from '@/api/systemAgentDefs'
 
 vi.mock('@/api/systemAgentDefs')
+vi.mock('@/api/tierModels')
 
 function makeAgent(overrides: Partial<SystemAgentDef> = {}): SystemAgentDef {
   return {
@@ -22,6 +24,20 @@ function makeAgent(overrides: Partial<SystemAgentDef> = {}): SystemAgentDef {
     stall_running_timeout_sec: null,
     created_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
+    tier: 1,
+    reasoning_effort: null,
+    ...overrides,
+  }
+}
+
+function makeTierRow(overrides: Partial<tierModelsApi.TierModel> = {}): tierModelsApi.TierModel {
+  return {
+    tier: 1,
+    position: 0,
+    provider: 'anthropic',
+    execution_mode: 'cli_interactive',
+    model_id: 'tier-1-primary',
+    reasoning_effort: '',
     ...overrides,
   }
 }
@@ -42,7 +58,10 @@ describe('parseOptionalInt', () => {
 })
 
 describe('SystemAgentsSection — warning banner', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(tierModelsApi.listTierModels).mockResolvedValue([])
+  })
 
   it('shows lead text in empty-list state', async () => {
     vi.mocked(systemAgentDefsApi.listSystemAgentDefs).mockResolvedValue([])
@@ -73,7 +92,10 @@ describe('SystemAgentsSection — warning banner', () => {
 })
 
 describe('SystemAgentsSection', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(tierModelsApi.listTierModels).mockResolvedValue([])
+  })
 
   it('shows empty state when no agents and error state on failure', async () => {
     vi.mocked(systemAgentDefsApi.listSystemAgentDefs).mockResolvedValue([])
@@ -116,7 +138,7 @@ describe('SystemAgentsSection', () => {
     await waitFor(() => {
       expect(systemAgentDefsApi.createSystemAgentDef).toHaveBeenCalledWith({
         id: 'my-agent',
-        model: 'sonnet-5',
+        model: '',
         execution_mode: 'cli_interactive',
         timeout: 30,
         prompt: 'My prompt',
@@ -124,6 +146,70 @@ describe('SystemAgentsSection', () => {
         max_fail_restarts: null,
         stall_start_timeout_sec: null,
         stall_running_timeout_sec: null,
+        tier: 1,
+        reasoning_effort: null,
+      })
+    })
+  })
+
+  it('read row shows Tier N badge and resolves the primary model from the tier chain when there is no override', async () => {
+    vi.mocked(systemAgentDefsApi.listSystemAgentDefs).mockResolvedValue([
+      makeAgent({ id: 'no-override-agent', model: '', tier: 2 }),
+    ])
+    vi.mocked(tierModelsApi.listTierModels).mockResolvedValue([
+      makeTierRow({ tier: 2, position: 0, model_id: 'tier-2-primary' }),
+      makeTierRow({ tier: 2, position: 1, model_id: 'tier-2-fallback' }),
+    ])
+    renderWithQuery(<SystemAgentsSection />)
+
+    await screen.findByText('no-override-agent')
+    expect(screen.getByText('Tier 2')).toBeInTheDocument()
+    expect(screen.queryByText('Override')).not.toBeInTheDocument()
+    expect(screen.getByText(/Model: tier-2-primary/)).toBeInTheDocument()
+  })
+
+  it('an override wins over the tier chain in both display and the update payload', async () => {
+    vi.mocked(systemAgentDefsApi.listSystemAgentDefs)
+      .mockResolvedValueOnce([
+        makeAgent({ id: 'override-agent', model: 'opus', tier: 3, reasoning_effort: 'high' }),
+      ])
+      .mockResolvedValue([])
+    vi.mocked(tierModelsApi.listTierModels).mockResolvedValue([
+      makeTierRow({ tier: 3, position: 0, model_id: 'tier-3-primary' }),
+    ])
+    vi.mocked(systemAgentDefsApi.updateSystemAgentDef).mockResolvedValue({ status: 'ok' })
+
+    renderWithQuery(<SystemAgentsSection />)
+    await screen.findByText('override-agent')
+
+    // Display: override badge present, model shown is the override, not the tier chain's primary
+    expect(screen.getByText('Tier 3')).toBeInTheDocument()
+    expect(screen.getByText('Override')).toBeInTheDocument()
+    expect(screen.getByText(/Model: opus/)).toBeInTheDocument()
+    expect(screen.queryByText(/tier-3-primary/)).not.toBeInTheDocument()
+
+    // Editing: no override toggle available before opening — open the edit form
+    const user = userEvent.setup()
+    const buttons = screen.getAllByRole('button')
+    await user.click(buttons[1]) // pencil (edit)
+    await screen.findByDisplayValue('override-agent')
+
+    // Override is pre-populated on because the agent has a model — no raw Model dropdown behind a disabled toggle
+    expect(screen.getByRole('switch', { name: /Override model/ })).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(screen.getByRole('button', { name: /Save/ }))
+    await waitFor(() => {
+      expect(systemAgentDefsApi.updateSystemAgentDef).toHaveBeenCalledWith('override-agent', {
+        model: 'opus',
+        execution_mode: 'cli_interactive',
+        timeout: 30,
+        prompt: 'Resolve merge conflicts in ${BRANCH_NAME}',
+        restart_threshold: null,
+        max_fail_restarts: null,
+        stall_start_timeout_sec: null,
+        stall_running_timeout_sec: null,
+        tier: 3,
+        reasoning_effort: 'high',
       })
     })
   })

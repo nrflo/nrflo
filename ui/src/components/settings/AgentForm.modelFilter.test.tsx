@@ -57,6 +57,9 @@ async function openCreateForm() {
   await screen.findByText('No system agents defined. Create one to get started.')
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: /New System Agent/ }))
+  // Model dropdown only renders once the override toggle is switched on —
+  // by default a new agent stays on its tier's fallback chain (model=='').
+  await user.click(screen.getByRole('switch', { name: /Override model/ }))
   return user
 }
 

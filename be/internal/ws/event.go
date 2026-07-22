@@ -18,6 +18,7 @@ const (
 	EventAgentDefDeleted             = "agent_def.deleted"
 	EventSystemAgentDefCreated       = "system_agent_def.created"
 	EventSystemAgentDefUpdated       = "system_agent_def.updated"
+	EventTierModelsUpdated           = "tier_models.updated"
 	EventSystemAgentDefDeleted       = "system_agent_def.deleted"
 	EventTicketUpdated               = "ticket.updated"
 	EventOrchestrationStarted        = "orchestration.started"

@@ -118,15 +118,14 @@ func TestSystemAgentDef_CreateWithDefaults(t *testing.T) {
 	defer cleanup()
 
 	def, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID:     "defaults-agent",
-		Prompt: "do something",
+		ID: "defaults-agent", Prompt: "do something", Model: "sonnet-5",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
 	if def.Model != "sonnet-5" {
-		t.Errorf("default Model = %q, want %q", def.Model, "sonnet-5")
+		t.Errorf("Model = %q, want %q", def.Model, "sonnet-5")
 	}
 	if def.Timeout != 20 {
 		t.Errorf("default Timeout = %d, want 20", def.Timeout)
@@ -170,7 +169,7 @@ func TestSystemAgentDef_CreateDuplicate(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
-	req := &types.SystemAgentDefCreateRequest{ID: "dup-agent", Prompt: "p"}
+	req := &types.SystemAgentDefCreateRequest{ID: "dup-agent", Prompt: "p", Model: "sonnet-5"}
 	if _, err := svc.Create(req); err != nil {
 		t.Fatalf("first Create: %v", err)
 	}
@@ -243,7 +242,7 @@ func TestSystemAgentDef_Update_PointerFields(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "ptr-agent", Prompt: "p",
+		ID: "ptr-agent", Prompt: "p", Model: "sonnet-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -320,7 +319,7 @@ func TestSystemAgentDef_Delete(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	defer cleanup()
 
-	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: "del-agent", Prompt: "p"}); err != nil {
+	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: "del-agent", Prompt: "p", Model: "sonnet-5"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -360,7 +359,7 @@ func TestSystemAgentDef_CaseInsensitiveID(t *testing.T) {
 	defer cleanup()
 
 	// ID is lowercased on create.
-	def, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: "MyAgent", Prompt: "p"})
+	def, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: "MyAgent", Prompt: "p", Model: "sonnet-5"})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}

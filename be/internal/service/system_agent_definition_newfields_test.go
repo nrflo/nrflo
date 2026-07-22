@@ -110,6 +110,7 @@ func TestSystemAgentDef_CreateAndGet_NewFields(t *testing.T) {
 		Role:             "my-role",
 		ExecutionMode:    "api",
 		Prompt:           "do stuff",
+		Model:            "sonnet-5",
 		Tools:            "findings_add,findings_get",
 		APIMaxIterations: apiMax,
 	})
@@ -157,6 +158,7 @@ func TestSystemAgentDef_CreateDefaultRole(t *testing.T) {
 	def, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "no-role-agent",
 		Prompt: "p",
+		Model:  "sonnet-5",
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -178,6 +180,7 @@ func TestSystemAgentDef_Update_ToolsAndAPIMax(t *testing.T) {
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "upd-api-agent",
 		Prompt: "p",
+		Model:  "sonnet-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -236,6 +239,7 @@ func TestSystemAgentDef_UpdateInvalidExecutionMode(t *testing.T) {
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "valid-agent",
 		Prompt: "p",
+		Model:  "sonnet-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -263,6 +267,7 @@ func TestSystemAgentDef_DuplicateRoleMode_Conflict(t *testing.T) {
 		Role:          "shared-role",
 		ExecutionMode: "cli_interactive",
 		Prompt:        "p",
+		Model:         "sonnet-5",
 	}); err != nil {
 		t.Fatalf("Create first: %v", err)
 	}
@@ -272,6 +277,7 @@ func TestSystemAgentDef_DuplicateRoleMode_Conflict(t *testing.T) {
 		Role:          "shared-role",
 		ExecutionMode: "cli_interactive",
 		Prompt:        "p",
+		Model:         "sonnet-5",
 	})
 	if err == nil {
 		t.Fatal("expected unique-constraint error for duplicate role+mode, got nil")

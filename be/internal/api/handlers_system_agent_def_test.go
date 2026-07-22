@@ -72,7 +72,7 @@ func TestHandleListSystemAgentDefs_WithEntries(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	for _, id := range []string{"agent-z", "agent-a"} {
-		body := `{"id":"` + id + `","prompt":"p"}`
+		body := `{"id":"` + id + `","prompt":"p","model":"sonnet-5"}`
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 		rr := httptest.NewRecorder()
 		s.handleCreateSystemAgentDef(rr, req)
@@ -127,7 +127,7 @@ func TestHandleCreateSystemAgentDef_Valid(t *testing.T) {
 
 func TestHandleCreateSystemAgentDef_DefaultsApplied(t *testing.T) {
 	s := newSystemAgentServer(t)
-	body := `{"id":"defaults-agent","prompt":"p"}`
+	body := `{"id":"defaults-agent","prompt":"p","model":"sonnet-5"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 	rr := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(rr, req)
@@ -137,7 +137,7 @@ func TestHandleCreateSystemAgentDef_DefaultsApplied(t *testing.T) {
 	}
 	def := decodeSystemAgentDef(t, rr)
 	if def.Model != "sonnet-5" {
-		t.Errorf("default Model = %q, want %q", def.Model, "sonnet-5")
+		t.Errorf("Model = %q, want %q", def.Model, "sonnet-5")
 	}
 	if def.Timeout != 20 {
 		t.Errorf("default Timeout = %d, want 20", def.Timeout)
@@ -170,7 +170,7 @@ func TestHandleCreateSystemAgentDef_InvalidJSON(t *testing.T) {
 
 func TestHandleCreateSystemAgentDef_Duplicate(t *testing.T) {
 	s := newSystemAgentServer(t)
-	body := `{"id":"dup-agent","prompt":"p"}`
+	body := `{"id":"dup-agent","prompt":"p","model":"sonnet-5"}`
 
 	req1 := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents", strings.NewReader(body))
 	rr1 := httptest.NewRecorder()
@@ -329,7 +329,7 @@ func TestHandleDeleteSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"del-agent","prompt":"p"}`))
+		strings.NewReader(`{"id":"del-agent","prompt":"p","model":"sonnet-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/system-agents/del-agent", nil)
@@ -380,7 +380,7 @@ func TestHandleSystemAgentDef_FullCRUDFlow(t *testing.T) {
 
 	// 2. Create.
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"conflict-resolver","prompt":"fix it"}`))
+		strings.NewReader(`{"id":"conflict-resolver","prompt":"fix it","model":"sonnet-5"}`))
 	createRR := httptest.NewRecorder()
 	s.handleCreateSystemAgentDef(createRR, createReq)
 	if createRR.Code != http.StatusCreated {

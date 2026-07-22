@@ -36,7 +36,7 @@ func TestSystemAgentDef_List(t *testing.T) {
 
 	ids := []string{"agent-b", "agent-a", "agent-c"}
 	for _, id := range ids {
-		if _, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: id, Prompt: "p"}); err != nil {
+		if _, err := svc.Create(&types.SystemAgentDefCreateRequest{ID: id, Prompt: "p", Model: "sonnet-5"}); err != nil {
 			t.Fatalf("Create %q: %v", id, err)
 		}
 	}

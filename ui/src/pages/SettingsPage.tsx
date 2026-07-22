@@ -16,9 +16,10 @@ import { ConnectionsSection } from '@/components/settings/ConnectionsSection'
 import { ModelsList } from '@/components/settings/ModelsList'
 import { ModelsProviderTabs, BUILTIN_PROVIDERS } from '@/components/settings/ModelsProviderTabs'
 import { TieringSection } from '@/components/settings/TieringSection'
+import { TierModelsSection } from '@/components/settings/TierModelsSection'
 import { useCustomProviders } from '@/hooks/useCustomProviders'
 
-type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'logs' | 'connections' | 'administration'
+type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'tier-models' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 
 const tabs: { id: SettingsTab; label: string }[] = [
@@ -29,6 +30,7 @@ const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'default-templates', label: 'Default Templates' },
   { id: 'models', label: 'Models' },
   { id: 'tiering', label: 'Tiering' },
+  { id: 'tier-models', label: 'Tier Models' },
   { id: 'logs', label: 'Logs' },
   { id: 'connections', label: 'Connections' },
   { id: 'administration', label: 'Administration' },
@@ -158,6 +160,7 @@ export function SettingsPage() {
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'models' && <ModelsList provider={activeProvider} />}
       {activeTab === 'tiering' && <TieringSection />}
+      {activeTab === 'tier-models' && <TierModelsSection />}
       {activeTab === 'logs' && <LogsSection initialFilter={searchParams.get('filter') || undefined} />}
       {activeTab === 'connections' && <ConnectionsSection />}
       {activeTab === 'administration' && activeAdminSub === 'users' && <UsersSection />}

@@ -10,6 +10,8 @@ export interface SystemAgentDef {
   max_fail_restarts: number | null
   stall_start_timeout_sec: number | null
   stall_running_timeout_sec: number | null
+  tier?: number | null
+  reasoning_effort?: string | null
   created_at: string
   updated_at: string
 }
@@ -24,6 +26,8 @@ export interface CreateSystemAgentDefRequest {
   max_fail_restarts?: number | null
   stall_start_timeout_sec?: number | null
   stall_running_timeout_sec?: number | null
+  tier?: number | null
+  reasoning_effort?: string | null
 }
 
 export interface UpdateSystemAgentDefRequest {
@@ -35,6 +39,8 @@ export interface UpdateSystemAgentDefRequest {
   max_fail_restarts?: number | null
   stall_start_timeout_sec?: number | null
   stall_running_timeout_sec?: number | null
+  tier?: number | null
+  reasoning_effort?: string | null
 }
 
 export async function listSystemAgentDefs(): Promise<SystemAgentDef[]> {

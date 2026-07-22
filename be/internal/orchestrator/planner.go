@@ -75,10 +75,16 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 	if sErr != nil {
 		return plannerAgentConfig{}, fmt.Errorf("planner: no planner agent definition configured: %w", sErr)
 	}
+	chain, cErr := sysSvc.ResolveAgentChain(sysDef)
+	if cErr != nil {
+		return plannerAgentConfig{}, fmt.Errorf("planner: resolve agent chain: %w", cErr)
+	}
+	primary := chain[0]
+	effort := primary.ReasoningEffort
 	return plannerAgentConfig{
-		ID: sysDef.ID, Model: sysDef.Model, Timeout: sysDef.Timeout, ExecutionMode: sysDef.ExecutionMode,
+		ID: sysDef.ID, Model: primary.ModelID, Timeout: sysDef.Timeout, ExecutionMode: primary.ExecutionMode,
 		Tools: sysDef.Tools, APIMaxIterations: sysDef.APIMaxIterations, APIMaxTokens: sysDef.APIMaxTokens,
-		ReasoningEffort: sysDef.ReasoningEffort,
+		ReasoningEffort: &effort,
 	}, nil
 }
 

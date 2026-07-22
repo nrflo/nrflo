@@ -18,6 +18,7 @@ type SystemAgentDefinition struct {
 	StallStartTimeoutSec   *int      `json:"stall_start_timeout_sec,omitempty"`
 	StallRunningTimeoutSec *int      `json:"stall_running_timeout_sec,omitempty"`
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"` // nil = inherit from the model row; non-nil (incl. "") overrides it
+	Tier                   *int      `json:"tier,omitempty"`             // nil = untiered; else selects a tier_models fallback chain
 	CreatedAt              time.Time `json:"created_at"`
 	UpdatedAt              time.Time `json:"updated_at"`
 }

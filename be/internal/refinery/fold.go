@@ -66,13 +66,20 @@ func (m *Manager) runFoldCore(ctx context.Context, logKey, projectID, userText s
 		return "", provider.Usage{}, false
 	}
 
-	modelRow, err := m.modelSvc.Get(def.Model)
+	chain, err := m.systemAgentSvc.ResolveAgentChain(def)
 	if err != nil {
-		logger.Error(ctx, "refinery: resolve model row failed", "key", logKey, "model", def.Model, "error", err)
+		logger.Error(ctx, "refinery: resolve agent chain failed", "key", logKey, "error", err)
+		return "", provider.Usage{}, false
+	}
+	primaryModel := chain[0].ModelID
+
+	modelRow, err := m.modelSvc.Get(primaryModel)
+	if err != nil {
+		logger.Error(ctx, "refinery: resolve model row failed", "key", logKey, "model", primaryModel, "error", err)
 		return "", provider.Usage{}, false
 	}
 	if modelRow.APIModel == "" {
-		logger.Error(ctx, "refinery: model row has no api_model", "key", logKey, "model", def.Model)
+		logger.Error(ctx, "refinery: model row has no api_model", "key", logKey, "model", primaryModel)
 		return "", provider.Usage{}, false
 	}
 

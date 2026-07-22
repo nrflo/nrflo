@@ -161,7 +161,13 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 
 	formatted := formatMessagesForSave(messages, maxMessageChars)
 
-	saverModel, saverEffort := s.contextSaverModel(proc, sysDef.Model)
+	defModel := sysDef.Model
+	if chain, chainErr := svc.ResolveAgentChain(sysDef); chainErr == nil && len(chain) > 0 {
+		defModel = chain[0].ModelID
+	} else if chainErr != nil {
+		logger.Warn(ctx, "context-saver: resolve agent chain failed, using def model fallback", "err", chainErr, "session_id", proc.sessionID)
+	}
+	saverModel, saverEffort := s.contextSaverModel(proc, defModel)
 
 	// Construct one-off spawner (conflict-resolver pattern), forwarding API-mode
 	// dependencies so a context-saver-api variant can run via the in-process runner.

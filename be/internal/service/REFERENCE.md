@@ -14,6 +14,10 @@ Files: `plan.go`, `plan_revise.go`, `plan_manifest.go`, `plan_validate.go`/`plan
 - Every `Revise` re-syncs an already plan-suspended instance's status (guarded: never clobbers a run executing static layers), so a poller sees `waiting_input` → `waiting_approval` once questions are answered.
 - Reserved key `_workflow_plan` is server-owned and resolved ahead of `workflows.finding_schemas` in `FindingsService.Emit`; `findings_add`/socket `findings.add` reject `_`-prefixed reserved keys.
 
+## Global Workflow Storage
+
+Global defs are stored under the reserved `GlobalProjectID` (`"__global__"`, `workflow_reserved.go`) — a hidden project (kept out of `ProjectRepo.List`/`ProjectService.List`) that keeps the composite `(project_id, id)` keys + child FKs intact. It is also a **runnable** project (a scratch `root_path`) so it's the execution home for project-agnostic tool runs with no real project in scope (e.g. via the `mcp-external` proxy). UI surfaces global defs in run pickers but hides them from workflow management (run-only, admin-managed); `WorkflowExportService.Export` excludes them. `workflow_instances.def_project_id` stamps the project the definition resolved under (`__global__` for globals) and carries the workflows FK, while `project_id` (the executing project) FKs to `projects` — so a global def runs under any real project (migration `000165`).
+
 ## Global Workflow Seeds
 
 `EnsureGlobalDynamicWorkflow(pool, clk, rootPath)` (`dynamic_seed.go` + `_data`/`_prompts_*`/`_planner`/`_schemas.go`) idempotently ensures the `__global__` project exists with a `root_path` (backfilled on existing installs), then create-if-absent seeds the bundled `dynamic` workflow via direct SQL at startup — bypassing service-layer model validation since it is shipped data: `callable_as_subworkflow=1`, a 10-def `fanout_template` catalog plus a workflow-local `node_role='planner'` def (`dynamic-planner`) and per-key `finding_schemas`. `agent_definitions.description` is required for `fanout_template` rows; `reasoning_effort` is optional.

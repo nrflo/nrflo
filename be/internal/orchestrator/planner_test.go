@@ -89,18 +89,35 @@ func TestResolvePlannerDef_ReasoningEffort_WorkflowLocalOverride(t *testing.T) {
 	}
 }
 
-// TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallbackIsNil verifies
-// that absent a workflow-local override, the system planner def's
-// (unset) reasoning_effort resolves to nil rather than a zero-value "".
-func TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallbackIsNil(t *testing.T) {
+// TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallback verifies that,
+// absent a workflow-local override, the system planner def's reasoning
+// effort is resolved through ResolveAgentChain: planner-system has no
+// per-agent reasoning_effort override, so the chain's primary entry inherits
+// the resolved model row's default_effort directly from the models table —
+// a non-nil pointer now (rather than the pre-chain nil), but carrying the
+// same value spawner.resolveReasoningEffort would have fallen back to when
+// the def-level pointer was nil, so the effective spawn behavior (including
+// the CLI --effort flag being omitted for an empty value) is unchanged.
+func TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallback(t *testing.T) {
 	env := newTestEnv(t)
+
+	var plannerModel, wantEffort string
+	if err := env.pool.QueryRow(`SELECT model FROM system_agent_definitions WHERE id = 'planner-system'`).Scan(&plannerModel); err != nil {
+		t.Fatalf("query planner-system model: %v", err)
+	}
+	if err := env.pool.QueryRow(`SELECT default_effort FROM models WHERE id = ?`, plannerModel).Scan(&wantEffort); err != nil {
+		t.Fatalf("query model %q default_effort: %v", plannerModel, err)
+	}
 
 	cfg, err := env.orch.resolvePlannerDef(env.pool, env.project, "test")
 	if err != nil {
 		t.Fatalf("resolvePlannerDef() error: %v", err)
 	}
-	if cfg.ReasoningEffort != nil {
-		t.Errorf("ReasoningEffort = %v, want nil (system planner-system def has no override)", *cfg.ReasoningEffort)
+	if cfg.ReasoningEffort == nil {
+		t.Fatal("ReasoningEffort = nil, want a resolved pointer (via ResolveAgentChain)")
+	}
+	if *cfg.ReasoningEffort != wantEffort {
+		t.Errorf("ReasoningEffort = %q, want %q (model %q's default_effort)", *cfg.ReasoningEffort, wantEffort, plannerModel)
 	}
 }
 

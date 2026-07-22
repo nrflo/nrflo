@@ -36,6 +36,11 @@ func (o *Orchestrator) attemptConflictResolution(
 	if err != nil {
 		return fmt.Errorf("no conflict-resolver configured: %w", err)
 	}
+	chain, err := svc.ResolveAgentChain(sysDef)
+	if err != nil {
+		return fmt.Errorf("conflict-resolver: resolve agent chain: %w", err)
+	}
+	primaryModel := chain[0].ModelID
 
 	// Broadcast resolving event
 	o.wsHub.Broadcast(ws.NewEvent(ws.EventMergeConflictResolving, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
@@ -58,7 +63,7 @@ func (o *Orchestrator) attemptConflictResolution(
 			},
 		},
 		Agents: map[string]spawner.AgentConfig{
-			"conflict-resolver": {Model: sysDef.Model, Timeout: sysDef.Timeout},
+			"conflict-resolver": {Model: primaryModel, Timeout: sysDef.Timeout},
 		},
 		DataPath:           o.dataPath,
 		ProjectRoot:        wt.projectRoot,

@@ -63,7 +63,7 @@ Agent-def `native_tools` (claude-only CSV) rides `SpawnOptions.NativeToolsCSV` â
 
 ## Context Save
 
-The kill-time save path (`context_save.go`): spawns a fresh `context-saver` agent (model inherited from the dying agent) that reads message history and writes `to_resume` findings. Script-mode agents are exempt (`TracksContext()=false`). Mechanics: [REFERENCE.md](REFERENCE.md#context-save).
+The kill-time save path (`context_save.go`): spawns a fresh `context-saver` agent (model inherited from the dying agent, falling back to `ResolveAgentChain`'s primary entry) that reads message history and writes `to_resume` findings. Script-mode agents are exempt (`TracksContext()=false`). Mechanics: [REFERENCE.md](REFERENCE.md#context-save).
 
 ## Low-Context Relaunch
 
@@ -87,7 +87,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Delegate
 
-`Spawner.Delegate`/`GetDelegation` (`delegate.go`, `delegate_poll.go`) implement `apirun.Delegator`: spawn tier workers downward, async-with-poll, depth-capped per-chain (in-memory). Mechanics: [REFERENCE.md](REFERENCE.md#delegate).
+`Spawner.Delegate`/`GetDelegation` (`delegate.go`, `delegate_poll.go`) implement `apirun.Delegator`: spawn tier workers downward, async-with-poll, depth-capped per-chain (in-memory), worker model/effort from `ResolveAgentChain`'s primary entry. Mechanics: [REFERENCE.md](REFERENCE.md#delegate).
 
 ## Planner
 

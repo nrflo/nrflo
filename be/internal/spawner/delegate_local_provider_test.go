@@ -50,6 +50,23 @@ func TestDelegate_LocalProviderStub_ExtractorEndToEnd(t *testing.T) {
 		t.Fatalf("repoint _t2_extractor model: %v", err)
 	}
 
+	// ResolveAgentChain's override branch validates the repointed model
+	// against the live `models` table (service.ModelService), not just the
+	// spawner's runtime ModelConfigs map — mirroring doc/local-providers.md's
+	// "Add a model row" step for a custom-provider (API-only, no cli_model).
+	modelSvc := service.NewModelService(env.pool, clk)
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID:            "local-ollama-extractor-model",
+		Provider:      "local-ollama-delegate",
+		DisplayName:   "local-ollama-extractor-model",
+		APIModel:      "qwen-test",
+		APIContext:    128000,
+		APIEfforts:    []string{"low", "medium", "high"},
+		DefaultEffort: "low",
+	}); err != nil {
+		t.Fatalf("create local-ollama-extractor-model row: %v", err)
+	}
+
 	modelConfigs := delegateModelConfigs()
 	modelConfigs["local-ollama-extractor-model"] = ModelConfig{
 		Provider:      "local-ollama-delegate",

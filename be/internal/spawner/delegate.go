@@ -63,10 +63,16 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 		return "", fmt.Errorf("delegate: resolve workflow instance: %w", err)
 	}
 
-	sysDef, err := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewModelService(pool, s.config.Clock)).Get(tierAgentID)
+	sysAgentSvc := service.NewSystemAgentDefinitionService(pool, s.config.Clock, service.NewModelService(pool, s.config.Clock))
+	sysDef, err := sysAgentSvc.Get(tierAgentID)
 	if err != nil {
 		return "", fmt.Errorf("delegate: load tier definition %q: %w", tierAgentID, err)
 	}
+	chain, err := sysAgentSvc.ResolveAgentChain(sysDef)
+	if err != nil {
+		return "", fmt.Errorf("delegate: resolve agent chain for %q: %w", tierAgentID, err)
+	}
+	primary := chain[0]
 
 	items := req.Fanout
 	if len(items) == 0 {
@@ -94,7 +100,7 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 
 	// Detached: the caller's tool ctx must not cancel the workers (async
 	// contract, matches startChildRun's context.Background() start).
-	go s.runDelegateFanout(wfi, callerSession, tierAgentID, sysDef, req, items, delegationID, isHost)
+	go s.runDelegateFanout(wfi, callerSession, tierAgentID, sysDef, primary, req, items, delegationID, isHost)
 
 	return delegateStatusJSON(delegationID, "running", nil), nil
 }
@@ -103,14 +109,14 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 // until its worker finishes), then records the final session-id list with
 // done=true so GetDelegation flips out of "running", completes a hidden host
 // instance, and broadcasts completion.
-func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, req apirun.DelegateRequest, items []string, delegationID string, isHost bool) {
+func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, primary service.AgentChainEntry, req apirun.DelegateRequest, items []string, delegationID string, isHost bool) {
 	sessionIDs := make([]string, len(items))
 	var wg sync.WaitGroup
 	for i, item := range items {
 		wg.Add(1)
 		go func(i int, item string) {
 			defer wg.Done()
-			sessionIDs[i] = s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, req, item)
+			sessionIDs[i] = s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, primary, req, item)
 		}(i, item)
 	}
 	wg.Wait()
@@ -140,10 +146,11 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 // spawnDelegateWorker spawns a single hidden `_delegate` worker under wfi in
 // its own one-off child Spawner (mirrors consult.go's per-call sp). Returns
 // the registered session id, or "" on spawn failure.
-func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, req apirun.DelegateRequest, item string) string {
+func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, primary service.AgentChainEntry, req apirun.DelegateRequest, item string) string {
 	var mu sync.Mutex
 	var sid string
 
+	effort := primary.ReasoningEffort
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			wfi.WorkflowID: {
@@ -152,13 +159,13 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		},
 		Agents: map[string]AgentConfig{
 			tierAgentID: {
-				Model:            sysDef.Model,
+				Model:            primary.ModelID,
 				Timeout:          sysDef.Timeout,
-				ExecutionMode:    "api",
+				ExecutionMode:    primary.ExecutionMode,
 				Tools:            sysDef.Tools,
 				APIMaxIterations: sysDef.APIMaxIterations,
 				APIMaxTokens:     sysDef.APIMaxTokens,
-				ReasoningEffort:  sysDef.ReasoningEffort,
+				ReasoningEffort:  &effort,
 			},
 		},
 		DataPath:           s.config.DataPath,

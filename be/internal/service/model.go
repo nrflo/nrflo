@@ -17,7 +17,26 @@ const modelColumns = `id, provider, display_name, cli_model, api_model,
 	default_effort, read_only, enabled, created_at, updated_at,
 	price_in, price_out, price_cache_write, price_cache_read, release_date`
 
-var validModelProviders = map[string]bool{"anthropic": true, "openai": true, "openrouter": true}
+// builtinProviders maps each built-in provider name to whether it is
+// API-mode only (no CLI adapter). anthropic/openai support both cli and api;
+// openrouter is api-only.
+var builtinProviders = map[string]bool{"anthropic": false, "openai": false, "openrouter": true}
+
+// resolveProvider reports whether providerName is known (builtin or a
+// registered custom_providers row) and, if so, whether it is API-mode only.
+// Rule 6: this is the single registry lookup call sites use instead of
+// per-call name checks (e.g. `if provider == "openrouter"`).
+func (s *ModelService) resolveProvider(providerName string) (apiOnly bool, exists bool, err error) {
+	if apiOnly, ok := builtinProviders[providerName]; ok {
+		return apiOnly, true, nil
+	}
+	exists, err = NewCustomProviderService(s.pool, s.clock).Exists(providerName)
+	if err != nil {
+		return false, false, err
+	}
+	// Custom providers are API-only (no CLI adapter).
+	return true, exists, nil
+}
 
 // ModelService owns the unified provider model registry.
 type ModelService struct {
@@ -91,11 +110,11 @@ func validateModelModes(cliModel, apiModel string) error {
 }
 
 // validateProviderModes enforces provider-specific mode restrictions.
-// openrouter is API-mode only: it has no CLI adapter, so a non-empty
-// cli_model is rejected.
-func validateProviderModes(provider, cliModel string) error {
-	if provider == "openrouter" && cliModel != "" {
-		return fmt.Errorf("openrouter models are API-mode only: cli_model must be empty")
+// API-only providers (openrouter and every custom provider) have no CLI
+// adapter, so a non-empty cli_model is rejected.
+func validateProviderModes(apiOnly bool, cliModel string) error {
+	if apiOnly && cliModel != "" {
+		return fmt.Errorf("this provider is API-mode only: cli_model must be empty")
 	}
 	return nil
 }
@@ -124,13 +143,17 @@ func (s *ModelService) Create(req types.ModelCreateRequest) (*model.Model, error
 	if req.DisplayName == "" {
 		return nil, fmt.Errorf("display_name is required")
 	}
-	if !validModelProviders[req.Provider] {
-		return nil, fmt.Errorf("invalid provider: must be one of anthropic, openai, openrouter")
+	apiOnly, exists, err := s.resolveProvider(req.Provider)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, fmt.Errorf("invalid provider: must be a built-in provider (anthropic, openai, openrouter) or a registered custom provider")
 	}
 	if err := validateModelModes(req.CLIModel, req.APIModel); err != nil {
 		return nil, err
 	}
-	if err := validateProviderModes(req.Provider, req.CLIModel); err != nil {
+	if err := validateProviderModes(apiOnly, req.CLIModel); err != nil {
 		return nil, err
 	}
 	cliEfforts, err := NormalizeSupportedEfforts(req.CLIEfforts)

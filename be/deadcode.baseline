@@ -64,6 +64,7 @@ be/internal/repo WorkflowRepo.Delete
 be/internal/repo WorkflowRepo.Exists
 be/internal/repo WorkflowRepo.List
 be/internal/repo WorkflowRepo.Update
+be/internal/service CustomProviderService.ListEnabled
 be/internal/service GlobalSettingsService.GetProjectConfig
 be/internal/service GlobalSettingsService.SetProjectConfig
 be/internal/service PendingTicket.MarshalJSON
@@ -128,6 +129,8 @@ be/internal/spawner PidMetrics
 be/internal/spawner processInfo.appendStderr
 be/internal/spawner writeCodexProfile
 be/internal/spawner/apirun/provider/anthropic NewWithHTTPClient
+be/internal/spawner/apirun/provider/custom NewWithHTTPClient
 be/internal/spawner/apirun/provider/openai NewWithHTTPClient
+be/internal/spawner/apirun/provider/openaichat NewWithHTTPClient
 be/internal/spawner/apirun/provider/openrouter NewWithHTTPClient
 be/internal/ws NewTestClient

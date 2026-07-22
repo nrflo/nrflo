@@ -533,6 +533,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	admin("PATCH /api/v1/models/{id}", s.handleUpdateModel)
 	admin("DELETE /api/v1/models/{id}", s.handleDeleteModel)
 	protected("POST /api/v1/models/{id}/test", s.handleTestModel)
+	s.registerCustomProviderRoutes(admin)
 
 	// Agent-definition re-tiering report/apply (global, cross-project) — admin-only
 	admin("GET /api/v1/admin/tiering-report", s.handleTieringReport)

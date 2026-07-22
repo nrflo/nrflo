@@ -44,6 +44,22 @@ type ModelUpdateRequest struct {
 	Enabled        *bool     `json:"enabled,omitempty"`
 }
 
+// CustomProviderCreateRequest registers a BYO OpenAI-compatible API provider.
+type CustomProviderCreateRequest struct {
+	Name    string `json:"name"`
+	BaseURL string `json:"base_url"`
+	APIKey  string `json:"api_key"`
+	APIWire string `json:"api_wire"`
+}
+
+// CustomProviderUpdateRequest partially updates a custom provider.
+type CustomProviderUpdateRequest struct {
+	BaseURL *string `json:"base_url,omitempty"`
+	APIKey  *string `json:"api_key,omitempty"`
+	APIWire *string `json:"api_wire,omitempty"`
+	Enabled *bool   `json:"enabled,omitempty"`
+}
+
 // InputArtifactRef references a staged upload to attach to a workflow run.
 type InputArtifactRef struct {
 	UploadID string `json:"upload_id"`

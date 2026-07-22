@@ -58,6 +58,8 @@ Errors are returned as `{"error":"code","message":"..."}` for structured failure
 
 Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models/{id}/test`; the test route probes CLI mode only and rejects API-only rows. Writes are admin-only; reads and the test route are protected.
 
+`/api/v1/custom-providers` CRUD (registry of BYO OpenAI-compatible providers) is entirely admin-only, including reads: the row's `api_key` serializes in plaintext, so unlike models a non-admin/bearer caller must never see it.
+
 `GET /api/v1/import/jira/search` and `GET /api/v1/import/github/search` return 400 when `X-Project` is missing (matching `POST /api/v1/import/spec`).
 
 ## Pause-Continue-Fail Routes

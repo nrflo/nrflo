@@ -35,6 +35,35 @@ func TestCreateAgentDef_CLIInteractive_OpenRouterModel_Rejected(t *testing.T) {
 	}
 }
 
+// TestCreateAgentDef_CLIInteractive_CustomProviderModel_Rejected verifies
+// that cli_interactive is rejected for a custom-provider model: custom
+// providers are API-only (resolveProvider returns apiOnly=true), so
+// validateProviderModes rejects a non-empty cli_model the same way it does
+// for openrouter.
+func TestCreateAgentDef_CLIInteractive_CustomProviderModel_Rejected(t *testing.T) {
+	t.Parallel()
+	pool, _, wfID := setupAgentDefTestEnv(t, nil)
+	modelSvc := NewModelService(pool, clock.Real())
+	seedCustomProvider(t, modelSvc, "local-ollama-cli-int")
+	if _, err := modelSvc.Create(types.ModelCreateRequest{
+		ID: "custom-cli-int-test", Provider: "local-ollama-cli-int", DisplayName: "Custom CLI Int Test",
+		APIModel: "llama3",
+	}); err != nil {
+		t.Fatalf("create custom-provider model: %v", err)
+	}
+	svc := NewAgentDefinitionService(pool, clock.Real(), modelSvc, nil)
+
+	_, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
+		ID:            "agent-cli-int-custom",
+		Prompt:        "do stuff",
+		ExecutionMode: "cli_interactive",
+		Model:         "custom-cli-int-test",
+	})
+	if err == nil {
+		t.Fatal("CreateAgentDef(cli_interactive, custom-provider model): expected error, got nil")
+	}
+}
+
 // setupAgentDefCLIInteractiveEnv returns a service and workflow ID for cli_interactive tests.
 // Delegates to the shared setupAgentDefTestEnv helper (no workflow groups needed).
 func setupAgentDefCLIInteractiveEnv(t *testing.T) (*AgentDefinitionService, string) {

@@ -227,3 +227,6 @@ func TestBuildAPIProvider_OpenRouter_ReturnsProviderFromProjectEnv(t *testing.T)
 		t.Errorf("provider.Name() = %q, want %q", got.Name(), "openrouter")
 	}
 }
+
+// Custom-provider BuildAPIProvider cases live in api_provider_custom_test.go
+// (kept separate to stay under the 300-line file cap).

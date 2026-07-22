@@ -1,7 +1,6 @@
 package db
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -33,10 +32,16 @@ func TestMigration186_OpenRouterRowInsertsPostMigration(t *testing.T) {
 	}
 }
 
-// TestMigration186_BogusProviderStillRejected verifies the CHECK constraint
-// still rejects a provider outside the widened set — the rebuild must not
-// have accidentally dropped the constraint entirely.
-func TestMigration186_BogusProviderStillRejected(t *testing.T) {
+// TestMigration193_ProviderCheckDropped_ArbitraryProviderInsertSucceeds
+// verifies migration 000193 (custom_providers registry) rebuilds `models`
+// dropping the provider CHECK constraint entirely — the constraint from
+// 000186 was superseded by service-layer validation (ModelService.resolveProvider
+// consults the custom_providers registry for anything non-builtin; there is
+// no FK models->custom_providers by design, see service/CLAUDE.md). This
+// supersedes the old TestMigration186_BogusProviderStillRejected assumption:
+// an arbitrary provider value now inserts cleanly at the DB layer, and
+// mirrors handlers_model_check_test.go's raw-SQL insert in the api package.
+func TestMigration193_ProviderCheckDropped_ArbitraryProviderInsertSucceeds(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("newMigratedTestPool: %v", err)
@@ -49,11 +54,16 @@ func TestMigration186_BogusProviderStillRejected(t *testing.T) {
 		 created_at, updated_at)
 		VALUES ('bogus-provider-model', 'bogus', 'Bogus', 'x', '', '[]', '[]',
 		 200000, 200000, '', '', 0, 1, datetime('now'), datetime('now'))`)
-	if err == nil {
-		t.Fatal("insert with bogus provider succeeded, want CHECK constraint violation")
+	if err != nil {
+		t.Fatalf("insert with arbitrary provider: %v, want success (CHECK dropped by 000193)", err)
 	}
-	if !strings.Contains(err.Error(), "CHECK") && !strings.Contains(strings.ToLower(err.Error()), "constraint") {
-		t.Errorf("error = %v, want a CHECK-constraint failure", err)
+
+	var provider string
+	if err := pool.QueryRow(`SELECT provider FROM models WHERE id = 'bogus-provider-model'`).Scan(&provider); err != nil {
+		t.Fatalf("query inserted row: %v", err)
+	}
+	if provider != "bogus" {
+		t.Errorf("provider = %q, want bogus", provider)
 	}
 }
 

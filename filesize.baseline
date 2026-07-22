@@ -33,7 +33,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	711
+be/internal/api/server.go	712
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -90,7 +90,7 @@ be/internal/repo/ticket_blocked.go	325
 be/internal/repo/ticket_search_test.go	349
 be/internal/repo/workflow_instance_cleanup_test.go	317
 be/internal/scheduler/scheduler_dispatch_test.go	337
-be/internal/service/agent.go	520
+be/internal/service/agent.go	507
 be/internal/service/agent_definition_script_test.go	321
 be/internal/service/artifact.go	326
 be/internal/service/chain.go	466

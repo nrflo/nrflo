@@ -9,6 +9,7 @@ import (
 	"be/internal/logger"
 	"be/internal/spawner/apirun/provider"
 	"be/internal/spawner/apirun/provider/anthropic"
+	"be/internal/spawner/apirun/provider/custom"
 	"be/internal/spawner/apirun/provider/openai"
 	"be/internal/spawner/apirun/provider/openrouter"
 )
@@ -39,10 +40,12 @@ func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
 }
 
 // BuildAPIProvider resolves credentials and constructs a provider.Provider for
-// the given providerName ("anthropic", "openai", or "openrouter"). Shared by the
+// the given providerName: a builtin ("anthropic", "openai", "openrouter") or
+// the name of an enabled row in the custom_providers registry (Rule 6: the
+// default case resolves the registry rather than name-checking). Shared by the
 // orchestrator (autonomous api-mode agents) and the console api engine (chat
 // sessions) so there is exactly one credential-resolution path. Returns an
-// error if credentials are missing or the provider name is unknown.
+// error if credentials are missing or the provider name is unknown/disabled.
 func BuildAPIProvider(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) (provider.Provider, error) {
 	envRepo := newProjectEnvAdapter(pool, clk, projectID)
 	switch providerName {
@@ -68,6 +71,16 @@ func BuildAPIProvider(ctx context.Context, pool *db.Pool, clk clock.Clock, provi
 		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName)
 		return openrouter.New(creds), nil
 	default:
-		return nil, fmt.Errorf("unknown provider %q", providerName)
+		cp, err := NewCustomProviderService(pool, clk).GetEnabled(providerName)
+		if err != nil {
+			return nil, fmt.Errorf("unknown or disabled provider %q: %w", providerName, err)
+		}
+		logger.Info(ctx, "api provider configured", "project_id", projectID, "provider", providerName, "wire", cp.APIWire)
+		return custom.New(custom.Config{
+			Name:    cp.Name,
+			BaseURL: cp.BaseURL,
+			APIKey:  cp.APIKey,
+			Wire:    cp.APIWire,
+		}), nil
 	}
 }

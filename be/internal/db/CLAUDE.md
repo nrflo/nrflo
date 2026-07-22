@@ -30,7 +30,7 @@ Foreign keys use `ON DELETE CASCADE` for child rows tied to a parent (e.g., agen
 
 `agent_sessions.node_id` is execution identity (which slot in the run — session dedupe, retry target, callback scope, trace lane layering); `agent_sessions.agent_type` stays template identity (which `agent_definitions` row — model/tag/prompt resolution). They are equal for every static workflow today. `agent_definitions.node_role` (`static`|`planner`|`fanout_template`) marks defs that must never auto-execute as a phase, alongside `consultant`.
 
-The `models` table has one row per provider/model pair; non-empty `cli_model` and `api_model` columns enable each mode, with separate context windows and JSON effort lists. Agent definitions and historical run/session model references use its canonical slug IDs. A nullable `release_date` (ISO, NULL=unknown) drives the console picker's newest-release-first ordering (`service.SortModelsForPicker`).
+The `models` table has one row per provider/model pair; non-empty `cli_model` and `api_model` columns enable each mode, with separate context windows and JSON effort lists. Agent definitions and historical run/session model references use its canonical slug IDs. A nullable `release_date` (ISO, NULL=unknown) drives the console picker's newest-release-first ordering (`service.SortModelsForPicker`). `models.provider` carries no CHECK constraint (dropped in migration `000193`'s rebuild): rows may reference any name in `custom_providers` (migration `000192`: `name` PK, `base_url`, optional `api_key`, `api_wire` CHECK IN `('responses','chat_completions')`, `enabled`), validated at the service layer via `service.resolveProvider`, not a DB constraint.
 
 ## Per-project & global settings (config table)
 

@@ -3,6 +3,7 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -119,6 +120,35 @@ func validateProviderModes(apiOnly bool, cliModel string) error {
 	return nil
 }
 
+// providerAllowsNoneEffort reports whether providerName is a registered
+// custom provider using the ollama_native wire — the only provider kind
+// that can send Ollama's think:false. Builtins and unknown/missing
+// providers return false; this is the CRUD chokepoint that keeps "none"
+// from leaking onto any other provider's efforts (see effortRank).
+func (s *ModelService) providerAllowsNoneEffort(providerName string) bool {
+	cp, err := NewCustomProviderService(s.pool, s.clock).Get(providerName)
+	if err != nil {
+		return false
+	}
+	return cp.APIWire == APIWireOllamaNative
+}
+
+func validateNoneEffortAllowed(allowed bool, cliEfforts, apiEfforts []string, defaultEffort string) error {
+	if allowed {
+		return nil
+	}
+	if slices.Contains(cliEfforts, "none") {
+		return fmt.Errorf("cli_efforts: effort \"none\" is only supported by an ollama_native custom provider")
+	}
+	if slices.Contains(apiEfforts, "none") {
+		return fmt.Errorf("api_efforts: effort \"none\" is only supported by an ollama_native custom provider")
+	}
+	if defaultEffort == "none" {
+		return fmt.Errorf("default_effort: effort \"none\" is only supported by an ollama_native custom provider")
+	}
+	return nil
+}
+
 func validateDefaultEffort(effort, cliModel, apiModel string, cliEfforts, apiEfforts []string) error {
 	if effort == "" {
 		return nil
@@ -163,6 +193,9 @@ func (s *ModelService) Create(req types.ModelCreateRequest) (*model.Model, error
 	apiEfforts, err := NormalizeSupportedEfforts(req.APIEfforts)
 	if err != nil {
 		return nil, fmt.Errorf("api_efforts: %w", err)
+	}
+	if err := validateNoneEffortAllowed(s.providerAllowsNoneEffort(req.Provider), cliEfforts, apiEfforts, req.DefaultEffort); err != nil {
+		return nil, err
 	}
 	if err := validateDefaultEffort(req.DefaultEffort, req.CLIModel, req.APIModel, cliEfforts, apiEfforts); err != nil {
 		return nil, err

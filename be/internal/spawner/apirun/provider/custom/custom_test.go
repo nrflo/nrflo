@@ -101,7 +101,7 @@ func TestNew_WireChatCompletions_RoutesToChatCompletionsPath(t *testing.T) {
 // registry name regardless of which wire was selected (custom's own Name(),
 // never the inner provider's "openaichat"/openai name).
 func TestNew_NameReflectsWireSelection(t *testing.T) {
-	for _, wire := range []string{WireResponses, WireChatCompletions} {
+	for _, wire := range []string{WireResponses, WireChatCompletions, WireOllamaNative} {
 		p := New(Config{Name: "my-provider", BaseURL: "http://localhost:9/v1", Wire: wire})
 		if p.Name() != "my-provider" {
 			t.Errorf("wire=%s: Name() = %q, want my-provider", wire, p.Name())

@@ -213,6 +213,19 @@ func TestCustomProviderCreate_APIWire_DefaultAndEnum(t *testing.T) {
 		}
 	})
 
+	t.Run("explicit ollama_native accepted", func(t *testing.T) {
+		svc := setupCustomProviderService(t)
+		req := validCreateReq()
+		req.APIWire = APIWireOllamaNative
+		p, err := svc.Create(req)
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		if p.APIWire != APIWireOllamaNative {
+			t.Errorf("APIWire = %q, want %q", p.APIWire, APIWireOllamaNative)
+		}
+	})
+
 	t.Run("invalid enum rejected", func(t *testing.T) {
 		svc := setupCustomProviderService(t)
 		req := validCreateReq()
@@ -223,6 +236,13 @@ func TestCustomProviderCreate_APIWire_DefaultAndEnum(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "invalid api_wire") {
 			t.Errorf("error = %v, want mention of invalid api_wire", err)
+		}
+		// The error message must enumerate all three valid wires so admins
+		// discover ollama_native without reading source.
+		for _, wire := range []string{"responses", "chat_completions", "ollama_native"} {
+			if !strings.Contains(err.Error(), wire) {
+				t.Errorf("error = %v, want mention of %q", err, wire)
+			}
 		}
 	})
 }

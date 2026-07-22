@@ -1,6 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from './client'
 
-export type APIWire = 'responses' | 'chat_completions'
+export type APIWire = 'responses' | 'chat_completions' | 'ollama_native'
 
 export interface CustomProvider {
   name: string

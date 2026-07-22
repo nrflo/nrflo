@@ -190,7 +190,7 @@ function CustomProviderCard({ provider, disabled }: { provider: CustomProvider; 
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>{provider.name}</CardTitle>
-            <CardDescription>{provider.base_url} · {provider.api_wire === 'chat_completions' ? 'Chat Completions API' : 'Responses API'}</CardDescription>
+            <CardDescription>{provider.base_url} · {provider.api_wire === 'chat_completions' ? 'Chat Completions API' : provider.api_wire === 'ollama_native' ? 'Ollama Native' : 'Responses API'}</CardDescription>
           </div>
           <div className="flex items-center gap-1">
             {!provider.enabled && <Badge variant="secondary">Disabled</Badge>}

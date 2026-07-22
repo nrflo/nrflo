@@ -4,7 +4,7 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/Input'
 import type { ModelFormData } from './modelFormData'
 
-const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max', 'ultra']
+const EFFORTS = ['none', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra']
 
 // Valid default-effort options: intersection of the enabled modes' effort lists.
 function validEfforts(data: ModelFormData): string[] {

@@ -89,6 +89,14 @@ describe('ModelsList', () => {
       expect(screen.getByText(/https:\/\/acme\.test/)).toBeInTheDocument()
     })
 
+    it('renders "Ollama Native" as the wire label for an ollama_native provider row', () => {
+      vi.mocked(customProviderHooks.useCustomProviders).mockReturnValue({
+        data: [{ ...acmeProvider, api_wire: 'ollama_native' }], isLoading: false, error: null,
+      } as never)
+      render(<ModelsList provider="acme" />)
+      expect(screen.getByText(/Ollama Native/)).toBeInTheDocument()
+    })
+
     it('does not render a CustomProviderCard for a built-in provider', () => {
       vi.mocked(hooks.useModels).mockReturnValue({ data: [anthropic], isLoading: false, error: null } as never)
       render(<ModelsList provider="anthropic" />)

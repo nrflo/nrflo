@@ -52,6 +52,23 @@ describe('ModelForm', () => {
     )
   })
 
+  it('toggles "none" on as a supported effort for a mode', async () => {
+    const user = userEvent.setup()
+    const { props } = renderForm({ cli_efforts: ['low'] })
+    const cli = screen.getByText('CLI').closest('fieldset')!
+    await user.click(within(cli).getByRole('button', { name: 'none' }))
+    expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ cli_efforts: ['low', 'none'] }))
+  })
+
+  it('offers "none" as a selectable Default Effort option once added to api_efforts', async () => {
+    const user = userEvent.setup()
+    const { props } = renderForm({ cli_model: '', api_model: 'custom-api', api_efforts: ['none', 'high'] })
+    const defaultEffort = screen.getByText('Default Effort').closest('div')!
+    await user.click(within(defaultEffort).getByRole('button'))
+    await user.click(within(defaultEffort).getByText('none'))
+    expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ default_effort: 'none' }))
+  })
+
   it('hides the CLI fieldset and CLI-fallback field when apiOnly, and stays valid on api_model alone', () => {
     const props = {
       formData: { ...emptyModelForm, id: 'custom', display_name: 'Custom', provider: 'openrouter', cli_model: '', api_model: 'moonshotai/kimi-k3' },

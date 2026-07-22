@@ -33,6 +33,71 @@ func TestCheckConnection_HappyPath(t *testing.T) {
 	}
 }
 
+// TestCheckConnection_OllamaNative_HitsAPITags verifies apiWire="ollama_native"
+// probes Ollama's native /api/tags endpoint (not /models) and decodes its
+// {"models":[{"name":...}]} shape into a flat list of model names.
+func TestCheckConnection_OllamaNative_HitsAPITags(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/tags" {
+			t.Errorf("path = %q, want /api/tags", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"models": []map[string]string{{"name": "llama3:8b"}, {"name": "qwen3:4b"}},
+		})
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := setupCustomProviderService(t)
+	ids, err := svc.CheckConnection(srv.URL, "", APIWireOllamaNative)
+	if err != nil {
+		t.Fatalf("CheckConnection: %v", err)
+	}
+	if len(ids) != 2 || ids[0] != "llama3:8b" || ids[1] != "qwen3:4b" {
+		t.Errorf("ids = %v, want [llama3:8b qwen3:4b]", ids)
+	}
+}
+
+// TestCheckConnection_OllamaNative_AuthorizationHeader mirrors
+// TestCheckConnection_APIKeyAuthorizationHeader for the ollama_native wire.
+func TestCheckConnection_OllamaNative_AuthorizationHeader(t *testing.T) {
+	t.Parallel()
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_ = json.NewEncoder(w).Encode(map[string]any{"models": []map[string]string{}})
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := setupCustomProviderService(t)
+	if _, err := svc.CheckConnection(srv.URL, "sk-local-test", APIWireOllamaNative); err != nil {
+		t.Fatalf("CheckConnection: %v", err)
+	}
+	if gotAuth != "Bearer sk-local-test" {
+		t.Errorf("Authorization = %q, want %q", gotAuth, "Bearer sk-local-test")
+	}
+}
+
+// TestCheckConnection_OllamaNative_NonOKStatus verifies a non-2xx response
+// from /api/tags surfaces a descriptive error.
+func TestCheckConnection_OllamaNative_NonOKStatus(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+
+	svc := setupCustomProviderService(t)
+	_, err := svc.CheckConnection(srv.URL, "", APIWireOllamaNative)
+	if err == nil {
+		t.Fatal("CheckConnection succeeded, want error")
+	}
+	if !strings.Contains(err.Error(), "status") {
+		t.Errorf("error = %v, want mention of status", err)
+	}
+}
+
 // TestCheckConnection_NonOKStatus verifies non-2xx responses surface a
 // descriptive error rather than being decoded as success.
 func TestCheckConnection_NonOKStatus(t *testing.T) {

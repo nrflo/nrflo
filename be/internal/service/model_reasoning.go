@@ -9,9 +9,13 @@ import (
 
 // effortRank orders levels weakest→strongest; it also defines the global
 // effort enum. Per-model capability lives in the model row's
-// supported_efforts JSON column (migration 000166), not in code.
+// supported_efforts JSON column (migration 000166), not in code. "none" is
+// the weakest level (rank -1, below "low") and is only reachable in
+// practice on an ollama_native custom provider's api_efforts — model CRUD
+// (model.go/model_update.go) gates it there so it never leaks onto a
+// non-Ollama model row.
 var effortRank = map[string]int{
-	"low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4, "ultra": 5,
+	"none": -1, "low": 0, "medium": 1, "high": 2, "xhigh": 3, "max": 4, "ultra": 5,
 }
 
 // ValidateEffortAllowed checks a reasoning-effort value against a model

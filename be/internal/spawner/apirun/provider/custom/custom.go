@@ -14,14 +14,17 @@ import (
 	"github.com/openai/openai-go/v3/option"
 
 	"be/internal/spawner/apirun/provider"
+	"be/internal/spawner/apirun/provider/ollamanative"
 	"be/internal/spawner/apirun/provider/openai"
 	"be/internal/spawner/apirun/provider/openaichat"
 )
 
-// Wire enum values, mirroring service.APIWireResponses/APIWireChatCompletions.
+// Wire enum values, mirroring
+// service.APIWireResponses/APIWireChatCompletions/APIWireOllamaNative.
 const (
 	WireResponses       = "responses"
 	WireChatCompletions = "chat_completions"
+	WireOllamaNative    = "ollama_native"
 )
 
 // Config identifies one custom_providers row's connection details.
@@ -38,12 +41,18 @@ type Config struct {
 
 // New returns a provider.Provider for a registered custom provider. Unlike
 // openrouter.New, credentials come directly from the DB-stored row (no
-// env-ladder) — cfg.APIKey may be empty for local servers with no auth.
+// env-ladder) — cfg.APIKey may be empty for local servers with no auth. opts
+// are openai-go request options and only apply to the responses/
+// chat_completions wires; ollamanative speaks net/http directly and ignores
+// them.
 func New(cfg Config, opts ...option.RequestOption) provider.Provider {
 	var inner provider.Provider
-	if cfg.Wire == WireChatCompletions {
+	switch cfg.Wire {
+	case WireChatCompletions:
 		inner = openaichat.New(openaichat.Credentials{Value: cfg.APIKey, BaseURL: cfg.BaseURL}, opts...)
-	} else {
+	case WireOllamaNative:
+		inner = ollamanative.New(ollamanative.Credentials{Value: cfg.APIKey, BaseURL: cfg.BaseURL})
+	default:
 		inner = openai.New(openai.Credentials{Value: cfg.APIKey, BaseURL: cfg.BaseURL}, opts...)
 	}
 	return &customProvider{name: cfg.Name, inner: inner}

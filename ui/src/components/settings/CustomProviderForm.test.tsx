@@ -74,6 +74,14 @@ describe('CustomProviderForm', () => {
     expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ api_wire: 'chat_completions' }))
   })
 
+  it('changing the API Wire dropdown to Ollama Native calls setFormData with ollama_native', async () => {
+    const user = userEvent.setup()
+    const { props } = renderForm()
+    await user.click(screen.getByText('Responses API'))
+    await user.click(screen.getByText('Ollama Native (/api/chat)'))
+    expect(props.setFormData).toHaveBeenCalledWith(expect.objectContaining({ api_wire: 'ollama_native' }))
+  })
+
   it('shows the mutation error message', () => {
     renderForm({ mutation: { isPending: false, isError: true, error: new Error('name already exists') } })
     expect(screen.getByText(/name already exists/)).toBeInTheDocument()

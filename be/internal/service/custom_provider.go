@@ -19,9 +19,10 @@ var customProviderNameRegex = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
 const (
 	APIWireResponses       = "responses"
 	APIWireChatCompletions = "chat_completions"
+	APIWireOllamaNative    = "ollama_native"
 )
 
-var validAPIWires = map[string]bool{APIWireResponses: true, APIWireChatCompletions: true}
+var validAPIWires = map[string]bool{APIWireResponses: true, APIWireChatCompletions: true, APIWireOllamaNative: true}
 
 const customProviderColumns = `name, base_url, api_key, api_wire, enabled, created_at, updated_at`
 
@@ -125,7 +126,7 @@ func normalizeAPIWire(raw string) (string, error) {
 		return APIWireResponses, nil
 	}
 	if !validAPIWires[raw] {
-		return "", fmt.Errorf("invalid api_wire %q: must be one of responses, chat_completions", raw)
+		return "", fmt.Errorf("invalid api_wire %q: must be one of responses, chat_completions, ollama_native", raw)
 	}
 	return raw, nil
 }

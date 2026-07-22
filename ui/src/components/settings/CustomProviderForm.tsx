@@ -9,6 +9,7 @@ import { ProviderConnectionCheckButton } from './ProviderConnectionCheckButton'
 const API_WIRE_OPTIONS: { value: APIWire; label: string }[] = [
   { value: 'responses', label: 'Responses API' },
   { value: 'chat_completions', label: 'Chat Completions API' },
+  { value: 'ollama_native', label: 'Ollama Native (/api/chat)' },
 ]
 
 export interface CustomProviderFormData {

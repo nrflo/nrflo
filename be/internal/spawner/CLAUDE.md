@@ -91,7 +91,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Planner
 
-`Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner).
+`Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner). Every one-off child `Spawner` (`delegate.go`, `consult_run.go`, `context_save.go`) must set `Config.APIMode: true` itself — it is not inherited from the parent spawner's config — or api-mode agents it spawns get rejected at the gate with `api_mode_disabled`.
 
 ## Proactive Restart
 

@@ -12,6 +12,7 @@ const SUB_TABS: { id: DocKind; label: string }[] = [
   { id: 'cli', label: 'CLI' },
   { id: 'python', label: 'Python' },
   { id: 'api', label: 'API' },
+  { id: 'local-providers', label: 'Local Providers' },
 ]
 
 const SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))

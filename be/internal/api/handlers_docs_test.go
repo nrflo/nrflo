@@ -19,6 +19,7 @@ func TestHandleGetAgentManual(t *testing.T) {
 		{name: "cli kind", query: "?kind=cli", wantStatus: http.StatusOK, wantTitle: "CLI Agents"},
 		{name: "python kind", query: "?kind=python", wantStatus: http.StatusOK, wantTitle: "Python Agents"},
 		{name: "api kind", query: "?kind=api", wantStatus: http.StatusOK, wantTitle: "API Agents"},
+		{name: "local-providers kind", query: "?kind=local-providers", wantStatus: http.StatusOK, wantTitle: "Local Providers"},
 		{name: "no kind defaults to common", query: "", wantStatus: http.StatusOK, wantTitle: "Common"},
 		{name: "unknown kind returns 400", query: "?kind=bogus", wantStatus: http.StatusBadRequest, wantError: "unknown kind"},
 	}

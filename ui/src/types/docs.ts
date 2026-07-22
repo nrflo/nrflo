@@ -1,4 +1,4 @@
-export type DocKind = 'common' | 'cli' | 'python' | 'api'
+export type DocKind = 'common' | 'cli' | 'python' | 'api' | 'local-providers'
 
 export interface AgentManualResponse {
   content: string

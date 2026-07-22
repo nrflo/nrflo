@@ -172,6 +172,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		TicketSvc:          s.config.TicketSvc,
 		PTYManager:         s.config.PTYManager,
 		ProjectEnv:         s.config.ProjectEnv,
+		APIMode:            true,
 	})
 
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)

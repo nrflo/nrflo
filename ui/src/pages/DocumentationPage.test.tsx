@@ -38,7 +38,7 @@ describe('DocumentationPage', () => {
     )
   }
 
-  it('renders all four sub-tab buttons and calls useAgentManual with common by default', () => {
+  it('renders all five sub-tab buttons and calls useAgentManual with common by default', () => {
     mockUseAgentManual.mockReturnValue({
       data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
     } as ReturnType<typeof useAgentManual>)
@@ -49,7 +49,30 @@ describe('DocumentationPage', () => {
     expect(screen.getByRole('button', { name: 'CLI' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Python' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'API' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Local Providers' })).toBeInTheDocument()
     expect(mockUseAgentManual).toHaveBeenCalledWith('common')
+  })
+
+  it('switches to local-providers kind and shows content when Local Providers tab is clicked', async () => {
+    const user = userEvent.setup()
+    mockUseAgentManual.mockReturnValue({
+      data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
+    } as ReturnType<typeof useAgentManual>)
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Local Providers' }))
+
+    expect(mockUseAgentManual).toHaveBeenCalledWith('local-providers')
+
+    mockUseAgentManual.mockReturnValue({
+      data: { content: '# Local Providers\n\nOllama setup docs.', title: 'Agent Documentation' },
+      isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
+    } as ReturnType<typeof useAgentManual>)
+
+    renderPage('/docs?sub=local-providers')
+
+    expect(screen.getByTestId('markdown-content')).toHaveTextContent('# Local Providers')
   })
 
   it('switches kind when a sub-tab is clicked', async () => {

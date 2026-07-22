@@ -7,10 +7,11 @@ import (
 )
 
 var allowedDocKinds = map[string]string{
-	"common": "Common",
-	"cli":    "CLI Agents",
-	"python": "Python Agents",
-	"api":    "API Agents",
+	"common":          "Common",
+	"cli":             "CLI Agents",
+	"python":          "Python Agents",
+	"api":             "API Agents",
+	"local-providers": "Local Providers",
 }
 
 // handleGetAgentManual serves embedded documentation as JSON.

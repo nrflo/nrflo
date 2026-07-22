@@ -128,6 +128,38 @@ func (r *AgentMessageRepo) GetBySession(sessionID string) ([]string, error) {
 	return messages, nil
 }
 
+// CategorizedMessage is a lean content+category projection for fold input,
+// where the digest model needs to distinguish user input from tool output
+// from assistant text but has no use for timestamps or payload.
+type CategorizedMessage struct {
+	Content  string
+	Category string
+}
+
+// GetBySessionCategorized returns all messages for a session ordered by seq,
+// content and category only — the lean read the autonomous fold uses to
+// render "[category] content" delta lines.
+func (r *AgentMessageRepo) GetBySessionCategorized(sessionID string) ([]CategorizedMessage, error) {
+	rows, err := r.db.Query(
+		`SELECT content, category FROM agent_messages WHERE session_id = ? ORDER BY seq ASC`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var messages []CategorizedMessage
+	for rows.Next() {
+		var msg CategorizedMessage
+		if err := rows.Scan(&msg.Content, &msg.Category); err != nil {
+			return nil, err
+		}
+		messages = append(messages, msg)
+	}
+	return messages, nil
+}
+
 // GetBySessionPaginated returns messages with timestamps, with limit and offset
 func (r *AgentMessageRepo) GetBySessionPaginated(sessionID string, limit, offset int) ([]MessageWithTime, error) {
 	rows, err := r.db.Query(

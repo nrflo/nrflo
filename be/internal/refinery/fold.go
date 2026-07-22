@@ -37,7 +37,7 @@ func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events 
 		prevContent = prevDigest.Content
 	}
 
-	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, buildFoldUserText(prevContent, events))
+	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, buildFoldUserText("", prevContent, events))
 	if !ok {
 		return
 	}
@@ -129,8 +129,17 @@ func isDegenerateStopReason(sr string) bool {
 	return sr == "max_tokens" || sr == "refusal"
 }
 
-func buildFoldUserText(prevDigest string, events []string) string {
+// buildFoldUserText assembles the fold prompt's user text. taskAnchor, when
+// non-empty (autonomous fold only), is prepended as an immutable ## Task
+// section supplied verbatim each fold — the model must anchor the digest to
+// it but never summarize/drop/contradict it. Console fold passes "".
+func buildFoldUserText(taskAnchor, prevDigest string, events []string) string {
 	var b strings.Builder
+	if taskAnchor != "" {
+		b.WriteString("## Task\n\n")
+		b.WriteString(taskAnchor)
+		b.WriteString("\n\n")
+	}
 	b.WriteString("## Previous Digest\n\n")
 	if prevDigest == "" {
 		b.WriteString("_none yet_")

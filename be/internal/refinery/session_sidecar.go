@@ -25,6 +25,7 @@ type autonomousSession struct {
 	sc                 *sidecar
 	workflowInstanceID string
 	nodeID             string
+	taskAnchor         string
 
 	mu              sync.Mutex
 	lastFoldedCount int
@@ -42,7 +43,12 @@ func (m *Manager) StartSession(sessionID, projectID, workflowInstanceID, nodeID 
 	if _, ok := m.autonomous[sessionID]; ok {
 		return
 	}
-	as := &autonomousSession{workflowInstanceID: workflowInstanceID, nodeID: nodeID}
+	anchor, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetPrompt(sessionID)
+	if err != nil {
+		logger.Error(context.Background(), "refinery: read task anchor failed", "session_id", sessionID, "error", err)
+		anchor = ""
+	}
+	as := &autonomousSession{workflowInstanceID: workflowInstanceID, nodeID: nodeID, taskAnchor: anchor}
 	foldFn := func(ctx context.Context, sid, pid string, _ []string) {
 		m.foldAutonomous(ctx, as, sid, pid)
 	}
@@ -89,7 +95,7 @@ func (m *Manager) autonomousEnabled() bool {
 // sidecar goroutine and StopSession, neither of which blocks on fold outcome.
 func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, sessionID, projectID string) {
 	messageRepo := repo.NewAgentMessageRepo(m.pool, m.clock)
-	messages, err := messageRepo.GetBySession(sessionID)
+	messages, err := messageRepo.GetBySessionCategorized(sessionID)
 	if err != nil {
 		logger.Error(ctx, "refinery: autonomous read messages failed", "session_id", sessionID, "error", err)
 		return
@@ -125,7 +131,11 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		prevContent = prevDigest.Content
 	}
 
-	userText := buildFoldUserText(prevContent, []string{foldfmt.JoinTail(delta, maxFoldDeltaChars)})
+	lines := make([]string, len(delta))
+	for i, msg := range delta {
+		lines[i] = "[" + msg.Category + "] " + msg.Content
+	}
+	userText := buildFoldUserText(as.taskAnchor, prevContent, []string{foldfmt.JoinTail(lines, maxFoldDeltaChars)})
 	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, userText)
 	if !ok {
 		return

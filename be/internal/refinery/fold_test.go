@@ -135,6 +135,31 @@ func TestFold_MissingRefineryDef_SkipsWithoutPanicking(t *testing.T) {
 	}
 }
 
+func TestBuildFoldUserText_TaskAnchor(t *testing.T) {
+	t.Run("non-empty anchor renders Task section with labeled event lines", func(t *testing.T) {
+		got := buildFoldUserText("Implement the widget.", "prev digest", []string{"[user_input] please add a widget", "[tool] ran ls"})
+		if !strings.Contains(got, "## Task\n\nImplement the widget.") {
+			t.Errorf("buildFoldUserText = %q, want a ## Task section with the anchor verbatim", got)
+		}
+		if !strings.Contains(got, "[user_input] please add a widget") {
+			t.Errorf("buildFoldUserText = %q, want the [user_input] labeled line", got)
+		}
+		if !strings.Contains(got, "[tool] ran ls") {
+			t.Errorf("buildFoldUserText = %q, want the [tool] labeled line", got)
+		}
+	})
+
+	t.Run("empty anchor omits Task section (console-fold parity)", func(t *testing.T) {
+		got := buildFoldUserText("", "prev digest", []string{"event one"})
+		if strings.Contains(got, "## Task") {
+			t.Errorf("buildFoldUserText with empty anchor = %q, want no ## Task section", got)
+		}
+		if !strings.Contains(got, "## Previous Digest") {
+			t.Errorf("buildFoldUserText = %q, want the Previous Digest section still present", got)
+		}
+	})
+}
+
 func mockScript(text string) mock.Script {
 	return mock.Script{Final: provider.FinalResponse{
 		StopReason: "end_turn",

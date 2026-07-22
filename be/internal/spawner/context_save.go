@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"be/internal/foldfmt"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
@@ -159,7 +160,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		return false
 	}
 
-	formatted := formatMessagesForSave(messages, maxMessageChars)
+	formatted := foldfmt.JoinTail(messages, maxMessageChars)
 
 	defModel := sysDef.Model
 	chain, chainErr := svc.ResolveAgentChain(sysDef)

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"be/internal/clock"
+	"be/internal/foldfmt"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun/provider"
@@ -153,7 +154,7 @@ func TestContextSaverAPI_LocalProviderStub_WritesToResumeFinding(t *testing.T) {
 	if len(messages) == 0 {
 		t.Fatal("no messages found for session; insertAgentMessage did not take")
 	}
-	formatted := formatMessagesForSave(messages, maxMessageChars)
+	formatted := foldfmt.JoinTail(messages, maxMessageChars)
 
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{

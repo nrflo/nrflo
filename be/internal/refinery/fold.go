@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"be/internal/foldfmt"
 	"be/internal/logger"
 	"be/internal/service"
 	"be/internal/spawner/apirun/provider"
@@ -119,7 +120,7 @@ func (m *Manager) runFoldCore(ctx context.Context, logKey, projectID, userText s
 		return "", provider.Usage{}, false
 	}
 
-	return capBytes(text, maxDigestBytes), resp.Usage, true
+	return foldfmt.CapBytes(text, maxDigestBytes), resp.Usage, true
 }
 
 // isDegenerateStopReason reports whether sr indicates a truncated (max_tokens)
@@ -149,18 +150,6 @@ func extractText(blocks []provider.ContentBlock) string {
 		}
 	}
 	return b.String()
-}
-
-// capBytes truncates s to at most n bytes, backing off to a UTF-8 rune
-// boundary so a multi-byte character is never split.
-func capBytes(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	for n > 0 && s[n]&0xC0 == 0x80 {
-		n--
-	}
-	return s[:n]
 }
 
 // noopSink discards every streaming callback: fold is a single blocking

@@ -2,11 +2,10 @@ package refinery
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"sync"
 	"time"
 
+	"be/internal/foldfmt"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
@@ -14,8 +13,7 @@ import (
 )
 
 // maxFoldDeltaChars caps the message-delta text handed to a single
-// autonomous fold call — mirrors formatMessagesForSave's tail-keep idiom
-// (spawner/context_save_format.go) without importing spawner.
+// autonomous fold call, via foldfmt.JoinTail's tail-keep idiom.
 const maxFoldDeltaChars = 8000
 
 // autonomousSession pairs a sidecar (trigger channel + goroutine, reused
@@ -127,7 +125,7 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		prevContent = prevDigest.Content
 	}
 
-	userText := buildFoldUserText(prevContent, []string{formatMessageDelta(delta, maxFoldDeltaChars)})
+	userText := buildFoldUserText(prevContent, []string{foldfmt.JoinTail(delta, maxFoldDeltaChars)})
 	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, userText)
 	if !ok {
 		return
@@ -185,35 +183,4 @@ func (m *Manager) broadcastHandoffDigest(ctx context.Context, sessionID, project
 		"content":              digest.Content,
 	}
 	m.broadcaster(ws.NewEvent(ws.EventAgentHandoffDigest, projectID, "", "", data))
-}
-
-// formatMessageDelta joins delta messages with newlines, keeping only the
-// tail that fits within maxChars — the same tail-keep + cap idiom as
-// spawner's formatMessagesForSave (context_save_format.go), reimplemented
-// locally so refinery never imports spawner.
-func formatMessageDelta(messages []string, maxChars int) string {
-	joined := strings.Join(messages, "\n")
-	if len(joined) <= maxChars {
-		return joined
-	}
-
-	var kept []string
-	total := 0
-	for i := len(messages) - 1; i >= 0; i-- {
-		msgLen := len(messages[i])
-		if total > 0 {
-			msgLen++
-		}
-		if total+msgLen > maxChars {
-			break
-		}
-		total += msgLen
-		kept = append(kept, messages[i])
-	}
-	for i, j := 0, len(kept)-1; i < j; i, j = i+1, j-1 {
-		kept[i], kept[j] = kept[j], kept[i]
-	}
-
-	header := fmt.Sprintf("[truncated: showing last %d of %d messages]", len(kept), len(messages))
-	return header + "\n" + strings.Join(kept, "\n")
 }

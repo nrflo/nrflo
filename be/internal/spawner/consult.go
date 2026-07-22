@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"be/internal/foldfmt"
 	"be/internal/repo"
 )
 
@@ -37,7 +38,7 @@ func (s *Spawner) Consult(ctx context.Context, callerSessionID, consultantID, qu
 
 	msgRepo := repo.NewAgentMessageRepo(pool, s.config.Clock)
 	messages, _ := msgRepo.GetBySession(callerSessionID)
-	transcript := formatMessagesForSave(messages, maxMessageChars)
+	transcript := foldfmt.JoinTail(messages, maxMessageChars)
 
 	return s.runConsult(ctx, consultRequest{
 		CallerSessionID: callerSessionID,

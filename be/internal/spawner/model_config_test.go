@@ -28,13 +28,13 @@ func TestMaxContextForModel_UsesCLIContext(t *testing.T) {
 	t.Parallel()
 	s := &Spawner{config: Config{ModelConfigs: map[string]ModelConfig{
 		"opus-4-8-1m": {CLIContext: 1000000},
-		"gpt-5.6-sol": {CLIContext: 372000},
+		"gpt-5.6-sol": {CLIContext: 272000},
 	}}}
 	if got := s.maxContextForModel("opus-4-8-1m"); got != 1000000 {
 		t.Fatalf("max context = %d, want 1000000", got)
 	}
-	if got := s.maxContextForModel("gpt-5.6-sol"); got != 372000 {
-		t.Fatalf("max context = %d, want 372000", got)
+	if got := s.maxContextForModel("gpt-5.6-sol"); got != 272000 {
+		t.Fatalf("max context = %d, want 272000", got)
 	}
 	if got := s.maxContextForModel("raw-model"); got != 200000 {
 		t.Fatalf("raw max context = %d, want 200000", got)

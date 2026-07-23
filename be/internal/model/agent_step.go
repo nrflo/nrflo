@@ -26,6 +26,16 @@ type RequiredFinding struct {
 	Schema string `json:"schema"`
 }
 
+// PathOverlap is a declarative cross-key gate: the path-bearing values of
+// the Left group's required_findings keys must share no path with the
+// Right group's — e.g. backend and frontend file-ownership lists claiming
+// the same file. Evaluated by stepengine.checkPathOverlap against the
+// step's already-loaded findings, never by a schema on a single key.
+type PathOverlap struct {
+	Left  []string `json:"left"`
+	Right []string `json:"right"`
+}
+
 // StepDefinition is one step in an agent_definitions.steps stepwise sequence.
 // RotationAllowed marks whether the orchestrator may rotate the assigned
 // model/session when this step stalls or fails (never forced false on the
@@ -37,4 +47,5 @@ type StepDefinition struct {
 	RequiredFindings []RequiredFinding `json:"required_findings,omitempty"`
 	Checks           []string          `json:"checks,omitempty"`
 	RotationAllowed  bool              `json:"rotation_allowed,omitempty"`
+	PathOverlap      *PathOverlap      `json:"path_overlap,omitempty"`
 }

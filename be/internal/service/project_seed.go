@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 
 	"be/internal/logger"
@@ -85,11 +86,19 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 				tierVal = target.Tier
 			}
 
+			tpl := templates[phase.role]
+			promptMode := PromptModeFull
+			var steps interface{}
+			if tpl.steps.Valid && tpl.steps.String != "" {
+				promptMode = PromptModeStepwise
+				steps = tpl.steps.String
+			}
+
 			_, err := s.pool.Exec(`
 				INSERT OR IGNORE INTO agent_definitions
-					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, tools, tier, created_at, updated_at)
-				VALUES (?, ?, ?, ?, 20, ?, ?, NULL, ?, ?, ?, ?, ?)`,
-				phase.role, projectID, wf.id, model, templates[phase.role], phase.layer, systemTemplateID, tools, tierVal, now, now,
+					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, tools, tier, prompt_mode, steps, created_at, updated_at)
+				VALUES (?, ?, ?, ?, 20, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`,
+				phase.role, projectID, wf.id, model, tpl.prompt, phase.layer, systemTemplateID, tools, tierVal, promptMode, steps, now, now,
 			)
 			if err != nil {
 				logger.Warn(context.Background(), "seedTieredWorkflows: failed to insert agent_definition", "project_id", projectID, "workflow_id", wf.id, "def_id", phase.role, "err", err)
@@ -98,9 +107,18 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 	}
 }
 
+// classicTemplate is one default_templates row's seed-relevant content: the
+// prompt body, plus the optional stepwise steps JSON (NULL for every role
+// but setup-analyzer today).
+type classicTemplate struct {
+	prompt string
+	steps  sql.NullString
+}
+
 // loadClassicTemplates reads the readonly default_templates prompt bodies
-// for the five classic phase roles, keyed by role/template id.
-func (s *ProjectService) loadClassicTemplates() (map[string]string, error) {
+// (and any stepwise steps JSON) for the five classic phase roles, keyed by
+// role/template id.
+func (s *ProjectService) loadClassicTemplates() (map[string]classicTemplate, error) {
 	ids := []string{"setup-analyzer", "test-writer", "implementor", "qa-verifier", "doc-updater"}
 	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(ids)), ",")
 	args := make([]interface{}, len(ids))
@@ -108,19 +126,20 @@ func (s *ProjectService) loadClassicTemplates() (map[string]string, error) {
 		args[i] = id
 	}
 
-	rows, err := s.pool.Query("SELECT id, template FROM default_templates WHERE id IN ("+placeholders+")", args...)
+	rows, err := s.pool.Query("SELECT id, template, steps FROM default_templates WHERE id IN ("+placeholders+")", args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := make(map[string]string, len(ids))
+	out := make(map[string]classicTemplate, len(ids))
 	for rows.Next() {
-		var id, template string
-		if err := rows.Scan(&id, &template); err != nil {
+		var id string
+		var tpl classicTemplate
+		if err := rows.Scan(&id, &tpl.prompt, &tpl.steps); err != nil {
 			return nil, err
 		}
-		out[id] = template
+		out[id] = tpl
 	}
 	return out, rows.Err()
 }

@@ -84,6 +84,9 @@ func validateStepDefinitions(steps []model.StepDefinition) error {
 		if err := validateStepChecks(step.StepID, step.Checks); err != nil {
 			return err
 		}
+		if err := validatePathOverlap(step.StepID, step.PathOverlap); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -93,15 +96,56 @@ func validateRequiredFindings(stepID string, findings []model.RequiredFinding) e
 		return validationErrorf("steps[%s]: too many required_findings (max 20)", stepID)
 	}
 	for _, f := range findings {
-		key := strings.TrimSpace(f.Key)
-		if key == "" || key != f.Key || strings.ContainsAny(f.Key, " \t\n") {
-			return validationErrorf("steps[%s]: required_findings key must be non-empty and whitespace-free", stepID)
-		}
-		if len(f.Key) > 128 {
-			return validationErrorf("steps[%s]: required_findings key exceeds 128 bytes", stepID)
+		if err := validateFindingKey(stepID, "required_findings", f.Key); err != nil {
+			return err
 		}
 		if !model.ValidFindingSchema(f.Schema) {
 			return validationErrorf("steps[%s]: invalid required_findings schema %q", stepID, f.Schema)
+		}
+	}
+	return nil
+}
+
+// validateFindingKey applies the shared findings-key well-formedness rules
+// (non-empty, whitespace-free, <=128 bytes) under a field label used in the
+// error message.
+func validateFindingKey(stepID, field, key string) error {
+	trimmed := strings.TrimSpace(key)
+	if trimmed == "" || trimmed != key || strings.ContainsAny(key, " \t\n") {
+		return validationErrorf("steps[%s]: %s key must be non-empty and whitespace-free", stepID, field)
+	}
+	if len(key) > 128 {
+		return validationErrorf("steps[%s]: %s key exceeds 128 bytes", stepID, field)
+	}
+	return nil
+}
+
+// validatePathOverlap checks a step's optional cross-key gate: nil is OK
+// (no gate); both groups must be non-empty and hold at most 10 well-formed
+// keys, with no key appearing in both groups.
+func validatePathOverlap(stepID string, overlap *model.PathOverlap) error {
+	if overlap == nil {
+		return nil
+	}
+	if len(overlap.Left) == 0 || len(overlap.Right) == 0 {
+		return validationErrorf("steps[%s]: path_overlap left and right must both be non-empty", stepID)
+	}
+	seen := make(map[string]string, len(overlap.Left)+len(overlap.Right))
+	for _, side := range []struct {
+		name string
+		keys []string
+	}{{"left", overlap.Left}, {"right", overlap.Right}} {
+		if len(side.keys) > 10 {
+			return validationErrorf("steps[%s]: path_overlap %s has too many keys (max 10)", stepID, side.name)
+		}
+		for _, key := range side.keys {
+			if err := validateFindingKey(stepID, "path_overlap "+side.name, key); err != nil {
+				return err
+			}
+			if other, ok := seen[key]; ok && other != side.name {
+				return validationErrorf("steps[%s]: path_overlap key %q appears in both left and right", stepID, key)
+			}
+			seen[key] = side.name
 		}
 	}
 	return nil

@@ -56,11 +56,7 @@ func (e *Engine) Advance(ctx context.Context, instanceID, nodeID, stepID string,
 		return Outcome{}, err
 	}
 	if !evResult.OK {
-		reason := "invalid_evidence"
-		if len(evResult.Missing) > 0 {
-			reason = "missing_evidence"
-		}
-		return rejectedOutcome(cursor, reason, "%s", evResult.RejectionMessage()), nil
+		return rejectedOutcome(cursor, evResult.RejectionReason(), "%s", evResult.RejectionMessage()), nil
 	}
 
 	if e.checks != nil && len(currentStep.Checks) > 0 {

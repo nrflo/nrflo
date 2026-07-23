@@ -1,11 +1,14 @@
 package service
 
 import (
+	"database/sql"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/types"
 )
 
@@ -113,5 +116,81 @@ func TestProjectCreate_SeedsPromptsFromDefaultTemplates(t *testing.T) {
 	}
 	if prompt == "" {
 		t.Error("seeded implementor prompt is empty, want default_templates content")
+	}
+}
+
+// getAgentDefPromptMode reads back prompt_mode/steps for one def row.
+func getAgentDefPromptMode(t *testing.T, pool *db.Pool, projectID, workflowID, defID string) (promptMode string, steps sql.NullString) {
+	t.Helper()
+	if err := pool.QueryRow(`SELECT prompt_mode, steps FROM agent_definitions WHERE project_id = ? AND workflow_id = ? AND id = ?`,
+		projectID, workflowID, defID,
+	).Scan(&promptMode, &steps); err != nil {
+		t.Fatalf("getAgentDefPromptMode(%s/%s/%s): %v", projectID, workflowID, defID, err)
+	}
+	return
+}
+
+// TestProjectCreate_SetupAnalyzerBornStepwise asserts a freshly created
+// project's setup-analyzer role is seeded prompt_mode='stepwise' with a
+// non-empty steps JSON that itself passes validateStepDefinitions (the real
+// guard the CRUD path enforces), across every classic workflow that includes
+// a setup-analyzer phase.
+func TestProjectCreate_SetupAnalyzerBornStepwise(t *testing.T) {
+	t.Parallel()
+	svc, pool := setupProjectSeedTestEnv(t)
+
+	if _, err := svc.Create("stepwise-seed", &types.ProjectCreateRequest{}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	for _, workflowID := range []string{"feature", "bugfix", "docs", "refactor"} {
+		promptMode, steps := getAgentDefPromptMode(t, pool, "stepwise-seed", workflowID, "setup-analyzer")
+		if promptMode != PromptModeStepwise {
+			t.Errorf("%s/setup-analyzer prompt_mode = %q, want stepwise", workflowID, promptMode)
+		}
+		if !steps.Valid || steps.String == "" {
+			t.Fatalf("%s/setup-analyzer steps = %v, want non-empty JSON", workflowID, steps)
+		}
+		var decoded []model.StepDefinition
+		if err := json.Unmarshal([]byte(steps.String), &decoded); err != nil {
+			t.Fatalf("%s/setup-analyzer: unmarshal steps: %v", workflowID, err)
+		}
+		if err := validateStepDefinitions(decoded); err != nil {
+			t.Errorf("%s/setup-analyzer: seeded steps fail validateStepDefinitions: %v", workflowID, err)
+		}
+	}
+}
+
+// TestProjectCreate_OtherRolesBornFull asserts every non-setup-analyzer
+// classic phase (and the hotfix implementor) is seeded prompt_mode='full'
+// with no steps.
+func TestProjectCreate_OtherRolesBornFull(t *testing.T) {
+	t.Parallel()
+	svc, pool := setupProjectSeedTestEnv(t)
+
+	if _, err := svc.Create("full-seed", &types.ProjectCreateRequest{}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	cases := []struct{ workflowID, defID string }{
+		{"feature", "test-writer"},
+		{"feature", "implementor"},
+		{"feature", "qa-verifier"},
+		{"feature", "doc-updater"},
+		{"bugfix", "implementor"},
+		{"bugfix", "qa-verifier"},
+		{"docs", "doc-updater"},
+		{"refactor", "implementor"},
+		{"refactor", "qa-verifier"},
+		{"hotfix", "implementor"},
+	}
+	for _, c := range cases {
+		promptMode, steps := getAgentDefPromptMode(t, pool, "full-seed", c.workflowID, c.defID)
+		if promptMode != PromptModeFull {
+			t.Errorf("%s/%s prompt_mode = %q, want full", c.workflowID, c.defID, promptMode)
+		}
+		if steps.Valid {
+			t.Errorf("%s/%s steps = %q, want NULL", c.workflowID, c.defID, steps.String)
+		}
 	}
 }

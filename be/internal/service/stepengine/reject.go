@@ -11,7 +11,7 @@ func (r *Rejection) CountsTowardEvidenceCap() bool {
 		return false
 	}
 	switch r.Reason {
-	case "missing_evidence", "invalid_evidence", "check_failed":
+	case "missing_evidence", "invalid_evidence", "check_failed", "path_overlap":
 		return true
 	default:
 		return false

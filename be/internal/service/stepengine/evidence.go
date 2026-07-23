@@ -30,6 +30,10 @@ type EvidenceResult struct {
 	OK      bool
 	Missing []string
 	Invalid []KeyProblem
+	// Overlaps names paths claimed by both sides of a step's path_overlap
+	// gate (e.g. a file in both be_files_to_modify and fe_files_to_modify) —
+	// unlike Flags, a non-empty Overlaps blocks completion.
+	Overlaps []string
 	// Flags carries non-fatal path-resolution notices (ambiguous or
 	// unresolved path-bearing values) — these never block completion, since
 	// e.g. files_to_create legitimately does not exist yet.
@@ -71,7 +75,9 @@ func (e *Engine) ValidateEvidence(step model.StepDefinition, ec EvidenceContext)
 		}
 	}
 
-	result.OK = len(result.Missing) == 0 && len(result.Invalid) == 0
+	result.Overlaps = checkPathOverlap(findings, step.PathOverlap)
+
+	result.OK = len(result.Missing) == 0 && len(result.Invalid) == 0 && len(result.Overlaps) == 0
 	return result, nil
 }
 
@@ -89,5 +95,28 @@ func (r EvidenceResult) RejectionMessage() string {
 		}
 		fmt.Fprintf(&b, "finding %q failed schema %q: %s", p.Key, p.Schema, p.Problem)
 	}
+	if len(r.Overlaps) > 0 {
+		if b.Len() > 0 {
+			b.WriteString("; ")
+		}
+		fmt.Fprintf(&b, "files claimed by both sides: %s — assign each file to exactly one side", strings.Join(r.Overlaps, ", "))
+	}
 	return b.String()
+}
+
+// RejectionReason names the single reason a non-OK EvidenceResult should be
+// rejected under, in fixed priority order (Rule 6: the reason-selection
+// switch lives on the type, not scattered at call sites): missing evidence
+// first, then invalid schema, then a path_overlap gate failure.
+func (r EvidenceResult) RejectionReason() string {
+	switch {
+	case len(r.Missing) > 0:
+		return "missing_evidence"
+	case len(r.Invalid) > 0:
+		return "invalid_evidence"
+	case len(r.Overlaps) > 0:
+		return "path_overlap"
+	default:
+		return ""
+	}
 }

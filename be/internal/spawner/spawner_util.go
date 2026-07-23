@@ -113,9 +113,9 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	case "script":
 		backend = newScriptBackend(s)
 	case "cli_interactive":
-		// codex 0.133 exposes no usable structured channel under PTY (no hooks,
-		// no rollout JSONL), so codex agents are driven via `codex app-server`
-		// JSON-RPC instead of the PTY/TUI. All other CLIs use the PTY backend.
+		// codex agents are driven via `codex app-server` JSON-RPC instead of the
+		// PTY/TUI because the protocol is the richer channel (see
+		// codexAppServerBackend). All other CLIs use the PTY backend.
 		if prep.cliName == "codex" {
 			backend = newCodexAppServerBackend(s)
 		} else {

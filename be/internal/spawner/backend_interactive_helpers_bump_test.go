@@ -128,10 +128,10 @@ func TestFerryPTYOutput_NilFirstByteCh(t *testing.T) {
 
 // === BumpsOnPTYBytes adapter contract ===
 
-// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns true — codex 0.133
-// exposes no structured activity channel under PTY (no hooks per
-// openai/codex#21639, no rollout JSONL written at all), so the TUI's redraws
-// are the only liveness signal and PTY bytes must drive the heartbeat.
+// TestBumpsOnPTYBytes_Codex verifies CodexAdapter returns true — PTY user
+// sessions do emit hook events on codex 0.145 (cli_adapter_codex.go:160-167),
+// but PTY bytes stay the deliberate heartbeat floor for the human-session PTY
+// paths.
 func TestBumpsOnPTYBytes_Codex(t *testing.T) {
 	t.Parallel()
 	if !(&CodexAdapter{}).BumpsOnPTYBytes() {

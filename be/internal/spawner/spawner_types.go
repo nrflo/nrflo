@@ -92,7 +92,9 @@ type processInfo struct {
 	// sessionStartCh is closed (idempotently) when Claude's SessionStart hook
 	// fires — the canonical readiness signal. firstByteCh is closed on the
 	// first non-empty PTY read — used only as a fallback when SessionStart
-	// does not arrive (older Claude builds, or codex which has no hooks).
+	// does not arrive: older Claude builds, or an adapter whose hooks aren't
+	// wired into this managed-spawn readiness path (codex managed spawns are
+	// app-server-routed and never reach this PTY code at all).
 	// deliverPrompt prefers sessionStartCh; firstByteCh + a quiescence gate
 	// only kick in if SessionStart never appears within ~3s.
 	sessionStartCh   chan struct{}

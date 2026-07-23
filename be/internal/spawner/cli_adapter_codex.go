@@ -123,7 +123,7 @@ func removeEnvKey(env []string, prefix string) []string {
 // PrepareInteractive creates a per-session CODEX_HOME profile dir holding the
 // user's auth + config (hook tables stripped) plus a `[projects."<workDir>"]
 // trust_level="trusted"` entry, and a hooks.json lifecycle sidecar
-// (writeCodexHooksForSession, non-fatal on error). codex 0.133 reads workdir
+// (writeCodexHooksForSession, non-fatal on error). codex 0.145 reads workdir
 // trust from CODEX_HOME/config.toml; without it the TUI blocks on a
 // directory-trust dialog even under `--dangerously-bypass-approvals-and-sandbox`.
 // The workDir path is symlink-resolved inside writeCodexProfileForSession to

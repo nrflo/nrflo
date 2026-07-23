@@ -1,18 +1,18 @@
 """S05 — context_left populated (codex via app-server).
 
 codex/cli_interactive is driven by the `codex app-server` JSON-RPC backend
-(be/internal/spawner/codex_appserver_backend.go), not the PTY/TUI. codex 0.133
-exposes no usable structured channel under PTY (hooks never fire per
-openai/codex#21639; no rollout JSONL is written), so the app-server protocol is
-the source of truth. Its `thread/tokenUsage/updated` events carry
-`inputTokens` + `modelContextWindow`, which the backend maps to
-`agent_sessions.context_left` via ComputeContextLeftPct — restoring the
-context tracking (and low-context relaunch) that the PTY path could not provide.
+(be/internal/spawner/codex_appserver_backend.go), not the PTY/TUI: app-server's
+`thread/tokenUsage/updated` is the structured source for context_left (PTY
+hooks do fire on codex 0.145, but the autonomous path stays app-server-routed
+for its richer protocol — structured items, typed rate limits, thread/resume).
+Its `thread/tokenUsage/updated` events carry `inputTokens` +
+`modelContextWindow`, which the backend maps to `agent_sessions.context_left`
+via ComputeContextLeftPct.
 
-This scenario also guards the regression that broke codex on 0.133 (the agent
-hung forever on the directory-trust dialog → endless start-stall loop): it
-asserts the workflow actually completes AND that context_left is populated,
-proving the structured backend is wired.
+This scenario also guards a historical regression (codex 0.133: the agent hung
+forever on the directory-trust dialog → endless start-stall loop): it asserts
+the workflow actually completes AND that context_left is populated, proving
+the structured backend is wired.
 
 Expected result:
   - PASS  workflow project_completed, session result=pass, context_left ∈ [0,100]

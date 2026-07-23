@@ -23,8 +23,11 @@ import (
 
 // codexStripTablePrefixes are the config.toml table headers dropped when
 // copying the user's config into the per-session profile:
-//   - hooks: hook definitions live in hooks.json now, not config.toml; strip
-//     the user's [hooks.*] state/trust tables so they can't collide with ours.
+//   - hooks: definitions moved to hooks.json around codex 0.140 (openai/codex#26418),
+//     but config.toml's [hooks.*] tables still carry enabled/trusted_hash state.
+//     Every profile we write launches with --dangerously-bypass-hook-trust, so an
+//     inherited user [hooks.*] table must be stripped to avoid running the
+//     user's own unreviewed hook state under that flag.
 //   - projects: the user's accumulated trust entries (hundreds, often including
 //     the spawn workdir) would collide with the single `[projects."<workDir>"]`
 //     entry we append — the app-server parses config.toml strictly and rejects

@@ -60,7 +60,8 @@ type CLIAdapter interface {
 	BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd
 
 	// PrepareInteractive performs adapter-owned spawn-time setup for interactive
-	// runs (e.g., codex's per-session CODEX_HOME profile dir + hook event list).
+	// runs (e.g., codex's per-session CODEX_HOME profile dir (config.toml +
+	// hooks.json sidecar)).
 	// Returns extras that the backend forwards into InteractiveSpawnOptions, a
 	// cleanup func (always non-nil; safe to call on the error path and from the
 	// wait goroutine), and any error. Adapters with no setup return zero

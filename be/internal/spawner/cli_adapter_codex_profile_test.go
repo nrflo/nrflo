@@ -37,7 +37,7 @@ func TestWriteCodexProfile_InheritsUserSettings(t *testing.T) {
 
 // TestWriteCodexProfile_WritesWorkdirTrust verifies the profile config.toml
 // carries a `[projects."<resolvedWorkDir>"] trust_level="trusted"` entry —
-// codex 0.133 reads workdir trust from CODEX_HOME/config.toml and blocks on the
+// codex reads workdir trust from CODEX_HOME/config.toml and blocks on the
 // directory-trust dialog without it. The path must be symlink-resolved.
 func TestWriteCodexProfile_WritesWorkdirTrust(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
@@ -59,8 +59,9 @@ func TestWriteCodexProfile_WritesWorkdirTrust(t *testing.T) {
 }
 
 // TestWriteCodexProfile_StripsHookTables verifies the user's own `[[hooks.…]]`
-// definitions are stripped — codex 0.133 would otherwise raise a blocking
-// "hooks need review" gate at startup for the spawned session.
+// tables are stripped — config.toml still holds hook enabled/trusted_hash
+// state on codex 0.145, and every profile we write runs with
+// --dangerously-bypass-hook-trust, so the user's state must not ride in.
 func TestWriteCodexProfile_StripsHookTables(t *testing.T) {
 	fakeHome := t.TempDir()
 	t.Setenv("HOME", fakeHome)
@@ -87,7 +88,9 @@ func TestWriteCodexProfile_StripsHookTables(t *testing.T) {
 }
 
 // TestWriteCodexProfile_NoHooksFeature verifies we no longer write the
-// deprecated `[features] codex_hooks` flag (no hooks are wired at all).
+// deprecated `[features] codex_hooks` flag — this shared writer stays
+// hook-free by design (hooks.json is written separately by
+// writeCodexHooksForSession).
 func TestWriteCodexProfile_NoHooksFeature(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()

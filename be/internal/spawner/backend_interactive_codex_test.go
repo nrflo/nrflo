@@ -80,7 +80,7 @@ func TestInteractiveBackend_CodexBuildsProfile(t *testing.T) {
 		t.Fatal("CodexAdapter.PrepareInteractive not called — no new profile dir found matching " + pattern)
 	}
 
-	// Profile dir must contain config.toml (hooks live inline; no hooks.json).
+	// Profile dir must contain config.toml.
 	if _, err := os.Stat(filepath.Join(codexHome, "config.toml")); err != nil {
 		t.Errorf("profile dir missing config.toml: %v", err)
 	}

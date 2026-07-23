@@ -14,11 +14,12 @@ import (
 
 // codexAppServerBackend drives `codex app-server` (newline-delimited JSON-RPC
 // over stdio) for codex/cli_interactive agents, replacing the codex PTY/TUI.
-// codex 0.133 emits no hooks under PTY (openai/codex#21639) and writes no
-// rollout JSONL, so the PTY path can no longer surface agent messages or
-// context_left. The app-server protocol exposes all of it as structured events
-// (agentMessage, commandExecution, thread/tokenUsage/updated, turn lifecycle,
-// typed rate-limit) which we map to the standard Sink.
+// The autonomous spawn routes here because app-server is the richer channel:
+// structured items (agentMessage, commandExecution, mcpToolCall),
+// thread/tokenUsage/updated -> context_left, typed account/rateLimits/updated,
+// turn lifecycle heartbeat, and thread/resume for fail-restart
+// (codex_appserver_resume.go) — not because PTY hooks are unavailable; codex
+// 0.145 does fire hooks under a PTY (hooks_settings_codex.go).
 //
 // Completion stays socket/DB-driven: the agent runs `nrflo agent finished` via
 // its shell tool (env inherited), the socket writes the result + dispatches a

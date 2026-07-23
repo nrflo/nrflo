@@ -10,6 +10,12 @@ import "encoding/json"
 // dispatchAppServerEvent from the autonomous codex eventLoop; the console
 // path keeps passing nil, which stays a no-op.
 //
+// A codex-side compaction (EventContextCompacted) discards the ledger's
+// block composition — resetForCompaction supersedes every entry — because
+// the following real EventTokenUsage checkpoint re-establishes exact parity
+// against the post-compaction footprint; this is a one-response skew, the
+// same class as the already-documented inverted-ordering skew above.
+//
 // Codex events carry no tool-call id, so invoke/result correlation is keyed
 // by tool name: dispatchCompletedItem always emits a tool's invoke and its
 // result back-to-back from the same synchronous call, so no other call for
@@ -49,6 +55,8 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 			}
 		case EventTurnCompleted:
 			l.nextTurn()
+		case EventContextCompacted:
+			l.resetForCompaction()
 		case EventTokenUsage:
 			if ev.Usage == nil || ev.Usage.InputTokens <= 0 {
 				return

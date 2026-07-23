@@ -175,6 +175,25 @@ func (l *ledger) reconcileUsage(actual int) {
 	}
 }
 
+// resetForCompaction discards the ledger's block composition after a
+// provider-side compaction: pre-compaction blocks are no longer in the
+// model's context, so reconcileUsage would otherwise rescale them
+// proportionally against a total they are not part of. Every entry is marked
+// Superseded (not truncated — snapshot()/the UI keep the superseded history,
+// same as the existing dedup supersede semantics) and one placeholder
+// LedgerKindInjected entry is appended so the next reconcileUsage — which
+// returns early when est<=0 — has a non-zero estimate to scale exactly.
+func (l *ledger) resetForCompaction() {
+	l.mu.Lock()
+	for _, e := range l.entries {
+		e.Superseded = true
+	}
+	l.index = make(map[string]*LedgerEntry)
+	l.toolMeta = make(map[string]toolCallMeta)
+	l.mu.Unlock()
+	l.append(LedgerKindInjected, 1, "codex-compaction", "", false)
+}
+
 func (l *ledger) snapshot(sessionID string) ContextLedgerSnapshot {
 	l.mu.Lock()
 	defer l.mu.Unlock()

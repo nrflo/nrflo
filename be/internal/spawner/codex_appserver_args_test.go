@@ -1,6 +1,7 @@
 package spawner
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -47,6 +48,7 @@ func TestAppServerArgs_DisablesNativeMultiAgent(t *testing.T) {
 	want := []string{
 		"app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2", "--disable", "enable_fanout",
 		"-c", `project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]`,
+		"-c", "model_auto_compact_token_limit=1000000000",
 	}
 	if len(args) != len(want) {
 		t.Fatalf("appServerArgs() = %v, want %v", args, want)
@@ -79,6 +81,22 @@ func TestAppServerArgs_LoadsClaudeMdFallback(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("appServerArgs() missing single argv element \"-c\" %q: %v", wantValue, args)
+	}
+}
+
+// TestCodexAutoCompactArgs_SingleUnsplitValue asserts codexAutoCompactArgs()
+// returns "-c" followed immediately by ONE unsplit
+// "model_auto_compact_token_limit=<N>" element — the same failure mode
+// TestAppServerArgs_LoadsClaudeMdFallback guards for the project-doc key: a
+// split/quoted value is passed to codex as a literal string and silently
+// ignored rather than parsed as the intended `-c` override.
+func TestCodexAutoCompactArgs_SingleUnsplitValue(t *testing.T) {
+	t.Parallel()
+	args := codexAutoCompactArgs()
+
+	wantValue := fmt.Sprintf("model_auto_compact_token_limit=%d", codexAutoCompactTokenLimit)
+	if len(args) != 2 || args[0] != "-c" || args[1] != wantValue {
+		t.Fatalf("codexAutoCompactArgs() = %v, want [\"-c\" %q]", args, wantValue)
 	}
 }
 

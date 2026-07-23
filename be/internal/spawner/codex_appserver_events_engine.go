@@ -100,3 +100,7 @@ func emitTokenUsageEvent(sessionID string, pct int, usage *EngineUsage, emit Eve
 func emitErrorEvent(sessionID, msg string, emit EventEmitter) {
 	emit.emit(EngineEvent{Type: EventError, SessionID: sessionID, Text: msg, IsError: true})
 }
+
+func emitContextCompactedEvent(sessionID string, emit EventEmitter) {
+	emit.emit(EngineEvent{Type: EventContextCompacted, SessionID: sessionID})
+}

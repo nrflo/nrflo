@@ -21,6 +21,13 @@ type codexUsageBreakdown struct {
 // (each turn re-sends the growing history), so it overcounts and must NOT
 // drive context_left, but IS the right basis for cumulative cost billing
 // (SetSessionCostUsage overwrites, it does not accumulate).
+//
+// A checkpoint with `last.inputTokens==0` is NOT a usage sample: it is the
+// post-compaction footprint report that immediately follows a contextCompaction
+// item (last.totalTokens is the new footprint; every other last.* field and
+// the entire total.* block are zero/unchanged). Validated live against
+// codex-cli 0.145.0: every real per-response checkpoint carries
+// last.inputTokens>0.
 type codexTokenUsage struct {
 	Last               codexUsageBreakdown `json:"last"`
 	Total              codexUsageBreakdown `json:"total"`
@@ -64,16 +71,19 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 	// fresh (non-cached, non-cache-write) portion at the full input rate.
 	SetSessionCostUsage(sessionID, freshInputTokens(p.TokenUsage.Total), p.TokenUsage.Total.OutputTokens, p.TokenUsage.Total.CachedInputTokens, p.TokenUsage.Total.CacheWriteInputTokens)
 
+	if p.TokenUsage.Last.InputTokens <= 0 {
+		// Compaction checkpoint, not a usage sample — the cost overwrite above
+		// is a harmless no-op since total is unchanged on this event.
+		sink.BumpLastMessage(sessionID)
+		return
+	}
+
 	ctxWindow := p.TokenUsage.ModelContextWindow
 	if ctxWindow <= 0 {
 		ctxWindow = maxCtx
 	}
-	used := p.TokenUsage.Last.InputTokens
-	if used == 0 {
-		used = p.TokenUsage.Total.InputTokens // single-turn fallback
-	}
-	if ctxWindow > 0 && used > 0 {
-		pct := ComputeContextLeftPct(used, ctxWindow)
+	if ctxWindow > 0 {
+		pct := ComputeContextLeftPct(p.TokenUsage.Last.InputTokens, ctxWindow)
 		sink.UpdateContextLeft(sessionID, pct)
 		emitTokenUsageEvent(sessionID, pct, engineUsage(p.TokenUsage.Last, ctxWindow), emit)
 	}

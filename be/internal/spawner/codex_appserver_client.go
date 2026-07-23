@@ -85,6 +85,7 @@ func appServerArgs() []string {
 		args = append(args, "--disable", f)
 	}
 	args = append(args, codexProjectDocArgs()...)
+	args = append(args, codexAutoCompactArgs()...)
 	return args
 }
 

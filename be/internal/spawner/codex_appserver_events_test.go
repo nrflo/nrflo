@@ -166,13 +166,21 @@ func TestDispatchAppServer_TokenUsageContextLeft(t *testing.T) {
 	}
 }
 
-func TestDispatchAppServer_TokenUsageSingleTurnFallback(t *testing.T) {
+// TestDispatchAppServer_TokenUsageOmittedLast_NoContextUpdate pins the current
+// design: `last` omitted entirely unmarshals to the zero value
+// (Last.InputTokens==0), which dispatchTokenUsage treats identically to an
+// explicit post-compaction checkpoint — no context_left update, no
+// EventTokenUsage. codex 0.145 always populates `last` on every real
+// per-response event (see codexTokenUsage's doc comment), so this shape is
+// synthetic; the used==0-falls-back-to-total behavior this test used to pin
+// was removed deliberately (CLAUDE.md: no back-compat fallbacks) because it
+// is indistinguishable from a real compaction checkpoint.
+func TestDispatchAppServer_TokenUsageOmittedLast_NoContextUpdate(t *testing.T) {
 	sink := &testSink{}
-	// No `last` block → fall back to total (single-turn, where they coincide).
 	n := rpcEnvelope{Method: "thread/tokenUsage/updated", Params: json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":9091},"modelContextWindow":258400}}`)}
 	dispatchAppServerEvent("s", n, sink, 200000, nil)
-	if len(sink.contextUpdates) != 1 || sink.contextUpdates[0] < 95 || sink.contextUpdates[0] > 97 {
-		t.Errorf("single-turn fallback context_left = %v, want ~96", sink.contextUpdates)
+	if len(sink.contextUpdates) != 0 {
+		t.Errorf("context updates = %v, want none (last omitted must not fall back to total)", sink.contextUpdates)
 	}
 }
 

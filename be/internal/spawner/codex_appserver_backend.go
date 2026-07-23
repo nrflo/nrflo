@@ -204,6 +204,9 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 			if sig.turnCompleted {
 				turnActive = false
 			}
+			if sig.compacted {
+				proc.contextLeft = 100
+			}
 			if sig.rateLimited {
 				b.handleRateLimit(proc, req, sig.matchedReason)
 				return

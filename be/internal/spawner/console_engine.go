@@ -153,6 +153,7 @@ const (
 	EventTurnCompleted    EventType = "turn_completed"
 	EventTokenUsage       EventType = "token_usage"
 	EventError            EventType = "error"
+	EventContextCompacted EventType = "context_compacted"
 )
 
 // EngineEvent is one normalized event surfaced to a console session,
@@ -162,7 +163,9 @@ const (
 // settling path is a human ReplyApproval, a timeout, engine stop/ctx
 // cancellation, or the CLI resolving the request on its own. Consumers may
 // rely on this to clear a pending-approval UI without a separate timeout path
-// of their own.
+// of their own. EventContextCompacted signals the provider itself dropped/
+// replaced its own history (codex's typed contextCompaction item) — it
+// carries no extra fields.
 type EngineEvent struct {
 	Type           EventType
 	SessionID      string

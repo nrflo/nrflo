@@ -233,3 +233,49 @@ func TestNativeOrchestrationCLI_CodexAppServerAcceptsDisableFlags(t *testing.T) 
 		t.Fatalf("initialize returned no result\nstderr:\n%s", stderr.String())
 	}
 }
+
+// TestNativeOrchestrationCLI_StrictConfigCatchesRenamedCompactKey is the drift
+// alarm for codexAutoCompactTokenLimit's key name: `--strict-config` is the
+// only mode where codex actually validates a `-c` override against its known
+// ConfigToml fields (a plain `-c` silently accepts and ignores an unknown
+// key). CODEX_HOME points at an empty t.TempDir() so a developer's own
+// ~/.codex/config.toml (which may itself carry unrelated legacy keys) cannot
+// false-fail the strict parse. Production must NEVER pass --strict-config —
+// it would hard-fail every spawn for a user with any unrecognized key in
+// their own config.toml.
+func TestNativeOrchestrationCLI_StrictConfigCatchesRenamedCompactKey(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	codexHome := t.TempDir()
+	// An immediately-EOF stdin lets `codex app-server` run its startup config
+	// validation and exit on its own once the JSON-RPC stdio loop hits EOF,
+	// instead of blocking on a handshake this test doesn't perform.
+	runStrict := func(kv string) (string, error) {
+		// --strict-config is an `app-server` subcommand option, not a global
+		// codex flag — it must follow "app-server", so it cannot ride
+		// appServerArgs() itself (production never passes it).
+		args := append([]string{"app-server", "--strict-config", "-c", kv}, appServerArgs()[1:]...)
+		cmd := exec.CommandContext(ctx, "codex", args...)
+		cmd.Env = append(cmd.Environ(), "CODEX_HOME="+codexHome)
+		cmd.Stdin = bytes.NewReader(nil)
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+
+	// Control: a deliberately bogus key must be rejected under --strict-config
+	// (proves the flag is actually enforcing, not just accepted/ignored).
+	if out, err := runStrict("bogus_key_xyz=1"); err == nil {
+		t.Fatalf("--strict-config -c bogus_key_xyz=1 unexpectedly succeeded (strict validation not enforcing):\n%s", out)
+	} else if !strings.Contains(out, "bogus_key_xyz") {
+		t.Errorf("expected rejection to mention the unknown key, got:\n%s", out)
+	}
+
+	// The actual drift alarm: codexAutoCompactTokenLimit's key must still be
+	// recognized. A codex rename of model_auto_compact_token_limit would fail
+	// here exactly like the bogus-key control above.
+	kv := codexAutoCompactArgs()[1]
+	if out, err := runStrict(kv); err != nil {
+		t.Fatalf("--strict-config rejected %q — model_auto_compact_token_limit may have been renamed/removed by codex:\n%s\nerr: %v", kv, out, err)
+	}
+}

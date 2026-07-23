@@ -15,6 +15,7 @@ type appServerSignal struct {
 	rateLimited   bool   // typed limit reached or an error classified as a limit
 	matchedReason string // pattern/text that triggered rateLimited
 	fatalErr      string // non-limit error message (turn/error or `error` notification)
+	compacted     bool   // codex-side contextCompaction item completed
 }
 
 // dispatchAppServerEvent maps ONE app-server notification to Sink calls and
@@ -26,7 +27,7 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 	var sig appServerSignal
 	switch env.Method {
 	case "item/completed":
-		dispatchCompletedItem(sessionID, env.Params, sink, emit)
+		sig.compacted = dispatchCompletedItem(sessionID, env.Params, sink, emit)
 	case "item/agentMessage/delta":
 		// Streamed text; the canonical full text arrives via item/completed
 		// (agentMessage). Deltas keep the heartbeat alive and, when a console
@@ -107,13 +108,17 @@ type mcpToolCallError struct {
 	Message string `json:"message"`
 }
 
-func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, emit EventEmitter) {
+// dispatchCompletedItem maps one item/completed notification to Sink/emit
+// calls and reports whether the item was a contextCompaction — the run
+// loop's single trigger for resetting proc's in-memory context_left watermark
+// (item/started fires BEFORE the usage checkpoint, item/completed after).
+func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, emit EventEmitter) bool {
 	var p struct {
 		Item appServerItem `json:"item"`
 	}
 	if json.Unmarshal(params, &p) != nil {
 		sink.BumpLastMessage(sessionID)
-		return
+		return false
 	}
 	switch p.Item.Type {
 	case "agentMessage":
@@ -133,10 +138,14 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, 
 		queryInput, _ := json.Marshal(map[string]string{"query": p.Item.Query})
 		emitMessageWithPayload(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", BuildToolInvokePayload("", queryInput), sink)
 		emitToolInvokeEvent(sessionID, "WebSearch", map[string]any{"query": p.Item.Query}, emit)
+	case "contextCompaction":
+		dispatchContextCompaction(sessionID, sink, emit)
+		return true
 	default:
 		// userMessage, fileChange summaries, etc. — heartbeat only.
 		sink.BumpLastMessage(sessionID)
 	}
+	return false
 }
 
 // emitMcpToolCall renders a codex mcpToolCall item (e.g. an nrflo MCP tool) as

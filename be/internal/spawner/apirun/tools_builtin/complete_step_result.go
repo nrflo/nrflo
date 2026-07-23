@@ -17,10 +17,8 @@ func renderNext(env apirun.ToolEnv, engine *stepengine.Engine, outcome stepengin
 	if env.Steps != nil {
 		env.Steps.NoteStepBoundary(env.SessionID)
 	}
-	total := outcome.CurrentIndex + 1
-	if state, err := engine.State(env.WorkflowInstanceID, env.NodeID); err == nil {
-		total = len(state.Steps)
-	}
+	total := stepTotal(engine, env, outcome.CurrentIndex+1)
+	broadcastStepAdvanced(env, outcome.NextStep.StepID, outcome.CurrentIndex, total, 0, false)
 	payload := map[string]interface{}{
 		"step_id":     outcome.NextStep.StepID,
 		"revision":    outcome.Revision,
@@ -38,7 +36,9 @@ func renderNext(env apirun.ToolEnv, engine *stepengine.Engine, outcome stepengin
 // renderDone returns the final-completion instruction — recording any
 // summary findings and calling agent_finished is left to the agent; this
 // tool never signals completion itself.
-func renderDone(outcome stepengine.Outcome) (string, bool, error) {
+func renderDone(env apirun.ToolEnv, engine *stepengine.Engine, outcome stepengine.Outcome) (string, bool, error) {
+	total := stepTotal(engine, env, outcome.CurrentIndex)
+	broadcastStepAdvanced(env, "", total, total, 0, false)
 	payload := map[string]interface{}{
 		"done":        true,
 		"instruction": "All steps are complete. Record any final summary findings with findings_add, then call agent_finished.",
@@ -52,7 +52,13 @@ func renderDone(outcome stepengine.Outcome) (string, bool, error) {
 // renderRotate is reached only after Advance has already committed the step
 // completion — this leg just asks the spawner to rotate and tells the agent
 // to stop; it must never rely on the idle-watcher's own rotation firing.
-func renderRotate(env apirun.ToolEnv) (string, bool, error) {
+func renderRotate(env apirun.ToolEnv, engine *stepengine.Engine, outcome stepengine.Outcome) (string, bool, error) {
+	stepID := ""
+	if outcome.NextStep != nil {
+		stepID = outcome.NextStep.StepID
+	}
+	total := stepTotal(engine, env, outcome.CurrentIndex+1)
+	broadcastStepAdvanced(env, stepID, outcome.CurrentIndex, total, 0, true)
 	if env.Steps != nil {
 		env.Steps.RequestStepRotation(env.SessionID)
 	}
@@ -78,6 +84,7 @@ func renderRejected(env apirun.ToolEnv, engine *stepengine.Engine, stepID string
 	if err != nil {
 		return err.Error(), true, nil
 	}
+	broadcastStepAdvanced(env, stepID, outcome.CurrentIndex, stepTotal(engine, env, outcome.CurrentIndex+1), count, false)
 	rejectionCap := service.StepRejectionCap(env.Pool, env.ProjectID)
 	if count >= rejectionCap {
 		return failSession(env, service.ResultReasonStepEvidenceExhausted)

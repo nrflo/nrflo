@@ -28,6 +28,10 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 `AgentLogPanel.tsx` renders agents in full detail via `AgentLogDetail` (Messages / Context / Ledger / Findings / All Findings tabs), with a multi-agent tabbed view and collapse-to-bar. The Ledger tab (`ContextLedgerPanel.tsx`) shows per-kind token breakdown, superseded entries, and an optional budget bar, fed by `GET /api/v1/sessions/{id}/context-ledger` plus live `agent.context_ledger` WS totals via `useSessionContextLedger`. The Ledger tab also shows a collapsible Handoff digest section (`HandoffDigestSection.tsx`, content + fold telemetry) above the panel, fed by `GET /api/v1/sessions/{id}/handoff-digest` plus live `agent.handoff_digest` WS events via `useSessionHandoffDigest`. Details: [REFERENCE.md](REFERENCE.md#agent-log-panel) — read before changing tab selection or panel collapse behaviour.
 
+## Stepwise progress
+
+`StepProgressStrip.tsx` renders an "N/M" badge plus per-step pips (hover tooltip: title/state/timestamp) inside `AgentFlowNode.tsx`'s card body, fed by `useStepCursors` (REST snapshot + live `step.advanced` WS patches).
+
 ## Findings
 
 - `FindingsPanel.tsx` — project findings first, then agent findings grouped by `agent_type`; each key collapsible; filters internal keys (`_` prefix). Exports `FindingRow` and `isInternalKey`.

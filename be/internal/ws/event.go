@@ -104,6 +104,7 @@ const (
 	EventConsoleChatSiblingOpened    = "console_chat.sibling_opened"
 	EventConsoleContextRotated       = "console.context_rotated"
 	EventRefineryFoldFailed          = "refinery.fold_failed"
+	EventStepAdvanced                = "step.advanced"
 )
 
 // Event represents a WebSocket event to broadcast

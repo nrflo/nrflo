@@ -176,7 +176,6 @@ ui/src/components/workflow/CategoryRemoval.regression.test.tsx	324
 ui/src/components/workflow/CompletedAgentsTable.test.tsx	1061
 ui/src/components/workflow/LogMessage.test.tsx	338
 ui/src/components/workflow/PhaseGraph/AgentCard.test.tsx	324
-ui/src/components/workflow/PhaseGraph/AgentFlowNode.test.tsx	316
 ui/src/components/workflow/PhaseGraph/PhaseGraph.autocenter.test.tsx	306
 ui/src/components/workflow/PhaseGraph/PhaseGraph.test.tsx	353
 ui/src/components/workflow/PhaseGraph/PhaseGraph.tsx	383

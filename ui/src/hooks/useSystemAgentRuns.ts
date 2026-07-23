@@ -24,6 +24,11 @@ export function useSystemAgentRuns(limit: number) {
 
   useEffect(() => {
     const handler = (event: WSEvent) => {
+      if (event.type === 'step.advanced') {
+        if ((event.data as { rotated?: boolean } | undefined)?.rotated !== true) return
+        queryClient.invalidateQueries({ queryKey: systemAgentRunKeys.list(limit) })
+        return
+      }
       if (event.type !== 'agent.handoff_digest' && event.type !== 'refinery.fold_failed') return
       queryClient.invalidateQueries({ queryKey: systemAgentRunKeys.list(limit) })
     }

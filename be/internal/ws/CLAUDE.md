@@ -81,6 +81,7 @@ Fan-out is non-blocking: a goroutine is spawned per broadcast, iterating all lis
 | Constant | Value | Data fields | Description |
 |----------|-------|-------------|-------------|
 | `EventToolDispatched` | `tool.dispatched` | `tool_name`, `status` (success\|error), `duration_ms`, `dispatch_id` | Emitted after every tool invocation (success or error) |
+| `EventStepAdvanced` | `step.advanced` | `workflow_instance_id`, `node_id`, `step_id`, `step_index`, `total`, `rejected_count`, `rotated` | Emitted from `complete_step`'s advance/done/rotate/counting-rejection legs; `step_index` is the cursor's 0-based `current_index`, so done is `step_index==total` with `step_id=""` |
 
 ## Session Subscription Channel
 

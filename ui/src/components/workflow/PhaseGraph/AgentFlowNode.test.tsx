@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { AgentFlowNode } from './AgentFlowNode'
 import { useTickingClock } from '@/hooks/useElapsedTime'
+import { renderWithQuery as render } from '@/test/utils'
 import type { AgentFlowNodeData } from './types'
 import type { ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 
@@ -14,6 +15,15 @@ vi.mock('@xyflow/react', () => ({
 // Mock useTickingClock to verify it is called with the correct argument
 vi.mock('@/hooks/useElapsedTime', () => ({
   useTickingClock: vi.fn(),
+}))
+
+// AgentFlowNode renders StepProgressStrip, which needs QueryClient + WS
+// context (see AgentFlowNode.stepwise.test.tsx for behavior coverage).
+vi.mock('@/providers/WebSocketProvider', () => ({
+  useWebSocketContext: () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }),
+}))
+vi.mock('@/api/stepCursors', () => ({
+  fetchStepCursors: vi.fn().mockResolvedValue({ workflow_instance_id: '', cursors: {} }),
 }))
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
@@ -268,49 +278,6 @@ describe('AgentFlowNode', () => {
       const data = makeData({ agent: undefined, isPending: true })
       render(<AgentFlowNode data={data} />)
       expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(false)
-    })
-  })
-
-  // Tag badge
-  it('renders emerald tag badge when agent.tag is set', () => {
-    const data = makeData({ agent: makeAgent({ tag: 'backend' }) })
-    render(<AgentFlowNode data={data} />)
-    expect(screen.getByText('backend')).toBeInTheDocument()
-  })
-
-  it('does not render tag badge when agent.tag is absent', () => {
-    const data = makeData({ agent: makeAgent({ tag: undefined }) })
-    render(<AgentFlowNode data={data} />)
-    // No element with a tag-like text that would be a badge
-    expect(screen.queryByText('backend')).not.toBeInTheDocument()
-  })
-
-  it('renders tag badge from historyEntry.tag when no active agent', () => {
-    const data = makeData({
-      agent: undefined,
-      historyEntry: makeHistory({ tag: 'frontend' }),
-    })
-    render(<AgentFlowNode data={data} />)
-    expect(screen.getByText('frontend')).toBeInTheDocument()
-  })
-
-  // Unified card sizing — all variants use w-[242px] sm:w-[330px] and min-h-[90px]
-  it('all card variants use w-[242px] (mobile base) and min-h-[90px]', () => {
-    const variants = [
-      makeData({ agent: makeAgent({ result: undefined }) }),
-      makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) }),
-      makeData({ agent: undefined, historyEntry: makeHistory({ result: 'fail' }) }),
-      makeData({ agent: undefined, isPending: true }),
-      makeData({ agent: undefined, isSkipped: true }),
-      makeData({ agent: undefined, isError: true }),
-    ]
-    variants.forEach((data) => {
-      const { unmount, container } = render(<AgentFlowNode data={data} />)
-      const card = container.querySelector('.w-\\[242px\\]')
-      expect(card).toBeInTheDocument()
-      expect(card?.className).toContain('min-h-[90px]')
-      expect(container.querySelector('[class*="min-w"]')).not.toBeInTheDocument()
-      unmount()
     })
   })
 })

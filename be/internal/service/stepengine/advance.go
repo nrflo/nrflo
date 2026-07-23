@@ -73,12 +73,14 @@ func (e *Engine) Advance(ctx context.Context, instanceID, nodeID, stepID string,
 		}
 	}
 
+	rotated := rotateDecision(ev, currentStep, cursor.CurrentIndex, len(steps))
 	completed = append(completed, model.CompletedStep{
 		StepID:       stepID,
 		EvidenceKeys: ev.FindingKeys,
 		Summary:      ev.Summary,
 		SessionID:    ev.SessionID,
 		CompletedAt:  e.clock.Now().UTC().Format(time.RFC3339Nano),
+		Rotated:      rotated,
 	})
 	completedJSON, err := json.Marshal(completed)
 	if err != nil {
@@ -96,24 +98,31 @@ func (e *Engine) Advance(ctx context.Context, instanceID, nodeID, stepID string,
 	newIndex := cursor.CurrentIndex + 1
 	outcome := e.nextOutcome(steps, newIndex, cursor.Revision+1)
 	outcome.Flags = evResult.Flags
-	applyRotateUpgrade(&outcome, ev, currentStep, cursor.CurrentIndex, len(steps))
+	applyRotateUpgrade(&outcome, rotated)
 	return outcome, nil
 }
 
-// applyRotateUpgrade upgrades an OutcomeNext to OutcomeRotate when the just-
-// completed step (at completedIndex) qualifies per ShouldRotate. Shared by
-// the main success path and advanceCASMiss's replay path so both agree on
-// whether a given advance triggered rotation.
-func applyRotateUpgrade(outcome *Outcome, ev Evidence, completedStep model.StepDefinition, completedIndex, stepCount int) {
+// rotateDecision is the single ShouldRotate call site for a completed step,
+// consumed both to decide the Outcome (applyRotateUpgrade) and to stamp the
+// durable model.CompletedStep.Rotated flag — the outcome and the stored flag
+// can never disagree.
+func rotateDecision(ev Evidence, step model.StepDefinition, completedIndex, stepCount int) bool {
+	return ShouldRotate(RotateInput{
+		ContextTokens:   ev.ContextTokens,
+		ThresholdTokens: ev.RotateThreshold,
+		RotationAllowed: step.RotationAllowed,
+		FinalStep:       completedIndex == stepCount-1,
+	})
+}
+
+// applyRotateUpgrade upgrades an OutcomeNext to OutcomeRotate when rotated is
+// true. Shared by the main success path and advanceCASMiss's replay path so
+// both agree on whether a given advance triggered rotation.
+func applyRotateUpgrade(outcome *Outcome, rotated bool) {
 	if outcome.Kind != OutcomeNext {
 		return
 	}
-	if ShouldRotate(RotateInput{
-		ContextTokens:   ev.ContextTokens,
-		ThresholdTokens: ev.RotateThreshold,
-		RotationAllowed: completedStep.RotationAllowed,
-		FinalStep:       completedIndex == stepCount-1,
-	}) {
+	if rotated {
 		outcome.Kind = OutcomeRotate
 	}
 }
@@ -134,7 +143,7 @@ func (e *Engine) advanceCASMiss(instanceID, nodeID, stepID string, revision int,
 		outcome := e.replayOutcome(steps, fresh)
 		outcome.Flags = flags
 		if completedIndex := fresh.CurrentIndex - 1; completedIndex >= 0 && completedIndex < len(steps) {
-			applyRotateUpgrade(&outcome, ev, steps[completedIndex], completedIndex, len(steps))
+			applyRotateUpgrade(&outcome, rotateDecision(ev, steps[completedIndex], completedIndex, len(steps)))
 		}
 		return outcome, nil
 	}

@@ -21,7 +21,7 @@ export function SystemAgentRunsSection() {
       <div>
         <h2 className="text-lg font-semibold">Activity</h2>
         <p className="text-sm text-muted-foreground">
-          Merged tier/system-agent sessions and refinery folds across all projects.
+          Merged tier/system-agent sessions, refinery folds, and stepwise step rotations across all projects.
         </p>
       </div>
 

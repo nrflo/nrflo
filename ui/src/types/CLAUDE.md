@@ -27,6 +27,7 @@ TypeScript type definitions matching Go API models — one module per domain (`l
 | `user.ts` | `User.system` marks seeded users — UsersSection hides their Delete button |
 | `agentSessionLogs.ts` | `LiveAgentSession` adds live process stats (`pid`, `rss_kb`, `cpu_pct`) plus optional `rate_limit_*` fields |
 | `artifact.ts` | `Artifact.source` is `'input'\|'agent'`; uploads are two-step (`ArtifactUploadResponse.upload_id` → `InputArtifactRef` at launch) |
+| `stepwise.ts` | Per-node step cursor progress mirroring `be/internal/service/stepwise_read.go`; `rotated` is orthogonal to `status` |
 | `schedules.ts`, `chain.ts`, `errors.ts`, `audit.ts` | Plain records plus `{ items/errors, total, page, per_page }`-shaped paginated responses |
 
 ## Type Safety

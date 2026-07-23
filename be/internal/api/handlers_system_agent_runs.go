@@ -49,8 +49,15 @@ func (s *Server) handleListSystemAgentRuns(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	items := make([]*model.SystemAgentRun, 0, len(sessions)+len(folds))
+	rotations, err := repo.NewAgentStepCursorRepo(s.pool, s.clock).ListRotations(limit, since)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	items := make([]*model.SystemAgentRun, 0, len(sessions)+len(folds)+len(rotations))
 	items = append(items, sessions...)
+	items = append(items, rotations...)
 	for _, f := range folds {
 		items = append(items, &model.SystemAgentRun{
 			Kind:               "refinery_fold",

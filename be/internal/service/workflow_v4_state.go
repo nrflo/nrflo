@@ -116,6 +116,10 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	agentHistory := s.buildAgentHistory(wi.ID, detailsMap)
 	result["agent_history"] = agentHistory
 
+	if cursors := s.BuildStepCursors(wi.ID); len(cursors) > 0 {
+		result["step_cursors"] = cursors
+	}
+
 	// Total tokens used from each session's mode-specific model context window.
 	if wi.Status == model.WorkflowInstanceCompleted || wi.Status == model.WorkflowInstanceProjectCompleted {
 		ctxLengths := s.loadModelContextLengths()

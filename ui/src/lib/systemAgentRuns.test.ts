@@ -52,6 +52,13 @@ describe('runAgentLabel', () => {
     expect(runAgentLabel(makeRun({ agent_type: 'implementor' }))).toBe('implementor')
     expect(runAgentLabel(makeRun({ agent_type: undefined, session_id: 'sess-1' }))).toBe('sess-1')
   })
+
+  it('labels step rotations, including the step_id when present', () => {
+    expect(runAgentLabel(makeRun({ kind: 'step_rotation', step_id: 'step-3' }))).toBe(
+      'Step rotation (step-3)'
+    )
+    expect(runAgentLabel(makeRun({ kind: 'step_rotation', step_id: undefined }))).toBe('Step rotation')
+  })
 })
 
 describe('runTokens', () => {
@@ -68,6 +75,12 @@ describe('runTokens', () => {
       output: 7,
     })
     expect(runTokens(makeRun())).toEqual({ input: 0, output: 0 })
+  })
+
+  it('reports zero tokens for step rotations regardless of other fields', () => {
+    expect(
+      runTokens(makeRun({ kind: 'step_rotation', tokens_json: { input_tokens: 99, output_tokens: 99 } }))
+    ).toEqual({ input: 0, output: 0 })
   })
 })
 
@@ -89,5 +102,10 @@ describe('runStatusVariant', () => {
     expect(runStatusVariant(makeRun({ result: 'completed' }))).toBe('success')
     expect(runStatusVariant(makeRun({ result: 'failed' }))).toBe('destructive')
     expect(runStatusVariant(makeRun({ status: 'running' }))).toBe('secondary')
+  })
+
+  it('always maps step rotations to secondary, ignoring status/result', () => {
+    expect(runStatusVariant(makeRun({ kind: 'step_rotation', status: 'failed' }))).toBe('secondary')
+    expect(runStatusVariant(makeRun({ kind: 'step_rotation', result: 'completed' }))).toBe('secondary')
   })
 })

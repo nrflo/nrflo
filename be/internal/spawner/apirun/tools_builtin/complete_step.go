@@ -99,9 +99,9 @@ func (completeStepHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input
 	case stepengine.OutcomeNext:
 		return renderNext(env, engine, outcome)
 	case stepengine.OutcomeDone:
-		return renderDone(outcome)
+		return renderDone(env, engine, outcome)
 	case stepengine.OutcomeRotate:
-		return renderRotate(env)
+		return renderRotate(env, engine, outcome)
 	default:
 		return "unknown outcome", true, nil
 	}

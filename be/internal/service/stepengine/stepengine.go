@@ -121,6 +121,13 @@ func (e *Engine) State(instanceID, nodeID string) (*State, error) {
 	if err != nil {
 		return nil, ErrNoCursor
 	}
+	return DecodeCursor(c)
+}
+
+// DecodeCursor is the one exported decode path from a raw model.AgentStepCursor
+// row to the live State view: no DB access, so callers holding a batch of
+// rows (e.g. service.BuildStepCursors) can decode without N+1 Gets.
+func DecodeCursor(c *model.AgentStepCursor) (*State, error) {
 	steps, err := decodeSteps([]byte(c.StepsSnapshot))
 	if err != nil {
 		return nil, ErrBadSnapshot

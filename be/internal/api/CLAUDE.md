@@ -66,7 +66,9 @@ Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models
 
 `GET /api/v1/tier-models` (`protected`) returns all tier fallback-chain rows (tier 1-5, ordered by position); `PUT /api/v1/tier-models/{tier}` (`admin`) replaces one tier's ordered chain (`handlers_tier_models.go`), validating each entry via `TierModelService.SetTierChain` and broadcasting `tier_models.updated`.
 
-`GET /api/v1/system-agent-runs` (`admin`, `server_routes_observability.go`/`handlers_system_agent_runs.go`) merges recent SYSTEM-agent `agent_sessions` (resolved tier/provider/effort + fallback chain) with recent `refinery_runs` rows, newest-first; supports `limit` (default 50, clamp 1-200) and `since` (RFC3339).
+`GET /api/v1/system-agent-runs` (`admin`, `server_routes_observability.go`/`handlers_system_agent_runs.go`) merges recent SYSTEM-agent `agent_sessions` (resolved tier/provider/effort + fallback chain), recent `refinery_runs` rows, and stepwise `step_rotation` rotations, newest-first; supports `limit` (default 50, clamp 1-200) and `since` (RFC3339).
+
+`GET /api/v1/workflow-instances/{iid}/steps` (`protected`, `server_routes_instance.go`/`handlers_step_cursors.go`) returns per-node stepwise cursor progress (`service.BuildStepCursors`) for one workflow instance, same 404/403 guard order as the trace endpoint.
 
 ## Pause-Continue-Fail Routes
 

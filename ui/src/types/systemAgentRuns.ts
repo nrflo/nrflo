@@ -3,7 +3,7 @@
 // json.RawMessage on the wire, i.e. already-parsed JSON in the response
 // body (not strings) once decoded here.
 
-export type SystemAgentRunKind = 'agent_session' | 'refinery_fold'
+export type SystemAgentRunKind = 'agent_session' | 'refinery_fold' | 'step_rotation'
 
 // Mirrors be/internal/service/tier_chain_resolve.go's AgentChainEntry.
 export interface FallbackEntry {
@@ -44,6 +44,7 @@ export interface SystemAgentRun {
   output_tokens?: number
   error?: string
   fold_count?: number
+  step_id?: string
   created_at: string
 }
 

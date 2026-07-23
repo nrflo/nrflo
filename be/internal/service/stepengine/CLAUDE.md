@@ -11,6 +11,7 @@ Server-owned stepwise step engine for `prompt_mode='stepwise'` agent definitions
 - **Import hygiene.** Depends only on `db`/`repo`/`model`/`clock`/`logger`/`handoff` — never `service` or `spawner` — so both `tools_builtin` (service-layer) and the spawner wiring can import this package without a cycle.
 
 - **complete_step owns Advance.** `be/internal/spawner/apirun/tools_builtin/complete_step.go` is the only caller of `Advance`; the rejection counter (`agent_step_cursors.rejections`, `RecordRejection`/`RejectionCount`) is durable cursor state keyed by `step_id`, with the cap enforced in the builtin against `service.StepRejectionCap` — `Rejection.CountsTowardEvidenceCap()` decides which reasons count. `Outcome.Flags` carries non-fatal path notices through to the agent on `OutcomeNext`/`OutcomeDone`.
+- **Rotated stamp, one decode path.** An accepted step stamps `model.CompletedStep.Rotated` from the single `rotateDecision` helper (`advance.go`) that also drives the `Outcome` upgrade, so the outcome and the stored flag never disagree. The exported pure `DecodeCursor` is the one decode path from a raw `model.AgentStepCursor` to `State`, feeding both `Engine.State` and `service.BuildStepCursors`.
 
 ## Entry Points
 

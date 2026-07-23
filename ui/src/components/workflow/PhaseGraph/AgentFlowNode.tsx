@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { StepProgressStrip } from '@/components/workflow/StepProgressStrip'
 import type { AgentFlowNodeData } from './types'
 
 function StatusIcon({ result, isRunning, isPending, isSkipped }: { result?: string; isRunning: boolean; isPending?: boolean; isSkipped?: boolean }) {
@@ -209,6 +210,8 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
             {session.message_count} msg{session.message_count !== 1 ? 's' : ''}
           </Badge>
         )}
+
+        <StepProgressStrip instanceId={session?.workflow_instance_id} nodeId={phaseName} />
 
         {/* Retry button for failed agents - bottom right */}
         {result === 'fail' && workflowStatus === 'failed' && onRetryFailed && historyEntry?.session_id && (

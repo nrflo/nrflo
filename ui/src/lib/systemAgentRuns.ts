@@ -20,12 +20,16 @@ export function fallbackLabel(run: SystemAgentRun): string | null {
 
 export function runAgentLabel(run: SystemAgentRun): string {
   if (run.kind === 'refinery_fold') return 'Refinery fold'
+  if (run.kind === 'step_rotation') return run.step_id ? `Step rotation (${run.step_id})` : 'Step rotation'
   return run.agent_type || run.session_id
 }
 
 export function runTokens(run: SystemAgentRun): { input: number; output: number } {
   if (run.kind === 'refinery_fold') {
     return { input: run.prompt_tokens ?? 0, output: run.output_tokens ?? 0 }
+  }
+  if (run.kind === 'step_rotation') {
+    return { input: 0, output: 0 }
   }
   return {
     input: run.tokens_json?.input_tokens ?? 0,
@@ -42,6 +46,7 @@ export function runStatusVariant(run: SystemAgentRun): 'success' | 'destructive'
   if (run.kind === 'refinery_fold') {
     return run.status === 'ok' ? 'success' : 'destructive'
   }
+  if (run.kind === 'step_rotation') return 'secondary'
   if (run.result === 'failed' || run.status === 'failed') return 'destructive'
   if (run.result === 'completed' || run.status === 'completed') return 'success'
   return 'secondary'

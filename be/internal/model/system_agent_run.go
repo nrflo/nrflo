@@ -6,11 +6,11 @@ import (
 )
 
 // SystemAgentRun is one merged listing item for GET /api/v1/system-agent-runs:
-// either a tier/system-agent session or a refinery fold, distinguished by
-// Kind. Kind + CreatedAt are the merge keys used to interleave the two
-// sources newest-first.
+// a tier/system-agent session, a refinery fold, or a stepwise rotation,
+// distinguished by Kind. Kind + CreatedAt are the merge keys used to
+// interleave the sources newest-first.
 type SystemAgentRun struct {
-	Kind                  string          `json:"kind"` // "agent_session" | "refinery_fold"
+	Kind                  string          `json:"kind"` // "agent_session" | "refinery_fold" | "step_rotation"
 	SessionID             string          `json:"session_id"`
 	AgentType             string          `json:"agent_type,omitempty"`
 	Tier                  *int            `json:"tier,omitempty"`
@@ -27,6 +27,7 @@ type SystemAgentRun struct {
 	WorkflowInstanceID    string          `json:"workflow_instance_id,omitempty"`
 	TicketID              string          `json:"ticket_id,omitempty"`
 	NodeID                string          `json:"node_id,omitempty"`
+	StepID                string          `json:"step_id,omitempty"`
 	ProjectID             string          `json:"project_id,omitempty"`
 	PromptTokens          int             `json:"prompt_tokens,omitempty"`
 	OutputTokens          int             `json:"output_tokens,omitempty"`

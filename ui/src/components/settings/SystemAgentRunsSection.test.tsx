@@ -64,6 +64,19 @@ function makeFoldRun(overrides: Partial<SystemAgentRun> = {}): SystemAgentRun {
   } as SystemAgentRun
 }
 
+function makeStepRotationRun(overrides: Partial<SystemAgentRun> = {}): SystemAgentRun {
+  return {
+    kind: 'step_rotation',
+    session_id: 'sr1',
+    step_id: 'step-3',
+    node_id: 'implementation',
+    workflow_instance_id: 'wi1',
+    status: 'rotated',
+    created_at: '2026-01-01T00:02:00Z',
+    ...overrides,
+  } as SystemAgentRun
+}
+
 function renderSection() {
   return renderWithQuery(
     <MemoryRouter>
@@ -103,6 +116,62 @@ describe('SystemAgentRunsSection', () => {
     // Refinery fold rows render inline with the merged table, no tier badge.
     expect(screen.getAllByText('Refinery fold')).toHaveLength(2)
     expect(screen.getByText('no api key')).toBeInTheDocument()
+  })
+
+  it('renders a step_rotation row with its label, zero token counts, a secondary badge, and no expand chevron', async () => {
+    vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValue({
+      items: [makeStepRotationRun()],
+      limit: 50,
+    })
+
+    renderSection()
+
+    expect(await screen.findByText('Step rotation (step-3)')).toBeInTheDocument()
+    expect(screen.getByText('0 in / 0 out')).toBeInTheDocument()
+    const statusBadge = screen.getByText('rotated')
+    expect(statusBadge.className).toContain('bg-secondary')
+    expect(screen.queryByRole('button', { name: /expand|collapse/i })).not.toBeInTheDocument()
+  })
+
+  it('invalidates and refetches on a step.advanced event with rotated: true, and not on rotated: false', async () => {
+    vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValueOnce({
+      items: [makeSessionRun({ session_id: 'initial' })],
+      limit: 50,
+    })
+
+    const { queryClient } = renderSection()
+    await screen.findByText('implementor')
+
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+    act(() => {
+      capturedHandler?.({
+        type: 'step.advanced',
+        project_id: 'p',
+        ticket_id: '',
+        timestamp: '2026-01-01T00:02:00Z',
+        data: { rotated: false },
+      })
+    })
+    expect(invalidateSpy).not.toHaveBeenCalled()
+
+    vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValueOnce({
+      items: [makeStepRotationRun()],
+      limit: 50,
+    })
+
+    act(() => {
+      capturedHandler?.({
+        type: 'step.advanced',
+        project_id: 'p',
+        ticket_id: '',
+        timestamp: '2026-01-01T00:03:00Z',
+        data: { rotated: true },
+      })
+    })
+
+    expect(invalidateSpy).toHaveBeenCalled()
+    expect(await screen.findByText('Step rotation (step-3)')).toBeInTheDocument()
   })
 
   it('invalidates and refetches on agent.handoff_digest and refinery.fold_failed WS events', async () => {

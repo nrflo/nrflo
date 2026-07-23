@@ -26,4 +26,8 @@ type CompletedStep struct {
 	Summary      string   `json:"summary,omitempty"`
 	SessionID    string   `json:"session_id,omitempty"`
 	CompletedAt  string   `json:"completed_at"`
+	// Rotated marks that completing this step triggered a session rotation
+	// (stepengine.ShouldRotate), read by the cursor read model and the
+	// Activity-view step_rotation source.
+	Rotated bool `json:"rotated,omitempty"`
 }

@@ -81,6 +81,7 @@ Features are documented where their primary component or hook lives:
 - WebSocket protocol v2, event types, subscription patterns → [hooks/CLAUDE.md](src/hooks/CLAUDE.md)
 - REST API modules and client conventions → [api/CLAUDE.md](src/api/CLAUDE.md)
 - Unified model administration and mode-aware agent model/effort selectors → `src/components/settings/ModelsList.tsx`, `ModelForm.tsx`, and `src/hooks/useModels.ts`
-- Settings → System Agents → Activity: live table of tier/fallback/refinery-fold runs from `GET /api/v1/system-agent-runs`, invalidated on `agent.handoff_digest`/`refinery.fold_failed` WS events, row expand reuses `HandoffDigestSection` → `src/components/settings/SystemAgentRunsSection.tsx`, `SystemAgentRunRow.tsx`, `src/hooks/useSystemAgentRuns.ts`
+- Settings → System Agents → Activity: live table of tier/fallback/refinery-fold/step-rotation runs from `GET /api/v1/system-agent-runs`, invalidated on `agent.handoff_digest`/`refinery.fold_failed` WS events and on `step.advanced` events with `data.rotated === true`, row expand reuses `HandoffDigestSection` → `src/components/settings/SystemAgentRunsSection.tsx`, `SystemAgentRunRow.tsx`, `src/hooks/useSystemAgentRuns.ts`
+- Stepwise progress strip on the phase-graph agent card ("N/M" + per-step pips, REST + live `step.advanced`) → `src/components/workflow/StepProgressStrip.tsx`, `src/hooks/useStepCursors.ts`
 - Page routes, ticket tabs, project workflows layout → [pages/CLAUDE.md](src/pages/CLAUDE.md)
 - Shared TypeScript types → [types/CLAUDE.md](src/types/CLAUDE.md)

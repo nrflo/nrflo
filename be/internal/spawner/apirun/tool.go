@@ -87,6 +87,12 @@ type StepSession interface {
 	// RequestStepRotation asks the spawner to kill and relaunch sessionID as
 	// a rotation (not a failure/continuation) — non-blocking.
 	RequestStepRotation(sessionID string)
+	// RunStepChecks executes a step's `checks` commands for sessionID in the
+	// session's own workDir/env, mirroring stepengine.CheckRunner's return
+	// shape (failedIdx=-1 means all passed). An unknown sessionID or empty
+	// cmds returns (-1, 0, "", nil) — checks never block an advance the
+	// spawner cannot run.
+	RunStepChecks(ctx context.Context, sessionID string, cmds []string) (failedIdx, exitCode int, outputTail string, err error)
 }
 
 // ChainRunController lets agents set the next step's instructions/ticket in a

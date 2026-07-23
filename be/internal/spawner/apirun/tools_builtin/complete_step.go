@@ -15,6 +15,17 @@ import (
 // full-mode agent's tool catalogue never resolves it.
 type completeStepHandler struct{}
 
+// stepCheckRunner adapts apirun.StepSession.RunStepChecks to
+// stepengine.CheckRunner for a single session's Advance call.
+type stepCheckRunner struct {
+	steps     apirun.StepSession
+	sessionID string
+}
+
+func (r stepCheckRunner) RunChecks(ctx context.Context, cmds []string) (failedIdx, exitCode int, outputTail string, err error) {
+	return r.steps.RunStepChecks(ctx, r.sessionID, cmds)
+}
+
 func (completeStepHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "complete_step",
@@ -61,11 +72,16 @@ func (completeStepHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input
 	}
 
 	contextTokens, rotateThreshold := 0, 0
+	var checks stepengine.CheckRunner
 	if env.Steps != nil {
 		contextTokens, rotateThreshold = env.Steps.RotateSignals(env.SessionID)
+		// Built only when env.Steps is non-nil, and kept as a nil
+		// stepengine.CheckRunner otherwise — a typed-nil interface value
+		// would defeat Advance's `e.checks != nil` skip.
+		checks = stepCheckRunner{steps: env.Steps, sessionID: env.SessionID}
 	}
 
-	engine := stepengine.New(env.Pool, env.Clock, nil)
+	engine := stepengine.New(env.Pool, env.Clock, checks)
 	outcome, err := engine.Advance(ctx, env.WorkflowInstanceID, env.NodeID, args.StepID, args.Revision, stepengine.Evidence{
 		SessionID:       env.SessionID,
 		Summary:         args.Summary,

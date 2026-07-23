@@ -97,7 +97,7 @@ func TestRunOneValidationCommand(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			code, out, err := runOneValidationCommand(context.Background(), tt.cmd, "", nil)
+			code, out, err := runOneValidationCommand(context.Background(), tt.cmd, "", nil, validationTailSize)
 			if err != nil {
 				t.Errorf("runOneValidationCommand(%q): unexpected err: %v", tt.cmd, err)
 			}
@@ -119,7 +119,7 @@ func TestRunOneValidationCommand_OutputTruncated(t *testing.T) {
 	// Emit 66 KB of 'A' followed by a recognisable marker; total > validationTailSize.
 	shellCmd := `python3 -c "import sys; sys.stdout.write('A'*67584); sys.stdout.write('ENDMARKER')"`
 
-	code, out, err := runOneValidationCommand(context.Background(), shellCmd, "", nil)
+	code, out, err := runOneValidationCommand(context.Background(), shellCmd, "", nil, validationTailSize)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -145,7 +145,7 @@ func TestRunOneValidationCommand_ContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	code, _, err := runOneValidationCommand(ctx, "sleep 10", "", nil)
+	code, _, err := runOneValidationCommand(ctx, "sleep 10", "", nil, validationTailSize)
 	if err == nil {
 		t.Error("expected context error, got nil")
 	}

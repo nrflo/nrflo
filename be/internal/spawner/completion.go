@@ -8,6 +8,7 @@ import (
 
 	"be/internal/logger"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/ws"
 )
 
@@ -124,6 +125,16 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 			resultReason = "provider_error_pattern"
 			proc.hardProviderFail = true
 		}
+	}
+
+	// Stepwise agents that signal pass with the server-owned cursor still
+	// short of its last step are force-failed here, before validation, so
+	// an incomplete run does not burn a validation pass and the block below
+	// stays untouched for genuine completions.
+	if result == "pass" && s.stepwiseCompletionGuard(ctx, proc, req) {
+		result = "fail"
+		resultReason = service.ResultReasonStepsIncomplete
+		proc.finalStatus = "FAIL"
 	}
 
 	// Run validation commands when the agent passes (explicit or implicit).

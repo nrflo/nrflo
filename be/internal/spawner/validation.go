@@ -25,15 +25,26 @@ var validationCommandTimeout = 5 * time.Minute
 //   - failedIdx>=0 → that command exited non-zero; exitCode and outputTail are set
 //   - err != nil → parent context was cancelled; caller should not override result
 func (s *Spawner) runValidationCommands(ctx context.Context, proc *processInfo) (failedIdx, exitCode int, outputTail string, err error) {
+	return s.runShellCommands(ctx, proc, proc.validationCommands, validationCommandTimeout, validationTailSize)
+}
+
+// runShellCommands runs each command in cmds sequentially in proc.workDir,
+// tracking `$ <cmd>` / `exit=N (dur)` messages under the "validation"
+// category (shared by whole-agent validation_commands and per-step checks).
+// Returns (failedIdx, exitCode, outputTail, err):
+//   - failedIdx=-1 → all commands passed
+//   - failedIdx>=0 → that command exited non-zero; exitCode and outputTail are set
+//   - err != nil → parent context was cancelled; caller should not override result
+func (s *Spawner) runShellCommands(ctx context.Context, proc *processInfo, cmds []string, perCmdTimeout time.Duration, tailBytes int) (failedIdx, exitCode int, outputTail string, err error) {
 	env := buildValidationEnv(proc)
 
-	for i, cmd := range proc.validationCommands {
+	for i, cmd := range cmds {
 		s.TrackMessage(proc, fmt.Sprintf("$ %s", cmd), "validation")
 		s.saveMessages(proc)
 
 		start := s.config.Clock.Now()
-		cmdCtx, cancel := context.WithTimeout(ctx, validationCommandTimeout)
-		code, tail, runErr := runOneValidationCommand(cmdCtx, cmd, proc.workDir, env)
+		cmdCtx, cancel := context.WithTimeout(ctx, perCmdTimeout)
+		code, tail, runErr := runOneValidationCommand(cmdCtx, cmd, proc.workDir, env, tailBytes)
 		cancel()
 
 		dur := s.config.Clock.Now().Sub(start)
@@ -41,7 +52,7 @@ func (s *Spawner) runValidationCommands(ctx context.Context, proc *processInfo) 
 		s.saveMessages(proc)
 
 		if runErr != nil && ctx.Err() != nil {
-			return -1, 0, "", ctx.Err()
+			return i, 0, "", ctx.Err()
 		}
 		if code != 0 {
 			return i, code, tail, nil
@@ -51,8 +62,8 @@ func (s *Spawner) runValidationCommands(ctx context.Context, proc *processInfo) 
 }
 
 // runOneValidationCommand executes a single shell command and returns its exit code,
-// a tail of combined stdout+stderr (at most 64KB), and any context error.
-func runOneValidationCommand(ctx context.Context, cmd, workDir string, env []string) (int, string, error) {
+// a tail of combined stdout+stderr (at most tailBytes), and any context error.
+func runOneValidationCommand(ctx context.Context, cmd, workDir string, env []string, tailBytes int) (int, string, error) {
 	c := exec.CommandContext(ctx, "sh", "-c", cmd)
 	if workDir != "" {
 		c.Dir = workDir
@@ -73,8 +84,8 @@ func runOneValidationCommand(ctx context.Context, cmd, workDir string, env []str
 	}
 
 	out := buf.Bytes()
-	if len(out) > validationTailSize {
-		out = out[len(out)-validationTailSize:]
+	if len(out) > tailBytes {
+		out = out[len(out)-tailBytes:]
 	}
 
 	if runErr != nil && ctx.Err() != nil {

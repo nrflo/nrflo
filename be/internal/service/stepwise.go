@@ -18,6 +18,16 @@ const (
 	// ResultReasonStepEvidenceExhausted is agent_sessions.result_reason when a
 	// stepwise agent's complete_step call is rejected at the rejection cap.
 	ResultReasonStepEvidenceExhausted = "step_evidence_exhausted"
+
+	// ResultReasonStepsIncomplete is agent_sessions.result_reason when a
+	// stepwise agent signals pass while the server-owned cursor is still
+	// short of its last step.
+	ResultReasonStepsIncomplete = "steps_incomplete"
+
+	// FindingKeyStepsIncomplete is the session finding key written alongside
+	// ResultReasonStepsIncomplete, carried to the retry session by
+	// copyFindingsForContinuation.
+	FindingKeyStepsIncomplete = "steps_incomplete"
 )
 
 // StepRejectionCap reads the per-step evidence-rejection cap from the config

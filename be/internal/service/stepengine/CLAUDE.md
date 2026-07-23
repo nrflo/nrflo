@@ -12,4 +12,4 @@ Server-owned stepwise step engine for `prompt_mode='stepwise'` agent definitions
 
 ## Entry Points
 
-`New(pool, clk, checks CheckRunner) *Engine` — `checks` is the injectable command runner (`RunChecks`, same return shape as `spawner.runValidationCommands`); nil skips checks. `Engine.Snapshot`, `Engine.State`, `Engine.ValidateEvidence`, `Engine.Advance`, and the pure `ShouldRotate` are the package's exported surface — see `stepengine.go`/`snapshot.go`/`evidence.go`/`advance.go`/`rotate.go`.
+`New(pool, clk, checks CheckRunner) *Engine` — `checks` is the injectable command runner (`RunChecks`, same return shape as `spawner.runValidationCommands`); nil skips checks. `Engine.Snapshot`, `Engine.State`, `Engine.ValidateEvidence`, `Engine.Advance`, `Engine.CompletedEvidence` (structured per-completed-step evidence — snapshot-declared keys/values/resolved-paths, no prompt prose, consumed by the spawner's stepwise resume body), and the pure `ShouldRotate` are the package's exported surface — see `stepengine.go`/`snapshot.go`/`evidence.go`/`advance.go`/`rotate.go`/`evidence_digest.go`.

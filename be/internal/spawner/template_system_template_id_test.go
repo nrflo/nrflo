@@ -73,7 +73,8 @@ func TestResolveSystemPromptOverride_DefTemplateWinsOverGate(t *testing.T) {
 			})
 
 			want := mustRenderInjectable(t, env, "tier-t2-extractor")
-			got := sp.resolveSystemPromptOverride("analyzer", env.projectID, "feature", "sonnet-5", nil)
+			def := sp.loadAgentDefinition("analyzer", env.projectID, "feature")
+			got := sp.resolveSystemPromptOverride(def, "sonnet-5", nil)
 			if got != want {
 				t.Errorf("resolveSystemPromptOverride = %q, want rendered tier-t2-extractor %q", got, want)
 			}
@@ -111,7 +112,8 @@ func TestResolveSystemPromptOverride_EmptyTemplateID_FallsBackToGate(t *testing.
 			})
 
 			want := sp.systemPromptOverrideFor("sonnet-5", nil)
-			got := sp.resolveSystemPromptOverride("analyzer", env.projectID, "feature", "sonnet-5", nil)
+			def := sp.loadAgentDefinition("analyzer", env.projectID, "feature")
+			got := sp.resolveSystemPromptOverride(def, "sonnet-5", nil)
 			if got != want {
 				t.Errorf("resolveSystemPromptOverride = %q, want byte-identical systemPromptOverrideFor result %q", got, want)
 			}
@@ -146,7 +148,8 @@ func TestResolveSystemPromptOverride_NilDef_FallsBackToGate(t *testing.T) {
 	})
 
 	want := sp.systemPromptOverrideFor("sonnet-5", nil)
-	got := sp.resolveSystemPromptOverride("no-such-agent", env.projectID, "feature", "sonnet-5", nil)
+	def := sp.loadAgentDefinition("no-such-agent", env.projectID, "feature")
+	got := sp.resolveSystemPromptOverride(def, "sonnet-5", nil)
 	if got != want {
 		t.Errorf("resolveSystemPromptOverride(nil def) = %q, want %q", got, want)
 	}

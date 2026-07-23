@@ -61,6 +61,19 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 		reason = reasonStr.String
 	}
 
+	// Stepwise defs never read the to_resume finding / handoff.Compose — the
+	// server-owned cursor is the source of truth for what a relaunch has
+	// already done. Always returns here (even "") once matched, so a
+	// stepwise def relaunched before finishing its first step still never
+	// falls through to the full-mode path below.
+	if s.stepwiseDefFor(agentType, projectID, workflowName) {
+		var prevStarted time.Time
+		if startedAtStr.Valid {
+			prevStarted, _ = time.Parse(time.RFC3339Nano, startedAtStr.String)
+		}
+		return s.stepwiseResumeData(pool, s.config.Clock, wfiID, phase, prevStarted), reason
+	}
+
 	// Fresh autonomous refinery slot digest takes priority over the
 	// to_resume finding — one canonical source for the low-context
 	// injectable's data (see digest_freshness.go).

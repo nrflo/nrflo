@@ -7,6 +7,7 @@ import (
 
 	"be/internal/db"
 	"be/internal/logger"
+	"be/internal/model"
 	"be/internal/spawner/apirun/provider"
 )
 
@@ -120,9 +121,11 @@ func AppendDelegationGuidanceForTools(ctx context.Context, pool *db.Pool, sys st
 // resolveSystemPromptOverride prefers the agent def's own system_template_id
 // (rendered as an injectable) over the global claude_system_prompt_override_enabled
 // gate: a non-empty def/profile template wins outright; otherwise falls back
-// to systemPromptOverrideFor's existing gate + mode default.
-func (s *Spawner) resolveSystemPromptOverride(agentType, projectID, workflowName, model string, vars map[string]string) string {
-	if def := s.loadAgentDefinition(agentType, projectID, workflowName); def != nil && def.SystemTemplateID != "" {
+// to systemPromptOverrideFor's existing gate + mode default. def is the
+// already-resolved agent definition (nil when not found) — callers resolve it
+// once (loadTemplate) rather than each helper doing its own lookup.
+func (s *Spawner) resolveSystemPromptOverride(def *model.AgentDefinition, model string, vars map[string]string) string {
+	if def != nil && def.SystemTemplateID != "" {
 		if rendered := s.expandInjectable(def.SystemTemplateID, vars); rendered != "" {
 			return rendered
 		}

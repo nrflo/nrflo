@@ -83,6 +83,17 @@ be/internal/service TicketService.GetStatus
 be/internal/service TicketService.List
 be/internal/service TicketService.Update
 be/internal/service ValidateProjectScope
+be/internal/service/stepengine applyRotateUpgrade
+be/internal/service/stepengine Engine.Advance
+be/internal/service/stepengine Engine.advanceCASMiss
+be/internal/service/stepengine Engine.nextOutcome
+be/internal/service/stepengine Engine.replayOutcome
+be/internal/service/stepengine Engine.ValidateEvidence
+be/internal/service/stepengine EvidenceResult.RejectionMessage
+be/internal/service/stepengine guardMissReason
+be/internal/service/stepengine isReplay
+be/internal/service/stepengine rejectedOutcome
+be/internal/service/stepengine ShouldRotate
 be/internal/socket Server.SocketPath
 be/internal/spawner appServerClient.replyError
 be/internal/spawner BuildConsoleSettingsJSON

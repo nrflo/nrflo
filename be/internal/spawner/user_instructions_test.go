@@ -121,6 +121,7 @@ func (e *spawnerTestEnv) newSpawner() *Spawner {
 	return New(Config{
 		DataPath: e.dbPath,
 		Pool:     e.pool,
+		Clock:    clock.Real(),
 	})
 }
 

@@ -61,7 +61,9 @@ func (s *Spawner) initiateContextSave(ctx context.Context, proc *processInfo, re
 // relaunch-prompt-assembly time, so nothing is lost. Otherwise this falls
 // back to the existing agent-save path unchanged.
 func (s *Spawner) contextSaveViaAgent(ctx context.Context, proc *processInfo, req SpawnRequest) {
-	if _, ok := freshSlotDigest(s.pool(), s.config.Clock, proc.workflowInstanceID, proc.nodeID, proc.startTime); ok {
+	if s.stepwiseDefFor(proc.agentType, req.ProjectID, req.WorkflowName) {
+		logger.Info(ctx, "stepwise mode: cursor is the save, skipping context-saver spawn", "session_id", proc.sessionID)
+	} else if _, ok := freshSlotDigest(s.pool(), s.config.Clock, proc.workflowInstanceID, proc.nodeID, proc.startTime); ok {
 		logger.Info(ctx, "digest rotation: using slot digest, skipping context-saver spawn", "session_id", proc.sessionID)
 	} else {
 		// Broadcast context_saving event

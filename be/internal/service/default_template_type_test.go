@@ -36,15 +36,15 @@ func TestDefaultTemplate_List_FilterByTypeInjectable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(templates) != 14 {
-		t.Fatalf("List(injectable) len = %d, want 14", len(templates))
+	if len(templates) != 15 {
+		t.Fatalf("List(injectable) len = %d, want 15", len(templates))
 	}
 	wantIDs := map[string]bool{
 		"low-context": true, "callback": true, "user-instructions": true,
 		"system-prompt-suffix": true, "finish-reminder": true, "system-prompt": true, "working-set": true,
 		"api-system-prompt": true,
 		"tier-t0-decider":   true, "tier-t1-executor": true, "tier-t2-extractor": true,
-		"delegation-guidance": true, "tier-t0-bare": true, "crash-resume": true,
+		"delegation-guidance": true, "tier-t0-bare": true, "crash-resume": true, "stepwise-guidance": true,
 	}
 	for _, tmpl := range templates {
 		if tmpl.Type != "injectable" {
@@ -79,8 +79,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(templates) != 20 {
-		t.Fatalf("List() len = %d, want 20", len(templates))
+	if len(templates) != 21 {
+		t.Fatalf("List() len = %d, want 21", len(templates))
 	}
 	agentCount, injectableCount := 0, 0
 	for _, tmpl := range templates {
@@ -96,8 +96,8 @@ func TestDefaultTemplate_List_NoFilterReturnsAll(t *testing.T) {
 	if agentCount != 6 {
 		t.Errorf("agent count = %d, want 6", agentCount)
 	}
-	if injectableCount != 14 {
-		t.Errorf("injectable count = %d, want 14", injectableCount)
+	if injectableCount != 15 {
+		t.Errorf("injectable count = %d, want 15", injectableCount)
 	}
 }
 
@@ -347,15 +347,15 @@ func TestDefaultTemplate_List_FilterAfterCreatingMixed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(injectable): %v", err)
 	}
-	if len(injectables) != 15 {
-		t.Errorf("List(injectable) len = %d, want 15 (14 seeded + 1 created)", len(injectables))
+	if len(injectables) != 16 {
+		t.Errorf("List(injectable) len = %d, want 16 (15 seeded + 1 created)", len(injectables))
 	}
 
 	all, err := svc.List("")
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
-	if len(all) != 22 {
-		t.Errorf("List() len = %d, want 22 (20 seeded + 2 created)", len(all))
+	if len(all) != 23 {
+		t.Errorf("List() len = %d, want 23 (21 seeded + 2 created)", len(all))
 	}
 }

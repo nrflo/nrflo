@@ -86,6 +86,11 @@ func (s *Spawner) prepareSpawn(ctx context.Context, req SpawnRequest, modelID, p
 	extID, extCtx, _ := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
 	tmplVars := mergeExtraVars(req.ExtraVars, map[string]string{"EXTERNAL_ID": extID, "EXTERNAL_CONTEXT": extCtx})
 
+	// Snapshot the step cursor (no-op for full mode) before the prompt is
+	// assembled, so it exists before the agent's first tool call. Uses
+	// req.WorkflowInstanceID to match the loadTemplate call below.
+	s.snapshotStepCursor(ctx, agentDef, req.WorkflowInstanceID, phase)
+
 	// Load agent template
 	agentLayer := 0
 	if agentDef != nil {

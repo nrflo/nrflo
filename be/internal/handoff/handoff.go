@@ -46,6 +46,19 @@ const (
 	tailPreamble      = "Verbatim tail of the session transcript — not summarized."
 )
 
+// NarrativeSection wraps narrative (model free text — a fresh refinery slot
+// digest or a to_resume finding) under the "## Narrative Summary" header with
+// its non-authoritative preamble, capped at maxNarrativeBytes. Returns "" for
+// whitespace-only input. Exported so callers building a document without the
+// rest of Compose (e.g. the spawner's stepwise resume body) reuse the same
+// label + cap rather than duplicating the preamble prose.
+func NarrativeSection(narrative string) string {
+	if strings.TrimSpace(narrative) == "" {
+		return ""
+	}
+	return "## Narrative Summary\n" + narrativePreamble + "\n\n" + foldfmt.CapBytes(narrative, maxNarrativeBytes)
+}
+
 // Compose builds the dual-channel handoff document for sessionID, wrapping
 // narrative (already-resolved model free text — a fresh refinery slot
 // digest or a to_resume finding) under ## Narrative Summary. Every DB/FS
@@ -89,10 +102,7 @@ func Compose(ctx context.Context, pool *db.Pool, clk clock.Clock, sessionID, nar
 		maxVerifiedBytes,
 	)
 
-	var narrativeSection string
-	if strings.TrimSpace(narrative) != "" {
-		narrativeSection = "## Narrative Summary\n" + narrativePreamble + "\n\n" + foldfmt.CapBytes(narrative, maxNarrativeBytes)
-	}
+	narrativeSection := NarrativeSection(narrative)
 
 	tail := renderTail(currentMsgs)
 

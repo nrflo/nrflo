@@ -67,7 +67,7 @@ The kill-time save path (`context_save.go`): spawns a fresh `context-saver` agen
 
 ## Low-Context Relaunch
 
-When context usage crosses the threshold, the spawner kills the agent and calls `relaunchForContinuation`. `fetchPreviousDataAndReason` (`template_findings_prev.go`) supplies `${previous_data}` via the `low-context` injectable: a fresh autonomous refinery slot digest (folded at/after the killed session's start, non-empty) wins, else it falls back to the `to_resume` finding from the context-saver agent. Crash/fail-restart relaunches go through the same read path. Freshness criterion: `digest_freshness.go`.
+When context usage crosses the threshold, the spawner kills the agent and calls `relaunchForContinuation`. `fetchPreviousDataAndReason` (`template_findings_prev.go`) supplies `${previous_data}` via the `low-context` injectable: a fresh autonomous refinery slot digest (folded at/after the killed session's start, non-empty) wins, else the `to_resume` finding; either way `handoff.Compose` wraps it. Crash/fail-restart relaunches go through the same read path. Freshness criterion: `digest_freshness.go`.
 
 ## Tier Fallback
 

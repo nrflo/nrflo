@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,9 +50,8 @@ func TestToResumeEndToEnd(t *testing.T) {
 		"",
 	)
 
-	// Verify only the to_resume value is returned
-	if previousData != progressSummary {
-		t.Errorf("expected to_resume summary, got %q", previousData)
+	if !strings.Contains(previousData, progressSummary) {
+		t.Errorf("expected to_resume summary present, got %q", previousData)
 	}
 
 	// Verify other findings are NOT included
@@ -65,7 +65,7 @@ func TestToResumeEndToEnd(t *testing.T) {
 	// Step 3: Verify the data would be injected into template
 	// (This simulates what template expansion does with ${PREVIOUS_DATA})
 	template := "You are continuing work from a previous session.\n\nPrevious context:\n${PREVIOUS_DATA}\n\nContinue from where you left off."
-	expectedInjection := "You are continuing work from a previous session.\n\nPrevious context:\n" + progressSummary + "\n\nContinue from where you left off."
+	expectedInjection := "You are continuing work from a previous session.\n\nPrevious context:\n" + previousData + "\n\nContinue from where you left off."
 
 	// Simple string replacement to simulate template expansion
 	actualInjection := replaceTemplateVar(template, "${PREVIOUS_DATA}", previousData)
@@ -91,7 +91,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 
 	// Verify first restart data can be fetched
 	data1, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
-	if data1 != "First agent completed task A and B" {
+	if !strings.Contains(data1, "First agent completed task A and B") {
 		t.Errorf("expected first restart data, got %q", data1)
 	}
 
@@ -104,7 +104,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 
 	// Verify second restart data is now returned (most recent)
 	data2, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
-	if data2 != "Second agent completed task C and D, now working on E" {
+	if !strings.Contains(data2, "Second agent completed task C and D, now working on E") {
 		t.Errorf("expected second restart data, got %q", data2)
 	}
 
@@ -117,7 +117,7 @@ func TestToResumeMultipleRestarts(t *testing.T) {
 
 	// Verify third restart data is now returned (most recent)
 	data3, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, env.phase, "")
-	if data3 != "Third agent completed task E, ready for final review" {
+	if !strings.Contains(data3, "Third agent completed task E, ready for final review") {
 		t.Errorf("expected third restart data, got %q", data3)
 	}
 }
@@ -156,22 +156,22 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 
 	// Verify each agent/model/phase combination gets the correct data
 	data, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "implementor", "claude:opus-4-7", env.phase, "")
-	if data != "implementor progress" {
+	if !strings.Contains(data, "implementor progress") {
 		t.Errorf("implementor should get its own data, got %q", data)
 	}
 
 	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "test-writer", "claude:sonnet-5", env.phase, "")
-	if data != "test-writer progress" {
+	if !strings.Contains(data, "test-writer progress") {
 		t.Errorf("test-writer should get its own data, got %q", data)
 	}
 
 	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku-4-5", env.phase, "")
-	if data != "same agent different model" {
+	if !strings.Contains(data, "same agent different model") {
 		t.Errorf("different model should get its own data, got %q", data)
 	}
 
 	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, env.modelID, "different-phase", "")
-	if data != "same agent different phase" {
+	if !strings.Contains(data, "same agent different phase") {
 		t.Errorf("different phase should get its own data, got %q", data)
 	}
 

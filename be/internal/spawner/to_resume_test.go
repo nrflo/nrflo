@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,18 +32,10 @@ func TestFetchPreviousData_WithToResumeKey(t *testing.T) {
 	env.createContinuedSession(t, continuedSessionID, findings)
 
 	// Fetch previous data
-	result, _ := env.spawner.fetchPreviousDataAndReason(
-		env.projectID,
-		env.ticketID,
-		env.workflowID,
-		"test-agent",
-		"claude:sonnet-5",
-		"test-phase",
-		"",
-	)
+	result, _ := env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, "test-agent", "claude:sonnet-5", "test-phase", "")
 
 	expected := "This is the summary of all my progress and findings so far"
-	if result != expected {
+	if !strings.Contains(result, expected) {
 		t.Errorf("expected to_resume value, got %q", result)
 	}
 }
@@ -214,7 +207,7 @@ func TestFetchPreviousData_LatestContinuedSession(t *testing.T) {
 		"",
 	)
 
-	if result != "newer summary" {
+	if !strings.Contains(result, "newer summary") {
 		t.Errorf("expected latest to_resume value 'newer summary', got %q", result)
 	}
 }
@@ -302,7 +295,7 @@ func TestFetchPreviousData_ProjectScope(t *testing.T) {
 	)
 
 	expected := "project scope summary"
-	if result != expected {
+	if !strings.Contains(result, expected) {
 		t.Errorf("expected to_resume value for project scope, got %q", result)
 	}
 }

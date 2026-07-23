@@ -3,6 +3,7 @@ package spawner
 import (
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,8 +26,8 @@ func TestFetchPreviousDataAndReason_WithDataAndReason(t *testing.T) {
 	data, reason := env.spawner.fetchPreviousDataAndReason(
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
-	if data != "saved progress" {
-		t.Errorf("data = %q, want %q", data, "saved progress")
+	if !strings.Contains(data, "saved progress") {
+		t.Errorf("data = %q, want to contain %q", data, "saved progress")
 	}
 	if reason != "low_context" {
 		t.Errorf("reason = %q, want %q", reason, "low_context")
@@ -61,8 +62,8 @@ func TestFetchPreviousDataAndReason_NullReason(t *testing.T) {
 	data, reason := env.spawner.fetchPreviousDataAndReason(
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
-	if data != "progress data" {
-		t.Errorf("data = %q, want %q", data, "progress data")
+	if !strings.Contains(data, "progress data") {
+		t.Errorf("data = %q, want to contain %q", data, "progress data")
 	}
 	if reason != "" {
 		t.Errorf("reason = %q, want empty for NULL result_reason", reason)

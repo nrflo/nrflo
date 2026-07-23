@@ -3,6 +3,7 @@ package spawner
 import (
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,8 +36,11 @@ func TestFetchPreviousDataAndReason_FreshDigest_WinsOverToResume(t *testing.T) {
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
 
-	if data != "DIGEST-TEXT" {
-		t.Errorf("data = %q, want digest content %q", data, "DIGEST-TEXT")
+	if !strings.Contains(data, "DIGEST-TEXT") {
+		t.Errorf("data = %q, want to contain digest content %q", data, "DIGEST-TEXT")
+	}
+	if strings.Contains(data, "to_resume finding text") {
+		t.Errorf("data = %q, fresh digest must win over to_resume — to_resume text must not appear", data)
 	}
 	if reason != "low_context" {
 		t.Errorf("reason = %q, want %q", reason, "low_context")
@@ -65,8 +69,8 @@ func TestFetchPreviousDataAndReason_StaleDigest_FallsBackToToResume(t *testing.T
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
 
-	if data != "to_resume finding text" {
-		t.Errorf("data = %q, want to_resume fallback %q", data, "to_resume finding text")
+	if !strings.Contains(data, "to_resume finding text") {
+		t.Errorf("data = %q, want to contain to_resume fallback %q", data, "to_resume finding text")
 	}
 }
 
@@ -85,8 +89,8 @@ func TestFetchPreviousDataAndReason_NoDigest_FallsBackToToResume(t *testing.T) {
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
 
-	if data != "only to_resume available" {
-		t.Errorf("data = %q, want to_resume fallback %q", data, "only to_resume available")
+	if !strings.Contains(data, "only to_resume available") {
+		t.Errorf("data = %q, want to contain to_resume fallback %q", data, "only to_resume available")
 	}
 }
 
@@ -111,8 +115,8 @@ func TestFetchPreviousDataAndReason_EmptyDigest_FallsBackToToResume(t *testing.T
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
 
-	if data != "fallback text" {
-		t.Errorf("data = %q, want to_resume fallback %q", data, "fallback text")
+	if !strings.Contains(data, "fallback text") {
+		t.Errorf("data = %q, want to contain to_resume fallback %q", data, "fallback text")
 	}
 }
 
@@ -138,8 +142,8 @@ func TestFetchPreviousDataAndReason_CrashPath_FreshDigestWinsWithNoToResume(t *t
 		env.projectID, env.ticketID, env.workflowID,
 		"test-agent", "claude:sonnet-5", "test-phase", "")
 
-	if data != "CRASH-DIGEST" {
-		t.Errorf("data = %q, want digest content %q", data, "CRASH-DIGEST")
+	if !strings.Contains(data, "CRASH-DIGEST") {
+		t.Errorf("data = %q, want to contain digest content %q", data, "CRASH-DIGEST")
 	}
 	if reason != "fail_restart" {
 		t.Errorf("reason = %q, want %q", reason, "fail_restart")

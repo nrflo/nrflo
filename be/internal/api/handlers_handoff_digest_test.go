@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"be/internal/db"
@@ -105,6 +106,11 @@ func TestHandleGetHandoffDigest_DigestPresent_OK(t *testing.T) {
 	s, pool := newContextLedgerServer(t)
 	wfiID, nodeID := "hd-sess-3-wfi", "node-3"
 	insertHandoffDigestSession(t, pool, "hd-sess-3", "hd-proj-owner", wfiID, nodeID)
+	// A task-anchor prompt gives handoff.Compose a non-empty Verified State
+	// block, so this test can assert both channels render together.
+	if _, err := pool.Exec(`UPDATE agent_sessions SET prompt = ? WHERE id = ?`, "Fix the login bug", "hd-sess-3"); err != nil {
+		t.Fatalf("seed task anchor prompt: %v", err)
+	}
 	insertHandoffDigestRow(t, pool, wfiID, nodeID, "hd-proj-owner", 2, 2, "the folded digest content")
 
 	req := httptest.NewRequest(http.MethodGet,
@@ -120,8 +126,15 @@ func TestHandleGetHandoffDigest_DigestPresent_OK(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if body["content"] != "the folded digest content" {
-		t.Errorf("content = %v, want %q", body["content"], "the folded digest content")
+	content, _ := body["content"].(string)
+	if !strings.Contains(content, "the folded digest content") {
+		t.Errorf("content = %v, want to contain %q", body["content"], "the folded digest content")
+	}
+	if !strings.Contains(content, "## Narrative Summary") {
+		t.Errorf("content = %v, want ## Narrative Summary header", body["content"])
+	}
+	if !strings.Contains(content, "## Verified State") {
+		t.Errorf("content = %v, want ## Verified State header (task-anchor prompt seeded)", body["content"])
 	}
 	if v, ok := body["version"].(float64); !ok || int(v) != 2 {
 		t.Errorf("version = %v, want 2", body["version"])

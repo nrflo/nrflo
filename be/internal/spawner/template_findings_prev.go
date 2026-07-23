@@ -1,10 +1,14 @@
 package spawner
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"time"
 
+	"be/internal/clock"
+	"be/internal/db"
+	"be/internal/handoff"
 	"be/internal/repo"
 )
 
@@ -63,7 +67,7 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 	if startedAtStr.Valid {
 		if prevStarted, perr := time.Parse(time.RFC3339Nano, startedAtStr.String); perr == nil {
 			if content, ok := freshSlotDigest(pool, s.config.Clock, wfiID, phase, prevStarted); ok {
-				return content, reason
+				return composeOrNarrative(pool, s.config.Clock, sessionID, content), reason
 			}
 		}
 	}
@@ -82,5 +86,16 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 	if json.Unmarshal(rawVal, &str) != nil || str == "" {
 		return "", reason
 	}
-	return str, reason
+	return composeOrNarrative(pool, s.config.Clock, sessionID, str), reason
+}
+
+// composeOrNarrative wraps a resolved narrative (fresh slot digest or
+// to_resume finding — both model free text) with the deterministic Verified
+// State channel via handoff.Compose, falling back to the raw narrative when
+// Compose has nothing to add (e.g. no findings, no messages, no root_path).
+func composeOrNarrative(pool *db.Pool, clk clock.Clock, sessionID, narrative string) string {
+	if composed := handoff.Compose(context.Background(), pool, clk, sessionID, narrative); composed != "" {
+		return composed
+	}
+	return narrative
 }

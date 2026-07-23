@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"be/internal/foldfmt"
+	"be/internal/handoff"
 	"be/internal/logger"
 	"be/internal/repo"
 	"be/internal/service"
@@ -228,6 +229,10 @@ func (m *Manager) broadcastHandoffDigest(ctx context.Context, sessionID, project
 			"workflow_instance_id", workflowInstanceID, "node_id", nodeID, "error", err)
 		return
 	}
+	content := digest.Content
+	if composed := handoff.Compose(ctx, m.pool, m.clock, sessionID, digest.Content); composed != "" {
+		content = composed
+	}
 	data := map[string]interface{}{
 		"session_id":           sessionID,
 		"workflow_instance_id": workflowInstanceID,
@@ -235,7 +240,7 @@ func (m *Manager) broadcastHandoffDigest(ctx context.Context, sessionID, project
 		"version":              digest.Version,
 		"fold_count":           digest.FoldCount,
 		"updated_at":           digest.UpdatedAt.Format(time.RFC3339Nano),
-		"content":              digest.Content,
+		"content":              content,
 	}
 	m.broadcaster(ws.NewEvent(ws.EventAgentHandoffDigest, projectID, "", "", data))
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"be/internal/handoff"
 	"be/internal/repo"
 )
 
@@ -38,9 +39,31 @@ func (s *Server) handleGetHandoffDigest(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusInternalServerError, "failed to load handoff digest")
 		return
 	}
-	if digest == nil {
+
+	digestContent := ""
+	if digest != nil {
+		digestContent = digest.Content
+	}
+	composed := handoff.Compose(r.Context(), s.pool, s.clock, sessionID, digestContent)
+
+	if composed == "" && digest == nil {
 		writeError(w, http.StatusNotFound, "no handoff digest for this session")
 		return
 	}
-	writeJSON(w, http.StatusOK, digest)
+
+	if digest != nil {
+		digest.Content = composed
+		writeJSON(w, http.StatusOK, digest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"workflow_instance_id": session.WorkflowInstanceID,
+		"node_id":              session.NodeID,
+		"project_id":           session.ProjectID,
+		"version":              0,
+		"content":              composed,
+		"fold_count":           0,
+		"updated_at":           s.clock.Now(),
+	})
 }

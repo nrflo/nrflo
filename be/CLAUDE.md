@@ -27,6 +27,7 @@ Top-level packages under `be/internal/`:
 - `model/` — Data models (structs)
 - `sdk/python/` — Embedded Python SDK installed to `$NRFLO_HOME/sdk/` on startup
 - `repo/` — Repository pattern (DB access layer)
+- `handoff/` — deterministic dual-channel handoff composer (Verified State + narrative + tail); see [handoff/CLAUDE.md](internal/handoff/CLAUDE.md)
 - `types/` — Shared request/response types
 - `clock/` — Time abstraction (`clock.Clock` interface + `Real()` + test clock)
 - `integration/` — Integration tests and test harness

@@ -7,13 +7,12 @@ import (
 	"testing"
 )
 
-// TestAppServerArgs_DisablesNativeMultiAgent verifies appServerArgs() starts
-// with the "app-server" subcommand and denies each codexDisabledFeatures
-// entry via a `--disable <feature>` pair, so that native multi-agent
-// delegation cannot be reached even though multi_agent is stage=stable and
-// default-ON in codex 0.144.1 (config.toml stripping alone would not disable
-// it).
-func TestAppServerArgs_DisablesNativeMultiAgent(t *testing.T) {
+// TestAppServerArgs_DisablesNativeDelegation verifies appServerArgs() starts
+// with the "app-server" subcommand, contains no `--disable` element (the old
+// multi_agent/multi_agent_v2/enable_fanout triple was a proven no-op and must
+// never come back), and carries `-c agents.enabled=false` as a single argv
+// pair blocking native delegation via the codex 0.145.0 `agents` config key.
+func TestAppServerArgs_DisablesNativeDelegation(t *testing.T) {
 	t.Parallel()
 	args := appServerArgs()
 
@@ -21,32 +20,17 @@ func TestAppServerArgs_DisablesNativeMultiAgent(t *testing.T) {
 		t.Fatalf("appServerArgs()[0] = %v, want \"app-server\": %v", args, args)
 	}
 
-	tests := []struct {
-		feature string
-	}{
-		{"multi_agent"},
-		{"multi_agent_v2"},
-		{"enable_fanout"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.feature, func(t *testing.T) {
-			pos := findArgElement(args, "--disable")
-			found := false
-			for i, a := range args {
-				if a == "--disable" && i+1 < len(args) && args[i+1] == tc.feature {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Errorf("appServerArgs() missing --disable %s (first --disable at %d): %v", tc.feature, pos, args)
-			}
-		})
+	// Regression guard: the dead --disable feature flags must never return.
+	for i, a := range args {
+		if a == "--disable" {
+			t.Errorf("appServerArgs() contains --disable at %d (dead feature flag reintroduced): %v", i, args)
+		}
 	}
 
-	// Exact ordering/shape guard, matching codexDisabledFeatures declaration order.
+	// Exact ordering/shape guard.
 	want := []string{
-		"app-server", "--disable", "multi_agent", "--disable", "multi_agent_v2", "--disable", "enable_fanout",
+		"app-server",
+		"-c", "agents.enabled=false",
 		"-c", `project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]`,
 		"-c", "model_auto_compact_token_limit=1000000000",
 	}
@@ -72,15 +56,27 @@ func TestAppServerArgs_LoadsClaudeMdFallback(t *testing.T) {
 	const wantValue = `project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]`
 	found := false
 	for i, a := range args {
-		if a == "-c" && i+1 < len(args) {
-			if args[i+1] == wantValue {
-				found = true
-			}
+		if a == "-c" && i+1 < len(args) && args[i+1] == wantValue {
+			found = true
 			break
 		}
 	}
 	if !found {
 		t.Errorf("appServerArgs() missing single argv element \"-c\" %q: %v", wantValue, args)
+	}
+}
+
+// TestCodexAgentsArgs_SingleUnsplitValue asserts codexAgentsArgs() returns
+// "-c" followed immediately by ONE unsplit "agents.enabled=false" element —
+// the same failure mode TestAppServerArgs_LoadsClaudeMdFallback guards for
+// the project-doc key: a split/quoted value is passed to codex as a literal
+// string and silently ignored rather than parsed as the intended -c override.
+func TestCodexAgentsArgs_SingleUnsplitValue(t *testing.T) {
+	t.Parallel()
+	args := codexAgentsArgs()
+
+	if len(args) != 2 || args[0] != "-c" || args[1] != "agents.enabled=false" {
+		t.Fatalf("codexAgentsArgs() = %v, want [\"-c\" \"agents.enabled=false\"]", args)
 	}
 }
 

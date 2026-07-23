@@ -3,10 +3,8 @@
 package spawner
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"os/exec"
 	"strings"
 	"testing"
@@ -22,9 +20,11 @@ import (
 //
 // It is the version-drift alarm for the deny lists in
 // cli_adapter_claude.go (claudeDisallowedNativeTools) and
-// codex_appserver_client.go (codexDisabledFeatures): a renamed or removed
-// tool/feature name would otherwise fail silently (claude: an unknown deny
-// name is ignored without warning; codex: a stale --disable flag is a no-op).
+// codex_delegation.go (codexAgentsArgs): a renamed or removed tool/config key
+// would otherwise fail silently (claude: an unknown deny name is ignored
+// without warning; codex: a stale -c override is a no-op). Codex-specific
+// drift alarms live in native_orchestration_codex_cli_test.go (split for the
+// 300-line file cap).
 
 // listToolsPrompt asks the CLI to enumerate its live tool registry. Enumerating
 // and diffing the registry is deterministic in a way that asking the model
@@ -107,175 +107,5 @@ func TestNativeOrchestrationCLI_ClaudeDenyBlocksDelegation(t *testing.T) {
 		if baseline[tool] && !denied[tool] {
 			t.Errorf("denying %q prefix-matched and collaterally denied %q; the deny list must match exact tool names only", "Task", tool)
 		}
-	}
-}
-
-// TestNativeOrchestrationCLI_CodexDisableFlagsTakeEffect asserts the production
-// --disable flags actually flip multi_agent off. `codex features list` prints
-// each feature's stage and *effective* state, so this reads the real resolved
-// state rather than trusting that the flag parsed.
-//
-// multi_agent is stage=stable and default-ON (codex 0.144.1), which is exactly
-// why stripping the user's config.toml would not have been enough.
-func TestNativeOrchestrationCLI_CodexDisableFlagsTakeEffect(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// `--disable` is documented as equivalent to `-c features.<name>=false` and
-	// is accepted by every codex subcommand, so `features list` resolves the
-	// same state the app-server will see for the same flags.
-	args := append([]string{"features", "list"}, disableFeatureFlags()...)
-	out, err := exec.CommandContext(ctx, "codex", args...).CombinedOutput()
-	if err != nil {
-		t.Fatalf("codex %v: %v\noutput:\n%s", args, err, out)
-	}
-
-	for _, feature := range codexDisabledFeatures {
-		state, ok := codexFeatureState(string(out), feature)
-		if !ok {
-			t.Errorf("codexDisabledFeatures has drifted stale: %q is not a known codex feature — a --disable for it is a silent no-op; update the list", feature)
-			continue
-		}
-		if state != "false" {
-			t.Errorf("feature %q is still %q after --disable — a managed codex session could spawn children invisible to nrflo:\n%s", feature, state, out)
-		}
-	}
-}
-
-// codexFeatureState finds `<feature> <stage> <state>` in `codex features list`
-// output, returning the trailing effective state.
-func codexFeatureState(out, feature string) (string, bool) {
-	for _, line := range strings.Split(out, "\n") {
-		fields := strings.Fields(line)
-		if len(fields) >= 2 && fields[0] == feature {
-			return fields[len(fields)-1], true
-		}
-	}
-	return "", false
-}
-
-// disableFeatureFlags returns just the `--disable <feature>` pairs, built
-// directly from codexDisabledFeatures rather than sliced out of
-// appServerArgs() — appServerArgs() now also carries the unrelated -c
-// project-doc override, which `codex features list` does not accept as a
-// feature-gating flag.
-func disableFeatureFlags() []string {
-	args := make([]string, 0, len(codexDisabledFeatures)*2)
-	for _, f := range codexDisabledFeatures {
-		args = append(args, "--disable", f)
-	}
-	return args
-}
-
-// TestNativeOrchestrationCLI_CodexAppServerAcceptsDisableFlags spawns a real
-// `codex app-server` with the production appServerArgs() and asserts the same
-// `initialize` handshake production performs still round-trips — guarding
-// against codex rejecting a --disable flag outright at startup.
-func TestNativeOrchestrationCLI_CodexAppServerAcceptsDisableFlags(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "codex", appServerArgs()...)
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Fatalf("stdin pipe: %v", err)
-	}
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("stdout pipe: %v", err)
-	}
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start codex app-server: %v", err)
-	}
-	defer func() {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	}()
-
-	// Mirror codex_appserver_backend.go's handshake exactly — clientInfo is a
-	// required field, and omitting it yields a -32600 that looks deceptively
-	// like a rejected --disable flag.
-	req := map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "initialize",
-		"params": map[string]any{
-			"clientInfo": map[string]string{"name": appServerClientName, "version": "1"},
-		},
-	}
-	if err := json.NewEncoder(stdin).Encode(req); err != nil {
-		t.Fatalf("write initialize request: %v", err)
-	}
-
-	line, err := bufio.NewReader(stdout).ReadBytes('\n')
-	if err != nil {
-		t.Fatalf("read initialize response: %v\nstderr:\n%s", err, stderr.String())
-	}
-
-	var resp struct {
-		ID     int64           `json:"id"`
-		Result json.RawMessage `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
-	}
-	if err := json.Unmarshal(line, &resp); err != nil {
-		t.Fatalf("unmarshal initialize response: %v\nline: %s", err, line)
-	}
-	if resp.Error != nil {
-		t.Fatalf("initialize returned an error (a codexDisabledFeatures entry may be stale/rejected): code=%d message=%s\nstderr:\n%s", resp.Error.Code, resp.Error.Message, stderr.String())
-	}
-	if resp.Result == nil {
-		t.Fatalf("initialize returned no result\nstderr:\n%s", stderr.String())
-	}
-}
-
-// TestNativeOrchestrationCLI_StrictConfigCatchesRenamedCompactKey is the drift
-// alarm for codexAutoCompactTokenLimit's key name: `--strict-config` is the
-// only mode where codex actually validates a `-c` override against its known
-// ConfigToml fields (a plain `-c` silently accepts and ignores an unknown
-// key). CODEX_HOME points at an empty t.TempDir() so a developer's own
-// ~/.codex/config.toml (which may itself carry unrelated legacy keys) cannot
-// false-fail the strict parse. Production must NEVER pass --strict-config —
-// it would hard-fail every spawn for a user with any unrecognized key in
-// their own config.toml.
-func TestNativeOrchestrationCLI_StrictConfigCatchesRenamedCompactKey(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	codexHome := t.TempDir()
-	// An immediately-EOF stdin lets `codex app-server` run its startup config
-	// validation and exit on its own once the JSON-RPC stdio loop hits EOF,
-	// instead of blocking on a handshake this test doesn't perform.
-	runStrict := func(kv string) (string, error) {
-		// --strict-config is an `app-server` subcommand option, not a global
-		// codex flag — it must follow "app-server", so it cannot ride
-		// appServerArgs() itself (production never passes it).
-		args := append([]string{"app-server", "--strict-config", "-c", kv}, appServerArgs()[1:]...)
-		cmd := exec.CommandContext(ctx, "codex", args...)
-		cmd.Env = append(cmd.Environ(), "CODEX_HOME="+codexHome)
-		cmd.Stdin = bytes.NewReader(nil)
-		out, err := cmd.CombinedOutput()
-		return string(out), err
-	}
-
-	// Control: a deliberately bogus key must be rejected under --strict-config
-	// (proves the flag is actually enforcing, not just accepted/ignored).
-	if out, err := runStrict("bogus_key_xyz=1"); err == nil {
-		t.Fatalf("--strict-config -c bogus_key_xyz=1 unexpectedly succeeded (strict validation not enforcing):\n%s", out)
-	} else if !strings.Contains(out, "bogus_key_xyz") {
-		t.Errorf("expected rejection to mention the unknown key, got:\n%s", out)
-	}
-
-	// The actual drift alarm: codexAutoCompactTokenLimit's key must still be
-	// recognized. A codex rename of model_auto_compact_token_limit would fail
-	// here exactly like the bogus-key control above.
-	kv := codexAutoCompactArgs()[1]
-	if out, err := runStrict(kv); err != nil {
-		t.Fatalf("--strict-config rejected %q — model_auto_compact_token_limit may have been renamed/removed by codex:\n%s\nerr: %v", kv, out, err)
 	}
 }

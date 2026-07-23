@@ -66,24 +66,13 @@ type rpcOut struct {
 
 var errAppServerClosed = errors.New("codex app-server connection closed")
 
-// codexDisabledFeatures are passed as `--disable <feature>` to `codex
-// app-server` to block native multi-agent delegation, which would let a
-// managed session spawn children invisible to nrflo. In codex 0.144.1,
-// multi_agent is stage=stable and default-ON (so stripping config.toml alone
-// would not disable it); multi_agent_v2/enable_fanout are under-development
-// and off today but denied defensively against a future default flip.
-// Drift alarm for these names: TestNativeOrchestrationCLI (-tags clitools) —
-// a --disable for a renamed/removed feature is a silent no-op.
-var codexDisabledFeatures = []string{"multi_agent", "multi_agent_v2", "enable_fanout"}
-
-// appServerArgs returns the `codex app-server` argv with codexDisabledFeatures
-// denied via repeatable `--disable <feature>` flags. Kept pure (no exec) so it
-// is unit-testable without running the codex binary.
+// appServerArgs returns the `codex app-server` argv with native delegation
+// blocked via codexAgentsArgs (`-c agents.enabled=false`), placed first so the
+// security-critical override sits adjacent to the subcommand. Kept pure (no
+// exec) so it is unit-testable without running the codex binary.
 func appServerArgs() []string {
 	args := []string{"app-server"}
-	for _, f := range codexDisabledFeatures {
-		args = append(args, "--disable", f)
-	}
+	args = append(args, codexAgentsArgs()...)
 	args = append(args, codexProjectDocArgs()...)
 	args = append(args, codexAutoCompactArgs()...)
 	return args

@@ -20,10 +20,10 @@ import (
 // engines exempt from autonomous policies" requirement; it is structural,
 // not a flag.
 //
-// appServerArgs()'s --disable delegation flags (multi_agent/multi_agent_v2/
-// enable_fanout) stay on: an app-server-spawned child is invisible to nrflo
-// whether the parent is a managed session or a human console session, so the
-// cc96eed6 rationale still applies here even though the other managed-session
+// appServerArgs()'s `-c agents.enabled=false` delegation block (codex_delegation.go)
+// stays on: an app-server-spawned child is invisible to nrflo whether the
+// parent is a managed session or a human console session, so the cc96eed6
+// rationale still applies here even though the other managed-session
 // hardening (bypass flags, --disallowedTools, safety hook) does not — this
 // engine defaults to approvalPolicy=on-request/sandbox=workspace-write
 // instead of the autonomous never/danger-full-access.

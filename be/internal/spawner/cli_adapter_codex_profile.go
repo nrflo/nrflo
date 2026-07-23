@@ -10,9 +10,14 @@ import (
 
 // Codex per-session CODEX_HOME profile. This writer stays hook-free: hooks
 // moved to CODEX_HOME/hooks.json around codex 0.140 (see
-// hooks_settings_codex.go, used only by the PTY user-session paths), so the
-// config.toml `[hooks.*]` tables copied from the user's config now carry only
-// hook state/trust, not hook definitions. Because this writer is shared by
+// hooks_settings_codex.go, used only by the PTY user-session paths), but
+// config.toml still DEFINES executable hooks at 0.145.0 — a user
+// `[[hooks.SessionStart]]` + `[[hooks.SessionStart.hooks]] type="command"`
+// table is surfaced by the app-server `hooks/list` RPC as a fully-formed
+// command hook (source=user, trustStatus=untrusted). Every profile we write
+// launches with `--dangerously-bypass-hook-trust`, so an inherited untrusted
+// user hook would execute — the strip below is a security requirement, not a
+// leftover from hook state moving elsewhere. Because this writer is shared by
 // the app-server backend (codex_appserver_backend.go) and the console engine
 // (WriteConsoleCodexProfile), keeping it hook-free means those profiles never
 // gain hooks. The profile's other job is to keep the agent logged in
@@ -23,11 +28,12 @@ import (
 
 // codexStripTablePrefixes are the config.toml table headers dropped when
 // copying the user's config into the per-session profile:
-//   - hooks: definitions moved to hooks.json around codex 0.140 (openai/codex#26418),
-//     but config.toml's [hooks.*] tables still carry enabled/trusted_hash state.
-//     Every profile we write launches with --dangerously-bypass-hook-trust, so an
-//     inherited user [hooks.*] table must be stripped to avoid running the
-//     user's own unreviewed hook state under that flag.
+//   - hooks: config.toml still DEFINES executable hooks at 0.145.0 (hook
+//     definitions did NOT move to hooks.json-only state, contrary to earlier
+//     assumption — see the file header above), so an inherited user
+//     `[hooks.*]` table must be stripped to avoid running the user's own
+//     unreviewed hooks under the `--dangerously-bypass-hook-trust` flag every
+//     profile launches with.
 //   - projects: the user's accumulated trust entries (hundreds, often including
 //     the spawn workdir) would collide with the single `[projects."<workDir>"]`
 //     entry we append — the app-server parses config.toml strictly and rejects
@@ -44,6 +50,15 @@ var codexStripTablePrefixes = []string{
 // trust entry is appended — so the profile has exactly one project table and
 // can't produce a duplicate-key error. workDir is symlink-resolved to match
 // codex's cwd canonicalization (e.g. `/var/folders` → `/private/var/folders`).
+//
+// The trust entry stays in config.toml rather than becoming a `-c` override:
+// codex's dotted-path `-c` splitter does not unquote a path segment, so
+// `-c 'projects."/p".trust_level="trusted"'` produces a literal
+// `"\"/p\""` key while the real `/p` entry is left untouched (validated via
+// `config/read`). The inline-table form does merge correctly, but delivering
+// it would require threading the per-session workDir into appServerArgs (and
+// the PTY paths) with symlink resolution duplicated at each call site, for no
+// net code reduction — and the file is written anyway for auth.json.
 func writeCodexProfileForSession(dir, workDir string) error {
 	userHome := userCodexHome()
 
@@ -102,6 +117,11 @@ func WriteConsoleCodexProfile(dir, workDir, serverPath string, env map[string]st
 // tools to the model over MCP (codex calls the bridge as `serverPath <args...>`).
 // Codex does not forward parent process env to MCP server subprocesses, so the
 // session env the bridge needs (NRF_SESSION_ID, socket path, …) is embedded here.
+//
+// This table stays in config.toml rather than an argv `-c` override: moving
+// it there would put NRF_SESSION_ID/NRF_WORKFLOW_INSTANCE_ID/NRFLO_PROJECT/
+// NRFLO_SOCKET — and the console engine's NRFLO_CONSOLE_TOKEN bearer — into
+// the process table, readable by any local user via `ps`.
 func appendCodexMCPServer(dir, serverPath string, args []string, env map[string]string) error {
 	var b strings.Builder
 	quotedArgs := make([]string, len(args))

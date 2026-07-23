@@ -1,9 +1,11 @@
 package spawner
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/pty"
 )
@@ -17,7 +19,10 @@ import (
 // {read-only,workspace-write,danger-full-access}, -a/--ask-for-approval
 // {untrusted,on-request,never}), so it uses --sandbox read-only
 // --ask-for-approval on-request — on-request lets the model still escalate to
-// write its plan file when needed, without a standing write sandbox.
+// write its plan file when needed, without a standing write sandbox. Both
+// modes get a hooks.json lifecycle sidecar (writeCodexHooksForSession) plus
+// --dangerously-bypass-hook-trust, which is mandatory: codex 0.145 silently
+// skips every hook without it (validated, no warning/error either way).
 func (a *CodexAdapter) PrepareUserSession(opts UserSessionOptions) (pty.Launch, func(), error) {
 	dir, err := os.MkdirTemp("", "nrflo-codex-user-"+opts.SessionID+"-*")
 	if err != nil {
@@ -27,11 +32,15 @@ func (a *CodexAdapter) PrepareUserSession(opts UserSessionOptions) (pty.Launch, 
 		_ = os.RemoveAll(dir)
 		return pty.Launch{}, func() {}, fmt.Errorf("write codex profile: %w", err)
 	}
+	if err := writeCodexHooksForSession(dir); err != nil {
+		logger.Warn(context.Background(), "codex user session: write hooks.json failed", "session_id", opts.SessionID, "err", err)
+	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 
 	args := []string{
 		"--model", opts.Model,
 		"-c", "check_for_update_on_startup=false",
+		"--dangerously-bypass-hook-trust",
 	}
 	// The codex TUI has no --effort flag; effort rides as a -c override (same
 	// mechanism as check_for_update_on_startup above).

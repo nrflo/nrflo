@@ -1,10 +1,13 @@
 package spawner
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"time"
+
+	"be/internal/logger"
 )
 
 // CodexAdapter implements CLIAdapter for OpenAI Codex CLI
@@ -34,10 +37,11 @@ func (a *CodexAdapter) SupportsNativeDocRead() bool {
 	return false // codex cannot turn a local path into vision input on its own
 }
 
-// BuildInteractiveCommand and the other PTY-path methods below are interface
-// compliance only: codex/cli_interactive is routed to the codex app-server
-// backend (codex_appserver_backend.go), not this PTY command. CodexAdapter is
-// still resolved for passthrough model handling and ClassifyExit.
+// BuildInteractiveCommand and the other PTY-path methods below back the
+// human-session PTY paths (take-control resume, API resume launch); the
+// autonomous codex/cli_interactive spawn is still routed to the codex
+// app-server backend (codex_appserver_backend.go). CodexAdapter is also
+// resolved for passthrough model handling and ClassifyExit.
 func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *exec.Cmd {
 	args := []string{
 		"--model", opts.Model,
@@ -48,13 +52,21 @@ func (a *CodexAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *ex
 		// Prepend `resume <id>` subcommand so codex resumes the existing session.
 		args = append([]string{"resume", opts.ResumeSessionID}, args...)
 	}
-	// No hooks are injected: codex 0.133's TUI never fires hooks under PTY
-	// (openai/codex#21639) AND declaring any hook now raises a blocking
-	// "N hooks need review" gate at startup that `--dangerously-bypass-hook-trust`
-	// does not clear. Workdir trust is delivered through the per-session
-	// CODEX_HOME profile (writeCodexProfileForSession) — codex 0.133 reads the
-	// `[projects."<path>"] trust_level="trusted"` entry from CODEX_HOME/config.toml,
-	// which suppresses the otherwise-blocking directory-trust dialog.
+	// codex 0.145 fires hooks from the TUI under a PTY given a
+	// CODEX_HOME/hooks.json + --dangerously-bypass-hook-trust (validated
+	// locally; see hooks_settings_codex.go). Workdir trust is delivered
+	// through the per-session CODEX_HOME profile (writeCodexProfileForSession)
+	// via the `[projects."<path>"] trust_level="trusted"` entry in
+	// CODEX_HOME/config.toml, which suppresses the otherwise-blocking
+	// directory-trust dialog.
+	if opts.CodexHome != "" {
+		// Only bypass hook trust when nrflo owns CODEX_HOME (this profile
+		// carries our hooks.json). A resume launch with no CodexHome
+		// (registerTakeControlResumeLaunch, registerResumeLaunch) points at
+		// the user's real ~/.codex — bypassing trust there would run the
+		// user's own hooks.json unreviewed.
+		args = append(args, "--dangerously-bypass-hook-trust")
+	}
 	// Codex's TUI input box has a wrapping bug (`tui/src/wrapping.rs:52`,
 	// usize subtraction underflow) that panics on multi-KB pasted bodies. We
 	// pass the prompt as an argv positional instead so codex pre-loads it as
@@ -110,12 +122,14 @@ func removeEnvKey(env []string, prefix string) []string {
 
 // PrepareInteractive creates a per-session CODEX_HOME profile dir holding the
 // user's auth + config (hook tables stripped) plus a `[projects."<workDir>"]
-// trust_level="trusted"` entry. codex 0.133 reads workdir trust from
-// CODEX_HOME/config.toml; without it the TUI blocks on a directory-trust dialog
-// even under `--dangerously-bypass-approvals-and-sandbox`. The workDir path is
-// symlink-resolved inside writeCodexProfileForSession to match codex's own cwd
-// canonicalization (e.g. `/var/folders` → `/private/var/folders` on macOS).
-// Returns a cleanup func that removes the temp dir (best-effort).
+// trust_level="trusted"` entry, and a hooks.json lifecycle sidecar
+// (writeCodexHooksForSession, non-fatal on error). codex 0.133 reads workdir
+// trust from CODEX_HOME/config.toml; without it the TUI blocks on a
+// directory-trust dialog even under `--dangerously-bypass-approvals-and-sandbox`.
+// The workDir path is symlink-resolved inside writeCodexProfileForSession to
+// match codex's own cwd canonicalization (e.g. `/var/folders` →
+// `/private/var/folders` on macOS). Returns a cleanup func that removes the
+// temp dir (best-effort).
 func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error) {
 	dir, err := os.MkdirTemp("", "nrflo-codex-"+opts.SessionID+"-*")
 	if err != nil {
@@ -124,6 +138,9 @@ func (a *CodexAdapter) PrepareInteractive(opts InteractivePrepOptions) (Interact
 	if err := writeCodexProfileForSession(dir, opts.WorkDir); err != nil {
 		_ = os.RemoveAll(dir)
 		return InteractiveExtras{}, func() {}, fmt.Errorf("write codex profile: %w", err)
+	}
+	if err := writeCodexHooksForSession(dir); err != nil {
+		logger.Warn(context.Background(), "codex interactive prep: write hooks.json failed", "session_id", opts.SessionID, "err", err)
 	}
 	cleanup := func() { _ = os.RemoveAll(dir) }
 	return InteractiveExtras{CodexHome: dir}, cleanup, nil
@@ -140,11 +157,13 @@ func (a *CodexAdapter) DeliversPromptInline() bool { return true }
 // PTY ferry must auto-answer them.
 func (a *CodexAdapter) NeedsTerminalQueryReplies() bool { return true }
 
-// BumpsOnPTYBytes returns true — codex 0.133 exposes no structured activity
-// channel under PTY (hooks never fire per openai/codex#21639, and the rollout
-// JSONL / thread DB are not written at all under the bypass-sandbox TUI). The
-// TUI's continuous redraws (spinner, token counter, streamed output) are the
-// only liveness signal, so PTY bytes drive the stall/idle heartbeat.
+// BumpsOnPTYBytes returns true. codex PTY user sessions now emit hook events
+// (see hooks_settings_codex.go), but PTY bytes stay the heartbeat floor for
+// this path: the (currently app-server-routed) managed cli_interactive spawn
+// never reaches cliInteractiveBackend, so flipping this only affects the
+// human-session PTY paths, which have no proc to bump against a structured
+// channel anyway. Kept true as a deliberate deviation — the TUI's continuous
+// redraws remain the fallback liveness signal.
 func (a *CodexAdapter) BumpsOnPTYBytes() bool { return true }
 
 // NaturalExitGrace returns 2s — uniform default for the grace before SIGTERM.

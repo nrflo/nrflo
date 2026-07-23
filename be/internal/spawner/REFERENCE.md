@@ -77,13 +77,17 @@ Every layer denies rather than erroring non-zero: a hook that exits non-zero or 
 - `PrepareInteractive(opts)` — returns `InteractiveExtras` (Codex: per-session CODEX_HOME profile dir).
 - `DeliversPromptInline()` — true for Codex (argv positional); false for Claude (PTY stdin write after readiness delay).
 - `NeedsTerminalQueryReplies()` — true for Codex (TUI sends terminal capability probes during init).
-- `BumpsOnPTYBytes()` — opt-in heartbeat via PTY bytes. Claude returns false (hooks drive the heartbeat). The codex PTY adapter is unused — codex runs on the app-server backend.
+- `BumpsOnPTYBytes()` — opt-in heartbeat via PTY bytes. Claude returns false (hooks drive the heartbeat). Codex keeps returning true even though PTY user sessions now emit hooks too (see sidecar paragraph below) — the managed `cli_interactive` spawn is still routed to the app-server backend, so this only affects human-session PTY paths and stays the documented fallback floor.
 
 `writeCodexProfileForSession` (`cli_adapter_codex_profile.go`) writes the per-session `CODEX_HOME` (auth + a workdir `trust_level="trusted"` entry, without which codex 0.133 blocks on a trust dialog); called by the app-server backend's `Start`.
 
 ### Settings Merge (Claude interactive)
 
 `BuildInteractiveSettingsJSON` (`hooks_settings.go`) returns `--settings` JSON with `hooks` (PreToolUse/PostToolUse → `nrflo agent record-event`) and `statusLine`. `mergeInteractiveSettings` deep-merges safety JSON + hooks JSON, concatenating hook arrays on key conflict so `statusLine` survives.
+
+### Codex PTY hook sidecar
+
+`hooks_settings_codex.go`'s `buildCodexHooksJSON`/`writeCodexHooksForSession` write a Claude-shaped `CODEX_HOME/hooks.json` — `{"hooks":{"SessionStart":[{"matcher":"*","hooks":[{"type":"command","command":"<nrflo> agent record-event"}]}], …}}` — for exactly five validated events (SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, Stop), into the per-session profile dir both `PrepareUserSession` (`user_session_codex.go`) and `PrepareInteractive` (`cli_adapter_codex.go`) already create; a write failure only logs a warning (PTY bytes remain the liveness floor). `--dangerously-bypass-hook-trust` is mandatory — validated against codex-cli 0.145.0: without it hooks are silently skipped (no warning, no error) — and is emitted in `PrepareUserSession` unconditionally (nrflo always owns that CODEX_HOME) but in `BuildInteractiveCommand` only when `opts.CodexHome != ""`, so a resume launch with no CodexHome (`registerTakeControlResumeLaunch`, `registerResumeLaunch`) never bypasses hook trust on the user's real `~/.codex`. Codex 0.145 hook payloads are byte-compatible with Claude's (`hook_event_name` CamelCase, `session_id`/`cwd`/`model`/`transcript_path`) and the hook subprocess inherits the full parent env (including `NRF_SESSION_ID` from `buildPtyEnv`), so the existing `agent record-event` CLI + `handleAgentRecordEvent` socket handler need no changes. `writeCodexProfileForSession` (shared with the app-server backend and console engine) never writes hooks.json, so those profiles stay hook-free.
 
 ## Context Save
 

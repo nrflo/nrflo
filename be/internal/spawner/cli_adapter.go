@@ -81,8 +81,9 @@ type CLIAdapter interface {
 	// BumpsOnPTYBytes returns true when receiving PTY bytes should bump
 	// lastMessageTime / hasReceivedMessage for stall detection purposes.
 	// Claude returns false because a structured hook channel drives the
-	// heartbeat. Codex returns true: codex 0.133 exposes no structured channel
-	// under PTY, so its TUI redraws are the only liveness signal.
+	// heartbeat. Codex returns true: PTY user sessions now emit hook events
+	// too, but PTY bytes stay the heartbeat floor for the (currently
+	// app-server-routed) managed PTY path.
 	BumpsOnPTYBytes() bool
 
 	// NaturalExitGrace is how long the terminal-signal handler should

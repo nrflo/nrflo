@@ -8,18 +8,23 @@ import (
 	"strings"
 )
 
-// Codex per-session CODEX_HOME profile. No hooks are wired: codex never fires
-// hooks under PTY (openai/codex#21639) and declaring any hook raises codex
-// 0.133's blocking "N hooks need review" startup gate, which
-// `--dangerously-bypass-hook-trust` does not clear. The profile's job is to
-// keep the agent logged in (auth.json) and to grant workdir trust — codex 0.133
-// reads the `[projects."<path>"] trust_level="trusted"` entry from
-// CODEX_HOME/config.toml, and without it the TUI blocks on a directory-trust
-// dialog even under `--dangerously-bypass-approvals-and-sandbox`.
+// Codex per-session CODEX_HOME profile. This writer stays hook-free: hooks
+// moved to CODEX_HOME/hooks.json around codex 0.140 (see
+// hooks_settings_codex.go, used only by the PTY user-session paths), so the
+// config.toml `[hooks.*]` tables copied from the user's config now carry only
+// hook state/trust, not hook definitions. Because this writer is shared by
+// the app-server backend (codex_appserver_backend.go) and the console engine
+// (WriteConsoleCodexProfile), keeping it hook-free means those profiles never
+// gain hooks. The profile's other job is to keep the agent logged in
+// (auth.json) and to grant workdir trust — codex reads the
+// `[projects."<path>"] trust_level="trusted"` entry from CODEX_HOME/config.toml,
+// and without it the TUI blocks on a directory-trust dialog even under
+// `--dangerously-bypass-approvals-and-sandbox`.
 
 // codexStripTablePrefixes are the config.toml table headers dropped when
 // copying the user's config into the per-session profile:
-//   - hooks: a user's own hook definitions trip codex 0.133's hooks-review gate.
+//   - hooks: hook definitions live in hooks.json now, not config.toml; strip
+//     the user's [hooks.*] state/trust tables so they can't collide with ours.
 //   - projects: the user's accumulated trust entries (hundreds, often including
 //     the spawn workdir) would collide with the single `[projects."<workDir>"]`
 //     entry we append — the app-server parses config.toml strictly and rejects

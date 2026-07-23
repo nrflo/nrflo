@@ -45,6 +45,9 @@ func TestCodexAdapter_BuildInteractiveCommand_WithResumeSessionID(t *testing.T) 
 	if !strings.Contains(args, "--dangerously-bypass-approvals-and-sandbox") {
 		t.Errorf("args missing --dangerously-bypass-approvals-and-sandbox: %s", args)
 	}
+	if strings.Contains(args, "--dangerously-bypass-hook-trust") {
+		t.Errorf("resume with no CodexHome must NOT emit --dangerously-bypass-hook-trust (trust-leak guard, points at user's real ~/.codex): %s", args)
+	}
 
 	if cmd.Dir != "/tmp/workdir" {
 		t.Errorf("cmd.Dir = %q, want %q", cmd.Dir, "/tmp/workdir")
@@ -69,6 +72,31 @@ func TestCodexAdapter_BuildInteractiveCommand_WithResumeSessionID(t *testing.T) 
 	}
 	if resumeIdx > 0 && modelIdx > 0 && resumeIdx >= modelIdx {
 		t.Errorf("'resume' subcommand (idx=%d) must appear before '--model' (idx=%d): %v", resumeIdx, modelIdx, cmd.Args)
+	}
+}
+
+// TestCodexAdapter_BuildInteractiveCommand_WithResumeSessionID_AndCodexHome
+// is the sibling of the trust-leak guard above: when CodexHome IS set (nrflo
+// owns the profile, hooks.json included), the resume launch must emit
+// --dangerously-bypass-hook-trust.
+func TestCodexAdapter_BuildInteractiveCommand_WithResumeSessionID_AndCodexHome(t *testing.T) {
+	t.Parallel()
+	adapter := &CodexAdapter{}
+
+	opts := InteractiveSpawnOptions{
+		Model:           "gpt-5.4",
+		WorkDir:         "/tmp/workdir",
+		ResumeSessionID: "019c7aa2-8427-7850-bfc9-c5539d7937a0",
+		CodexHome:       "/tmp/nrflo-codex-home",
+	}
+
+	cmd := adapter.BuildInteractiveCommand(opts)
+	if cmd == nil {
+		t.Fatal("BuildInteractiveCommand returned nil")
+	}
+	args := strings.Join(cmd.Args, " ")
+	if !strings.Contains(args, "--dangerously-bypass-hook-trust") {
+		t.Errorf("resume with CodexHome set must emit --dangerously-bypass-hook-trust: %s", args)
 	}
 }
 

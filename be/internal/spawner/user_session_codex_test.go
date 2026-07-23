@@ -179,6 +179,47 @@ func TestCodexAdapter_PrepareUserSession_MkdirTempFailure(t *testing.T) {
 	cleanup() // must not panic
 }
 
+// TestCodexAdapter_PrepareUserSession_BypassHookTrust verifies
+// --dangerously-bypass-hook-trust is present in both interactive and plan
+// mode argv (mandatory: codex 0.145 silently skips all hooks without it).
+func TestCodexAdapter_PrepareUserSession_BypassHookTrust(t *testing.T) {
+	t.Parallel()
+	adapter := &CodexAdapter{}
+
+	t.Run("interactive", func(t *testing.T) {
+		t.Parallel()
+		launch, cleanup, err := adapter.PrepareUserSession(UserSessionOptions{
+			SessionID: "sess-bypass-int",
+			Model:     "gpt-5-codex",
+			WorkDir:   t.TempDir(),
+		})
+		if err != nil {
+			t.Fatalf("PrepareUserSession() error: %v", err)
+		}
+		t.Cleanup(cleanup)
+		if findArgElement(launch.Args, "--dangerously-bypass-hook-trust") == -1 {
+			t.Errorf("interactive mode should emit --dangerously-bypass-hook-trust: %v", launch.Args)
+		}
+	})
+
+	t.Run("plan mode", func(t *testing.T) {
+		t.Parallel()
+		launch, cleanup, err := adapter.PrepareUserSession(UserSessionOptions{
+			SessionID: "sess-bypass-plan",
+			Model:     "gpt-5-codex",
+			WorkDir:   t.TempDir(),
+			PlanMode:  true,
+		})
+		if err != nil {
+			t.Fatalf("PrepareUserSession() error: %v", err)
+		}
+		t.Cleanup(cleanup)
+		if findArgElement(launch.Args, "--dangerously-bypass-hook-trust") == -1 {
+			t.Errorf("plan mode should emit --dangerously-bypass-hook-trust: %v", launch.Args)
+		}
+	})
+}
+
 // TestCodexAdapter_PlanPromptSuffix_NamesPlanFile verifies the suffix tells
 // the agent where to write its plan.
 func TestCodexAdapter_PlanPromptSuffix_NamesPlanFile(t *testing.T) {

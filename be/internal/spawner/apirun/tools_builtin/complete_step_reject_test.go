@@ -80,14 +80,9 @@ func TestCompleteStep_InvalidEvidenceSchema_NamesKeyAndIncrementsCounter(t *test
 // covers both stale_revision and step_mismatch: the underlying stepengine
 // rejection message (embedded verbatim, see stepengine/advance.go's
 // rejectedOutcome) restates the actual current step_id/revision, and neither
-// guard-miss counts toward the evidence cap.
-//
-// NOTE (see be_production_bugs): complete_step_result.go's renderRejected
-// appends a redundant "(current step_id=%q revision=%d)" suffix built from
-// the AGENT-SUBMITTED step_id, not the cursor's actual current step. For
-// step_mismatch this echoes the caller's own wrong step_id back as if it
-// were "current" — this test only asserts on the correct embedded message,
-// not that misleading suffix.
+// guard-miss counts toward the evidence cap. renderRejected returns that
+// message verbatim — no suffix echoing the agent-submitted step_id, so a
+// step_mismatch never reports the caller's own wrong id as "current".
 func TestCompleteStep_GuardMiss_RestatesCurrentStepWithoutCountingTowardCap(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -110,6 +105,9 @@ func TestCompleteStep_GuardMiss_RestatesCurrentStepWithoutCountingTowardCap(t *t
 			}
 			if !strings.Contains(out, `step "s1"`) || !strings.Contains(out, "revision 1") {
 				t.Errorf("guard-miss message = %q, want it to restate the actual current step (s1) and revision (1)", out)
+			}
+			if strings.Contains(out, "wrong-step") {
+				t.Errorf("guard-miss message = %q, must not echo the agent-submitted step_id back as current", out)
 			}
 
 			revision, currentIndex, _, rejections := env.readCursor(t)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"be/internal/model"
 	"be/internal/types"
 )
 
@@ -175,6 +176,13 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 					validationCmds = &cmds
 				}
 			}
+			var steps *[]model.StepDefinition
+			if agent.Steps != nil && *agent.Steps != "" {
+				var s []model.StepDefinition
+				if err := json.Unmarshal([]byte(*agent.Steps), &s); err == nil {
+					steps = &s
+				}
+			}
 			if _, err := s.agentDefSvc.CreateAgentDef(projectID, wf.ID, &types.AgentDefCreateRequest{
 				ID:                     agent.ID,
 				Model:                  agent.Model,
@@ -199,6 +207,8 @@ func (s *WorkflowExportService) Import(projectID string, req *types.ImportReques
 				Consultant:             agent.Consultant,
 				ReasoningEffort:        agent.ReasoningEffort,
 				Tier:                   agent.Tier,
+				PromptMode:             agent.PromptMode,
+				Steps:                  steps,
 			}); err != nil {
 				return nil, fmt.Errorf("create agent %s in workflow %s: %w", agent.ID, wf.ID, err)
 			}

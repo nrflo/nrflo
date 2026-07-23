@@ -59,7 +59,10 @@ func renderRotate(env apirun.ToolEnv, engine *stepengine.Engine, outcome stepeng
 	}
 	total := stepTotal(engine, env, outcome.CurrentIndex+1)
 	broadcastStepAdvanced(env, stepID, outcome.CurrentIndex, total, 0, true)
-	if env.Steps != nil {
+	// A replayed rotate (the original tool response was lost, agent retried)
+	// has already requested rotation on the winning call; re-requesting would
+	// enqueue a second kill->relaunch for the same completion.
+	if !outcome.Replayed && env.Steps != nil {
 		env.Steps.RequestStepRotation(env.SessionID)
 	}
 	return "step accepted — stop working now. This session is rotating; a fresh session will resume from the server-owned cursor.", false, nil
@@ -77,7 +80,10 @@ func renderRejected(env apirun.ToolEnv, engine *stepengine.Engine, stepID string
 		return "rejected", true, nil
 	}
 	if !rej.CountsTowardEvidenceCap() {
-		return fmt.Sprintf("%s (current step_id=%q revision=%d)", rej.Message, stepID, outcome.Revision), true, nil
+		// rej.Message already restates the authoritative current step_id and
+		// revision; do not append the agent-submitted stepID, which for a
+		// step_mismatch would echo the caller's own wrong id back as "current".
+		return rej.Message, true, nil
 	}
 
 	count, err := engine.RecordRejection(env.WorkflowInstanceID, env.NodeID, stepID)

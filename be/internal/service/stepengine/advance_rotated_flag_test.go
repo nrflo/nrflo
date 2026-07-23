@@ -133,6 +133,42 @@ func TestAdvance_CompletedStepRotatedFalseWhenRotationNotAllowed(t *testing.T) {
 	}
 }
 
+// TestAdvance_TopLevelReplayReappliesRotateUpgrade verifies the common
+// guard-miss replay path (advance.go's isReplay branch, distinct from
+// advanceCASMiss) reapplies the rotate upgrade off the durable Rotated stamp:
+// a first call rotates, then replaying the exact (step_id, revision) returns
+// OutcomeRotate again with Replayed=true — never a bare Next that would fail
+// to re-tell the agent to stop.
+func TestAdvance_TopLevelReplayReappliesRotateUpgrade(t *testing.T) {
+	t.Parallel()
+	e, wfi, node, _ := seedAdvanceFixture(t, nil)
+	pool := e.pool
+	seedFinding(t, pool, wfi, "sess-adv", "summary", "did step 1")
+
+	ev := rotatingEvidence()
+	first, err := e.Advance(context.Background(), wfi, node, "s1", 1, ev)
+	if err != nil {
+		t.Fatalf("first Advance: %v", err)
+	}
+	if first.Kind != OutcomeRotate {
+		t.Fatalf("first Kind = %v, want OutcomeRotate", first.Kind)
+	}
+
+	// Replay the exact original call: revision 1 is now one behind the
+	// advanced cursor (revision 2), so this takes the top-level isReplay
+	// branch — which must reproduce the rotate outcome, not a bare Next.
+	replay, err := e.Advance(context.Background(), wfi, node, "s1", 1, ev)
+	if err != nil {
+		t.Fatalf("replay Advance: %v", err)
+	}
+	if !replay.Replayed {
+		t.Error("replay.Replayed = false, want true")
+	}
+	if replay.Kind != OutcomeRotate {
+		t.Errorf("replay Kind = %v, want OutcomeRotate (top-level replay must reapply the rotate upgrade)", replay.Kind)
+	}
+}
+
 // TestAdvance_CASMissReplayAgreesWithWinningCallerOnRotated verifies
 // advanceCASMiss's replay branch recomputes the same Rotated upgrade the
 // winning caller would have received: force a CAS miss by advancing the

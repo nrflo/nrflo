@@ -43,15 +43,14 @@ func TestCompleteStep_Idempotent_ReplaySameStepRevisionReturnsSamePayload(t *tes
 	}
 }
 
-// TestCompleteStep_Idempotent_RotateOutcomeReplayLosesRotateUpgrade documents
-// a real gap (see be_production_bugs): stepengine.Advance's direct
-// isReplay() branch (the common guard-miss-then-replay path, distinct from
-// advanceCASMiss's race-only replay) calls replayOutcome(steps, cursor)
-// without reapplying applyRotateUpgrade, so replaying the exact call that
-// originally produced OutcomeRotate instead renders a plain OutcomeNext the
-// second time — the agent is not re-told to stop. This test pins the
-// CURRENT (buggy) behavior so a fix is a deliberate, visible change here.
-func TestCompleteStep_Idempotent_RotateOutcomeReplayLosesRotateUpgrade(t *testing.T) {
+// TestCompleteStep_Idempotent_RotateOutcomeReplayReturnsSameRotate verifies
+// replaying the exact call that produced OutcomeRotate returns the identical
+// "stop working" message the second time — stepengine.Advance's isReplay()
+// branch reapplies the rotate upgrade off the durable CompletedStep.Rotated
+// stamp (replayWithSignals) — WITHOUT re-requesting rotation: renderRotate
+// suppresses the side effect on a replay, so the spawner is never asked to
+// kill->relaunch twice for one completion.
+func TestCompleteStep_Idempotent_RotateOutcomeReplayReturnsSameRotate(t *testing.T) {
 	env := newBuiltinTestEnv(t)
 	env.seedStepCursor(t, completeStepTwoSteps(), 0, 1, nil)
 	seedSummaryFinding(t, env, "did step one")
@@ -74,12 +73,10 @@ func TestCompleteStep_Idempotent_RotateOutcomeReplayLosesRotateUpgrade(t *testin
 		t.Fatalf("second (replay) Invoke: out=%q isErr=%v err=%v", second, isErr2, err2)
 	}
 
-	// Current behavior: the replay renders plain Next (JSON payload), NOT
-	// the rotate leg's "stop working" string — see doc comment above.
-	if first == second {
-		t.Errorf("replay unexpectedly matched the original rotate message (%q) — if this now passes, stepengine's isReplay path started reapplying the rotate upgrade; update this test to assert equality and drop the production-bug note", first)
+	if first != second {
+		t.Errorf("replay message = %q, want identical to the original rotate message %q (replay must reapply the rotate upgrade)", second, first)
 	}
 	if len(fake.rotationRequests) != 1 {
-		t.Errorf("rotationRequests after replay = %v, want still 1 (replay did not re-request rotation)", fake.rotationRequests)
+		t.Errorf("rotationRequests after replay = %v, want still 1 (replay must not re-request rotation)", fake.rotationRequests)
 	}
 }

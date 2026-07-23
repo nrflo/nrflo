@@ -45,7 +45,7 @@ func (e *Engine) Advance(ctx context.Context, instanceID, nodeID, stepID string,
 
 	if revision != cursor.Revision || stepID != currentStep.StepID {
 		if isReplay(cursor.Revision, revision, stepID, completed) {
-			return e.replayOutcome(steps, cursor), nil
+			return e.replayWithSignals(instanceID, nodeID, steps, cursor, completed, ev), nil
 		}
 		return rejectedOutcome(cursor, guardMissReason(revision, cursor.Revision), "cursor is at revision %d, step %q — resubmit with the current values", cursor.Revision, currentStep.StepID), nil
 	}
@@ -187,6 +187,27 @@ func (e *Engine) nextOutcome(steps []model.StepDefinition, index, revision int) 
 func (e *Engine) replayOutcome(steps []model.StepDefinition, cursor *model.AgentStepCursor) Outcome {
 	outcome := e.nextOutcome(steps, cursor.CurrentIndex, cursor.Revision)
 	outcome.Replayed = true
+	return outcome
+}
+
+// replayWithSignals rebuilds a guard-miss replay outcome and reattaches the
+// two signals the winning caller's outcome carried but a bare replayOutcome
+// drops: the rotate upgrade (read from the durable CompletedStep.Rotated
+// stamp — authoritative, unlike a recompute off the replay call's evidence)
+// and the non-fatal path-resolution Flags (recomputed for the just-completed
+// step). This mirrors advanceCASMiss so both replay paths return an identical
+// outcome, honoring the "a replay returns the original outcome again" invariant.
+func (e *Engine) replayWithSignals(instanceID, nodeID string, steps []model.StepDefinition, cursor *model.AgentStepCursor, completed []model.CompletedStep, ev Evidence) Outcome {
+	outcome := e.replayOutcome(steps, cursor)
+	if len(completed) > 0 {
+		applyRotateUpgrade(&outcome, completed[len(completed)-1].Rotated)
+	}
+	if idx := cursor.CurrentIndex - 1; idx >= 0 && idx < len(steps) {
+		ec := EvidenceContext{InstanceID: instanceID, NodeID: nodeID, SessionID: ev.SessionID, RepoRoot: e.resolveWorktreeRoot(instanceID)}
+		if evResult, err := e.ValidateEvidence(steps[idx], ec); err == nil {
+			outcome.Flags = evResult.Flags
+		}
+	}
 	return outcome
 }
 

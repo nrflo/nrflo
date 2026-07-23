@@ -3,6 +3,8 @@ package stepengine
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -109,11 +111,37 @@ func TestCheckPathOverlap(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := checkPathOverlap(tc.findings, tc.rule)
+			// root "" leaves every path unresolved, so comparison is literal.
+			got := checkPathOverlap(tc.findings, tc.rule, "")
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("checkPathOverlap() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestCheckPathOverlap_ResolvesAcrossRepresentations verifies the gate
+// canonicalizes paths against the worktree so a bare basename and its unique
+// full-path form collapse to the same file — the duplicate-ownership block
+// must fire even when BE and FE express the same file differently.
+func TestCheckPathOverlap_ResolvesAcrossRepresentations(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "sub", "config.go"), []byte("package sub\n"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	rule := &model.PathOverlap{Left: []string{"be_files"}, Right: []string{"fe_files"}}
+	findings := map[string]json.RawMessage{
+		"be_files": pathChangeJSON(t, "config.go"),     // bare basename
+		"fe_files": pathChangeJSON(t, "sub/config.go"), // full path, same file
+	}
+	got := checkPathOverlap(findings, rule, root)
+	want := []string{"sub/config.go"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("checkPathOverlap() = %v, want %v (basename and full path must resolve to the same file)", got, want)
 	}
 }
 

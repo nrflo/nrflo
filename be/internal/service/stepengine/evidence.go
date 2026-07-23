@@ -75,7 +75,7 @@ func (e *Engine) ValidateEvidence(step model.StepDefinition, ec EvidenceContext)
 		}
 	}
 
-	result.Overlaps = checkPathOverlap(findings, step.PathOverlap)
+	result.Overlaps = checkPathOverlap(findings, step.PathOverlap, ec.RepoRoot)
 
 	result.OK = len(result.Missing) == 0 && len(result.Invalid) == 0 && len(result.Overlaps) == 0
 	return result, nil

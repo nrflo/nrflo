@@ -39,7 +39,12 @@ type AgentDefUpdateFields struct {
 	ProactiveRestartThresholdTokens *int
 	// Tier: nil = untouched; non-nil with Valid=false writes NULL (untier);
 	// non-nil with Valid=true writes the tier value.
-	Tier *sql.NullInt64
+	Tier       *sql.NullInt64
+	PromptMode *string
+	// Steps: nil = untouched; non-nil with Valid=false writes NULL (clear
+	// steps, e.g. switching back to prompt_mode=full); non-nil with
+	// Valid=true writes the canonical JSON text.
+	Steps *sql.NullString
 }
 
 // Update updates an agent definition
@@ -156,6 +161,19 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 		updates = append(updates, "tier = ?")
 		if fields.Tier.Valid {
 			args = append(args, fields.Tier.Int64)
+		} else {
+			args = append(args, nil)
+		}
+	}
+
+	if fields.PromptMode != nil {
+		updates = append(updates, "prompt_mode = ?")
+		args = append(args, *fields.PromptMode)
+	}
+	if fields.Steps != nil {
+		updates = append(updates, "steps = ?")
+		if fields.Steps.Valid {
+			args = append(args, fields.Steps.String)
 		} else {
 			args = append(args, nil)
 		}

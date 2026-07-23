@@ -233,39 +233,8 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "validation_commands = ?")
 		args = append(args, string(b))
 	}
-	// Re-validate the consultant+node_role invariant whenever consultant,
-	// execution_mode, node_role, or tools changes (effective values resolved
-	// against the current row — see revalidateConsultantAndNodeRole).
-	if err := s.revalidateConsultantAndNodeRole(projectID, workflowID, id, req); err != nil {
+	if err := s.appendMetaUpdates(projectID, workflowID, id, req, &updates, &args); err != nil {
 		return err
-	}
-	// Same merged-effective-values guard for native_tools/sandbox vs the
-	// def's model provider and execution mode.
-	if err := s.revalidateNativeFields(projectID, workflowID, id, req); err != nil {
-		return err
-	}
-	if req.Consultant != nil {
-		updates = append(updates, "consultant = ?")
-		args = append(args, *req.Consultant)
-	}
-	if req.NodeRole != nil {
-		updates = append(updates, "node_role = ?")
-		args = append(args, *req.NodeRole)
-	}
-	if req.Description != nil {
-		updates = append(updates, "description = ?")
-		args = append(args, *req.Description)
-	}
-	if req.ReasoningEffort != nil {
-		updates = append(updates, "reasoning_effort = ?")
-		args = append(args, *req.ReasoningEffort)
-	}
-	if req.SystemTemplateID != nil {
-		if err := s.validateSystemTemplateID(*req.SystemTemplateID); err != nil {
-			return err
-		}
-		updates = append(updates, "system_template_id = ?")
-		args = append(args, *req.SystemTemplateID)
 	}
 
 	if len(updates) == 0 {

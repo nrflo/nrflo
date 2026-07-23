@@ -33,6 +33,8 @@ type AgentDefinition struct {
 	ReasoningEffort                 *string   `json:"reasoning_effort,omitempty"` // nil = inherit from the model row; non-nil (incl. "") overrides it
 	SystemTemplateID                string    `json:"system_template_id"`         // id of an injectable default_templates row; "" = mode default / global override gate
 	Tier                            *int      `json:"tier,omitempty"`             // nil = untiered; else selects a tier_models fallback chain
+	PromptMode                      string    `json:"prompt_mode"`                // full|stepwise; stepwise drives per-step prompts off Steps
+	Steps                           *string   `json:"steps,omitempty"`            // raw JSON array of StepDefinition text; nil = full mode
 	CreatedAt                       time.Time `json:"created_at"`
 	UpdatedAt                       time.Time `json:"updated_at"`
 }

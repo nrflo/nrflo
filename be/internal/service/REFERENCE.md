@@ -24,6 +24,10 @@ Global defs are stored under the reserved `GlobalProjectID` (`"__global__"`, `wo
 
 Mutating `__global__` defs is admin-only — `api.denyNonAdminGlobalWrite`, `socket.denyGlobalWorkflowMutation` (plan revise/approve/cancel exempt — [api/CLAUDE.md](../api/CLAUDE.md#plan-routes)).
 
+## Stepwise Step Definitions
+
+`agent_definition_steps.go` validates `agent_definitions.prompt_mode`/`steps` on create (`validatePromptModeAndSteps`, called from `agent_definition.go`) and PATCH (`resolvePromptModeUpdate`, `agent_definition_update_meta.go`), storing `steps` as canonical re-marshaled JSON — same marshal-on-write discipline as `validation_commands`. Each `model.StepDefinition` object is `{step_id, title, instruction, required_findings: [{key, schema}], checks: [...], rotation_allowed}`; `step_id` is a unique lowercase slug (`^[a-z0-9][a-z0-9_-]{0,63}$`), `instruction` ≤16384 bytes, `required_findings` ≤20 entries (`key` ≤128 bytes whitespace-free, `schema` one of the fixed `model.ValidFindingSchema` names: `json_array_path_change`, `nonempty_text`, `ordered_lines`), `checks` ≤20 entries ≤1024 bytes each (mirrors `validateValidationCommands`), and the array itself is capped at 20 steps. `prompt_mode='full'` forbids `steps`; `'stepwise'` requires ≥1 step and is incompatible with `execution_mode='script'`. Per-value evidence validation (whether a finding's actual value satisfies its schema at run time) belongs to `service/stepengine`, not this file.
+
 ## Per-project env vars
 
 Stored in `project_env_vars`. CRUD under `GET|PUT|DELETE /api/v1/projects/{id}/env-vars[/{name}]` (`handlers_project_env_vars.go`; writes admin-only). `ProjectEnvVarService` validates: name matches `^[A-Za-z_][A-Za-z0-9_]*$`, not in the reserved set (`NRFLO_PROJECT`, `NRFLO_AGENT_TOKEN`, `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `PATH`, `HOME`, …), value ≤ 4096 bytes. At workflow start `orchestrator.loadProjectEnv` fills `spawner.Config.ProjectEnv`; `prepareSpawn`/`prepareScriptSpawn` append them after nrflo-controlled vars for all backends.

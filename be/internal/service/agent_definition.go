@@ -199,6 +199,11 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		return nil, err
 	}
 
+	resolvedPromptMode, stepsJSON, err1 := validatePromptModeAndSteps(executionMode, req.PromptMode, req.Steps)
+	if err1 != nil {
+		return nil, err1
+	}
+
 	timeout := req.Timeout
 	if timeout == 0 {
 		timeout = 20
@@ -221,9 +226,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, tier, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.ContextBudgetTokens, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, req.SystemTemplateID, req.Tier, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, tier, prompt_mode, steps, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.ContextBudgetTokens, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, req.SystemTemplateID, req.Tier, resolvedPromptMode, stepsJSON, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -262,6 +267,8 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		Consultant:             req.Consultant,
 		NodeRole:               nodeRole,
 		Description:            req.Description,
+		PromptMode:             resolvedPromptMode,
+		Steps:                  stepsJSON,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil

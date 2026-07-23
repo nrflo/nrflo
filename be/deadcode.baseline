@@ -49,9 +49,14 @@ be/internal/repo AgentSessionRepo.Delete
 be/internal/repo AgentSessionRepo.ResetSingleAgentSession
 be/internal/repo AgentSessionRepo.SetEffectiveMode
 be/internal/repo AgentSessionRepo.UpdateContextLeft
+be/internal/repo AgentStepCursorRepo.Advance
+be/internal/repo AgentStepCursorRepo.Get
+be/internal/repo AgentStepCursorRepo.Insert
+be/internal/repo scanAgentStepCursor
 be/internal/repo ArtifactRepo.ExistsByNameForInstance
 be/internal/repo ArtifactRepo.ListByProject
 be/internal/repo DailyStatsRepo.GetByDate
+be/internal/repo NewAgentStepCursorRepo
 be/internal/repo ProjectRepo.Exists
 be/internal/repo ScheduleRunRepo.Get
 be/internal/repo ScheduleRunRepo.UpdateStatus

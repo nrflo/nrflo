@@ -9,7 +9,7 @@ import (
 
 // agentDefColumns is the shared SELECT column list; scanAgentDefRows scans
 // rows produced with exactly this list, in this order.
-const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, proactive_restart_threshold_tokens, tier, created_at, updated_at"
+const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, proactive_restart_threshold_tokens, tier, prompt_mode, steps, created_at, updated_at"
 
 func scanAgentDefRows(rows interface {
 	Next() bool
@@ -22,7 +22,7 @@ func scanAgentDefRows(rows interface {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
 		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, contextBudgetTokens, apiMaxIter, apiMaxTokens, proactiveRestartThreshold, tier sql.NullInt64
-		var pythonScriptID, reasoningEffort sql.NullString
+		var pythonScriptID, reasoningEffort, steps sql.NullString
 
 		err := rows.Scan(
 			&def.ID,
@@ -54,6 +54,8 @@ func scanAgentDefRows(rows interface {
 			&def.SystemTemplateID,
 			&proactiveRestartThreshold,
 			&tier,
+			&def.PromptMode,
+			&steps,
 			&createdAt,
 			&updatedAt,
 		)
@@ -106,6 +108,10 @@ func scanAgentDefRows(rows interface {
 		if tier.Valid {
 			v := int(tier.Int64)
 			def.Tier = &v
+		}
+		if steps.Valid {
+			v := steps.String
+			def.Steps = &v
 		}
 
 		defs = append(defs, def)

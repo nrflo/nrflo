@@ -35,9 +35,13 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 	if nodeRole == "" {
 		nodeRole = "static"
 	}
+	promptMode := def.PromptMode
+	if promptMode == "" {
+		promptMode = "full"
+	}
 	_, err := r.db.Exec(`
 		INSERT INTO agent_definitions (`+agentDefColumns+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.ToLower(def.ID),
 		strings.ToLower(def.ProjectID),
 		strings.ToLower(def.WorkflowID),
@@ -67,6 +71,8 @@ func (r *AgentDefinitionRepo) Create(def *model.AgentDefinition) error {
 		def.SystemTemplateID,
 		def.ProactiveRestartThresholdTokens,
 		def.Tier,
+		promptMode,
+		def.Steps,
 		now,
 		now,
 	)

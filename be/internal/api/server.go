@@ -535,9 +535,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	protected("POST /api/v1/models/{id}/test", s.handleTestModel)
 	s.registerCustomProviderRoutes(admin)
 
-	// Agent-definition re-tiering report/apply (global, cross-project) — admin-only
-	admin("GET /api/v1/admin/tiering-report", s.handleTieringReport)
-	admin("POST /api/v1/admin/tiering-apply", s.handleApplyTiering)
+	s.registerObservabilityRoutes(admin)
 
 	// Notification variables (global, no project scope)
 	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)

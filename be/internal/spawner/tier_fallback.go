@@ -61,6 +61,9 @@ func chainEntryModelID(entry service.AgentChainEntry) string {
 func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string, chain []service.AgentChainEntry) (*processInfo, int, error) {
 	if len(chain) == 0 {
 		proc, err := s.spawnSingle(ctx, req, modelID, phase, wfiID)
+		if err == nil {
+			s.recordResolvedSpawn(proc, chain, 0)
+		}
 		return proc, 0, err
 	}
 
@@ -73,6 +76,7 @@ func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequ
 
 		proc, err := s.spawnSingle(ctx, entryReq, chainEntryModelID(entry), phase, wfiID)
 		if err == nil {
+			s.recordResolvedSpawn(proc, chain, pos)
 			return proc, pos, nil
 		}
 		lastErr = err
@@ -176,6 +180,7 @@ func (s *Spawner) relaunchForFallback(ctx context.Context, oldProc *processInfo,
 	newProc.chain = oldProc.chain
 	newProc.chainPos = nextPos
 	newProc.hardProviderFail = false
+	s.recordResolvedSpawn(newProc, oldProc.chain, nextPos)
 
 	if pool := s.pool(); pool != nil {
 		sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)

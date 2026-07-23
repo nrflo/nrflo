@@ -145,6 +145,7 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 	default:
 		effectiveMode = "cli_interactive"
 	}
+	proc.effectiveMode = effectiveMode
 
 	// Register sessionProc BEFORE backend.Start so a fast SessionStart hook
 	// (or any other socket lookup keyed by sessionID) can find the proc the

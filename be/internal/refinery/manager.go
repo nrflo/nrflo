@@ -40,6 +40,7 @@ type Manager struct {
 	pool           *db.Pool
 	clock          clock.Clock
 	digestRepo     *repo.RefineryDigestRepo
+	runRepo        *repo.RefineryRunRepo
 	systemAgentSvc *service.SystemAgentDefinitionService
 	modelSvc       *service.ModelService
 
@@ -72,6 +73,7 @@ func NewManager(pool *db.Pool, clk clock.Clock) *Manager {
 		pool:           pool,
 		clock:          clk,
 		digestRepo:     repo.NewRefineryDigestRepo(pool, clk),
+		runRepo:        repo.NewRefineryRunRepo(pool, clk),
 		systemAgentSvc: service.NewSystemAgentDefinitionService(pool, clk, modelSvc),
 		modelSvc:       modelSvc,
 		sidecars:       make(map[string]*sidecar),

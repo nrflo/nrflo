@@ -15,6 +15,7 @@ type AgentChainEntry struct {
 	ExecutionMode   string
 	ModelID         string
 	ReasoningEffort string
+	Tier            int
 }
 
 // ResolveAgentChain returns def's ordered model fallback chain:
@@ -77,11 +78,17 @@ func (s *SystemAgentDefinitionService) resolveOverrideEntry(def *model.SystemAge
 		effort = *def.ReasoningEffort
 	}
 
+	tier := 0
+	if def.Tier != nil {
+		tier = *def.Tier
+	}
+
 	return AgentChainEntry{
 		Provider:        row.Provider,
 		ExecutionMode:   def.ExecutionMode,
 		ModelID:         def.Model,
 		ReasoningEffort: effort,
+		Tier:            tier,
 	}, nil
 }
 
@@ -103,6 +110,7 @@ func (s *SystemAgentDefinitionService) loadTierChain(tier int) ([]AgentChainEntr
 		if err := rows.Scan(&e.Provider, &e.ExecutionMode, &e.ModelID, &e.ReasoningEffort); err != nil {
 			return nil, fmt.Errorf("resolve agent chain: scan tier_models tier=%d: %w", tier, err)
 		}
+		e.Tier = tier
 		valid, vErr := s.modelSvc.IsValidModelForMode(e.ModelID, registryMode(e.ExecutionMode))
 		if vErr != nil {
 			return nil, fmt.Errorf("resolve agent chain: validate tier=%d model %q: %w", tier, e.ModelID, vErr)

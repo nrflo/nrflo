@@ -109,6 +109,7 @@ type processInfo struct {
 	nodeID          string // execution identity (which slot in the run); distinct from agentType (template)
 	modelID         string
 	resolvedEffort  string // reasoning effort actually resolved for this spawn (resolveReasoningEffort winner); empty if unset
+	effectiveMode   string // backend-selected mode: api|script|cli_interactive
 	sessionID       string
 	startTime       time.Time
 	timeout         time.Duration

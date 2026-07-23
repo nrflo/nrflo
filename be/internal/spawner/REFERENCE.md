@@ -6,6 +6,10 @@ Deep mechanics for this package. The auto-loaded map lives in [CLAUDE.md](CLAUDE
 
 `read_document` swaps per `SupportsNativeDocRead()`: Claude → path variant; codex → `ReadDocumentHybridHandler` (path + image media → MCP image blocks, vision on codex ≥0.51; PDFs rasterized to page PNGs via host `pdftoppm`, path-only fallback). Transport per adapter — Claude: `--mcp-config`/`--strict-mcp-config`/`--allowedTools mcp__nrflo__*` (`configureClaudeMCPTools`) plus `--disallowedTools` denying native delegation (`cli_adapter_claude.go`); codex: an `[mcp_servers.nrflo]` table in `CODEX_HOME/config.toml` with embedded bridge env (`appendCodexMCPServer`, codex doesn't forward parent env).
 
+### codex app-server backend
+
+`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. `appServerArgs()` also passes `-c project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]` so a repo with no `AGENTS.md` still gets its **root** `CLAUDE.md` as the codex project doc; codex walks only cwd's ancestors and spawns always run at `ProjectRoot`, so **nested package `CLAUDE.md`s never reach a codex worker** — it must read them itself.
+
 ### api-via-cli hybrid
 
 When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPIViaCLISpawn` (`spawner_prepare_apicli.go`) turns the api spawn into a `cli_interactive` Claude session while deliberately retaining the row's `APIModel`, `APIContext`, and `APIEfforts`. Because the CLI picks its context window from the `--model` string (not `proc.maxContext`), the `APIModel` gets a `[1m]` suffix when `APIContext` is 1M and exceeds `CLIContext`, so the real window matches the reported one. Tool registry, API system prompt, PTY delivery, and MCP bridge behavior stay api-mode-shaped. OpenAI models stay on the in-process runner.

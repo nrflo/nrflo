@@ -136,7 +136,12 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		lines[i] = "[" + msg.Category + "] " + msg.Content
 	}
 	userText := buildFoldUserText(as.taskAnchor, prevContent, []string{foldfmt.JoinTail(lines, maxFoldDeltaChars)})
-	content, usage, ok := m.runFoldCore(ctx, sessionID, projectID, userText)
+	foldSeq := 0
+	if prevDigest != nil {
+		foldSeq = prevDigest.FoldCount
+	}
+	target := foldTarget{sessionID: sessionID, workflowInstanceID: as.workflowInstanceID, nodeID: as.nodeID, foldSeq: foldSeq}
+	content, usage, ok := m.runFoldCore(ctx, target, projectID, userText)
 	if !ok {
 		return
 	}

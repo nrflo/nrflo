@@ -66,6 +66,8 @@ Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models
 
 `GET /api/v1/tier-models` (`protected`) returns all tier fallback-chain rows (tier 1-5, ordered by position); `PUT /api/v1/tier-models/{tier}` (`admin`) replaces one tier's ordered chain (`handlers_tier_models.go`), validating each entry via `TierModelService.SetTierChain` and broadcasting `tier_models.updated`.
 
+`GET /api/v1/system-agent-runs` (`admin`, `server_routes_observability.go`/`handlers_system_agent_runs.go`) merges recent SYSTEM-agent `agent_sessions` (resolved tier/provider/effort + fallback chain) with recent `refinery_runs` rows, newest-first; supports `limit` (default 50, clamp 1-200) and `since` (RFC3339).
+
 ## Pause-Continue-Fail Routes
 
 Four `protected` routes resume (`continue`, optional instructions) or fail (`fail`, reason required) a waiting/active instance: ticket-scoped resolves by workflow name, project-scoped by `instance_id`. Bodies + resolution rules: [REFERENCE.md](REFERENCE.md#pause-continue-fail-routes).

@@ -35,7 +35,7 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 ### Codex app-server backend
 
-`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio (no PTY hooks/rollout in codex), spawned with `--disable` flags blocking native delegation (`appServerArgs()`); events map to the standard `Sink`; completion stays socket/DB-driven; no resume/take-control. `appServerArgs()` also passes `-c project_doc_fallback_filenames=["AGENTS.md","CLAUDE.md"]` so a repo with no `AGENTS.md` still gets its **root** `CLAUDE.md` as the codex project doc; codex walks only cwd's ancestors and spawns always run at `ProjectRoot`, so **nested package `CLAUDE.md`s never reach a codex worker** — it must read them itself. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
+`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio; no resume/take-control; codex-only project-doc fallback quirk. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
 
 ## Native Tool Restriction
 
@@ -71,7 +71,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Tier Fallback
 
-A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics: [REFERENCE.md](REFERENCE.md#tier-fallback).
+A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Every resolved/relaunched spawn records `tier`, `resolved_provider/execution_mode/effort`, `chain_position`, and `fallback_from` (JSON of the entries that hard-failed) onto the `agent_sessions` row via `tier_observability.go`'s `recordResolvedSpawn` (best-effort). Mechanics: [REFERENCE.md](REFERENCE.md#tier-fallback).
 
 ## Context Ledger
 

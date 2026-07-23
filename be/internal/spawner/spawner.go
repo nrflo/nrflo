@@ -22,6 +22,7 @@ type Spawner struct {
 	terminalSignalsMu    sync.Mutex                     // protects terminalSignals
 	bumpMessageCh        chan string                    // carries sessionID to bump lastMessageTime (hook events)
 	nudgeRequestCh       chan nudgeRequest              // carries in-band Notification-hook idle/permission nudge requests
+	stepRotateCh         chan string                    // carries sessionID of a stepwise agent whose complete_step returned rotate
 	interactiveWaits     map[string]chan struct{}       // sessionID → closed when interactive session completes
 	killedInteractive    map[string]struct{}            // sessionID → killed by KillInteractive (checked after wait)
 	mu                   sync.Mutex                     // protects interactiveWaits and killedInteractive
@@ -65,6 +66,7 @@ func New(config Config) *Spawner {
 		terminalSignals:    make(map[string]chan terminalSignal),
 		bumpMessageCh:      make(chan string, 16), // buffered so concurrent heartbeats/hook bumps aren't dropped
 		nudgeRequestCh:     make(chan nudgeRequest, 16),
+		stepRotateCh:       make(chan string, 4),
 		interactiveWaits:   make(map[string]chan struct{}),
 		killedInteractive:  make(map[string]struct{}),
 		sessionProcs:       make(map[string]*processInfo),

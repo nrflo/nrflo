@@ -61,6 +61,14 @@ func (s *Spawner) buildAPIRegistry(
 			builtins[name] = handler
 		}
 	}
+	// complete_step is deliberately NOT in tools_builtin.Builtins() (the `*`
+	// pool also backs GET /api/v1/available-tools) — a stepwise def gets it
+	// added to the resolvable pool here so an explicit CSV entry resolves.
+	if isStepwiseDef(agentDef) {
+		for name, handler := range tools_builtin.StepwiseBuiltins() {
+			builtins[name] = handler
+		}
+	}
 
 	specs, handlers, regErr := apirun.ResolveRegistry(toolsCSV, builtins, pythonHandlers)
 	if regErr != nil {
@@ -69,6 +77,11 @@ func (s *Spawner) buildAPIRegistry(
 
 	if forceBaseline {
 		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.Builtins(), tools_builtin.BaselineToolNames())
+	}
+	// Force-merge complete_step for a stepwise def regardless of CSV — the
+	// only advance mechanism must survive an over-restrictive tools list.
+	if isStepwiseDef(agentDef) {
+		specs, handlers = apirun.MergeBaseline(specs, handlers, tools_builtin.StepwiseBuiltins(), tools_builtin.StepwiseToolNames())
 	}
 
 	extID, extCtx, subDepth := s.fetchExternalRefs(req.ProjectID, req.TicketID, req.WorkflowName, wfiID)
@@ -108,6 +121,8 @@ func (s *Spawner) buildAPIRegistry(
 		TicketID:           req.TicketID,
 		WorkflowName:       req.WorkflowName,
 		WorkflowInstanceID: wfiID,
+		NodeID:             proc.nodeID,
+		Steps:              s,
 		ExternalID:         extID,
 		ExternalContext:    extCtx,
 		Findings:           s.config.FindingsSvc,

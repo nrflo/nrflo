@@ -84,18 +84,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			s.unregisterSessionProcs(completed)
 			return ctx.Err()
 		case restartSessionID := <-s.restartCh:
-			// Manual restart requested — find matching proc and initiate context save
-			for _, proc := range running {
-				if proc.sessionID == restartSessionID && !proc.lowContextSaving {
-					logger.Info(ctx, "manual restart requested", "session_id", restartSessionID)
-					proc.lowContextSaving = true
-					oldDoneCh := proc.doneCh
-					newDoneCh := make(chan struct{})
-					proc.doneCh = newDoneCh
-					go s.initiateContextSave(ctx, proc, req, oldDoneCh, newDoneCh)
-					break
-				}
-			}
+			s.dispatchManualRestart(ctx, running, req, restartSessionID)
 		case takeControlSessionID := <-s.takeControlCh:
 			// Take-control requested — find matching proc, validate, kill, and
 			// block (see spawner_monitor_takecontrol_case.go).
@@ -147,6 +136,8 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			s.dispatchBumpMessage(running, bumpSessionID)
 		case nr := <-s.nudgeRequestCh: // in-band Notification-hook signal, see idle_nudge.go
 			s.dispatchNudgeRequest(ctx, running, req, nr)
+		case rotateSessionID := <-s.stepRotateCh: // complete_step OutcomeRotate signal, see step_rotation.go
+			s.dispatchStepRotation(ctx, running, req, rotateSessionID)
 		default:
 		}
 

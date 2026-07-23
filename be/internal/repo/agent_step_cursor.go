@@ -2,6 +2,7 @@ package repo
 
 import (
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"be/internal/clock"
@@ -30,15 +31,19 @@ func (r *AgentStepCursorRepo) Insert(c *model.AgentStepCursor) error {
 	if completed == "" {
 		completed = "[]"
 	}
+	rejections := c.Rejections
+	if rejections == "" {
+		rejections = "{}"
+	}
 	revision := c.Revision
 	if revision == 0 {
 		revision = 1
 	}
 	_, err := r.db.Exec(`
-		INSERT INTO agent_step_cursors (workflow_instance_id, node_id, steps_snapshot, revision, current_index, completed, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO agent_step_cursors (workflow_instance_id, node_id, steps_snapshot, revision, current_index, completed, rejections, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(workflow_instance_id, node_id) DO NOTHING`,
-		c.WorkflowInstanceID, c.NodeID, c.StepsSnapshot, revision, c.CurrentIndex, completed, now, now,
+		c.WorkflowInstanceID, c.NodeID, c.StepsSnapshot, revision, c.CurrentIndex, completed, rejections, now, now,
 	)
 	return err
 }
@@ -47,10 +52,51 @@ func (r *AgentStepCursorRepo) Insert(c *model.AgentStepCursor) error {
 // sql.ErrNoRows when absent.
 func (r *AgentStepCursorRepo) Get(instanceID, nodeID string) (*model.AgentStepCursor, error) {
 	row := r.db.QueryRow(`
-		SELECT workflow_instance_id, node_id, steps_snapshot, revision, current_index, completed, created_at, updated_at
+		SELECT workflow_instance_id, node_id, steps_snapshot, revision, current_index, completed, rejections, created_at, updated_at
 		FROM agent_step_cursors WHERE workflow_instance_id = ? AND node_id = ?`,
 		instanceID, nodeID)
 	return scanAgentStepCursor(row)
+}
+
+// RecordRejection increments the rejections[stepID] counter for
+// (instanceID, nodeID) via json_set/json_extract (no CAS — an advisory
+// counter, unlike Advance's guarded cursor mutation) and returns the new
+// count via a read-back SELECT.
+func (r *AgentStepCursorRepo) RecordRejection(instanceID, nodeID, stepID string) (int, error) {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	path := "$." + stepID
+	_, err := r.db.Exec(`
+		UPDATE agent_step_cursors
+		SET rejections = json_set(rejections, ?, COALESCE(json_extract(rejections, ?), 0) + 1), updated_at = ?
+		WHERE workflow_instance_id = ? AND node_id = ?`,
+		path, path, now, instanceID, nodeID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	err = r.db.QueryRow(`SELECT COALESCE(json_extract(rejections, ?), 0) FROM agent_step_cursors WHERE workflow_instance_id = ? AND node_id = ?`,
+		path, instanceID, nodeID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// Rejections decodes the rejections JSON map for (instanceID, nodeID).
+func (r *AgentStepCursorRepo) Rejections(instanceID, nodeID string) (map[string]int, error) {
+	c, err := r.Get(instanceID, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int)
+	if c.Rejections == "" {
+		return counts, nil
+	}
+	if err := json.Unmarshal([]byte(c.Rejections), &counts); err != nil {
+		return nil, err
+	}
+	return counts, nil
 }
 
 // Advance atomically moves the cursor forward by one step, guarded on the
@@ -79,7 +125,7 @@ func (r *AgentStepCursorRepo) Advance(instanceID, nodeID string, expectedRevisio
 func scanAgentStepCursor(scanner interface{ Scan(...interface{}) error }) (*model.AgentStepCursor, error) {
 	c := &model.AgentStepCursor{}
 	var createdAt, updatedAt string
-	err := scanner.Scan(&c.WorkflowInstanceID, &c.NodeID, &c.StepsSnapshot, &c.Revision, &c.CurrentIndex, &c.Completed, &createdAt, &updatedAt)
+	err := scanner.Scan(&c.WorkflowInstanceID, &c.NodeID, &c.StepsSnapshot, &c.Revision, &c.CurrentIndex, &c.Completed, &c.Rejections, &createdAt, &updatedAt)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}

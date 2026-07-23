@@ -68,6 +68,24 @@ func Builtins() map[string]apirun.ToolHandler {
 	}
 }
 
+// StepwiseBuiltins returns the tool(s) exposed only to prompt_mode='stepwise'
+// agent definitions. Deliberately NOT included in Builtins() — that map is
+// the `*` pool and also backs GET /api/v1/available-tools
+// (api/handlers_available_tools.go:33), so a full-mode agent with tools="*"
+// must never resolve complete_step. The spawner registry (isStepwiseDef)
+// merges this in for stepwise defs only.
+func StepwiseBuiltins() map[string]apirun.ToolHandler {
+	return map[string]apirun.ToolHandler{
+		"complete_step": completeStepHandler{},
+	}
+}
+
+// StepwiseToolNames returns the tool names StepwiseBuiltins force-merges for
+// a stepwise def, mirroring BaselineToolNames' shape.
+func StepwiseToolNames() []string {
+	return []string{"complete_step"}
+}
+
 // BaselineToolNames returns the builtin tools force-granted to
 // socket-completion/CLI agents (cli_interactive, codex, api-via-cli)
 // regardless of the tools CSV: the agent_* lifecycle group plus findings_add.

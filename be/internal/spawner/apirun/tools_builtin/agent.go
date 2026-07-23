@@ -36,11 +36,19 @@ func (agentFailHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input js
 			return invalidArgs(err)
 		}
 	}
+	return failSession(env, args.Reason)
+}
+
+// failSession marks the current agent's session as failed, broadcasts
+// EventAgentCompleted, and returns the FAIL TerminalSignal. Shared by
+// agentFailHandler and complete_step's evidence-exhausted leg so both fail
+// paths stay byte-identical.
+func failSession(env apirun.ToolEnv, reason string) (string, bool, error) {
 	if env.Agent == nil {
 		return missingService("agent")
 	}
 	bctx, err := env.Agent.Fail(&types.AgentRequest{
-		Reason:     args.Reason,
+		Reason:     reason,
 		SessionID:  env.SessionID,
 		InstanceID: env.WorkflowInstanceID,
 	})
@@ -54,7 +62,7 @@ func (agentFailHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input js
 		"model_id":   bctx.ModelID,
 		"result":     "fail",
 	})
-	return "", false, apirun.TerminalSignal{Status: "FAIL", Reason: args.Reason}
+	return "", false, apirun.TerminalSignal{Status: "FAIL", Reason: reason}
 }
 
 type agentFinishedHandler struct{}

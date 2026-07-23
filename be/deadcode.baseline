@@ -52,6 +52,7 @@ be/internal/repo AgentSessionRepo.UpdateContextLeft
 be/internal/repo AgentStepCursorRepo.Advance
 be/internal/repo AgentStepCursorRepo.Get
 be/internal/repo AgentStepCursorRepo.Insert
+be/internal/repo AgentStepCursorRepo.Rejections
 be/internal/repo scanAgentStepCursor
 be/internal/repo ArtifactRepo.ExistsByNameForInstance
 be/internal/repo ArtifactRepo.ListByProject
@@ -89,6 +90,7 @@ be/internal/service/stepengine Engine.advanceCASMiss
 be/internal/service/stepengine Engine.nextOutcome
 be/internal/service/stepengine Engine.replayOutcome
 be/internal/service/stepengine Engine.ValidateEvidence
+be/internal/service/stepengine Engine.RejectionCount
 be/internal/service/stepengine EvidenceResult.RejectionMessage
 be/internal/service/stepengine guardMissReason
 be/internal/service/stepengine isReplay

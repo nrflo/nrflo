@@ -49,6 +49,7 @@ func (e *Engine) Snapshot(instanceID, nodeID string, def *model.AgentDefinition)
 		Revision:           1,
 		CurrentIndex:       0,
 		Completed:          "[]",
+		Rejections:         "{}",
 	}
 	if err := e.cursorRepo.Insert(cursor); err != nil {
 		return nil, err

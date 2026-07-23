@@ -72,6 +72,23 @@ type Delegator interface {
 	GetDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error)
 }
 
+// StepSession is the spawner-side seam the complete_step builtin uses to
+// read rotation signals and drive a stepwise agent's rotation, mirroring
+// ConsultantSpawner/Delegator's shape. Nil means no rotation policy (tests,
+// console) — the builtin treats a nil env.Steps as "never rotate".
+type StepSession interface {
+	// RotateSignals returns the calling session's current context-usage
+	// tokens and its resolved rotate threshold (0,0 when unknown/disabled).
+	RotateSignals(sessionID string) (contextTokens, thresholdTokens int)
+	// NoteStepBoundary stamps a task-boundary signal for sessionID at the
+	// current ledger turn, the same signal a finding-recorded boundary gives
+	// the idle proactive-restart watcher.
+	NoteStepBoundary(sessionID string)
+	// RequestStepRotation asks the spawner to kill and relaunch sessionID as
+	// a rotation (not a failure/continuation) — non-blocking.
+	RequestStepRotation(sessionID string)
+}
+
 // ChainRunController lets agents set the next step's instructions/ticket in a
 // workflow chain run. Nil-safe; guard with env.ChainRun == nil before calling.
 type ChainRunController interface {
@@ -130,6 +147,14 @@ type ToolEnv struct {
 	TicketID           string
 	WorkflowName       string
 	WorkflowInstanceID string
+	// NodeID is the execution-identity slot (proc.nodeID) — the
+	// agent_step_cursors cursor key, distinct from AgentType (the
+	// agent_definitions template key). Set for every stepwise spawn.
+	NodeID string
+	// Steps is the spawner-owned rotation seam the complete_step builtin
+	// uses (RotateSignals/NoteStepBoundary/RequestStepRotation). Nil-safe:
+	// nil means no rotation policy (tests, console).
+	Steps StepSession
 	// ExternalID / ExternalContext mirror the workflow instance's external refs
 	// (empty when unset). Threaded into kind=tool subprocess env as
 	// NRF_EXTERNAL_ID / NRF_EXTERNAL_CONTEXT, matching spawner.prepareScriptSpawn.

@@ -90,11 +90,12 @@ func (e *Engine) Advance(ctx context.Context, instanceID, nodeID, stepID string,
 		return Outcome{}, err
 	}
 	if !ok {
-		return e.advanceCASMiss(instanceID, nodeID, stepID, revision, ev, steps)
+		return e.advanceCASMiss(instanceID, nodeID, stepID, revision, ev, steps, evResult.Flags)
 	}
 
 	newIndex := cursor.CurrentIndex + 1
 	outcome := e.nextOutcome(steps, newIndex, cursor.Revision+1)
+	outcome.Flags = evResult.Flags
 	applyRotateUpgrade(&outcome, ev, currentStep, cursor.CurrentIndex, len(steps))
 	return outcome, nil
 }
@@ -123,7 +124,7 @@ func applyRotateUpgrade(outcome *Outcome, ev Evidence, completedStep model.StepD
 // the replay outcome (with the same rotate upgrade the winning caller would
 // have received); otherwise it's a genuine concurrent-mutation rejection.
 // Never mutates the row.
-func (e *Engine) advanceCASMiss(instanceID, nodeID, stepID string, revision int, ev Evidence, steps []model.StepDefinition) (Outcome, error) {
+func (e *Engine) advanceCASMiss(instanceID, nodeID, stepID string, revision int, ev Evidence, steps []model.StepDefinition, flags []string) (Outcome, error) {
 	fresh, err := e.cursorRepo.Get(instanceID, nodeID)
 	if err != nil {
 		return Outcome{}, ErrNoCursor
@@ -131,6 +132,7 @@ func (e *Engine) advanceCASMiss(instanceID, nodeID, stepID string, revision int,
 	freshCompleted, err := decodeCompleted(fresh.Completed)
 	if err == nil && isReplay(fresh.Revision, revision, stepID, freshCompleted) {
 		outcome := e.replayOutcome(steps, fresh)
+		outcome.Flags = flags
 		if completedIndex := fresh.CurrentIndex - 1; completedIndex >= 0 && completedIndex < len(steps) {
 			applyRotateUpgrade(&outcome, ev, steps[completedIndex], completedIndex, len(steps))
 		}

@@ -13,6 +13,7 @@ type AgentStepCursor struct {
 	Revision           int       `json:"revision"`
 	CurrentIndex       int       `json:"current_index"`
 	Completed          string    `json:"completed"`
+	Rejections         string    `json:"rejections"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }

@@ -67,6 +67,10 @@ type Outcome struct {
 	CurrentIndex int
 	Rejection    *Rejection
 	Replayed     bool
+	// Flags carries non-fatal path-resolution notices from
+	// EvidenceResult.Flags on the accepted path — never blocks completion,
+	// surfaced to the agent on OutcomeNext/OutcomeDone.
+	Flags []string
 }
 
 // State is the read-time decoded view of an AgentStepCursor for callers
@@ -79,6 +83,9 @@ type State struct {
 	Revision           int
 	CurrentIndex       int
 	Completed          []model.CompletedStep
+	// Rejections is the decoded rejections column (step_id -> count),
+	// consumed by P6's read model.
+	Rejections map[string]int
 }
 
 // Engine holds the repos + clock + injectable check runner the stepwise
@@ -122,6 +129,12 @@ func (e *Engine) State(instanceID, nodeID string) (*State, error) {
 	if err := json.Unmarshal([]byte(c.Completed), &completed); err != nil {
 		return nil, ErrBadSnapshot
 	}
+	rejections := make(map[string]int)
+	if c.Rejections != "" {
+		if err := json.Unmarshal([]byte(c.Rejections), &rejections); err != nil {
+			return nil, ErrBadSnapshot
+		}
+	}
 	return &State{
 		WorkflowInstanceID: c.WorkflowInstanceID,
 		NodeID:             c.NodeID,
@@ -129,5 +142,6 @@ func (e *Engine) State(instanceID, nodeID string) (*State, error) {
 		Revision:           c.Revision,
 		CurrentIndex:       c.CurrentIndex,
 		Completed:          completed,
+		Rejections:         rejections,
 	}, nil
 }

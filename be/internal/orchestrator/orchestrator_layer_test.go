@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/service"
 )
@@ -19,7 +20,7 @@ func TestLayerGroupingAndSequencing(t *testing.T) {
 		{ID: "impl-b", WorkflowID: "layered", Layer: 2},
 		{ID: "verifier", WorkflowID: "layered", Layer: 3},
 	}
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
+	workflows, _ := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["layered"].Phases)
 
@@ -70,7 +71,7 @@ func TestNonContiguousLayers(t *testing.T) {
 		{ID: "impl", WorkflowID: "sparse", Layer: 5},
 		{ID: "verify", WorkflowID: "sparse", Layer: 10},
 	}
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
+	workflows, _ := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["sparse"].Phases)
 
@@ -89,7 +90,7 @@ func TestSingleAgentLayer(t *testing.T) {
 	defs := []*model.AgentDefinition{
 		{ID: "hotfix", WorkflowID: "single", Layer: 0},
 	}
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
+	workflows, _ := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["single"].Phases)
 
@@ -113,7 +114,7 @@ func TestLayerOrderPreserved(t *testing.T) {
 		{ID: "analyze", WorkflowID: "unordered", Layer: 1},
 		{ID: "setup", WorkflowID: "unordered", Layer: 0},
 	}
-	workflows, _ := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
+	workflows, _ := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
 
 	groups := groupPhasesByLayer(workflows["unordered"].Phases)
 

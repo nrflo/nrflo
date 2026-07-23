@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/service"
 )
@@ -104,7 +105,7 @@ func TestMigration030BuildSpawnerConfig(t *testing.T) {
 			Tag:        "be",
 		}
 
-		workflows, agents := service.BuildSpawnerConfig([]*model.Workflow{wf}, []*model.AgentDefinition{agentDef})
+		workflows, agents := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, []*model.AgentDefinition{agentDef})
 
 		wfDef, ok := workflows["test-wf"]
 		if !ok {
@@ -140,7 +141,7 @@ func TestMigration030BuildSpawnerConfig(t *testing.T) {
 			Tag:        "",
 		}
 
-		workflows, agents := service.BuildSpawnerConfig([]*model.Workflow{wf}, []*model.AgentDefinition{agentDef})
+		workflows, agents := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, []*model.AgentDefinition{agentDef})
 
 		if g := workflows["wf-empty"].Groups; len(g) != 0 {
 			t.Errorf("Groups = %v, want []", g)

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -81,17 +82,17 @@ async function selectDropdownOption(
 describe('AgentDefForm - node role and description', () => {
   describe('rendering', () => {
     it('node role dropdown defaults to Static', () => {
-      render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
       expect(getNodeRoleDropdownButton().textContent).toContain('Static (runs as a workflow phase)')
     })
 
     it('description input renders empty by default', () => {
-      render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
       expect(getDescriptionInput()).toHaveValue('')
     })
 
     it('pre-selects initial node_role and description', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ node_role: 'fanout_template', description: 'Handles fanout work' })}
@@ -104,13 +105,13 @@ describe('AgentDefForm - node role and description', () => {
     })
 
     it('description field is not marked required for the default static role', () => {
-      render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
       expect(screen.queryByText(/required for fanout templates/i)).not.toBeInTheDocument()
     })
 
     it('description field shows the required hint when node_role is fanout_template', async () => {
       const user = userEvent.setup()
-      render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
 
       await selectDropdownOption(user, getNodeRoleDropdownButton(), 'Fanout template (bindable by plan nodes)')
 
@@ -122,7 +123,7 @@ describe('AgentDefForm - node role and description', () => {
     it('omits node_role and description when left at defaults (create)', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -136,7 +137,7 @@ describe('AgentDefForm - node role and description', () => {
     it('sends node_role and description in the create payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -155,7 +156,7 @@ describe('AgentDefForm - node role and description', () => {
     it('sends node_role and description in the update payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef()}
@@ -179,7 +180,7 @@ describe('AgentDefForm - node role and description', () => {
     it('trims whitespace-only description to undefined', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef()}
@@ -199,7 +200,7 @@ describe('AgentDefForm - node role and description', () => {
     it('sends description in the script execution mode payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ execution_mode: 'script', python_script_id: 'script-1' })}
@@ -225,7 +226,7 @@ describe('AgentDefForm - node role and description', () => {
     it('blocks submit when node_role is fanout_template and description is blank', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -238,7 +239,7 @@ describe('AgentDefForm - node role and description', () => {
     it('blocks submit when description is only whitespace', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -252,7 +253,7 @@ describe('AgentDefForm - node role and description', () => {
     it('allows submit once a non-blank description is provided', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -266,7 +267,7 @@ describe('AgentDefForm - node role and description', () => {
     it('does not block submit for planner role with a blank description', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+      renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/service"
 )
@@ -42,7 +43,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 
 	// Mixed input (both workflows): documents the pre-fix last-write-wins collision.
 	t.Run("mixed workflow input overwrites earlier def", func(t *testing.T) {
-		_, agents := service.BuildSpawnerConfig(
+		_, agents := service.BuildSpawnerConfig(nil, clock.Real(),
 			[]*model.Workflow{featureWf, bugfixWf},
 			[]*model.AgentDefinition{featureDef, bugfixDef},
 		)
@@ -54,7 +55,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 
 	// Reversed order shows the collision is input-order dependent.
 	t.Run("reversed order: feature def overwrites bugfix def", func(t *testing.T) {
-		_, agents := service.BuildSpawnerConfig(
+		_, agents := service.BuildSpawnerConfig(nil, clock.Real(),
 			[]*model.Workflow{bugfixWf, featureWf},
 			[]*model.AgentDefinition{bugfixDef, featureDef},
 		)
@@ -66,7 +67,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 
 	// Regression guard: single-workflow input always returns the correct model.
 	t.Run("single workflow feature returns correct model", func(t *testing.T) {
-		_, agents := service.BuildSpawnerConfig(
+		_, agents := service.BuildSpawnerConfig(nil, clock.Real(),
 			[]*model.Workflow{featureWf},
 			[]*model.AgentDefinition{featureDef},
 		)
@@ -79,7 +80,7 @@ func TestBuildSpawnerConfigAgentCollision(t *testing.T) {
 	})
 
 	t.Run("single workflow bugfix returns correct model", func(t *testing.T) {
-		_, agents := service.BuildSpawnerConfig(
+		_, agents := service.BuildSpawnerConfig(nil, clock.Real(),
 			[]*model.Workflow{bugfixWf},
 			[]*model.AgentDefinition{bugfixDef},
 		)
@@ -103,7 +104,7 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku-4-5", Timeout: 900, Layer: 2},
 	}
 
-	_, agents := service.BuildSpawnerConfig([]*model.Workflow{wf}, defs)
+	_, agents := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
 
 	cases := []struct {
 		id      string
@@ -152,7 +153,7 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 
 	// Mixed: only the last entry survives.
 	t.Run("mixed three workflows: last entry wins", func(t *testing.T) {
-		_, agents := service.BuildSpawnerConfig(workflows, defs)
+		_, agents := service.BuildSpawnerConfig(nil, clock.Real(), workflows, defs)
 		if got := agents["implementor"].Model; got != "haiku-4-5" {
 			t.Errorf("expected last-written model %q, got %q", "haiku-4-5", got)
 		}
@@ -171,7 +172,7 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 	for _, tc := range singles {
 		tc := tc
 		t.Run("single "+tc.wf.ID+" returns "+tc.want, func(t *testing.T) {
-			_, agents := service.BuildSpawnerConfig(
+			_, agents := service.BuildSpawnerConfig(nil, clock.Real(),
 				[]*model.Workflow{tc.wf},
 				[]*model.AgentDefinition{tc.def},
 			)

@@ -8,6 +8,8 @@ export interface AgentDef {
   workflow_id: string
   layer: number
   model: string
+  // null/undefined = untiered; a non-empty `model` always wins over the tier chain.
+  tier?: number | null
   timeout: number
   prompt: string
   restart_threshold?: number
@@ -35,6 +37,8 @@ export interface AgentDefCreateRequest {
   id: string
   layer: number
   model?: string
+  // null/undefined = untiered; a non-empty `model` always wins over the tier chain.
+  tier?: number | null
   timeout?: number
   prompt?: string
   restart_threshold?: number
@@ -59,6 +63,8 @@ export interface AgentDefCreateRequest {
 export interface AgentDefUpdateRequest {
   layer?: number
   model?: string
+  // null/undefined = untiered; a non-empty `model` always wins over the tier chain.
+  tier?: number | null
   timeout?: number
   prompt?: string
   restart_threshold?: number

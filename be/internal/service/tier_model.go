@@ -58,13 +58,32 @@ func (s *TierModelService) SetTierChain(tier int, entries []types.TierChainEntry
 		if entry.ModelID == "" {
 			return validationErrorf("entry %d: model_id is required", i)
 		}
-		mode := registryMode(entry.ExecutionMode)
-		valid, err := s.modelSvc.IsValidModelForMode(entry.ModelID, mode)
-		if err != nil {
-			return fmt.Errorf("failed to validate model: %w", err)
+		if entry.ExecutionMode != "" && entry.ExecutionMode != "cli_interactive" && entry.ExecutionMode != "api" {
+			return validationErrorf("entry %d: invalid execution_mode %q", i, entry.ExecutionMode)
 		}
-		if !valid {
-			return validationErrorf("entry %d: invalid model %q for mode %q", i, entry.ModelID, entry.ExecutionMode)
+
+		if entry.ExecutionMode == "" {
+			// '' = inherit the agent's own mode at resolve time — the model
+			// must be valid for BOTH registry modes so resolution can never
+			// fail on mode grounds later, whichever mode it ends up inheriting.
+			for _, mode := range []string{"cli", "api"} {
+				valid, err := s.modelSvc.IsValidModelForMode(entry.ModelID, mode)
+				if err != nil {
+					return fmt.Errorf("failed to validate model: %w", err)
+				}
+				if !valid {
+					return validationErrorf("entry %d: invalid model %q for mode %q (inherit-mode entries must be valid for both cli and api)", i, entry.ModelID, mode)
+				}
+			}
+		} else {
+			mode := registryMode(entry.ExecutionMode)
+			valid, err := s.modelSvc.IsValidModelForMode(entry.ModelID, mode)
+			if err != nil {
+				return fmt.Errorf("failed to validate model: %w", err)
+			}
+			if !valid {
+				return validationErrorf("entry %d: invalid model %q for mode %q", i, entry.ModelID, entry.ExecutionMode)
+			}
 		}
 
 		row, err := s.modelSvc.Get(entry.ModelID)

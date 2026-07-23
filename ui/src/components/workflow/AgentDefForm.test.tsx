@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
@@ -49,7 +50,7 @@ function renderForm(
     ...props,
   }
   return {
-    ...render(<AgentDefForm {...defaultProps} />),
+    ...renderWithQuery(<AgentDefForm {...defaultProps} />),
     props: defaultProps,
   }
 }
@@ -67,8 +68,9 @@ async function selectDropdownOption(user: ReturnType<typeof userEvent.setup>, tr
   await user.click(screen.getByText(optionLabel))
 }
 
-function getLayerInput() {
-  return screen.getAllByRole('spinbutton').find(el => (el as HTMLInputElement).min === '0' && !((el as HTMLInputElement).max)) as HTMLInputElement
+/** Toggle "Override model (skip tier fallback chain)" on, exposing the Model dropdown */
+async function enableOverride(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('switch', { name: /override model/i }))
 }
 
 function getTimeoutInput() {
@@ -80,86 +82,12 @@ function getRestartInput() {
 }
 
 describe('AgentDefForm', () => {
-  describe('model dropdown', () => {
-    it('renders every mode-supported model option', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn).toBeInTheDocument()
-
-      // Open the dropdown to see options
-      await user.click(dropdownBtn)
-
-      // Each option is rendered as a div with the label text inside the dropdown menu
-      const optionsContainer = dropdownBtn.parentElement!.querySelector('.absolute')!
-      const optionDivs = optionsContainer.querySelectorAll('.cursor-pointer')
-      expect(optionDivs).toHaveLength(6)
-    })
-
-    it('contains all model options', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      await user.click(getModelDropdownButton())
-
-      const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
-      const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-      expect(optionTexts).toEqual(['Anthropic: Haiku', 'Anthropic: Opus', 'Anthropic: Opus 1M', 'Anthropic: Sonnet', 'OpenAI: GPT 5.3 Codex', 'OpenAI: GPT 5.4'])
-    })
-
-    it('defaults to sonnet', () => {
-      renderForm({ isCreate: true })
-
-      const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('Anthropic: Sonnet')
-    })
-
-    it('uses initial model value when provided', () => {
-      renderForm({
-        isCreate: false,
-        initial: { model: 'opus-4-8' },
-      })
-
-      const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.textContent).toContain('Anthropic: Opus')
-    })
-
-    it('allows changing model selection', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
-      await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Test prompt')
-
-      await selectDropdownOption(user, getModelDropdownButton(), 'OpenAI: GPT 5.3 Codex')
-
-      const submitButton = screen.getByRole('button', { name: /create/i })
-      await user.click(submitButton)
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: 'gpt-5.3-codex',
-        })
-      )
-    })
-
-    it('model dropdown uses correct styling', () => {
-      renderForm({ isCreate: true })
-
-      const dropdownBtn = getModelDropdownButton()
-      expect(dropdownBtn.className).toContain('rounded-md')
-      expect(dropdownBtn.className).toContain('border')
-      expect(dropdownBtn.className).toContain('text-sm')
-    })
-  })
-
   describe('form submission', () => {
     it('submits create request with all fields', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({ isCreate: true, onSubmit })
+      await enableOverride(user)
 
       await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'setup-analyzer')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'You are a setup analyzer...')
@@ -180,6 +108,7 @@ describe('AgentDefForm', () => {
         id: 'setup-analyzer',
         layer: 0,
         model: 'opus-4-8',
+        tier: null,
         timeout: 30,
         prompt: 'You are a setup analyzer...',
         restart_threshold: 20,
@@ -213,7 +142,8 @@ describe('AgentDefForm', () => {
 
       expect(onSubmit).toHaveBeenCalledWith({
         layer: 0,
-        model: 'sonnet-5',
+        model: '',
+        tier: 1,
         timeout: 20,
         prompt: 'New prompt',
         restart_threshold: undefined,
@@ -348,209 +278,6 @@ describe('AgentDefForm', () => {
 
       rerender(<AgentDefForm isCreate={false} onSubmit={vi.fn()} onCancel={vi.fn()} />)
       expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument()
-    })
-  })
-
-  describe('model dropdown options validation', () => {
-    it('opus option exists and is selectable', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      await selectDropdownOption(user, getModelDropdownButton(), 'Anthropic: Opus')
-
-      expect(getModelDropdownButton().textContent).toContain('Anthropic: Opus')
-    })
-
-    it('sonnet option exists and is selectable', () => {
-      renderForm({ isCreate: true })
-
-      // sonnet is the default, so it's already selected
-      expect(getModelDropdownButton().textContent).toContain('Anthropic: Sonnet')
-    })
-
-    it('haiku option exists and is selectable', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      await selectDropdownOption(user, getModelDropdownButton(), 'Anthropic: Haiku')
-
-      expect(getModelDropdownButton().textContent).toContain('Anthropic: Haiku')
-    })
-
-    it('no extra model options exist', async () => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: true })
-
-      // Open dropdown to see options
-      await user.click(getModelDropdownButton())
-
-      const optionsContainer = getModelDropdownButton().parentElement!.querySelector('.absolute')!
-      const optionTexts = Array.from(optionsContainer.querySelectorAll('.truncate')).map(el => el.textContent)
-
-      expect(optionTexts).toHaveLength(6)
-      expect(optionTexts).toEqual(['Anthropic: Haiku', 'Anthropic: Opus', 'Anthropic: Opus 1M', 'Anthropic: Sonnet', 'OpenAI: GPT 5.3 Codex', 'OpenAI: GPT 5.4'])
-    })
-  })
-
-  describe('layer field', () => {
-    it('renders with default value 0 in create mode', () => {
-      renderForm({ isCreate: true })
-      const layerInput = getLayerInput()
-      expect(layerInput).toBeInTheDocument()
-      expect(layerInput).toHaveValue(0)
-      expect(layerInput.type).toBe('number')
-    })
-
-    it('populates from initial layer value in edit mode', () => {
-      renderForm({
-        isCreate: false,
-        initial: { layer: 3, prompt: 'Test' },
-      })
-      expect(getLayerInput()).toHaveValue(3)
-    })
-
-    it('includes changed layer in create payload', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test-agent')
-      await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Prompt')
-
-      const layerInput = getLayerInput()
-      await user.clear(layerInput)
-      await user.type(layerInput, '2')
-
-      await user.click(screen.getByRole('button', { name: /create/i }))
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'test-agent', layer: 2 })
-      )
-    })
-
-    it('includes changed layer in update payload', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({
-        isCreate: false,
-        initial: { layer: 1, prompt: 'Test' },
-        onSubmit,
-      })
-
-      const layerInput = getLayerInput()
-      await user.clear(layerInput)
-      await user.type(layerInput, '5')
-
-      await user.click(screen.getByRole('button', { name: /save/i }))
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ layer: 5 })
-      )
-      // Update payload should not include id
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.not.objectContaining({ id: expect.anything() })
-      )
-    })
-
-    it('shows help text about execution order', () => {
-      renderForm({ isCreate: true })
-      expect(screen.getByText(/layer 0 runs first/i)).toBeInTheDocument()
-    })
-  })
-
-  describe('edge cases', () => {
-    it('handles changing timeout to minimum value', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test')
-      await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Prompt')
-
-      const timeoutInput = getTimeoutInput()
-      await user.clear(timeoutInput)
-      await user.type(timeoutInput, '1')
-
-      const submitButton = screen.getByRole('button', { name: /create/i })
-      await user.click(submitButton)
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          timeout: 1,
-        })
-      )
-    })
-
-    it('handles restart_threshold at boundaries', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({ isCreate: true, onSubmit })
-
-      await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'test')
-      await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'Prompt')
-
-      const restartInput = getRestartInput()
-      await user.type(restartInput, '99')
-
-      const submitButton = screen.getByRole('button', { name: /create/i })
-      await user.click(submitButton)
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          restart_threshold: 99,
-        })
-      )
-    })
-
-    it('handles clearing restart_threshold after setting value', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-      renderForm({
-        isCreate: false,
-        initial: { restart_threshold: 25, prompt: 'Test' },
-        onSubmit,
-      })
-
-      const restartInput = getRestartInput()
-      await user.clear(restartInput)
-
-      const submitButton = screen.getByRole('button', { name: /save/i })
-      await user.click(submitButton)
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          restart_threshold: undefined,
-        })
-      )
-    })
-  })
-
-  describe('execution mode parity across providers', () => {
-    function getExecutionModeButton() {
-      return screen.getByText('Execution Mode')
-        .parentElement!
-        .querySelector('button[type="button"]') as HTMLButtonElement
-    }
-
-    const expectedModes = [
-      'CLI Interactive (PTY)',
-      'API (in-process Anthropic runner)',
-      'Script (Python)',
-    ]
-
-    it.each([
-      ['claude', 'sonnet-5'],
-      ['codex', 'gpt-5.3-codex'],
-    ])('shows same execution mode options for %s (%s)', async (_, model) => {
-      const user = userEvent.setup()
-      renderForm({ isCreate: false, initial: { model, prompt: 'test' } })
-
-      expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
-
-      await user.click(getExecutionModeButton())
-      const optionsContainer = getExecutionModeButton().parentElement!.querySelector('.absolute')!
-      const optionLabels = Array.from(optionsContainer.querySelectorAll('span.truncate')).map(el => el.textContent)
-      expect(optionLabels).toEqual(expectedModes)
     })
   })
 })

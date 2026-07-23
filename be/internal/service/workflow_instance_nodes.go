@@ -1,8 +1,11 @@
 package service
 
 import (
+	"context"
+
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/repo"
 )
 
@@ -64,6 +67,7 @@ func LoadMaterializedAgentConfigs(pool *db.Pool, clk clock.Clock, defProjectID, 
 		return nil
 	}
 	adRepo := repo.NewAgentDefinitionRepo(pool, clk)
+	modelSvc := NewModelService(pool, clk)
 	out := make(map[string]SpawnerAgentConfig)
 	for _, p := range materialized {
 		if _, ok := out[p.Agent]; ok {
@@ -73,7 +77,19 @@ func LoadMaterializedAgentConfigs(pool *db.Pool, clk clock.Clock, defProjectID, 
 		if err != nil {
 			continue // template removed since materialization; spawn surfaces a clear "not found" error
 		}
-		out[p.Agent] = SpawnerAgentConfig{Model: def.Model, Timeout: def.Timeout, Tag: def.Tag, ReasoningEffort: def.ReasoningEffort}
+		cfg := SpawnerAgentConfig{Model: def.Model, Timeout: def.Timeout, Tag: def.Tag, ReasoningEffort: def.ReasoningEffort}
+		if def.Model == "" && def.Tier != nil {
+			if chain, cErr := ResolveDefChain(pool, clk, modelSvc, def); cErr != nil {
+				logger.Warn(context.Background(), "LoadMaterializedAgentConfigs: resolve tier chain failed, falling back to raw model", "agent", def.ID, "err", cErr)
+			} else if len(chain) > 0 {
+				primary := chain[0]
+				effort := primary.ReasoningEffort
+				cfg.Model = primary.ModelID
+				cfg.ReasoningEffort = &effort
+				cfg.Chain = chain
+			}
+		}
+		out[p.Agent] = cfg
 	}
 	return out
 }

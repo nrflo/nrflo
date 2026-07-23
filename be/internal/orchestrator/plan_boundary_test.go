@@ -38,7 +38,7 @@ func buildPlanReloadInputs(t *testing.T, env *testEnv, workflowID string) (servi
 	if err != nil {
 		t.Fatalf("resolveWorkflowDef: %v", err)
 	}
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(env.pool, clock.Real(), []*model.Workflow{dbWorkflow}, dbAgentDefs)
 	return svcWorkflows[workflowID], convertToSpawnerWorkflows(svcWorkflows), convertToSpawnerAgents(svcAgents)
 }
 

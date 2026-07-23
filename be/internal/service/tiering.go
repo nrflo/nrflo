@@ -7,8 +7,7 @@ import "strings"
 type TierTarget struct {
 	Role              string
 	OriginalSeedModel string // pre-retier seed default (post-000138/000168 model-ref rewrites)
-	RecommendedModel  string
-	RecommendedEffort string // "" = do not force an override (inherit the model's default)
+	Tier              int    // tier_models chain to select (resolves to a model/effort pair)
 	SystemTemplateID  string // resolves to a type='injectable' default_templates row
 	IsWorker          bool
 	// GrantsDelegation marks T0/T1 executor roles that benefit from spawning
@@ -57,27 +56,27 @@ func grantDelegationTools(existing string) (csv string, changed bool) {
 var TierMap = map[string]TierTarget{
 	"setup-analyzer": {
 		Role: "setup-analyzer", OriginalSeedModel: "sonnet-5",
-		RecommendedModel: "sonnet-5", RecommendedEffort: "low",
+		Tier:             2,
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true, GrantsDelegation: true,
 	},
 	"test-writer": {
 		Role: "test-writer", OriginalSeedModel: "opus-4-8",
-		RecommendedModel: "sonnet-5", RecommendedEffort: "medium",
+		Tier:             3,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"implementor": {
 		Role: "implementor", OriginalSeedModel: "opus-4-8",
-		RecommendedModel: "sonnet-5", RecommendedEffort: "medium",
+		Tier:             3,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"qa-verifier": {
 		Role: "qa-verifier", OriginalSeedModel: "opus-4-8",
-		RecommendedModel: "sonnet-5", RecommendedEffort: "low",
+		Tier:             2,
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true,
 	},
 	"doc-updater": {
 		Role: "doc-updater", OriginalSeedModel: "sonnet-5",
-		RecommendedModel: "haiku-4-5", RecommendedEffort: "low",
+		Tier:             1,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true,
 	},
 }
@@ -126,14 +125,20 @@ func ClassifyRole(workflowID, defID string) (role string, ok bool) {
 }
 
 // isTierCustomized reports whether a def's current model indicates a
-// hand-customization that apply must skip. A model still at the original seed
-// value is stock; a model already at the recommended value is already-tiered
-// (so a repeat apply is idempotent "unchanged", not a "customized" skip);
-// anything else is a genuine customization flagged for manual review. Shared
-// by the report and apply flows so both agree on what "customized" means.
-func isTierCustomized(model string, target TierTarget) bool {
-	return !strings.EqualFold(model, target.OriginalSeedModel) &&
-		!strings.EqualFold(model, target.RecommendedModel)
+// hand-customization that apply must skip. A def already tier-driven
+// (currentModel=="") is never customized — it already reflects some tier's
+// resolved chain, stock or otherwise. A model still at the original seed
+// value is stock; a model already at the recommended tier's resolved value is
+// already-tiered (so a repeat apply is idempotent "unchanged", not a
+// "customized" skip); anything else is a genuine customization flagged for
+// manual review. Shared by the report and apply flows so both agree on what
+// "customized" means.
+func isTierCustomized(currentModel, resolvedRecommendedModel string, target TierTarget) bool {
+	if currentModel == "" {
+		return false
+	}
+	return !strings.EqualFold(currentModel, target.OriginalSeedModel) &&
+		!strings.EqualFold(currentModel, resolvedRecommendedModel)
 }
 
 // IsHotfixImplementor reports whether (workflowID, role) is the hotfix

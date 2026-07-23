@@ -35,27 +35,32 @@ func TestProjectCreate_BornTiered(t *testing.T) {
 	}
 
 	cases := []struct {
-		workflowID, defID, wantModel, wantEffort, wantTemplate, wantTools string
+		workflowID, defID, wantTemplate, wantTools string
+		wantTier                                   int
 	}{
-		{"feature", "setup-analyzer", "sonnet-5", "low", "tier-t2-extractor", "delegate,get_delegation"},
-		{"feature", "test-writer", "sonnet-5", "medium", "tier-t1-executor", "delegate,get_delegation"},
-		{"feature", "implementor", "sonnet-5", "medium", "tier-t1-executor", "delegate,get_delegation"},
-		{"feature", "qa-verifier", "sonnet-5", "low", "tier-t2-extractor", ""},
-		{"feature", "doc-updater", "haiku-4-5", "low", "tier-t1-executor", ""},
-		{"bugfix", "setup-analyzer", "sonnet-5", "low", "tier-t2-extractor", "delegate,get_delegation"},
-		{"bugfix", "implementor", "sonnet-5", "medium", "tier-t1-executor", "delegate,get_delegation"},
-		{"bugfix", "qa-verifier", "sonnet-5", "low", "tier-t2-extractor", ""},
-		{"docs", "setup-analyzer", "sonnet-5", "low", "tier-t2-extractor", "delegate,get_delegation"},
-		{"docs", "doc-updater", "haiku-4-5", "low", "tier-t1-executor", ""},
-		{"refactor", "setup-analyzer", "sonnet-5", "low", "tier-t2-extractor", "delegate,get_delegation"},
-		{"refactor", "implementor", "sonnet-5", "medium", "tier-t1-executor", "delegate,get_delegation"},
-		{"refactor", "qa-verifier", "sonnet-5", "low", "tier-t2-extractor", ""},
+		{"feature", "setup-analyzer", "tier-t2-extractor", "delegate,get_delegation", 2},
+		{"feature", "test-writer", "tier-t1-executor", "delegate,get_delegation", 3},
+		{"feature", "implementor", "tier-t1-executor", "delegate,get_delegation", 3},
+		{"feature", "qa-verifier", "tier-t2-extractor", "", 2},
+		{"feature", "doc-updater", "tier-t1-executor", "", 1},
+		{"bugfix", "setup-analyzer", "tier-t2-extractor", "delegate,get_delegation", 2},
+		{"bugfix", "implementor", "tier-t1-executor", "delegate,get_delegation", 3},
+		{"bugfix", "qa-verifier", "tier-t2-extractor", "", 2},
+		{"docs", "setup-analyzer", "tier-t2-extractor", "delegate,get_delegation", 2},
+		{"docs", "doc-updater", "tier-t1-executor", "", 1},
+		{"refactor", "setup-analyzer", "tier-t2-extractor", "delegate,get_delegation", 2},
+		{"refactor", "implementor", "tier-t1-executor", "delegate,get_delegation", 3},
+		{"refactor", "qa-verifier", "tier-t2-extractor", "", 2},
 	}
 	for _, c := range cases {
 		model, effort, template, _ := getAgentDefFields(t, pool, "born-tiered", c.workflowID, c.defID)
-		if model != c.wantModel || effort != c.wantEffort || template != c.wantTemplate {
-			t.Errorf("%s/%s = (%q, %q, %q), want (%q, %q, %q)",
-				c.workflowID, c.defID, model, effort, template, c.wantModel, c.wantEffort, c.wantTemplate)
+		if model != "" || effort != "" || template != c.wantTemplate {
+			t.Errorf("%s/%s = (%q, %q, %q), want ('', '', %q)",
+				c.workflowID, c.defID, model, effort, template, c.wantTemplate)
+		}
+		tier := getAgentDefTier(t, pool, "born-tiered", c.workflowID, c.defID)
+		if tier == nil || *tier != c.wantTier {
+			t.Errorf("%s/%s tier = %v, want %d", c.workflowID, c.defID, tier, c.wantTier)
 		}
 		tools := getAgentDefTools(t, pool, "born-tiered", c.workflowID, c.defID)
 		if tools != c.wantTools {
@@ -86,6 +91,9 @@ func TestProjectCreate_HotfixImplementorUntouched(t *testing.T) {
 	}
 	if tools := getAgentDefTools(t, pool, "hotfix-seed", "hotfix", "implementor"); tools != "" {
 		t.Errorf("hotfix implementor tools = %q, want empty (hotfix implementor excluded from delegation grant)", tools)
+	}
+	if tier := getAgentDefTier(t, pool, "hotfix-seed", "hotfix", "implementor"); tier != nil {
+		t.Errorf("hotfix implementor tier = %v, want nil (untiered)", *tier)
 	}
 }
 

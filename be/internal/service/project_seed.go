@@ -68,24 +68,28 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 
 		for _, phase := range wf.phases {
 			target := TierMap[phase.role]
-			model, effort, systemTemplateID := target.RecommendedModel, target.RecommendedEffort, target.SystemTemplateID
+			systemTemplateID := target.SystemTemplateID
 			tools := ""
 			if target.GrantsDelegation && !IsHotfixImplementor(wf.id, phase.role) {
 				tools = delegationToolsCSV
 			}
+
+			// The hotfix implementor is the one exception: "urgency over
+			// cost" keeps its explicit seed model override (sonnet-5), no
+			// tier, no forced effort/template.
+			var model string
+			var tierVal interface{}
 			if IsHotfixImplementor(wf.id, phase.role) {
-				effort, systemTemplateID = "", ""
-			}
-			var effortVal interface{}
-			if effort != "" {
-				effortVal = effort
+				model, systemTemplateID = "sonnet-5", ""
+			} else {
+				tierVal = target.Tier
 			}
 
 			_, err := s.pool.Exec(`
 				INSERT OR IGNORE INTO agent_definitions
-					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, tools, created_at, updated_at)
-				VALUES (?, ?, ?, ?, 20, ?, ?, ?, ?, ?, ?, ?)`,
-				phase.role, projectID, wf.id, model, templates[phase.role], phase.layer, effortVal, systemTemplateID, tools, now, now,
+					(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, system_template_id, tools, tier, created_at, updated_at)
+				VALUES (?, ?, ?, ?, 20, ?, ?, NULL, ?, ?, ?, ?, ?)`,
+				phase.role, projectID, wf.id, model, templates[phase.role], phase.layer, systemTemplateID, tools, tierVal, now, now,
 			)
 			if err != nil {
 				logger.Warn(context.Background(), "seedTieredWorkflows: failed to insert agent_definition", "project_id", projectID, "workflow_id", wf.id, "def_id", phase.role, "err", err)

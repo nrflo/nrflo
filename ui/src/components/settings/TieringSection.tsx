@@ -82,10 +82,10 @@ function TieringProjectTable({ project }: { project: TieringProjectReport }) {
                 <TableCell className="text-sm">{def.def_id}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{def.role}</TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
-                  {def.current_model} / {def.current_effort || '—'}
+                  {def.current_tier == null ? '—' : `Tier ${def.current_tier}`} · {def.current_model} / {def.current_effort || '—'}
                 </TableCell>
                 <TableCell className="text-xs whitespace-nowrap">
-                  {def.recommended_model} / {def.recommended_effort || '—'}
+                  Tier {def.recommended_tier} · {def.recommended_model} / {def.recommended_effort || '—'}
                   <span className="text-muted-foreground"> · {def.recommended_template}</span>
                   {def.grants_delegation && <span className="text-muted-foreground"> +delegation</span>}
                 </TableCell>
@@ -117,7 +117,8 @@ export function TieringSection() {
       <div>
         <h2 className="text-lg font-semibold">Tiering</h2>
         <p className="text-sm text-muted-foreground">
-          Dry-run agent model/effort tier recommendations across projects.
+          Dry-run tier assignment recommendations across projects — applying sets the def's tier and clears
+          its model override.
           {data && ` Estimated total delta: ${formatDelta(totalDelta)}`}
         </p>
       </div>

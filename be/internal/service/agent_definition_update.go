@@ -37,7 +37,7 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		if err != nil {
 			return err
 		}
-		if mode != "script" {
+		if mode != "script" && *req.Model != "" {
 			valid, vErr := s.modelSvc.IsValidModelForMode(*req.Model, registryMode(mode))
 			if vErr != nil {
 				return fmt.Errorf("failed to validate model: %w", vErr)
@@ -49,6 +49,22 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		updates = append(updates, "model = ?")
 		args = append(args, *req.Model)
 	}
+	if req.Tier != nil {
+		mode, err := effectiveMode()
+		if err != nil {
+			return err
+		}
+		if mode == "script" {
+			return validationErrorf("script mode agents cannot carry a tier")
+		}
+		if *req.Tier < 1 || *req.Tier > 5 {
+			return validationErrorf("tier must be between 1 and 5")
+		}
+		updates = append(updates, "tier = ?")
+		args = append(args, *req.Tier)
+	} else if req.TierClear {
+		updates = append(updates, "tier = NULL")
+	}
 	if req.Timeout != nil {
 		updates = append(updates, "timeout = ?")
 		args = append(args, *req.Timeout)
@@ -58,24 +74,8 @@ func (s *AgentDefinitionService) UpdateAgentDef(projectID, workflowID, id string
 		args = append(args, *req.Prompt)
 	}
 	if req.Layer != nil {
-		// Validate layer config (layer >= 0) with updated layer value
-		if err := s.validateLayerConfigForWorkflow(projectID, workflowID, id, *req.Layer); err != nil {
+		if err := s.revalidateLayerChange(projectID, workflowID, id, *req.Layer); err != nil {
 			return err
-		}
-		// If layer changes, ensure the old layer's policy remains valid
-		var oldLayer int
-		if scanErr := s.pool.QueryRow(
-			"SELECT layer FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-			projectID, workflowID, id).Scan(&oldLayer); scanErr == nil && oldLayer != *req.Layer {
-			var remaining int
-			s.pool.QueryRow(
-				`SELECT COUNT(*) FROM agent_definitions
-				 WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?)
-				   AND layer = ? AND LOWER(id) != LOWER(?) AND consultant = 0 AND node_role = 'static'`,
-				projectID, workflowID, oldLayer, id).Scan(&remaining)
-			if err := s.validatePolicyNotViolatedByLayerChange(projectID, workflowID, oldLayer, remaining); err != nil {
-				return err
-			}
 		}
 		updates = append(updates, "layer = ?")
 		args = append(args, *req.Layer)

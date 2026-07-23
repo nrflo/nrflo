@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDefUpdateRequest } from '@/types/workflow'
@@ -43,7 +44,7 @@ vi.mock('./PythonScriptPickerField', () => ({
 
 function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = {}) {
   const defaultProps = { isCreate: false, onSubmit: vi.fn(), onCancel: vi.fn(), ...props }
-  return { ...render(<AgentDefForm {...defaultProps} />), props: defaultProps }
+  return { ...renderWithQuery(<AgentDefForm {...defaultProps} />), props: defaultProps }
 }
 
 describe('AgentDefForm native tools + sandbox', () => {

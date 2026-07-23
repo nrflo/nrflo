@@ -86,16 +86,17 @@ func (o *Orchestrator) Start(ctx context.Context, req RunRequest) (*RunResult, e
 		database.Close()
 		return nil, err
 	}
+	openPool := db.WrapAsPool(database)
 	// A plan-driven def is legitimately phase-less: reloadPlanLayers drafts/materializes it at the boundary.
-	planDriven, err := service.IsPlanDriven(db.WrapAsPool(database), defProjectID, dbWorkflow.ID)
+	planDriven, err := service.IsPlanDriven(openPool, defProjectID, dbWorkflow.ID)
 	if err != nil {
 		database.Close()
 		return nil, fmt.Errorf("failed to check plan-driven: %w", err)
 	}
-	database.Close()
 
 	// Convert to spawner types
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(openPool, o.clock, []*model.Workflow{dbWorkflow}, dbAgentDefs)
+	database.Close()
 
 	// Find the requested workflow
 	svcWf := svcWorkflows[req.WorkflowName]

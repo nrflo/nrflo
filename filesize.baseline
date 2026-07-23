@@ -33,7 +33,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	712
+be/internal/api/server.go	710
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -106,7 +106,7 @@ be/internal/service/findings_layer_test.go	338
 be/internal/service/git_test.go	696
 be/internal/service/scheduled_task_chain_test.go	381
 be/internal/service/scheduled_task_test.go	466
-be/internal/service/system_agent_definition_test.go	379
+be/internal/service/system_agent_definition_test.go	378
 be/internal/service/ticket.go	387
 be/internal/service/workflow.go	306
 be/internal/service/workflow_chain.go	373
@@ -119,7 +119,7 @@ be/internal/socket/handler.go	467
 be/internal/socket/handler_record_event_test.go	353
 be/internal/socket/handler_script_context_test.go	332
 be/internal/socket/handler_terminal_signal_test.go	345
-be/internal/spawner/apirun/runner_test.go	450
+be/internal/spawner/apirun/runner_test.go	443
 be/internal/spawner/apirun/runner_tools_test.go	335
 be/internal/spawner/apirun/tools_builtin/artifact_test.go	337
 be/internal/spawner/apirun/tools_builtin/findings.go	306
@@ -138,7 +138,7 @@ be/internal/spawner/output_claude_events_test.go	313
 be/internal/spawner/output_claude_test.go	368
 be/internal/spawner/output_test.go	325
 be/internal/spawner/safety_hook_test.go	316
-be/internal/spawner/spawner_monitor.go	392
+be/internal/spawner/spawner_monitor.go	324
 be/internal/spawner/stall_global_timeout_test.go	351
 be/internal/spawner/template.go	312
 be/internal/spawner/template_extra_vars_test.go	318
@@ -165,8 +165,6 @@ ui/src/components/settings/ProjectForm.test.tsx	305
 ui/src/components/tickets/TicketCard.test.tsx	310
 ui/src/components/ui/TicketSearchDropdown.test.tsx	326
 ui/src/components/workflow/ActiveAgentsPanel.retry.test.tsx	415
-ui/src/components/workflow/AgentDefForm.restart-threshold.test.tsx	389
-ui/src/components/workflow/AgentDefForm.test.tsx	556
 ui/src/components/workflow/AgentLogDetail.errorResult.test.tsx	306
 ui/src/components/workflow/AgentLogDetail.test.tsx	962
 ui/src/components/workflow/AgentLogImprovements.e2e.test.tsx	405
@@ -220,6 +218,6 @@ ui/src/pages/WorkflowTabContent.panel-integration.test.tsx	436
 ui/src/pages/WorkflowTabContent.pause.test.tsx	329
 ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
-ui/src/pages/WorkflowTabContent.tsx	394
+ui/src/pages/WorkflowTabContent.tsx	388
 ui/src/pages/WorkflowsPage.test.tsx	533
 ui/src/types/workflow.ts	434

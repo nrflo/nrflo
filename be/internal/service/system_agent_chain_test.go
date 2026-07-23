@@ -111,14 +111,15 @@ func TestResolveAgentChain_TierInheritance(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	t.Cleanup(cleanup)
 
-	// Tier 2 has no seeded rows; should fall through to tier 1's chain.
-	def := tierDef(intPtr(2))
+	// Tier 5 has no seeded rows (1-4 are all populated post-000200); should
+	// fall through to tier 4's chain.
+	def := tierDef(intPtr(5))
 	chain, err := svc.ResolveAgentChain(def)
 	if err != nil {
 		t.Fatalf("ResolveAgentChain: %v", err)
 	}
-	if len(chain) != 2 || chain[0].ModelID != "haiku-4-5" {
-		t.Errorf("chain = %+v, want inherited tier1 chain (haiku-4-5 x2)", chain)
+	if len(chain) != 2 || chain[0].ModelID != "sonnet-5" {
+		t.Errorf("chain = %+v, want inherited tier4 chain (sonnet-5 x2)", chain)
 	}
 }
 
@@ -144,9 +145,12 @@ func TestResolveAgentChain_InvalidModelInTierChain(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	t.Cleanup(cleanup)
 
+	// Tier 3's positions 0/1 are already seeded (000200); append a bogus
+	// entry at position 2 so the whole chain (including the bad entry)
+	// fails validation.
 	if _, err := svc.pool.Exec(
 		`INSERT INTO tier_models (tier, position, provider, execution_mode, model_id, reasoning_effort)
-		 VALUES (3, 0, 'anthropic', 'api', 'does-not-exist', 'low')`,
+		 VALUES (3, 2, 'anthropic', 'api', 'does-not-exist', 'low')`,
 	); err != nil {
 		t.Fatalf("insert bogus tier_models row: %v", err)
 	}

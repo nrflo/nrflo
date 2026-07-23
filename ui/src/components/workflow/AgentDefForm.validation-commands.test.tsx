@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -50,7 +51,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
 describe('AgentDefForm - validation_commands', () => {
   describe('initial rendering', () => {
     it('renders Add command button with no rows when no initial commands', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -64,7 +65,7 @@ describe('AgentDefForm - validation_commands', () => {
     })
 
     it('seeds rows from JSON string in initial.validation_commands', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: '["make test","make lint"]' })}
@@ -80,7 +81,7 @@ describe('AgentDefForm - validation_commands', () => {
     })
 
     it('falls back to empty list on invalid JSON', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: 'not-json' })}
@@ -97,7 +98,7 @@ describe('AgentDefForm - validation_commands', () => {
   describe('adding and removing rows', () => {
     it('adds an empty row on Add command click', async () => {
       const user = userEvent.setup()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -114,7 +115,7 @@ describe('AgentDefForm - validation_commands', () => {
 
     it('appends another row on second Add command click', async () => {
       const user = userEvent.setup()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -131,7 +132,7 @@ describe('AgentDefForm - validation_commands', () => {
 
     it('typing in a row updates its value', async () => {
       const user = userEvent.setup()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -148,7 +149,7 @@ describe('AgentDefForm - validation_commands', () => {
 
     it('Remove button deletes that row', async () => {
       const user = userEvent.setup()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: '["make test"]' })}
@@ -164,7 +165,7 @@ describe('AgentDefForm - validation_commands', () => {
 
     it('Add command is disabled when 20 rows exist', () => {
       const cmds = JSON.stringify(Array.from({ length: 20 }, (_, i) => `cmd-${i}`))
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: cmds })}
@@ -181,7 +182,7 @@ describe('AgentDefForm - validation_commands', () => {
     it('sends empty array when no commands added (create)', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -201,7 +202,7 @@ describe('AgentDefForm - validation_commands', () => {
     it('sends trimmed, non-empty commands in create payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -223,7 +224,7 @@ describe('AgentDefForm - validation_commands', () => {
     it('drops empty rows from submit payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -245,7 +246,7 @@ describe('AgentDefForm - validation_commands', () => {
     it('sends commands in update payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: '["make test","make lint"]' })}
@@ -264,7 +265,7 @@ describe('AgentDefForm - validation_commands', () => {
     it('sends commands in script execution mode payload', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ validation_commands: '["make test"]', execution_mode: 'script', python_script_id: 'script-1' })}

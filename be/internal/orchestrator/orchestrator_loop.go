@@ -109,7 +109,7 @@ func (o *Orchestrator) runLoop(
 	if len(materializedPhases) > 0 {
 		if _, _, defProjectID, derr := o.resolveWorkflowDef(pool, req.ProjectID, req.WorkflowName); derr == nil {
 			for id, cfg := range service.LoadMaterializedAgentConfigs(pool, o.clock, defProjectID, req.WorkflowName, materializedPhases) {
-				agents[id] = spawner.AgentConfig{Model: cfg.Model, Timeout: cfg.Timeout, ReasoningEffort: cfg.ReasoningEffort}
+				agents[id] = spawner.AgentConfig{Model: cfg.Model, Timeout: cfg.Timeout, ReasoningEffort: cfg.ReasoningEffort, Chain: cfg.Chain}
 			}
 		}
 	}

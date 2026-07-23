@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
@@ -39,7 +40,7 @@ vi.mock('@/components/ui/MarkdownEditor', () => ({
 }))
 
 function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = {}) {
-  return render(
+  return renderWithQuery(
     <AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} {...props} />
   )
 }
@@ -59,10 +60,16 @@ function getLowConsumptionDropdownButton() {
   return label.parentElement!.querySelector('button[type="button"]') as HTMLButtonElement
 }
 
+/** Toggle "Override model (skip tier fallback chain)" on, exposing the Model dropdown */
+async function enableOverride() {
+  await userEvent.click(screen.getByRole('switch', { name: /override model/i }))
+}
+
 describe('AgentDefForm — model dropdown routing', () => {
   describe('cli_interactive mode (default)', () => {
     it('Model dropdown shows CLI model options', async () => {
       renderForm()
+      await enableOverride()
       const btn = getModelDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
@@ -72,6 +79,7 @@ describe('AgentDefForm — model dropdown routing', () => {
 
     it('Low consumption model dropdown shows CLI model options', async () => {
       renderForm()
+      await enableOverride()
       const btn = getLowConsumptionDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
@@ -90,6 +98,7 @@ describe('AgentDefForm — model dropdown routing', () => {
     it('Model dropdown shows API model options after switching to api', async () => {
       renderForm()
       await switchToAPI()
+      await enableOverride()
       const btn = getModelDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
@@ -115,6 +124,7 @@ describe('AgentDefForm — model dropdown routing', () => {
       await userEvent.click(getExecutionModeButton())
       await userEvent.click(screen.getByText('CLI Interactive (PTY)'))
 
+      await enableOverride()
       const btn = getModelDropdownButton()
       await userEvent.click(btn)
       const panel = btn.parentElement!.querySelector('.absolute') as HTMLElement
@@ -122,8 +132,9 @@ describe('AgentDefForm — model dropdown routing', () => {
       expect(within(panel).queryByText('Anthropic: Opus')).not.toBeInTheDocument()
     })
 
-    it('initial api mode shows API model options immediately', () => {
+    it('initial api mode shows API model options immediately', async () => {
       renderForm({ isCreate: false, initial: { execution_mode: 'api' } })
+      await enableOverride()
       // model dropdown button should show the api model label
       const modelBtn = getModelDropdownButton()
       // button text reflects no selection (first value or placeholder)

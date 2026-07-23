@@ -3,6 +3,7 @@ package service
 import (
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 )
 
@@ -17,7 +18,7 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 		{ID: "builder", ProjectID: "p1", WorkflowID: "feature", Model: "opus-4-7", Timeout: 30, Layer: 1},
 	}
 
-	workflows, agents := BuildSpawnerConfig(wfs, ads)
+	workflows, agents := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)
 
 	wf, ok := workflows["feature"]
 	if !ok {
@@ -67,7 +68,7 @@ func TestBuildSpawnerConfig_ParallelAgentsSameLayer(t *testing.T) {
 		{ID: "merge", ProjectID: "p1", WorkflowID: "parallel", Model: "sonnet-5", Timeout: 20, Layer: 2},
 	}
 
-	workflows, _ := BuildSpawnerConfig(wfs, ads)
+	workflows, _ := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)
 	wf := workflows["parallel"]
 
 	if len(wf.Phases) != 4 {
@@ -94,7 +95,7 @@ func TestBuildSpawnerConfig_EmptyAgentDefs(t *testing.T) {
 	}
 	var ads []*model.AgentDefinition
 
-	workflows, agents := BuildSpawnerConfig(wfs, ads)
+	workflows, agents := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)
 
 	wf := workflows["empty"]
 	if len(wf.Phases) != 0 {
@@ -111,7 +112,7 @@ func TestBuildSpawnerConfig_ScopeTypeDefault(t *testing.T) {
 		{ID: "wf1", ProjectID: "p1", ScopeType: ""},
 	}
 
-	workflows, _ := BuildSpawnerConfig(wfs, nil)
+	workflows, _ := BuildSpawnerConfig(nil, clock.Real(), wfs, nil)
 	if workflows["wf1"].ScopeType != "ticket" {
 		t.Errorf("ScopeType = %q, want 'ticket' when empty", workflows["wf1"].ScopeType)
 	}
@@ -128,7 +129,7 @@ func TestBuildSpawnerConfig_MultipleWorkflows(t *testing.T) {
 		{ID: "agent-b", ProjectID: "p1", WorkflowID: "wf-b", Model: "haiku-4-5", Timeout: 10, Layer: 0},
 	}
 
-	workflows, _ := BuildSpawnerConfig(wfs, ads)
+	workflows, _ := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)
 
 	if len(workflows) != 2 {
 		t.Fatalf("workflows count = %d, want 2", len(workflows))
@@ -150,7 +151,7 @@ func TestBuildSpawnerConfig_AgentTag(t *testing.T) {
 		{ID: "tagged", ProjectID: "p1", WorkflowID: "wf1", Model: "sonnet-5", Timeout: 20, Layer: 0, Tag: "be"},
 	}
 
-	_, agents := BuildSpawnerConfig(wfs, ads)
+	_, agents := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)
 	if agents["tagged"].Tag != "be" {
 		t.Errorf("agent tag = %q, want 'be'", agents["tagged"].Tag)
 	}

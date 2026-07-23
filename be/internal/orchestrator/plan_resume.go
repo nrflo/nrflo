@@ -64,7 +64,7 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 		return err
 	}
 
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(pool, o.clock, []*model.Workflow{dbWorkflow}, dbAgentDefs)
 	svcWf := svcWorkflows[wi.WorkflowID]
 
 	req := RunRequest{

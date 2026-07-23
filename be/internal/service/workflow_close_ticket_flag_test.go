@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
 	"be/internal/model"
 	"be/internal/types"
 )
@@ -233,7 +234,7 @@ func TestBuildSpawnerConfig_CloseTicketOnComplete_Propagated(t *testing.T) {
 				Groups:                "[]",
 			}
 
-			workflows, _ := BuildSpawnerConfig([]*model.Workflow{wf}, nil)
+			workflows, _ := BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, nil)
 			def, ok := workflows["wf-spawner"]
 			if !ok {
 				t.Fatal("workflow not found in spawner config")

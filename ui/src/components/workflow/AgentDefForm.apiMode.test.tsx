@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
@@ -37,7 +38,7 @@ function getExecutionModeButton() {
 }
 
 function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = {}) {
-  return render(
+  return renderWithQuery(
     <AgentDefForm
       isCreate={true}
       onSubmit={vi.fn()}

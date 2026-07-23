@@ -205,7 +205,7 @@ func TestBuildSpawnerConfig_ConsultantExcludedViaListExecutable(t *testing.T) {
 	}
 
 	wf := &model.Workflow{ID: wfID, ProjectID: "proj1"}
-	workflows, _ := BuildSpawnerConfig([]*model.Workflow{wf}, execDefs)
+	workflows, _ := BuildSpawnerConfig(pool, clock.Real(), []*model.Workflow{wf}, execDefs)
 
 	spawnerWF, ok := workflows[wfID]
 	if !ok {

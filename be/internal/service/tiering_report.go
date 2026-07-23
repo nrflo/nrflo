@@ -25,9 +25,10 @@ func NewTieringService(pool *db.Pool, clk clock.Clock, modelSvc *ModelService) *
 
 // tieringDefRowRaw is one agent_definitions row read for classification.
 type tieringDefRowRaw struct {
-	id, workflowID, model, nodeRole string
-	effort                          sql.NullString
-	consultant                      bool
+	id, workflowID, model, nodeRole, executionMode string
+	effort                                         sql.NullString
+	consultant                                     bool
+	tier                                           sql.NullInt64
 }
 
 // BuildReport lists, per project, every agent_definitions row that
@@ -61,23 +62,46 @@ func (s *TieringService) BuildReport() (*types.TieringReport, error) {
 				continue
 			}
 			target := TierMap[role]
+
+			// Effective CURRENT (model, effort): the raw model override when
+			// set, else this def's own tier chain primary.
+			currentModel, currentEffort := raw.model, raw.effort.String
+			if currentModel == "" && raw.tier.Valid {
+				tier := int(raw.tier.Int64)
+				if chain, err := resolveChain(s.pool, s.modelSvc, TierSpec{ID: raw.id, ExecutionMode: raw.executionMode, Tier: &tier}); err == nil && len(chain) > 0 {
+					currentModel, currentEffort = chain[0].ModelID, chain[0].ReasoningEffort
+				}
+			}
+
+			// The recommended tier's own chain-resolved (model, effort) —
+			// used both for display and the customized-detection comparand.
+			var recommendedModel, recommendedEffort string
+			if chain, err := resolveChain(s.pool, s.modelSvc, TierSpec{ID: raw.id, ExecutionMode: raw.executionMode, Tier: &target.Tier}); err == nil && len(chain) > 0 {
+				recommendedModel, recommendedEffort = chain[0].ModelID, chain[0].ReasoningEffort
+			}
+
 			row := types.TieringDefRow{
 				WorkflowID:          raw.workflowID,
 				DefID:               raw.id,
 				Role:                role,
-				CurrentModel:        raw.model,
-				CurrentEffort:       raw.effort.String,
-				RecommendedModel:    target.RecommendedModel,
-				RecommendedEffort:   target.RecommendedEffort,
+				CurrentModel:        currentModel,
+				CurrentEffort:       currentEffort,
+				RecommendedModel:    recommendedModel,
+				RecommendedEffort:   recommendedEffort,
 				RecommendedTemplate: target.SystemTemplateID,
-				Customized:          isTierCustomized(raw.model, target),
+				RecommendedTier:     target.Tier,
+				Customized:          isTierCustomized(raw.model, recommendedModel, target),
 				IsWorker:            target.IsWorker,
 				GrantsDelegation:    target.GrantsDelegation,
+			}
+			if raw.tier.Valid {
+				t := int(raw.tier.Int64)
+				row.CurrentTier = &t
 			}
 			row.SkipReason = tieringSkipReason(raw, role, row.Customized)
 
 			if row.SkipReason == "" || row.SkipReason == "customized" {
-				delta, err := estimateMonthlyDelta(s.pool, s.modelSvc, p.ID, raw.id, raw.model, target.RecommendedModel, now)
+				delta, err := estimateMonthlyDelta(s.pool, s.modelSvc, p.ID, raw.id, currentModel, recommendedModel, now)
 				if err != nil {
 					return nil, err
 				}
@@ -132,8 +156,8 @@ func renderTieringMarkdown(projects []types.TieringProjectReport) string {
 			b.WriteString("_No tiered defs found._\n\n")
 			continue
 		}
-		b.WriteString("| Workflow | Def | Role | Current | Recommended | Customized | Skip Reason | Est. Monthly Delta |\n")
-		b.WriteString("|---|---|---|---|---|---|---|---|\n")
+		b.WriteString("| Workflow | Def | Role | Current Tier | Current | Recommended Tier | Recommended | Customized | Skip Reason | Est. Monthly Delta |\n")
+		b.WriteString("|---|---|---|---|---|---|---|---|---|---|\n")
 		for _, d := range p.Defs {
 			delta := "n/a"
 			if d.EstMonthlyDelta != nil {
@@ -143,12 +167,16 @@ func renderTieringMarkdown(projects []types.TieringProjectReport) string {
 			if skip == "" {
 				skip = "-"
 			}
+			currentTier := "-"
+			if d.CurrentTier != nil {
+				currentTier = fmt.Sprintf("%d", *d.CurrentTier)
+			}
 			recommended := d.RecommendedModel
 			if d.GrantsDelegation {
 				recommended += " +delegation"
 			}
-			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %t | %s | %s |\n",
-				d.WorkflowID, d.DefID, d.Role, d.CurrentModel, recommended, d.Customized, skip, delta)
+			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %d | %s | %t | %s | %s |\n",
+				d.WorkflowID, d.DefID, d.Role, currentTier, d.CurrentModel, d.RecommendedTier, recommended, d.Customized, skip, delta)
 		}
 		b.WriteString("\n")
 	}
@@ -157,7 +185,7 @@ func renderTieringMarkdown(projects []types.TieringProjectReport) string {
 
 func (s *TieringService) loadDefs(projectID string) ([]tieringDefRowRaw, error) {
 	rows, err := s.pool.Query(`
-		SELECT id, workflow_id, model, reasoning_effort, consultant, node_role
+		SELECT id, workflow_id, model, reasoning_effort, consultant, node_role, tier, execution_mode
 		FROM agent_definitions WHERE project_id = ?`, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list agent definitions for project %s: %w", projectID, err)
@@ -167,7 +195,7 @@ func (s *TieringService) loadDefs(projectID string) ([]tieringDefRowRaw, error) 
 	var out []tieringDefRowRaw
 	for rows.Next() {
 		var raw tieringDefRowRaw
-		if err := rows.Scan(&raw.id, &raw.workflowID, &raw.model, &raw.effort, &raw.consultant, &raw.nodeRole); err != nil {
+		if err := rows.Scan(&raw.id, &raw.workflowID, &raw.model, &raw.effort, &raw.consultant, &raw.nodeRole, &raw.tier, &raw.executionMode); err != nil {
 			return nil, err
 		}
 		out = append(out, raw)

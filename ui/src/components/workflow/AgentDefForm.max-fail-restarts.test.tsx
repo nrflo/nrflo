@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -39,7 +40,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
 describe('AgentDefForm - max_fail_restarts', () => {
   describe('form field rendering', () => {
     it('renders max_fail_restarts input with placeholder 0', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -54,7 +55,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
     })
 
     it('has min=0 and max=10 constraints', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -69,7 +70,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
     })
 
     it('pre-fills value in edit mode', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ max_fail_restarts: 3 })}
@@ -82,7 +83,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
     })
 
     it('renders empty when undefined in initial data', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ max_fail_restarts: undefined })}
@@ -100,7 +101,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ id: 'new-agent', model: 'sonnet-5', timeout: 20, prompt: 'Test prompt' }}
@@ -121,7 +122,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -143,7 +144,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -165,7 +166,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ prompt: 'test' }}
@@ -189,7 +190,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ max_fail_restarts: 2 })}
@@ -212,7 +213,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ max_fail_restarts: 2 })}
@@ -234,7 +235,7 @@ describe('AgentDefForm - max_fail_restarts', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ max_fail_restarts: undefined })}

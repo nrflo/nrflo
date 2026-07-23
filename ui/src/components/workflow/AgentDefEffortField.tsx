@@ -1,7 +1,7 @@
 import { Dropdown } from '@/components/ui/Dropdown'
 import { useModels } from '@/hooks/useModels'
 
-type ExecutionMode = 'cli_interactive' | 'api' | 'script'
+type ExecutionMode = '' | 'cli_interactive' | 'api' | 'script'
 
 export function AgentDefEffortField({
   executionMode,

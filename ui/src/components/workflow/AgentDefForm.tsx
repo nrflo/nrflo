@@ -7,7 +7,7 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { TemplatePickerDialog } from './TemplatePickerDialog'
 import { AgentDefAPIModeFields } from './AgentDefAPIModeFields'
 import { AgentDefNodeRoleFields } from './AgentDefNodeRoleFields'
-import { AgentDefEffortField } from './AgentDefEffortField'
+import { AgentDefModelTierFields } from './AgentDefModelTierFields'
 import { AgentDefSystemTemplateField } from './AgentDefSystemTemplateField'
 import { AgentDefToolsField } from './AgentDefToolsField'
 import { AgentDefNativeToolsField } from './AgentDefNativeToolsField'
@@ -36,6 +36,8 @@ export function AgentDefForm({
   const [id, setId] = useState(initial?.id || '')
   const [layer, setLayer] = useState(initial?.layer ?? 0)
   const [model, setModel] = useState(initial?.model || 'sonnet-5')
+  const [tier, setTier] = useState(initial?.tier ?? 1)
+  const [override, setOverride] = useState(!!initial?.model)
   const [timeout, setTimeout] = useState(initial?.timeout || 20)
   const [restartThreshold, setRestartThreshold] = useState<number | ''>(initial?.restart_threshold ?? '')
   const [maxFailRestarts, setMaxFailRestarts] = useState<number | ''>(initial?.max_fail_restarts ?? '')
@@ -122,7 +124,9 @@ export function AgentDefForm({
     const maxIter = apiMaxIterations !== '' ? apiMaxIterations : undefined
     const maxTokens = apiMaxTokens !== '' ? apiMaxTokens : undefined
     const lcModel = lowConsumptionModel || undefined
-    const base = { layer, model, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null, system_template_id: isCreate ? (systemTemplateId || undefined) : systemTemplateId }
+    const modelValue = override ? model : ''
+    const tierValue = override ? null : tier
+    const base = { layer, model: modelValue, tier: tierValue, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null, system_template_id: isCreate ? (systemTemplateId || undefined) : systemTemplateId }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -155,14 +159,21 @@ export function AgentDefForm({
           <p className="text-xs text-muted-foreground mt-1">Execution order. Layer 0 runs first. Same-layer agents run concurrently.</p>
         </div>
       )}
+      {executionMode !== 'script' && (
+        <AgentDefModelTierFields
+          tier={tier}
+          onTierChange={setTier}
+          override={override}
+          onOverrideChange={setOverride}
+          model={model}
+          onModelChange={handleModelChange}
+          executionMode={executionMode}
+          reasoningEffort={reasoningEffort}
+          onReasoningEffortChange={setReasoningEffort}
+          modelOptions={activeModelOptions}
+        />
+      )}
       <div className="flex gap-3">
-        {executionMode !== 'script' && (
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Model</label>
-            <Dropdown value={model} onChange={handleModelChange} options={activeModelOptions} />
-          </div>
-        )}
-        <AgentDefEffortField executionMode={executionMode} model={model} value={reasoningEffort} onChange={setReasoningEffort} />
         {executionMode !== 'script' && (
           <AgentDefSystemTemplateField value={systemTemplateId} onChange={setSystemTemplateId} />
         )}

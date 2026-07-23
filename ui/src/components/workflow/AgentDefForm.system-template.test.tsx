@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -81,7 +82,7 @@ async function selectDropdownOption(
 describe('AgentDefForm - system template', () => {
   it('is hidden for execution_mode=script', async () => {
     const user = userEvent.setup()
-    render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
     await selectDropdownOption(user, screen.getByText('Execution Mode').parentElement!.querySelector('button[type="button"]') as HTMLButtonElement, 'Script (Python)')
     expect(screen.queryByText('System template')).not.toBeInTheDocument()
   })
@@ -89,7 +90,7 @@ describe('AgentDefForm - system template', () => {
   it('omits system_template_id from the create payload when left at default', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -103,7 +104,7 @@ describe('AgentDefForm - system template', () => {
   it('puts the selected template id in the create submit payload', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -118,7 +119,7 @@ describe('AgentDefForm - system template', () => {
   it('omits system_template_id entirely from the script-mode payload', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderWithQuery(
       <AgentDefForm
         isCreate={false}
         initial={makeAgentDef({ execution_mode: 'script', python_script_id: 'script-1' })}
@@ -136,7 +137,7 @@ describe('AgentDefForm - system template', () => {
 
 
   it('hydrates an existing system_template_id value on edit', () => {
-    render(
+    renderWithQuery(
       <AgentDefForm
         isCreate={false}
         initial={makeAgentDef({ system_template_id: 'tier-t0-decider' })}

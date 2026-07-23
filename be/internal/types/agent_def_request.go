@@ -1,5 +1,7 @@
 package types
 
+import "encoding/json"
+
 // AgentDefCreateRequest is the request for creating an agent definition
 type AgentDefCreateRequest struct {
 	ID                     string    `json:"id"`
@@ -27,6 +29,7 @@ type AgentDefCreateRequest struct {
 	Description            string    `json:"description,omitempty"`
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"`
 	SystemTemplateID       string    `json:"system_template_id,omitempty"`
+	Tier                   *int      `json:"tier,omitempty"`
 }
 
 // AgentDefUpdateRequest is the request for updating an agent definition
@@ -55,6 +58,32 @@ type AgentDefUpdateRequest struct {
 	Description            *string   `json:"description,omitempty"`
 	ReasoningEffort        *string   `json:"reasoning_effort,omitempty"`
 	SystemTemplateID       *string   `json:"system_template_id,omitempty"`
+	Tier                   *int      `json:"tier,omitempty"`
+	// TierClear is set when the request body explicitly sends `"tier": null`
+	// (as opposed to omitting the field), distinguishing "clear the tier"
+	// from "leave tier untouched" — see UnmarshalJSON below.
+	TierClear bool `json:"-"`
+}
+
+// UnmarshalJSON distinguishes an explicit `"tier": null` (clear) from an
+// omitted `tier` field (leave untouched); both otherwise unmarshal Tier to
+// the same nil *int.
+func (r *AgentDefUpdateRequest) UnmarshalJSON(data []byte) error {
+	type alias AgentDefUpdateRequest
+	var a alias
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	*r = AgentDefUpdateRequest(a)
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["tier"]; ok && string(v) == "null" {
+		r.TierClear = true
+	}
+	return nil
 }
 
 // SystemAgentDefCreateRequest is the request for creating a system agent definition

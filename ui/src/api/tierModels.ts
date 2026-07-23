@@ -6,13 +6,15 @@ export interface TierModel {
   tier: number
   position: number
   provider: string
-  execution_mode: 'cli_interactive' | 'api'
+  // '' means the agent's own execution mode is used (inherit).
+  execution_mode: '' | 'cli_interactive' | 'api'
   model_id: string
   reasoning_effort: string
 }
 
 export interface SetTierChainEntry {
-  execution_mode: 'cli_interactive' | 'api'
+  // '' means the agent's own execution mode is used (inherit).
+  execution_mode: '' | 'cli_interactive' | 'api'
   model_id: string
   reasoning_effort: string
 }

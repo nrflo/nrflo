@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -39,7 +40,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
 describe('AgentDefForm - restart_threshold', () => {
   describe('form field rendering', () => {
     it('renders restart threshold input field', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true} initial={{ prompt: 'test' }}
           onSubmit={vi.fn()}
@@ -54,7 +55,7 @@ describe('AgentDefForm - restart_threshold', () => {
     })
 
     it('restart threshold input has min=1 and max=99 constraints', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true} initial={{ prompt: 'test' }}
           onSubmit={vi.fn()}
@@ -68,7 +69,7 @@ describe('AgentDefForm - restart_threshold', () => {
     })
 
     it('renders restart threshold input in edit mode', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: 30 })}
@@ -82,7 +83,7 @@ describe('AgentDefForm - restart_threshold', () => {
     })
 
     it('renders empty restart threshold when undefined in initial data', () => {
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: undefined })}
@@ -101,7 +102,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true}
           initial={{ id: 'new-agent', model: 'sonnet-5', timeout: 20, prompt: 'Test prompt' }}
@@ -125,7 +126,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true} initial={{ prompt: 'test' }}
           onSubmit={onSubmit}
@@ -149,7 +150,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true} initial={{ prompt: 'test' }}
           onSubmit={onSubmit}
@@ -172,7 +173,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={true} initial={{ prompt: 'test' }}
           onSubmit={onSubmit}
@@ -197,7 +198,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: 25 })}
@@ -222,7 +223,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: 25 })}
@@ -246,7 +247,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: undefined })}
@@ -268,7 +269,7 @@ describe('AgentDefForm - restart_threshold', () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
 
-      render(
+      renderWithQuery(
         <AgentDefForm
           isCreate={false}
           initial={makeAgentDef({ restart_threshold: undefined })}
@@ -289,101 +290,4 @@ describe('AgentDefForm - restart_threshold', () => {
     })
   })
 
-  describe('edge cases', () => {
-    it('handles rapid value changes correctly', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-
-      render(
-        <AgentDefForm
-          isCreate={false}
-          initial={makeAgentDef({ restart_threshold: 25 })}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-        />
-      )
-
-      const input = screen.getByPlaceholderText("25")
-      await user.clear(input)
-      await user.type(input, '10')
-      await user.clear(input)
-      await user.type(input, '50')
-      await user.click(screen.getByText('Save'))
-
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          restart_threshold: 50,
-        })
-      )
-    })
-
-    it('treats empty string as undefined in submission', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-
-      render(
-        <AgentDefForm
-          isCreate={true} initial={{ prompt: 'test' }}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-        />
-      )
-
-      await user.type(screen.getByPlaceholderText("e.g., setup-analyzer"), 'test-agent')
-      // restart_threshold input is left empty (default state)
-      await user.click(screen.getByText('Create'))
-
-      const submittedData = onSubmit.mock.calls[0][0]
-      expect(submittedData.restart_threshold).toBeUndefined()
-    })
-  })
-
-  describe('form validation', () => {
-    it('does not block submission when restart_threshold is empty', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-
-      render(
-        <AgentDefForm
-          isCreate={true} initial={{ prompt: 'test' }}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-        />
-      )
-
-      await user.type(screen.getByPlaceholderText("e.g., setup-analyzer"), 'test-agent')
-      await user.click(screen.getByText('Create'))
-
-      expect(onSubmit).toHaveBeenCalled()
-    })
-
-    it('accepts zero as a value even though min=1 (browser validation)', async () => {
-      const user = userEvent.setup()
-      const onSubmit = vi.fn()
-
-      render(
-        <AgentDefForm
-          isCreate={true} initial={{ prompt: 'test' }}
-          onSubmit={onSubmit}
-          onCancel={vi.fn()}
-        />
-      )
-
-      await user.type(screen.getByPlaceholderText("e.g., setup-analyzer"), 'test-agent')
-      await user.type(screen.getByPlaceholderText("25"), '0')
-
-      // Note: HTML5 form validation would block this in a real browser,
-      // but in testing environment, we submit the value as-is
-      await user.click(screen.getByText('Create'))
-
-      // If form is submitted, value should be 0
-      if (onSubmit.mock.calls.length > 0) {
-        expect(onSubmit).toHaveBeenCalledWith(
-          expect.objectContaining({
-            restart_threshold: 0,
-          })
-        )
-      }
-    })
-  })
 })

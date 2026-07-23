@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ type tieringDefSeed struct {
 	effort, nodeRole, systemTemplateID  string
 	tools                               string
 	consultant                          bool
+	tier                                *int
 }
 
 // seedTieringDef inserts one agent_definitions row for tiering tests. Caller
@@ -35,11 +37,15 @@ func seedTieringDef(t *testing.T, pool *db.Pool, s tieringDefSeed) {
 	if s.consultant {
 		consultant = 1
 	}
+	var tier interface{}
+	if s.tier != nil {
+		tier = *s.tier
+	}
 	_, err := pool.Exec(`
 		INSERT INTO agent_definitions
-			(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, node_role, consultant, system_template_id, tools, created_at, updated_at)
-		VALUES (?, ?, ?, ?, 20, '', 0, ?, ?, ?, ?, ?, ?, ?)`,
-		s.defID, s.projectID, s.workflowID, s.model, effort, nodeRole, consultant, s.systemTemplateID, s.tools, now, now,
+			(id, project_id, workflow_id, model, timeout, prompt, layer, reasoning_effort, node_role, consultant, system_template_id, tools, tier, created_at, updated_at)
+		VALUES (?, ?, ?, ?, 20, '', 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		s.defID, s.projectID, s.workflowID, s.model, effort, nodeRole, consultant, s.systemTemplateID, s.tools, tier, now, now,
 	)
 	if err != nil {
 		t.Fatalf("seedTieringDef(%s/%s/%s): %v", s.projectID, s.workflowID, s.defID, err)
@@ -130,6 +136,23 @@ func getAgentDefFields(t *testing.T, pool *db.Pool, projectID, workflowID, defID
 		effort = *effortNS
 	}
 	return
+}
+
+// getAgentDefTier reads back the nullable tier column for one def row.
+func getAgentDefTier(t *testing.T, pool *db.Pool, projectID, workflowID, defID string) *int {
+	t.Helper()
+	var tier sql.NullInt64
+	if err := pool.QueryRow(`
+		SELECT tier FROM agent_definitions WHERE project_id = ? AND workflow_id = ? AND id = ?`,
+		projectID, workflowID, defID,
+	).Scan(&tier); err != nil {
+		t.Fatalf("getAgentDefTier(%s/%s/%s): %v", projectID, workflowID, defID, err)
+	}
+	if !tier.Valid {
+		return nil
+	}
+	v := int(tier.Int64)
+	return &v
 }
 
 // getAgentDefTools reads back the tools CSV for one def row.

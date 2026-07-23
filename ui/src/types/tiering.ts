@@ -1,12 +1,16 @@
 // Mirrors be/internal/types/tiering.go — keep field names/shape in sync with
 // the Go json tags (the admin tiering-report/apply contract).
+// current_model/current_effort and recommended_model/recommended_effort are
+// the BE's chain-RESOLVED effective values, not raw column values.
 
 export interface TieringDefRow {
   workflow_id: string
   def_id: string
   role: string
+  current_tier: number | null
   current_model: string
   current_effort?: string
+  recommended_tier: number
   recommended_model: string
   recommended_effort?: string
   recommended_template: string

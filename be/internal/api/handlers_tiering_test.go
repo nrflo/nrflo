@@ -1,12 +1,14 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
 	"be/internal/model"
+	"be/internal/service"
 	"be/internal/types"
 )
 
@@ -152,11 +154,15 @@ func TestHandleApplyTiering_AppliesAndFlags(t *testing.T) {
 	}
 
 	var dbModel string
-	if err := as.pool.QueryRow(`SELECT model FROM agent_definitions WHERE project_id='ta-proj' AND workflow_id='feature' AND id='implementor'`).Scan(&dbModel); err != nil {
+	var dbTier sql.NullInt64
+	if err := as.pool.QueryRow(`SELECT model, tier FROM agent_definitions WHERE project_id='ta-proj' AND workflow_id='feature' AND id='implementor'`).Scan(&dbModel, &dbTier); err != nil {
 		t.Fatalf("query model: %v", err)
 	}
-	if dbModel != "sonnet-5" {
-		t.Errorf("implementor model in DB = %q, want sonnet-5", dbModel)
+	if dbModel != "" {
+		t.Errorf("implementor model in DB = %q, want '' (tier-driven)", dbModel)
+	}
+	if !dbTier.Valid || int(dbTier.Int64) != service.TierMap["implementor"].Tier {
+		t.Errorf("implementor tier in DB = %+v, want %d", dbTier, service.TierMap["implementor"].Tier)
 	}
 }
 

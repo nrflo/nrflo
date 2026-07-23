@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -14,7 +13,6 @@ import (
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/spawner/apirun/provider"
-	"be/internal/types"
 )
 
 const plannerTimeout = 10 * time.Minute
@@ -61,11 +59,24 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 		if gErr != nil {
 			return plannerAgentConfig{}, fmt.Errorf("planner: load workflow planner def: %w", gErr)
 		}
-		return plannerAgentConfig{
+		cfg := plannerAgentConfig{
 			ID: def.ID, Model: def.Model, Timeout: def.Timeout, ExecutionMode: def.ExecutionMode,
 			Tools: def.Tools, APIMaxIterations: def.APIMaxIterations, APIMaxTokens: def.APIMaxTokens,
 			ReasoningEffort: def.ReasoningEffort,
-		}, nil
+		}
+		if def.Model == "" && def.Tier != nil {
+			chain, cErr := service.ResolveDefChain(pool, o.clock, service.NewModelService(pool, o.clock), def)
+			if cErr != nil {
+				return plannerAgentConfig{}, fmt.Errorf("planner: resolve agent chain: %w", cErr)
+			}
+			primary := chain[0]
+			effort := primary.ReasoningEffort
+			cfg.Model = primary.ModelID
+			cfg.ExecutionMode = primary.ExecutionMode
+			cfg.ReasoningEffort = &effort
+			cfg.Chain = chain
+		}
+		return cfg, nil
 	}
 	if err != sql.ErrNoRows {
 		return plannerAgentConfig{}, fmt.Errorf("planner: query workflow planner def: %w", err)
@@ -90,39 +101,6 @@ func (o *Orchestrator) resolvePlannerDef(pool *db.Pool, defProjectID, workflowID
 		Tools: sysDef.Tools, APIMaxIterations: sysDef.APIMaxIterations, APIMaxTokens: sysDef.APIMaxTokens,
 		ReasoningEffort: &effort, Chain: chain,
 	}, nil
-}
-
-// renderTemplateLibrary formats the enabled fanout_template defs for the
-// ${TEMPLATE_LIBRARY} prompt var, so the planner only ever sees usable
-// templates (a disabled model is filtered out, not just flagged). The
-// description (not the prompt body) is the selection surface: it is the
-// load-bearing text an operator writes to tell the planner what a template
-// does and which finding key it emits to.
-func renderTemplateLibrary(templates []service.PlanTemplate) string {
-	if len(templates) == 0 {
-		return "_No templates configured for this workflow — the plan cannot include any nodes._"
-	}
-	var b strings.Builder
-	for _, t := range templates {
-		desc := strings.TrimSpace(t.Description)
-		if desc == "" {
-			desc = "(no description provided)"
-		}
-		fmt.Fprintf(&b, "- %s (%s, %s, effort=%s)\n  %s\n", t.ID, t.Model, t.ExecutionMode, t.ReasoningEffort, strings.ReplaceAll(desc, "\n", " "))
-	}
-	return b.String()
-}
-
-// renderPlanAnswers formats caller-supplied answers for the ${PLAN_ANSWERS} prompt var.
-func renderPlanAnswers(answers []types.PlanAnswer) string {
-	if len(answers) == 0 {
-		return "_No answers provided._"
-	}
-	var b strings.Builder
-	for _, a := range answers {
-		fmt.Fprintf(&b, "- Q %s: %s\n", a.QuestionID, a.Answer)
-	}
-	return b.String()
 }
 
 // RunPlanner implements service.PlannerRunner: it spawns a fresh one-off

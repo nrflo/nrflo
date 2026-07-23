@@ -175,7 +175,7 @@ func TestLoadMaterializedAgentConfigs_ResolvesModelTimeoutTag_SkipsDeletedTempla
 		t.Fatalf("configs missing entry for %q: %+v", planTestTemplateID, configs)
 	}
 	want := SpawnerAgentConfig{Model: "sonnet-5", Timeout: 45, Tag: "ops"}
-	if cfg != want {
+	if cfg.Model != want.Model || cfg.Timeout != want.Timeout || cfg.Tag != want.Tag || len(cfg.Chain) != 0 {
 		t.Errorf("configs[%q] = %+v, want %+v", planTestTemplateID, cfg, want)
 	}
 

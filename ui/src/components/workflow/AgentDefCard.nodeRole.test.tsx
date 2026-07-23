@@ -8,6 +8,11 @@ vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn(() => 'test-project'),
 }))
 
+vi.mock('@/api/tierModels', () => ({
+  listTierModels: vi.fn().mockResolvedValue([]),
+  setTierChain: vi.fn(),
+}))
+
 function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
   return {
     id: 'test-agent',

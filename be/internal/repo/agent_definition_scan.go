@@ -9,7 +9,7 @@ import (
 
 // agentDefColumns is the shared SELECT column list; scanAgentDefRows scans
 // rows produced with exactly this list, in this order.
-const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, proactive_restart_threshold_tokens, created_at, updated_at"
+const agentDefColumns = "id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, proactive_restart_threshold_tokens, tier, created_at, updated_at"
 
 func scanAgentDefRows(rows interface {
 	Next() bool
@@ -21,7 +21,7 @@ func scanAgentDefRows(rows interface {
 	for rows.Next() {
 		def := &model.AgentDefinition{}
 		var createdAt, updatedAt string
-		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, contextBudgetTokens, apiMaxIter, apiMaxTokens, proactiveRestartThreshold sql.NullInt64
+		var restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, contextBudgetTokens, apiMaxIter, apiMaxTokens, proactiveRestartThreshold, tier sql.NullInt64
 		var pythonScriptID, reasoningEffort sql.NullString
 
 		err := rows.Scan(
@@ -53,6 +53,7 @@ func scanAgentDefRows(rows interface {
 			&reasoningEffort,
 			&def.SystemTemplateID,
 			&proactiveRestartThreshold,
+			&tier,
 			&createdAt,
 			&updatedAt,
 		)
@@ -101,6 +102,10 @@ func scanAgentDefRows(rows interface {
 		if proactiveRestartThreshold.Valid {
 			v := int(proactiveRestartThreshold.Int64)
 			def.ProactiveRestartThresholdTokens = &v
+		}
+		if tier.Valid {
+			v := int(tier.Int64)
+			def.Tier = &v
 		}
 
 		defs = append(defs, def)

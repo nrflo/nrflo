@@ -32,6 +32,7 @@ type AgentDefinition struct {
 	Description                     string    `json:"description"`                // required (non-empty) when node_role='fanout_template'; the plan catalog's selection text
 	ReasoningEffort                 *string   `json:"reasoning_effort,omitempty"` // nil = inherit from the model row; non-nil (incl. "") overrides it
 	SystemTemplateID                string    `json:"system_template_id"`         // id of an injectable default_templates row; "" = mode default / global override gate
+	Tier                            *int      `json:"tier,omitempty"`             // nil = untiered; else selects a tier_models fallback chain
 	CreatedAt                       time.Time `json:"created_at"`
 	UpdatedAt                       time.Time `json:"updated_at"`
 }

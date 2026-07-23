@@ -1,13 +1,19 @@
 package types
 
 // TieringDefRow is one agent_definitions row's current-vs-recommended tier
-// state within a project's tiering report.
+// state within a project's tiering report. CurrentModel/CurrentEffort and
+// RecommendedModel/RecommendedEffort are CHAIN-RESOLVED effective values
+// (the def's own tier-chain primary, or the recommended tier's chain
+// primary) — not the raw agent_definitions.model/reasoning_effort columns,
+// which are empty for a tier-driven def.
 type TieringDefRow struct {
 	WorkflowID          string   `json:"workflow_id"`
 	DefID               string   `json:"def_id"`
 	Role                string   `json:"role"`
+	CurrentTier         *int     `json:"current_tier"`
 	CurrentModel        string   `json:"current_model"`
 	CurrentEffort       string   `json:"current_effort,omitempty"`
+	RecommendedTier     int      `json:"recommended_tier"`
 	RecommendedModel    string   `json:"recommended_model"`
 	RecommendedEffort   string   `json:"recommended_effort,omitempty"`
 	RecommendedTemplate string   `json:"recommended_template"`

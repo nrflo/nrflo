@@ -61,7 +61,7 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		return err
 	}
 
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(pool, o.clock, []*model.Workflow{dbWorkflow}, dbAgentDefs)
 	svcWf := svcWorkflows[workflowName]
 
 	req := RunRequest{

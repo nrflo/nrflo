@@ -14,6 +14,8 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 `AgentDefForm.tsx` (+ sub-field components) edits an `AgentDef`, including optional `reasoning_effort` and admin-managed global (`__global__`) templates. `native_tools` (anthropic CLI defs) and `sandbox` (openai CLI defs) render provider-gated and are auto-cleared when the model/mode moves away, since the backend hard-rejects mismatches. Details: [REFERENCE.md](REFERENCE.md#agent-definitions) — read before changing the form fields or template scoping.
 
+`AgentDefModelTierFields.tsx` adds a Tier 1-5 selector plus an "Override model (skip tier fallback chain)" toggle; when off, the model is resolved server-side from the tier's fallback chain (`resolveTierChain`/`useTierModels`) and `AgentDefCard.tsx` shows the chain-primary model as a badge. `TieringSection.tsx` reports current-tier → recommended-tier per worker role instead of raw model names.
+
 ## Plan Approval
 
 `PlanApprovalBanner.tsx` (approve/revise/cancel, revision-pinned) renders `PlanManifestView.tsx` (read-only manifest) and opens `PlanReviseDialog.tsx` (feedback + open-question answers, submitted via `useRevisePlan`) when revising.

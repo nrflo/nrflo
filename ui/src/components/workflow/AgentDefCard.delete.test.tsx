@@ -10,6 +10,11 @@ vi.mock('@/stores/projectStore', () => ({
   useProjectStore: vi.fn(() => 'test-project'),
 }))
 
+vi.mock('@/api/tierModels', () => ({
+  listTierModels: vi.fn().mockResolvedValue([]),
+  setTierChain: vi.fn(),
+}))
+
 vi.mock('@/api/agentDefs', () => ({
   updateAgentDef: vi.fn(),
   deleteAgentDef: vi.fn(),

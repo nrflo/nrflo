@@ -23,18 +23,19 @@ func TestResolveAgentChain_TierChainCarriesResolvedTier(t *testing.T) {
 	})
 
 	t.Run("inheritance walk-down carries the tier actually loaded, not the requested one", func(t *testing.T) {
-		// Tier 2 has no seeded rows; resolution walks down to tier 1's chain.
-		def := tierDef(intPtr(2))
+		// Tier 5 has no seeded rows (1-4 are all populated post-000200);
+		// resolution walks down to tier 4's chain.
+		def := tierDef(intPtr(5))
 		chain, err := svc.ResolveAgentChain(def)
 		if err != nil {
 			t.Fatalf("ResolveAgentChain: %v", err)
 		}
 		if len(chain) == 0 {
-			t.Fatal("chain is empty, want the inherited tier1 chain")
+			t.Fatal("chain is empty, want the inherited tier4 chain")
 		}
 		for i, e := range chain {
-			if e.Tier != 1 {
-				t.Errorf("chain[%d].Tier = %d, want 1 (inherited tier, not requested tier 2)", i, e.Tier)
+			if e.Tier != 4 {
+				t.Errorf("chain[%d].Tier = %d, want 4 (inherited tier, not requested tier 5)", i, e.Tier)
 			}
 		}
 	})

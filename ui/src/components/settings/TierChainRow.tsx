@@ -11,7 +11,7 @@ function toEntry(row: TierModel): SetTierChainEntry {
   return { execution_mode: row.execution_mode, model_id: row.model_id, reasoning_effort: row.reasoning_effort }
 }
 
-const EMPTY_ENTRY: SetTierChainEntry = { execution_mode: 'cli_interactive', model_id: '', reasoning_effort: '' }
+const EMPTY_ENTRY: SetTierChainEntry = { execution_mode: '', model_id: '', reasoning_effort: '' }
 
 // TierChainRow is one tier's ordered fallback-chain editor: add/remove
 // entries plus up/down reorder (position = fallback priority, 1 = primary).
@@ -90,7 +90,7 @@ export function TierChainRow({
               <div key={`${row.tier}-${row.position}`} className="text-xs flex items-center gap-2">
                 <span className="w-4 text-right shrink-0">{i + 1}.</span>
                 <span>
-                  {row.model_id} ({row.execution_mode}) — {row.reasoning_effort || 'default effort'} · from tier {row.tier}
+                  {row.model_id} ({row.execution_mode || 'agent mode'}) — {row.reasoning_effort || 'default effort'} · from tier {row.tier}
                 </span>
               </div>
             ))

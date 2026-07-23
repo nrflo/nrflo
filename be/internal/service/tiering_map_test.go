@@ -3,21 +3,23 @@ package service
 import "testing"
 
 // TestTierMap_MatchesTicket asserts TierMap's per-role recommendation matches
-// the ticket's tier map exactly: setup-analyzer/qa-verifier -> sonnet-5/low
-// (tier-t2-extractor), test-writer/implementor -> sonnet-5/medium
-// (tier-t1-executor), doc-updater -> haiku-4-5/low (tier-t1-executor).
+// the ticket's tier map exactly: setup-analyzer/qa-verifier -> tier 2
+// (tier-t2-extractor), test-writer/implementor -> tier 3 (tier-t1-executor),
+// doc-updater -> tier 1 (tier-t1-executor).
 func TestTierMap_MatchesTicket(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		role                                              string
-		wantOriginal, wantModel, wantEffort, wantTemplate string
-		wantWorker, wantGrants                            bool
+		role                   string
+		wantOriginal           string
+		wantTier               int
+		wantTemplate           string
+		wantWorker, wantGrants bool
 	}{
-		{"setup-analyzer", "sonnet-5", "sonnet-5", "low", "tier-t2-extractor", true, true},
-		{"test-writer", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true, true},
-		{"implementor", "opus-4-8", "sonnet-5", "medium", "tier-t1-executor", true, true},
-		{"qa-verifier", "opus-4-8", "sonnet-5", "low", "tier-t2-extractor", true, false},
-		{"doc-updater", "sonnet-5", "haiku-4-5", "low", "tier-t1-executor", true, false},
+		{"setup-analyzer", "sonnet-5", 2, "tier-t2-extractor", true, true},
+		{"test-writer", "opus-4-8", 3, "tier-t1-executor", true, true},
+		{"implementor", "opus-4-8", 3, "tier-t1-executor", true, true},
+		{"qa-verifier", "opus-4-8", 2, "tier-t2-extractor", true, false},
+		{"doc-updater", "sonnet-5", 1, "tier-t1-executor", true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.role, func(t *testing.T) {
@@ -28,11 +30,8 @@ func TestTierMap_MatchesTicket(t *testing.T) {
 			if target.OriginalSeedModel != c.wantOriginal {
 				t.Errorf("OriginalSeedModel = %q, want %q", target.OriginalSeedModel, c.wantOriginal)
 			}
-			if target.RecommendedModel != c.wantModel {
-				t.Errorf("RecommendedModel = %q, want %q", target.RecommendedModel, c.wantModel)
-			}
-			if target.RecommendedEffort != c.wantEffort {
-				t.Errorf("RecommendedEffort = %q, want %q", target.RecommendedEffort, c.wantEffort)
+			if target.Tier != c.wantTier {
+				t.Errorf("Tier = %d, want %d", target.Tier, c.wantTier)
 			}
 			if target.SystemTemplateID != c.wantTemplate {
 				t.Errorf("SystemTemplateID = %q, want %q", target.SystemTemplateID, c.wantTemplate)

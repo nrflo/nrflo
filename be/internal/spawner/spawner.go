@@ -145,12 +145,14 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	modelID := fmt.Sprintf("%s:%s", cliName, model)
 
 	// Low consumption mode: override model if configured
+	lowConsumptionOverride := false
 	if s.config.LowConsumptionMode {
 		def := s.loadAgentDefinition(req.AgentType, req.ProjectID, req.WorkflowName)
 		if def != nil && def.LowConsumptionModel != "" {
 			model = def.LowConsumptionModel
 			cliName = s.cliForModel(model)
 			modelID = fmt.Sprintf("%s:%s", cliName, model)
+			lowConsumptionOverride = true
 			logger.Info(ctx, "low consumption model override", "agent", req.AgentType, "model", modelID)
 		}
 	}
@@ -169,6 +171,12 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	// (main workflow-phase) agents, which behaves byte-identical to the old
 	// single spawnSingle call.
 	chain := s.config.Agents[req.AgentType].Chain
+	if lowConsumptionOverride {
+		// The LC model must actually be used — a resolved chain would
+		// otherwise win at the primary spawn (chain[0] takes precedence in
+		// spawnEntryWithBuildFallback), silently overriding it.
+		chain = nil
+	}
 	proc, chainPos, err := s.spawnEntryWithBuildFallback(ctx, req, modelID, phase.NodeID, wi.ID, chain)
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)

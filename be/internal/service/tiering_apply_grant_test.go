@@ -55,17 +55,19 @@ func TestApplyForProject_GrantsDelegationTools(t *testing.T) {
 }
 
 // TestApplyForProject_HandPatchedToolsIdempotent is the ticket's required
-// case: a def already carrying the delegation tools CSV (as the live
-// feature defs were hand-patched) must apply as byte-identical "unchanged",
-// never "skipped-customized", and never gain a duplicated entry.
+// case: a def already carrying the delegation tools CSV AND already
+// tier-driven at the recommended tier (as a stock apply leaves it) must
+// re-apply as byte-identical "unchanged", never "skipped-customized", and
+// never gain a duplicated tools entry.
 func TestApplyForProject_HandPatchedToolsIdempotent(t *testing.T) {
 	t.Parallel()
 	svc, pool := setupTieringApplyTestEnv(t)
 	seedProjectAndWorkflow(t, pool, "patched", "feature", "ticket")
+	implTier := TierMap["implementor"].Tier
 	seedTieringDef(t, pool, tieringDefSeed{
 		projectID: "patched", workflowID: "feature", defID: "implementor",
-		model: "sonnet-5", effort: "medium", systemTemplateID: "tier-t1-executor",
-		tools: "delegate,get_delegation",
+		model: "", systemTemplateID: "tier-t1-executor",
+		tools: "delegate,get_delegation", tier: &implTier,
 	})
 
 	_, _, _, updatedAtBefore := getAgentDefFields(t, pool, "patched", "feature", "implementor")
@@ -114,8 +116,12 @@ func TestApplyForProject_GrantedButStaleModel(t *testing.T) {
 	}
 
 	model, _, _, _ := getAgentDefFields(t, pool, "stale", "feature", "implementor")
-	if model != "sonnet-5" {
-		t.Errorf("granted-but-stale implementor model = %q, want sonnet-5", model)
+	if model != "" {
+		t.Errorf("granted-but-stale implementor model = %q, want '' (tier-driven)", model)
+	}
+	tier := getAgentDefTier(t, pool, "stale", "feature", "implementor")
+	if tier == nil || *tier != TierMap["implementor"].Tier {
+		t.Errorf("granted-but-stale implementor tier = %v, want %d", tier, TierMap["implementor"].Tier)
 	}
 	tools := getAgentDefTools(t, pool, "stale", "feature", "implementor")
 	if tools != "delegate,get_delegation" {

@@ -8,6 +8,7 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor'
 import { AgentDefForm } from '@/components/workflow/AgentDefForm'
 import { updateAgentDef, deleteAgentDef } from '@/api/agentDefs'
 import { useProjectStore } from '@/stores/projectStore'
+import { resolveTierChain, useTierModels } from '@/hooks/useTierModels'
 import type { AgentDef, AgentDefUpdateRequest } from '@/types/workflow'
 
 export function AgentDefCard({
@@ -26,6 +27,7 @@ export function AgentDefCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const queryClient = useQueryClient()
   const currentProject = useProjectStore((s) => s.currentProject)
+  const { data: tierModels = [] } = useTierModels()
 
   const agentDefsKey = ['agent-defs', project ?? currentProject, workflowId] as const
 
@@ -63,9 +65,25 @@ export function AgentDefCard({
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium text-sm">{def.id}</span>
-          <Badge variant="secondary" className="text-xs">
-            {def.model}
-          </Badge>
+          {def.model ? (
+            <Badge variant="secondary" className="text-xs">
+              {def.model}
+            </Badge>
+          ) : (
+            <>
+              <Badge variant="outline" className="text-xs">
+                Tier {def.tier ?? '—'}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                {resolveTierChain(tierModels, def.tier)[0]?.model_id ?? '—'}
+              </Badge>
+            </>
+          )}
+          {def.model && def.tier != null && (
+            <Badge variant="outline" className="text-xs">
+              Override
+            </Badge>
+          )}
           {def.reasoning_effort && (
             <Badge variant="outline" className="text-xs">
               effort: {def.reasoning_effort}

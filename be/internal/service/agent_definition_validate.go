@@ -155,15 +155,16 @@ func validateConsultantAndNodeRole(consultant bool, executionMode, nodeRole, too
 // model row.
 func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, workflowID, id string, req *types.AgentDefUpdateRequest) error {
 	if req.Consultant == nil && req.ExecutionMode == nil && req.NodeRole == nil && req.Tools == nil &&
-		req.Description == nil && req.Model == nil && req.ReasoningEffort == nil {
+		req.Description == nil && req.Model == nil && req.ReasoningEffort == nil && req.Tier == nil {
 		return nil
 	}
 	var currentConsultant bool
 	var currentMode, currentNodeRole, currentTools, currentDescription, currentModel string
 	var currentReasoningEffort sql.NullString
+	var currentTier sql.NullInt64
 	if queryErr := s.pool.QueryRow(
-		"SELECT consultant, execution_mode, node_role, tools, description, model, reasoning_effort FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
-		projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole, &currentTools, &currentDescription, &currentModel, &currentReasoningEffort); queryErr != nil {
+		"SELECT consultant, execution_mode, node_role, tools, description, model, reasoning_effort, tier FROM agent_definitions WHERE LOWER(project_id) = LOWER(?) AND LOWER(workflow_id) = LOWER(?) AND LOWER(id) = LOWER(?)",
+		projectID, workflowID, id).Scan(&currentConsultant, &currentMode, &currentNodeRole, &currentTools, &currentDescription, &currentModel, &currentReasoningEffort, &currentTier); queryErr != nil {
 		return fmt.Errorf("failed to load agent definition: %w", queryErr)
 	}
 	effectiveConsultant := currentConsultant
@@ -201,6 +202,19 @@ func (s *AgentDefinitionService) revalidateConsultantAndNodeRole(projectID, work
 	}
 	if req.ReasoningEffort != nil {
 		effectiveEffort = req.ReasoningEffort
+	}
+
+	effectiveTier := currentTier.Valid
+	if req.Tier != nil {
+		effectiveTier = true
+	} else if req.TierClear {
+		effectiveTier = false
+	}
+	if effectiveMode != "script" && effectiveModel == "" && !effectiveTier {
+		return validationErrorf("model or tier is required")
+	}
+	if effectiveModel == "" {
+		return nil
 	}
 	if effectiveMode != "script" {
 		valid, err := s.modelSvc.IsValidModelForMode(effectiveModel, registryMode(effectiveMode))

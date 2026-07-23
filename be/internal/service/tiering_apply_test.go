@@ -53,8 +53,12 @@ func TestApplyForProject_Idempotent(t *testing.T) {
 	}
 
 	model, effort, template, updatedAt1 := getAgentDefFields(t, pool, "idem", "feature", "implementor")
-	if model != "sonnet-5" || effort != "medium" || template != "tier-t1-executor" {
-		t.Errorf("implementor after apply = (%q, %q, %q), want (sonnet-5, medium, tier-t1-executor)", model, effort, template)
+	if model != "" || effort != "" || template != "tier-t1-executor" {
+		t.Errorf("implementor after apply = (%q, %q, %q), want ('', '', tier-t1-executor)", model, effort, template)
+	}
+	tier := getAgentDefTier(t, pool, "idem", "feature", "implementor")
+	if tier == nil || *tier != TierMap["implementor"].Tier {
+		t.Errorf("implementor tier after apply = %v, want %d", tier, TierMap["implementor"].Tier)
 	}
 
 	second, err := svc.ApplyForProject(confirmation)

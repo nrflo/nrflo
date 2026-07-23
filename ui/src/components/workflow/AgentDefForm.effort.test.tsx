@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
@@ -79,7 +80,7 @@ async function selectDropdownOption(
 describe('AgentDefForm - reasoning effort', () => {
   it('is hidden for execution_mode=script', async () => {
     const user = userEvent.setup()
-    render(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} />)
     await selectDropdownOption(user, screen.getByText('Execution Mode').parentElement!.querySelector('button[type="button"]') as HTMLButtonElement, 'Script (Python)')
     expect(screen.queryByText('Reasoning Effort')).not.toBeInTheDocument()
   })
@@ -87,8 +88,9 @@ describe('AgentDefForm - reasoning effort', () => {
   it('puts the selected effort in the create submit payload', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
+    await user.click(screen.getByRole('switch', { name: /override model/i }))
     await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
     await selectDropdownOption(user, getEffortDropdownButton(), 'high')
@@ -102,7 +104,7 @@ describe('AgentDefForm - reasoning effort', () => {
   it('sends reasoning_effort: null when left empty', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
+    renderWithQuery(<AgentDefForm isCreate={true} onSubmit={onSubmit} onCancel={vi.fn()} />)
 
     await user.type(screen.getByPlaceholderText(/e.g., setup-analyzer/i), 'my-agent')
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
@@ -116,7 +118,7 @@ describe('AgentDefForm - reasoning effort', () => {
   it('omits reasoning_effort entirely from the script-mode payload', async () => {
     const user = userEvent.setup()
     const onSubmit = vi.fn()
-    render(
+    renderWithQuery(
       <AgentDefForm
         isCreate={false}
         initial={makeAgentDef({ execution_mode: 'script', python_script_id: 'script-1' })}
@@ -133,7 +135,7 @@ describe('AgentDefForm - reasoning effort', () => {
   })
 
   it('hydrates an existing reasoning_effort value on edit', () => {
-    render(
+    renderWithQuery(
       <AgentDefForm
         isCreate={false}
         initial={makeAgentDef({ reasoning_effort: 'max' })}

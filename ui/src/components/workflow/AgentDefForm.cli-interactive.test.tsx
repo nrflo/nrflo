@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
+import { renderWithQuery } from '@/test/utils'
 import userEvent from '@testing-library/user-event'
 import { AgentDefForm } from './AgentDefForm'
 
@@ -43,7 +44,7 @@ vi.mock('@/components/workflow/PythonScriptPickerField', () => ({
 }))
 
 function renderForm(props: Partial<React.ComponentProps<typeof AgentDefForm>> = {}) {
-  return render(
+  return renderWithQuery(
     <AgentDefForm isCreate={true} onSubmit={vi.fn()} onCancel={vi.fn()} {...props} />
   )
 }
@@ -99,11 +100,12 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
   })
 
   describe('field visibility after selecting cli_interactive', () => {
-    it('keeps Model label visible', async () => {
+    it('keeps Model label visible when override is toggled on', async () => {
       const user = userEvent.setup()
       renderForm()
 
       await selectDropdownOption(user, getExecutionModeButton(), 'CLI Interactive (PTY)')
+      await user.click(screen.getByRole('switch', { name: /override model/i }))
 
       expect(screen.getByText('Model')).toBeInTheDocument()
     })
@@ -137,12 +139,13 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
   })
 
   describe('form submission with cli_interactive', () => {
-    it('submits execution_mode: cli_interactive with model and prompt', async () => {
+    it('submits execution_mode: cli_interactive with model and prompt when overriding', async () => {
       const user = userEvent.setup()
       const onSubmit = vi.fn()
       renderForm({ isCreate: true, onSubmit })
 
       await selectDropdownOption(user, getExecutionModeButton(), 'CLI Interactive (PTY)')
+      await user.click(screen.getByRole('switch', { name: /override model/i }))
 
       await user.type(screen.getByPlaceholderText(/e\.g\., setup-analyzer/i), 'my-agent')
       await user.type(screen.getByPlaceholderText(/agent prompt template/i), 'My prompt')
@@ -182,7 +185,7 @@ describe('AgentDefForm — cli_interactive execution mode', () => {
       })
 
       expect(getExecutionModeButton().textContent).toContain('CLI Interactive (PTY)')
-      expect(screen.getByText('Model')).toBeInTheDocument()
+      expect(screen.getByText('Tier')).toBeInTheDocument()
       expect(screen.getByPlaceholderText(/agent prompt template/i)).toHaveValue('Existing prompt')
     })
   })

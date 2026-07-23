@@ -37,6 +37,9 @@ type AgentDefUpdateFields struct {
 	ReasoningEffort                 *sql.NullString
 	SystemTemplateID                *string
 	ProactiveRestartThresholdTokens *int
+	// Tier: nil = untouched; non-nil with Valid=false writes NULL (untier);
+	// non-nil with Valid=true writes the tier value.
+	Tier *sql.NullInt64
 }
 
 // Update updates an agent definition
@@ -148,6 +151,14 @@ func (r *AgentDefinitionRepo) Update(projectID, workflowID, id string, fields *A
 	if fields.ProactiveRestartThresholdTokens != nil {
 		updates = append(updates, "proactive_restart_threshold_tokens = ?")
 		args = append(args, *fields.ProactiveRestartThresholdTokens)
+	}
+	if fields.Tier != nil {
+		updates = append(updates, "tier = ?")
+		if fields.Tier.Valid {
+			args = append(args, fields.Tier.Int64)
+		} else {
+			args = append(args, nil)
+		}
 	}
 
 	if len(updates) == 0 {

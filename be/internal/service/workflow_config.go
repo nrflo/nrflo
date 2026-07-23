@@ -1,15 +1,23 @@
 package service
 
 import (
+	"context"
 	"sort"
 
+	"be/internal/clock"
+	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 )
 
 // BuildSpawnerConfig converts DB models into spawner-compatible types.
-// Shared by CLI agent spawn and server-side orchestrator.
-// Phases are derived from agent definitions (layer field) instead of workflow JSON.
-func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.AgentDefinition) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
+// Shared by CLI agent spawn and server-side orchestrator. Phases are derived
+// from agent definitions (layer field) instead of workflow JSON. pool/clk are
+// used to resolve a tier fallback chain for any def with Model=="" &&
+// Tier!=nil (Chain resolution failures never fail the whole call — they log
+// a warning and fall back to the def's raw model, same style as
+// LoadMaterializedAgentConfigs).
+func BuildSpawnerConfig(pool *db.Pool, clk clock.Clock, dbWorkflows []*model.Workflow, dbAgentDefs []*model.AgentDefinition) (map[string]SpawnerWorkflowDef, map[string]SpawnerAgentConfig) {
 	// Group agent definitions by workflow ID
 	agentsByWorkflow := make(map[string][]*model.AgentDefinition)
 	for _, ad := range dbAgentDefs {
@@ -53,14 +61,27 @@ func BuildSpawnerConfig(dbWorkflows []*model.Workflow, dbAgentDefs []*model.Agen
 		}
 	}
 
+	modelSvc := NewModelService(pool, clk)
 	agents := make(map[string]SpawnerAgentConfig)
 	for _, def := range dbAgentDefs {
-		agents[def.ID] = SpawnerAgentConfig{
+		cfg := SpawnerAgentConfig{
 			Model:           def.Model,
 			Timeout:         def.Timeout,
 			Tag:             def.Tag,
 			ReasoningEffort: def.ReasoningEffort,
 		}
+		if def.Model == "" && def.Tier != nil {
+			if chain, err := ResolveDefChain(pool, clk, modelSvc, def); err != nil {
+				logger.Warn(context.Background(), "BuildSpawnerConfig: resolve tier chain failed, falling back to raw model", "agent", def.ID, "err", err)
+			} else if len(chain) > 0 {
+				primary := chain[0]
+				effort := primary.ReasoningEffort
+				cfg.Model = primary.ModelID
+				cfg.ReasoningEffort = &effort
+				cfg.Chain = chain
+			}
+		}
+		agents[def.ID] = cfg
 	}
 
 	return workflows, agents
@@ -98,6 +119,10 @@ type SpawnerAgentConfig struct {
 	Timeout         int     `json:"timeout"`
 	Tag             string  `json:"tag"`
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	// Chain is the resolved tier fallback chain for defs with Model=="" &&
+	// Tier!=nil (index 0 = primary, already reflected in Model/ReasoningEffort
+	// above); nil for defs with an explicit model override.
+	Chain []AgentChainEntry `json:"-"`
 }
 
 // parseWorkflowDefFromDB builds a WorkflowDef from agent definitions

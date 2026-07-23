@@ -78,7 +78,7 @@ func (o *Orchestrator) buildMinimalReq(pool *db.Pool, projectID, ticketID, workf
 		return RunRequest{}, err
 	}
 
-	svcWorkflows, _ := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, _ := service.BuildSpawnerConfig(pool, o.clock, []*model.Workflow{dbWorkflow}, dbAgentDefs)
 	svcWf := svcWorkflows[workflowName]
 
 	return RunRequest{

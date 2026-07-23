@@ -104,7 +104,7 @@ func (o *Orchestrator) retryFailed(ctx context.Context, projectID, ticketID, wor
 		return err
 	}
 
-	svcWorkflows, svcAgents := service.BuildSpawnerConfig([]*model.Workflow{dbWorkflow}, dbAgentDefs)
+	svcWorkflows, svcAgents := service.BuildSpawnerConfig(pool, o.clock, []*model.Workflow{dbWorkflow}, dbAgentDefs)
 	svcWf := svcWorkflows[workflowName]
 
 	// Determine which layer the failed phase belongs to. Reads

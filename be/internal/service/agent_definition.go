@@ -144,15 +144,33 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		return nil, err
 	}
 
+	if req.Tier != nil {
+		if executionMode == "script" {
+			return nil, validationErrorf("script mode agents cannot carry a tier")
+		}
+		if *req.Tier < 1 || *req.Tier > 5 {
+			return nil, validationErrorf("tier must be between 1 and 5")
+		}
+	}
+
 	// Defaults
 	modelName := req.Model
 	if executionMode == "script" {
 		modelName = "script" // force sentinel model for script agents
-	} else if modelName == "" {
+	} else if modelName == "" && req.Tier == nil {
 		modelName = "sonnet-5"
 	}
 
-	if executionMode != "script" {
+	if executionMode != "script" && modelName == "" && req.Tier == nil {
+		return nil, validationErrorf("model or tier is required")
+	}
+
+	nativeTools, nErr := normalizeNativeTools(req.NativeTools)
+	if nErr != nil {
+		return nil, nErr
+	}
+
+	if executionMode != "script" && modelName != "" {
 		valid, err := s.modelSvc.IsValidModelForMode(modelName, registryMode(executionMode))
 		if err != nil {
 			return nil, fmt.Errorf("failed to validate model: %w", err)
@@ -160,21 +178,24 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		if !valid {
 			return nil, validationErrorf("invalid model: %q", modelName)
 		}
-	}
 
-	if err := validateDefReasoningEffort(s.modelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
-		return nil, err
+		if err := validateDefReasoningEffort(s.modelSvc, executionMode, modelName, req.ReasoningEffort); err != nil {
+			return nil, err
+		}
+
+		if err := validateNativeFields(s.modelSvc, executionMode, modelName, nativeTools, req.Sandbox); err != nil {
+			return nil, err
+		}
+	} else if executionMode != "script" {
+		// model=='' (tier-driven): provider is unknown until chain
+		// resolution, so native_tools/sandbox — both provider-specific —
+		// must stay empty.
+		if nativeTools != "" || req.Sandbox != "" {
+			return nil, validationErrorf("native_tools and sandbox require an explicit model override (provider is unknown until chain resolution)")
+		}
 	}
 
 	if err := s.validateSystemTemplateID(req.SystemTemplateID); err != nil {
-		return nil, err
-	}
-
-	nativeTools, nErr := normalizeNativeTools(req.NativeTools)
-	if nErr != nil {
-		return nil, nErr
-	}
-	if err := validateNativeFields(s.modelSvc, executionMode, modelName, nativeTools, req.Sandbox); err != nil {
 		return nil, err
 	}
 
@@ -200,9 +221,9 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	wid := strings.ToLower(workflowID)
 
 	_, err = s.pool.Exec(`
-		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.ContextBudgetTokens, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, req.SystemTemplateID, now, now,
+		INSERT INTO agent_definitions (id, project_id, workflow_id, model, timeout, prompt, restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec, context_budget_tokens, tag, low_consumption_model, layer, execution_mode, tools, native_tools, sandbox, api_max_iterations, api_max_tokens, python_script_id, validation_commands, consultant, node_role, description, reasoning_effort, system_template_id, tier, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, pid, wid, modelName, timeout, req.Prompt, req.RestartThreshold, req.MaxFailRestarts, stallStartTimeout, req.StallRunningTimeoutSec, req.ContextBudgetTokens, req.Tag, lcModel, req.Layer, executionMode, req.Tools, nativeTools, req.Sandbox, req.APIMaxIterations, req.APIMaxTokens, req.PythonScriptID, validationCommandsJSON, req.Consultant, nodeRole, req.Description, req.ReasoningEffort, req.SystemTemplateID, req.Tier, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -237,6 +258,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 		ValidationCommands:     validationCommandsJSON,
 		ReasoningEffort:        req.ReasoningEffort,
 		SystemTemplateID:       req.SystemTemplateID,
+		Tier:                   req.Tier,
 		Consultant:             req.Consultant,
 		NodeRole:               nodeRole,
 		Description:            req.Description,

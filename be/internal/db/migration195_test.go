@@ -114,7 +114,9 @@ func TestMigration195_TierBackfill(t *testing.T) {
 
 // TestMigration195_TierChainSeed verifies the seeded tier1/tier4 fallback
 // chains: position 0 = anthropic/api, position 1 = anthropic/cli_interactive,
-// with the expected model + reasoning effort at each position.
+// with the expected model + reasoning effort at each position. Position 0's
+// execution_mode is rewritten to ” (inherit) by migration 000200 — read on
+// the fully-migrated pool, this test observes that post-000200 state.
 func TestMigration195_TierChainSeed(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -129,9 +131,9 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		tier, position int
 		want           want
 	}{
-		{1, 0, want{"anthropic", "api", "haiku-4-5", "low"}},
+		{1, 0, want{"anthropic", "", "haiku-4-5", "low"}},
 		{1, 1, want{"anthropic", "cli_interactive", "haiku-4-5", "low"}},
-		{4, 0, want{"anthropic", "api", "sonnet-5", "medium"}},
+		{4, 0, want{"anthropic", "", "sonnet-5", "medium"}},
 		{4, 1, want{"anthropic", "cli_interactive", "sonnet-5", "medium"}},
 	}
 

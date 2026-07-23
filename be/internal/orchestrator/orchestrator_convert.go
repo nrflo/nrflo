@@ -42,6 +42,7 @@ func convertToSpawnerAgents(svc map[string]service.SpawnerAgentConfig) map[strin
 			Model:           sa.Model,
 			Timeout:         sa.Timeout,
 			ReasoningEffort: sa.ReasoningEffort,
+			Chain:           sa.Chain,
 		}
 	}
 	return result

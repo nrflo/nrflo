@@ -21,55 +21,104 @@ var skipDirs = map[string]bool{
 	"vendor": true, ".venv": true, "__pycache__": true, "target": true, ".next": true,
 }
 
-// resolvePaths checks each candidate against the working tree rooted at
-// root: an absolute or slash-containing candidate must Stat inside root
-// after containment-checking; a bare basename is canonicalized ONLY when
-// it matches exactly one file under root via the lazily built basename
-// index — 0 or >1 matches stay unverified. Never guesses, never fuzzy
+// PathStatus classifies a single ResolvePathCandidates outcome.
+type PathStatus int
+
+// PathStatus values. A bare basename is the only candidate shape that can
+// land in PathAmbiguous — absolute and slash-containing candidates are a
+// direct Stat, so they can only ever be PathResolved or PathUnresolved.
+const (
+	PathUnresolved PathStatus = iota
+	PathResolved
+	PathAmbiguous
+)
+
+// PathResult is one candidate's resolution outcome: Candidate is the
+// original input verbatim, Resolved is the root-relative canonical path
+// (set only when Status==PathResolved).
+type PathResult struct {
+	Candidate string
+	Resolved  string
+	Status    PathStatus
+}
+
+// ResolvePathCandidates is the per-candidate form of the never-synthesize
+// resolver: an absolute or slash-containing candidate must Stat inside root
+// after containment-checking (PathResolved or PathUnresolved only); a bare
+// basename is canonicalized ONLY when it matches exactly one file under root
+// via the lazily built basename index (PathResolved), 0 matches stays
+// PathUnresolved, >1 matches is PathAmbiguous. Never guesses, never fuzzy
 // matches, never picks the first of several candidates. An empty root
-// marks every candidate unverified.
+// marks every candidate PathUnresolved.
+func ResolvePathCandidates(root string, cands []string) []PathResult {
+	if len(cands) == 0 {
+		return nil
+	}
+	if root == "" {
+		return unresolvedResults(cands)
+	}
+	evalRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return unresolvedResults(cands)
+	}
+
+	var index map[string][]string
+	results := make([]PathResult, len(cands))
+	for i, cand := range cands {
+		resolved, status := resolveOnePath(evalRoot, cand, &index)
+		results[i] = PathResult{Candidate: cand, Resolved: resolved, Status: status}
+	}
+	return results
+}
+
+func unresolvedResults(cands []string) []PathResult {
+	results := make([]PathResult, len(cands))
+	for i, cand := range cands {
+		results[i] = PathResult{Candidate: cand, Status: PathUnresolved}
+	}
+	return results
+}
+
+// resolvePaths checks each candidate against the working tree rooted at
+// root, collapsing PathAmbiguous into unverified alongside PathUnresolved —
+// a thin wrapper over ResolvePathCandidates kept for the existing verified
+// vs unverified callers.
 func resolvePaths(root string, cands []string) (verified []string, unverified []string) {
 	if root == "" || len(cands) == 0 {
 		return nil, cands
 	}
-	evalRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, cands
-	}
-
-	var index map[string][]string
-	for _, cand := range cands {
-		if resolved, ok := resolveOnePath(evalRoot, cand, &index); ok {
-			verified = append(verified, resolved)
+	for _, r := range ResolvePathCandidates(root, cands) {
+		if r.Status == PathResolved {
+			verified = append(verified, r.Resolved)
 		} else {
-			unverified = append(unverified, cand)
+			unverified = append(unverified, r.Candidate)
 		}
 	}
 	return verified, unverified
 }
 
-func resolveOnePath(root, cand string, index *map[string][]string) (string, bool) {
+func resolveOnePath(root, cand string, index *map[string][]string) (string, PathStatus) {
 	if cand == "" {
-		return "", false
+		return "", PathUnresolved
 	}
 
 	if filepath.IsAbs(cand) {
 		clean := filepath.Clean(cand)
 		if !withinRoot(root, clean) || !statOK(clean) {
-			return "", false
+			return "", PathUnresolved
 		}
 		if rel, err := filepath.Rel(root, clean); err == nil {
-			return rel, true
+			return rel, PathResolved
 		}
-		return "", false
+		return "", PathUnresolved
 	}
 
 	if strings.ContainsAny(cand, "/\\") {
 		joined := filepath.Clean(filepath.Join(root, cand))
 		if !withinRoot(root, joined) || !statOK(joined) {
-			return "", false
+			return "", PathUnresolved
 		}
-		return filepath.Clean(cand), true
+		return filepath.Clean(cand), PathResolved
 	}
 
 	// Bare basename: consult the lazily built index, canonicalize only on a
@@ -79,10 +128,14 @@ func resolveOnePath(root, cand string, index *map[string][]string) (string, bool
 		*index = buildBasenameIndex(root)
 	}
 	matches := (*index)[cand]
-	if len(matches) == 1 {
-		return matches[0], true
+	switch len(matches) {
+	case 1:
+		return matches[0], PathResolved
+	case 0:
+		return "", PathUnresolved
+	default:
+		return "", PathAmbiguous
 	}
-	return "", false
 }
 
 func withinRoot(root, p string) bool {

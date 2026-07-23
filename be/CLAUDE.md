@@ -83,6 +83,7 @@ The Unix socket uses line-delimited JSON-RPC; methods in [internal/socket/CLAUDE
 | `internal/auth/` | [auth/CLAUDE.md](internal/auth/CLAUDE.md) | Argon2id password hashing (PHC format), SCS session manager |
 | `internal/db/` | [db/CLAUDE.md](internal/db/CLAUDE.md) | Migrations, connection pool, Querier interface |
 | `internal/service/` | [service/CLAUDE.md](internal/service/CLAUDE.md) | Business logic, per-project env vars |
+| `internal/service/stepengine/` | [service/stepengine/CLAUDE.md](internal/service/stepengine/CLAUDE.md) | Stepwise step engine: cursor snapshot, evidence validation, transactional advance, rotate decision |
 | `internal/socket/` | [socket/CLAUDE.md](internal/socket/CLAUDE.md) | Unix socket protocol, supported methods |
 | `internal/integration/` | [integration/CLAUDE.md](internal/integration/CLAUDE.md) | Test harness, helpers |
 | `internal/sdk/python/` | [sdk/python/CLAUDE.md](internal/sdk/python/CLAUDE.md) | Embedded Python SDK for `execution_mode='script'` agents |

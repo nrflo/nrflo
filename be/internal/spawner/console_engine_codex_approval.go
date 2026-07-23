@@ -3,19 +3,14 @@ package spawner
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 )
 
-// Codex app-server approval protocol has two generations with DIFFERENT
-// decision vocabularies (validated against `codex app-server
-// generate-json-schema`, codex-cli 0.144.1):
-//
-//   - v2 `item/commandExecution/requestApproval` + `item/fileChange/requestApproval`:
-//     accept | acceptForSession | decline | cancel. decline = command not
-//     executed, turn continues; cancel = also interrupt the turn.
-//   - legacy `execCommandApproval` + `applyPatchApproval`:
-//     approved | approved_for_session | denied | abort.
+// Codex app-server approval requests use one decision vocabulary (validated
+// against `codex app-server generate-json-schema`, codex-cli 0.145.0):
+// `item/commandExecution/requestApproval` + `item/fileChange/requestApproval`
+// resolve to accept | acceptForSession | decline | cancel. decline = command
+// not executed, turn continues; cancel = also interrupt the turn.
 //
 // approvalDecisionWire maps each approval-shaped server-request method to the
 // ApprovalDecision -> wire-string table for that method. Every other server
@@ -37,18 +32,15 @@ var approvalDecisionWire = map[string]map[ApprovalDecision]string{
 		ApprovalDeny:              "decline",
 		ApprovalAbort:             "cancel",
 	},
-	"execCommandApproval": {
-		ApprovalApprove:           "approved",
-		ApprovalApproveForSession: "approved_for_session",
-		ApprovalDeny:              "denied",
-		ApprovalAbort:             "abort",
-	},
-	"applyPatchApproval": {
-		ApprovalApprove:           "approved",
-		ApprovalApproveForSession: "approved_for_session",
-		ApprovalDeny:              "denied",
-		ApprovalAbort:             "abort",
-	},
+}
+
+// autoApproveWire returns the wire string that APPROVES an approval-shaped
+// server request, or ok=false for any method that is not decision-shaped.
+// Shared by codexEngine.ReplyApproval's table and the autonomous backend's
+// defensive reply.
+func autoApproveWire(method string) (string, bool) {
+	w, ok := approvalDecisionWire[method][ApprovalApprove]
+	return w, ok
 }
 
 // pendingApproval is one outstanding server->client approval request awaiting
@@ -94,36 +86,18 @@ func (p *pendingApprovals) drop(id string) bool {
 	return ok
 }
 
-// approvalRequestParams is the shared shape of the four approval-shaped
+// approvalRequestParams is the shared shape of the two approval-shaped
 // server requests' params.
 type approvalRequestParams struct {
-	ItemID  string          `json:"itemId"`
-	Command json.RawMessage `json:"command"`
-	Cwd     string          `json:"cwd"`
-	Reason  string          `json:"reason"`
-}
-
-// commandText renders an approval request's `command` field as display text.
-// Codex versions disagree on shape: a plain string (v2) or an argv array
-// (legacy).
-func commandText(raw json.RawMessage) string {
-	if len(raw) == 0 {
-		return ""
-	}
-	var s string
-	if json.Unmarshal(raw, &s) == nil {
-		return s
-	}
-	var argv []string
-	if json.Unmarshal(raw, &argv) == nil {
-		return strings.Join(argv, " ")
-	}
-	return string(raw)
+	ItemID  string `json:"itemId"`
+	Command string `json:"command"`
+	Cwd     string `json:"cwd"`
+	Reason  string `json:"reason"`
 }
 
 // onServerRequest handles one server->client request: registers it as
 // pending and emits an EventApprovalRequest when the method is one of the
-// four approval-shaped requests, else rejects it via replyError so codex is
+// two approval-shaped requests, else rejects it via replyError so codex is
 // never left blocked on a request the engine does not implement.
 func (e *codexEngine) onServerRequest(env rpcEnvelope) {
 	if env.ID == nil {
@@ -145,7 +119,7 @@ func (e *codexEngine) onServerRequest(env rpcEnvelope) {
 		Approval: &ApprovalRequest{
 			ID:      id,
 			Kind:    env.Method,
-			Command: commandText(p.Command),
+			Command: p.Command,
 			Cwd:     p.Cwd,
 			Reason:  p.Reason,
 			Raw:     env.Params,

@@ -185,8 +185,13 @@ func (b *codexAppServerBackend) eventLoop(runCtx context.Context, logCtx context
 		case rpcReq := <-client.reqCh:
 			// Defensive auto-approve (none expected under approvalPolicy:"never").
 			if rpcReq.ID != nil {
-				_ = client.reply(*rpcReq.ID, map[string]any{"decision": "approved"})
-				logger.Info(logCtx, "codex app-server: auto-approved server request", "method", rpcReq.Method, "session_id", proc.sessionID)
+				if wire, ok := autoApproveWire(rpcReq.Method); ok {
+					_ = client.reply(*rpcReq.ID, map[string]any{"decision": wire})
+					logger.Info(logCtx, "codex app-server: auto-approved server request", "method", rpcReq.Method, "session_id", proc.sessionID)
+				} else {
+					_ = client.replyError(*rpcReq.ID, -32601, "codex app-server: unhandled server request: "+rpcReq.Method)
+					logger.Info(logCtx, "codex app-server: rejected unhandled server request", "method", rpcReq.Method, "session_id", proc.sessionID)
+				}
 			}
 
 		case n := <-client.notifyCh:

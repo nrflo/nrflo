@@ -105,7 +105,7 @@ func TestAppServerClient_CallResponse(t *testing.T) {
 func TestAppServerClient_NotificationAndServerRequest(t *testing.T) {
 	tc := newTestConn(t)
 	tc.feed(`{"method":"turn/started","params":{"threadId":"T1"}}`)
-	tc.feed(`{"id":42,"method":"execCommandApproval","params":{}}`)
+	tc.feed(`{"id":42,"method":"item/commandExecution/requestApproval","params":{}}`)
 
 	select {
 	case n := <-tc.client.notifyCh:
@@ -117,7 +117,7 @@ func TestAppServerClient_NotificationAndServerRequest(t *testing.T) {
 	}
 	select {
 	case r := <-tc.client.reqCh:
-		if r.Method != "execCommandApproval" || r.ID == nil {
+		if r.Method != "item/commandExecution/requestApproval" || r.ID == nil {
 			t.Errorf("server request = %+v", r)
 		}
 	case <-time.After(2 * time.Second):

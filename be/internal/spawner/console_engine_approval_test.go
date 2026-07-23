@@ -45,9 +45,8 @@ func TestCodexEngine_Approval_V2Request(t *testing.T) {
 }
 
 // TestCodexEngine_Approval_DecisionMapping asserts ReplyApproval maps each
-// ApprovalDecision to the correct wire vocabulary for both protocol
-// generations (v2: accept/acceptForSession/decline/cancel; legacy:
-// approved/approved_for_session/denied/abort).
+// ApprovalDecision to the correct wire vocabulary for the v2 protocol
+// (accept/acceptForSession/decline/cancel).
 func TestCodexEngine_Approval_DecisionMapping(t *testing.T) {
 	sink := &testSink{}
 	eng, f := startTestCodexEngine(t, sink, EngineSpec{})
@@ -63,11 +62,6 @@ func TestCodexEngine_Approval_DecisionMapping(t *testing.T) {
 		{"v2_command_deny", "item/commandExecution/requestApproval", ApprovalDeny, "decline"},
 		{"v2_command_abort", "item/commandExecution/requestApproval", ApprovalAbort, "cancel"},
 		{"v2_filechange_deny", "item/fileChange/requestApproval", ApprovalDeny, "decline"},
-		{"legacy_exec_approve", "execCommandApproval", ApprovalApprove, "approved"},
-		{"legacy_exec_approve_for_session", "execCommandApproval", ApprovalApproveForSession, "approved_for_session"},
-		{"legacy_exec_deny", "execCommandApproval", ApprovalDeny, "denied"},
-		{"legacy_exec_abort", "execCommandApproval", ApprovalAbort, "abort"},
-		{"legacy_patch_deny", "applyPatchApproval", ApprovalDeny, "denied"},
 	}
 
 	for i, tc := range cases {
@@ -92,7 +86,7 @@ func TestCodexEngine_Approval_DecisionMapping(t *testing.T) {
 }
 
 // TestCodexEngine_Approval_UnknownMethodRejected asserts a server request
-// that isn't one of the four approval-shaped methods gets a JSON-RPC error
+// that isn't one of the two approval-shaped methods gets a JSON-RPC error
 // reply — never a fabricated decision — and emits no event.
 func TestCodexEngine_Approval_UnknownMethodRejected(t *testing.T) {
 	sink := &testSink{}
@@ -101,6 +95,8 @@ func TestCodexEngine_Approval_UnknownMethodRejected(t *testing.T) {
 	cases := []struct{ id, method string }{
 		{"201", "item/permissions/requestApproval"},
 		{"202", "item/tool/requestUserInput"},
+		{"203", "execCommandApproval"},
+		{"204", "applyPatchApproval"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.method, func(t *testing.T) {

@@ -128,21 +128,23 @@ func (r *AgentMessageRepo) GetBySession(sessionID string) ([]string, error) {
 	return messages, nil
 }
 
-// CategorizedMessage is a lean content+category projection for fold input,
-// where the digest model needs to distinguish user input from tool output
-// from assistant text but has no use for timestamps or payload.
+// CategorizedMessage is a lean seq+content+category projection for fold
+// input, where the digest model needs to distinguish user input from tool
+// output from assistant text but has no use for timestamps or payload.
 type CategorizedMessage struct {
+	Seq      int
 	Content  string
 	Category string
 }
 
-// GetBySessionCategorized returns all messages for a session ordered by seq,
-// content and category only — the lean read the autonomous fold uses to
-// render "[category] content" delta lines.
-func (r *AgentMessageRepo) GetBySessionCategorized(sessionID string) ([]CategorizedMessage, error) {
+// GetBySessionCategorizedFromSeq returns messages for a session with
+// seq >= fromSeq, ordered by seq — the incremental delta read the autonomous
+// fold uses to render "[category] content" lines without rereading the whole
+// transcript on every fold. Covered by idx_agent_messages_session(session_id, seq).
+func (r *AgentMessageRepo) GetBySessionCategorizedFromSeq(sessionID string, fromSeq int) ([]CategorizedMessage, error) {
 	rows, err := r.db.Query(
-		`SELECT content, category FROM agent_messages WHERE session_id = ? ORDER BY seq ASC`,
-		sessionID,
+		`SELECT seq, content, category FROM agent_messages WHERE session_id = ? AND seq >= ? ORDER BY seq ASC`,
+		sessionID, fromSeq,
 	)
 	if err != nil {
 		return nil, err
@@ -152,7 +154,7 @@ func (r *AgentMessageRepo) GetBySessionCategorized(sessionID string) ([]Categori
 	var messages []CategorizedMessage
 	for rows.Next() {
 		var msg CategorizedMessage
-		if err := rows.Scan(&msg.Content, &msg.Category); err != nil {
+		if err := rows.Scan(&msg.Seq, &msg.Content, &msg.Category); err != nil {
 			return nil, err
 		}
 		messages = append(messages, msg)

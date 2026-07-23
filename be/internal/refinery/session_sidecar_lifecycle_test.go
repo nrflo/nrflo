@@ -38,6 +38,13 @@ func TestStopSession_NoLeakAndIdempotent(t *testing.T) {
 		t.Error("autonomous map still has an entry after StopSession")
 	}
 
+	mgr.slotsMu.Lock()
+	slotCount := len(mgr.slots)
+	mgr.slotsMu.Unlock()
+	if slotCount != 0 {
+		t.Errorf("len(mgr.slots) after StopSession = %d, want 0 (refcount released to zero)", slotCount)
+	}
+
 	// Second StopSession for the same (now-unknown) id, and StopSession for
 	// a completely unknown id, must both be safe no-ops.
 	mgr.StopSession(sessionID)

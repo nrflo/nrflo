@@ -175,7 +175,7 @@ func TestRecordFoldRun_AutonomousPathCarriesWorkflowAndNode(t *testing.T) {
 		Usage:      provider.Usage{InputTokens: 5, OutputTokens: 3},
 	}}))
 
-	as := &autonomousSession{workflowInstanceID: wfiID, nodeID: nodeID}
+	as := mgr.newAutonomousSession(wfiID, nodeID, "")
 	mgr.foldAutonomous(context.Background(), as, sessionID, projectID)
 
 	rows := queryRefineryRuns(t, pool)

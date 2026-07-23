@@ -60,8 +60,8 @@ type Manager struct {
 	autonomousMu sync.Mutex
 	autonomous   map[string]*autonomousSession // sessionID -> autonomous sidecar state
 
-	slotMu   sync.Mutex
-	slotLock map[string]*sync.Mutex // "workflowInstanceID/nodeID" -> per-slot lock
+	slotsMu sync.Mutex
+	slots   map[string]*slotLock // "workflowInstanceID/nodeID" -> refcounted per-slot lock
 
 	// costAttributor feeds a fold's provider usage into the folded session's
 	// running cost store. nil-safe: unset in tests that never call
@@ -88,25 +88,8 @@ func NewManager(pool *db.Pool, clk clock.Clock) *Manager {
 		sidecars:       make(map[string]*sidecar),
 		byProject:      make(map[string]map[string]*sidecar),
 		autonomous:     make(map[string]*autonomousSession),
-		slotLock:       make(map[string]*sync.Mutex),
+		slots:          make(map[string]*slotLock),
 	}
-}
-
-// lockSlot returns the mutex serializing reads/writes to the
-// (workflowInstanceID, nodeID) digest slot, creating it on first use.
-// Guards against concurrent folds from two sessions in the same relaunch
-// chain racing GetSlot..UpsertSlot (old session's final fold vs new
-// session's first fold).
-func (m *Manager) lockSlot(workflowInstanceID, nodeID string) *sync.Mutex {
-	key := workflowInstanceID + "/" + nodeID
-	m.slotMu.Lock()
-	defer m.slotMu.Unlock()
-	l, ok := m.slotLock[key]
-	if !ok {
-		l = &sync.Mutex{}
-		m.slotLock[key] = l
-	}
-	return l
 }
 
 // SetCostAttributor injects the running-cost feed for autonomous folds

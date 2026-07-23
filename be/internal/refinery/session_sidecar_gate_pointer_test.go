@@ -11,7 +11,7 @@ import (
 	"be/internal/ws"
 )
 
-// TestFoldGate_SkipDoesNotAdvancePointer proves lastFoldedCount stays put
+// TestFoldGate_SkipDoesNotAdvancePointer proves nextFoldSeq stays put
 // across a gated-out fold: message A is seeded while context_left=80
 // (skipped), then context_left drops to 20 and message B is seeded; the
 // next fold's user text must contain BOTH A and B.
@@ -46,7 +46,7 @@ func TestFoldGate_SkipDoesNotAdvancePointer(t *testing.T) {
 	})
 	text := prov.lastUserText()
 	if !strings.Contains(text, "message-A") {
-		t.Errorf("fold user text = %q, want it to contain message-A (skip must not advance lastFoldedCount)", text)
+		t.Errorf("fold user text = %q, want it to contain message-A (skip must not advance nextFoldSeq)", text)
 	}
 	if !strings.Contains(text, "message-B") {
 		t.Errorf("fold user text = %q, want it to contain message-B", text)

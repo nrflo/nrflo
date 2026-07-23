@@ -19,16 +19,29 @@ const maxFoldDeltaChars = 8000
 // autonomousSession pairs a sidecar (trigger channel + goroutine, reused
 // as-is from the console path) with the slot identity and per-session fold
 // progress an autonomous fold needs that a console fold does not: the
-// relaunch-stable (workflow_instance_id, node_id) digest key and how many
-// agent_messages rows have already been folded.
+// relaunch-stable (workflow_instance_id, node_id) digest key, the shared
+// per-slot mutex, and the seq boundary up to which agent_messages rows have
+// already been folded.
 type autonomousSession struct {
 	sc                 *sidecar
 	workflowInstanceID string
 	nodeID             string
 	taskAnchor         string
+	slotMu             *sync.Mutex
 
-	mu              sync.Mutex
-	lastFoldedCount int
+	mu          sync.Mutex
+	nextFoldSeq int
+}
+
+// newAutonomousSession builds an autonomousSession and acquires its shared
+// per-slot mutex reference (released by StopSession after the final fold).
+func (m *Manager) newAutonomousSession(workflowInstanceID, nodeID, taskAnchor string) *autonomousSession {
+	return &autonomousSession{
+		workflowInstanceID: workflowInstanceID,
+		nodeID:             nodeID,
+		taskAnchor:         taskAnchor,
+		slotMu:             m.acquireSlotLock(workflowInstanceID, nodeID),
+	}
 }
 
 // StartSession registers an autonomous fold sidecar for a spawner-managed
@@ -48,7 +61,7 @@ func (m *Manager) StartSession(sessionID, projectID, workflowInstanceID, nodeID 
 		logger.Error(context.Background(), "refinery: read task anchor failed", "session_id", sessionID, "error", err)
 		anchor = ""
 	}
-	as := &autonomousSession{workflowInstanceID: workflowInstanceID, nodeID: nodeID, taskAnchor: anchor}
+	as := m.newAutonomousSession(workflowInstanceID, nodeID, anchor)
 	foldFn := func(ctx context.Context, sid, pid string, _ []string) {
 		m.foldAutonomous(ctx, as, sid, pid)
 	}
@@ -72,8 +85,11 @@ func (m *Manager) StopSession(sessionID string) {
 	}
 	as.sc.stop()
 	ctx, cancel := context.WithTimeout(context.Background(), stopFoldTimeout)
-	defer cancel()
 	m.foldAutonomous(ctx, as, sessionID, as.sc.projectID)
+	cancel()
+	// Release after the final fold so a concurrently-started relaunch
+	// sibling still shares this slot's mutex identity through it.
+	m.releaseSlotLock(as.workflowInstanceID, as.nodeID)
 }
 
 // stopFoldTimeout bounds StopSession's synchronous final fold so a stalled
@@ -116,7 +132,7 @@ func (m *Manager) foldGateOpen(ctx context.Context, sessionID string) bool {
 	return true
 }
 
-// foldAutonomous folds the agent_messages delta since as.lastFoldedCount into
+// foldAutonomous folds the agent_messages delta since as.nextFoldSeq into
 // the (workflow_instance_id, node_id) slot digest. No-op when there is no new
 // message. Best-effort: errors are logged, never propagated — callers are a
 // sidecar goroutine and StopSession, neither of which blocks on fold outcome.
@@ -125,19 +141,14 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		return
 	}
 	messageRepo := repo.NewAgentMessageRepo(m.pool, m.clock)
-	messages, err := messageRepo.GetBySessionCategorized(sessionID)
+	as.mu.Lock()
+	fromSeq := as.nextFoldSeq
+	as.mu.Unlock()
+	delta, err := messageRepo.GetBySessionCategorizedFromSeq(sessionID, fromSeq)
 	if err != nil {
 		logger.Error(ctx, "refinery: autonomous read messages failed", "session_id", sessionID, "error", err)
 		return
 	}
-
-	as.mu.Lock()
-	start := as.lastFoldedCount
-	if start > len(messages) {
-		start = len(messages)
-	}
-	delta := messages[start:]
-	as.mu.Unlock()
 	if len(delta) == 0 {
 		return
 	}
@@ -146,9 +157,8 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 	// sharing this (workflow_instance_id, node_id) slot — e.g. the old
 	// session's StopSession final fold racing the new session's first fold
 	// during a relaunch — so one fold never silently clobbers the other.
-	slotMu := m.lockSlot(as.workflowInstanceID, as.nodeID)
-	slotMu.Lock()
-	defer slotMu.Unlock()
+	as.slotMu.Lock()
+	defer as.slotMu.Unlock()
 
 	prevDigest, err := m.digestRepo.GetSlot(as.workflowInstanceID, as.nodeID)
 	if err != nil {
@@ -186,7 +196,7 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 	m.broadcastHandoffDigest(ctx, sessionID, projectID, as.workflowInstanceID, as.nodeID)
 
 	as.mu.Lock()
-	as.lastFoldedCount = len(messages)
+	as.nextFoldSeq = delta[len(delta)-1].Seq + 1
 	as.mu.Unlock()
 
 	if m.costAttributor != nil {

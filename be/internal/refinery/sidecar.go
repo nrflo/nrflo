@@ -29,7 +29,10 @@ type flushReq struct {
 // clock.After debounce loop that coalesces triggers arriving within the
 // floor into a single fold, firing immediately instead on a completion
 // trigger. Event lines buffer independently of trigger delivery, so a
-// dropped/coalesced signal never loses data — only fold timing.
+// dropped/coalesced signal never loses data — only fold timing. push's
+// trigger send is non-blocking (drops on a full channel): a drop can only
+// happen while >=1 trigger is already queued, so a fold is always still
+// pending — only fold timing is affected, never data.
 type sidecar struct {
 	sessionID string
 	projectID string
@@ -70,7 +73,7 @@ func (s *sidecar) push(line string, immediate bool) {
 	}
 	select {
 	case s.triggerCh <- immediate:
-	case <-s.ctx.Done():
+	default:
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 // TestFoldAutonomous_RejectsDegenerateOutput drives foldAutonomous
 // synchronously (no sidecar goroutine) to verify that empty text and
 // degenerate stop reasons (refusal, max_tokens) are rejected: the slot
-// digest and as.lastFoldedCount must not advance.
+// digest and as.nextFoldSeq must not advance.
 func TestFoldAutonomous_RejectsDegenerateOutput(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -25,7 +25,7 @@ func TestFoldAutonomous_RejectsDegenerateOutput(t *testing.T) {
 	prov := newCapturingProvider("valid digest v1")
 	stubBuildProvider(t, prov)
 
-	as := &autonomousSession{workflowInstanceID: wfiID, nodeID: nodeID}
+	as := mgr.newAutonomousSession(wfiID, nodeID, "")
 
 	mgr.foldAutonomous(context.Background(), as, sessionID, projectID)
 
@@ -39,8 +39,8 @@ func TestFoldAutonomous_RejectsDegenerateOutput(t *testing.T) {
 	if s.Version != 1 {
 		t.Errorf("Version after valid fold = %d, want 1", s.Version)
 	}
-	if got := lastFoldedCount(as); got != 2 {
-		t.Errorf("lastFoldedCount after valid fold = %d, want 2", got)
+	if got := nextFoldSeq(as); got != 2 {
+		t.Errorf("nextFoldSeq after valid fold = %d, want 2", got)
 	}
 
 	seedMessages(t, pool, clk, sessionID, "delta to be rejected")
@@ -90,8 +90,8 @@ func TestFoldAutonomous_RejectsDegenerateOutput(t *testing.T) {
 			if s.Version != 1 {
 				t.Errorf("Version after %s = %d, want unchanged 1", tc.name, s.Version)
 			}
-			if got := lastFoldedCount(as); got != 2 {
-				t.Errorf("lastFoldedCount after %s = %d, want unchanged 2 (rejected fold must not advance progress)", tc.name, got)
+			if got := nextFoldSeq(as); got != 2 {
+				t.Errorf("nextFoldSeq after %s = %d, want unchanged 2 (rejected fold must not advance progress)", tc.name, got)
 			}
 		})
 	}
@@ -165,8 +165,8 @@ func TestIsDegenerateStopReason(t *testing.T) {
 	}
 }
 
-func lastFoldedCount(as *autonomousSession) int {
+func nextFoldSeq(as *autonomousSession) int {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	return as.lastFoldedCount
+	return as.nextFoldSeq
 }

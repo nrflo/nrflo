@@ -45,6 +45,10 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 		if err != nil {
 			return nil, err
 		}
+		// Release the old handoff when it was not transferred onward (e.g. a
+		// fallback relaunch, which never opts into resumeOnRelaunch) so its
+		// temp CODEX_HOME dir doesn't leak; nil-safe/no-op when already moved.
+		oldProc.discardResume()
 		s.unregisterTerminalSignal(oldProc.sessionID)
 		delete(registeredSessions, oldProc.sessionID)
 		s.registerTerminalSignal(newProc.sessionID, ownTerminalCh)
@@ -214,6 +218,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						}
 						proc.failRestartCount++
 						proc.finalStatus = "CONTINUE"
+						proc.resumeOnRelaunch = true
 					}
 				}
 

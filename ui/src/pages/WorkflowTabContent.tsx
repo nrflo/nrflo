@@ -33,6 +33,7 @@ import { PLAN_SUSPENDED_STATUSES } from '@/types/workflow'
 import type { WorkflowState, AgentSession, ActiveAgentV4 } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { cn, formatDateTime, formatDurationSec, formatTokenCount } from '@/lib/utils'
+import { pickTakeControlTarget } from '@/lib/takeControl'
 
 interface WorkflowTabContentProps {
   ticketId: string | undefined
@@ -115,15 +116,8 @@ export function WorkflowTabContent({
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
   const failedAgent = agentHistory?.find(a => a.result === 'fail')
 
-  // Find a running Claude agent for Take Control
-  const runningClaudeAgent = Object.values(activeAgents).find(
-    (a) => !a.result && a.cli === 'claude' && a.session_id
-  )
-  // Use selected panel agent if it's running and claude, else fallback
-  const takeControlTarget =
-    selectedPanelAgent?.agent && !selectedPanelAgent.agent.result && selectedPanelAgent.agent.cli === 'claude' && selectedPanelAgent.agent.session_id
-      ? selectedPanelAgent.agent
-      : runningClaudeAgent
+  // Find a take-control-eligible agent, preferring the selected panel agent
+  const takeControlTarget = pickTakeControlTarget(activeAgents, selectedPanelAgent?.agent)
 
   return (
     <div className={cn(

@@ -149,6 +149,59 @@ func TestCostStore_UnknownModel_PricingUnknownCostStaysZero(t *testing.T) {
 	}
 }
 
+// TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps verifies setBaseline
+// registers a resumed session's pre-crash cumulative usage, subtracted from
+// every subsequent setUsage report (clamped at 0 rather than going negative
+// when a report momentarily undercuts the baseline) — and that a session with
+// no registered baseline is byte-identical to today (setUsage passes through
+// unchanged, the SetSessionCostUsage/no-baseline case already covered above).
+func TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps(t *testing.T) {
+	t.Parallel()
+	pool := setupTestDB(t)
+	insertCostTestSession(t, pool, "sess-cost-baseline", "gpt-5.6-sol")
+
+	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
+	store := newCostStore(clk)
+	store.register("sess-cost-baseline", "gpt-5.6-sol", pool, clk, nil)
+
+	store.setBaseline("sess-cost-baseline", 100_000, 20_000, 0, 0)
+
+	// Report exceeds the baseline: subtracted, not summed.
+	store.setUsage("sess-cost-baseline", 150_000, 25_000, 0, 0)
+	snap, ok := store.snapshot("sess-cost-baseline")
+	if !ok {
+		t.Fatal("snapshot ok = false")
+	}
+	if snap.InputTokens != 50_000 || snap.OutputTokens != 5_000 {
+		t.Errorf("snapshot tokens = in:%d out:%d, want in:50000 out:5000 (150000-100000, 25000-20000)",
+			snap.InputTokens, snap.OutputTokens)
+	}
+
+	// Report undercuts the baseline (e.g. a stale/out-of-order tick): clamped
+	// at 0, never negative.
+	store.setUsage("sess-cost-baseline", 80_000, 10_000, 0, 0)
+	snap, ok = store.snapshot("sess-cost-baseline")
+	if !ok {
+		t.Fatal("snapshot ok = false")
+	}
+	if snap.InputTokens != 0 || snap.OutputTokens != 0 {
+		t.Errorf("snapshot tokens = in:%d out:%d, want in:0 out:0 (clamped, report below baseline)",
+			snap.InputTokens, snap.OutputTokens)
+	}
+}
+
+// TestCostStore_SetBaseline_NoRegisteredSession_IsNoOp verifies setBaseline on
+// a session with no registered cost entry never panics.
+func TestCostStore_SetBaseline_NoRegisteredSession_IsNoOp(t *testing.T) {
+	t.Parallel()
+	clk := clock.NewTest(time.Now())
+	store := newCostStore(clk)
+	store.setBaseline("sess-never-registered", 100, 50, 0, 0) // must not panic
+	if _, ok := store.snapshot("sess-never-registered"); ok {
+		t.Error("snapshot ok = true for a never-registered session, want false")
+	}
+}
+
 // TestCostStore_NoRegisteredSession_IsNoOp verifies addUsage/setUsage/snapshot
 // on a session that was never registered (or already dropped) never panics and
 // reports ok=false.

@@ -168,6 +168,17 @@ type processInfo struct {
 	lastNudgeAt             time.Time
 	// External session ID (e.g., codex thread_id) — for logging only
 	externalSessionID string
+	// resumeHandoff is opaque native-conversation state a backend hands to its
+	// successor across a relaunch (e.g. the codex app-server's per-session
+	// CODEX_HOME dir + thread id); nil for backends without one. Moved or
+	// discarded by transferResume/discardResume (backend_resume.go).
+	resumeHandoff resumeHandoff
+	// resumeOnRelaunch is set by the relaunch site whose reason permits a
+	// native resume (currently only the fail-restart branch in
+	// spawner_monitor.go); zero value = fresh spawn, the default for every
+	// other relaunch reason (low-context, stall, rate-limit, tier fallback,
+	// proactive rotation).
+	resumeOnRelaunch bool
 	// Callback level set by API-mode agent_callback handler. Mirrors the
 	// callback_level finding written by AgentService.Callback for CLI agents.
 	callbackLevel int

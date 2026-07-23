@@ -120,6 +120,12 @@ type CLIAdapter interface {
 	// ReadPlan reads back the plan text written during a plan-mode session.
 	// Claude scans its native ~/.claude/plans store; codex reads opts.PlanFile.
 	ReadPlan(opts PlanCaptureOptions) string
+
+	// TranscriptPath returns the path to a readable transcript file for the
+	// given spawn env/workDir/sessionID, or "" when the CLI writes no such
+	// transcript (codex writes rollout JSONL under CODEX_HOME instead, fed to
+	// the ledger via the app-server event emitter).
+	TranscriptPath(env []string, workDir, sessionID string) string
 }
 
 // InteractiveExtras carries adapter-owned spawn-time outputs that the backend

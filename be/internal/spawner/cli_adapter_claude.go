@@ -124,6 +124,12 @@ func (a *ClaudeAdapter) BumpsOnPTYBytes() bool { return false }
 // surprises when adapters' telemetry-flush timing changes upstream.
 func (a *ClaudeAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
+// TranscriptPath delegates to the shared claudeTranscriptPath helper
+// (inband_rate_limit.go).
+func (a *ClaudeAdapter) TranscriptPath(env []string, workDir, sessionID string) string {
+	return claudeTranscriptPath(env, workDir, sessionID)
+}
+
 // ClassifyExit inspects recent output to classify an abnormal exit.
 // Rate-limit patterns are checked before error patterns; user-supplied extras
 // are merged with defaults so site-level overrides extend, not replace, them.

@@ -39,6 +39,19 @@ type costEntry struct {
 	snap      CostSnapshot
 	lastFlush time.Time
 	broadcast func(CostSnapshot) // nil-safe; project- or session-scoped push
+	// baseline* subtract out a resumed native session's pre-crash cumulative
+	// usage (set via SetSessionCostBaseline) so codex's thread-cumulative
+	// tokenUsage reports don't re-bill the dead session's tokens onto this
+	// one. Zero for every non-resumed session.
+	baselineIn, baselineOut, baselineCacheRead, baselineCacheWrite int
+}
+
+// subtractBaselineClamped returns v-b, floored at 0.
+func subtractBaselineClamped(v, b int) int {
+	if v-b < 0 {
+		return 0
+	}
+	return v - b
 }
 
 func (e *costEntry) recomputeLocked() {
@@ -114,20 +127,34 @@ func (s *costStore) addUsage(sessionID string, in, out, cacheRead, cacheWrite in
 }
 
 // setUsage overwrites sessionID's cumulative counters (codex app-server
-// reports cumulative totals per event, not deltas).
+// reports cumulative totals per event, not deltas), subtracting any
+// registered baseline (clamped at 0) so a resumed thread doesn't re-bill the
+// pre-crash usage already attributed to the dead session.
 func (s *costStore) setUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 	e := s.get(sessionID)
 	if e == nil {
 		return
 	}
 	e.mu.Lock()
-	e.snap.InputTokens = in
-	e.snap.OutputTokens = out
-	e.snap.CacheReadTokens = cacheRead
-	e.snap.CacheWriteTokens = cacheWrite
+	e.snap.InputTokens = subtractBaselineClamped(in, e.baselineIn)
+	e.snap.OutputTokens = subtractBaselineClamped(out, e.baselineOut)
+	e.snap.CacheReadTokens = subtractBaselineClamped(cacheRead, e.baselineCacheRead)
+	e.snap.CacheWriteTokens = subtractBaselineClamped(cacheWrite, e.baselineCacheWrite)
 	e.recomputeLocked()
 	e.mu.Unlock()
 	e.maybeFlushAndBroadcast(sessionID)
+}
+
+// setBaseline registers sessionID's pre-resume usage baseline. No-op when the
+// session has no registered entry.
+func (s *costStore) setBaseline(sessionID string, in, out, cacheRead, cacheWrite int) {
+	e := s.get(sessionID)
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	e.baselineIn, e.baselineOut, e.baselineCacheRead, e.baselineCacheWrite = in, out, cacheRead, cacheWrite
+	e.mu.Unlock()
 }
 
 // snapshot returns sessionID's current cost accounting, or ok=false when the
@@ -209,6 +236,14 @@ func AddSessionCostUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 // app-server cumulative totals).
 func SetSessionCostUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 	globalCostStore.setUsage(sessionID, in, out, cacheRead, cacheWrite)
+}
+
+// SetSessionCostBaseline registers sessionID's pre-resume cumulative usage
+// baseline, subtracted from every subsequent SetSessionCostUsage call (clamped
+// at 0) — call once, right after RegisterSessionCost, for a resumed native
+// session whose provider reports thread-cumulative totals.
+func SetSessionCostBaseline(sessionID string, in, out, cacheRead, cacheWrite int) {
+	globalCostStore.setBaseline(sessionID, in, out, cacheRead, cacheWrite)
 }
 
 // SessionCost returns sessionID's live cost snapshot, or ok=false when the

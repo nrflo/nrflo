@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -40,8 +39,8 @@ func newCodexAppServerBackend(s *Spawner) *codexAppServerBackend {
 }
 
 func (b *codexAppServerBackend) Name() string                 { return "codex" }
-func (b *codexAppServerBackend) SupportsResume() bool         { return false }
-func (b *codexAppServerBackend) SupportsTakeControl() bool    { return false }
+func (b *codexAppServerBackend) SupportsResume() bool         { return true }
+func (b *codexAppServerBackend) SupportsTakeControl() bool    { return true }
 func (b *codexAppServerBackend) RequiresPrompt() bool         { return true }
 func (b *codexAppServerBackend) TracksContext() bool          { return true }
 func (b *codexAppServerBackend) ParsesStructuredOutput() bool { return false }
@@ -64,13 +63,9 @@ func (b *codexAppServerBackend) Start(ctx context.Context, proc *processInfo, pr
 		return fmt.Errorf("codex app-server: reasoning effort is required")
 	}
 
-	profileDir, err := os.MkdirTemp("", "nrflo-codex-as-"+proc.sessionID+"-*")
+	profileDir, resumed, err := resolveCodexProfileDir(proc)
 	if err != nil {
-		return fmt.Errorf("codex app-server: mkdir profile: %w", err)
-	}
-	if err := writeCodexSessionProfile(profileDir, proc); err != nil {
-		_ = os.RemoveAll(profileDir)
-		return fmt.Errorf("codex app-server: write profile: %w", err)
+		return err
 	}
 	b.profileDir = profileDir
 
@@ -81,10 +76,12 @@ func (b *codexAppServerBackend) Start(ctx context.Context, proc *processInfo, pr
 	}
 
 	runCtx, cancel := context.WithCancel(ctx)
-	client, err := startAppServer(runCtx, env, proc.workDir)
+	client, err := dialAppServer(runCtx, env, proc.workDir)
 	if err != nil {
 		cancel()
-		_ = os.RemoveAll(profileDir)
+		if !resumed {
+			_ = os.RemoveAll(profileDir)
+		}
 		return fmt.Errorf("codex app-server: %w", err)
 	}
 
@@ -117,12 +114,22 @@ func (b *codexAppServerBackend) Kill(ctx context.Context, proc *processInfo, sig
 
 const appServerClientName = "nrflo"
 
-// run drives the JSON-RPC session: handshake → thread/start → turn/start →
-// event loop. It always closes proc.doneCh and cleans up the profile dir.
+// run drives the JSON-RPC session: handshake → thread/start-or-resume →
+// turn/start → event loop. defer close(proc.doneCh) is registered FIRST so it
+// runs LAST — the profile-dir defer and the proc.resumeHandoff write below
+// both need to land before it, since monitorAll only reads the handoff after
+// <-proc.doneCh (no lock needed as a result; keep this registration order).
 func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, prep *prepResult, client *appServerClient, cliModel, effort string) {
 	defer close(proc.doneCh)
 	defer client.close()
-	defer os.RemoveAll(b.profileDir)
+	// Ownership of the profile dir moves to the handoff on arm below; only
+	// remove it here when no handoff was armed (fresh spawn never resumed, or
+	// the session never reached the point where a handoff is created).
+	defer func() {
+		if proc.resumeHandoff == nil {
+			os.RemoveAll(b.profileDir)
+		}
+	}()
 
 	sink := &spawnerSink{s: b.s}
 	req := SpawnRequest{ProjectID: proc.projectID, TicketID: proc.ticketID, WorkflowName: proc.workflowName}
@@ -136,24 +143,18 @@ func (b *codexAppServerBackend) run(runCtx context.Context, proc *processInfo, p
 	}
 	_ = client.notify("initialized", nil)
 
-	resp, err := client.call(runCtx, "thread/start", threadStartParams(cliModel, proc.workDir, effectiveSpawnSandbox(prep.opts.Sandbox), "never"))
+	threadID, firstTurnText, err := b.startOrResumeThread(runCtx, proc, prep, client, cliModel)
 	if err != nil {
-		b.fail(logCtx, proc, "thread/start: "+err.Error())
+		b.fail(logCtx, proc, err.Error())
 		return
 	}
-	var threadResp struct {
-		Thread struct {
-			ID string `json:"id"`
-		} `json:"thread"`
+	proc.externalSessionID = threadID
+	if firstTurnText != prep.prompt {
+		proc.spawnCommand = fmt.Sprintf("codex app-server resume thread=%s model=%s effort=%s", threadID, cliModel, effort)
 	}
-	_ = json.Unmarshal(resp, &threadResp)
-	threadID := threadResp.Thread.ID
-	if threadID == "" {
-		b.fail(logCtx, proc, "thread/start: empty thread id")
-		return
-	}
+	proc.resumeHandoff = &codexThreadHandoff{threadID: threadID, profileDir: b.profileDir}
 
-	if _, err := client.call(runCtx, "turn/start", turnStartParams(threadID, prep.prompt, effort, cliModel)); err != nil {
+	if _, err := client.call(runCtx, "turn/start", turnStartParams(threadID, firstTurnText, effort, cliModel)); err != nil {
 		b.fail(logCtx, proc, "turn/start: "+err.Error())
 		return
 	}

@@ -178,16 +178,30 @@ func (s *Spawner) tailClaudeLedgers(running []*processInfo) {
 	}
 }
 
-// updateLedgerFromTranscript tails proc's Claude session transcript into the
-// shared context ledger store and, once the debounce window has elapsed,
-// broadcasts an epoch summary. Gated to backends that resolve a transcript
-// (Claude PTY only, via SupportsResume() — not an adapter name-check); called
-// once per monitorAll tick, no new polling loop.
+// transcriptTailer is an optional ExecutionBackend sub-interface for backends
+// whose CLI writes a readable transcript file this package can tail into the
+// context ledger. Asserted at the call site (never a name-check) — the codex
+// app-server backend now also returns true from SupportsResume(), so gating
+// on that alone would make monitorAll stat a claude-shaped transcript path
+// for codex every tick.
+type transcriptTailer interface {
+	TranscriptPath(proc *processInfo) string
+}
+
+// updateLedgerFromTranscript tails proc's session transcript into the shared
+// context ledger store and, once the debounce window has elapsed, broadcasts
+// an epoch summary. Gated on transcriptTailer (currently Claude only, via
+// CLIAdapter.TranscriptPath); backends without it (codex app-server, api,
+// script) are skipped. Called once per monitorAll tick, no new polling loop.
 func (s *Spawner) updateLedgerFromTranscript(proc *processInfo) {
-	if proc.backend == nil || !proc.backend.SupportsResume() {
+	tailer, ok := proc.backend.(transcriptTailer)
+	if !ok {
 		return
 	}
-	path := claudeTranscriptPath(proc.env, proc.workDir, proc.sessionID)
+	path := tailer.TranscriptPath(proc)
+	if path == "" {
+		return
+	}
 	s.ingestClaudeTranscript(proc.sessionID, path)
 	s.broadcastLedgerEpoch(proc)
 }

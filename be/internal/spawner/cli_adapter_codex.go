@@ -169,6 +169,13 @@ func (a *CodexAdapter) BumpsOnPTYBytes() bool { return true }
 // NaturalExitGrace returns 2s — uniform default for the grace before SIGTERM.
 func (a *CodexAdapter) NaturalExitGrace() time.Duration { return 2 * time.Second }
 
+// TranscriptPath returns "" — codex writes rollout JSONL under CODEX_HOME,
+// not a claude-shaped transcript; the context ledger is fed by the app-server
+// event emitter instead (codex_appserver_events.go).
+func (a *CodexAdapter) TranscriptPath(env []string, workDir, sessionID string) string {
+	return ""
+}
+
 // ClassifyExit inspects recent output to classify an abnormal exit.
 // Codex error patterns are empty by default; users extend via config keys.
 func (a *CodexAdapter) ClassifyExit(recentText, stderrTail string, exitCode int, extraLimitPatterns, extraErrorPatterns []string) (RetryClass, string) {

@@ -101,7 +101,7 @@ func (f *fakeAppServer) autoRespond(env rpcEnvelope) {
 		return
 	}
 	switch env.Method {
-	case "thread/start":
+	case "thread/start", "thread/resume":
 		f.replyResult(*env.ID, fmt.Sprintf(`{"thread":{"id":%q}}`, f.threadID))
 	case "turn/start":
 		f.replyResult(*env.ID, `{"turn":{"id":"turn-test-1"}}`)

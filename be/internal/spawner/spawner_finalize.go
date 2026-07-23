@@ -51,6 +51,7 @@ func (s *Spawner) finalizePhase(ctx context.Context, completed []*processInfo, r
 			s.config.RefinerySidecar.StopSession(proc.sessionID)
 		}
 		FinalizeSessionCost(proc.sessionID)
+		proc.discardResume()
 	}
 
 	passCount := 0

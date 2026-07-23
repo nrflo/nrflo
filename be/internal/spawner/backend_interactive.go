@@ -39,6 +39,13 @@ func (b *cliInteractiveBackend) NaturalExitGrace() time.Duration {
 	return b.adapter.NaturalExitGrace()
 }
 
+// TranscriptPath implements transcriptTailer (ledger_cli.go), delegating to
+// the adapter so per-adapter divergence (claude yes, codex no) stays in the
+// adapter file, not here.
+func (b *cliInteractiveBackend) TranscriptPath(proc *processInfo) string {
+	return b.adapter.TranscriptPath(proc.env, proc.workDir, proc.sessionID)
+}
+
 // Start creates the PTY session, registers the command, delivers the rendered
 // prompt body via stdin after a ~250ms readiness delay, and launches the ferry
 // and wait goroutines. proc.cmd is left nil — PTY owns the process.

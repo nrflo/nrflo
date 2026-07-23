@@ -191,6 +191,11 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.chainPos = oldProc.chainPos
 	newProc.hardProviderFail = false
 
+	// Native-resume handoff: moves to newProc only when oldProc opted in
+	// (fail-restart branch in spawner_monitor.go); discarded otherwise.
+	transferResume(oldProc, newProc)
+	newProc.resumeOnRelaunch = false
+
 	// Update the ancestor_session_id and restart_count on the new DB session record
 	if pool := s.pool(); pool != nil {
 		sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)

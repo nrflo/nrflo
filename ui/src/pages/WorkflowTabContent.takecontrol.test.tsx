@@ -52,6 +52,21 @@ function makeGptAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   }
 }
 
+function makeCodexAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
+  return {
+    agent_id: 'a3',
+    agent_type: 'implementor',
+    phase: 'implementation',
+    model_id: 'codex:gpt-5.6-luna',
+    cli: 'codex',
+    effective_mode: 'cli_interactive',
+    pid: 54321,
+    session_id: 'sess-codex-789',
+    started_at: '2026-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
 const defaultProps = {
   ticketId: 'T-1',
   hasWorkflow: true,
@@ -89,101 +104,68 @@ describe('WorkflowTabContent - Take Control button', () => {
   })
 
   describe('button visibility', () => {
-    it('shows Take Control button when onTakeControl provided and Claude agent is running', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
-        hasActivePhase: true,
-      })
+    const visibilityCases: Array<[string, Record<string, unknown>, boolean]> = [
+      ['shows when onTakeControl provided and Claude agent is running', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent() }, hasActivePhase: true,
+      }, true],
+      ['hides when no onTakeControl prop', {
+        activeAgents: { a: makeClaudeAgent() }, hasActivePhase: true, onTakeControl: undefined,
+      }, false],
+      ['hides when agent has no session_id', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent({ session_id: undefined }) }, hasActivePhase: true,
+      }, false],
+      ['hides for an unknown cli value', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeGptAgent() }, hasActivePhase: true,
+      }, false],
+      ['shows for a running codex agent', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeCodexAgent() }, hasActivePhase: true,
+      }, true],
+      ['hides for an api-mode claude agent', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent({ effective_mode: 'api' }) }, hasActivePhase: true,
+      }, false],
+      ['hides for a script-mode claude agent', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent({ effective_mode: 'script' }) }, hasActivePhase: true,
+      }, false],
+      ['hides when agent has a result (completed)', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent({ result: 'pass' }) }, hasActivePhase: false, isOrchestrated: false,
+      }, false],
+      ['hides when neither orchestrated nor hasActivePhase', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent() }, hasActivePhase: false, isOrchestrated: false,
+      }, false],
+      ['shows when orchestrated (even with no active phase)', {
+        onTakeControl: vi.fn(), activeAgents: { a: makeClaudeAgent() }, hasActivePhase: false, isOrchestrated: true,
+      }, true],
+    ]
 
-      expect(screen.getByRole('button', { name: /take control/i })).toBeInTheDocument()
-    })
-
-    it('does NOT show Take Control button when no onTakeControl prop', () => {
-      renderContent({
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
-        hasActivePhase: true,
-        onTakeControl: undefined,
-      })
-
-      expect(screen.queryByRole('button', { name: /take control/i })).not.toBeInTheDocument()
-    })
-
-    it('does NOT show Take Control button when agent has no session_id', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent({ session_id: undefined }) },
-        hasActivePhase: true,
-      })
-
-      expect(screen.queryByRole('button', { name: /take control/i })).not.toBeInTheDocument()
-    })
-
-    it('does NOT show Take Control button for non-Claude agents (no cli=claude)', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'tester:gpt:4': makeGptAgent() },
-        hasActivePhase: true,
-      })
-
-      expect(screen.queryByRole('button', { name: /take control/i })).not.toBeInTheDocument()
-    })
-
-    it('does NOT show Take Control button when agent has a result (completed)', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent({ result: 'pass' }) },
-        hasActivePhase: false,
-        isOrchestrated: false,
-      })
-
-      expect(screen.queryByRole('button', { name: /take control/i })).not.toBeInTheDocument()
-    })
-
-    it('does NOT show Take Control button when neither orchestrated nor hasActivePhase', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
-        hasActivePhase: false,
-        isOrchestrated: false,
-      })
-
-      expect(screen.queryByRole('button', { name: /take control/i })).not.toBeInTheDocument()
-    })
-
-    it('shows Take Control button when orchestrated (even with no active phase)', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
-        hasActivePhase: false,
-        isOrchestrated: true,
-      })
-
-      expect(screen.getByRole('button', { name: /take control/i })).toBeInTheDocument()
+    it.each(visibilityCases)('%s', (_name, overrides, expected) => {
+      renderContent(overrides)
+      const query = screen.queryByRole('button', { name: /take control/i })
+      if (expected) {
+        expect(query).toBeInTheDocument()
+      } else {
+        expect(query).not.toBeInTheDocument()
+      }
     })
   })
 
   describe('disabled state', () => {
-    it('is disabled when takeControlPending is true', () => {
+    it.each([
+      ['disabled when takeControlPending is true', true, true],
+      ['enabled when takeControlPending is false', false, false],
+    ])('is %s', (_name, pending, disabled) => {
       renderContent({
         onTakeControl: vi.fn(),
-        takeControlPending: true,
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
+        takeControlPending: pending,
+        activeAgents: { a: makeClaudeAgent() },
         hasActivePhase: true,
       })
 
-      expect(screen.getByRole('button', { name: /take control/i })).toBeDisabled()
-    })
-
-    it('is enabled when takeControlPending is false', () => {
-      renderContent({
-        onTakeControl: vi.fn(),
-        takeControlPending: false,
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
-        hasActivePhase: true,
-      })
-
-      expect(screen.getByRole('button', { name: /take control/i })).not.toBeDisabled()
+      const button = screen.getByRole('button', { name: /take control/i })
+      if (disabled) {
+        expect(button).toBeDisabled()
+      } else {
+        expect(button).not.toBeDisabled()
+      }
     })
   })
 
@@ -194,13 +176,27 @@ describe('WorkflowTabContent - Take Control button', () => {
 
       renderContent({
         onTakeControl,
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent({ session_id: 'my-session' }) },
+        activeAgents: { a: makeClaudeAgent({ session_id: 'my-session' }) },
         hasActivePhase: true,
       })
 
       await user.click(screen.getByRole('button', { name: /take control/i }))
       expect(onTakeControl).toHaveBeenCalledWith('my-session')
       expect(onTakeControl).toHaveBeenCalledTimes(1)
+    })
+
+    it('calls onTakeControl with the codex agent session_id when clicked', async () => {
+      const user = userEvent.setup()
+      const onTakeControl = vi.fn()
+
+      renderContent({
+        onTakeControl,
+        activeAgents: { a: makeCodexAgent({ session_id: 'codex-session' }) },
+        hasActivePhase: true,
+      })
+
+      await user.click(screen.getByRole('button', { name: /take control/i }))
+      expect(onTakeControl).toHaveBeenCalledWith('codex-session')
     })
 
     it('prefers selectedPanelAgent session when it is a running Claude agent', async () => {
@@ -211,13 +207,10 @@ describe('WorkflowTabContent - Take Control button', () => {
       renderContent({
         onTakeControl,
         activeAgents: {
-          'impl:claude:sonnet': makeClaudeAgent({ session_id: 'fallback-session' }),
-          'panel:claude:sonnet': panelAgent,
+          a: makeClaudeAgent({ session_id: 'fallback-session' }),
+          panel: panelAgent,
         },
-        selectedPanelAgent: {
-          agent: panelAgent,
-          phaseName: 'implementation',
-        },
+        selectedPanelAgent: { agent: panelAgent, phaseName: 'implementation' },
         hasActivePhase: true,
       })
 
@@ -231,7 +224,7 @@ describe('WorkflowTabContent - Take Control button', () => {
 
       renderContent({
         onTakeControl,
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent({ session_id: 'fallback-session' }) },
+        activeAgents: { a: makeClaudeAgent({ session_id: 'fallback-session' }) },
         selectedPanelAgent: null,
         hasActivePhase: true,
       })
@@ -247,13 +240,8 @@ describe('WorkflowTabContent - Take Control button', () => {
 
       renderContent({
         onTakeControl,
-        activeAgents: {
-          'impl:claude:sonnet': makeClaudeAgent({ session_id: 'running-session' }),
-        },
-        selectedPanelAgent: {
-          agent: completedAgent,
-          phaseName: 'implementation',
-        },
+        activeAgents: { a: makeClaudeAgent({ session_id: 'running-session' }) },
+        selectedPanelAgent: { agent: completedAgent, phaseName: 'implementation' },
         hasActivePhase: true,
       })
 
@@ -266,15 +254,12 @@ describe('WorkflowTabContent - Take Control button', () => {
     it('renders Take Control button in the same flex container as Stop button', () => {
       renderContent({
         onTakeControl: vi.fn(),
-        activeAgents: { 'impl:claude:sonnet': makeClaudeAgent() },
+        activeAgents: { a: makeClaudeAgent() },
         hasActivePhase: true,
       })
 
       const stopButton = screen.getByRole('button', { name: /stop/i })
       const takeControlButton = screen.getByRole('button', { name: /take control/i })
-
-      // Both should be within the same flex items-center gap-3 container
-      // (the left-side header container)
       const stopContainer = stopButton.closest('.flex.items-center.gap-3')
       const takeControlContainer = takeControlButton.closest('.flex.items-center.gap-3')
       expect(stopContainer).not.toBeNull()

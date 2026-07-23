@@ -152,3 +152,19 @@ func TestCodexAdapter_BuildInteractiveCommand_ResumeSessionID_MapsModel(t *testi
 		}
 	})
 }
+
+// TestCodexAdapter_TranscriptPath_AlwaysEmpty verifies CodexAdapter.TranscriptPath
+// returns "" regardless of inputs — codex writes rollout JSONL under CODEX_HOME,
+// not a claude-shaped transcript; the context ledger is fed by the app-server
+// event emitter instead. This is what gates transcriptTailer off for codex in
+// updateLedgerFromTranscript (ledger_cli.go), despite SupportsResume()==true.
+func TestCodexAdapter_TranscriptPath_AlwaysEmpty(t *testing.T) {
+	t.Parallel()
+	adapter := &CodexAdapter{}
+	if got := adapter.TranscriptPath(nil, "", ""); got != "" {
+		t.Errorf("TranscriptPath(nil,\"\",\"\") = %q, want empty", got)
+	}
+	if got := adapter.TranscriptPath([]string{"FOO=bar"}, "/work", "sess-1"); got != "" {
+		t.Errorf("TranscriptPath with populated args = %q, want empty", got)
+	}
+}

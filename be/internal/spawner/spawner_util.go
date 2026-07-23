@@ -218,6 +218,7 @@ func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo
 			s.config.RefinerySidecar.StopSession(proc.sessionID)
 		}
 		FinalizeSessionCost(proc.sessionID)
+		proc.discardResume()
 		completed = append(completed, proc)
 	}
 	return completed

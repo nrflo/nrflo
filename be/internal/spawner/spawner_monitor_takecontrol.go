@@ -55,12 +55,17 @@ func (s *Spawner) registerTakeControlResumeLaunch(proc *processInfo) {
 	if mappedModel == "" {
 		mappedModel = proc.adapter.MapModel(rawModel)
 	}
+	var extras InteractiveExtras
+	if h, ok := proc.backend.(interactiveHandoff); ok {
+		extras, _ = h.TakeControlExtras()
+	}
 	resumeCmd := proc.adapter.BuildInteractiveCommand(InteractiveSpawnOptions{
 		SessionID:       proc.sessionID,
 		Model:           mappedModel,
 		ReasoningEffort: reasoningEffort,
 		WorkDir:         proc.workDir,
 		ResumeSessionID: sessionIDForResume(proc.adapter, proc),
+		CodexHome:       extras.CodexHome,
 	})
 	s.config.PTYManager.RegisterLaunch(proc.sessionID, ptyPkg.Launch{
 		Command: resumeCmd.Path,

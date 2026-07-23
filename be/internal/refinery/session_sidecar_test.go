@@ -21,6 +21,11 @@ import (
 // the (workflow_instance_id, node_id) slot passed to StartSession is an
 // independent identity from agent_sessions.workflow_instance_id, and the
 // slot table (refinery_autonomous_digests) only FKs to projects.
+//
+// context_left is seeded at 10 (well under the default fold-start threshold
+// of 40) so every existing fold-happy-path test stays gate-open without
+// having to know about the gate; tests exercising the gate itself use
+// setContextLeft to override it.
 func seedAutonomousSession(t *testing.T, pool *db.Pool, sessionID, projectID string) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -31,11 +36,21 @@ func seedAutonomousSession(t *testing.T, pool *db.Pool, sessionID, projectID str
 		t.Fatalf("seed project %s: %v", projectID, err)
 	}
 	if _, err := pool.Exec(
-		`INSERT INTO agent_sessions (id, project_id, ticket_id, phase, node_id, agent_type, status, kind, created_at, updated_at)
-		 VALUES (?, ?, 'TICKET-1', 'implementor', 'implementor', 'implementor', 'running', 'workflow_agent', ?, ?)`,
+		`INSERT INTO agent_sessions (id, project_id, ticket_id, phase, node_id, agent_type, status, kind, context_left, created_at, updated_at)
+		 VALUES (?, ?, 'TICKET-1', 'implementor', 'implementor', 'implementor', 'running', 'workflow_agent', 10, ?, ?)`,
 		sessionID, projectID, now, now,
 	); err != nil {
 		t.Fatalf("seed autonomous session %s: %v", sessionID, err)
+	}
+}
+
+// setContextLeft updates agent_sessions.context_left for sessionID, or sets
+// it to NULL when left is nil — used by gate tests to drive foldGateOpen's
+// threshold comparison.
+func setContextLeft(t *testing.T, pool *db.Pool, sessionID string, left *int) {
+	t.Helper()
+	if _, err := pool.Exec(`UPDATE agent_sessions SET context_left = ? WHERE id = ?`, left, sessionID); err != nil {
+		t.Fatalf("set context_left for %s: %v", sessionID, err)
 	}
 }
 

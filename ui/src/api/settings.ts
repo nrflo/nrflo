@@ -36,6 +36,7 @@ export interface GlobalSettings {
   proactive_restart_max_per_session: number | null
   proactive_restart_boundary_window_turns: number | null
   proactive_restart_console_pct: number | null
+  refinery_fold_start_context_pct: number | null
 }
 
 export const settingsKeys = {

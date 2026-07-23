@@ -89,11 +89,41 @@ func (m *Manager) autonomousEnabled() bool {
 	return val != "false"
 }
 
+// foldGateOpen reports whether context_left has dropped to or below the
+// configured refinery_fold_start_context_pct threshold (default 40), i.e.
+// whether this session is due for an autonomous fold. Re-reads both the
+// threshold and context_left per call so an admin edit takes effect on live
+// sessions. A read error fails closed (returns false): the kill-time
+// context-saver already covers an unexpected early death, so the worst case
+// of skipping here is a slightly less rich handoff, never data loss.
+func (m *Manager) foldGateOpen(ctx context.Context, sessionID string) bool {
+	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryFoldStartContextPct()
+	if err != nil {
+		logger.Error(ctx, "refinery: read fold-start threshold failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	left, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeft(sessionID)
+	if err != nil {
+		logger.Error(ctx, "refinery: read context_left failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	if left > threshold {
+		logger.Info(ctx, "refinery: autonomous fold skipped, context above fold-start threshold",
+			"session_id", sessionID, "context_left", left, "threshold", threshold,
+			"note", "kill-time context-saver still covers an unexpected early death")
+		return false
+	}
+	return true
+}
+
 // foldAutonomous folds the agent_messages delta since as.lastFoldedCount into
 // the (workflow_instance_id, node_id) slot digest. No-op when there is no new
 // message. Best-effort: errors are logged, never propagated — callers are a
 // sidecar goroutine and StopSession, neither of which blocks on fold outcome.
 func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, sessionID, projectID string) {
+	if !m.foldGateOpen(ctx, sessionID) {
+		return
+	}
 	messageRepo := repo.NewAgentMessageRepo(m.pool, m.clock)
 	messages, err := messageRepo.GetBySessionCategorized(sessionID)
 	if err != nil {

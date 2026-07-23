@@ -18,6 +18,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
 		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
 		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
+		RefineryFoldStartContextPct       json.RawMessage `json:"refinery_fold_start_context_pct"`
 		CaptureThinkingEnabled            *bool           `json:"capture_thinking_enabled"`
 		APIViaCLIEnabled                  *bool           `json:"api_via_cli_enabled"`
 		ExperimentalObserverEnabled       *bool           `json:"experimental_observer_enabled"`
@@ -115,6 +116,9 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := applyOptionalIntSetting(svc, req.StallRunningTimeoutSec, "stall_running_timeout_sec", w); err != nil {
+		return
+	}
+	if err := applyOptionalBoundedIntSetting(svc, req.RefineryFoldStartContextPct, service.RefineryFoldStartContextPctKey, 0, 100, w); err != nil {
 		return
 	}
 

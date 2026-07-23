@@ -98,6 +98,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	foldStartPct, err := svc.GetRefineryFoldStartContextPct()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	resp := map[string]interface{}{
 		"low_consumption_mode":                  val == "true",
 		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
@@ -112,6 +118,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"observer_system_context":               observerSysCtx,
 		"observer_provider":                     observerProvider,
 		"observer_model":                        observerModel,
+		"refinery_fold_start_context_pct":       foldStartPct,
 	}
 	for _, ms := range menuSettings {
 		v, err := boolWithDefault(svc, ms.key, ms.def)

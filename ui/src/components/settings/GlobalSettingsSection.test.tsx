@@ -217,4 +217,10 @@ describe('GlobalSettingsSection', () => {
       expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ stall_running_timeout_sec: 600 })
     })
   })
+
+  it('renders the refinery fold-start context label', async () => {
+    vi.mocked(settingsApi.getGlobalSettings).mockResolvedValue(makeSettings({ refinery_fold_start_context_pct: 40 }))
+    renderWithQuery(<GlobalSettingsSection />)
+    expect(await screen.findByText('Refinery fold-start context (%)')).toBeInTheDocument()
+  })
 })

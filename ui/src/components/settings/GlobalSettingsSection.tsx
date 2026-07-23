@@ -4,6 +4,7 @@ import { Toggle } from '@/components/ui/Toggle'
 import { getGlobalSettings, updateGlobalSettings, settingsKeys } from '@/api/settings'
 import { ObserverSettingsSection } from './ObserverSettingsSection'
 import { GlobalStallSettings } from './GlobalStallSettings'
+import { GlobalRefinerySettings } from './GlobalRefinerySettings'
 import { WatcherTuningSettings } from './WatcherTuningSettings'
 
 export function GlobalSettingsSection() {
@@ -226,6 +227,7 @@ export function GlobalSettingsSection() {
               />
             </div>
             <GlobalStallSettings settings={settings} />
+            <GlobalRefinerySettings settings={settings} />
             <WatcherTuningSettings settings={settings} />
           </div>
         )}

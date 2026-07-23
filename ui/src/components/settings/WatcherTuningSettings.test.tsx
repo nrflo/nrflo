@@ -48,6 +48,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     proactive_restart_max_per_session: 3,
     proactive_restart_boundary_window_turns: 2,
     proactive_restart_console_pct: 90,
+    refinery_fold_start_context_pct: 40,
     ...overrides,
   }
 }

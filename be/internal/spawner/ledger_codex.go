@@ -3,10 +3,12 @@ package spawner
 import "encoding/json"
 
 // codexLedgerEmitter returns an EventEmitter that translates normalized codex
-// app-server events into APPROX ledger entries (approx=true — token counts
-// come from event text/JSON byte length, not codex's own tokenizer). Wired
-// as the emit arg to dispatchAppServerEvent from the autonomous codex
-// eventLoop; the console path keeps passing nil, which stays a no-op.
+// app-server events into EXACT ledger entries (approx=false — per-block
+// token counts still start as a bytes/4 heuristic, but EventTokenUsage
+// reconciles them against codex's own exact `thread/tokenUsage/updated`
+// input-token count, the same basis api mode uses). Wired as the emit arg to
+// dispatchAppServerEvent from the autonomous codex eventLoop; the console
+// path keeps passing nil, which stays a no-op.
 //
 // Codex events carry no tool-call id, so invoke/result correlation is keyed
 // by tool name: dispatchCompletedItem always emits a tool's invoke and its
@@ -24,13 +26,13 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 				l.markRef(path)
 				source = path
 			}
-			l.append(LedgerKindToolUse, estTokens(codexInputByteLen(ev.ToolInput)), source, "", true)
+			l.append(LedgerKindToolUse, estTokens(codexInputByteLen(ev.ToolInput)), source, "", false)
 		case EventToolResult:
 			meta := l.lookupToolMeta(ev.ToolName)
 			if isReadToolName(ev.ToolName) && meta.path != "" {
-				l.append(LedgerKindFileRead, estTokens(len(ev.Text)), meta.path, "", true)
+				l.append(LedgerKindFileRead, estTokens(len(ev.Text)), meta.path, "", false)
 			} else {
-				l.append(LedgerKindToolResult, estTokens(len(ev.Text)), ev.ToolName, "", true)
+				l.append(LedgerKindToolResult, estTokens(len(ev.Text)), ev.ToolName, "", false)
 			}
 		case EventThinking:
 			// Codex reuses EventThinking for both streaming reasoning deltas
@@ -39,20 +41,19 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 			// flood the snapshot with fragments (EventText's deltas use a
 			// distinct EventTextDelta, already ignored).
 			if ev.Text != "" && ev.ItemID == "" {
-				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", true)
+				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", false)
 			}
 		case EventText:
 			if ev.Text != "" {
-				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", true)
+				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", false)
 			}
 		case EventTurnCompleted:
 			l.nextTurn()
 		case EventTokenUsage:
-			if ev.ContextLeftPct <= 0 || proc.maxContext <= 0 {
+			if ev.Usage == nil || ev.Usage.InputTokens <= 0 {
 				return
 			}
-			used := proc.maxContext - (proc.maxContext*ev.ContextLeftPct)/100
-			l.reconcileUsage(used)
+			l.reconcileUsage(ev.Usage.InputTokens)
 		default:
 			return
 		}

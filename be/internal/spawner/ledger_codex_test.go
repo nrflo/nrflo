@@ -42,8 +42,8 @@ func TestCodexLedgerEmitter_ToolInvokeAndFileReadResult(t *testing.T) {
 		if snap.Entries[i].Kind != k {
 			t.Errorf("Entries[%d].Kind = %q, want %q", i, snap.Entries[i].Kind, k)
 		}
-		if !snap.Entries[i].Approx {
-			t.Errorf("Entries[%d].Approx = false, want true (codex is APPROX)", i)
+		if snap.Entries[i].Approx {
+			t.Errorf("Entries[%d].Approx = true, want false (codex is EXACT)", i)
 		}
 		if snap.Entries[i].Source != "/repo/a.go" {
 			t.Errorf("Entries[%d].Source = %q, want /repo/a.go", i, snap.Entries[i].Source)
@@ -125,8 +125,10 @@ func TestCodexLedgerEmitter_TurnCompletedAdvancesTurn(t *testing.T) {
 }
 
 // TestCodexLedgerEmitter_TokenUsageReconciles verifies EventTokenUsage
-// rescales the ledger's estimate to proc.maxContext's implied used-token
-// count, and no-ops when ContextLeftPct or maxContext is non-positive.
+// rescales the ledger's estimate to exactly ev.Usage.InputTokens, independent
+// of proc.maxContext, and that a nil Usage or a non-positive InputTokens both
+// leave the estimate untouched (the reconcile basis is codex's own exact
+// usage report, not a derived context-window percentage).
 func TestCodexLedgerEmitter_TokenUsageReconciles(t *testing.T) {
 	s := New(Config{Clock: clock.NewTest(time.Now())})
 	sessionID := "sess-codex-usage"
@@ -134,39 +136,26 @@ func TestCodexLedgerEmitter_TokenUsageReconciles(t *testing.T) {
 	emit := s.codexLedgerEmitter(proc)
 
 	emit(EngineEvent{Type: EventText, Text: "some text to estimate"})
-	emit(EngineEvent{Type: EventTokenUsage, ContextLeftPct: 90}) // 10% of 1000 used = 100
+	emit(EngineEvent{Type: EventTokenUsage, Usage: &EngineUsage{InputTokens: 100}})
 
 	snap, _ := globalLedgerStore.snapshot(sessionID)
 	if len(snap.Entries) != 1 {
 		t.Fatalf("Entries = %d, want 1", len(snap.Entries))
 	}
 	if got := snap.Entries[0].TokensEst; got != 100 {
-		t.Errorf("TokensEst after reconcile = %d, want 100", got)
+		t.Errorf("TokensEst after reconcile = %d, want 100 (exact, ignoring proc.maxContext=1000)", got)
 	}
 
-	// Guard: ContextLeftPct <= 0 must not mutate the estimate.
-	emit(EngineEvent{Type: EventTokenUsage, ContextLeftPct: 0})
+	// Guard: a nil Usage must not mutate the estimate.
+	emit(EngineEvent{Type: EventTokenUsage, Usage: nil})
 	if got := globalLedgerStore.get(sessionID).snapshot(sessionID).Entries[0].TokensEst; got != 100 {
-		t.Errorf("TokensEst mutated by ContextLeftPct=0: got %d, want 100", got)
+		t.Errorf("TokensEst mutated by nil Usage: got %d, want 100", got)
 	}
-}
 
-// TestCodexLedgerEmitter_TokenUsage_ZeroMaxContextIsNoOp verifies a proc with
-// maxContext<=0 never reconciles (guards a divide/scale against an unset
-// context window) and never panics.
-func TestCodexLedgerEmitter_TokenUsage_ZeroMaxContextIsNoOp(t *testing.T) {
-	s := New(Config{Clock: clock.NewTest(time.Now())})
-	sessionID := "sess-codex-usage-zero"
-	proc := newLedgerCodexTestProc(t, sessionID, 0)
-	emit := s.codexLedgerEmitter(proc)
-
-	emit(EngineEvent{Type: EventText, Text: "some text"})
-	emit(EngineEvent{Type: EventTokenUsage, ContextLeftPct: 50})
-
-	snap, _ := globalLedgerStore.snapshot(sessionID)
-	want := estTokens(len("some text"))
-	if got := snap.Entries[0].TokensEst; got != want {
-		t.Errorf("TokensEst = %d, want unreconciled estimate %d", got, want)
+	// Guard: Usage.InputTokens == 0 must not mutate the estimate either.
+	emit(EngineEvent{Type: EventTokenUsage, Usage: &EngineUsage{InputTokens: 0}})
+	if got := globalLedgerStore.get(sessionID).snapshot(sessionID).Entries[0].TokensEst; got != 100 {
+		t.Errorf("TokensEst mutated by Usage.InputTokens=0: got %d, want 100", got)
 	}
 }
 

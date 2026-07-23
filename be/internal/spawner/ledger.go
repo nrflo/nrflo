@@ -146,8 +146,12 @@ func (l *ledger) setTranscriptOffset(v int64) {
 
 // reconcileUsage scales every non-superseded entry's TokensEst so their sum
 // matches actual — the provider-reported input-token total for the request
-// that just returned (api mode only; called before that turn's new blocks
-// are appended, so it reconciles exactly what usage measured).
+// that just returned. In api mode this is called before that turn's new
+// blocks are appended, so it reconciles exactly what usage measured; codex's
+// event ordering is inverted (item/completed, which appends new blocks,
+// precedes thread/tokenUsage/updated for the same response), so its call
+// reconciles against a total that already includes those blocks — a known
+// one-response skew, not a correctness bug.
 func (l *ledger) reconcileUsage(actual int) {
 	if actual <= 0 {
 		return

@@ -75,7 +75,7 @@ A HARD provider failure (build-time construct, auth, persistent 5xx — never ra
 
 ## Context Ledger
 
-`contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks, written EXACT from apirun's `Config.Observer` (api), EXACT-ish via Claude transcript tailing (cli), APPROX from codex events. Mechanics: [REFERENCE.md](REFERENCE.md#context-ledger).
+`contextledger` (`ledger*.go`) is a process-global, session-keyed in-memory ledger of ordered context blocks, written EXACT from apirun's `Config.Observer` (api), EXACT-ish via Claude transcript tailing (cli), EXACT from codex events. Mechanics: [REFERENCE.md](REFERENCE.md#context-ledger).
 
 ## Context Watcher
 

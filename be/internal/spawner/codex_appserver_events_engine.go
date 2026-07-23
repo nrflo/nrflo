@@ -93,8 +93,8 @@ func emitTurnCompletedEvent(sessionID string, emit EventEmitter) {
 	emit.emit(EngineEvent{Type: EventTurnCompleted, SessionID: sessionID})
 }
 
-func emitTokenUsageEvent(sessionID string, pct int, emit EventEmitter) {
-	emit.emit(EngineEvent{Type: EventTokenUsage, SessionID: sessionID, ContextLeftPct: pct})
+func emitTokenUsageEvent(sessionID string, pct int, usage *EngineUsage, emit EventEmitter) {
+	emit.emit(EngineEvent{Type: EventTokenUsage, SessionID: sessionID, ContextLeftPct: pct, Usage: usage})
 }
 
 func emitErrorEvent(sessionID, msg string, emit EventEmitter) {

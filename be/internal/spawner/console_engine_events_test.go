@@ -235,6 +235,15 @@ func TestCodexEngine_TokenUsage(t *testing.T) {
 	if len(sink.contextUpdates) != 1 || sink.contextUpdates[0] != want {
 		t.Errorf("Sink.contextUpdates = %v, want [%d]", sink.contextUpdates, want)
 	}
+	if ev.Usage == nil {
+		t.Fatal("EventTokenUsage.Usage = nil, want populated from thread/tokenUsage/updated `last`")
+	}
+	if ev.Usage.InputTokens != 9115 {
+		t.Errorf("Usage.InputTokens = %d, want 9115 (last.inputTokens, not total's 27279)", ev.Usage.InputTokens)
+	}
+	if ev.Usage.ContextWindow != 258400 {
+		t.Errorf("Usage.ContextWindow = %d, want 258400", ev.Usage.ContextWindow)
+	}
 }
 
 // TestCodexEngine_StopUnblocksFullEventBuffer guards the deadlock a blocking

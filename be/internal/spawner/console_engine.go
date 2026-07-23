@@ -172,9 +172,23 @@ type EngineEvent struct {
 	ToolInput      map[string]any
 	IsError        bool
 	ContextLeftPct int
+	Usage          *EngineUsage
 	Approval       *ApprovalRequest
 	ApprovalID     string
 	Decision       ApprovalDecision
+}
+
+// EngineUsage carries the exact per-response token breakdown a provider
+// publishes alongside a token_usage event. Nil when the engine has no such
+// data (claude, api) — codex is the only emitter that fills it today.
+type EngineUsage struct {
+	InputTokens           int
+	CachedInputTokens     int
+	CacheWriteTokens      int
+	OutputTokens          int
+	ReasoningOutputTokens int
+	TotalTokens           int
+	ContextWindow         int
 }
 
 // EventEmitter delivers one EngineEvent. A nil EventEmitter is valid and

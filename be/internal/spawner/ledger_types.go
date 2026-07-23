@@ -16,7 +16,7 @@ const (
 
 // LedgerEntry is one ordered block in a session's context ledger. TokensEst
 // starts as a bytes/4 heuristic and is reconciled against provider usage when
-// available (api mode). Superseded marks an entry a later dedup-matching
+// available (api and codex modes). Superseded marks an entry a later dedup-matching
 // entry has replaced; superseded entries are excluded from epoch totals but
 // kept in the snapshot for inspection.
 type LedgerEntry struct {
@@ -59,8 +59,8 @@ type toolCallMeta struct {
 }
 
 // estTokens applies the bytes/4 token-estimate heuristic shared by all three
-// ledger writers; api mode additionally reconciles it against provider usage
-// (ledger.reconcileUsage).
+// ledger writers; api and codex modes additionally reconcile it against
+// provider usage (ledger.reconcileUsage).
 func estTokens(nbytes int) int {
 	if nbytes <= 0 {
 		return 0

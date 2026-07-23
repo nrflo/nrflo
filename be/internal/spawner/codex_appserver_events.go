@@ -203,50 +203,6 @@ func formatAppServerCommand(it appServerItem) string {
 	return "[Bash] " + out
 }
 
-func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, maxCtx int, emit EventEmitter) {
-	var p struct {
-		TokenUsage struct {
-			// `last` is the most recent model request's tokens = the current
-			// context-window occupancy. `total` is cumulative across all turns
-			// in the thread (each turn re-sends the growing history), so it
-			// overcounts and must NOT drive context_left.
-			Last struct {
-				InputTokens int `json:"inputTokens"`
-			} `json:"last"`
-			Total struct {
-				InputTokens       int `json:"inputTokens"`
-				CachedInputTokens int `json:"cachedInputTokens"`
-				OutputTokens      int `json:"outputTokens"`
-			} `json:"total"`
-			ModelContextWindow int `json:"modelContextWindow"`
-		} `json:"tokenUsage"`
-	}
-	if json.Unmarshal(params, &p) != nil {
-		sink.BumpLastMessage(sessionID)
-		return
-	}
-	// codex reports cumulative totals per event, not per-turn deltas, and
-	// inputTokens already includes cachedInputTokens — split fresh vs cached
-	// so cost is not double-billed at the full input rate.
-	fresh := p.TokenUsage.Total.InputTokens - p.TokenUsage.Total.CachedInputTokens
-	SetSessionCostUsage(sessionID, fresh, p.TokenUsage.Total.OutputTokens, p.TokenUsage.Total.CachedInputTokens, 0)
-
-	ctxWindow := p.TokenUsage.ModelContextWindow
-	if ctxWindow <= 0 {
-		ctxWindow = maxCtx
-	}
-	used := p.TokenUsage.Last.InputTokens
-	if used == 0 {
-		used = p.TokenUsage.Total.InputTokens // single-turn fallback
-	}
-	if ctxWindow > 0 && used > 0 {
-		pct := ComputeContextLeftPct(used, ctxWindow)
-		sink.UpdateContextLeft(sessionID, pct)
-		emitTokenUsageEvent(sessionID, pct, emit)
-	}
-	sink.BumpLastMessage(sessionID)
-}
-
 // turnCompletedError returns params.turn.error.message when a turn ended in
 // error, else "".
 func turnCompletedError(params json.RawMessage) string {

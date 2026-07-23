@@ -111,7 +111,7 @@ Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRes
 
 ## Validation Commands
 
-When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions.validation_commands` sequentially via the shared shell executor in `proc.workDir`; first non-zero exit flips result to `fail` (`result_reason=validation_failure`). Stepwise defs additionally run per-step `checks` through that same executor and are force-failed by the `steps_incomplete` completion guard if the cursor is short of its last step. Mechanics: [REFERENCE.md](REFERENCE.md#validation-commands).
+When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions.validation_commands` sequentially via the shared shell executor in `proc.workDir`; first non-zero exit flips result to `fail`. Stepwise defs run per-step `checks` through the same executor and force-fail via the `steps_incomplete` guard short of the last step. Mechanics: [REFERENCE.md](REFERENCE.md#validation-commands). The stepwise-only `complete_step` builtin tool is the sole caller of `stepengine.Advance` driving the cursor — [REFERENCE.md](REFERENCE.md#complete_step-rotation).
 
 ## Idle/Nudge Loop
 

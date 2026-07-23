@@ -58,6 +58,7 @@ func (s *Server) handleListSystemAgentRuns(w http.ResponseWriter, r *http.Reques
 			WorkflowInstanceID: f.WorkflowInstanceID,
 			NodeID:             f.NodeID,
 			ProjectID:          f.ProjectID,
+			AgentType:          "_refinery",
 			ResolvedProvider:   f.Provider,
 			ModelID:            f.Model,
 			PromptTokens:       f.PromptTokens,

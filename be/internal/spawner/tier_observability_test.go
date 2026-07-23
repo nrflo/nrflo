@@ -84,8 +84,8 @@ func TestRecordResolvedSpawn_ChainFallback(t *testing.T) {
 	if !fallbackFrom.Valid {
 		t.Fatal("fallback_from is NULL, want the failed entry-0 JSON")
 	}
-	if !strings.Contains(fallbackFrom.String, "badprov") || !strings.Contains(fallbackFrom.String, "bad-model") {
-		t.Errorf("fallback_from = %q, want it to contain entry 0's provider/model (badprov/bad-model)", fallbackFrom.String)
+	if !strings.Contains(fallbackFrom.String, `"provider":"badprov"`) || !strings.Contains(fallbackFrom.String, `"model_id":"bad-model"`) {
+		t.Errorf("fallback_from = %q, want lower-case JSON keys \"provider\"/\"model_id\" with entry 0's values (badprov/bad-model)", fallbackFrom.String)
 	}
 }
 

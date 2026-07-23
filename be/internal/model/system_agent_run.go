@@ -25,6 +25,7 @@ type SystemAgentRun struct {
 	Status                string          `json:"status,omitempty"`
 	Result                string          `json:"result,omitempty"`
 	WorkflowInstanceID    string          `json:"workflow_instance_id,omitempty"`
+	TicketID              string          `json:"ticket_id,omitempty"`
 	NodeID                string          `json:"node_id,omitempty"`
 	ProjectID             string          `json:"project_id,omitempty"`
 	PromptTokens          int             `json:"prompt_tokens,omitempty"`

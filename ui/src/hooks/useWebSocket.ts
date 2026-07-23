@@ -32,7 +32,7 @@ export type WSEventType =
   | 'agent.retry_waiting'
   | 'agent.context_saving'
   | 'agent.stall_restart'
-  | 'agent.nudged' | 'agent.context_ledger' | 'agent.handoff_digest'
+  | 'agent.nudged' | 'agent.context_ledger' | 'agent.handoff_digest' | 'refinery.fold_failed'
   | 'findings.updated'
   | 'project_findings.updated'
   | 'messages.updated'

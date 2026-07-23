@@ -11,11 +11,11 @@ import (
 // entry actually used to spawn; later entries are inert until the
 // advance-on-failure follow-up consumes them.
 type AgentChainEntry struct {
-	Provider        string
-	ExecutionMode   string
-	ModelID         string
-	ReasoningEffort string
-	Tier            int
+	Provider        string `json:"provider"`
+	ExecutionMode   string `json:"execution_mode"`
+	ModelID         string `json:"model_id"`
+	ReasoningEffort string `json:"reasoning_effort"`
+	Tier            int    `json:"tier"`
 }
 
 // TierSpec is the def-type-agnostic input to resolveChain: the fields any

@@ -82,6 +82,19 @@ func seedRefineryRun(t *testing.T, s *Server, sessionID, foldedAt string) {
 	}
 }
 
+// seedRefineryRunFailed seeds a failed fold (the "fold failed: no key" row
+// the UI surfaces), exercising the status/error passthrough of the merge.
+func seedRefineryRunFailed(t *testing.T, s *Server, sessionID, foldedAt string) {
+	t.Helper()
+	if _, err := s.pool.Exec(
+		`INSERT INTO refinery_runs (session_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, folded_at)
+		 VALUES (?, 'proj', 'anthropic', 'haiku-4-5', 7, 0, 'failed', 'no api key', ?)`,
+		sessionID, foldedAt,
+	); err != nil {
+		t.Fatalf("seed failed refinery_run %s: %v", sessionID, err)
+	}
+}
+
 func decodeRunsResponse(t *testing.T, rr *httptest.ResponseRecorder) (items []map[string]interface{}, limit int) {
 	t.Helper()
 	var body struct {

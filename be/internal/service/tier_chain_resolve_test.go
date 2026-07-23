@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -146,5 +147,35 @@ func TestResolveDefChain_NilDef_Errors(t *testing.T) {
 	_, err := ResolveDefChain(svc.pool, clock.Real(), svc.modelSvc, nil)
 	if err == nil {
 		t.Fatal("ResolveDefChain(nil): expected error, got nil")
+	}
+}
+
+// TestAgentChainEntry_JSONTagsLowerCase verifies AgentChainEntry marshals
+// with lower-case snake_case keys — this is the wire contract
+// tier_observability.go writes into agent_sessions.fallback_from and the
+// system-agent-runs API passes through for the UI's fallback indicator.
+func TestAgentChainEntry_JSONTagsLowerCase(t *testing.T) {
+	t.Parallel()
+	entry := AgentChainEntry{
+		Provider:        "anthropic",
+		ExecutionMode:   "api",
+		ModelID:         "sonnet-5",
+		ReasoningEffort: "low",
+		Tier:            2,
+	}
+	b, err := json.Marshal(entry)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	body := string(b)
+	for _, key := range []string{`"provider":`, `"execution_mode":`, `"model_id":`, `"reasoning_effort":`, `"tier":`} {
+		if !strings.Contains(body, key) {
+			t.Errorf("marshaled body = %s, want key %s", body, key)
+		}
+	}
+	for _, key := range []string{`"Provider":`, `"ExecutionMode":`, `"ModelID":`} {
+		if strings.Contains(body, key) {
+			t.Errorf("marshaled body = %s, want no capitalized Go field name %s", body, key)
+		}
 	}
 }

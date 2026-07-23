@@ -7,6 +7,7 @@ import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSecti
 import { MenuPanelSection } from '@/components/settings/MenuPanelSection'
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
 import { SystemAgentsSection } from '@/components/settings/SystemAgentsSection'
+import { SystemAgentRunsSection } from '@/components/settings/SystemAgentRunsSection'
 import { DefaultTemplatesSection } from '@/components/settings/DefaultTemplatesSection'
 import { LogsSection } from '@/components/settings/LogsSection'
 import { UsersSection } from '@/components/settings/UsersSection'
@@ -21,6 +22,7 @@ import { useCustomProviders } from '@/hooks/useCustomProviders'
 
 type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'tier-models' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
+type SystemAgentsSubTab = 'definitions' | 'activity'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
@@ -43,6 +45,13 @@ const SUB_TABS: { id: AdministrationSubTab; label: string }[] = [
 ]
 
 const ADMIN_SUB_TAB_IDS = new Set<string>(SUB_TABS.map((t) => t.id))
+
+const SYSTEM_AGENT_SUB_TABS: { id: SystemAgentsSubTab; label: string }[] = [
+  { id: 'definitions', label: 'Definitions' },
+  { id: 'activity', label: 'Activity' },
+]
+
+const SYSTEM_AGENT_SUB_TAB_IDS = new Set<string>(SYSTEM_AGENT_SUB_TABS.map((t) => t.id))
 
 const tabIds = new Set<string>(tabs.map((t) => t.id))
 
@@ -75,6 +84,8 @@ export function SettingsPage() {
   const subParam = searchParams.get('sub')
   const activeAdminSub: AdministrationSubTab =
     subParam && ADMIN_SUB_TAB_IDS.has(subParam) ? (subParam as AdministrationSubTab) : 'users'
+  const activeSystemAgentsSub: SystemAgentsSubTab =
+    subParam && SYSTEM_AGENT_SUB_TAB_IDS.has(subParam) ? (subParam as SystemAgentsSubTab) : 'definitions'
 
   const { data: customProviders = [] } = useCustomProviders()
   const providerIds = new Set<string>([...BUILTIN_PROVIDERS.map((p) => p.id), ...customProviders.map((p) => p.name)])
@@ -83,6 +94,8 @@ export function SettingsPage() {
   const handleTabClick = (id: SettingsTab) => {
     if (id === 'administration') {
       setSearchParams({ tab: id, sub: activeAdminSub }, { replace: true })
+    } else if (id === 'system-agents') {
+      setSearchParams({ tab: id, sub: activeSystemAgentsSub }, { replace: true })
     } else if (id === 'models') {
       setSearchParams({ tab: id, sub: activeProvider }, { replace: true })
     } else {
@@ -92,6 +105,10 @@ export function SettingsPage() {
 
   const handleSubTabClick = (sub: AdministrationSubTab) => {
     setSearchParams({ tab: 'administration', sub }, { replace: true })
+  }
+
+  const handleSystemAgentsSubTabClick = (sub: SystemAgentsSubTab) => {
+    setSearchParams({ tab: 'system-agents', sub }, { replace: true })
   }
 
   const handleProviderSubTabClick = (provider: string) => {
@@ -149,6 +166,27 @@ export function SettingsPage() {
         </div>
       )}
 
+      {activeTab === 'system-agents' && (
+        <div className="border-b border-border">
+          <div className="flex gap-1">
+            {SYSTEM_AGENT_SUB_TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => handleSystemAgentsSubTabClick(id)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1 text-xs font-medium border-b-2 transition-colors',
+                  activeSystemAgentsSub === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'models' && (
         <ModelsProviderTabs activeProvider={activeProvider} onSelect={handleProviderSubTabClick} />
       )}
@@ -156,7 +194,8 @@ export function SettingsPage() {
       {activeTab === 'general' && <GlobalSettingsSection />}
       {activeTab === 'menu-panel' && <MenuPanelSection />}
       {activeTab === 'projects' && <ProjectsSection />}
-      {activeTab === 'system-agents' && <SystemAgentsSection />}
+      {activeTab === 'system-agents' && activeSystemAgentsSub === 'definitions' && <SystemAgentsSection />}
+      {activeTab === 'system-agents' && activeSystemAgentsSub === 'activity' && <SystemAgentRunsSection />}
       {activeTab === 'default-templates' && <DefaultTemplatesSection />}
       {activeTab === 'models' && <ModelsList provider={activeProvider} />}
       {activeTab === 'tiering' && <TieringSection />}

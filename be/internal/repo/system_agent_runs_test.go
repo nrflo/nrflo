@@ -68,6 +68,11 @@ func TestListSystemAgentRuns(t *testing.T) {
 	if len(ids) < 3 || ids[0] != "sess-newest" {
 		t.Errorf("ids = %v, want sess-newest first (newest created_at)", ids)
 	}
+	for _, run := range got {
+		if run.TicketID != "TKT-1" {
+			t.Errorf("run %s TicketID = %q, want TKT-1 (from agent_sessions.ticket_id)", run.SessionID, run.TicketID)
+		}
+	}
 }
 
 func TestListSystemAgentRuns_Limit(t *testing.T) {
@@ -115,12 +120,11 @@ func TestListSystemAgentRuns_Since(t *testing.T) {
 	}
 }
 
-// TestListSystemAgentRuns_NullResult_ProductionBug documents a known bug:
-// ListSystemAgentRuns.Scan reads agent_sessions.result (nullable) directly
-// into a plain string field, so any qualifying row with a NULL result
-// (e.g. a still-running tiered session) errors the whole listing instead of
-// surfacing an empty Result. See be_production_bugs.
-func TestListSystemAgentRuns_NullResult_ProductionBug(t *testing.T) {
+// TestListSystemAgentRuns_NullResultSurfacesEmptyString verifies a
+// still-running tiered session (NULL result) is scanned successfully with
+// Result=="" rather than erroring the whole listing (formerly
+// TestListSystemAgentRuns_NullResult_ProductionBug, which asserted the bug).
+func TestListSystemAgentRuns_NullResultSurfacesEmptyString(t *testing.T) {
 	t.Parallel()
 	database, r, wfiID := setupTokenTestDB(t)
 	defer database.Close()
@@ -137,8 +141,21 @@ func TestListSystemAgentRuns_NullResult_ProductionBug(t *testing.T) {
 		t.Fatalf("insert running session with NULL result: %v", err)
 	}
 
-	if _, err := r.ListSystemAgentRuns(50, time.Time{}); err == nil {
-		t.Error("ListSystemAgentRuns succeeded on a NULL-result row; if this now passes, the production bug is fixed — replace this test with a real assertion")
+	got, err := r.ListSystemAgentRuns(50, time.Time{})
+	if err != nil {
+		t.Fatalf("ListSystemAgentRuns: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("len(got) = %d, want 1", len(got))
+	}
+	if got[0].SessionID != "sess-null-result" {
+		t.Errorf("got[0].SessionID = %q, want sess-null-result", got[0].SessionID)
+	}
+	if got[0].Result != "" {
+		t.Errorf("got[0].Result = %q, want empty string for NULL result column", got[0].Result)
+	}
+	if got[0].TicketID != "TKT-1" {
+		t.Errorf("got[0].TicketID = %q, want TKT-1", got[0].TicketID)
 	}
 }
 

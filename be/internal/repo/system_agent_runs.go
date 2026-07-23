@@ -11,7 +11,7 @@ import (
 // resolved tier or belong to a system-agent definition, newest first. Cross-
 // project by design — callers gate this admin-only.
 func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*model.SystemAgentRun, error) {
-	query := `SELECT id, workflow_instance_id, project_id, node_id, agent_type, model_id, status, result,
+	query := `SELECT id, workflow_instance_id, project_id, ticket_id, node_id, agent_type, model_id, status, result,
 		 tier, resolved_provider, resolved_execution_mode, resolved_effort, chain_position, fallback_from,
 		 tokens_json, cost_estimate, created_at
 		 FROM agent_sessions
@@ -35,20 +35,23 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 		run := &model.SystemAgentRun{Kind: "agent_session"}
 		var (
 			workflowInstanceID, nodeID, modelID                     sql.NullString
+			ticketID                                                string
 			tier                                                    sql.NullInt64
 			resolvedProvider, resolvedExecutionMode, resolvedEffort sql.NullString
-			fallbackFrom, tokensJSON                                sql.NullString
+			fallbackFrom, tokensJSON, result                        sql.NullString
 			costEstimate                                            sql.NullFloat64
 			createdAt                                               string
 		)
-		if err := rows.Scan(&run.SessionID, &workflowInstanceID, &run.ProjectID, &nodeID, &run.AgentType,
-			&modelID, &run.Status, &run.Result, &tier, &resolvedProvider, &resolvedExecutionMode,
+		if err := rows.Scan(&run.SessionID, &workflowInstanceID, &run.ProjectID, &ticketID, &nodeID, &run.AgentType,
+			&modelID, &run.Status, &result, &tier, &resolvedProvider, &resolvedExecutionMode,
 			&resolvedEffort, &run.ChainPosition, &fallbackFrom, &tokensJSON, &costEstimate, &createdAt); err != nil {
 			return nil, err
 		}
 		run.WorkflowInstanceID = workflowInstanceID.String
+		run.TicketID = ticketID
 		run.NodeID = nodeID.String
 		run.ModelID = modelID.String
+		run.Result = result.String
 		run.ResolvedProvider = resolvedProvider.String
 		run.ResolvedExecutionMode = resolvedExecutionMode.String
 		run.ResolvedEffort = resolvedEffort.String

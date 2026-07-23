@@ -110,3 +110,94 @@ func TestHandleListSystemAgentRuns_SinceFiltersBothSources(t *testing.T) {
 		}
 	}
 }
+
+// TestHandleListSystemAgentRuns_RefineryFoldFields verifies a failed fold row
+// (the "fold failed: no key" case the UI surfaces) merges in with
+// kind=="refinery_fold", agent_type=="_refinery", empty ticket_id, and its
+// provider/model/prompt_tokens/output_tokens/status/error intact.
+func TestHandleListSystemAgentRuns_RefineryFoldFields(t *testing.T) {
+	s := newSystemAgentRunsServer(t)
+	seedRunsProjectAndWFI(t, s)
+
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	seedRefineryRunFailed(t, s, "sess-fold-fail", base.Format(time.RFC3339Nano))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agent-runs", nil)
+	rr := httptest.NewRecorder()
+	s.handleListSystemAgentRuns(rr, req)
+
+	items, _ := decodeRunsResponse(t, rr)
+	if len(items) != 1 {
+		t.Fatalf("len(items) = %d, want 1", len(items))
+	}
+	it := items[0]
+	if it["kind"] != "refinery_fold" {
+		t.Errorf("kind = %v, want refinery_fold", it["kind"])
+	}
+	if it["agent_type"] != "_refinery" {
+		t.Errorf("agent_type = %v, want _refinery", it["agent_type"])
+	}
+	if _, present := it["ticket_id"]; present {
+		t.Errorf("ticket_id = %v, want absent (omitempty on empty string)", it["ticket_id"])
+	}
+	if it["resolved_provider"] != "anthropic" {
+		t.Errorf("resolved_provider = %v, want anthropic", it["resolved_provider"])
+	}
+	if it["model_id"] != "haiku-4-5" {
+		t.Errorf("model_id = %v, want haiku-4-5", it["model_id"])
+	}
+	if it["prompt_tokens"] != float64(7) {
+		t.Errorf("prompt_tokens = %v, want 7", it["prompt_tokens"])
+	}
+	if _, present := it["output_tokens"]; present {
+		t.Errorf("output_tokens = %v, want absent (omitempty on zero)", it["output_tokens"])
+	}
+	if it["status"] != "failed" {
+		t.Errorf("status = %v, want failed", it["status"])
+	}
+	if it["error"] != "no api key" {
+		t.Errorf("error = %v, want %q", it["error"], "no api key")
+	}
+}
+
+// TestHandleListSystemAgentRuns_FallbackFromLowerCaseKeys verifies an
+// agent_session row with chain_position>0 and a non-empty fallback_from
+// serializes it as a JSON array whose objects use lower-case keys
+// (provider, model_id, execution_mode) — the blob the UI parses for the
+// fallback indicator.
+func TestHandleListSystemAgentRuns_FallbackFromLowerCaseKeys(t *testing.T) {
+	s := newSystemAgentRunsServer(t)
+	wfiID := seedRunsProjectAndWFI(t, s)
+
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	// seedRunsAgentSession already sets chain_position=1 and a non-empty
+	// fallback_from blob shaped like the real tier_observability.go write
+	// (lower-case snake_case keys per the AgentChainEntry JSON tags).
+	seedRunsAgentSession(t, s, "sess-fallback", wfiID, base.Format(time.RFC3339Nano), 2)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agent-runs", nil)
+	rr := httptest.NewRecorder()
+	s.handleListSystemAgentRuns(rr, req)
+
+	items, _ := decodeRunsResponse(t, rr)
+	if len(items) != 1 {
+		t.Fatalf("len(items) = %d, want 1", len(items))
+	}
+	if items[0]["chain_position"] != float64(1) {
+		t.Errorf("chain_position = %v, want 1", items[0]["chain_position"])
+	}
+	fallback, ok := items[0]["fallback_from"].([]interface{})
+	if !ok || len(fallback) == 0 {
+		t.Fatalf("fallback_from = %v, want a non-empty array", items[0]["fallback_from"])
+	}
+	entry, ok := fallback[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("fallback_from[0] = %v, want an object", fallback[0])
+	}
+	if _, present := entry["provider"]; !present {
+		t.Errorf("fallback_from[0] = %v, want lower-case key %q", entry, "provider")
+	}
+	if _, present := entry["Provider"]; present {
+		t.Errorf("fallback_from[0] = %v, want no capitalized %q key", entry, "Provider")
+	}
+}

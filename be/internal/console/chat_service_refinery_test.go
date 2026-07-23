@@ -1,6 +1,7 @@
 package console
 
 import (
+	"context"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -14,12 +15,18 @@ import (
 	"be/internal/ws"
 )
 
-// fakeRefineryLifecycle records Start/Stop calls so tests can assert
+// fakeRefineryLifecycle records Start/Stop/Flush calls so tests can assert
 // ChatService's wiring without a real refinery.Manager.
 type fakeRefineryLifecycle struct {
 	mu      sync.Mutex
 	started []string // sessionID
 	stopped []string // sessionID
+	flushed []string // sessionID
+
+	// onFlush, when set, is invoked outside the lock on every Flush call so a
+	// test can simulate "the flush folded a digest" (e.g. upserting into
+	// refinery_digests) without a real sidecar.
+	onFlush func(sessionID string)
 }
 
 func (f *fakeRefineryLifecycle) Start(sessionID, projectID string) {
@@ -34,6 +41,15 @@ func (f *fakeRefineryLifecycle) Stop(sessionID string) {
 	f.stopped = append(f.stopped, sessionID)
 }
 
+func (f *fakeRefineryLifecycle) Flush(ctx context.Context, sessionID string) {
+	f.mu.Lock()
+	f.flushed = append(f.flushed, sessionID)
+	f.mu.Unlock()
+	if f.onFlush != nil {
+		f.onFlush(sessionID)
+	}
+}
+
 func (f *fakeRefineryLifecycle) startCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -44,6 +60,12 @@ func (f *fakeRefineryLifecycle) stopCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.stopped)
+}
+
+func (f *fakeRefineryLifecycle) flushCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.flushed)
 }
 
 // newChatTestServiceWithRefinery mirrors newChatTestService but wires a

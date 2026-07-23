@@ -18,6 +18,13 @@ const debounceFloor = 30 * time.Second
 // lines since the last fold.
 type foldFunc func(ctx context.Context, sessionID, projectID string, events []string)
 
+// flushReq is a synchronous fold request handed to the loop goroutine via
+// flushCh; done is closed once the fold (or skip) completes.
+type flushReq struct {
+	ctx  context.Context
+	done chan struct{}
+}
+
 // sidecar is the per-session goroutine: a trigger channel plus a
 // clock.After debounce loop that coalesces triggers arriving within the
 // floor into a single fold, firing immediately instead on a completion
@@ -33,6 +40,7 @@ type sidecar struct {
 	buffered []string
 
 	triggerCh chan bool // true = immediate
+	flushCh   chan flushReq
 	cancel    context.CancelFunc
 	ctx       context.Context
 	done      chan struct{}
@@ -46,6 +54,7 @@ func newSidecar(sessionID, projectID string, clk clock.Clock, fold foldFunc) *si
 		clk:       clk,
 		fold:      fold,
 		triggerCh: make(chan bool, 32),
+		flushCh:   make(chan flushReq),
 		ctx:       ctx,
 		cancel:    cancel,
 		done:      make(chan struct{}),
@@ -76,6 +85,27 @@ func (s *sidecar) stop() {
 	<-s.done
 }
 
+// flush requests a synchronous fold on the loop goroutine and blocks until it
+// completes (or ctx/the sidecar's own ctx ends first). Running the fold on
+// the loop goroutine — rather than calling foldNow directly from the caller —
+// is what serializes a flush against the debounce loop's own fold: the
+// console fold path (fold.go) reads/writes refinery_digests with no slot
+// lock, so two folds running concurrently could silently clobber each other.
+func (s *sidecar) flush(ctx context.Context) {
+	req := flushReq{ctx: ctx, done: make(chan struct{})}
+	select {
+	case s.flushCh <- req:
+	case <-ctx.Done():
+		return
+	case <-s.ctx.Done():
+		return
+	}
+	select {
+	case <-req.done:
+	case <-ctx.Done():
+	}
+}
+
 func (s *sidecar) loop() {
 	defer close(s.done)
 	var timerCh <-chan time.Time
@@ -85,27 +115,39 @@ func (s *sidecar) loop() {
 			return
 		case immediate := <-s.triggerCh:
 			if immediate {
-				s.runFold()
+				s.foldNow(s.ctx)
 				timerCh = nil
 			} else if timerCh == nil {
 				timerCh = s.clk.After(debounceFloor)
 			}
 		case <-timerCh:
-			s.runFold()
+			s.foldNow(s.ctx)
 			timerCh = nil
+		case req := <-s.flushCh:
+			// A caller whose ctx already expired must not produce a doomed
+			// provider.Run + a bogus refinery_runs status=failed row.
+			if req.ctx.Err() == nil {
+				if s.foldNow(req.ctx) {
+					timerCh = nil
+				}
+			}
+			close(req.done)
 		}
 	}
 }
 
-func (s *sidecar) runFold() {
+// foldNow drains the buffered event lines under s.mu and folds them, if any.
+// Returns false (no-op) when the buffer was empty.
+func (s *sidecar) foldNow(ctx context.Context) bool {
 	s.mu.Lock()
 	events := s.buffered
 	s.buffered = nil
 	s.mu.Unlock()
 	if len(events) == 0 {
-		return
+		return false
 	}
-	s.fold(s.ctx, s.sessionID, s.projectID, events)
+	s.fold(ctx, s.sessionID, s.projectID, events)
+	return true
 }
 
 // formatEventLine renders a WS event into one compact line for the fold

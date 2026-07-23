@@ -4,7 +4,9 @@
 package refinery
 
 import (
+	"context"
 	"sync"
+	"time"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -12,6 +14,13 @@ import (
 	"be/internal/service"
 	"be/internal/ws"
 )
+
+// consoleStopFoldTimeout bounds Manager.Stop's synchronous final fold. It is
+// deliberately tighter than the autonomous stopFoldTimeout (20s) because
+// console Stop runs inline on the HTTP chat-close path and, via
+// engineExited, BEFORE pumpChatEvents' terminal console_chat.turn state=idle
+// push (be/internal/console/chat_events.go:45-55).
+const consoleStopFoldTimeout = 10 * time.Second
 
 // relevantEventTypes are the WS event types a sidecar folds on; every other
 // broadcast is ignored before it ever reaches a per-session channel.
@@ -150,8 +159,25 @@ func (m *Manager) Stop(sessionID string) {
 	}
 	m.mu.Unlock()
 	if ok {
+		ctx, cancel := context.WithTimeout(context.Background(), consoleStopFoldTimeout)
+		sc.flush(ctx)
+		cancel()
 		sc.stop()
 	}
+}
+
+// Flush requests a bounded synchronous final fold of sessionID's buffered
+// events. Idempotent/no-op for an unknown, never-started, or refinery-off
+// session, mirroring Stop's idempotence. Best-effort: a timed-out ctx simply
+// leaves the digest unflushed, never an error.
+func (m *Manager) Flush(ctx context.Context, sessionID string) {
+	m.mu.Lock()
+	sc, ok := m.sidecars[sessionID]
+	m.mu.Unlock()
+	if !ok {
+		return
+	}
+	sc.flush(ctx)
 }
 
 // OnEvent implements ws.Listener. Non-blocking: it only appends a compact

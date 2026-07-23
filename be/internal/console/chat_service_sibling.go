@@ -1,11 +1,19 @@
 package console
 
 import (
+	"context"
 	"errors"
+	"time"
 
 	"be/internal/repo"
 	"be/internal/ws"
 )
+
+// siblingFlushTimeout bounds the origin sidecar flush openSibling performs
+// before seeding a sibling chat. Capped so a stalled provider.Run can never
+// block sibling creation — a timed-out flush just leaves the seed stale, not
+// SwitchModel/OpenHandsSibling failed.
+const siblingFlushTimeout = 10 * time.Second
 
 // ErrSiblingUnsupportedProfile is returned by SwitchModel/OpenHandsSibling
 // when sid's chat is not running under a profile with SiblingFlows set.
@@ -55,13 +63,15 @@ func (s *ChatService) OpenHandsSibling(sid string) (string, error) {
 	return s.openSibling(origin, "", "", "", "t0-hands", "hands_sibling")
 }
 
-// openSibling creates a new chat under profileName (engine/modelID/effort
-// empty lets the profile's own defaults apply — buildChatEngineSpec), seeds
-// it with origin's current refinery digest as first-message context (empty
-// when none has folded yet), and broadcasts sibling_opened on origin's
-// session channel so a subscribed UI can offer to switch to it. The origin
-// chat's engine/session is never touched.
+// openSibling flushes the origin sidecar's buffered events, then creates a
+// new chat under profileName (engine/modelID/effort empty lets the profile's
+// own defaults apply — buildChatEngineSpec), seeds it with origin's current
+// refinery digest as first-message context (empty when none has folded yet),
+// and broadcasts sibling_opened on origin's session channel so a subscribed
+// UI can offer to switch to it. The origin chat's engine/session is never
+// touched.
 func (s *ChatService) openSibling(origin *chatSession, engine, modelID, effort, profileName, reason string) (string, error) {
+	s.flushOriginRefinery(origin.id)
 	digest := s.originDigest(origin.id)
 
 	siblingID, err := s.Create(engine, modelID, effort, origin.ProjectID(), "", profileName, false)
@@ -80,6 +90,19 @@ func (s *ChatService) openSibling(origin *chatSession, engine, modelID, effort, 
 		"reason":             reason,
 	})
 	return siblingID, nil
+}
+
+// flushOriginRefinery best-effort folds sessionID's origin sidecar before a
+// sibling reads its digest. Nil-safe (no RefineryMgr wired, matching
+// chat_service.go:236 / chat_service_close.go:27) and bounded so a stalled
+// fold can never hold up sibling creation.
+func (s *ChatService) flushOriginRefinery(sessionID string) {
+	if s.deps.RefineryMgr == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), siblingFlushTimeout)
+	defer cancel()
+	s.deps.RefineryMgr.Flush(ctx, sessionID)
 }
 
 // originDigest reads origin's latest refinery digest content, or "" when

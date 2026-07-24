@@ -43,11 +43,9 @@ vi.mock('./AgentLogDetail', () => ({
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a1',
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'claude-sonnet-4-5',
-    cli: 'claude',
     pid: 12345,
     started_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -374,18 +372,9 @@ describe('AgentLogPanel - multi-agent detail view', () => {
       expect(tab).toHaveTextContent('ticket-creator : claude:opus')
     })
 
-    it('falls back to agent.cli when model_id is undefined', () => {
+    it('shows only phase name when model_id is absent', () => {
       renderPanel({
-        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: undefined, cli: 'claude' }) },
-        sessions: [],
-      })
-      const tab = screen.getByTestId('agent-tab')
-      expect(tab).toHaveTextContent('implementation : claude')
-    })
-
-    it('shows only phase name when both model_id and cli are absent', () => {
-      renderPanel({
-        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: undefined, cli: undefined }) },
+        activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: undefined }) },
         sessions: [],
       })
       const tab = screen.getByTestId('agent-tab')

@@ -25,7 +25,6 @@ function makeActive(phaseName: string, overrides: Partial<ActiveAgentV4> = {}): 
 
 function makeHistory(phaseName: string, overrides: Partial<AgentHistoryEntry> = {}): AgentHistoryEntry {
   return {
-    agent_id: 'a1',
     agent_type: phaseName,
     phase: phaseName,
     session_id: 'session-1',

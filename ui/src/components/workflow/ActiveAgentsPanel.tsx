@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import type { ActiveAgentV4, AgentHistoryEntry } from '@/types/workflow'
+import { cliFromModelId } from '@/lib/modelId'
 
 interface ActiveAgentsPanelProps {
   agents: Record<string, ActiveAgentV4>
@@ -126,10 +127,10 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
                 )}
               </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                {agent.cli && (
+                {cliFromModelId(agent.model_id) && (
                   <span className="flex items-center gap-1">
                     <Terminal className="h-3 w-3" />
-                    {agent.cli}
+                    {cliFromModelId(agent.model_id)}
                   </span>
                 )}
                 {agent.pid && (
@@ -209,7 +210,7 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
           </div>
           <div className="divide-y divide-red-200 dark:divide-red-800">
             {agentHistory.filter(a => a.result === 'fail').map((entry) => (
-              <div key={entry.session_id ?? entry.agent_id} className="px-4 py-3 flex items-center gap-4">
+              <div key={entry.session_id} className="px-4 py-3 flex items-center gap-4">
                 <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

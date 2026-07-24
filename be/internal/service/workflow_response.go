@@ -3,7 +3,6 @@ package service
 import (
 	"database/sql"
 	"encoding/json"
-	"strings"
 	"time"
 
 	"be/internal/clock"
@@ -42,11 +41,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 
 		key := nodeID
 		agent := map[string]interface{}{
-			"agent_id":   id,
 			"node_id":    nodeID,
 			"agent_type": agentType,
 			"session_id": id,
-			"result":     nil,
 		}
 		if phase.Valid {
 			agent["phase"] = phase.String
@@ -54,11 +51,6 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		if modelID.Valid && modelID.String != "" {
 			key = nodeID + ":" + modelID.String
 			agent["model_id"] = modelID.String
-			parts := strings.SplitN(modelID.String, ":", 2)
-			if len(parts) == 2 {
-				agent["cli"] = parts[0]
-				agent["model"] = parts[1]
-			}
 		}
 		if pid.Valid {
 			agent["pid"] = pid.Int64
@@ -136,7 +128,6 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		rows.Scan(&id, &phase, &nodeID, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode)
 
 		entry := map[string]interface{}{
-			"agent_id":   id,
 			"node_id":    nodeID,
 			"agent_type": agentType,
 			"session_id": id,

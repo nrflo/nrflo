@@ -6,11 +6,9 @@ import type { ActiveAgentV4 } from '@/types/workflow'
 
 function makeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a1',
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'claude-sonnet-4-5',
-    cli: 'claude',
     pid: 12345,
     session_id: 'session-abc-123',
     started_at: '2026-01-01T00:00:00Z',
@@ -67,6 +65,28 @@ describe('ActiveAgentsPanel', () => {
       )
 
       expect(screen.queryByLabelText('Restart agent (save context, relaunch)')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('cli badge (derived from model_id)', () => {
+    it('shows the cli derived from a colon-form model_id', () => {
+      render(
+        <ActiveAgentsPanel
+          agents={{ 'impl:claude:sonnet': makeAgent({ model_id: 'claude:sonnet-5' }) }}
+        />
+      )
+
+      expect(screen.getByText('claude')).toBeInTheDocument()
+    })
+
+    it('omits the cli row when model_id has no colon', () => {
+      render(
+        <ActiveAgentsPanel
+          agents={{ 'impl:claude:sonnet': makeAgent({ model_id: 'sonnet-5' }) }}
+        />
+      )
+
+      expect(screen.queryByText('claude')).not.toBeInTheDocument()
     })
   })
 
@@ -143,7 +163,6 @@ describe('ActiveAgentsPanel', () => {
       const agents = {
         'impl:claude:sonnet': makeAgent({ session_id: 'sess-1' }),
         'tester:claude:opus': makeAgent({
-          agent_id: 'a2',
           agent_type: 'tester',
           phase: 'verification',
           session_id: 'sess-2',
@@ -163,7 +182,6 @@ describe('ActiveAgentsPanel', () => {
       const agents = {
         'impl:claude:sonnet': makeAgent({ session_id: 'sess-1' }),
         'tester:claude:opus': makeAgent({
-          agent_id: 'a2',
           agent_type: 'tester',
           phase: 'verification',
           session_id: 'sess-2',
@@ -191,7 +209,6 @@ describe('ActiveAgentsPanel', () => {
       const agents = {
         'impl:claude:sonnet': makeAgent({ session_id: 'sess-1' }),
         'tester:claude:opus': makeAgent({
-          agent_id: 'a2',
           agent_type: 'tester',
           phase: 'verification',
           session_id: 'sess-2',

@@ -65,7 +65,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
     ? modelId.split('-').slice(-2).join('-') || modelId
-    : agent?.cli || historyEntry?.agent_type || 'agent'
+    : historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
   const [activeTab, setActiveTab] = useState<DetailTab>('messages')

@@ -56,7 +56,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
     ? modelId.split('-').pop() || modelId
-    : agent?.cli || historyEntry?.agent_type || 'agent'
+    : historyEntry?.agent_type || 'agent'
 
   // Get duration: prefer started_at/ended_at, fallback to duration_sec
   const duration = agent?.started_at

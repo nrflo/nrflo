@@ -122,7 +122,7 @@ export function AgentLogPanel({
               const mid = agent.model_id
               const modelName = mid
                 ? mid.split('-').slice(-2).join('-') || mid
-                : agent.cli || ''
+                : ''
               const label = modelName ? `${phaseName} : ${modelName}` : phaseName
               return (
                 <button

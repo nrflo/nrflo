@@ -1,10 +1,12 @@
 import type { ActiveAgentV4 } from '@/types/workflow'
+import { cliFromModelId } from './modelId'
 
 export function supportsTakeControl(agent: ActiveAgentV4): boolean {
+  const cli = cliFromModelId(agent.model_id)
   return (
     !!agent.session_id &&
     !agent.result &&
-    (agent.cli === 'claude' || agent.cli === 'codex') &&
+    (cli === 'claude' || cli === 'codex') &&
     agent.effective_mode !== 'api' &&
     agent.effective_mode !== 'script'
   )

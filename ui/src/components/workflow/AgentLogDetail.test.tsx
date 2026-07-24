@@ -39,11 +39,9 @@ function makeSession(overrides: Partial<AgentSession> = {}): AgentSession {
 
 function makeRunningAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a1',
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'claude-sonnet-4-5',
-    cli: 'claude',
     pid: 12345,
     started_at: '2026-01-01T00:00:00Z',
     ...overrides,
@@ -52,7 +50,6 @@ function makeRunningAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4
 
 function makeHistoryEntry(overrides: Partial<AgentHistoryEntry> = {}): AgentHistoryEntry {
   return {
-    agent_id: 'h1',
     agent_type: 'setup-analyzer',
     phase: 'investigation',
     model_id: 'claude-sonnet-4-5',

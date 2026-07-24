@@ -42,7 +42,7 @@ export function AgentCard({ agent, session, onExpand, isExpanded }: AgentCardPro
   // Extract model name from model_id (e.g., "claude-3-5-sonnet" -> "sonnet")
   const modelName = agent.model_id
     ? agent.model_id.split('-').pop() || agent.model_id
-    : agent.cli || 'agent'
+    : 'agent'
 
   const handleClick = () => {
     if (onExpand) {

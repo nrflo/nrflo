@@ -6,34 +6,6 @@ import (
 	"be/internal/types"
 )
 
-// WorkflowState represents the state of a workflow (v4 format)
-type WorkflowState struct {
-	Version       int                    `json:"version"`
-	InitializedAt string                 `json:"initialized_at"`
-	ScopeType     string                 `json:"scope_type"`
-	CurrentPhase  string                 `json:"current_phase"`
-	RetryCount    int                    `json:"retry_count"`
-	Phases        map[string]PhaseState  `json:"phases"`
-	PhaseOrder    []string               `json:"phase_order"`
-	ActiveAgents  map[string]interface{} `json:"active_agents"`
-	AgentHistory  []interface{}          `json:"agent_history"`
-	AgentRetries  map[string]int         `json:"agent_retries"`
-	Findings      map[string]interface{} `json:"findings"`
-	ParentSession string                 `json:"parent_session,omitempty"`
-}
-
-// PhaseState represents the state of a phase
-type PhaseState struct {
-	Status string `json:"status"`
-	Result string `json:"result,omitempty"`
-}
-
-// AgentConfig holds agent-specific configuration
-type AgentConfig struct {
-	Model   string `json:"model"`
-	Timeout int    `json:"timeout"`
-}
-
 // WorkflowDef represents a workflow definition (parsed from DB)
 type WorkflowDef struct {
 	Description             string                `json:"description"`

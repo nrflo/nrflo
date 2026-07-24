@@ -23,12 +23,9 @@ export interface RestartDetail {
 
 // Parallel agents (v4 format)
 export interface ActiveAgentV4 {
-  agent_id?: string
   agent_type: string
   phase?: string
   model_id?: string
-  cli?: string
-  model?: string
   pid?: number
   session_id?: string
   started_at?: string
@@ -47,7 +44,6 @@ export interface ActiveAgentV4 {
 }
 
 export interface AgentHistoryEntry {
-  agent_id: string
   agent_type: string
   session_id?: string
   model_id?: string
@@ -174,7 +170,7 @@ export interface WorkflowState {
   phases?: Record<string, PhaseState>
   phase_order?: string[]
   phase_layers?: Record<string, number>
-  active_agents?: Record<string, ActiveAgentV4>  // key is "agent_type:cli:model"
+  active_agents?: Record<string, ActiveAgentV4>  // key is "node_id" or "node_id:model_id"
   findings?: WorkflowFindings
   workflow_findings?: Record<string, unknown>
   callback?: CallbackInfo

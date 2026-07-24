@@ -6,7 +6,6 @@ import type { AgentHistoryEntry, AgentSession } from '@/types/workflow'
 
 function makeHistoryEntry(overrides: Partial<AgentHistoryEntry> = {}): AgentHistoryEntry {
   return {
-    agent_id: 'a1',
     agent_type: 'implementor',
     phase: 'implementation',
     session_id: 'session-1',
@@ -184,17 +183,14 @@ describe('CompletedAgentsTable', () => {
     it('sorts agents by ended_at DESC (latest first)', () => {
       const history = [
         makeHistoryEntry({
-          agent_id: 'a1',
           agent_type: 'setup-analyzer',
           ended_at: '2026-01-01T00:00:00Z',
         }),
         makeHistoryEntry({
-          agent_id: 'a2',
           agent_type: 'implementor',
           ended_at: '2026-01-01T05:00:00Z',
         }),
         makeHistoryEntry({
-          agent_id: 'a3',
           agent_type: 'qa-verifier',
           ended_at: '2026-01-01T03:00:00Z',
         }),
@@ -224,17 +220,14 @@ describe('CompletedAgentsTable', () => {
     it('sorts entries with null ended_at last', () => {
       const history = [
         makeHistoryEntry({
-          agent_id: 'a1',
           agent_type: 'setup-analyzer',
           ended_at: '2026-01-01T02:00:00Z',
         }),
         makeHistoryEntry({
-          agent_id: 'a2',
           agent_type: 'timeout-agent',
           ended_at: undefined,
         }),
         makeHistoryEntry({
-          agent_id: 'a3',
           agent_type: 'implementor',
           ended_at: '2026-01-01T05:00:00Z',
         }),
@@ -259,17 +252,14 @@ describe('CompletedAgentsTable', () => {
     it('handles multiple entries with null ended_at', () => {
       const history = [
         makeHistoryEntry({
-          agent_id: 'a1',
           agent_type: 'timeout-1',
           ended_at: undefined,
         }),
         makeHistoryEntry({
-          agent_id: 'a2',
           agent_type: 'completed',
           ended_at: '2026-01-01T05:00:00Z',
         }),
         makeHistoryEntry({
-          agent_id: 'a3',
           agent_type: 'timeout-2',
           ended_at: undefined,
         }),
@@ -768,7 +758,6 @@ describe('CompletedAgentsTable', () => {
     it('shows pagination controls when more than 20 agents', () => {
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -797,7 +786,6 @@ describe('CompletedAgentsTable', () => {
     it('displays only 20 agents per page', () => {
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -822,7 +810,6 @@ describe('CompletedAgentsTable', () => {
       const user = userEvent.setup()
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -855,7 +842,6 @@ describe('CompletedAgentsTable', () => {
       const user = userEvent.setup()
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -888,7 +874,6 @@ describe('CompletedAgentsTable', () => {
     it('disables prev button on first page', () => {
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -914,7 +899,6 @@ describe('CompletedAgentsTable', () => {
       const user = userEvent.setup()
       const history = Array.from({ length: 25 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
           ended_at: `2026-01-01T00:${String(i).padStart(2, '0')}:00Z`,
@@ -943,7 +927,6 @@ describe('CompletedAgentsTable', () => {
     it('does not show pagination controls when 20 or fewer agents', () => {
       const history = Array.from({ length: 20 }, (_, i) =>
         makeHistoryEntry({
-          agent_id: `a${i}`,
           agent_type: `agent-${i}`,
           session_id: `session-${i}`,
         })
@@ -967,21 +950,18 @@ describe('CompletedAgentsTable', () => {
     it('renders multiple agents in sorted order', () => {
       const history = [
         makeHistoryEntry({
-          agent_id: 'a1',
           agent_type: 'setup-analyzer',
           phase: 'investigation',
           ended_at: '2026-01-01T00:00:00Z',
           duration_sec: 60,
         }),
         makeHistoryEntry({
-          agent_id: 'a2',
           agent_type: 'implementor',
           phase: 'implementation',
           ended_at: '2026-01-01T03:00:00Z',
           duration_sec: 7200,
         }),
         makeHistoryEntry({
-          agent_id: 'a3',
           agent_type: 'qa-verifier',
           phase: 'verification',
           ended_at: '2026-01-01T05:00:00Z',
@@ -1012,12 +992,10 @@ describe('CompletedAgentsTable', () => {
       const user = userEvent.setup()
       const history = [
         makeHistoryEntry({
-          agent_id: 'a1',
           agent_type: 'setup-analyzer',
           session_id: 'session-1',
         }),
         makeHistoryEntry({
-          agent_id: 'a2',
           agent_type: 'implementor',
           session_id: 'session-2',
         }),

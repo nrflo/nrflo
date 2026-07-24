@@ -51,7 +51,6 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 		"phases":         phases,
 		"phase_order":    phaseOrder,
 		"workflow":       wi.WorkflowID,
-		"agent_retries":  map[string]int{},
 	}
 	if phaseLayers != nil {
 		result["phase_layers"] = phaseLayers

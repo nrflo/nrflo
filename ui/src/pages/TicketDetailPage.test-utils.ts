@@ -38,11 +38,9 @@ export const workflowWithActivePhase: WorkflowResponse = {
     },
     active_agents: {
       'implementor:claude:sonnet': {
-        agent_id: 'a1',
         agent_type: 'implementor',
         phase: 'implementation',
         model_id: 'claude-sonnet-4-5',
-        cli: 'claude',
         pid: 12345,
         started_at: '2026-01-01T00:00:00Z',
       },
@@ -62,11 +60,9 @@ export const workflowWithActivePhase: WorkflowResponse = {
       },
       active_agents: {
         'implementor:claude:sonnet': {
-          agent_id: 'a1',
           agent_type: 'implementor',
           phase: 'implementation',
           model_id: 'claude-sonnet-4-5',
-          cli: 'claude',
           pid: 12345,
           started_at: '2026-01-01T00:00:00Z',
         },
@@ -124,11 +120,9 @@ export const workflowOrchestrated: WorkflowResponse = {
     },
     active_agents: {
       'implementor:claude:sonnet': {
-        agent_id: 'a1',
         agent_type: 'implementor',
         phase: 'implementation',
         model_id: 'claude-sonnet-4-5',
-        cli: 'claude',
         pid: 12345,
         started_at: '2026-01-01T00:00:00Z',
       },
@@ -151,11 +145,9 @@ export const workflowOrchestrated: WorkflowResponse = {
       },
       active_agents: {
         'implementor:claude:sonnet': {
-          agent_id: 'a1',
           agent_type: 'implementor',
           phase: 'implementation',
           model_id: 'claude-sonnet-4-5',
-          cli: 'claude',
           pid: 12345,
           started_at: '2026-01-01T00:00:00Z',
         },
@@ -220,11 +212,9 @@ export const workflowMultiple: WorkflowResponse = {
     },
     active_agents: {
       'implementor:claude:sonnet': {
-        agent_id: 'a1',
         agent_type: 'implementor',
         phase: 'implementation',
         model_id: 'claude-sonnet-4-5',
-        cli: 'claude',
         pid: 12345,
         started_at: '2026-01-01T00:00:00Z',
       },
@@ -244,11 +234,9 @@ export const workflowMultiple: WorkflowResponse = {
       },
       active_agents: {
         'implementor:claude:sonnet': {
-          agent_id: 'a1',
           agent_type: 'implementor',
           phase: 'implementation',
           model_id: 'claude-sonnet-4-5',
-          cli: 'claude',
           pid: 12345,
           started_at: '2026-01-01T00:00:00Z',
         },

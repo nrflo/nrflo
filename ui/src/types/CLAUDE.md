@@ -11,7 +11,7 @@ TypeScript type definitions matching Go API models — one module per domain (`l
 | `WorkflowResponse` | API response with agent_history at top level (ticket-scoped) |
 | `ProjectWorkflowResponse` | Project-scoped response. `all_workflows` keyed by instance_id (not workflow name) — multiple concurrent instances allowed; stop/restart/retry calls include `instance_id` to target one |
 | `RestartDetail` | Per-restart enrichment: reason, duration_sec, context_left (optional), message_count |
-| `AgentHistoryEntry` | Agent execution record (agent_id, agent_type, model_id, phase, duration, result, context_left, restart_details, optional effective_mode) |
+| `AgentHistoryEntry` | Agent execution record (session_id, agent_type, model_id, phase, duration, result, context_left, restart_details, optional effective_mode) |
 | `CompletedAgentRow` | Extends `AgentHistoryEntry` with `workflow_label` for the unified completed-agents table |
 | `WorkflowFindings` | `Record<string, Record<string, unknown>>` (agent_type → field → value) |
 | `ActiveAgentV4` | Optional `effective_mode?: 'cli_interactive'\|'api'\|'script'` sourced from `agent_sessions.effective_mode`; omitted for legacy rows |

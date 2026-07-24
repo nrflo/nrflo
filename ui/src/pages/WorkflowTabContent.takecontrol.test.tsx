@@ -26,11 +26,9 @@ function makeState(overrides: Partial<WorkflowState> = {}): WorkflowState {
 
 function makeClaudeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a1',
     agent_type: 'implementor',
     phase: 'implementation',
-    model_id: 'claude-sonnet-4-5',
-    cli: 'claude',
+    model_id: 'claude:sonnet-4-5',
     pid: 12345,
     session_id: 'sess-abc-123',
     started_at: '2026-01-01T00:00:00Z',
@@ -40,11 +38,9 @@ function makeClaudeAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 
 
 function makeGptAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a2',
     agent_type: 'tester',
     phase: 'verification',
-    model_id: 'gpt-4',
-    cli: 'openai',
+    model_id: 'openai:gpt-4',
     pid: 99999,
     session_id: 'sess-gpt-456',
     started_at: '2026-01-01T00:00:00Z',
@@ -54,11 +50,9 @@ function makeGptAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
 
 function makeCodexAgent(overrides: Partial<ActiveAgentV4> = {}): ActiveAgentV4 {
   return {
-    agent_id: 'a3',
     agent_type: 'implementor',
     phase: 'implementation',
     model_id: 'codex:gpt-5.6-luna',
-    cli: 'codex',
     effective_mode: 'cli_interactive',
     pid: 54321,
     session_id: 'sess-codex-789',
@@ -202,7 +196,7 @@ describe('WorkflowTabContent - Take Control button', () => {
     it('prefers selectedPanelAgent session when it is a running Claude agent', async () => {
       const user = userEvent.setup()
       const onTakeControl = vi.fn()
-      const panelAgent = makeClaudeAgent({ session_id: 'panel-session', agent_id: 'panel-1' })
+      const panelAgent = makeClaudeAgent({ session_id: 'panel-session' })
 
       renderContent({
         onTakeControl,

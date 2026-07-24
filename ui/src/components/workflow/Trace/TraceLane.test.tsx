@@ -64,6 +64,25 @@ describe('TraceLane', () => {
     expect(screen.getByTestId('trace-lane-stopblocks')).toHaveTextContent('blocked×1')
   })
 
+  it('renders the time breakdown bar when lane has time_buckets', () => {
+    render(
+      <TraceLane
+        lane={makeLane({
+          time_buckets: { thinking_sec: 5, tool_arg_sec: 5, text_sec: 5, tool_wait_sec: 5 },
+        })}
+        markers={[]}
+        domain={domain}
+        widthPx={1000}
+      />
+    )
+    expect(screen.getByTestId('trace-lane-timebar')).toBeInTheDocument()
+  })
+
+  it('omits the time breakdown bar when time_buckets is absent', () => {
+    render(<TraceLane lane={makeLane()} markers={[]} domain={domain} widthPx={1000} />)
+    expect(screen.queryByTestId('trace-lane-timebar')).not.toBeInTheDocument()
+  })
+
   it('skips segments without a parsable start', () => {
     render(
       <TraceLane

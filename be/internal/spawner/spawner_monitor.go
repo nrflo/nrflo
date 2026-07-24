@@ -62,6 +62,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 			s.config.RefinerySidecar.StopSession(oldProc.sessionID)
 		}
 		FinalizeSessionCost(oldProc.sessionID)
+		FinalizeSessionTiming(oldProc.sessionID)
 		DropProactiveRestartState(oldProc.sessionID)
 		return newProc, nil
 	}

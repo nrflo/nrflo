@@ -83,7 +83,7 @@ A HARD provider failure (build-time construct, auth, persistent 5xx — never ra
 
 ## Session Cost
 
-`sessioncost.go` is the process-global per-session running cost store (token counters + USD, debounced flush to `agent_sessions.tokens_json`/`cost_estimate`, debounced `session.cost_updated` WS push); pricing resolved from `models.price_*` via `model.PriceClass()`. Mechanics: [REFERENCE.md](REFERENCE.md#session-cost).
+`sessioncost.go` is the process-global per-session running cost store (token counters + USD, debounced flush to `agent_sessions.tokens_json`/`cost_estimate`, debounced `session.cost_updated` WS push); pricing resolved from `models.price_*` via `model.PriceClass()`. Mechanics: [REFERENCE.md](REFERENCE.md#session-cost). `sessiontiming.go` mirrors this for wall-time buckets. Mechanics: [REFERENCE.md](REFERENCE.md#session-timing).
 
 ## Consult
 

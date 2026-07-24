@@ -35,6 +35,13 @@ export interface TraceMarker {
   label: string
 }
 
+export interface TimeBuckets {
+  thinking_sec: number
+  tool_arg_sec: number
+  text_sec: number
+  tool_wait_sec: number
+}
+
 export interface TraceLaneData {
   lane_id: string
   phase: string
@@ -48,6 +55,7 @@ export interface TraceLaneData {
   markers?: TraceMarker[]
   nudge_count?: number
   stop_block_count?: number
+  time_buckets?: TimeBuckets
 }
 
 export interface TraceLayer {

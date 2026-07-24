@@ -2,6 +2,7 @@ package service
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
@@ -32,7 +33,7 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, nodeLayers map[string]int
 	var lifecycle []types.TraceMarker
 	rows, err := s.pool.Query(`
 		SELECT COALESCE(ancestor_session_id, id), id, phase, node_id, agent_type, model_id, status, result, started_at, ended_at,
-		       result_reason, rate_limit_until_ts, rate_limit_retry_count, nudge_count, stop_block_count
+		       result_reason, rate_limit_until_ts, rate_limit_retry_count, nudge_count, stop_block_count, time_buckets_json
 		FROM agent_sessions
 		WHERE workflow_instance_id = ? AND `+transientAgentTypeExclusion+`
 		ORDER BY started_at, created_at`, wfiID)
@@ -44,10 +45,10 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, nodeLayers map[string]int
 	laneIdx := make(map[string]int)
 	for rows.Next() {
 		var laneID, id string
-		var phase, nodeID, agentType, modelID, status, result, startedAt, endedAt, resultReason, rateLimitUntil sql.NullString
+		var phase, nodeID, agentType, modelID, status, result, startedAt, endedAt, resultReason, rateLimitUntil, timeBucketsJSON sql.NullString
 		var rateLimitRetries, nudgeCount, stopBlockCount sql.NullInt64
 		rows.Scan(&laneID, &id, &phase, &nodeID, &agentType, &modelID, &status, &result, &startedAt, &endedAt,
-			&resultReason, &rateLimitUntil, &rateLimitRetries, &nudgeCount, &stopBlockCount)
+			&resultReason, &rateLimitUntil, &rateLimitRetries, &nudgeCount, &stopBlockCount, &timeBucketsJSON)
 
 		seg := types.TraceSegment{SessionID: id, Status: status.String, Result: result.String}
 		if startedAt.Valid {
@@ -85,6 +86,9 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, nodeLayers map[string]int
 		}
 		lanes[idx].NudgeCount += int(nudgeCount.Int64)
 		lanes[idx].StopBlockCount += int(stopBlockCount.Int64)
+		if timeBucketsJSON.Valid && timeBucketsJSON.String != "" {
+			addTimeBuckets(&lanes[idx], timeBucketsJSON.String)
+		}
 		sessionToLane[id] = laneID
 
 		lifecycle = append(lifecycle, sessionLifecycleMarkers(id, resultReason, endedAt, rateLimitUntil, rateLimitRetries)...)
@@ -92,6 +96,24 @@ func (s *WorkflowService) loadTraceLanes(wfiID string, nodeLayers map[string]int
 
 	sortTraceLanes(lanes)
 	return lanes, sessionToLane, lifecycle
+}
+
+// addTimeBuckets accumulates one segment's parsed time_buckets_json into
+// lane, same accumulate-across-chain pattern as NudgeCount/StopBlockCount;
+// lazily allocates the pointer so a lane with no granular segments stays
+// nil (renders nothing, not zeros).
+func addTimeBuckets(lane *types.TraceLane, raw string) {
+	var b types.TimeBuckets
+	if json.Unmarshal([]byte(raw), &b) != nil {
+		return
+	}
+	if lane.TimeBuckets == nil {
+		lane.TimeBuckets = &types.TimeBuckets{}
+	}
+	lane.TimeBuckets.ThinkingSec += b.ThinkingSec
+	lane.TimeBuckets.ToolArgSec += b.ToolArgSec
+	lane.TimeBuckets.TextSec += b.TextSec
+	lane.TimeBuckets.ToolWaitSec += b.ToolWaitSec
 }
 
 // sessionLifecycleMarkers derives orchestration point events from session

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -74,17 +75,24 @@ func (s *Spawner) ingestClaudeTranscript(sessionID, path string) {
 // ingestClaudeTranscriptLine parses one JSONL transcript line into ledger
 // entries: assistant text/thinking/tool_use, or user tool_result. Any other
 // entry type is ignored. Also bills the line's usage (if any) into
-// sessionID's running cost via the shared dedup-aware helper.
+// sessionID's running cost via the shared dedup-aware helper, and records
+// one dedup-guarded timing event (see ledger_cli_timing.go) from the
+// entry's top-level timestamp + uuid.
 func ingestClaudeTranscriptLine(sessionID string, l *ledger, line []byte) {
 	ingestClaudeTranscriptUsage(sessionID, line)
 	var entry struct {
-		Type    string `json:"type"`
-		Message struct {
+		Type      string `json:"type"`
+		UUID      string `json:"uuid"`
+		Timestamp string `json:"timestamp"`
+		Message   struct {
 			Content json.RawMessage `json:"content"`
 		} `json:"message"`
 	}
 	if json.Unmarshal(line, &entry) != nil {
 		return
+	}
+	if ts, err := time.Parse(time.RFC3339Nano, entry.Timestamp); err == nil {
+		recordTranscriptTiming(sessionID, entry.Type, ts, entry.UUID, entry.Message.Content)
 	}
 	switch entry.Type {
 	case "assistant":

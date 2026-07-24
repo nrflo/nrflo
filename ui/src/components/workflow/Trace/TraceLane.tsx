@@ -5,6 +5,7 @@ import type { TimeDomain } from './timeScale'
 import { toPct, parseTs } from './timeScale'
 import { segmentClasses } from './colors'
 import { TraceMarkers } from './TraceMarkers'
+import { TimeBreakdownBar } from './TimeBreakdownBar'
 
 function segmentTooltip(status: string, result: string | undefined, start?: string | null, end?: string | null): string {
   const fmt = (ts?: string | null) => {
@@ -59,6 +60,7 @@ export function TraceLane({
             </span>
           )}
         </div>
+        <TimeBreakdownBar buckets={lane.time_buckets} />
       </div>
       <div className="relative h-9">
         {(lane.segments ?? []).map((seg) => {

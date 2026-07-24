@@ -20,6 +20,15 @@ import "encoding/json"
 // by tool name: dispatchCompletedItem always emits a tool's invoke and its
 // result back-to-back from the same synchronous call, so no other call for
 // the same name can land in between.
+//
+// Timing (best-effort, NOT acceptance-gated — see spawner/sessiontiming.go):
+// verified against testdata/codex_appserver/*.jsonl that app-server events
+// carry no per-item timestamp field at all (only turn-level startedAt/
+// completedAt epoch-second fields), so RecordSessionTimingEvent below is fed
+// s.config.Clock.Now() at dispatch time rather than an embedded event
+// timestamp — a coarser model-time-vs-tool-wait split gated by wall-clock
+// processing latency, not the exact block-granular accounting the Claude
+// transcript tailer achieves.
 func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 	l := globalLedgerStore.get(proc.sessionID)
 	return func(ev EngineEvent) {
@@ -33,6 +42,7 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 				source = path
 			}
 			l.append(LedgerKindToolUse, estTokens(codexInputByteLen(ev.ToolInput)), source, "", false)
+			RecordSessionTimingEvent(proc.sessionID, "", s.config.Clock.Now(), TimingBucketToolArg)
 		case EventToolResult:
 			meta := l.lookupToolMeta(ev.ToolName)
 			if isReadToolName(ev.ToolName) && meta.path != "" {
@@ -40,6 +50,7 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 			} else {
 				l.append(LedgerKindToolResult, estTokens(len(ev.Text)), ev.ToolName, "", false)
 			}
+			RecordSessionTimingEvent(proc.sessionID, "", s.config.Clock.Now(), TimingBucketToolWait)
 		case EventThinking:
 			// Codex reuses EventThinking for both streaming reasoning deltas
 			// (ItemID set) and the completed reasoning item (ItemID empty);
@@ -48,10 +59,12 @@ func (s *Spawner) codexLedgerEmitter(proc *processInfo) EventEmitter {
 			// distinct EventTextDelta, already ignored).
 			if ev.Text != "" && ev.ItemID == "" {
 				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", false)
+				RecordSessionTimingEvent(proc.sessionID, "", s.config.Clock.Now(), TimingBucketThinking)
 			}
 		case EventText:
 			if ev.Text != "" {
 				l.append(LedgerKindDialog, estTokens(len(ev.Text)), "", "", false)
+				RecordSessionTimingEvent(proc.sessionID, "", s.config.Clock.Now(), TimingBucketText)
 			}
 		case EventTurnCompleted:
 			l.nextTurn()

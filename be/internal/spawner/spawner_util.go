@@ -134,6 +134,13 @@ func (s *Spawner) startBackend(proc *processInfo, prep *prepResult) error {
 		RegisterSessionCost(proc.sessionID, proc.modelID, s.pool(), s.config.Clock, func(snap CostSnapshot) {
 			s.broadcastSessionCost(proc, snap)
 		})
+		if prep.executionMode == "cli_interactive" {
+			// Only cli_interactive (claude PTY / codex app-server) feeds
+			// RecordSessionTimingEvent; api-mode has no timing source yet, so
+			// registering it would force-flush an all-zero, non-NULL
+			// time_buckets_json at finalize instead of leaving it NULL.
+			RegisterSessionTiming(proc.sessionID, s.pool(), s.config.Clock)
+		}
 	}
 
 	var effectiveMode string
@@ -218,6 +225,7 @@ func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo
 			s.config.RefinerySidecar.StopSession(proc.sessionID)
 		}
 		FinalizeSessionCost(proc.sessionID)
+		FinalizeSessionTiming(proc.sessionID)
 		proc.discardResume()
 		completed = append(completed, proc)
 	}

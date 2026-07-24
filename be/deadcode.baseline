@@ -145,6 +145,7 @@ be/internal/spawner pendingApprovals.register
 be/internal/spawner PidAlive
 be/internal/spawner PidMetrics
 be/internal/spawner processInfo.appendStderr
+be/internal/spawner timingStore.snapshot
 be/internal/spawner writeCodexProfile
 be/internal/spawner/apirun/provider/anthropic NewWithHTTPClient
 be/internal/spawner/apirun/provider/custom NewWithHTTPClient

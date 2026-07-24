@@ -43,6 +43,19 @@ type TraceLane struct {
 	// Timestamp-less counters summed across the chain, shown as lane badges.
 	NudgeCount     int `json:"nudge_count,omitempty"`
 	StopBlockCount int `json:"stop_block_count,omitempty"`
+	// TimeBuckets is the chain's summed per-bucket timing breakdown; nil
+	// (omitted) when no segment in the lane carries granular data, so the UI
+	// renders nothing rather than zeros.
+	TimeBuckets *TimeBuckets `json:"time_buckets,omitempty"`
+}
+
+// TimeBuckets is a lane's cumulative bucket-seconds breakdown, summed
+// across the chain's segments from agent_sessions.time_buckets_json.
+type TimeBuckets struct {
+	ThinkingSec float64 `json:"thinking_sec"`
+	ToolArgSec  float64 `json:"tool_arg_sec"`
+	TextSec     float64 `json:"text_sec"`
+	ToolWaitSec float64 `json:"tool_wait_sec"`
 }
 
 // TraceSegment is one agent_sessions row within a lane.

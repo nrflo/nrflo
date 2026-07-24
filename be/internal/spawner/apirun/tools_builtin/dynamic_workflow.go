@@ -21,11 +21,11 @@ type dynamicWorkflowHandler struct{}
 func (dynamicWorkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "dynamic_workflow",
-		Description: "Start the bundled, plan-driven `dynamic` workflow as a sub-workflow: a planner drafts a multi-agent manifest from your instructions, then (mode=\"approve\", default) parks at waiting_approval for you to drive via get_subworkflow/revise_plan/approve_plan, or (mode=\"auto\", if enabled) auto-approves and runs to completion unattended. The planner defaults worker nodes to cheap tier (haiku/low); premium (opus/fable) nodes are capped at dynwf_max_premium_workers (default 2) server-side — mode=\"approve\" rejects a premium-heavy plan for you to revise, mode=\"auto\" silently downgrades the excess and records a warning finding. Returns {instance_id, status} immediately; poll with get_subworkflow. Set wait_sec to also wait inline up to that many seconds — it returns as soon as the draft leaves planning.",
+		Description: "Start the bundled, plan-driven `dynamic` workflow as a sub-workflow: a planner drafts a multi-agent manifest from your instructions, then (mode=\"approve\", default) parks at waiting_approval for you to drive via get_subworkflow/revise_plan/approve_plan, or (mode=\"auto\", if enabled) auto-approves and runs to completion unattended. Returns {instance_id, status} immediately; poll with get_subworkflow. Set wait_sec to also wait inline up to that many seconds — it returns as soon as the draft leaves planning.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
- "instructions":{"type":"string","description":"Goal / instructions for the planner to turn into a multi-agent plan. Default worker nodes to cheap tier; reserve premium (opus/fable) for genuine final-adjudication needs — plans over the premium cap are rejected (mode=approve) or auto-downgraded with a warning (mode=auto)."},
+ "instructions":{"type":"string","description":"Goal / instructions for the planner to turn into a multi-agent plan."},
  "mode":{"type":"string","enum":["approve","auto"],"description":"\"approve\" (default) parks at waiting_approval for you to drive; \"auto\" auto-approves and materializes without suspending (requires dynamic_workflow_auto_enabled)"},
  "wait_sec":{"type":"integer","description":"Optionally block up to this many seconds (max 240) waiting for the draft (or completion)"}
 },

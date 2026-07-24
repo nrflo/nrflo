@@ -30,7 +30,7 @@ func (revisePlanHandler) Spec() provider.ToolSpec {
 "properties":{
  "instance_id":{"type":"string","description":"Instance id returned by dynamic_workflow / run_subworkflow"},
  "revision":{"type":"integer","description":"Must match the child's current plan revision (0 if it has none yet)"},
- "plan":{"type":"object","description":"A full, edited plan manifest (version/goal/layers/questions) to store as-is after validation. Default worker nodes to cheap tier; more than dynwf_max_premium_workers (default 2) premium (opus/fable) nodes is rejected."},
+ "plan":{"type":"object","description":"A full, edited plan manifest (version/goal/layers/questions) to store as-is after validation."},
  "feedback":{"type":"string","description":"Feedback for the planner to re-run with (used when plan is omitted)"},
  "answers":{"type":"array","description":"Answers to open plan questions","items":{"type":"object","properties":{"question_id":{"type":"string"},"answer":{"type":"string"}}}}
 },

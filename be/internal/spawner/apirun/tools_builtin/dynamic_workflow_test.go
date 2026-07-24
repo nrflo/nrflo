@@ -12,16 +12,6 @@ import (
 	"be/internal/spawner/apirun"
 )
 
-// TestDynamicWorkflowHandler_SpecDescriptionMentionsPremiumCap guards the
-// tier-policy/premium-cap prompt text against drift, mirroring
-// TestReadDocumentPathHandler_SpecDescriptionMentionsPath's convention.
-func TestDynamicWorkflowHandler_SpecDescriptionMentionsPremiumCap(t *testing.T) {
-	spec := (dynamicWorkflowHandler{}).Spec()
-	if !strings.Contains(spec.Description, service.PremiumWorkerCapKey) {
-		t.Errorf("Spec().Description = %q; want to mention %q", spec.Description, service.PremiumWorkerCapKey)
-	}
-}
-
 func TestDynamicWorkflow_AsyncStart(t *testing.T) {
 	r := stubSubworkflows{
 		startDynamic: func(_ context.Context, parentID, _, instructions, mode string) (string, error) {

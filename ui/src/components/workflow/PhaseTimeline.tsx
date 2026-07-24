@@ -76,6 +76,7 @@ export function PhaseTimeline({ workflow, agentHistory, ticketId, sessions: sess
           onRetryFailed={onRetryFailed}
           retryingSessionId={retryingSessionId}
           workflowStatus={workflow.status}
+          instanceId={workflow.instance_id}
         />
       ) : (
         <PhaseGraph

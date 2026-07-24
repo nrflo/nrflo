@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn, formatElapsedTime, formatRestartReasons, contextLeftColor } from '@/lib/utils'
 import { useTickingClock } from '@/hooks/useElapsedTime'
 import { findSession } from './agentRowHelpers'
+import { StepProgressStrip } from '@/components/workflow/StepProgressStrip'
 import type { PhaseState, ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/workflow'
 import type { SelectedAgentData } from './PhaseGraph/types'
 
@@ -23,6 +24,7 @@ interface AgentsTableProps {
   onRetryFailed?: (sessionId: string) => void
   retryingSessionId?: string | null
   workflowStatus?: string
+  instanceId?: string
 }
 
 interface AgentRow {
@@ -53,6 +55,7 @@ export function AgentsTable({
   onRetryFailed,
   retryingSessionId,
   workflowStatus,
+  instanceId,
 }: AgentsTableProps) {
   const [confirmSessionId, setConfirmSessionId] = useState<string | null>(null)
   const hasRunning = Object.values(activeAgents).some(a => !a.result)
@@ -191,6 +194,7 @@ export function AgentsTable({
                         {tag}
                       </Badge>
                     )}
+                    {instanceId && <StepProgressStrip instanceId={instanceId} nodeId={row.phaseName} />}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">{row.layer}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">{getModel(row)}</TableCell>

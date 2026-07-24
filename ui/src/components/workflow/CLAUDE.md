@@ -32,7 +32,7 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 ## Stepwise progress
 
-`StepProgressStrip.tsx` renders an "N/M" badge plus per-step pips (hover tooltip: title/state/timestamp) inside `AgentFlowNode.tsx`'s card body, fed by `useStepCursors` (REST snapshot + live `step.advanced` WS patches).
+`StepProgressStrip.tsx` renders an "N/M" badge plus per-step pips (hover tooltip: title/state/timestamp), fed by `useStepCursors` (REST snapshot + live `step.advanced` WS patches). Mounted in `AgentFlowNode.tsx`'s card body (graph view) and in `AgentsTable.tsx`'s Agent cell (simplified/table view, guarded on an `instanceId` prop threaded from `PhaseTimeline.tsx`); self-contained, renders `null` without a step cursor.
 
 ## Findings
 

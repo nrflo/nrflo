@@ -2,6 +2,7 @@ package consoleui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 // newMessagesToPrint is the pure print-once/dedupe splitter. printedTotal is
@@ -44,7 +45,9 @@ func (m *model) printNewMessages(page MessagePage) []tea.Cmd {
 	width := m.contentWidth()
 	cmds := make([]tea.Cmd, 0, len(toPrint))
 	for _, message := range toPrint {
-		cmds = append(cmds, tea.Println(renderMessage(message, width)))
+		rendered := renderMessage(message, width)
+		m.printedLines += lipgloss.Height(rendered)
+		cmds = append(cmds, tea.Println(rendered))
 	}
 	m.pendingUser = ""
 	return cmds

@@ -46,7 +46,12 @@ func (m *model) View() tea.View {
 		sections = append(sections, live)
 	}
 	sections = append(sections, chrome)
-	view := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, sections...))
+	frame := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	// Pad the frame to the terminal bottom so chrome doesn't float when
+	// native scrollback hasn't yet filled the screen; clamps to zero once
+	// printedLines fills it, leaving the full-scrollback case unchanged.
+	target := max(lipgloss.Height(frame), m.height-m.printedLines)
+	view := tea.NewView(lipgloss.PlaceVertical(target, lipgloss.Bottom, frame))
 	view.AltScreen = false
 	view.WindowTitle = "nrflo console"
 	return view

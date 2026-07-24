@@ -21,6 +21,7 @@ type model struct {
 	events         <-chan streamUpdate
 	detail         ChatDetail
 	printedTotal   int
+	printedLines   int
 	pendingUser    string
 	historyPrinted bool
 	initialPage    MessagePage

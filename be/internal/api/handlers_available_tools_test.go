@@ -32,6 +32,12 @@ func TestAvailableAgentTools_BuiltinsAndMandatory(t *testing.T) {
 	} else if !add.Mandatory {
 		t.Errorf("findings_add should be mandatory (baseline)")
 	}
+
+	if addFromFile, ok := byName["findings_add_from_file"]; !ok {
+		t.Errorf("findings_add_from_file not in available tools")
+	} else if !addFromFile.Mandatory {
+		t.Errorf("findings_add_from_file should be mandatory (baseline)")
+	}
 }
 
 // TestToolsCSVWarnings verifies warn-only validation: patterns matching no known

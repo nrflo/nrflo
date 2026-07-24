@@ -13,13 +13,14 @@ import "be/internal/spawner/apirun"
 // apirun.ResolveRegistry to build the per-agent registry.
 func Builtins() map[string]apirun.ToolHandler {
 	return map[string]apirun.ToolHandler{
-		"findings_add":         findingsAddHandler{},
-		"findings_add_bulk":    findingsAddBulkHandler{},
-		"findings_append":      findingsAppendHandler{},
-		"findings_append_bulk": findingsAppendBulkHandler{},
-		"findings_get":         findingsGetHandler{},
-		"findings_delete":      findingsDeleteHandler{},
-		"emit_findings":        emitFindingsHandler{},
+		"findings_add":           findingsAddHandler{},
+		"findings_add_from_file": findingsAddFromFileHandler{},
+		"findings_add_bulk":      findingsAddBulkHandler{},
+		"findings_append":        findingsAppendHandler{},
+		"findings_append_bulk":   findingsAppendBulkHandler{},
+		"findings_get":           findingsGetHandler{},
+		"findings_delete":        findingsDeleteHandler{},
+		"emit_findings":          emitFindingsHandler{},
 
 		"project_findings_add":         projectFindingsAddHandler{},
 		"project_findings_add_bulk":    projectFindingsAddBulkHandler{},
@@ -99,5 +100,6 @@ func BaselineToolNames() []string {
 		"agent_callback",
 		"agent_context_update",
 		"findings_add",
+		"findings_add_from_file",
 	}
 }

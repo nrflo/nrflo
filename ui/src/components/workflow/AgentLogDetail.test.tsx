@@ -888,7 +888,7 @@ describe('AgentLogDetail', () => {
 
   describe('stale-agent-snapshot bug fix (isRunning from session.status)', () => {
     // The status-circle spinner lives inside .rounded-full; the messages loading spinner does not.
-    // Use `.rounded-full .spin-sync` to target only the header status icon.
+    // Use `.rounded-full .animate-spin` to target only the header status icon.
 
     // Case A: stale agent snapshot (result=undefined) + live session already completed
     it('shows green ring + no status-circle spinner when session.status=completed but agent.result is undefined', () => {
@@ -901,7 +901,7 @@ describe('AgentLogDetail', () => {
       expect(document.querySelector('.bg-yellow-100')).toBeNull()
       expect(document.querySelector('.bg-green-100')).not.toBeNull()
       // Status-circle must not contain a spinner
-      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+      expect(document.querySelector('.rounded-full .animate-spin')).toBeNull()
     })
 
     // Case D: in-flight agent — spinner must still render in the status circle
@@ -912,7 +912,7 @@ describe('AgentLogDetail', () => {
         session: makeSession({ id: 'sess-running', status: 'running' }),
       })
 
-      expect(document.querySelector('.rounded-full .spin-sync')).not.toBeNull()
+      expect(document.querySelector('.rounded-full .animate-spin')).not.toBeNull()
       expect(document.querySelector('.bg-yellow-100')).not.toBeNull()
       expect(document.querySelector('.bg-green-100')).toBeNull()
     })
@@ -927,7 +927,7 @@ describe('AgentLogDetail', () => {
 
       expect(document.querySelector('.bg-yellow-100')).toBeNull()
       expect(document.querySelector('.bg-blue-100, .bg-blue-900\\/30')).not.toBeNull()
-      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+      expect(document.querySelector('.rounded-full .animate-spin')).toBeNull()
     })
 
     // Case C: history entry with result=pass + session.status=completed — no agent object
@@ -938,7 +938,7 @@ describe('AgentLogDetail', () => {
         session: makeSession({ id: 'sess-hist', status: 'completed', result: 'pass' }),
       })
 
-      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+      expect(document.querySelector('.rounded-full .animate-spin')).toBeNull()
       expect(document.querySelector('.bg-green-100')).not.toBeNull()
       expect(document.querySelector('.bg-yellow-100')).toBeNull()
     })
@@ -953,7 +953,7 @@ describe('AgentLogDetail', () => {
 
       expect(document.querySelector('.bg-red-100')).not.toBeNull()
       expect(document.querySelector('.bg-yellow-100')).toBeNull()
-      expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+      expect(document.querySelector('.rounded-full .animate-spin')).toBeNull()
     })
   })
 })

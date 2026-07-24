@@ -10,7 +10,7 @@ import {
   dispatchV2Event,
   getLastSeq,
   setLastSeq,
-  persistSeqs,
+  persistSeqs, schedulePersistSeqs,
   restoreSeqs,
   resetSeqs,
 } from './useWSReducer'
@@ -253,7 +253,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     // Dispatch through v2 reducer (handles seq tracking + cache invalidation)
     dispatchV2Event(event, qc)
-    persistSeqs()
+    schedulePersistSeqs()
   }, [requestResync]) // stable — requestResync uses refs
 
   // Invalidate all queries on connect/reconnect to catch up on missed events

@@ -113,7 +113,7 @@ describe('Sidebar - Spinner Visibility', () => {
     const { container } = renderSidebar()
 
     // Spinner should be visible
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 
@@ -133,7 +133,7 @@ describe('Sidebar - Spinner Visibility', () => {
     const { container } = renderSidebar()
 
     // Spinner should not be visible
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
   })
 
@@ -143,7 +143,7 @@ describe('Sidebar - Spinner Visibility', () => {
     const { container } = renderSidebar()
 
     // Spinner should not be visible
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
   })
 
@@ -162,7 +162,7 @@ describe('Sidebar - Spinner Visibility', () => {
 
     const { container } = renderSidebar()
 
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 
@@ -181,7 +181,7 @@ describe('Sidebar - Spinner Visibility', () => {
 
     const { container } = renderSidebar()
 
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 
@@ -325,7 +325,7 @@ describe('Sidebar - Spinner Component Properties', () => {
     const { container } = renderSidebar()
 
     // Find spinner element - Spinner with size="sm" should have specific classes
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
 
     // Check for small size class (h-4 w-4 from Spinner size="sm")
@@ -348,7 +348,7 @@ describe('Sidebar - Spinner Component Properties', () => {
     const { container } = renderSidebar()
 
     // Only one spinner should exist (in In Progress item)
-    const spinners = container.querySelectorAll('[class*="spin-sync"]')
+    const spinners = container.querySelectorAll('[class*="animate-spin"]')
     expect(spinners).toHaveLength(1)
   })
 })
@@ -379,7 +379,7 @@ describe('Sidebar - Edge Cases', () => {
     const { container } = renderSidebar()
 
     // No spinner when in_progress = 0
-    const spinner = container.querySelector('[class*="spin-sync"]')
+    const spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
 
     // All nav items should still render with 0 counts
@@ -413,7 +413,7 @@ describe('Sidebar - Edge Cases', () => {
     const { container, rerender } = renderSidebar()
 
     // No spinner initially
-    let spinner = container.querySelector('[class*="spin-sync"]')
+    let spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
 
     // Update to have in_progress > 0
@@ -438,7 +438,7 @@ describe('Sidebar - Edge Cases', () => {
     )
 
     // Spinner should now appear
-    spinner = container.querySelector('[class*="spin-sync"]')
+    spinner = container.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 })
@@ -459,7 +459,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     const { container } = renderSidebar()
 
     const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
-    const spinner = projectWorkflowsLink.querySelector('[class*="spin-sync"]')
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 
@@ -469,7 +469,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     const { container } = renderSidebar()
 
     const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
-    const spinner = projectWorkflowsLink.querySelector('[class*="spin-sync"]')
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
   })
 
@@ -479,7 +479,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     const { container } = renderSidebar()
 
     const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
-    const spinner = projectWorkflowsLink.querySelector('[class*="spin-sync"]')
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
   })
 
@@ -489,7 +489,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     const { container } = renderSidebar()
 
     const projectWorkflowsLink = screen.getByRole('link', { name: /project workflows/i })
-    const spinner = projectWorkflowsLink.querySelector('[class*="spin-sync"]')
+    const spinner = projectWorkflowsLink.querySelector('[class*="animate-spin"]')
     expect(spinner).not.toBeInTheDocument()
   })
 
@@ -499,7 +499,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /project workflows/i })
-    const spinner = link.querySelector('[class*="spin-sync"]')
+    const spinner = link.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
   })
 
@@ -513,7 +513,7 @@ describe('Sidebar - Project Workflow Spinner', () => {
 
     const { container } = renderSidebar()
 
-    const spinners = container.querySelectorAll('[class*="spin-sync"]')
+    const spinners = container.querySelectorAll('[class*="animate-spin"]')
     expect(spinners).toHaveLength(2)
   })
 })
@@ -534,7 +534,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    const spinner = link.querySelector('[class*="spin-sync"]')
+    const spinner = link.querySelector('[class*="animate-spin"]')
     expect(spinner).toBeInTheDocument()
     // remaining = 3 - 1 = 2
     expect(link.textContent).toContain('2')
@@ -553,7 +553,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     const link = screen.getByRole('link', { name: /chain executions/i })
     // remaining = (5-2) + (3-1) = 3 + 2 = 5
     expect(link.textContent).toContain('5')
-    expect(link.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+    expect(link.querySelector('[class*="animate-spin"]')).toBeInTheDocument()
   })
 
   it('shows count of 0 when all chain items are completed but chain is still running', () => {
@@ -563,7 +563,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
 
     const link = screen.getByRole('link', { name: /chain executions/i })
     expect(link.textContent).toContain('0')
-    expect(link.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+    expect(link.querySelector('[class*="animate-spin"]')).toBeInTheDocument()
   })
 
   it('hides spinner and count when no chains are running', () => {
@@ -572,7 +572,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    expect(link.querySelector('[class*="spin-sync"]')).not.toBeInTheDocument()
+    expect(link.querySelector('[class*="animate-spin"]')).not.toBeInTheDocument()
     expect(link.textContent?.replace(/\D/g, '')).toBe('')
   })
 
@@ -582,7 +582,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    expect(link.querySelector('[class*="spin-sync"]')).not.toBeInTheDocument()
+    expect(link.querySelector('[class*="animate-spin"]')).not.toBeInTheDocument()
     expect(link.textContent?.replace(/\D/g, '')).toBe('')
   })
 
@@ -592,7 +592,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
     renderSidebar()
 
     const link = screen.getByRole('link', { name: /chain executions/i })
-    const spinner = link.querySelector('[class*="spin-sync"]')!
+    const spinner = link.querySelector('[class*="animate-spin"]')!
     const countSpan = link.querySelector('span.text-xs.text-muted-foreground')!
     expect(countSpan).toBeInTheDocument()
     // count span must precede spinner in DOM
@@ -610,7 +610,7 @@ describe('Sidebar - Chain Execution Spinner', () => {
 
     const { container } = renderSidebar()
 
-    const spinners = container.querySelectorAll('[class*="spin-sync"]')
+    const spinners = container.querySelectorAll('[class*="animate-spin"]')
     expect(spinners).toHaveLength(3)
   })
 })

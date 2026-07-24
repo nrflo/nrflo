@@ -24,6 +24,8 @@ vi.mock('@xyflow/react', async () => {
 vi.mock('./layout', () => ({
   getLayoutedElements: (nodes: any[], edges: any[]) => Promise.resolve({ nodes, edges }),
   BASE_HEIGHT: 110,
+  AGENT_NODE_WIDTH: 352,
+  MOBILE_NODE_WIDTH: 264,
 }))
 
 vi.mock('./AgentFlowNode', () => ({

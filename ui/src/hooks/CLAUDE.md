@@ -25,6 +25,7 @@ The WS layer uses protocol v2 with seq tracking, cursor resume, snapshot hydrati
 - `useWSProtocol.ts` — protocol v2 types: `WSEventV2`, `WSSubscribeMessage`, control event types
 - `useWSReducer.ts:1` — event dispatch + seq tracking; per-subscription `seqMap` with idempotency; persists to sessionStorage
 - `useWSSnapshot.ts` — snapshot state machine: `idle → receiving → applying`; buffers live events during snapshot
+- `useWSInvalidate.ts` — `throttledInvalidate`: leading+trailing per-query-key throttle (~1s) all reducer invalidations route through, so event bursts refetch heavy endpoints at most ~1/s
 - `useWSReconnect.ts` — `computeReconnectDelay` (capped exponential backoff) + `useConnectionRecovery` (online/visibilitychange recovery)
 - `useWebSocketSubscription.ts` — consumer hook for ticket-level subscriptions
 

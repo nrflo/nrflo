@@ -79,7 +79,7 @@ beforeEach(() => {
 
 describe('restarted running session — stale fail suppression', () => {
   // The status-circle spinner lives inside .rounded-full; the messages-loading spinner does not.
-  // Use `.rounded-full .spin-sync` to target only the header status icon.
+  // Use `.rounded-full .animate-spin` to target only the header status icon.
 
   it('shows spinner + yellow ring, no red ring, no XCircle when session.status=running + historyEntry.result=fail', () => {
     renderDetail({
@@ -89,7 +89,7 @@ describe('restarted running session — stale fail suppression', () => {
       session: makeSession({ id: 'sess-restarted', status: 'running' }),
     })
 
-    expect(document.querySelector('.rounded-full .spin-sync')).not.toBeNull()
+    expect(document.querySelector('.rounded-full .animate-spin')).not.toBeNull()
     expect(document.querySelector('.bg-yellow-100')).not.toBeNull()
     expect(document.querySelector('.bg-red-100')).toBeNull()
     // XCircle has a specific path; verify via absence of red ring as proxy — no red bg means no fail state
@@ -103,7 +103,7 @@ describe('restarted running session — stale fail suppression', () => {
       session: makeSession({ id: 'sess-stale', status: 'running' }),
     })
 
-    expect(document.querySelector('.rounded-full .spin-sync')).not.toBeNull()
+    expect(document.querySelector('.rounded-full .animate-spin')).not.toBeNull()
     expect(document.querySelector('.bg-yellow-100')).not.toBeNull()
     expect(document.querySelector('.bg-red-100')).toBeNull()
   })
@@ -118,6 +118,6 @@ describe('restarted running session — stale fail suppression', () => {
 
     expect(document.querySelector('.bg-blue-100, .bg-blue-900\\/30')).not.toBeNull()
     expect(document.querySelector('.bg-red-100')).toBeNull()
-    expect(document.querySelector('.rounded-full .spin-sync')).toBeNull()
+    expect(document.querySelector('.rounded-full .animate-spin')).toBeNull()
   })
 })

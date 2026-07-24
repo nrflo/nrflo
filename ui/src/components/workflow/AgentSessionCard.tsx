@@ -1,8 +1,9 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Terminal, CheckCircle, XCircle, Clock, AlertTriangle, Timer, Loader2 } from 'lucide-react'
-import { cn, formatDateTime, formatElapsedTime, contextLeftColor } from '@/lib/utils'
+import { cn, formatDateTime, contextLeftColor } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
+import { ElapsedTime } from '@/components/ui/ElapsedTime'
 import { getSessionMessages } from '@/api/tickets'
 import type { AgentSession, AgentSessionStatus } from '@/types/workflow'
 
@@ -58,18 +59,13 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
 
   const messages = messagesData?.messages ?? []
 
-  // Update elapsed time every second for running sessions
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (!isRunning) return
-    const interval = setInterval(() => setTick(t => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [isRunning])
-
-  // Calculate elapsed time
-  const elapsedTime = isRunning
-    ? formatElapsedTime(session.started_at || session.created_at)
-    : formatElapsedTime(session.started_at || session.created_at, session.ended_at || session.updated_at)
+  const elapsedTime = (
+    <ElapsedTime
+      start={session.started_at || session.created_at}
+      end={isRunning ? undefined : session.ended_at || session.updated_at}
+      running={isRunning}
+    />
+  )
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -141,14 +137,14 @@ export function AgentSessionCard({ session, defaultExpanded = false, children }:
           </div>
           {messagesLoading ? (
             <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 spin-sync text-muted-foreground" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
               <span className="ml-2 text-xs text-muted-foreground">Loading messages...</span>
             </div>
           ) : (
             <div className="space-y-1 font-mono text-xs">
               {[...messages].reverse().map((msg, idx) => (
                 <div
-                  key={idx}
+                  key={messages.length - 1 - idx}
                   className="p-2 bg-background rounded border border-border/50 whitespace-pre-wrap break-words"
                 >
                   {msg.content}

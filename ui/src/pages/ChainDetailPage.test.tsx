@@ -113,7 +113,7 @@ describe('ChainDetailPage - Render States', () => {
 
     const { container } = renderChainDetailPage()
 
-    expect(container.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+    expect(container.querySelector('[class*="animate-spin"]')).toBeInTheDocument()
   })
 
   it('renders error state when chain not found', () => {
@@ -810,7 +810,7 @@ describe('ChainDetailPage - Spinner on Running Items', () => {
     // Should find a spinner with role="status"
     const spinner = container.querySelector('[role="status"]')
     expect(spinner).toBeInTheDocument()
-    expect(spinner).toHaveClass('spin-sync')
+    expect(spinner).toHaveClass('animate-spin')
 
     // Should NOT display the ordinal number "1" in the position cell
     // The table row's first cell should contain the spinner, not "1"

@@ -14,6 +14,7 @@ import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import { traceKeys } from './useTrace'
 import { planKeys } from './usePlan'
+import { throttledInvalidate as inv } from './useWSInvalidate'
 import { defRegistryHandlers, type WSEventHandler } from './useWSReducerDefs'
 import type { WSEventType } from './useWebSocket'
 import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
@@ -46,6 +47,18 @@ export function persistSeqs(): void {
     seqMap.forEach((v, k) => { obj[k] = v })
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(obj))
   } catch { /* quota exceeded or unavailable */ }
+}
+
+// Trailing-debounced persist for the per-event hot path; direct persistSeqs
+// stays for unmount/snapshot boundaries where the write must land now.
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+export function schedulePersistSeqs(): void {
+  if (persistTimer) return
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    persistSeqs()
+  }, 1000)
 }
 
 export function restoreSeqs(): void {
@@ -117,129 +130,107 @@ function invalidateWorkflow(
   isProjectScope: boolean,
 ) {
   if (isProjectScope) {
-    qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+    inv(qc, projectWorkflowKeys.workflow(event.project_id))
   } else {
-    qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-    qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
+    inv(qc, ticketKeys.detail(event.ticket_id))
+    inv(qc, ticketKeys.workflow(event.ticket_id))
   }
 }
 
-// Handler map per event type.
-// For v2, the server includes full state in workflow.updated events,
-// so most entity events still invalidate — the key change is that we
-// track seq for cursor resume and can skip duplicates.
-// Deterministic setQueryData patches will be added incrementally
-// as the server enriches event payloads with full entity data.
+// Helper: workflow + agent-session queries — the common agent-lifecycle set
+const invalidateAgents: WSEventHandler = (event, qc, isProjectScope) => {
+  if (isProjectScope) {
+    inv(qc, projectWorkflowKeys.workflow(event.project_id))
+    inv(qc, projectWorkflowKeys.agentSessions(event.project_id))
+  } else {
+    inv(qc, ticketKeys.detail(event.ticket_id))
+    inv(qc, ticketKeys.workflow(event.ticket_id))
+    inv(qc, ticketKeys.agentSessions(event.ticket_id))
+  }
+}
+
+// Helper: workflow lifecycle set — workflow state plus ticket lists
+const invalidateWorkflowLifecycle: WSEventHandler = (event, qc, isProjectScope) => {
+  if (isProjectScope) {
+    inv(qc, projectWorkflowKeys.workflow(event.project_id))
+  } else {
+    inv(qc, ticketKeys.detail(event.ticket_id))
+    inv(qc, ticketKeys.workflow(event.ticket_id))
+    inv(qc, ticketKeys.agentSessions(event.ticket_id))
+    inv(qc, ticketKeys.lists())
+  }
+}
+
+const consultHandler: WSEventHandler = (event, qc, isProjectScope) => {
+  invalidateAgents(event, qc, isProjectScope)
+  inv(qc, ['session-messages'])
+}
+
+const planHandler: WSEventHandler = (event, qc, isProjectScope) => {
+  const instanceId = event.data?.instance_id as string | undefined
+  if (instanceId) inv(qc, planKeys.detail(instanceId))
+  invalidateWorkflow(event, qc, isProjectScope)
+}
+
+const orchestrationLifecycleHandler: WSEventHandler = (event, qc, isProjectScope) => {
+  invalidateWorkflow(event, qc, isProjectScope)
+  if (!isProjectScope) {
+    inv(qc, ticketKeys.status())
+    inv(qc, ticketKeys.lists())
+    inv(qc, dailyStatsKeys.all)
+  }
+}
+
+const chainRunHandler: WSEventHandler = (_event, qc) => {
+  inv(qc, workflowChainRunKeys.all)
+}
+
+const notificationChannelHandler: WSEventHandler = (_event, qc) => {
+  inv(qc, ['notification-channels'])
+}
+
+const notificationDeliveryHandler: WSEventHandler = (event, qc) => {
+  inv(qc, ['notification-channels'])
+  if (event.data?.channel_id) {
+    inv(qc, ['notification-deliveries', event.data.channel_id as string])
+  }
+}
+
+const artifactHandler: WSEventHandler = (event, qc) => {
+  const iid = event.data?.workflow_instance_id as string | undefined
+  if (iid) inv(qc, artifactKeys.instance(iid))
+}
+
+// Handler map per event type. Heavy queries (workflow state, agent sessions)
+// go through throttledInvalidate so event bursts refetch at most ~1/s per key.
 const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   'agent.started': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
+    invalidateAgents(event, qc, isProjectScope)
     // Only active (mounted) trace queries refetch, so the broad key is cheap.
-    qc.invalidateQueries({ queryKey: traceKeys.all })
+    inv(qc, traceKeys.all)
   },
 
   'agent.completed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-    qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
-    qc.invalidateQueries({ queryKey: traceKeys.all })
+    invalidateAgents(event, qc, isProjectScope)
+    if (!isProjectScope) inv(qc, ticketKeys.lists())
+    inv(qc, agentSessionLogKeys.all)
+    inv(qc, traceKeys.all)
   },
 
-  'consult.started': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-    qc.invalidateQueries({ queryKey: ['session-messages'] })
-  },
+  'consult.started': consultHandler,
+  'consult.answered': consultHandler,
+  'consult.failed': consultHandler,
 
-  'consult.answered': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-    qc.invalidateQueries({ queryKey: ['session-messages'] })
-  },
-
-  'consult.failed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-    qc.invalidateQueries({ queryKey: ['session-messages'] })
-  },
-
-  'agent.continued': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
-
-  'agent.take_control': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
+  'agent.continued': invalidateAgents,
+  'agent.take_control': invalidateAgents,
+  'agent.killed': invalidateAgents,
+  'agent.retry_waiting': invalidateAgents,
+  'agent.context_saving': invalidateAgents,
+  'agent.stall_restart': invalidateAgents,
+  'agent.nudged': invalidateAgents,
 
   'agent.take_control_rejected': () => {
     toast.error('Take-control is not supported for API-mode agents.')
-  },
-
-  'agent.killed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
-
-  'agent.retry_waiting': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
   },
 
   'agent.rate_limited': (event, qc, isProjectScope) => {
@@ -268,44 +259,11 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
         ),
       })
     } else {
-      qc.invalidateQueries({ queryKey: agentSessionLogKeys.all })
+      inv(qc, agentSessionLogKeys.all)
     }
 
-    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+    inv(qc, runningAgentsKeys.all)
     invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'agent.context_saving': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
-
-  'agent.stall_restart': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
-
-  'agent.nudged': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
   },
 
   'agent.context_updated': (event, qc, isProjectScope) => {
@@ -317,16 +275,16 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   },
 
   'project_findings.updated': (event, qc) => {
-    qc.invalidateQueries({ queryKey: projectWorkflowKeys.findings(event.project_id) })
-    qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
+    inv(qc, projectWorkflowKeys.findings(event.project_id))
+    inv(qc, projectWorkflowKeys.workflow(event.project_id))
   },
 
   'project.env_vars_updated': (event, qc) => {
-    qc.invalidateQueries({ queryKey: projectEnvVarKeys.list(event.project_id) })
+    inv(qc, projectEnvVarKeys.list(event.project_id))
   },
 
   'service_tokens.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: serviceTokenKeys.all })
+    inv(qc, serviceTokenKeys.all)
   },
 
   'messages.updated': (event, qc, _isProjectScope) => {
@@ -337,128 +295,32 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
     // re-pull the multi-MB /projects/{id}/workflow endpoint dozens of times
     // per run.
     if (event.data?.session_id) {
-      qc.invalidateQueries({ queryKey: ['session-messages', event.data.session_id] })
+      inv(qc, ['session-messages', event.data.session_id])
     }
   },
 
   'workflow.updated': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-    qc.invalidateQueries({ queryKey: traceKeys.all })
+    invalidateWorkflowLifecycle(event, qc, isProjectScope)
+    inv(qc, traceKeys.all)
   },
 
-  'workflow.finalize_succeeded': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
+  'workflow.finalize_succeeded': invalidateWorkflowLifecycle,
+  'workflow.finalize_failed': invalidateWorkflowLifecycle,
+  'workflow.paused': invalidateWorkflowLifecycle,
+  'workflow.resumed': invalidateWorkflowLifecycle,
 
-  'workflow.finalize_failed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
-
-  'workflow.paused': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
-
-  'workflow.resumed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
-  },
-
-  'plan.drafted': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'plan.revised': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'plan.approved': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'plan.cancelled': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'plan.materialized': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-
-  'workflow.plan_waiting': (event, qc, isProjectScope) => {
-    const instanceId = event.data?.instance_id as string | undefined
-    if (instanceId) qc.invalidateQueries({ queryKey: planKeys.detail(instanceId) })
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
+  'plan.drafted': planHandler,
+  'plan.revised': planHandler,
+  'plan.approved': planHandler,
+  'plan.cancelled': planHandler,
+  'plan.materialized': planHandler,
+  'workflow.plan_waiting': planHandler,
 
   ...defRegistryHandlers,
 
-  'orchestration.started': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-    if (!isProjectScope) {
-      qc.invalidateQueries({ queryKey: ticketKeys.status() })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
-    }
-  },
-  'orchestration.completed': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-    if (!isProjectScope) {
-      qc.invalidateQueries({ queryKey: ticketKeys.status() })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
-    }
-  },
-  'orchestration.failed': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-    if (!isProjectScope) {
-      qc.invalidateQueries({ queryKey: ticketKeys.status() })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-      qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
-    }
-  },
+  'orchestration.started': orchestrationLifecycleHandler,
+  'orchestration.completed': orchestrationLifecycleHandler,
+  'orchestration.failed': orchestrationLifecycleHandler,
   'orchestration.retried': (event, qc, isProjectScope) => {
     invalidateWorkflow(event, qc, isProjectScope)
   },
@@ -467,139 +329,73 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   },
 
   'layer.skipped': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    }
+    invalidateAgents(event, qc, isProjectScope)
+    if (!isProjectScope) inv(qc, ticketKeys.lists())
   },
 
   'merge.conflict_resolving': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-    qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
+    invalidateAgents(event, qc, isProjectScope)
+    inv(qc, runningAgentsKeys.all)
   },
-
-  'merge.conflict_resolved': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
-
-  'merge.conflict_failed': (event, qc, isProjectScope) => {
-    if (isProjectScope) {
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.workflow(event.project_id) })
-      qc.invalidateQueries({ queryKey: projectWorkflowKeys.agentSessions(event.project_id) })
-    } else {
-      qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.workflow(event.ticket_id) })
-      qc.invalidateQueries({ queryKey: ticketKeys.agentSessions(event.ticket_id) })
-    }
-  },
+  'merge.conflict_resolved': invalidateAgents,
+  'merge.conflict_failed': invalidateAgents,
 
   'chain.updated': (event, qc) => {
-    qc.invalidateQueries({ queryKey: chainKeys.lists() })
+    inv(qc, chainKeys.lists())
     if (event.data?.chain_id) {
-      qc.invalidateQueries({ queryKey: chainKeys.detail(event.data.chain_id as string) })
+      inv(qc, chainKeys.detail(event.data.chain_id as string))
     }
   },
 
   'ticket.updated': (event, qc) => {
-    qc.invalidateQueries({ queryKey: ticketKeys.status() })
-    qc.invalidateQueries({ queryKey: ticketKeys.lists() })
-    qc.invalidateQueries({ queryKey: ticketKeys.detail(event.ticket_id) })
-    qc.invalidateQueries({ queryKey: dailyStatsKeys.all })
+    inv(qc, ticketKeys.status())
+    inv(qc, ticketKeys.lists())
+    inv(qc, ticketKeys.detail(event.ticket_id))
+    inv(qc, dailyStatsKeys.all)
   },
 
   'error.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: errorKeys.all })
+    inv(qc, errorKeys.all)
   },
 
   'schedule.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    inv(qc, scheduleKeys.all)
   },
   'schedule.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    inv(qc, scheduleKeys.all)
   },
   'schedule.deleted': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    inv(qc, scheduleKeys.all)
   },
   'schedule.triggered': (event, qc) => {
-    qc.invalidateQueries({ queryKey: scheduleKeys.all })
+    inv(qc, scheduleKeys.all)
     if (event.data?.task_id) {
-      qc.invalidateQueries({ queryKey: scheduleKeys.runs(event.data.task_id as string) })
+      inv(qc, scheduleKeys.runs(event.data.task_id as string))
     }
   },
 
-  'notification_channel.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-  },
-  'notification_channel.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-  },
-  'notification_channel.deleted': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-  },
-  'notification.delivered': (event, qc) => {
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-    if (event.data?.channel_id) {
-      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as string] })
-    }
-  },
-  'notification.failed': (event, qc) => {
-    qc.invalidateQueries({ queryKey: ['notification-channels'] })
-    if (event.data?.channel_id) {
-      qc.invalidateQueries({ queryKey: ['notification-deliveries', event.data.channel_id as string] })
-    }
-  },
+  'notification_channel.created': notificationChannelHandler,
+  'notification_channel.updated': notificationChannelHandler,
+  'notification_channel.deleted': notificationChannelHandler,
+  'notification.delivered': notificationDeliveryHandler,
+  'notification.failed': notificationDeliveryHandler,
 
   'chain_def.created': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+    inv(qc, workflowChainKeys.all)
   },
   'chain_def.updated': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+    inv(qc, workflowChainKeys.all)
   },
   'chain_def.deleted': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainKeys.all })
+    inv(qc, workflowChainKeys.all)
   },
 
-  'chain.run_started': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
-  },
-  'chain.step_started': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
-  },
-  'chain.step_completed': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
-  },
-  'chain.run_completed': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
-  },
-  'chain.run_failed': (_event, qc) => {
-    qc.invalidateQueries({ queryKey: workflowChainRunKeys.all })
-  },
+  'chain.run_started': chainRunHandler,
+  'chain.step_started': chainRunHandler,
+  'chain.step_completed': chainRunHandler,
+  'chain.run_completed': chainRunHandler,
+  'chain.run_failed': chainRunHandler,
 
-  'artifact.created': (event, qc) => {
-    const iid = event.data?.workflow_instance_id as string | undefined
-    if (iid) qc.invalidateQueries({ queryKey: artifactKeys.instance(iid) })
-  },
-  'artifact.deleted': (event, qc) => {
-    const iid = event.data?.workflow_instance_id as string | undefined
-    if (iid) qc.invalidateQueries({ queryKey: artifactKeys.instance(iid) })
-  },
+  'artifact.created': artifactHandler,
+  'artifact.deleted': artifactHandler,
 }

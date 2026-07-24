@@ -34,7 +34,7 @@ export function DocumentationPage() {
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'spin-sync' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
       </div>

@@ -44,7 +44,6 @@ function makeEdge(id: string, source: string, target: string, label: string): Ed
     sourceHandle: 'callback-source',
     targetHandle: 'callback-target',
     type: 'smoothstep',
-    animated: true,
     style: EDGE_STYLE,
     markerEnd: EDGE_MARKER,
     label,

@@ -105,11 +105,15 @@ describe('useWSReducer — agent.nudged handler', () => {
     })
 
     it('subsequent agent.nudged events with higher seq are handled', () => {
+      vi.useFakeTimers()
       dispatchV2Event(makeEvent({ sequence: 1 }), qc)
       const spy = vi.spyOn(qc, 'invalidateQueries')
       const handled = dispatchV2Event(makeEvent({ sequence: 2 }), qc)
       expect(handled).toBe(true)
+      // Second event within the throttle window flushes on the trailing edge
+      vi.advanceTimersByTime(1100)
       expect(spy).toHaveBeenCalled()
+      vi.useRealTimers()
     })
 
     it('handles later attempt nudge event correctly', () => {

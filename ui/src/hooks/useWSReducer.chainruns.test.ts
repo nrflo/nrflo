@@ -63,15 +63,19 @@ describe('useWSReducer - chain run events', () => {
     expect(matchingCalls).toHaveLength(1)
   })
 
-  it('all five chain run event types each trigger an invalidation', () => {
+  it('a burst of chain run events coalesces into leading + trailing invalidations', () => {
+    vi.useFakeTimers()
     CHAIN_RUN_EVENTS.forEach((type, idx) => {
       dispatchV2Event(makeEvent(type, idx + 100), queryClient)
     })
 
     const expectedKey = JSON.stringify(workflowChainRunKeys.all)
-    const matchingCalls = spy.mock.calls.filter((call: any) =>
+    const countCalls = () => spy.mock.calls.filter((call: any) =>
       JSON.stringify(call[0].queryKey) === expectedKey
-    )
-    expect(matchingCalls.length).toBe(CHAIN_RUN_EVENTS.length)
+    ).length
+    expect(countCalls()).toBe(1) // leading edge fires immediately
+    vi.advanceTimersByTime(1100)
+    expect(countCalls()).toBe(2) // trailing flush covers the burst
+    vi.useRealTimers()
   })
 })

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Cpu, Terminal, Hash, Clock, CheckCircle, XCircle, Loader2, Timer, RefreshCw, AlertTriangle } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
+import { ElapsedTime } from '@/components/ui/ElapsedTime'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
@@ -21,7 +22,7 @@ interface ActiveAgentsPanelProps {
 
 function AgentStatusIcon({ result }: { result?: string }) {
   if (!result) {
-    return <Loader2 className="h-4 w-4 text-yellow-500 spin-sync" />
+    return <Loader2 className="h-4 w-4 text-yellow-500 animate-spin" />
   }
   if (result === 'pass') {
     return <CheckCircle className="h-4 w-4 text-green-500" />
@@ -48,14 +49,6 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
   const passedCount = agentEntries.filter(([, a]) => a.result === 'pass').length
   const failedCount = agentEntries.filter(([, a]) => a.result === 'fail').length
 
-  // Update elapsed time every second for running agents
-  const [, setTick] = useState(0)
-  useEffect(() => {
-    if (runningCount === 0) return
-    const interval = setInterval(() => setTick(t => t + 1), 1000)
-    return () => clearInterval(interval)
-  }, [runningCount])
-
   return (
     <div className="rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/10 overflow-hidden">
       {/* Header */}
@@ -72,7 +65,7 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
         <div className="flex items-center gap-2 text-xs">
           {runningCount > 0 && (
             <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-400">
-              <Loader2 className="h-3 w-3 spin-sync" />
+              <Loader2 className="h-3 w-3 animate-spin" />
               {runningCount} running
             </span>
           )}
@@ -147,9 +140,11 @@ export function ActiveAgentsPanel({ agents, onRestart, restartingSessionId, onRe
                 {agent.started_at && (
                   <span className="flex items-center gap-1">
                     <Timer className="h-3 w-3" />
-                    {agent.result
-                      ? formatElapsedTime(agent.started_at, agent.ended_at)
-                      : formatElapsedTime(agent.started_at)}
+                    <ElapsedTime
+                      start={agent.started_at}
+                      end={agent.result ? agent.ended_at : undefined}
+                      running={!agent.result}
+                    />
                   </span>
                 )}
                 {agent.context_left != null && (

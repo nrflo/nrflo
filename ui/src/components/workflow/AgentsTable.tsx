@@ -1,4 +1,4 @@
-import { useState, useMemo, Fragment } from 'react'
+import { useState, useMemo, Fragment, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
 import { StatusCell } from '@/components/ui/StatusCell'
@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { cn, formatElapsedTime, formatRestartReasons, contextLeftColor } from '@/lib/utils'
-import { useTickingClock } from '@/hooks/useElapsedTime'
+import { ElapsedTime } from '@/components/ui/ElapsedTime'
 import { findSession } from './agentRowHelpers'
 import { StepProgressStrip } from '@/components/workflow/StepProgressStrip'
 import type { PhaseState, ActiveAgentV4, AgentHistoryEntry, AgentSession } from '@/types/workflow'
@@ -58,8 +58,6 @@ export function AgentsTable({
   instanceId,
 }: AgentsTableProps) {
   const [confirmSessionId, setConfirmSessionId] = useState<string | null>(null)
-  const hasRunning = Object.values(activeAgents).some(a => !a.result)
-  useTickingClock(hasRunning)
 
   const { rows, currentRunningLayer } = useMemo(() => {
     const rows = Object.keys(phases)
@@ -126,9 +124,9 @@ export function AgentsTable({
     }
   }
 
-  const getDuration = (row: AgentRow): string => {
+  const getDuration = (row: AgentRow): ReactNode => {
     if (row.active && row.active.started_at && !row.active.ended_at) {
-      return formatElapsedTime(row.active.started_at)
+      return <ElapsedTime start={row.active.started_at} running={!row.active.result} />
     }
     if (row.history?.started_at && row.history.ended_at) {
       return formatElapsedTime(row.history.started_at, row.history.ended_at)

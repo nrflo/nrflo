@@ -109,7 +109,7 @@ export function ArtifactUploader({ onChange }: ArtifactUploaderProps) {
           {files.map(f => (
             <li key={f.id} className="flex items-center gap-2 text-xs border border-border rounded px-2 py-1">
               {f.uploading ? (
-                <Loader2 className="h-3 w-3 shrink-0 text-muted-foreground spin-sync" />
+                <Loader2 className="h-3 w-3 shrink-0 text-muted-foreground animate-spin" />
               ) : f.error ? (
                 <AlertCircle className="h-3 w-3 shrink-0 text-destructive" />
               ) : (

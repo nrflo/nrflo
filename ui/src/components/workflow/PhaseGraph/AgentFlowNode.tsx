@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { Loader2, CheckCircle, XCircle, Timer, Clock, SkipForward, AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn, formatElapsedTime, contextLeftColor, isNearRestartThreshold, formatRestartReasons } from '@/lib/utils'
-import { useTickingClock } from '@/hooks/useElapsedTime'
 import { Badge } from '@/components/ui/Badge'
+import { ElapsedTime } from '@/components/ui/ElapsedTime'
 import { Spinner } from '@/components/ui/Spinner'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
@@ -18,7 +18,7 @@ function StatusIcon({ result, isRunning, isPending, isSkipped }: { result?: stri
     return <Clock className="h-5 w-5 text-gray-400" />
   }
   if (isRunning) {
-    return <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 spin-sync" />
+    return <Loader2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400 animate-spin" />
   }
   if (result === 'pass') {
     return <CheckCircle className="h-5 w-5 text-green-500" />
@@ -47,7 +47,6 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const { phaseName, agent, historyEntry, session, isPending, isSkipped, isCompleted, isError, onToggleExpand, onRetryFailed, retryingSessionId, workflowStatus } = data
   const isRunning = agent && !agent.result
-  useTickingClock(!!isRunning)
   const result = agent?.result || historyEntry?.result
   const tag = agent?.tag || historyEntry?.tag
   const hasMessages = session && session.message_count > 0
@@ -60,7 +59,7 @@ export function AgentFlowNode({ data }: AgentFlowNodeProps) {
 
   // Get duration: prefer started_at/ended_at, fallback to duration_sec
   const duration = agent?.started_at
-    ? formatElapsedTime(agent.started_at, agent.ended_at)
+    ? <ElapsedTime start={agent.started_at} end={agent.ended_at} running={!!isRunning} />
     : historyEntry?.started_at && historyEntry?.ended_at
       ? formatElapsedTime(historyEntry.started_at, historyEntry.ended_at)
       : historyEntry?.duration_sec

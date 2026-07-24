@@ -268,16 +268,16 @@ describe('AgentFlowNode', () => {
       expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(true)
     })
 
-    it('calls useTickingClock(false) when agent is completed (has result)', () => {
+    it('does not tick when agent is completed (has result)', () => {
       const data = makeData({ agent: undefined, historyEntry: makeHistory({ result: 'pass' }) })
       render(<AgentFlowNode data={data} />)
-      expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(false)
+      expect(vi.mocked(useTickingClock)).not.toHaveBeenCalledWith(true)
     })
 
-    it('calls useTickingClock(false) when phase is pending (no agent)', () => {
+    it('does not tick when phase is pending (no agent)', () => {
       const data = makeData({ agent: undefined, isPending: true })
       render(<AgentFlowNode data={data} />)
-      expect(vi.mocked(useTickingClock)).toHaveBeenCalledWith(false)
+      expect(vi.mocked(useTickingClock)).not.toHaveBeenCalledWith(true)
     })
   })
 })

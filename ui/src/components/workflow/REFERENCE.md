@@ -11,6 +11,7 @@ Contents: [PhaseGraph](#phasegraph) Â· [Agent Definitions](#agent-definitions) Â
 - Clicking an agent node opens it in `AgentLogPanel` (right-side detail view with message table).
 - Responsive: 220px nodes on mobile (<640px), 300px on desktop; touch/pinch-zoom on mobile via `useIsMobile`.
 - Auto-center toggle (default on): `PhaseGraphControls.tsx` calls `fitView` every 15s; all fit-view paths route through `performFitView` (`fitViewOptions.ts`) via `requestAnimationFrame`.
+- ELK layout runs in `useGraphLayout.ts` and is keyed on graph structure (node ids/layers, edge ids, mobile); data-only refetches reuse cached positions and skip the solve. Edges are never React Flow `animated` (the dash animation repaints every frame).
 - Height clamped to min 140px so the 4-button controls panel stays fully visible on short layouts.
 - `AgentsTable.tsx` provides a flat table view for simplified-graph mode.
 

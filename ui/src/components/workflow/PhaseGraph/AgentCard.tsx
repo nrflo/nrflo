@@ -14,7 +14,7 @@ function AgentStatusIcon({ result, isInteractive, isRateLimited }: { result?: st
     return <Clock className="h-3.5 w-3.5 text-amber-500" />
   }
   if (!result) {
-    return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />
+    return <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />
   }
   if (result === 'pass') {
     return <CheckCircle className="h-3.5 w-3.5 text-green-500" />

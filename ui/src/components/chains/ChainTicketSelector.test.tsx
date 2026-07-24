@@ -69,7 +69,7 @@ describe('ChainTicketSelector - Render States', () => {
 
     const { container } = renderSelector()
 
-    expect(container.querySelector('[class*="spin-sync"]')).toBeInTheDocument()
+    expect(container.querySelector('[class*="animate-spin"]')).toBeInTheDocument()
   })
 
   it('shows no tickets message when ticket list is empty', () => {

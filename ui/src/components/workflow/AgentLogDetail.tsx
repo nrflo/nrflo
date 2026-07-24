@@ -114,7 +114,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
             !result && !isRunning && !isInteractive && 'bg-gray-100 dark:bg-gray-800'
           )}>
             {isInteractive && <Terminal className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
-            {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 spin-sync" />}
+            {isRunning && <Loader2 className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400 animate-spin" />}
             {result === 'pass' && <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />}
             {result === 'fail' && <XCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
             {!result && !isRunning && !isInteractive && <Cpu className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -213,7 +213,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
         ) : activeTab === 'context' ? (
           promptLoading ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
+              <Loader2 className="h-6 w-6 mb-2 animate-spin opacity-50" />
               <p className="text-xs">Loading prompt context...</p>
             </div>
           ) : (promptData?.prompt || promptData?.system_prompt) ? (
@@ -239,7 +239,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
           )
         ) : messagesLoading && normalized.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
+            <Loader2 className="h-6 w-6 mb-2 animate-spin opacity-50" />
             <p className="text-xs">Loading messages...</p>
           </div>
         ) : normalized.length > 0 ? (

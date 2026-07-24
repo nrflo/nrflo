@@ -136,7 +136,7 @@ export function AgentLogPanel({
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
                 >
-                  <Loader2 className="h-3 w-3 spin-sync text-yellow-500" />
+                  <Loader2 className="h-3 w-3 animate-spin text-yellow-500" />
                   {label}
                 </button>
               )

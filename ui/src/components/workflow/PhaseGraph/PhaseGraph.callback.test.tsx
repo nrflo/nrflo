@@ -146,7 +146,7 @@ describe('PhaseGraph callback edge', () => {
     expect(targetNode!.data.phaseIndex).toBe(1)
   })
 
-  it('callback edge has blue stroke, smoothstep type, and animated', async () => {
+  it('callback edge has blue stroke, smoothstep type, and no dash animation', async () => {
     const callbackInfo: CallbackInfo = {
       level: 1,
       from_layer: 2,
@@ -160,7 +160,7 @@ describe('PhaseGraph callback edge', () => {
     const callbackEdge = edges.find((e: any) => e.id === 'callback-edge')
 
     expect(callbackEdge.type).toBe('smoothstep')
-    expect(callbackEdge.animated).toBe(true)
+    expect(callbackEdge.animated).toBeUndefined()
     expect(callbackEdge.style.stroke).toBe('#3b82f6')
     expect(callbackEdge.sourceHandle).toBe('callback-source')
     expect(callbackEdge.targetHandle).toBe('callback-target')

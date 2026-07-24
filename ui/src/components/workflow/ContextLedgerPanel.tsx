@@ -38,7 +38,7 @@ export function ContextLedgerPanel({ sessionId, enabled, budgetTokens }: Context
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <Loader2 className="h-6 w-6 mb-2 spin-sync opacity-50" />
+        <Loader2 className="h-6 w-6 mb-2 animate-spin opacity-50" />
         <p className="text-xs">Loading context ledger...</p>
       </div>
     )

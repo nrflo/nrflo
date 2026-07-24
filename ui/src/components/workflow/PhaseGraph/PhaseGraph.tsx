@@ -4,7 +4,8 @@ import '@xyflow/react/dist/style.css'
 import { AgentFlowNode } from './AgentFlowNode'
 import { MergedFromBadge } from './MergedFromBadge'
 import { buildCallbackEdges } from './callbackEdges'
-import { getLayoutedElements, BASE_HEIGHT } from './layout'
+import { BASE_HEIGHT } from './layout'
+import { useGraphLayout } from './useGraphLayout'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { AutoCenterInterval, PhaseGraphControls } from './PhaseGraphControls'
 import { FIT_VIEW_OPTIONS, performFitView } from './fitViewOptions'
@@ -273,8 +274,6 @@ export function PhaseGraph({
       // Connect all current → all next (branching/merging)
       currentNodes.forEach(fromNode => {
         nextNodes.forEach(toNode => {
-          // Determine if edge should be animated (target is running)
-          const isTargetRunning = toNode.data.agent && !toNode.data.agent.result
           // Determine edge color based on source result
           const sourceResult = fromNode.data.agent?.result || fromNode.data.historyEntry?.result
           let stroke = '#d1d5db' // gray-300 default
@@ -291,7 +290,6 @@ export function PhaseGraph({
             source: fromNode.id,
             target: toNode.id,
             type: 'default',
-            animated: isTargetRunning,
             style: { stroke, strokeWidth: 2 },
             markerEnd: { type: MarkerType.ArrowClosed, color: stroke, width: 20, height: 20 },
           })
@@ -307,32 +305,7 @@ export function PhaseGraph({
     return edges
   }, [initialNodes, callbackInfo])
 
-  // Apply async ELK layout
-  const [layoutedNodes, setLayoutedNodes] = useState<Node<AgentFlowNodeData>[]>([])
-  const [layoutedEdges, setLayoutedEdges] = useState<Edge[]>([])
-
-  useEffect(() => {
-    let cancelled = false
-    getLayoutedElements(initialNodes, initialEdges, null, isMobile).then(result => {
-      if (!cancelled) {
-        let finalNodes = result.nodes
-        if (callbackInfo?.requests && callbackInfo.requests.length > 1) {
-          const srcNode = result.nodes.find(n => n.data.phaseIndex === (callbackInfo.from_layer ?? 0))
-          if (srcNode) {
-            finalNodes = [...result.nodes, {
-              id: 'merged-from-badge',
-              type: 'mergedFromBadge',
-              position: { x: srcNode.position.x, y: (srcNode.position.y ?? 0) - 30 },
-              data: { agentIds: callbackInfo.requests.map(r => r.from_agent) },
-            } as unknown as Node<AgentFlowNodeData>]
-          }
-        }
-        setLayoutedNodes(finalNodes)
-        setLayoutedEdges(result.edges)
-      }
-    })
-    return () => { cancelled = true }
-  }, [initialNodes, initialEdges, isMobile, callbackInfo])
+  const { layoutedNodes, layoutedEdges } = useGraphLayout(initialNodes, initialEdges, isMobile, callbackInfo)
 
   // Stable key derived from node IDs to trigger fitView on node set changes
   const nodeKey = useMemo(

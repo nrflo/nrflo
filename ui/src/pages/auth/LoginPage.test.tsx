@@ -65,7 +65,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
     expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'secret')
-    expect(screen.getByTestId('location')).toHaveTextContent('/')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/')
   })
 
   it('navigates to ?next= path after successful login', async () => {
@@ -79,7 +79,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'pw')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    expect(screen.getByTestId('location')).toHaveTextContent('/tickets')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/tickets')
   })
 
   it('shows "Invalid credentials" on 401 error', async () => {
@@ -177,7 +177,7 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText(/password/i), 'pw')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
 
-    expect(screen.getByTestId('location')).toHaveTextContent('/')
+    expect(await screen.findByTestId('location')).toHaveTextContent('/')
   })
 })
 

@@ -1,9 +1,19 @@
 package consoleui
 
 import (
+	"strings"
+
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+
+	"github.com/charmbracelet/x/ansi"
 )
+
+// printedEntry retains a printed message's source content and the physical
+// scrollback rows it contributed at print time, for resize re-measurement.
+type printedEntry struct {
+	message Message
+	rows    int
+}
 
 // newMessagesToPrint is the pure print-once/dedupe splitter. printedTotal is
 // the DB-absolute high-water mark of rows already printed to scrollback;
@@ -46,11 +56,45 @@ func (m *model) printNewMessages(page MessagePage) []tea.Cmd {
 	cmds := make([]tea.Cmd, 0, len(toPrint))
 	for _, message := range toPrint {
 		rendered := renderMessage(message, width)
-		m.printedLines += lipgloss.Height(rendered)
+		rows := physicalRows(rendered, m.width)
+		m.printedLines += rows
+		m.appendPrintedTail(message, rows)
 		cmds = append(cmds, tea.Println(rendered))
 	}
 	m.pendingUser = ""
 	return cmds
+}
+
+// physicalRows counts the physical scrollback rows rendered occupies when
+// printed to a terminal of the given width, mirroring bubbletea v2's
+// cursedRenderer.insertAbove: one row per "\n"-delimited line, plus one extra
+// row for every full multiple of width a line's display width consumes.
+// tea.Println scrolls at the full terminal width, not the narrower content
+// width rendered was wrapped to, so width here must be the terminal width.
+func physicalRows(rendered string, width int) int {
+	if width <= 0 {
+		width = 1
+	}
+	lines := strings.Split(rendered, "\n")
+	rows := len(lines)
+	for _, line := range lines {
+		rows += ansi.StringWidth(line) / width
+	}
+	return rows
+}
+
+// appendPrintedTail retains message in the bounded on-screen tail buffer used
+// to recompute m.printedLines on resize, evicting the oldest entries once
+// the buffer's cumulative physical height covers at least one terminal
+// height. This is purely a resize re-measure aid, not a scroll/copy surface:
+// completed transcript rows are never held in a viewport.
+func (m *model) appendPrintedTail(message Message, rows int) {
+	m.printedTail = append(m.printedTail, printedEntry{message: message, rows: rows})
+	m.printedTailRows += rows
+	for len(m.printedTail) > 1 && m.printedTailRows-m.printedTail[0].rows >= m.maxHeightSeen {
+		m.printedTailRows -= m.printedTail[0].rows
+		m.printedTail = m.printedTail[1:]
+	}
 }
 
 // contentWidth returns the content width printed rows and the live region

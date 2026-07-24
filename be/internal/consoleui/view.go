@@ -39,7 +39,7 @@ func (m *model) View() tea.View {
 		chromeSections = append(chromeSections, m.invokeView())
 	}
 	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar(), m.footer())
-	chrome := lipgloss.JoinVertical(lipgloss.Left, chromeSections...)
+	chrome := clampChrome(chromeSections, m.height)
 	budget := m.height - lipgloss.Height(chrome)
 	sections := []string{}
 	if live := m.liveRegionView(budget); live != "" {
@@ -47,9 +47,16 @@ func (m *model) View() tea.View {
 	}
 	sections = append(sections, chrome)
 	frame := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	if h := lipgloss.Height(frame); h > m.height {
+		lines := strings.Split(frame, "\n")
+		frame = strings.Join(lines[h-m.height:], "\n")
+	}
 	// Pad the frame to the terminal bottom so chrome doesn't float when
-	// native scrollback hasn't yet filled the screen; clamps to zero once
-	// printedLines fills it, leaving the full-scrollback case unchanged.
+	// native scrollback (counted in m.printedLines as physical rows at full
+	// terminal width, matching how tea.Println actually scrolls) hasn't yet
+	// filled the screen; clamps to zero once it has. The frame itself is
+	// clamped above to never exceed m.height, so a long turn or a tiny
+	// terminal can never push the composer off the bottom.
 	target := max(lipgloss.Height(frame), m.height-m.printedLines)
 	view := tea.NewView(lipgloss.PlaceVertical(target, lipgloss.Bottom, frame))
 	view.AltScreen = false
@@ -123,7 +130,57 @@ func (m *model) approvalView() string {
 
 func (m *model) resize(width, height int) {
 	m.width, m.height, m.ready = width, height, true
+	if height > m.maxHeightSeen {
+		m.maxHeightSeen = height
+	}
 	m.input.SetWidth(max(10, width-6))
+	m.recomputePrintedLines()
+}
+
+// recomputePrintedLines rebuilds m.printedLines from the retained on-screen
+// tail buffer at the new dimensions, re-rendering each entry via
+// renderMessage (the same path print.go uses) and re-counting physical rows
+// at the new terminal width, so a resize never desyncs the bottom-pin count
+// from what the terminal will actually show.
+func (m *model) recomputePrintedLines() {
+	contentWidth := m.contentWidth()
+	tail := make([]printedEntry, 0, len(m.printedTail))
+	total := 0
+	for _, entry := range m.printedTail {
+		rendered := renderMessage(entry.message, contentWidth)
+		rows := physicalRows(rendered, m.width)
+		total += rows
+		tail = append(tail, printedEntry{message: entry.message, rows: rows})
+	}
+	for len(tail) > 1 && total-tail[0].rows >= m.maxHeightSeen {
+		total -= tail[0].rows
+		tail = tail[1:]
+	}
+	m.printedTail = tail
+	m.printedTailRows = total
+	m.printedLines = total
+}
+
+// clampChrome guarantees the chrome block never exceeds maxHeight rows.
+// Optional sections (approvals/suggestions/invoke, prepended before the
+// mandatory composer/status/footer tail) are dropped front-to-back first;
+// if the mandatory tail alone still exceeds maxHeight, the block is
+// tail-truncated so the bottom-most rows (footer, then status, then the
+// tail of the composer) stay visible.
+func clampChrome(sections []string, maxHeight int) string {
+	if maxHeight < 1 {
+		maxHeight = 1
+	}
+	chrome := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	for len(sections) > 1 && lipgloss.Height(chrome) > maxHeight {
+		sections = sections[1:]
+		chrome = lipgloss.JoinVertical(lipgloss.Left, sections...)
+	}
+	if h := lipgloss.Height(chrome); h > maxHeight {
+		lines := strings.Split(chrome, "\n")
+		chrome = strings.Join(lines[h-maxHeight:], "\n")
+	}
+	return chrome
 }
 
 func renderMessage(message Message, width int) string {

@@ -16,19 +16,22 @@ import (
 const clearScreenSeq = "\x1b[2J\x1b[3J\x1b[H"
 
 type model struct {
-	ctx            context.Context
-	client         *Client
-	events         <-chan streamUpdate
-	detail         ChatDetail
-	printedTotal   int
-	printedLines   int
-	pendingUser    string
-	historyPrinted bool
-	initialPage    MessagePage
-	deltas         map[string]string
-	deltaOrder     []string
-	thinking       string
-	thinkingID     string
+	ctx             context.Context
+	client          *Client
+	events          <-chan streamUpdate
+	detail          ChatDetail
+	printedTotal    int
+	printedLines    int
+	printedTail     []printedEntry
+	printedTailRows int
+	maxHeightSeen   int
+	pendingUser     string
+	historyPrinted  bool
+	initialPage     MessagePage
+	deltas          map[string]string
+	deltaOrder      []string
+	thinking        string
+	thinkingID      string
 
 	approvals []Approval
 	connected bool

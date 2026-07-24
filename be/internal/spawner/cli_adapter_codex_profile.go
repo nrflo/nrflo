@@ -38,9 +38,15 @@ import (
 //     the spawn workdir) would collide with the single `[projects."<workDir>"]`
 //     entry we append — the app-server parses config.toml strictly and rejects
 //     duplicate keys (rpc -32600), unlike the lenient TUI.
+//   - mcp_servers.nrflo: a user who wired the mcp-external bridge into their own
+//     codex config would collide with the per-session `[mcp_servers.nrflo]`
+//     table appended here (same strict duplicate-key rejection); the user's
+//     entry also carries the wrong session identity. Other user MCP servers are
+//     kept.
 var codexStripTablePrefixes = []string{
 	"[[hooks.", "[hooks.", "[hooks]",
 	"[[projects.", "[projects.", "[projects]",
+	"[mcp_servers.nrflo]", "[mcp_servers.nrflo.",
 }
 
 // writeCodexProfileForSession writes CODEX_HOME/config.toml and copies the

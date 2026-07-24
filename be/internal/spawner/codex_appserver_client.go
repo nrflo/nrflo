@@ -10,7 +10,14 @@ import (
 	"os/exec"
 	"sync"
 	"sync/atomic"
+	"syscall"
+	"time"
 )
+
+// appServerWaitDelay bounds Cmd.Wait's post-exit pipe drain: codex tool shells
+// inherit the stdout pipe, so without it a lingering grandchild keeps the pipe
+// open and Wait never returns, pinning the monitorAll goroutine.
+const appServerWaitDelay = 10 * time.Second
 
 // appServerClient is a minimal newline-delimited JSON-RPC stdio client for
 // `codex app-server`. It is transport-only — no spawner/processInfo dependency
@@ -66,18 +73,6 @@ type rpcOut struct {
 
 var errAppServerClosed = errors.New("codex app-server connection closed")
 
-// appServerArgs returns the `codex app-server` argv with native delegation
-// blocked via codexAgentsArgs (`-c agents.enabled=false`), placed first so the
-// security-critical override sits adjacent to the subcommand. Kept pure (no
-// exec) so it is unit-testable without running the codex binary.
-func appServerArgs() []string {
-	args := []string{"app-server"}
-	args = append(args, codexAgentsArgs()...)
-	args = append(args, codexProjectDocArgs()...)
-	args = append(args, codexAutoCompactArgs()...)
-	return args
-}
-
 // newAppServerClient wires a client over the given stdin/stdout and starts the
 // reader goroutine. Used directly by tests (in-memory pipes); production goes
 // through startAppServer.
@@ -107,6 +102,11 @@ func startAppServer(ctx context.Context, env []string, workDir string) (*appServ
 	cmd := exec.CommandContext(ctx, "codex", appServerArgs()...)
 	cmd.Dir = workDir
 	cmd.Env = env
+	// Own process group so ctx-cancel reaps the whole tree (app-server + tool
+	// shells); else orphaned children hold the stdout pipe and stall Cmd.Wait.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	cmd.WaitDelay = appServerWaitDelay
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("app-server stdin pipe: %w", err)
@@ -266,16 +266,22 @@ func (c *appServerClient) err() error {
 	return errAppServerClosed
 }
 
-// close closes stdin (signals EOF to app-server) and marks the client closed.
-// The process is killed via the ctx passed to startAppServer; we also reap it.
+// close signals EOF to the app-server and marks the client closed. closeOnce
+// guards the whole body: both Kill and the run goroutine's defer call close(),
+// and a second Cmd.Wait would race the first. The reap is backgrounded because
+// close() runs synchronously in monitorAll (via Kill) and Cmd.Wait can block on
+// pipe I/O held by orphaned tool shells; cmd.WaitDelay bounds it.
 func (c *appServerClient) close() {
-	c.closeOnce.Do(func() { close(c.closed) })
-	if c.stdin != nil {
-		_ = c.stdin.Close()
-	}
-	if c.cmd != nil {
-		_ = c.cmd.Wait()
-	}
+	c.closeOnce.Do(func() {
+		close(c.closed)
+		if c.stdin != nil {
+			_ = c.stdin.Close()
+		}
+		if c.cmd != nil {
+			cmd := c.cmd
+			go func() { _ = cmd.Wait() }()
+		}
+	})
 }
 
 // parseRPCID extracts an int64 id from a raw JSON id (we only ever send ints).

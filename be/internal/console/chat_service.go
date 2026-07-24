@@ -144,6 +144,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		ContextBudgetTokens: profile.ContextBudgetTokens,
 		DefaultModelID:      profile.DefaultModelID,
 		DefaultEffort:       profile.DefaultEffort,
+		Yolo:                consoleYolo(s.deps.Pool, s.deps.Clock),
 	})
 	if err != nil {
 		return "", "", err
@@ -245,6 +246,13 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sessionID) }, s.maybeRotate)
 
 	return sessionID, token, nil
+}
+
+// consoleYolo reads console_yolo with default-ON semantics (absence/anything
+// but the literal "false" means ON), mirroring refinery's autonomousEnabled.
+func consoleYolo(pool *db.Pool, clk clock.Clock) bool {
+	val, _ := service.NewGlobalSettingsService(pool, clk).Get("console_yolo")
+	return val != "false"
 }
 
 // get reports whether sid is a live chat session held by this service.

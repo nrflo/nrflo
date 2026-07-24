@@ -96,8 +96,13 @@ type EngineSpec struct {
 	Env             []string
 	ApprovalPolicy  string // e.g. "on-request"; engine-specific default when empty
 	Sandbox         string // e.g. "workspace-write"; engine-specific default when empty
-	MCPServerPath   string
-	MCPEnv          map[string]string
+	// Yolo auto-approves console tool calls: claude/api short-circuit their
+	// RequestApproval/requestToolApproval to allow, codex starts its thread
+	// with approvalPolicy="never". Resolved once at chat create (and on
+	// rotate) from the default-ON console_yolo global setting.
+	Yolo          bool
+	MCPServerPath string
+	MCPEnv        map[string]string
 	// APIProvider is "anthropic" or "openai", resolved from the unified model row.
 	// (chat_model_resolver.go). Empty for claude/codex specs.
 	APIProvider string

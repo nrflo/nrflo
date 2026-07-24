@@ -78,6 +78,13 @@ export function GlobalSettingsSection() {
     },
   })
 
+  const consoleYoloMutation = useMutation({
+    mutationFn: (val: boolean) => updateGlobalSettings({ console_yolo: val }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: settingsKeys.all })
+    },
+  })
+
   return (
     <Card>
       <CardHeader>
@@ -224,6 +231,21 @@ export function GlobalSettingsSection() {
                 checked={settings.dynamic_workflow_auto_enabled ?? false}
                 onChange={(val) => dynamicWorkflowAutoMutation.mutate(val)}
                 disabled={dynamicWorkflowAutoMutation.isPending}
+              />
+            </div>
+            <div className="border-t border-border" />
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-medium">Console yolo mode</div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Auto-approves all console chat tool calls (including Write/Edit/MCP) without
+                  prompting; the Bash safety-check is the only remaining guardrail
+                </p>
+              </div>
+              <Toggle
+                checked={settings.console_yolo ?? true}
+                onChange={(val) => consoleYoloMutation.mutate(val)}
+                disabled={consoleYoloMutation.isPending}
               />
             </div>
             <GlobalStallSettings settings={settings} />

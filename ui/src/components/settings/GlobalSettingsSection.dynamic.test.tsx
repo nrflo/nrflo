@@ -23,6 +23,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     dynamic_workflow_auto_enabled: false,
+    console_yolo: true,
     ...overrides,
   }
 }

@@ -21,6 +21,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     simplified_agents_graph: false,
     experimental: false,
     capture_thinking_enabled: false,
+    console_yolo: true,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     ...overrides,
@@ -28,7 +29,8 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
 }
 
 // Toggle DOM order: [0]=api_mode, [1]=api_native_tools, [2]=system_prompt_override, [3]=low_consumption,
-// [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer, [8]=capture_thinking, [9]=dynamic_workflow_auto.
+// [4]=simplified_graph, [5]=experimental, [6]=api_via_cli, [7]=observer, [8]=capture_thinking, [9]=dynamic_workflow_auto,
+// [10]=console_yolo.
 describe('GlobalSettingsSection boolean toggles', () => {
   beforeEach(() => vi.clearAllMocks())
 

@@ -60,6 +60,10 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 **Rotation digest seeding.** `EngineSpec.SeededContext` is the rotation digest-seeding seam: `console.rotate()` sets it unconditionally (no engine-name branch); the api/codex engines consume it once into their first post-rotation request (`console_engine_api_seed.go`/`console_engine_codex_seed.go`), while `claudeEngine` never reads the field since its `UserPromptSubmit` hook already re-injects the digest — consuming it there too would double-inject.
 
+**apiConsoleEngine system prompt.** `apiConsoleEngine.Start` renders its system prompt from the `api-console-system-prompt` injectable — a distinct id from the worker's `api-system-prompt`, left unseeded so a fresh DB falls back to the `consoleAPISystem`/`consoleAPIFSSystem` constants.
+
+**Yolo mode.** `EngineSpec.Yolo`, resolved once per chat create/rotate from the default-ON `console_yolo` global setting (`val != "false"`), short-circuits `claudeEngine.RequestApproval`/`apiConsoleEngine.requestToolApproval` to an immediate allow (after the `allowedForSession` check, before any pending-approval registration) and makes `console_engine_codex.go`'s `Start` set `ApprovalPolicy="never"` instead of the `"on-request"` default; `EventToolInvoke` is still emitted so tools remain visible in the transcript, and a `NativeToolPolicy=none` profile's read-only sandbox is unaffected since yolo governs approval, not tool surface.
+
 **System-prompt resolution + delivery.** An agent def's or chat profile's `system_template_id` resolves ahead of both the global `claude_system_prompt_override_enabled` gate and the mode default (`resolveSystemPromptOverride`/`EngineSpec.SystemPrompt`). Delivery stays per-channel — claude via `--system-prompt-file`, api via its conversation `System` — except codex, which has no system-prompt flag anywhere (autonomous or console) and instead gets the rendered text prepended to the first turn's prompt body, so its byte cap is the initial-turn/prompt-file limit, not a dedicated one.
 
 ### claudeEngine (console_engine_claude*.go)

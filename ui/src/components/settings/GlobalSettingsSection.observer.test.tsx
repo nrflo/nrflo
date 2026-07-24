@@ -34,6 +34,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     observer_model: '',
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
+    console_yolo: true,
     ...overrides,
   }
 }

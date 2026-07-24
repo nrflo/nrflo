@@ -150,8 +150,11 @@ func (e *apiConsoleEngine) requestToolApproval(ctx context.Context, toolName, de
 	}
 
 	e.mu.Lock()
-	sessionID, workDir := e.spec.SessionID, e.spec.WorkDir
+	sessionID, workDir, yolo := e.spec.SessionID, e.spec.WorkDir, e.spec.Yolo
 	e.mu.Unlock()
+	if yolo {
+		return true
+	}
 
 	id := fmt.Sprintf("%s-%d", sessionID, time.Now().UnixNano())
 	reply := make(chan ApprovalDecision, 1)

@@ -25,6 +25,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ObserverSystemContext             *string         `json:"observer_system_context"`
 		ObserverProvider                  *string         `json:"observer_provider"`
 		ObserverModel                     *string         `json:"observer_model"`
+		ConsoleYolo                       *bool           `json:"console_yolo"`
 		menuPatchFields
 		watcherPatchFields
 	}
@@ -156,6 +157,17 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 	if req.ObserverModel != nil {
 		if err := svc.SetObserverModel(*req.ObserverModel); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+
+	if req.ConsoleYolo != nil {
+		val := "false"
+		if *req.ConsoleYolo {
+			val = "true"
+		}
+		if err := svc.Set("console_yolo", val); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}

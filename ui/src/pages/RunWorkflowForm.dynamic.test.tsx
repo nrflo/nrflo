@@ -52,6 +52,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     menu_errors: true,
     menu_agent_sessions: true,
     dynamic_workflow_auto_enabled: false,
+    console_yolo: true,
     ...overrides,
   }
 }

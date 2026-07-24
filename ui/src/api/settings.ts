@@ -26,6 +26,7 @@ export interface GlobalSettings {
   menu_errors: boolean
   menu_agent_sessions: boolean
   dynamic_workflow_auto_enabled: boolean
+  console_yolo: boolean
   context_budget_fraction: number | null
   context_budget_default: number | null
   context_decay_turns: number | null

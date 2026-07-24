@@ -137,6 +137,7 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 	e.mu.Lock()
 	sessionID := e.spec.SessionID
 	workDir := e.spec.WorkDir
+	yolo := e.spec.Yolo
 	e.mu.Unlock()
 
 	e.emit(EngineEvent{
@@ -151,6 +152,9 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 	// resolution to emit either.
 	if e.approvals.allowedForSession(toolName) {
 		return "allow", "nrflo: approved for session"
+	}
+	if yolo {
+		return "allow", "nrflo: yolo"
 	}
 
 	id := toolUseID

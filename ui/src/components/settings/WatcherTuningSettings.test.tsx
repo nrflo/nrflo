@@ -38,6 +38,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     menu_errors: false,
     menu_agent_sessions: false,
     dynamic_workflow_auto_enabled: false,
+    console_yolo: true,
     context_budget_fraction: 0.65,
     context_budget_default: 32000,
     context_decay_turns: 20,

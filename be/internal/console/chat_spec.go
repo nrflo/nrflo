@@ -39,6 +39,9 @@ type chatSpecParams struct {
 	Sandbox             string
 	NativeToolPolicy    string
 	ContextBudgetTokens int
+	// Yolo threads the default-ON console_yolo global setting onto
+	// spec.Yolo, auto-approving console tool calls for this engine.
+	Yolo bool
 	// DefaultModelID/DefaultEffort apply only when the caller left
 	// ModelID/ReasoningEffort empty (a profile default, not an override).
 	DefaultModelID string
@@ -85,6 +88,7 @@ func buildChatEngineSpec(pool *db.Pool, clk clock.Clock, p chatSpecParams) (spaw
 		Sandbox:             sandbox,
 		NativeToolPolicy:    p.NativeToolPolicy,
 		ContextBudgetTokens: p.ContextBudgetTokens,
+		Yolo:                p.Yolo,
 	}
 
 	modelID := p.ModelID

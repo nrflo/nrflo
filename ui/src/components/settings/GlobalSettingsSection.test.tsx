@@ -19,6 +19,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     low_consumption_mode: false,
     simplified_agents_graph: false,
     experimental: false,
+    console_yolo: true,
     stall_start_timeout_sec: null,
     stall_running_timeout_sec: null,
     ...overrides,

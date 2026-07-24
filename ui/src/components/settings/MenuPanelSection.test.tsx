@@ -23,6 +23,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     menu_documentation: true,
     menu_errors: false,
     menu_agent_sessions: false,
+    console_yolo: true,
     ...overrides,
   } as GlobalSettings
 }

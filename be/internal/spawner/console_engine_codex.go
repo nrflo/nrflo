@@ -75,7 +75,11 @@ func (e *codexEngine) Start(ctx context.Context, spec EngineSpec) error {
 		spec.Sandbox = model.SandboxWorkspaceWrite
 	}
 	if spec.ApprovalPolicy == "" {
-		spec.ApprovalPolicy = "on-request"
+		if spec.Yolo {
+			spec.ApprovalPolicy = "never"
+		} else {
+			spec.ApprovalPolicy = "on-request"
+		}
 	}
 
 	profileDir, err := os.MkdirTemp("", "nrflo-console-engine-"+spec.SessionID+"-*")

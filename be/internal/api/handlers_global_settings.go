@@ -104,6 +104,12 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	consoleYoloVal, err := svc.Get("console_yolo")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	resp := map[string]interface{}{
 		"low_consumption_mode":                  val == "true",
 		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
@@ -119,6 +125,7 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"observer_provider":                     observerProvider,
 		"observer_model":                        observerModel,
 		"refinery_fold_start_context_pct":       foldStartPct,
+		"console_yolo":                          consoleYoloVal != "false",
 	}
 	for _, ms := range menuSettings {
 		v, err := boolWithDefault(svc, ms.key, ms.def)

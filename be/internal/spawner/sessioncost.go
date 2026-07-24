@@ -44,6 +44,10 @@ type costEntry struct {
 	// tokenUsage reports don't re-bill the dead session's tokens onto this
 	// one. Zero for every non-resumed session.
 	baselineIn, baselineOut, baselineCacheRead, baselineCacheWrite int
+	// seenUsage dedups per-turn usage keyed by the transcript entry's stable
+	// id (uuid/message.id) so an offset-reset re-read never re-bills the same
+	// turn twice. Dropped with the entry on FinalizeSessionCost.
+	seenUsage map[string]bool
 }
 
 // subtractBaselineClamped returns v-b, floored at 0.
@@ -124,6 +128,30 @@ func (s *costStore) addUsage(sessionID string, in, out, cacheRead, cacheWrite in
 	e.recomputeLocked()
 	e.mu.Unlock()
 	e.maybeFlushAndBroadcast(sessionID)
+}
+
+// addUsageOnce is addUsage guarded by a per-entry seen-key set: a non-empty
+// key already seen for this session is a no-op (offset-reset re-read of a
+// transcript line already billed), and an empty key always bills — never
+// drop usage just because the caller had no stable id.
+func (s *costStore) addUsageOnce(sessionID, key string, in, out, cacheRead, cacheWrite int) {
+	e := s.get(sessionID)
+	if e == nil {
+		return
+	}
+	if key != "" {
+		e.mu.Lock()
+		if e.seenUsage == nil {
+			e.seenUsage = make(map[string]bool)
+		}
+		if e.seenUsage[key] {
+			e.mu.Unlock()
+			return
+		}
+		e.seenUsage[key] = true
+		e.mu.Unlock()
+	}
+	s.addUsage(sessionID, in, out, cacheRead, cacheWrite)
 }
 
 // setUsage overwrites sessionID's cumulative counters (codex app-server
@@ -230,6 +258,12 @@ func RegisterSessionCost(sessionID, modelID string, pool *db.Pool, clk clock.Clo
 // cost (api turns, claude-CLI assistant events).
 func AddSessionCostUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 	globalCostStore.addUsage(sessionID, in, out, cacheRead, cacheWrite)
+}
+
+// AddSessionCostUsageOnce is AddSessionCostUsage guarded by dedup key (see
+// addUsageOnce) — the sole entry point both Claude transcript tailers use.
+func AddSessionCostUsageOnce(sessionID, key string, in, out, cacheRead, cacheWrite int) {
+	globalCostStore.addUsageOnce(sessionID, key, in, out, cacheRead, cacheWrite)
 }
 
 // SetSessionCostUsage overwrites sessionID's cumulative usage (codex

@@ -29,10 +29,10 @@ func TestIngestClaudeTranscriptLine_AssistantAndUserBlocks(t *testing.T) {
 			`{"type":"thinking","thinking":"hmm let me check"},` +
 			`{"type":"tool_use","id":"tu1","name":"Read","input":{"file_path":"/repo/a.txt"}}`,
 	)
-	ingestClaudeTranscriptLine(l, []byte(assistantLine))
+	ingestClaudeTranscriptLine("s1", l, []byte(assistantLine))
 
 	userLine := ledgerCliUserLine(`{"type":"tool_result","tool_use_id":"tu1","content":"file A contents"}`)
-	ingestClaudeTranscriptLine(l, []byte(userLine))
+	ingestClaudeTranscriptLine("s1", l, []byte(userLine))
 
 	snap := l.snapshot("s1")
 	wantKinds := []LedgerKind{LedgerKindDialog, LedgerKindDialog, LedgerKindToolUse, LedgerKindFileRead}
@@ -69,14 +69,14 @@ func TestIngestClaudeTranscriptLine_AssistantAndUserBlocks(t *testing.T) {
 func TestIngestClaudeTranscriptLine_DuplicateFileReadSupersedes(t *testing.T) {
 	l := newLedger()
 
-	ingestClaudeTranscriptLine(l, []byte(ledgerCliAssistantLine(
+	ingestClaudeTranscriptLine("s1", l, []byte(ledgerCliAssistantLine(
 		`{"type":"tool_use","id":"tu1","name":"Read","input":{"file_path":"/repo/a.txt"}}`)))
-	ingestClaudeTranscriptLine(l, []byte(ledgerCliUserLine(
+	ingestClaudeTranscriptLine("s1", l, []byte(ledgerCliUserLine(
 		`{"type":"tool_result","tool_use_id":"tu1","content":"first read"}`)))
 
-	ingestClaudeTranscriptLine(l, []byte(ledgerCliAssistantLine(
+	ingestClaudeTranscriptLine("s1", l, []byte(ledgerCliAssistantLine(
 		`{"type":"tool_use","id":"tu2","name":"Read","input":{"file_path":"/repo/a.txt"}}`)))
-	ingestClaudeTranscriptLine(l, []byte(ledgerCliUserLine(
+	ingestClaudeTranscriptLine("s1", l, []byte(ledgerCliUserLine(
 		`{"type":"tool_result","tool_use_id":"tu2","content":"second read, file changed"}`)))
 
 	snap := l.snapshot("s1")
@@ -102,7 +102,7 @@ func TestIngestClaudeTranscriptLine_DuplicateFileReadSupersedes(t *testing.T) {
 // ledger entry.
 func TestIngestClaudeTranscriptLine_NonToolResultUserBlockIgnored(t *testing.T) {
 	l := newLedger()
-	ingestClaudeTranscriptLine(l, []byte(ledgerCliUserLine(`{"type":"text","text":"not a tool result"}`)))
+	ingestClaudeTranscriptLine("s1", l, []byte(ledgerCliUserLine(`{"type":"text","text":"not a tool result"}`)))
 	if got := len(l.snapshot("s1").Entries); got != 0 {
 		t.Errorf("Entries = %d, want 0", got)
 	}
@@ -113,7 +113,7 @@ func TestIngestClaudeTranscriptLine_NonToolResultUserBlockIgnored(t *testing.T) 
 // written mid-flush by the CLI in principle).
 func TestIngestClaudeTranscriptLine_MalformedJSONIgnored(t *testing.T) {
 	l := newLedger()
-	ingestClaudeTranscriptLine(l, []byte(`{not valid json`))
+	ingestClaudeTranscriptLine("s1", l, []byte(`{not valid json`))
 	if got := len(l.snapshot("s1").Entries); got != 0 {
 		t.Errorf("Entries = %d, want 0 (malformed line ignored)", got)
 	}

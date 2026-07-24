@@ -66,15 +66,17 @@ func (s *Spawner) ingestClaudeTranscript(sessionID, path string) {
 		}
 		consumed += int64(len(line))
 		lineCount++
-		ingestClaudeTranscriptLine(l, line)
+		ingestClaudeTranscriptLine(sessionID, l, line)
 	}
 	l.setTranscriptOffset(offset + consumed)
 }
 
 // ingestClaudeTranscriptLine parses one JSONL transcript line into ledger
 // entries: assistant text/thinking/tool_use, or user tool_result. Any other
-// entry type is ignored.
-func ingestClaudeTranscriptLine(l *ledger, line []byte) {
+// entry type is ignored. Also bills the line's usage (if any) into
+// sessionID's running cost via the shared dedup-aware helper.
+func ingestClaudeTranscriptLine(sessionID string, l *ledger, line []byte) {
+	ingestClaudeTranscriptUsage(sessionID, line)
 	var entry struct {
 		Type    string `json:"type"`
 		Message struct {

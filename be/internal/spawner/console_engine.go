@@ -50,6 +50,14 @@ type ConsoleEngine interface {
 	// InterruptTurn cancels the active turn without closing the conversation.
 	// Returns ErrNoActiveTurn when the engine is idle.
 	InterruptTurn(ctx context.Context) error
+	// SetYolo toggles auto-approval of console tool calls. claude/api mutate
+	// their mutex-guarded EngineSpec.Yolo, which the approval short-circuit
+	// already reads — the effect is immediate. codex persists the value but
+	// its approvalPolicy is fixed at thread/start, so the effect defers to
+	// the next rotation.
+	SetYolo(on bool) error
+	// Yolo reports the engine's current yolo state.
+	Yolo() bool
 	// Stop tears down the engine: cancels the run context, closes the
 	// underlying client/process, and closes the Events channel.
 	Stop()

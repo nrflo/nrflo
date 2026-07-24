@@ -115,6 +115,17 @@ export async function revokeConsoleChatSessionApproval(sid: string, tool: string
   )
 }
 
+// Toggle the session-level YOLO (approval-gate) override: POST turns it on,
+// DELETE clears the override (falls back to the resolved global default).
+export async function setConsoleChatYolo(sid: string, on: boolean): Promise<void> {
+  const path = `/api/v1/console/chats/${encodeURIComponent(sid)}/yolo`
+  if (on) {
+    await apiPost<void>(path)
+  } else {
+    await apiDelete<void>(path)
+  }
+}
+
 export async function closeConsoleChat(sid: string): Promise<void> {
   await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/close`)
 }

@@ -64,6 +64,7 @@ type AgentSession struct {
 	ObserverWorkflowID  sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
 	ConsoleEngine       sql.NullString     `json:"-"` // For kind="console_chat": the engine name ('claude'|'codex') the row was started with
 	ConsoleProfile      string             `json:"-"` // For kind="console_chat": the console.Profile name the row was started with ('' = none)
+	ConsoleYolo         sql.NullBool       `json:"-"` // For kind="console_chat": per-session yolo override; NULL = inherit the console_yolo global default
 	CreatedAt           time.Time          `json:"created_at"`
 	UpdatedAt           time.Time          `json:"updated_at"`
 

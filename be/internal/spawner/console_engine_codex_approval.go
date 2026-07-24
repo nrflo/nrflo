@@ -159,6 +159,23 @@ func (e *codexEngine) RevokeSessionApproval(string) error {
 	return fmt.Errorf("console engine: codex session approvals live in the app-server and cannot be revoked")
 }
 
+// SetYolo updates the in-memory spec so it persists across the call, but
+// codex's approvalPolicy is fixed at thread/start (console_engine_codex.go)
+// and immutable mid-thread — the effect only takes hold on the next
+// rotation/thread-start, never returning an error for "not yet applied".
+func (e *codexEngine) SetYolo(on bool) error {
+	e.mu.Lock()
+	e.spec.Yolo = on
+	e.mu.Unlock()
+	return nil
+}
+
+func (e *codexEngine) Yolo() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.spec.Yolo
+}
+
 // ReplyApproval answers a pending approval by id, mapping decision to the
 // wire vocabulary for that request's method.
 //

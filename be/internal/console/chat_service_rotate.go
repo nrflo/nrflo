@@ -82,7 +82,7 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 		Catalogue:           profile.Catalogue,
 		NativeToolPolicy:    profile.NativeToolPolicy,
 		ContextBudgetTokens: profile.ContextBudgetTokens,
-		Yolo:                consoleYolo(s.deps.Pool, s.deps.Clock),
+		Yolo:                s.resolveSessionYolo(sess.id),
 	})
 	if err != nil {
 		logger.Error(ctx, "console rotation: build engine spec failed", "session_id", sess.id, "error", err)

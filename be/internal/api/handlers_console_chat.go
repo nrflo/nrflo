@@ -203,6 +203,29 @@ func (s *Server) handleRevokeConsoleChatSessionApproval(w http.ResponseWriter, r
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleSetConsoleChatYolo toggles auto-approval of console tool calls for
+// the chat: POST turns it on, DELETE turns it off.
+// POST/DELETE /api/v1/console/chats/{sid}/yolo
+func (s *Server) handleSetConsoleChatYolo(w http.ResponseWriter, r *http.Request) {
+	sess, ok := s.loadConsoleChatSession(w, r)
+	if !ok {
+		return
+	}
+	on := r.Method == http.MethodPost
+
+	if err := s.consoleChat.SetYolo(sess.ID, on); err != nil {
+		if errors.Is(err, console.ErrChatSessionNotFound) {
+			writeError(w, http.StatusNotFound, "console chat session not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	appendAudit(s, r, "console_chat.yolo", "agent_session", sess.ID, "{}")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleCloseConsoleChat closes a console-chat session, killing its bearer
 // token via CloseConsoleChat's status filter.
 // POST /api/v1/console/chats/{sid}/close

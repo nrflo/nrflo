@@ -93,6 +93,21 @@ func (e *apiConsoleEngine) RevokeSessionApproval(tool string) error {
 	return nil
 }
 
+// SetYolo mutates the mutex-guarded spec.Yolo the requestToolApproval
+// short-circuit already reads — the toggle is immediate.
+func (e *apiConsoleEngine) SetYolo(on bool) error {
+	e.mu.Lock()
+	e.spec.Yolo = on
+	e.mu.Unlock()
+	return nil
+}
+
+func (e *apiConsoleEngine) Yolo() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.spec.Yolo
+}
+
 // consoleAPIFSSystem replaces consoleAPISystem's "no local tools" paragraph
 // when the native fs tools are injected (api_native_tools_enabled).
 const consoleAPIFSSystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, research topics via web_search/web_fetch, and work on files in the session's working directory via read_file, edit_file, and bash (one-shot shell; edit_file/bash require the user's approval). Use the tools available to you to answer the user's requests.`

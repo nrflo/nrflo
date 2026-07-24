@@ -130,6 +130,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 	if systemTemplateID == "" {
 		systemTemplateID = profile.SystemTemplateID
 	}
+	yolo := consoleYolo(s.deps.Pool, s.deps.Clock)
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
 		SessionID:           sessionID,
 		ProjectID:           projectID,
@@ -144,7 +145,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		ContextBudgetTokens: profile.ContextBudgetTokens,
 		DefaultModelID:      profile.DefaultModelID,
 		DefaultEffort:       profile.DefaultEffort,
-		Yolo:                consoleYolo(s.deps.Pool, s.deps.Clock),
+		Yolo:                yolo,
 	})
 	if err != nil {
 		return "", "", err
@@ -208,6 +209,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		SpawnToken:     sql.NullString{String: token, Valid: true},
 		StartedAt:      sql.NullString{String: now, Valid: true},
 		ConsoleProfile: profileName,
+		ConsoleYolo:    sql.NullBool{Bool: yolo, Valid: true},
 	}
 	if effectiveModelID != "" {
 		row.ModelID = sql.NullString{String: effectiveModelID, Valid: true}
@@ -253,6 +255,17 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 func consoleYolo(pool *db.Pool, clk clock.Clock) bool {
 	val, _ := service.NewGlobalSettingsService(pool, clk).Get("console_yolo")
 	return val != "false"
+}
+
+// resolveSessionYolo resolves sid's persisted per-session console_yolo
+// column (NULL -> the global consoleYolo default) so a per-session override
+// survives rotate/reconnect. Falls back to the global on any repo error.
+func (s *ChatService) resolveSessionYolo(sid string) bool {
+	row, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).GetConsoleChat(sid)
+	if err != nil || row == nil || !row.ConsoleYolo.Valid {
+		return consoleYolo(s.deps.Pool, s.deps.Clock)
+	}
+	return row.ConsoleYolo.Bool
 }
 
 // get reports whether sid is a live chat session held by this service.

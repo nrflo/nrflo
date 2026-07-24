@@ -38,4 +38,15 @@ describe('ChatStatusBar', () => {
     render(<ChatStatusBar engine="claude" turn="idle" />)
     expect(screen.queryByText(/·/)).not.toBeInTheDocument()
   })
+
+  it('renders the YOLO badge when yolo is true and omits it when false or unset', () => {
+    const { rerender } = render(<ChatStatusBar engine="claude" turn="idle" yolo={true} />)
+    expect(screen.getByText('YOLO')).toBeInTheDocument()
+
+    rerender(<ChatStatusBar engine="claude" turn="idle" yolo={false} />)
+    expect(screen.queryByText('YOLO')).not.toBeInTheDocument()
+
+    rerender(<ChatStatusBar engine="claude" turn="idle" />)
+    expect(screen.queryByText('YOLO')).not.toBeInTheDocument()
+  })
 })

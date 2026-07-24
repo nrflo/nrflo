@@ -106,7 +106,7 @@ export type WSEventType =
   | 'console_chat.approval_request'
   | 'console_chat.approval_resolved'
   | 'console_chat.error'
-  | 'console_chat.session_approvals' | 'console_chat.sibling_opened' | 'session.cost_updated'
+  | 'console_chat.session_approvals' | 'console_chat.sibling_opened' | 'session.cost_updated' | 'console_chat.yolo'
 
 export interface WSEvent {
   type: WSEventType

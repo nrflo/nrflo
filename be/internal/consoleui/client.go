@@ -100,6 +100,16 @@ func (c *Client) Approve(ctx context.Context, id, decision string) error {
 	return c.do(ctx, http.MethodPost, c.chatPath("approvals/"+url.PathEscape(id)), map[string]string{"decision": decision}, nil)
 }
 
+// SetYolo toggles auto-approval of console tool calls for the current chat:
+// POST turns it on, DELETE turns it off.
+func (c *Client) SetYolo(ctx context.Context, on bool) error {
+	method := http.MethodDelete
+	if on {
+		method = http.MethodPost
+	}
+	return c.do(ctx, method, c.chatPath("yolo"), nil, nil)
+}
+
 // Tools fetches the chat's own invokable tool catalogue.
 func (c *Client) Tools(ctx context.Context) ([]ConsoleTool, error) {
 	var result struct {

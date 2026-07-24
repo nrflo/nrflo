@@ -13,6 +13,9 @@ export interface ConsoleChatSummary {
   // Console profile the chat was created from (e.g. 't0-decider',
   // 't0-hands'); omitted for chats created via the manual/Custom path.
   profile?: string
+  // Effective YOLO (approval-gate-down) state — BE already resolves
+  // NULL->global before sending, so this is always a plain boolean.
+  yolo?: boolean
 }
 
 export interface PendingApproval {
@@ -168,6 +171,12 @@ export interface ConsoleChatErrorPayload {
 // (approve_for_session resolution or a revoke).
 export interface ConsoleChatSessionApprovalsPayload {
   tools: string[]
+}
+
+// console_chat.yolo session-channel push — full effective state, mirroring
+// ConsoleChatSessionApprovalsPayload.
+export interface ConsoleChatYoloPayload {
+  yolo: boolean
 }
 
 // console_chat.sibling_opened session-channel push (chat_service_sibling.go)

@@ -49,6 +49,8 @@ func (m *model) applyStream(update streamUpdate) {
 		case "console_chat.session_approvals":
 			// Always the full list (never a delta) — see console/chat_events.go.
 			m.detail.SessionApprovals = eventStrings(event, "tools")
+		case "console_chat.yolo":
+			m.detail.Yolo = eventBool(event, "yolo")
 		case "console_chat.error":
 			m.lastErr = eventString(event, "text")
 		case "agent.context_updated":

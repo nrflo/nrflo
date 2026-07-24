@@ -146,6 +146,9 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return tea.Quit, true
 	case "ctrl+x":
 		return action("close", func() error { return m.client.Close(m.ctx) }), true
+	case "ctrl+y":
+		toggled := !m.detail.Yolo
+		return action("yolo", func() error { return m.client.SetYolo(m.ctx, toggled) }), true
 	case "enter":
 		text := strings.TrimSpace(m.input.Value())
 		if text == "" {

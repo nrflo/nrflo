@@ -11,6 +11,7 @@ import {
   closeConsoleChat,
   interruptConsoleChat,
   revokeConsoleChatSessionApproval,
+  setConsoleChatYolo,
   switchConsoleChatModel,
   openConsoleChatHandsSibling,
   type SwitchConsoleChatModelRequest,
@@ -120,6 +121,18 @@ export function useRevokeSessionApproval() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ sid, tool }: { sid: string; tool: string }) => revokeConsoleChatSessionApproval(sid, tool),
+    onSuccess: (_data, { sid }) => {
+      queryClient.invalidateQueries({ queryKey: consoleChatKeys.detail(sid) })
+    },
+  })
+}
+
+// Toggling also arrives as a console_chat.yolo push; the detail invalidation
+// keeps a reload-seeded list in sync for tabs without the session channel open.
+export function useSetYolo() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sid, on }: { sid: string; on: boolean }) => setConsoleChatYolo(sid, on),
     onSuccess: (_data, { sid }) => {
       queryClient.invalidateQueries({ queryKey: consoleChatKeys.detail(sid) })
     },

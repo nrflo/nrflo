@@ -13,6 +13,7 @@ import type {
   ConsoleChatSiblingOpenedPayload,
   ConsoleChatThinkingPayload,
   ConsoleChatTurnPayload,
+  ConsoleChatYoloPayload,
   ConsoleContextRotatedPayload,
   PendingApproval,
 } from '@/types/consoleChat'
@@ -40,6 +41,9 @@ export interface SessionStreamState {
   // Live session-approved tool list — null until the first push arrives, so
   // a consumer can prefer the detail snapshot's seed until then.
   sessionApprovals: string[] | null
+  // Live effective YOLO state — null until the first push arrives, so a
+  // consumer can prefer the detail snapshot's seed until then.
+  yolo: boolean | null
   contextLeft?: number
   cost?: number
   errors: ConsoleChatErrorPayload[]
@@ -60,6 +64,7 @@ export function initialSessionStreamState(): SessionStreamState {
     approvals: [],
     resolvedApprovals: new Map(),
     sessionApprovals: null,
+    yolo: null,
     errors: [],
     rotations: [],
   }
@@ -105,6 +110,10 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
       // Always the full list (never a delta) — see chat_events.go.
       const { tools } = data as ConsoleChatSessionApprovalsPayload
       return { ...state, sessionApprovals: tools ?? [] }
+    }
+    case 'console_chat.yolo': {
+      const { yolo } = data as ConsoleChatYoloPayload
+      return { ...state, yolo }
     }
     case 'console_chat.sibling_opened': {
       return { ...state, siblingOpened: data as ConsoleChatSiblingOpenedPayload }

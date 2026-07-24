@@ -158,6 +158,31 @@ describe('sessionEventReducer', () => {
     })
   })
 
+  it('console_chat.yolo seeds null then folds the live effective state', () => {
+    let state = initialSessionStreamState()
+    expect(state.yolo).toBeNull()
+
+    state = sessionEventReducer(state, {
+      type: 'console_chat.yolo',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { yolo: true },
+    })
+    expect(state.yolo).toBe(true)
+
+    state = sessionEventReducer(state, {
+      type: 'console_chat.yolo',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { yolo: false },
+    })
+    expect(state.yolo).toBe(false)
+  })
+
   it('console.context_rotated appends a rotation notice, in arrival order', () => {
     let state = initialSessionStreamState()
     expect(state.rotations).toEqual([])

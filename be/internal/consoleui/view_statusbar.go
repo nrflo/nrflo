@@ -27,9 +27,13 @@ func (m *model) statusBar() string {
 	if len(m.detail.SessionApprovals) > 0 {
 		allowedText = "  always:" + strings.Join(m.detail.SessionApprovals, ",")
 	}
+	yoloText := ""
+	if m.detail.Yolo {
+		yoloText = "  " + lipgloss.NewStyle().Foreground(bad).Render("YOLO")
+	}
 	modelName := m.detail.Model
 	if modelName == "" {
 		modelName = "default"
 	}
-	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, allowedText))
+	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, allowedText)) + yoloText
 }

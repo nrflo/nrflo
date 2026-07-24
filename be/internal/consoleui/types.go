@@ -29,6 +29,7 @@ type ChatDetail struct {
 	SessionApprovals []string   `json:"session_approvals"`
 	LiveItems        []LiveItem `json:"live_items"`
 	Thinking         *LiveItem  `json:"thinking,omitempty"`
+	Yolo             bool       `json:"yolo"`
 }
 
 type LiveItem struct {

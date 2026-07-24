@@ -142,3 +142,51 @@ func TestChatService_Rotation_CarriesYoloOntoNewEngine(t *testing.T) {
 		t.Error("rotated spec.Yolo = false, want true (carried from console_yolo)")
 	}
 }
+
+// TestChatService_Rotation_CarriesPerSessionYoloOverride verifies a
+// per-session override set false via SetYolo survives rotation — rotate must
+// read the persisted per-session column (resolveSessionYolo), not just the
+// global console_yolo default (which stays true/unset here).
+func TestChatService_Rotation_CarriesPerSessionYoloOverride(t *testing.T) {
+	t.Parallel()
+	svc, pool, hub, factory := newChatTestService(t)
+	setProactiveRestartConsolePct(t, pool, "50")
+	if err := service.NewGlobalSettingsService(pool, svc.deps.Clock).Set("proactive_restart_min_interval_sec", "0"); err != nil {
+		t.Fatalf("set min interval: %v", err)
+	}
+
+	sid, err := svc.Create("claude", "opus-4-6", "high", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	oldEng := factory.last()
+	if !oldEng.spec().Yolo {
+		t.Fatal("pre-override spec.Yolo = false, want true (default-ON)")
+	}
+
+	if err := svc.SetYolo(sid, false); err != nil {
+		t.Fatalf("SetYolo(sid, false): %v", err)
+	}
+
+	digestRepo := repo.NewRefineryDigestRepo(pool, svc.deps.Clock)
+	if _, err := digestRepo.Upsert(sid, chatTestProjectID, "carried-forward working set"); err != nil {
+		t.Fatalf("Upsert digest: %v", err)
+	}
+	sess, ok := svc.get(sid)
+	if !ok {
+		t.Fatal("session not found after Create")
+	}
+	sess.noteContextLeft(0) // over threshold
+
+	ch := subscribeChatSession(t, hub, sid)
+	oldEng.emit(spawner.EngineEvent{Type: spawner.EventTurnCompleted, SessionID: sid})
+	waitForEventType(t, ch, ws.EventConsoleContextRotated, 2*time.Second)
+
+	newEng := factory.last()
+	if newEng == oldEng {
+		t.Fatal("rotation did not construct a new engine")
+	}
+	if newEng.spec().Yolo {
+		t.Error("rotated spec.Yolo = true, want false (per-session override must survive rotation)")
+	}
+}

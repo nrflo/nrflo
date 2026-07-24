@@ -23,6 +23,7 @@ type fakeConsoleEngine struct {
 	startSpec  spawner.EngineSpec
 	stopped    bool
 	turnActive bool
+	yolo       bool
 	turns      []string
 	approvals  []struct {
 		id       string
@@ -67,8 +68,24 @@ func (f *fakeConsoleEngine) Name() string { return "fake" }
 func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) error {
 	f.mu.Lock()
 	f.startSpec = spec
+	f.yolo = spec.Yolo
 	f.mu.Unlock()
 	return nil
+}
+
+// SetYolo mirrors the real engines' contract: mutates the in-memory yolo
+// state and never errors.
+func (f *fakeConsoleEngine) SetYolo(on bool) error {
+	f.mu.Lock()
+	f.yolo = on
+	f.mu.Unlock()
+	return nil
+}
+
+func (f *fakeConsoleEngine) Yolo() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.yolo
 }
 
 func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTurn) error {

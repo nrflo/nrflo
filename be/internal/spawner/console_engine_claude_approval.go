@@ -126,6 +126,21 @@ func (e *claudeEngine) RevokeSessionApproval(tool string) error {
 	return nil
 }
 
+// SetYolo mutates the mutex-guarded spec.Yolo the RequestApproval
+// short-circuit already reads — the toggle is immediate.
+func (e *claudeEngine) SetYolo(on bool) error {
+	e.mu.Lock()
+	e.spec.Yolo = on
+	e.mu.Unlock()
+	return nil
+}
+
+func (e *claudeEngine) Yolo() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.spec.Yolo
+}
+
 // RequestApproval registers a pending approval, flushes the transcript tail
 // (so any assistant text preceding the tool call is persisted/emitted first),
 // emits EventToolInvoke + EventApprovalRequest, then blocks on the human

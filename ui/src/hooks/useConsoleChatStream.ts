@@ -62,12 +62,18 @@ export function useConsoleChatStream(sid: string | undefined) {
   // (always the full list) takes over once any arrives.
   const sessionApprovals = stream.sessionApprovals ?? detailQuery.data?.session_approvals ?? []
 
+  // Detail seeds the effective YOLO state on reload; the live push takes
+  // over once any arrives — same seed-null-then-prefer-live shape as
+  // sessionApprovals above.
+  const yolo = stream.yolo ?? detailQuery.data?.yolo ?? false
+
   return {
     transcript,
     turn,
     approvals,
     resolvedApprovals: stream.resolvedApprovals,
     sessionApprovals,
+    yolo,
     thinking: stream.thinking,
     errors: stream.errors,
     siblingOpened: stream.siblingOpened,

@@ -1,6 +1,9 @@
 package console
 
-import "be/internal/spawner"
+import (
+	"be/internal/repo"
+	"be/internal/spawner"
+)
 
 // ChatSnapshot is a live chat session's in-memory state: engine identity plus
 // the turn/pending-approval state machine. Returned by Snapshot for the
@@ -15,6 +18,7 @@ type ChatSnapshot struct {
 	SessionApprovals []string
 	LiveItems        []ChatLiveItem
 	Thinking         ChatLiveItem
+	Yolo             bool
 }
 
 type ChatLiveItem struct {
@@ -40,6 +44,7 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		SessionApprovals: sess.getEngine().SessionApprovals(),
 		LiveItems:        state.Live,
 		Thinking:         state.Thinking,
+		Yolo:             sess.getEngine().Yolo(),
 	}, true
 }
 
@@ -56,6 +61,25 @@ func (s *ChatService) RevokeSessionApproval(sid, tool string) error {
 		return err
 	}
 	pushSessionApprovals(s.deps.WSHub, sess)
+	return nil
+}
+
+// SetYolo toggles sid's auto-approve-all-tools state: the engine (immediate
+// for claude/api, deferred to next rotation for codex), then the persisted
+// per-session column so an override survives rotate/reconnect, then a
+// console_chat.yolo push on the session channel.
+func (s *ChatService) SetYolo(sid string, on bool) error {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ErrChatSessionNotFound
+	}
+	if err := sess.getEngine().SetYolo(on); err != nil {
+		return err
+	}
+	if err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).SetConsoleYolo(sid, on); err != nil {
+		return err
+	}
+	pushYolo(s.deps.WSHub, sess)
 	return nil
 }
 

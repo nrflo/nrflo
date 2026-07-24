@@ -9,6 +9,7 @@ import {
   useCloseConsoleChat,
   useInterruptConsoleChat,
   useRevokeSessionApproval,
+  useSetYolo,
   useConsoleCatalog,
 } from '@/hooks/useConsoleChats'
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
@@ -47,6 +48,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
   const closeMutation = useCloseConsoleChat()
   const interruptMutation = useInterruptConsoleChat()
   const revokeMutation = useRevokeSessionApproval()
+  const yoloMutation = useSetYolo()
   const [showTerminal, setShowTerminal] = useState(false)
   const [search, setSearch] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -114,6 +116,14 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
     }
   }
 
+  const handleToggleYolo = async () => {
+    try {
+      await yoloMutation.mutateAsync({ sid, on: !stream.yolo })
+    } catch {
+      toast.error('Failed to toggle YOLO mode.')
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-end border-b border-border px-4 py-3">
@@ -153,6 +163,15 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
               {showTerminal ? 'Hide terminal' : 'Terminal'}
             </Button>
           )}
+          <Button
+            variant={stream.yolo ? 'default' : 'outline'}
+            size="sm"
+            onClick={handleToggleYolo}
+            disabled={yoloMutation.isPending}
+            title="Toggle YOLO mode (approval gate down for this chat)"
+          >
+            YOLO {stream.yolo ? 'on' : 'off'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -234,6 +253,7 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
         contextLeft={stream.contextLeft}
         cost={stream.cost}
         turn={stream.turn}
+        yolo={stream.yolo}
       />
     </div>
   )

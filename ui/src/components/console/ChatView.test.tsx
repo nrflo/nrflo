@@ -15,6 +15,7 @@ vi.mock('@/hooks/useConsoleChats', async (importOriginal) => {
     useCloseConsoleChat: vi.fn(),
     useInterruptConsoleChat: vi.fn(),
     useRevokeSessionApproval: vi.fn(),
+    useSetYolo: vi.fn(),
   }
 })
 
@@ -26,7 +27,8 @@ function makeStream(
   turn: 'idle' | 'running',
   transcript: unknown[] = [],
   sessionApprovals: string[] = [],
-  cost: number | undefined = undefined
+  cost: number | undefined = undefined,
+  yolo = false
 ) {
   return {
     transcript,
@@ -34,6 +36,7 @@ function makeStream(
     approvals: [],
     resolvedApprovals: new Map(),
     sessionApprovals,
+    yolo,
     thinking: [],
     errors: [],
     rotations: [],
@@ -53,6 +56,7 @@ function setup(turn: 'idle' | 'running') {
   const close = vi.fn().mockResolvedValue(undefined)
   const interrupt = vi.fn().mockResolvedValue(undefined)
   const revoke = vi.fn().mockResolvedValue(undefined)
+  const setYolo = vi.fn().mockResolvedValue(undefined)
   vi.mocked(useConsoleChats.useConsoleChat).mockReturnValue({
     data: { session_id: 's1', engine: 'claude', model: 'sonnet' },
   } as ReturnType<typeof useConsoleChats.useConsoleChat>)
@@ -64,9 +68,11 @@ function setup(turn: 'idle' | 'running') {
     mutation(interrupt) as ReturnType<typeof useConsoleChats.useInterruptConsoleChat>)
   vi.mocked(useConsoleChats.useRevokeSessionApproval).mockReturnValue(
     mutation(revoke) as ReturnType<typeof useConsoleChats.useRevokeSessionApproval>)
+  vi.mocked(useConsoleChats.useSetYolo).mockReturnValue(
+    mutation(setYolo) as ReturnType<typeof useConsoleChats.useSetYolo>)
   vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
     makeStream(turn) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
-  return { send, close, interrupt, revoke }
+  return { send, close, interrupt, revoke, setYolo }
 }
 
 describe('ChatView turn controls', () => {
@@ -146,6 +152,34 @@ describe('ChatView turn controls', () => {
     expect(screen.getByText('claude')).toBeInTheDocument()
     expect(screen.getByText('· sonnet')).toBeInTheDocument()
     expect(screen.getByText('/tmp/w')).toBeInTheDocument()
+  })
+
+  it('YOLO toggle shows current state, calls setYolo with the flipped value, and the status bar badge follows the stream', () => {
+    setup('idle')
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', [], [], undefined, true) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    const { unmount } = renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'YOLO on' })).toBeInTheDocument()
+    expect(screen.getByText('YOLO')).toBeInTheDocument()
+    unmount()
+
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', [], [], undefined, false) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'YOLO off' })).toBeInTheDocument()
+    expect(screen.queryByText('YOLO')).not.toBeInTheDocument()
+  })
+
+  it('clicking the YOLO toggle calls setYolo with the flipped value', async () => {
+    const { setYolo } = setup('idle')
+    vi.mocked(useConsoleChatStreamHook.useConsoleChatStream).mockReturnValue(
+      makeStream('idle', [], [], undefined, false) as ReturnType<typeof useConsoleChatStreamHook.useConsoleChatStream>)
+    const user = userEvent.setup()
+    renderWithQuery(<ChatView sid="s1" onClosed={vi.fn()} onDetach={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'YOLO off' }))
+    expect(setYolo).toHaveBeenCalledWith({ sid: 's1', on: true })
   })
 
   it('Detach deselects without closing; Close tears the chat down', async () => {

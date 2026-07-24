@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"net/http"
 
+	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/spawner"
 )
 
@@ -21,6 +24,18 @@ type consoleChatListItem struct {
 	ContextLeft *int   `json:"context_left,omitempty"`
 	Live        bool   `json:"live"`
 	Profile     string `json:"profile,omitempty"`
+	Yolo        bool   `json:"yolo"`
+}
+
+// resolveYolo reads a row's persisted console_yolo column (NULL -> the
+// console_yolo global default, mirroring console.consoleYolo's default-ON
+// semantics) for list/detail display.
+func resolveYolo(row *model.AgentSession, pool *db.Pool, clk clock.Clock) bool {
+	if row.ConsoleYolo.Valid {
+		return row.ConsoleYolo.Bool
+	}
+	val, _ := service.NewGlobalSettingsService(pool, clk).Get("console_yolo")
+	return val != "false"
 }
 
 // handleListConsoleChats lists this project's kind='console_chat' sessions,
@@ -54,6 +69,7 @@ func (s *Server) handleListConsoleChats(w http.ResponseWriter, r *http.Request) 
 			EndedAt:   row.EndedAt.String,
 			Live:      s.consoleChat.Live(row.ID),
 			Profile:   row.ConsoleProfile,
+			Yolo:      resolveYolo(row, s.pool, s.clock),
 		}
 		if row.ContextLeft.Valid {
 			v := int(row.ContextLeft.Int64)
@@ -97,6 +113,7 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 		"started_at": sess.StartedAt.String,
 		"ended_at":   sess.EndedAt.String,
 		"profile":    sess.ConsoleProfile,
+		"yolo":       resolveYolo(sess, s.pool, s.clock),
 	}
 	if sess.ContextLeft.Valid {
 		resp["context_left"] = int(sess.ContextLeft.Int64)
@@ -110,6 +127,7 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 	snap, live := s.consoleChat.Snapshot(sess.ID)
 	resp["live"] = live
 	if live {
+		resp["yolo"] = snap.Yolo
 		approvals := make([]consoleChatApprovalItem, 0, len(snap.PendingApprovals))
 		for _, a := range snap.PendingApprovals {
 			approvals = append(approvals, consoleChatApprovalItem{

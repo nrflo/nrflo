@@ -27,6 +27,7 @@ type fakeConsoleEngine struct {
 	started    bool
 	stopped    bool
 	turnActive bool
+	yolo       bool
 	turns      []string
 	// skills mirrors turns index-for-index: the resolved spawner.SkillMatch
 	// (nil when the turn carried none) ChatService.SendMessage attached to
@@ -88,7 +89,23 @@ func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) er
 	defer f.mu.Unlock()
 	f.started = true
 	f.startSpec = spec
+	f.yolo = spec.Yolo
 	return nil
+}
+
+// SetYolo mirrors the real engines' contract: mutates the in-memory yolo
+// state and never errors.
+func (f *fakeConsoleEngine) SetYolo(on bool) error {
+	f.mu.Lock()
+	f.yolo = on
+	f.mu.Unlock()
+	return nil
+}
+
+func (f *fakeConsoleEngine) Yolo() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.yolo
 }
 
 // SendUserTurn records turn.Text (and turn.Skill, index-aligned in f.skills).

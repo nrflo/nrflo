@@ -2,6 +2,7 @@ package repo
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"be/internal/model"
@@ -83,6 +84,22 @@ func (r *AgentSessionRepo) ListConsoleChats(projectID string, limit int) ([]*mod
 		sessions = append(sessions, s)
 	}
 	return sessions, rows.Err()
+}
+
+// SetConsoleYolo write-throughs a chat's per-session yolo override.
+func (r *AgentSessionRepo) SetConsoleYolo(id string, on bool) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE agent_sessions SET console_yolo = ?, updated_at = ? WHERE id = ?`,
+		sql.NullBool{Bool: on, Valid: true}, now, id)
+	if err != nil {
+		return err
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("agent session not found: %s", id)
+	}
+	return nil
 }
 
 // ExpireIdleConsoles closes every console session still user_interactive whose

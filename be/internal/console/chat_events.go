@@ -164,6 +164,14 @@ func pushSessionApprovals(wsHub *ws.Hub, sess *chatSession) {
 	})
 }
 
+// pushYolo pushes the engine's current yolo state — sent whenever it changes,
+// mirroring pushSessionApprovals.
+func pushYolo(wsHub *ws.Hub, sess *chatSession) {
+	pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatYolo, map[string]interface{}{
+		"yolo": sess.getEngine().Yolo(),
+	})
+}
+
 // pushSessionEvent is a nil-safe helper for a session-channel WS push.
 func pushSessionEvent(wsHub *ws.Hub, sessionID, projectID, eventType string, data map[string]interface{}) {
 	if wsHub == nil {

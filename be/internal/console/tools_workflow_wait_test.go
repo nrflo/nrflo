@@ -87,8 +87,16 @@ func TestWorkflowWait_BaselineReturnsImmediately(t *testing.T) {
 	if !r.Changed || r.Terminal || r.Digest == "" {
 		t.Errorf("baseline = %+v, want changed=true terminal=false non-empty digest", r)
 	}
-	if r.State["instance_id"] != "wfi-wait-base" {
-		t.Errorf("state.instance_id = %v, want wfi-wait-base", r.State["instance_id"])
+	if r.State["status"] != "active" {
+		t.Errorf("state.status = %v, want active", r.State["status"])
+	}
+	if _, ok := r.State["instance_id"]; ok {
+		t.Errorf("state carries instance_id, want absent (trimmed tracking projection): %+v", r.State)
+	}
+	for _, k := range []string{"phase_order", "current_phase", "phases", "active_agents"} {
+		if _, ok := r.State[k]; !ok {
+			t.Errorf("baseline state missing %q: %+v", k, r.State)
+		}
 	}
 	if got := env.deps.WaitBroker.WaiterCount(testProjectID); got != 0 {
 		t.Errorf("WaiterCount after return = %d, want 0 (subscription leaked)", got)

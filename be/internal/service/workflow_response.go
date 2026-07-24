@@ -257,3 +257,24 @@ func ExtractWorkflowFinalResultByInstanceID(pool *db.Pool, instanceID string, cl
 func (s *WorkflowService) ExtractWorkflowFinalResult(wi *model.WorkflowInstance) string {
 	return ExtractWorkflowFinalResultByInstanceID(s.pool, wi.ID, s.clock)
 }
+
+// ExtractWorkflowFailureReason reads the workflow-instance-owned `_failure_reason`
+// finding ({"reason": "..."}), or "" if not set.
+func (s *WorkflowService) ExtractWorkflowFailureReason(wi *model.WorkflowInstance) string {
+	fr := repo.NewFindingRepo(s.pool, s.clock)
+	own, err := fr.GetOwn("workflow_instance", wi.ID)
+	if err != nil {
+		return ""
+	}
+	raw, ok := own["_failure_reason"]
+	if !ok {
+		return ""
+	}
+	var v struct {
+		Reason string `json:"reason"`
+	}
+	if json.Unmarshal(raw, &v) != nil {
+		return ""
+	}
+	return v.Reason
+}

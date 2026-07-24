@@ -378,7 +378,7 @@ export interface WorkflowDef {
 }
 
 export type { WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from './workflow.defs'
-export type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from './workflow.agentDefs'
+export type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest, StepDefinition, RequiredFinding, PathOverlap, PromptMode } from './workflow.agentDefs'
 
 export interface ContinueWorkflowRequest {
   workflow?: string

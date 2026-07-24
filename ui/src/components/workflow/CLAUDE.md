@@ -14,6 +14,8 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 `AgentDefForm.tsx` (+ sub-field components) edits an `AgentDef`, including optional `reasoning_effort` and admin-managed global (`__global__`) templates. `native_tools` (anthropic CLI defs) and `sandbox` (openai CLI defs) render provider-gated and are auto-cleared when the model/mode moves away, since the backend hard-rejects mismatches. Details: [REFERENCE.md](REFERENCE.md#agent-definitions) — read before changing the form fields or template scoping.
 
+`AgentDefForm.tsx` also carries a `prompt_mode` (`full`|`stepwise`) toggle: `AgentDefStepwiseSection.tsx` renders an ordered, add/remove/reorder step list (`StepDefinitionEditor.tsx` + `StepRequiredFindingsEditor.tsx`/`StepChecksOverlapEditor.tsx`) validated client-side via `src/lib/stepDefinitions.ts` (mirrors `service.validateStepDefinitions`) before submit; switching `execution_mode` to `script` resets `prompt_mode` back to `full` since script agents can't be stepwise. `AgentDefCard.tsx` badges stepwise defs as "stepwise · N steps".
+
 `AgentDefModelTierFields.tsx` adds a Tier 1-5 selector plus an "Override model (skip tier fallback chain)" toggle; when off, the model is resolved server-side from the tier's fallback chain (`resolveTierChain`/`useTierModels`) and `AgentDefCard.tsx` shows the chain-primary model as a badge. `TieringSection.tsx` reports current-tier → recommended-tier per worker role instead of raw model names.
 
 ## Plan Approval

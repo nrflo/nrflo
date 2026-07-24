@@ -121,6 +121,7 @@ describe('AgentDefForm', () => {
         validation_commands: [],
         consultant: undefined, node_role: undefined, description: undefined,
         reasoning_effort: null, system_template_id: undefined,
+        prompt_mode: 'full',
       })
     })
 
@@ -156,6 +157,7 @@ describe('AgentDefForm', () => {
         validation_commands: [],
         consultant: undefined, node_role: undefined, description: undefined,
         reasoning_effort: null, system_template_id: '',
+        prompt_mode: 'full',
       })
     })
 

@@ -2,6 +2,32 @@
 // for the 300-line file cap; re-exported from './workflow' so import paths
 // stay stable).
 
+// Stepwise step schema, transcribed 1:1 from be/internal/model/agent_step.go.
+export interface RequiredFinding {
+  key: string
+  schema: string
+}
+
+export interface PathOverlap {
+  left: string[]
+  right: string[]
+}
+
+export interface StepDefinition {
+  step_id: string
+  title: string
+  instruction: string
+  required_findings?: RequiredFinding[]
+  checks?: string[]
+  rotation_allowed?: boolean
+  path_overlap?: PathOverlap
+}
+
+// steps read/write asymmetry: GET returns agent_definitions.steps as a raw
+// JSON string (model.Steps is *string) — parse before use. POST/PATCH send
+// steps as a structured StepDefinition[] — never a string.
+export type PromptMode = 'full' | 'stepwise'
+
 export interface AgentDef {
   id: string
   project_id: string
@@ -29,6 +55,8 @@ export interface AgentDef {
   description?: string
   reasoning_effort?: string | null
   system_template_id?: string
+  prompt_mode?: PromptMode
+  steps?: string
   created_at: string
   updated_at: string
 }
@@ -58,6 +86,8 @@ export interface AgentDefCreateRequest {
   description?: string
   reasoning_effort?: string | null
   system_template_id?: string
+  prompt_mode?: PromptMode
+  steps?: StepDefinition[]
 }
 
 export interface AgentDefUpdateRequest {
@@ -84,4 +114,6 @@ export interface AgentDefUpdateRequest {
   description?: string
   reasoning_effort?: string | null
   system_template_id?: string
+  prompt_mode?: PromptMode
+  steps?: StepDefinition[]
 }

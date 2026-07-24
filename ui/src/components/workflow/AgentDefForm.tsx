@@ -13,9 +13,11 @@ import { AgentDefToolsField } from './AgentDefToolsField'
 import { AgentDefNativeToolsField } from './AgentDefNativeToolsField'
 import { AgentDefSandboxField } from './AgentDefSandboxField'
 import { PythonScriptPickerField } from './PythonScriptPickerField'
+import { AgentDefStepwiseSection } from './AgentDefStepwiseSection'
 import { useModelOptions, useModels } from '@/hooks/useModels'
 import { useAPIModeEnabled } from '@/hooks/useGlobalSettings'
-import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest } from '@/types/workflow'
+import { validateStepDefinitions } from '@/lib/stepDefinitions'
+import type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest, PromptMode, StepDefinition } from '@/types/workflow'
 
 type ExecutionMode = 'cli_interactive' | 'api' | 'script'
 type NodeRole = 'static' | 'planner' | 'fanout_template'
@@ -26,12 +28,14 @@ export function AgentDefForm({
   onCancel,
   isCreate,
   groups = [],
+  submitError,
 }: {
   initial?: Partial<AgentDef>
   onSubmit: (data: AgentDefCreateRequest | AgentDefUpdateRequest) => void
   onCancel: () => void
   isCreate: boolean
   groups?: string[]
+  submitError?: string
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [layer, setLayer] = useState(initial?.layer ?? 0)
@@ -61,6 +65,10 @@ export function AgentDefForm({
   const [description, setDescription] = useState(initial?.description || '')
   const [reasoningEffort, setReasoningEffort] = useState(initial?.reasoning_effort ?? '')
   const [systemTemplateId, setSystemTemplateId] = useState(initial?.system_template_id ?? '')
+  const [promptMode, setPromptMode] = useState<PromptMode>((initial?.prompt_mode as PromptMode) || 'full')
+  const [steps, setSteps] = useState<StepDefinition[]>(() => {
+    try { return JSON.parse(initial?.steps ?? '[]') } catch { return [] }
+  })
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const modelOptions = useModelOptions('cli')
   const apiModelOptions = useModelOptions('api')
@@ -83,6 +91,10 @@ export function AgentDefForm({
   const handleExecutionModeChange = (v: string) => {
     const next = v as ExecutionMode
     if (next !== 'script') setPythonScriptId('')
+    if (next === 'script') {
+      setPromptMode('full')
+      setSteps([])
+    }
     let nextModel = model
     if (next !== 'script') {
       const options = next === 'api' ? apiModelOptions : modelOptions
@@ -107,6 +119,7 @@ export function AgentDefForm({
     if (executionMode !== 'script' && isCreate && !prompt.trim()) return
     if (executionMode === 'script' && !pythonScriptId) return
     if (nodeRole === 'fanout_template' && !description.trim()) return
+    if (executionMode !== 'script' && promptMode === 'stepwise' && validateStepDefinitions(steps).length > 0) return
 
     const threshold = restartThreshold !== '' ? restartThreshold : undefined
     const failRestarts = maxFailRestarts !== '' ? maxFailRestarts : undefined
@@ -126,7 +139,7 @@ export function AgentDefForm({
     const lcModel = lowConsumptionModel || undefined
     const modelValue = override ? model : ''
     const tierValue = override ? null : tier
-    const base = { layer, model: modelValue, tier: tierValue, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null, system_template_id: isCreate ? (systemTemplateId || undefined) : systemTemplateId }
+    const base = { layer, model: modelValue, tier: tierValue, timeout, prompt, restart_threshold: threshold, max_fail_restarts: failRestarts, tag: tagValue, low_consumption_model: lcModel, execution_mode: executionMode, tools, native_tools: nativeTools, sandbox: sandbox as AgentDefCreateRequest['sandbox'], api_max_iterations: maxIter, api_max_tokens: maxTokens, validation_commands: trimmedCmds, consultant: consultant || undefined, node_role: nodeRoleValue, description: descriptionValue, reasoning_effort: reasoningEffort || null, system_template_id: isCreate ? (systemTemplateId || undefined) : systemTemplateId, prompt_mode: promptMode, ...(promptMode === 'stepwise' ? { steps } : {}) }
     onSubmit(isCreate ? ({ id, ...base } as AgentDefCreateRequest) : (base as AgentDefUpdateRequest))
   }
 
@@ -258,6 +271,12 @@ export function AgentDefForm({
           </div>
           <MarkdownEditor value={prompt} onChange={setPrompt} placeholder="Agent prompt template (markdown)..." minHeight="240px" maxHeight="500px" />
         </div>
+      )}
+      {executionMode !== 'script' && (
+        <AgentDefStepwiseSection promptMode={promptMode} onPromptModeChange={setPromptMode} steps={steps} onStepsChange={setSteps} />
+      )}
+      {submitError && (
+        <p className="text-xs text-destructive">{submitError}</p>
       )}
       <div className="flex gap-2 justify-end">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>

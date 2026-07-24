@@ -55,9 +55,15 @@ export function AgentDefCard({
         groups={groups}
         onSubmit={(data) => updateMutation.mutate(data as AgentDefUpdateRequest)}
         onCancel={() => setEditing(false)}
+        submitError={updateMutation.error?.message}
       />
     )
   }
+
+  const stepCount = (() => {
+    if (def.prompt_mode !== 'stepwise' || !def.steps) return 0
+    try { return (JSON.parse(def.steps) as unknown[]).length } catch { return 0 }
+  })()
 
   return (
     <div className="border border-border rounded-lg p-3 hover:bg-muted/20 transition-colors">
@@ -119,6 +125,11 @@ export function AgentDefCard({
           {def.low_consumption_model && (
             <Badge variant="outline" className="text-xs">
               lc: {def.low_consumption_model}
+            </Badge>
+          )}
+          {def.prompt_mode === 'stepwise' && (
+            <Badge variant="outline" className="text-xs border-teal-300 text-teal-600 dark:border-teal-700 dark:text-teal-400">
+              stepwise · {stepCount} steps
             </Badge>
           )}
         </div>

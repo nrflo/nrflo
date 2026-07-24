@@ -79,6 +79,7 @@ export function AgentDefsSection({ workflowId, groups, project }: { workflowId: 
           groups={groups}
           onSubmit={(data) => createMutation.mutate(data as AgentDefCreateRequest)}
           onCancel={() => setCreating(false)}
+          submitError={createMutation.error?.message}
         />
       )}
 

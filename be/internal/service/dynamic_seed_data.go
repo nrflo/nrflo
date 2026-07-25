@@ -40,7 +40,7 @@ type dynAgent struct {
 var dynAgents = []dynAgent{
 	{
 		ID:          "dynamic-planner",
-		Model:       "opus-4-8",
+		Model:       "opus-5",
 		Tools:       "emit_findings",
 		NodeRole:    "planner",
 		Description: "Workflow-local planner for the dynamic workflow: decomposes a goal into a layered manifest bound to the templates below.",
@@ -119,7 +119,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "synthesizer",
-		Model:           "opus-4-8",
+		Model:           "opus-5",
 		ReasoningEffort: "medium",
 		Tools:           "emit_findings,findings_get",
 		Description:     "Final, result-carrying node: merges semantic duplicates across earlier findings, ranks by confidence, and emits exactly once. Emits to finding key `workflow_final_result`.",

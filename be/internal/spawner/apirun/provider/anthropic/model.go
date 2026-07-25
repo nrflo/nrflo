@@ -24,7 +24,7 @@ func stripContextSuffix(model string) string {
 func isAdaptiveMillionModel(base string) bool {
 	switch base {
 	case "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8",
-		"claude-sonnet-5", "claude-fable-5", "claude-mythos-5":
+		"claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-mythos-5":
 		return true
 	}
 	return false

@@ -59,11 +59,11 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		return nil, nil, fmt.Errorf("api-via-cli: model %q does not support api mode", rawModel)
 	}
 	// The Claude CLI selects its context window from the model STRING passed to
-	// --model, not from proc.maxContext: bare "claude-opus-4-8" opens 200k, the
+	// --model, not from proc.maxContext: bare "claude-opus-5" opens 200k, the
 	// "[1m]" suffix opens 1M. The hybrid reports am.APIContext as the window, so
 	// when the API window is 1M and exceeds what the bare string opens in the CLI
 	// (am.CLIContext), the string must request 1M explicitly. sonnet-5 (API 1M,
-	// CLI 1M) stays bare; opus-4-6/4-7/4-8 (API 1M > CLI 200k) gets the suffix.
+	// CLI 1M) stays bare; opus-4-6/4-7/4-8/5 (API 1M > CLI 200k) gets the suffix.
 	if am.APIContext >= 1_000_000 && am.APIContext > am.CLIContext && !strings.HasSuffix(claudeModel, "[1m]") {
 		claudeModel += "[1m]"
 	}

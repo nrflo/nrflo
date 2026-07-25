@@ -17,7 +17,9 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	want := map[string]string{
-		"fable-5":       "anthropic|claude-fable-5|claude-fable-5|1000000|1000000|claude-opus-4-8|",
+		"fable-5":       "anthropic|claude-fable-5|claude-fable-5|1000000|1000000|claude-opus-5|",
+		"opus-5":        "anthropic|claude-opus-5|claude-opus-5|200000|1000000||",
+		"opus-5-1m":     "anthropic|claude-opus-5[1m]|claude-opus-5[1m]|1000000|1000000|claude-opus-5|",
 		"sonnet-5":      "anthropic|claude-sonnet-5|claude-sonnet-5|1000000|1000000||",
 		"haiku-4-5":     "anthropic|claude-haiku-4-5|claude-haiku-4-5|200000|200000||",
 		"opus-4-6":      "anthropic|claude-opus-4-6|claude-opus-4-6|200000|1000000||",

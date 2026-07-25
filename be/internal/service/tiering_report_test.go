@@ -28,7 +28,7 @@ func setupTieringReportTestEnv(t *testing.T) (*TieringService, *db.Pool, time.Ti
 	return svc, pool, now
 }
 
-// TestBuildReport_ProjectAlpha covers: stock implementor (opus-4-8 -> sonnet-5,
+// TestBuildReport_ProjectAlpha covers: stock implementor (opus-5 -> sonnet-5,
 // delta<0), doc-updater stock with no usage (na fallback), hotfix implementor
 // (skip=hotfix, no delta), and an unmapped def excluded entirely.
 func TestBuildReport_ProjectAlpha(t *testing.T) {
@@ -39,12 +39,12 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 	seedProjectAndWorkflow(t, pool, "alpha", "hotfix", "ticket")
 	seedProjectAndWorkflow(t, pool, "alpha", "__spec_import__", "project")
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "implementor", model: "opus-4-8"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "implementor", model: "opus-5"})
 	seedTieringCostSession(t, pool, "alpha", "feature", "implementor", 100, now.AddDate(0, 0, -5))
 
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "hotfix", defID: "implementor", model: "opus-4-8"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "hotfix", defID: "implementor", model: "opus-5"})
 
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "__spec_import__", defID: "spec-normalizer", model: "haiku-4-5"})
 
@@ -105,10 +105,10 @@ func TestBuildReport_ProjectBeta(t *testing.T) {
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "beta", workflowID: "refactor", defID: "implementor", model: "fable-5"})
 	seedTieringCostSession(t, pool, "beta", "refactor", "implementor", 50, now.AddDate(0, 0, -3))
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "beta", workflowID: "feature", defID: "qa-verifier", model: "opus-4-8", consultant: true})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "beta", workflowID: "feature", defID: "qa-verifier", model: "opus-5", consultant: true})
 	seedTieringCostSession(t, pool, "beta", "feature", "qa-verifier", 40, now.AddDate(0, 0, -3))
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "beta", workflowID: "feature", defID: "implement-fanout", model: "opus-4-8", nodeRole: "planner"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "beta", workflowID: "feature", defID: "implement-fanout", model: "opus-5", nodeRole: "planner"})
 
 	report, err := svc.BuildReport()
 	if err != nil {
@@ -151,9 +151,9 @@ func TestBuildReport_WorkerTemplateAssignment(t *testing.T) {
 
 	roles := map[string]string{
 		"setup-analyzer": "sonnet-5",
-		"test-writer":    "opus-4-8",
-		"implementor":    "opus-4-8",
-		"qa-verifier":    "opus-4-8",
+		"test-writer":    "opus-5",
+		"implementor":    "opus-5",
+		"qa-verifier":    "opus-5",
 		"doc-updater":    "sonnet-5",
 	}
 	for defID, model := range roles {

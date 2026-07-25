@@ -79,8 +79,8 @@ func TestChatService_Catalog_ListsBuiltinProfiles(t *testing.T) {
 	if !ok {
 		t.Fatal("catalog.Profiles missing t0-decider")
 	}
-	if decider.DefaultEngine != "claude" || decider.DefaultModelID != "opus-4-8" || decider.ContextBudgetTokens != 50000 || !decider.RefineryDefault {
-		t.Errorf("t0-decider profile option = %+v, want claude/opus-4-8/50000/refinery-on", decider)
+	if decider.DefaultEngine != "claude" || decider.DefaultModelID != "opus-5" || decider.ContextBudgetTokens != 50000 || !decider.RefineryDefault {
+		t.Errorf("t0-decider profile option = %+v, want claude/opus-5/50000/refinery-on", decider)
 	}
 	hands, ok := byName["t0-hands"]
 	if !ok {

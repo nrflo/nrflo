@@ -8,7 +8,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ### t0-decider
 
-`engine=claude`, `model=opus-4-8` (the 200k-context, non-`[1m]` row), `effort=xhigh`, `budget=50000`, `refinery=true`, `system_template_id=tier-t0-decider` (seeded by migration 000178), `native_tool_policy=none`. Catalogue (`t0DeciderCatalogue`): `delegate`, `get_delegation`, `workflow_run`, `workflow_get`, `workflow_list`, `workflow_continue`, `workflow_stop`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `project_findings_add/_add_bulk/_append/_append_bulk/_get/_delete`, `ticket_create/_update/_add_dependency/_list/_get/_current`, `artifact_list`, `artifact_get`, `web_search`, `consult`. Deliberately absent: any fs/bash tool, `web_fetch`, `workflow_wait`/`workflow_retry_failed`/`project_list`/`project_status` (a T0 decider drives via `delegate`/`dynamic_workflow`, not by running or polling workflows directly).
+`engine=claude`, `model=opus-5` (the 200k-context, non-`[1m]` row), `effort=xhigh`, `budget=50000`, `refinery=true`, `system_template_id=tier-t0-decider` (seeded by migration 000178), `native_tool_policy=none`. Catalogue (`t0DeciderCatalogue`): `delegate`, `get_delegation`, `workflow_run`, `workflow_get`, `workflow_list`, `workflow_continue`, `workflow_stop`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `project_findings_add/_add_bulk/_append/_append_bulk/_get/_delete`, `ticket_create/_update/_add_dependency/_list/_get/_current`, `artifact_list`, `artifact_get`, `web_search`, `consult`. Deliberately absent: any fs/bash tool, `web_fetch`, `workflow_wait`/`workflow_retry_failed`/`project_list`/`project_status` (a T0 decider drives via `delegate`/`dynamic_workflow`, not by running or polling workflows directly).
 
 ### t0-hands
 
@@ -16,7 +16,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ### t0-bare
 
-`engine=claude`, `model=opus-4-8`, `effort=xhigh`, `budget=30000`, `refinery=true`, `system_template_id=tier-t0-bare` (seeded by migration 000190), `native_tool_policy=none`. Catalogue (`t0BareCatalogue`, exactly 13 tools): `delegate`, `get_delegation`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `workflow_run`, `workflow_list`, `workflow_get`, `workflow_continue`, `workflow_stop`, `ticket_list`, `ticket_current`. Narrower than `t0-decider`: no `project_findings_*`, `artifact_list`/`artifact_get`, `web_search`, `consult`, or `ticket_create`/`_update`/`_add_dependency`/`_get` — a pure-delegation profile that decides and delegates only, nothing else.
+`engine=claude`, `model=opus-5`, `effort=xhigh`, `budget=30000`, `refinery=true`, `system_template_id=tier-t0-bare` (seeded by migration 000190), `native_tool_policy=none`. Catalogue (`t0BareCatalogue`, exactly 13 tools): `delegate`, `get_delegation`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `workflow_run`, `workflow_list`, `workflow_get`, `workflow_continue`, `workflow_stop`, `ticket_list`, `ticket_current`. Narrower than `t0-decider`: no `project_findings_*`, `artifact_list`/`artifact_get`, `web_search`, `consult`, or `ticket_create`/`_update`/`_add_dependency`/`_get` — a pure-delegation profile that decides and delegates only, nothing else.
 
 ### Console-side delegation-guidance append
 

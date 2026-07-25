@@ -26,7 +26,7 @@ var nodeFindingsPattern = regexp.MustCompile(`#\{NODE_FINDINGS:([^:}]+)(?::([^}]
 
 // Preview generates the prompt without spawning
 func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (string, error) {
-	model := "opus-4-8"
+	model := "opus-5"
 	if agentCfg, ok := s.config.Agents[agentType]; ok {
 		if agentCfg.Model != "" {
 			model = agentCfg.Model

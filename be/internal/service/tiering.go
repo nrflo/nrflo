@@ -6,7 +6,7 @@ import "strings"
 // plus the original seed model used to detect per-def customization.
 type TierTarget struct {
 	Role              string
-	OriginalSeedModel string // pre-retier seed default (post-000138/000168 model-ref rewrites)
+	OriginalSeedModel string // pre-retier seed default (post-000168/000210 model-ref rewrites)
 	Tier              int    // tier_models chain to select (resolves to a model/effort pair)
 	SystemTemplateID  string // resolves to a type='injectable' default_templates row
 	IsWorker          bool
@@ -60,17 +60,17 @@ var TierMap = map[string]TierTarget{
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true, GrantsDelegation: true,
 	},
 	"test-writer": {
-		Role: "test-writer", OriginalSeedModel: "opus-4-8",
+		Role: "test-writer", OriginalSeedModel: "opus-5",
 		Tier:             3,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"implementor": {
-		Role: "implementor", OriginalSeedModel: "opus-4-8",
+		Role: "implementor", OriginalSeedModel: "opus-5",
 		Tier:             3,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true, GrantsDelegation: true,
 	},
 	"qa-verifier": {
-		Role: "qa-verifier", OriginalSeedModel: "opus-4-8",
+		Role: "qa-verifier", OriginalSeedModel: "opus-5",
 		Tier:             2,
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true,
 	},

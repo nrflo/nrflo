@@ -34,7 +34,7 @@ func TestApplyForProject_Idempotent(t *testing.T) {
 	t.Parallel()
 	svc, pool := setupTieringApplyTestEnv(t)
 	seedProjectAndWorkflow(t, pool, "idem", "feature", "ticket")
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "implementor", model: "opus-4-8"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "implementor", model: "opus-5"})
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
 
 	confirmation := types.TieringApplyConfirmation{ProjectID: "idem", ConfirmAll: true}
@@ -90,9 +90,9 @@ func TestApplyForProject_SkipsCustomizedConsultantHotfixNonStatic(t *testing.T) 
 	seedProjectAndWorkflow(t, pool, "skip", "hotfix", "ticket")
 
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "refactor", defID: "implementor", model: "fable-5"})
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "feature", defID: "qa-verifier", model: "opus-4-8", consultant: true})
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "hotfix", defID: "implementor", model: "opus-4-8"})
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "feature", defID: "implement-fanout", model: "opus-4-8", nodeRole: "planner"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "feature", defID: "qa-verifier", model: "opus-5", consultant: true})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "hotfix", defID: "implementor", model: "opus-5"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "skip", workflowID: "feature", defID: "implement-fanout", model: "opus-5", nodeRole: "planner"})
 
 	result, err := svc.ApplyForProject(types.TieringApplyConfirmation{ProjectID: "skip", ConfirmAll: true})
 	if err != nil {
@@ -103,9 +103,9 @@ func TestApplyForProject_SkipsCustomizedConsultantHotfixNonStatic(t *testing.T) 
 		workflowID, defID, wantOutcome, origModel string
 	}{
 		{"refactor", "implementor", "skipped-customized", "fable-5"},
-		{"feature", "qa-verifier", "skipped-consultant", "opus-4-8"},
-		{"hotfix", "implementor", "skipped-hotfix", "opus-4-8"},
-		{"feature", "implement-fanout", "skipped-non-static", "opus-4-8"},
+		{"feature", "qa-verifier", "skipped-consultant", "opus-5"},
+		{"hotfix", "implementor", "skipped-hotfix", "opus-5"},
+		{"feature", "implement-fanout", "skipped-non-static", "opus-5"},
 	}
 	for _, c := range cases {
 		outcome := findApplyOutcome(t, result, c.workflowID, c.defID)
@@ -132,7 +132,7 @@ func TestApplyForProject_UnconfirmedDefSkipped(t *testing.T) {
 	t.Parallel()
 	svc, pool := setupTieringApplyTestEnv(t)
 	seedProjectAndWorkflow(t, pool, "unconf", "feature", "ticket")
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "implementor", model: "opus-4-8"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "implementor", model: "opus-5"})
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
 
 	result, err := svc.ApplyForProject(types.TieringApplyConfirmation{
@@ -167,9 +167,9 @@ func TestApplyForProject_WorkerTemplateAssignment(t *testing.T) {
 
 	roles := map[string]string{
 		"setup-analyzer": "sonnet-5",
-		"test-writer":    "opus-4-8",
-		"implementor":    "opus-4-8",
-		"qa-verifier":    "opus-4-8",
+		"test-writer":    "opus-5",
+		"implementor":    "opus-5",
+		"qa-verifier":    "opus-5",
 		"doc-updater":    "sonnet-5",
 	}
 	for defID, model := range roles {

@@ -35,10 +35,10 @@ func (o *Orchestrator) setupInteractivePreStep(
 	// Determine agent type and model for the session. Both modes derive the
 	// model from the workflow's L0 agent (Phases[0] is the tie-breaker when
 	// L0 has multiple agents) so plan capability tracks workflow capability.
-	// opus-4-8 is the last-resort fallback when the workflow has no phases
+	// opus-5 is the last-resort fallback when the workflow has no phases
 	// or the L0 agent has no configured model.
 	var agentType, modelName, phase string
-	modelName = "opus-4-8"
+	modelName = "opus-5"
 	if len(svcWf.Phases) > 0 {
 		l0Agent := svcWf.Phases[0].Agent
 		if cfg, ok := svcAgents[l0Agent]; ok && cfg.Model != "" {

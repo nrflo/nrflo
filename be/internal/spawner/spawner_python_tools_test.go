@@ -153,7 +153,7 @@ func TestPrepareSpawn_PythonBuiltinCollision_ReturnsError(t *testing.T) {
 		},
 		ModelConfigs: map[string]ModelConfig{
 			"sonnet-5": {Provider: "anthropic", APIModel: "claude-sonnet-4-6", APIContext: 200000},
-			"opus-4-8": {Provider: "anthropic", APIModel: "claude-opus-4-8", APIContext: 200000},
+			"opus-5":   {Provider: "anthropic", APIModel: "claude-opus-5", APIContext: 200000},
 		},
 		Workflows: map[string]WorkflowDef{
 			"feature": {

@@ -17,9 +17,9 @@ func TestApplyForProject_GrantsDelegationTools(t *testing.T) {
 
 	roles := map[string]string{
 		"setup-analyzer": "sonnet-5",
-		"test-writer":    "opus-4-8",
-		"implementor":    "opus-4-8",
-		"qa-verifier":    "opus-4-8",
+		"test-writer":    "opus-5",
+		"implementor":    "opus-5",
+		"qa-verifier":    "opus-5",
 		"doc-updater":    "sonnet-5",
 	}
 	for defID, model := range roles {
@@ -102,7 +102,7 @@ func TestApplyForProject_GrantedButStaleModel(t *testing.T) {
 	seedProjectAndWorkflow(t, pool, "stale", "feature", "ticket")
 	seedTieringDef(t, pool, tieringDefSeed{
 		projectID: "stale", workflowID: "feature", defID: "implementor",
-		model: "opus-4-8", tools: "delegate,get_delegation",
+		model: "opus-5", tools: "delegate,get_delegation",
 	})
 
 	result, err := svc.ApplyForProject(types.TieringApplyConfirmation{ProjectID: "stale", ConfirmAll: true})

@@ -53,7 +53,7 @@ func bearerGet(t *testing.T, url, token string) *http.Response {
 func TestHandleTieringReport_Admin(t *testing.T) {
 	as := newAuthServer(t)
 	mustLogin(t, as, adminEmail, adminPass)
-	seedTieringHandlerDef(t, as, "tr-proj", "feature", "implementor", "opus-4-8", false)
+	seedTieringHandlerDef(t, as, "tr-proj", "feature", "implementor", "opus-5", false)
 
 	resp, err := as.client.Get(as.baseURL + "/api/v1/admin/tiering-report")
 	if err != nil {
@@ -120,8 +120,8 @@ func TestHandleTieringReport_Bearer403(t *testing.T) {
 func TestHandleApplyTiering_AppliesAndFlags(t *testing.T) {
 	as := newAuthServer(t)
 	mustLogin(t, as, adminEmail, adminPass)
-	seedTieringHandlerDef(t, as, "ta-proj", "feature", "implementor", "opus-4-8", false)
-	seedTieringHandlerDef(t, as, "ta-proj", "feature", "qa-verifier", "opus-4-8", true)
+	seedTieringHandlerDef(t, as, "ta-proj", "feature", "implementor", "opus-5", false)
+	seedTieringHandlerDef(t, as, "ta-proj", "feature", "qa-verifier", "opus-5", true)
 
 	body := `{"confirmations":[{"project_id":"ta-proj","confirm_all":true}]}`
 	resp := postJSON(t, as.client, as.baseURL+"/api/v1/admin/tiering-apply", body)

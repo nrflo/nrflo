@@ -45,7 +45,7 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 	}
 
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus-4-8": {Provider: "anthropic", CLIModel: "claude-opus-4-8"},
+		"opus-5": {Provider: "anthropic", CLIModel: "claude-opus-5"},
 	}
 	pre, err := env.orch.setupInteractivePreStep(req, wi, svcWf, svcAgents, workflows, agents, t.TempDir(), modelConfigs, "")
 	if err != nil {
@@ -81,8 +81,8 @@ func TestSetupInteractivePreStep_PlanMode_CreatesSession(t *testing.T) {
 	if !strings.Contains(argsStr, pre.sessionID) {
 		t.Errorf("args missing session ID: %v", registeredArgs)
 	}
-	if !strings.Contains(argsStr, "--model claude-opus-4-8") {
-		t.Errorf("args missing mapped model --model claude-opus-4-8 (got nrflo ID instead): %v", registeredArgs)
+	if !strings.Contains(argsStr, "--model claude-opus-5") {
+		t.Errorf("args missing mapped model --model claude-opus-5 (got nrflo ID instead): %v", registeredArgs)
 	}
 
 	var status, agentType string
@@ -171,7 +171,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	}
 
 	modelConfigs := map[string]spawner.ModelConfig{
-		"opus-4-8": {Provider: "anthropic", CLIModel: "claude-opus-db-override"},
+		"opus-5": {Provider: "anthropic", CLIModel: "claude-opus-db-override"},
 	}
 
 	pre, err := env.orch.setupInteractivePreStep(
@@ -193,7 +193,7 @@ func TestSetupInteractivePreStep_PlanMode_DBMappedModelOverrides(t *testing.T) {
 	if !strings.Contains(argsStr, "--model claude-opus-db-override") {
 		t.Errorf("DB MappedModel should override hardcoded mapping; got args: %v", registeredArgs)
 	}
-	if strings.Contains(argsStr, "--model opus-4-8") {
+	if strings.Contains(argsStr, "--model opus-5") {
 		t.Errorf("raw nrflo ID leaked to --model: %v", registeredArgs)
 	}
 }

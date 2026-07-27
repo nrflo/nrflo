@@ -176,7 +176,6 @@ func TestGetSubworkflow_PlanSuspendedStatuses_ReturnNonTerminalPollState(t *test
 
 	statuses := []model.WorkflowInstanceStatus{
 		model.WorkflowInstancePlanning,
-		model.WorkflowInstancePlanReady,
 		model.WorkflowInstanceWaitingInput,
 		model.WorkflowInstanceWaitingApproval,
 	}

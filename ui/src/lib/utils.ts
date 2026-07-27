@@ -128,7 +128,6 @@ export function statusColor(status: string): string {
       return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
     case 'waiting':
     case 'planning':
-    case 'plan_ready':
     case 'waiting_input':
     case 'waiting_approval':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200'
@@ -194,7 +193,6 @@ export function formatRestartReasons(details?: import('@/types/workflow').Restar
 // model.IsPlanSuspended (be/internal/model/workflow_instance.go).
 const PLAN_STATUS_LABELS: Record<string, string> = {
   planning: 'Planning',
-  plan_ready: 'Awaiting plan approval',
   waiting_input: 'Needs input',
   waiting_approval: 'Awaiting plan approval',
 }

@@ -80,8 +80,8 @@ func (runSubworkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 // immediately once the child reaches a plan-boundary status
 // (planning excluded — the self-drafting boundary runs the planner inline on
 // the child's own run goroutine, so it is still "in flight" from the caller's
-// perspective) requiring the caller to act (waiting_input/waiting_approval/
-// plan_ready) or a terminal status (completed/failed).
+// perspective) requiring the caller to act (waiting_input/waiting_approval)
+// or a terminal status (completed/failed).
 func pollSubworkflow(ctx context.Context, env apirun.ToolEnv, instanceID, resultKey string, waitSec int) (string, bool, error) {
 	if waitSec > subworkflowMaxWaitSec {
 		waitSec = subworkflowMaxWaitSec

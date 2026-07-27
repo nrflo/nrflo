@@ -71,7 +71,7 @@ func SetPlanInstanceStatus(pool *db.Pool, clk clock.Clock, instanceID string, st
 	now := clk.Now().UTC().Format(time.RFC3339Nano)
 	_, err := pool.Exec(
 		`UPDATE workflow_instances SET status = ?, updated_at = ?
-		 WHERE id = ? AND status IN ('planning', 'plan_ready', 'waiting_input', 'waiting_approval')`,
+		 WHERE id = ? AND status IN ('planning', 'waiting_input', 'waiting_approval')`,
 		string(status), now, instanceID,
 	)
 	return err

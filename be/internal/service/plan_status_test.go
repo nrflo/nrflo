@@ -141,7 +141,7 @@ func TestSetPlanInstanceStatus_OnlyOverwritesPlanSuspendedStatuses(t *testing.T)
 		want  model.WorkflowInstanceStatus
 	}{
 		{name: "active_untouched", start: model.WorkflowInstanceActive, want: model.WorkflowInstanceActive},
-		{name: "waiting_input_overwritten", start: model.WorkflowInstanceWaitingInput, want: model.WorkflowInstancePlanReady},
+		{name: "waiting_input_overwritten", start: model.WorkflowInstanceWaitingInput, want: model.WorkflowInstanceWaitingApproval},
 	}
 
 	for _, tc := range cases {
@@ -152,7 +152,7 @@ func TestSetPlanInstanceStatus_OnlyOverwritesPlanSuspendedStatuses(t *testing.T)
 			clk := clock.Real()
 			mustExec(t, pool, `UPDATE workflow_instances SET status = ? WHERE id = ?`, string(tc.start), instanceID)
 
-			if err := SetPlanInstanceStatus(pool, clk, instanceID, model.WorkflowInstancePlanReady); err != nil {
+			if err := SetPlanInstanceStatus(pool, clk, instanceID, model.WorkflowInstanceWaitingApproval); err != nil {
 				t.Fatalf("SetPlanInstanceStatus: %v", err)
 			}
 

@@ -47,7 +47,7 @@ func subworkflowStateFor(d Deps, wi *model.WorkflowInstance, resultKey string) a
 		return apirun.SubworkflowState{Status: "failed", FailureReason: reason}
 	case model.WorkflowInstanceWaiting:
 		return apirun.SubworkflowState{Status: "waiting", FailureReason: "paused after a pause_after layer; requires human resume"}
-	case model.WorkflowInstancePlanning, model.WorkflowInstancePlanReady, model.WorkflowInstanceWaitingInput, model.WorkflowInstanceWaitingApproval:
+	case model.WorkflowInstancePlanning, model.WorkflowInstanceWaitingInput, model.WorkflowInstanceWaitingApproval:
 		state := apirun.SubworkflowState{Status: string(wi.Status)}
 		if draft, derr := service.NewPlanService(d.Pool, d.Clock, d.Orch).GetDraft(wi.ID); derr == nil {
 			if draft.Head != nil {

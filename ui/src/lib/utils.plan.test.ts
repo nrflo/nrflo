@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { statusColor, planStatusLabel, partitionWorkflowInstances } from './utils'
 
-const PLAN_STATUSES = ['planning', 'plan_ready', 'waiting_input', 'waiting_approval']
+const PLAN_STATUSES = ['planning', 'waiting_input', 'waiting_approval']
 
 describe('statusColor — plan-boundary statuses', () => {
   it.each(PLAN_STATUSES)('returns a non-default (amber) class for status=%s', (status) => {
@@ -11,7 +11,7 @@ describe('statusColor — plan-boundary statuses', () => {
   })
 
   it('groups plan statuses with "waiting" under the same amber bucket', () => {
-    expect(statusColor('waiting')).toBe(statusColor('plan_ready'))
+    expect(statusColor('waiting')).toBe(statusColor('waiting_approval'))
   })
 
   it('falls back to the default gray bucket for an unrecognized status', () => {
@@ -22,7 +22,6 @@ describe('statusColor — plan-boundary statuses', () => {
 describe('planStatusLabel', () => {
   it('returns a human label for each plan-boundary status', () => {
     expect(planStatusLabel('planning')).toBe('Planning')
-    expect(planStatusLabel('plan_ready')).toBe('Awaiting plan approval')
     expect(planStatusLabel('waiting_input')).toBe('Needs input')
     expect(planStatusLabel('waiting_approval')).toBe('Awaiting plan approval')
   })

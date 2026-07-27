@@ -13,7 +13,7 @@ import (
 // getSubworkflowHandler implements get_subworkflow: poll a child run started by
 // run_subworkflow or dynamic_workflow. Terminal statuses include the result
 // finding (or failure reason); the four plan-boundary statuses
-// (planning/plan_ready/waiting_input/waiting_approval) include the current
+// (planning/waiting_input/waiting_approval) include the current
 // plan draft (plan/revision/questions) so the caller can act via
 // revise_plan/approve_plan. An optional bounded wait long-polls instead of
 // returning immediately.

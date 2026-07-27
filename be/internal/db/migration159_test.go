@@ -155,7 +155,7 @@ func TestMigration159_WorkflowInstancesStatusCheckWidened(t *testing.T) {
 		{"project_completed accepted (pre-existing)", "project_completed", false},
 		{"waiting accepted (pre-existing)", "waiting", false},
 		{"planning accepted (new)", "planning", false},
-		{"plan_ready accepted (new)", "plan_ready", false},
+		{"plan_ready rejected (dropped in 000211)", "plan_ready", true},
 		{"waiting_input accepted (new)", "waiting_input", false},
 		{"waiting_approval accepted (new)", "waiting_approval", false},
 		{"bogus rejected", "bogus-status", true},

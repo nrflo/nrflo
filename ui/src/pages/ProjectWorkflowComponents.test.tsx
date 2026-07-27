@@ -65,7 +65,7 @@ describe('InstanceList — running tab badges', () => {
   it('maps each plan-boundary status to its human label', () => {
     const instances: Record<string, WorkflowState> = {
       i1: makeState({ instance_id: 'i1', status: 'planning' }),
-      i2: makeState({ instance_id: 'i2', status: 'plan_ready' }),
+      i2: makeState({ instance_id: 'i2', status: 'waiting_approval' }),
       i3: makeState({ instance_id: 'i3', status: 'waiting_input' }),
     }
     render(

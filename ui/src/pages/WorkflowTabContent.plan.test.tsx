@@ -53,7 +53,7 @@ const defaultProps = {
   onShowRunDialog: vi.fn(),
 }
 
-const PLAN_SUSPENDED: WorkflowInstanceStatus[] = ['planning', 'plan_ready', 'waiting_input', 'waiting_approval']
+const PLAN_SUSPENDED: WorkflowInstanceStatus[] = ['planning', 'waiting_input', 'waiting_approval']
 const NOT_PLAN_SUSPENDED: WorkflowInstanceStatus[] = ['active', 'waiting', 'completed']
 
 describe('WorkflowTabContent — plan approval banner', () => {

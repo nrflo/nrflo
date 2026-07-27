@@ -129,13 +129,11 @@ export type WorkflowInstanceStatus =
   | 'project_completed'
   | 'waiting'
   | 'planning'
-  | 'plan_ready'
   | 'waiting_input'
   | 'waiting_approval'
 
 export const PLAN_SUSPENDED_STATUSES: readonly WorkflowInstanceStatus[] = [
   'planning',
-  'plan_ready',
   'waiting_input',
   'waiting_approval',
 ]

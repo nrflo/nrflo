@@ -103,7 +103,7 @@ func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, pro
 		// Reachable despite the no-pause start guard (e.g. the def gained a pause
 		// layer mid-run): surface it so pollers terminate instead of spinning.
 		return apirun.SubworkflowState{Status: "waiting", FailureReason: "paused after a pause_after layer; requires human resume and will not complete for this caller"}, nil
-	case model.WorkflowInstancePlanning, model.WorkflowInstancePlanReady, model.WorkflowInstanceWaitingInput, model.WorkflowInstanceWaitingApproval:
+	case model.WorkflowInstancePlanning, model.WorkflowInstanceWaitingInput, model.WorkflowInstanceWaitingApproval:
 		// Plan-driven runs are callable (unlike pause_after): the caller must
 		// drive the plan lifecycle (revise/approve) rather than poll forever.
 		state := apirun.SubworkflowState{Status: string(wi.Status)}

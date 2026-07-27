@@ -105,7 +105,7 @@ type ChainRunController interface {
 // SubworkflowState is the poll result returned by GetSubworkflow. Result and
 // FailureReason are populated only for the completed/failed terminal
 // statuses; Plan/Revision/Questions/Templates are populated only for the four
-// plan-boundary statuses (planning/plan_ready/waiting_input/waiting_approval)
+// plan-boundary statuses (planning/waiting_input/waiting_approval)
 // — the polymorphism the plan-vs-terminal payload divergence belongs on this
 // struct (and the orchestrator that fills it), not name-checks in the tool
 // handlers (root CLAUDE.md rule 6). Templates is the bindable template library

@@ -206,11 +206,7 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 	})
 	defer sp.Close()
 
-	timeout := 30 * time.Minute
-	if sysDef.Timeout > 0 {
-		timeout = time.Duration(sysDef.Timeout) * time.Second
-	}
-	spawnCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	spawnCtx, cancel := context.WithTimeout(context.Background(), SpawnDeadline(sysDef.Timeout, 30*time.Minute))
 	defer cancel()
 
 	spawnErr := sp.Spawn(spawnCtx, SpawnRequest{

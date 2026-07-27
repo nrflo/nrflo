@@ -240,11 +240,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 	sp := spawner.New(cfg)
 	defer sp.Close()
 
-	timeout := plannerTimeout
-	if plannerDef.Timeout > 0 {
-		timeout = time.Duration(plannerDef.Timeout) * time.Second
-	}
-	ctxTimeout, cancel := context.WithTimeout(ctx, timeout)
+	ctxTimeout, cancel := context.WithTimeout(ctx, spawner.SpawnDeadline(plannerDef.Timeout, plannerTimeout))
 	defer cancel()
 
 	spawnErr := sp.Spawn(ctxTimeout, spawner.SpawnRequest{

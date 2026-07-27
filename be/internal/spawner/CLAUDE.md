@@ -95,7 +95,7 @@ A HARD provider failure (build-time construct, auth, persistent 5xx — never ra
 
 ## Planner
 
-`Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner). Every one-off child `Spawner` (`delegate.go`, `consult_run.go`, `context_save.go`) must set `Config.APIMode: true` itself — it is not inherited from the parent spawner's config — or api-mode agents it spawns get rejected at the gate with `api_mode_disabled`.
+`Orchestrator.RunPlanner` mirrors `Spawner.Consult`/`spawnContextSaver` (one-off `_planner` child, `ExtraVars` for plan goal/feedback, reads `_workflow_plan`) — see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#consult--planner). Every one-off child `Spawner` (`delegate.go`, `consult_run.go`, `context_save.go`) must set `Config.APIMode: true` itself — it is not inherited from the parent spawner's config — or api-mode agents it spawns get rejected at the gate with `api_mode_disabled`. A wrapper that also wraps its spawn in its own context deadline must derive it via `SpawnDeadline` (`agent_timeout.go`): the definition `timeout` column is **minutes**, and open-coding it in seconds yields an outer deadline 60x under the child process budget `prepareSpawn` derives from that same value — the outer one wins and kills the child mid-turn.
 
 ## Proactive Restart
 

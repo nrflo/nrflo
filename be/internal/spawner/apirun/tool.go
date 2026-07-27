@@ -120,6 +120,7 @@ type SubworkflowState struct {
 	Revision      int             `json:"revision,omitempty"`
 	Questions     json.RawMessage `json:"questions,omitempty"`
 	Templates     json.RawMessage `json:"templates,omitempty"`
+	PremiumCap    int             `json:"premium_cap,omitempty"`
 }
 
 // SubworkflowRunner starts callable workflows as detached project-scoped child

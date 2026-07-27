@@ -24,7 +24,7 @@ Context is provided automatically by the system.
 | `chain_next_ticket` | `{ticket_id}` | Set the ticket ID for the next ticket-scope chain step; call before `agent_finished` |
 | `consult` | `{consultant, question}` | Synchronous expert consult; blocks until the consultant (an api-mode consultant defined in the same workflow) answers and returns the answer as the tool result |
 | `run_subworkflow` | `{workflow, instructions, result_key?, wait_sec?}` | Start a callable workflow (flagged `callable_as_subworkflow`) as a detached child run; returns `{instance_id, status}`; optional `wait_sec` (max 240) blocks for the result inline |
-| `get_subworkflow` | `{instance_id, result_key?, wait_sec?}` | Poll a sub-workflow started with `run_subworkflow`/`dynamic_workflow`; terminal statuses include the result finding or failure reason, plan-boundary statuses include `{plan, revision, questions, templates}` |
+| `get_subworkflow` | `{instance_id, result_key?, wait_sec?}` | Poll a sub-workflow started with `run_subworkflow`/`dynamic_workflow`; terminal statuses include the result finding or failure reason, plan-boundary statuses include `{plan, revision, questions, templates, premium_cap}` |
 | `dynamic_workflow` | `{instructions, mode?: "approve"\|"auto", wait_sec?}` | Start the bundled plan-driven `dynamic` workflow (a planner drafts its manifest) as a detached child; `mode=auto` requires `dynamic_workflow_auto_enabled` |
 | `revise_plan` | `{instance_id, revision, plan?, feedback?, answers?}` | Revise a sub-workflow's plan (edited manifest, or planner feedback/answers); revision-pinned |
 | `approve_plan` | `{instance_id, revision}` | Approve+materialize a sub-workflow's plan at a revision; revision-pinned |

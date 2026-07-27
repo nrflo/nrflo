@@ -12,35 +12,33 @@ import (
 	"be/internal/ws"
 )
 
-// BumpLastMessage resets stall-detection state for the matching running agent.
-// Best-effort: returns nil when session or run not found.
-func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID string) error {
+// spawnerForSession resolves the spawner driving a session, via the session's
+// own workflow instance. Returns nil when the session, its run, or its spawner
+// is gone — every caller below treats that as a benign no-op. Going through
+// resolveSessionSpawner is what lets run-less one-off children (the planner)
+// receive heartbeats and terminal signals: keying only on runState.spawners
+// silently drops every hook event for them, which reads as a permanent stall.
+func (o *Orchestrator) spawnerForSession(sessionID string) (*spawner.Spawner, error) {
 	database, err := db.Open(o.dataPath)
 	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 	defer database.Close()
 
-	asRepo := repo.NewAgentSessionRepo(database, o.clock)
-	session, err := asRepo.Get(sessionID)
+	session, err := repo.NewAgentSessionRepo(database, o.clock).Get(sessionID)
 	if err != nil {
-		return nil // session may have already ended
+		return nil, nil // session may have already ended
 	}
+	return o.resolveSessionSpawner(session.WorkflowInstanceID, sessionID), nil
+}
 
-	o.mu.Lock()
-	rs, ok := o.runs[session.WorkflowInstanceID]
-	o.mu.Unlock()
-	if !ok {
-		return nil // run finished; no-op
+// BumpLastMessage resets stall-detection state for the matching running agent.
+// Best-effort: returns nil when session or run not found.
+func (o *Orchestrator) BumpLastMessage(projectID, ticketID, workflow, sessionID string) error {
+	sp, err := o.spawnerForSession(sessionID)
+	if err != nil || sp == nil {
+		return err
 	}
-
-	o.mu.Lock()
-	sp := rs.spawners[sessionID]
-	o.mu.Unlock()
-	if sp == nil {
-		return nil // between phases
-	}
-
 	sp.BumpLastMessage(sessionID)
 	return nil
 }
@@ -53,32 +51,10 @@ func (o *Orchestrator) SetLastMessage(projectID, ticketID, workflow, sessionID, 
 	if content == "" {
 		return nil
 	}
-	database, err := db.Open(o.dataPath)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+	sp, err := o.spawnerForSession(sessionID)
+	if err != nil || sp == nil {
+		return err
 	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, o.clock)
-	session, err := asRepo.Get(sessionID)
-	if err != nil {
-		return nil
-	}
-
-	o.mu.Lock()
-	rs, ok := o.runs[session.WorkflowInstanceID]
-	o.mu.Unlock()
-	if !ok {
-		return nil
-	}
-
-	o.mu.Lock()
-	sp := rs.spawners[sessionID]
-	o.mu.Unlock()
-	if sp == nil {
-		return nil
-	}
-
 	sp.SetLastMessage(sessionID, content)
 	return nil
 }
@@ -89,32 +65,10 @@ func (o *Orchestrator) SetLastMessage(projectID, ticketID, workflow, sessionID, 
 // structurally excludes console/observer sessions (no run/spawner) from the
 // in-band nudge path. reason is "idle"|"permission" for the trace/log marker.
 func (o *Orchestrator) TriggerIdleNudge(sessionID, reason string) error {
-	database, err := db.Open(o.dataPath)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+	sp, err := o.spawnerForSession(sessionID)
+	if err != nil || sp == nil {
+		return err
 	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, o.clock)
-	session, err := asRepo.Get(sessionID)
-	if err != nil {
-		return nil // session may have already ended
-	}
-
-	o.mu.Lock()
-	rs, ok := o.runs[session.WorkflowInstanceID]
-	o.mu.Unlock()
-	if !ok {
-		return nil // run finished; no-op
-	}
-
-	o.mu.Lock()
-	sp := rs.spawners[sessionID]
-	o.mu.Unlock()
-	if sp == nil {
-		return nil // between phases
-	}
-
 	sp.TriggerIdleNudge(sessionID, reason)
 	return nil
 }
@@ -123,32 +77,10 @@ func (o *Orchestrator) TriggerIdleNudge(sessionID, reason string) error {
 // monitorAll exits and handleCompletion reads the DB result already written
 // by the socket handler. Best-effort: returns nil when session or run not found.
 func (o *Orchestrator) RequestTerminalSignal(projectID, ticketID, workflow, sessionID, result string) error {
-	database, err := db.Open(o.dataPath)
-	if err != nil {
-		return fmt.Errorf("failed to open database: %w", err)
+	sp, err := o.spawnerForSession(sessionID)
+	if err != nil || sp == nil {
+		return err
 	}
-	defer database.Close()
-
-	asRepo := repo.NewAgentSessionRepo(database, o.clock)
-	session, err := asRepo.Get(sessionID)
-	if err != nil {
-		return nil // session may have already ended
-	}
-
-	o.mu.Lock()
-	rs, ok := o.runs[session.WorkflowInstanceID]
-	o.mu.Unlock()
-	if !ok {
-		return nil // run finished; no-op
-	}
-
-	o.mu.Lock()
-	sp := rs.spawners[sessionID]
-	o.mu.Unlock()
-	if sp == nil {
-		return nil // between phases
-	}
-
 	sp.RequestTerminalSignal(sessionID, result)
 	return nil
 }

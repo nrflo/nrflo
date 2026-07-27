@@ -230,15 +230,31 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 		ProjectEnv:         projectEnv,
 		SDKDir:             o.sdkDir,
 		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
-		OnSessionRegister: func(sid string, _ *spawner.Spawner) {
+		// The planner runs cli_interactive, so its nrflo tools reach it only
+		// through the socket bridge, which resolves the session's spawner via
+		// ListTools/CallTool. Without this registration the bridge serves an
+		// empty tools/list and the planner can never emit _workflow_plan.
+		OnSessionRegister: func(sid string, sp *spawner.Spawner) {
 			sidMu.Lock()
 			plannerSID = sid
 			sidMu.Unlock()
+			o.registerAuxSpawner(sid, sp)
 		},
+		OnSessionUnregister: o.unregisterAuxSpawner,
 	}
 
 	sp := spawner.New(cfg)
 	defer sp.Close()
+	// Safety net: OnSessionUnregister normally clears the aux entry, but a
+	// spawn that dies before unregistering would leak it for the process life.
+	defer func() {
+		sidMu.Lock()
+		sid := plannerSID
+		sidMu.Unlock()
+		if sid != "" {
+			o.unregisterAuxSpawner(sid)
+		}
+	}()
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, spawner.SpawnDeadline(plannerDef.Timeout, plannerTimeout))
 	defer cancel()

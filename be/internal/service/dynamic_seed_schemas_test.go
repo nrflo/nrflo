@@ -12,8 +12,8 @@ import (
 func TestDynFindingSchemasValid(t *testing.T) {
 	t.Parallel()
 	defs := parseFindingSchemas(dynFindingSchemas)
-	if len(defs) != 8 {
-		t.Fatalf("parsed %d finding schemas, want 8", len(defs))
+	if len(defs) != 9 {
+		t.Fatalf("parsed %d finding schemas, want 9", len(defs))
 	}
 	if err := ValidateFindingSchemas(defs); err != nil {
 		t.Fatalf("bundled dynamic finding schemas are invalid: %v", err)

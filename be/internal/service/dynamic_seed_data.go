@@ -86,6 +86,22 @@ var dynAgents = []dynAgent{
 		FindingKey:      "claims",
 	},
 	{
+		ID:              "web-researcher-cheap",
+		Model:           "haiku-4-5",
+		ReasoningEffort: "low",
+		Tools:           "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
+		Description:     "Cheap-tier twin of web-researcher (haiku): identical claim-extraction contract at a fraction of the cost. The default binding for wide research fan-outs — reach for web-researcher only when a node needs deeper reasoning over what it reads. Emits to finding key `claims`.",
+		FindingKey:      "claims",
+	},
+	{
+		ID:              "premise-auditor",
+		Model:           "sonnet-5",
+		ReasoningEffort: "low",
+		Tools:           "web_search,web_fetch,emit_findings",
+		Description:     "Attacks the goal itself rather than the findings: names assumptions the plan treats as settled but never tests, and the measurement that would falsify each. Bind it in the FIRST layer alongside the research nodes, never after them, so it is not anchored by their output. Emits to finding key `premises`.",
+		FindingKey:      "premises",
+	},
+	{
 		ID:              "finding-verifier",
 		Model:           "sonnet-5",
 		ReasoningEffort: "low",
@@ -138,8 +154,10 @@ func dynPrompt(id string) string {
 		return dynReviewerPrompt
 	case "implementor-worker":
 		return dynImplementorPrompt
-	case "web-researcher":
+	case "web-researcher", "web-researcher-cheap":
 		return dynResearcherPrompt
+	case "premise-auditor":
+		return dynPremiseAuditorPrompt
 	case "finding-verifier", "finding-verifier-codex":
 		return dynVerifierPrompt
 	case "generic-worker":

@@ -83,9 +83,17 @@ type runState struct {
 
 // Orchestrator manages server-side workflow runs.
 type Orchestrator struct {
-	mu                sync.Mutex
-	runs              map[string]*runState // wfi_id → state
-	subworkflowActive int                  // in-flight sub-workflow children across all runs (global cap)
+	mu   sync.Mutex
+	runs map[string]*runState // wfi_id → state
+	// auxSpawners holds one-off child spawners that no run loop owns, keyed by
+	// session id. The planner is cli_interactive, so its nrflo tools are served
+	// over the socket bridge (ListTools/CallTool) — but it runs either inside a
+	// run loop (first draft) or with no runState at all (a revise_plan re-run,
+	// after runLoop's defer deleted it). Registering here instead of in
+	// runState.spawners covers both without giving a parked instance a
+	// half-built runState that IsRunning/StopWorkflow would act on.
+	auxSpawners       map[string]*spawner.Spawner
+	subworkflowActive int // in-flight sub-workflow children across all runs (global cap)
 	dataPath          string
 	sdkDir            string
 	venvMgr           *venv.Manager
@@ -116,12 +124,13 @@ type Orchestrator struct {
 // New creates a new Orchestrator.
 func New(dataPath string, wsHub *ws.Hub, clk clock.Clock, errorSvc spawner.ErrorRecorder, sdkDir string) *Orchestrator {
 	return &Orchestrator{
-		runs:     make(map[string]*runState),
-		dataPath: dataPath,
-		sdkDir:   sdkDir,
-		venvMgr:  venv.New(filepath.Dir(dataPath), clk),
-		wsHub:    wsHub,
-		clock:    clk,
-		errorSvc: errorSvc,
+		runs:        make(map[string]*runState),
+		auxSpawners: make(map[string]*spawner.Spawner),
+		dataPath:    dataPath,
+		sdkDir:      sdkDir,
+		venvMgr:     venv.New(filepath.Dir(dataPath), clk),
+		wsHub:       wsHub,
+		clock:       clk,
+		errorSvc:    errorSvc,
 	}
 }

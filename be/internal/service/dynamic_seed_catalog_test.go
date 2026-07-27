@@ -113,6 +113,7 @@ func TestDynAgents_ReasoningEffortDefaults(t *testing.T) {
 	lowEffortIDs := map[string]bool{
 		"codebase-explorer": true, "module-reviewer": true, "implementor-worker": true,
 		"web-researcher": true, "finding-verifier": true, "generic-worker": true, "cross-checker": true,
+		"web-researcher-cheap": true, "premise-auditor": true,
 	}
 	byID := make(map[string]dynAgent, len(dynAgents))
 	for _, a := range dynAgents {
@@ -138,12 +139,12 @@ func TestDynAgents_ReasoningEffortDefaults(t *testing.T) {
 	}
 }
 
-// TestDynAgents_RosterShape pins the catalog size the plan specifies: 10
-// fanout templates + 1 workflow-local planner override, 11 total.
+// TestDynAgents_RosterShape pins the catalog size the plan specifies: 12
+// fanout templates + 1 workflow-local planner override, 13 total.
 func TestDynAgents_RosterShape(t *testing.T) {
 	t.Parallel()
-	if len(dynAgents) != 11 {
-		t.Fatalf("len(dynAgents) = %d, want 11 (10 fanout_template + 1 planner)", len(dynAgents))
+	if len(dynAgents) != 13 {
+		t.Fatalf("len(dynAgents) = %d, want 13 (12 fanout_template + 1 planner)", len(dynAgents))
 	}
 	seen := make(map[string]bool, len(dynAgents))
 	for _, a := range dynAgents {

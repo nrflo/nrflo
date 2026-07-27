@@ -15,6 +15,7 @@ const dynFindingSchemas = `[
 {"key":"verdicts","schema":{"type":"array","items":{"type":"object","required":["claimRef","verdict","confidence"],"properties":{"claimRef":{"type":"string"},"verdict":{"enum":["CONFIRMED","PLAUSIBLE","REFUTED"]},"confidence":{"enum":["high","medium","low"]},"evidence":{"type":"string"}}}},"example":[]},
 {"key":"work_log","schema":{"type":"object","required":["summary"],"properties":{"summary":{"type":"string"},"changes":{"type":"array","items":{"type":"string"}}}},"example":{"summary":"s","changes":[]}},
 {"key":"notes","schema":{"type":"object","required":["summary"],"properties":{"summary":{"type":"string"},"details":{"type":"array","items":{"type":"string"}}}},"example":{"summary":"s","details":[]}},
+{"key":"premises","schema":{"type":"array","items":{"type":"object","required":["premise","status","falsifier","impact"],"properties":{"premise":{"type":"string"},"status":{"enum":["tested","untested","contradicted"]},"falsifier":{"type":"string"},"impact":{"enum":["decisive","material","minor"]}}}},"example":[]},
 {"key":"cross_check","schema":{"type":"object","required":["agreement","summary"],"properties":{"agreement":{"enum":["agree","disagree","partial"]},"summary":{"type":"string"},"discrepancies":{"type":"array","items":{"type":"string"}}}},"example":{"agreement":"agree","summary":"s","discrepancies":[]}},
 {"key":"workflow_final_result","schema":{"type":"string","minLength":1},"example":"Final deliverable text."}
 ]`

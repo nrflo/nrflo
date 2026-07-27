@@ -41,8 +41,8 @@ func TestAllowedTemplates_DynamicWorkflow_ExcludesPlannerReturnsAllFanoutTemplat
 	if err != nil {
 		t.Fatalf("AllowedTemplates: %v", err)
 	}
-	if len(templates) != 10 {
-		t.Fatalf("AllowedTemplates(dynamic) = %d templates, want 10", len(templates))
+	if len(templates) != 12 {
+		t.Fatalf("AllowedTemplates(dynamic) = %d templates, want 12", len(templates))
 	}
 	for _, tpl := range templates {
 		if tpl.ID == "dynamic-planner" {
@@ -158,7 +158,7 @@ func TestAllowedTemplates_ProjectLocalDynamicWorkflowShadowsGlobal(t *testing.T)
 	if err != nil {
 		t.Fatalf("AllowedTemplates(global): %v", err)
 	}
-	if len(global) != 10 {
-		t.Errorf("shadowing a project-local dynamic workflow must not affect the global catalog: got %d, want 10", len(global))
+	if len(global) != 12 {
+		t.Errorf("shadowing a project-local dynamic workflow must not affect the global catalog: got %d, want 12", len(global))
 	}
 }

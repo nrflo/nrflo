@@ -65,8 +65,8 @@ func TestEnsureGlobalDynamicWorkflow(t *testing.T) {
 		GlobalProjectID, DynamicWorkflow).Scan(&fanoutCount); err != nil {
 		t.Fatal(err)
 	}
-	if fanoutCount != 10 {
-		t.Errorf("fanout_template dynamic agents = %d, want 10", fanoutCount)
+	if fanoutCount != 12 {
+		t.Errorf("fanout_template dynamic agents = %d, want 12", fanoutCount)
 	}
 	var plannerCount int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM agent_definitions WHERE project_id=? AND workflow_id=? AND node_role='planner'`,

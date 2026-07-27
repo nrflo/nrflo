@@ -160,6 +160,13 @@ func (s *PlanService) Revise(ctx context.Context, instanceID string, req types.P
 // Also rejects a manifest binding more than dynwf_max_premium_workers nodes to
 // a premium-tier template (EnforcePremiumWorkerCap, canRevise=true) — the
 // unattended counterpart is ApproveAuto, which downgrades instead of rejects.
+//
+// Re-approving the already-approved revision is idempotent rather than
+// ErrPlanNotDraft: every caller resumes the run in its own tail (console
+// approve_plan, handleApprovePlan, orchestrator.ApprovePlan), and that resume
+// can fail on its own — a dead project root, a run that had not settled yet.
+// Without this the instance would be stranded plan-suspended over an approved
+// plan with no reachable resume, since ContinueWorkflow only accepts `waiting`.
 func (s *PlanService) Approve(instanceID string, revision int) (*model.PlanRevision, error) {
 	head, err := s.planRepo.GetHead(instanceID)
 	if err == sql.ErrNoRows {
@@ -167,6 +174,12 @@ func (s *PlanService) Approve(instanceID string, revision int) (*model.PlanRevis
 	}
 	if err != nil {
 		return nil, err
+	}
+	if head.Status == model.PlanStatusApproved {
+		if revision != head.ApprovedRevision {
+			return nil, ErrStalePlanRevision
+		}
+		return s.planRepo.GetRevision(instanceID, revision)
 	}
 	if head.Status != model.PlanStatusDraft {
 		return nil, ErrPlanNotDraft

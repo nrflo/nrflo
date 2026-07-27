@@ -28,6 +28,20 @@ func TestRevisePlanHandler_SpecMentionsPremiumCap(t *testing.T) {
 	}
 }
 
+// TestRevisePlanHandler_SpecDocumentsAuthoringContract guards the rules a
+// hand-written manifest is rejected for but cannot infer from the v1 shape
+// alone: NODE_FINDINGS is the ONLY inter-layer data path (validatePlanRefsAndTemplates),
+// dense 0-indexed layers and a single-node final layer are hard validator rules
+// (ValidatePlanManifest), and a node id must match planNodeIDPattern.
+func TestRevisePlanHandler_SpecDocumentsAuthoringContract(t *testing.T) {
+	text := (revisePlanHandler{}).Spec().Description + string((revisePlanHandler{}).Spec().InputSchema)
+	for _, want := range []string{"NODE_FINDINGS", "dense", "last layer must hold exactly one node", "^[a-z0-9][a-z0-9_-]{0,63}$"} {
+		if !strings.Contains(strings.ToLower(text), strings.ToLower(want)) {
+			t.Errorf("Spec() does not mention %q; a caller cannot author a valid manifest without it", want)
+		}
+	}
+}
+
 func TestRevisePlan_HappyPath(t *testing.T) {
 	r := stubSubworkflows{
 		revisePlan: func(context.Context, string, string, string, types.PlanReviseRequest) (*model.PlanRevision, error) {

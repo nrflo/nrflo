@@ -20,16 +20,16 @@ type delegateHandler struct{}
 func (delegateHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "delegate",
-		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further. Returns the worker's structured findings, never a transcript. Set wait_sec to block inline (max 240s); 0 starts async and returns a delegation_id to poll with get_delegation.",
+		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further (delegate_max_depth, default 2 — past it the tool is simply absent). Returns the workers' structured findings, never a transcript. Every worker receives the same brief and context; fanout is how one call becomes many workers, each differing only in its own fanout item. Set wait_sec to block inline (max 240s); 0 starts async and returns a delegation_id to poll with get_delegation.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
 "tier":{"type":"string","enum":["extractor","executor"],"description":"extractor = single-question one-shot; executor = owns a slice, may delegate one level further"},
-"brief":{"type":"string","description":"What the worker should do. Templated once per fanout item when fanout is set."},
-"context":{"type":"string","description":"Inline context, capped at 4KB — use an artifact for anything larger"},
-"artifacts":{"type":"array","items":{"type":"string"},"description":"Names of artifacts already materialized for this run that the worker should reference"},
+"brief":{"type":"string","description":"The shared task statement every worker receives"},
+"context":{"type":"string","description":"Inline context shared by all workers, capped at 4096 bytes — over the cap the call is rejected (put bulk content in an artifact and name it in artifacts instead)"},
+"artifacts":{"type":"array","items":{"type":"string"},"description":"Names of artifacts already materialized on this run, passed to workers as a which-to-read hint"},
 "wait_sec":{"type":"integer","description":"Block up to this many seconds (max 240) for the result; 0 (default) starts async"},
-"fanout":{"type":"array","items":{"type":"string"},"description":"Spawn one worker per item, brief templated identically for each; omit for a single worker"}
+"fanout":{"type":"array","items":{"type":"string"},"description":"One worker is spawned per item, concurrently; the item text reaches only that worker (its per-worker slice of the job, e.g. a file path or subtopic). Omit for a single worker. Capped by delegate_max_fanout (default 20); over the cap the call is rejected"}
 },
 "required":["tier","brief"],
 "additionalProperties":false

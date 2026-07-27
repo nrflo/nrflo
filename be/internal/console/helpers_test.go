@@ -117,12 +117,6 @@ type fakeOrchestrator struct {
 	startInstanceID   string
 	startErr          error
 
-	stopTicketProjectID  string
-	stopTicketTicketID   string
-	stopTicketWorkflow   string
-	stopTicketInstanceID string
-	stopTicketErr        error
-
 	stopProjectProjectID  string
 	stopProjectWorkflow   string
 	stopProjectInstanceID string
@@ -154,14 +148,6 @@ func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketI
 		f.startInstanceID = "wfi-fake"
 	}
 	return f.startInstanceID, nil
-}
-
-func (f *fakeOrchestrator) StopByTicket(projectID, ticketID, workflowName, instanceID string) error {
-	f.stopTicketProjectID = projectID
-	f.stopTicketTicketID = ticketID
-	f.stopTicketWorkflow = workflowName
-	f.stopTicketInstanceID = instanceID
-	return f.stopTicketErr
 }
 
 func (f *fakeOrchestrator) StopByProject(projectID, workflowName, instanceID string) error {

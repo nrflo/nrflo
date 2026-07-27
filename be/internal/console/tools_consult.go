@@ -19,11 +19,11 @@ type consultHandler struct{ d Deps }
 func (consultHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "consult",
-		Description: "Ask a named topic-expert consultant a question and receive an inline answer. The consultant runs synchronously and its response is returned directly so you can continue without interruption.",
+		Description: "Ask a named topic-expert consultant a question and receive an inline answer. The consultant runs synchronously and its response is returned directly so you can continue without interruption. Consultants are operator-configured agent definitions flagged as consultant, resolved in this project first, then the global namespace; there is no listing tool — ask the user for the id, or call with your best guess: an unknown id fails with the available consultant ids named in the error.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"consultant":{"type":"string","description":"ID of the consultant agent definition to invoke"},
+"consultant":{"type":"string","description":"ID of the consultant agent definition to invoke (an unknown id returns an error naming the available ones)"},
 "question":{"type":"string","description":"The question or task to send to the consultant"}
 },
 "required":["consultant","question"],

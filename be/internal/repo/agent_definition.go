@@ -155,9 +155,37 @@ func (r *AgentDefinitionRepo) FindConsultant(projectID, id string) (*model.Agent
 		return nil, err
 	}
 	if len(defs) == 0 {
-		return nil, fmt.Errorf("consultant agent definition not found: %s", id)
+		avail, _ := r.listConsultantIDs(projectID)
+		if len(avail) == 0 {
+			return nil, fmt.Errorf("consultant agent definition not found: %s (no consultants are configured for this project)", id)
+		}
+		return nil, fmt.Errorf("consultant agent definition not found: %s (available: %s)", id, strings.Join(avail, ", "))
 	}
 	return defs[0], nil
+}
+
+// listConsultantIDs returns the distinct consultant-flagged definition ids
+// visible to projectID (its own rows plus the reserved global namespace),
+// sorted — used to make FindConsultant's not-found error self-correcting.
+func (r *AgentDefinitionRepo) listConsultantIDs(projectID string) ([]string, error) {
+	rows, err := r.db.Query(
+		`SELECT DISTINCT id FROM agent_definitions
+		 WHERE consultant = 1 AND (LOWER(project_id) = LOWER(?) OR project_id = '__global__')
+		 ORDER BY id`, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // Delete deletes an agent definition

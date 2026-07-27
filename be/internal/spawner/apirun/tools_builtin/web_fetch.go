@@ -25,7 +25,7 @@ type webFetchHandler struct{}
 func (webFetchHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "web_fetch",
-		Description: "Fetch one or more URLs as clean markdown. Returns JSON {\"pages\":[{\"url\",\"ok\",\"excerpt\",\"artifact_name\",\"bytes\",\"error\"}]}. Each successful page returns an excerpt inline; when truncated, the full content is stored under artifact_name (read it with artifact_get). Blocked or failed fetches return ok:false with an error and do NOT fail the turn.",
+		Description: "Fetch one or more URLs as clean markdown. Returns JSON {\"pages\":[{\"url\",\"ok\",\"excerpt\",\"artifact_name\",\"bytes\",\"error\"}]}. Each successful page returns an excerpt inline; when truncated, the full content is stored on the calling agent's workflow instance under artifact_name (read it with artifact_get). Callers with no artifact store — a console session not bound to a run — get only the excerpt, marked '(truncated; full content unavailable: no artifact store)', and no artifact_name; re-fetch narrower sources instead of expecting the full body. Blocked or failed fetches return ok:false with an error and do NOT fail the turn.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

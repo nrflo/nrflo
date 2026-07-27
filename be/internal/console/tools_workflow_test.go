@@ -123,7 +123,7 @@ func TestWorkflowStop_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if !isErr {
 		t.Errorf("isErr = false, want true for cross-project instance_id")
 	}
-	if fake.stopProjectCalled != 0 || fake.stopTicketInstanceID != "" {
+	if fake.stopProjectCalled != 0 {
 		t.Errorf("orchestrator should not have been called; out=%q", out)
 	}
 }
@@ -148,7 +148,7 @@ func TestWorkflowStop_ProjectScoped_HappyPath(t *testing.T) {
 	}
 }
 
-func TestWorkflowStop_TicketScoped_UsesStopByTicket(t *testing.T) {
+func TestWorkflowStop_TicketScopedInstance_StopsById(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-own-2")
 	fake := &fakeOrchestrator{}
@@ -159,15 +159,12 @@ func TestWorkflowStop_TicketScoped_UsesStopByTicket(t *testing.T) {
 	}
 	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
 
-	out, isErr, err := invoke(t, reg, toolEnv, "workflow_stop", `{"instance_id":"wfi-own-2","ticket_id":"`+testTicketID+`"}`)
+	out, isErr, err := invoke(t, reg, toolEnv, "workflow_stop", `{"instance_id":"wfi-own-2"}`)
 	if err != nil || isErr {
 		t.Fatalf("err=%v isErr=%v out=%s", err, isErr, out)
 	}
-	if fake.stopTicketInstanceID != "wfi-own-2" || fake.stopTicketTicketID != testTicketID {
-		t.Errorf("StopByTicket not called as expected: %+v", fake)
-	}
-	if fake.stopProjectCalled != 0 {
-		t.Errorf("StopByProject should not have been called")
+	if fake.stopProjectCalled != 1 || fake.stopProjectInstanceID != "wfi-own-2" {
+		t.Errorf("StopByProject not called with expected instance: %+v", fake)
 	}
 }
 

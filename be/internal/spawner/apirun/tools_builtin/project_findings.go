@@ -103,12 +103,12 @@ type projectFindingsAppendHandler struct{}
 func (projectFindingsAppendHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "project_findings_append",
-		Description: "Append a value to a project-level finding.",
+		Description: "Append a value to a project-level finding key with array-merge semantics: a missing key is created with the value as-is; an existing value becomes a JSON array with the new value pushed (appending an array concatenates its elements; a scalar existing value becomes the array's first element). Use project_findings_add to overwrite instead.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
 "key":{"type":"string"},
-"value":{"type":"string"}
+"value":{"type":"string","description":"String or JSON-encoded value"}
 },
 "required":["key","value"],
 "additionalProperties":false
@@ -142,11 +142,11 @@ type projectFindingsAppendBulkHandler struct{}
 func (projectFindingsAppendBulkHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "project_findings_append_bulk",
-		Description: "Append multiple values to project-level findings.",
+		Description: "Append multiple values to project-level findings in one call, each key with project_findings_append's array-merge semantics.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"key_values":{"type":"object","additionalProperties":{"type":"string"}}
+"key_values":{"type":"object","additionalProperties":{"type":"string"},"description":"Map of finding key to the value to append (string or JSON-encoded)"}
 },
 "required":["key_values"],
 "additionalProperties":false
@@ -179,7 +179,7 @@ type projectFindingsGetHandler struct{}
 func (projectFindingsGetHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "project_findings_get",
-		Description: "Read project-level findings (single key, multiple keys, or all).",
+		Description: "Read project-level findings. With key: returns that value (error when missing). With keys: returns a key->value map of the ones found (error only when none match). With neither: returns all of the project's findings as one map.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

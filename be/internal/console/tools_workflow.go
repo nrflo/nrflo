@@ -20,8 +20,8 @@ func (workflowRunHandler) Spec() provider.ToolSpec {
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"workflow":{"type":"string"},
-"instructions":{"type":"string"},
+"workflow":{"type":"string","description":"Workflow definition name, from workflow_list"},
+"instructions":{"type":"string","description":"Optional free-text guidance, prepended to every spawned agent's prompt"},
 "ticket_id":{"type":"string","description":"When set, runs ticket-scoped against this ticket; otherwise runs project-scoped"}
 },
 "required":["workflow"],
@@ -74,13 +74,11 @@ type workflowStopHandler struct{ d Deps }
 func (workflowStopHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_stop",
-		Description: "Stop a running workflow instance. ticket_id stops via the ticket-scoped path; omit it for a project-scoped instance.",
+		Description: "Stop (cancel) a running workflow instance by id — works for ticket- and project-scoped instances alike, and also cancels a plan-driven run's draft plan. The instance lands in status failed and never resumes on its own. Use workflow_fail instead when you want the failure recorded with your own reason.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"instance_id":{"type":"string"},
-"ticket_id":{"type":"string"},
-"workflow":{"type":"string"}
+"instance_id":{"type":"string"}
 },
 "required":["instance_id"],
 "additionalProperties":false
@@ -91,8 +89,6 @@ func (workflowStopHandler) Spec() provider.ToolSpec {
 func (h workflowStopHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
 		InstanceID string `json:"instance_id"`
-		TicketID   string `json:"ticket_id"`
-		Workflow   string `json:"workflow"`
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
@@ -107,13 +103,7 @@ func (h workflowStopHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 		return err.Error(), true, nil
 	}
 
-	var err error
-	if args.TicketID != "" {
-		err = h.d.Orch.StopByTicket(env.ProjectID, args.TicketID, args.Workflow, args.InstanceID)
-	} else {
-		err = h.d.Orch.StopByProject(env.ProjectID, args.Workflow, args.InstanceID)
-	}
-	if err != nil {
+	if err := h.d.Orch.StopByProject(env.ProjectID, "", args.InstanceID); err != nil {
 		return err.Error(), true, nil
 	}
 	return "ok", false, nil
@@ -125,14 +115,14 @@ type workflowRetryFailedHandler struct{ d Deps }
 func (workflowRetryFailedHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_retry_failed",
-		Description: "Retry a failed workflow from its failed layer. ticket_id retries via the ticket-scoped path; instance_id retries a project-scoped instance.",
+		Description: "Retry a workflow instance whose status is failed, re-running from the layer that failed — layers that already passed do not re-run, and a plan-driven run re-uses its materialized plan nodes (the plan is not re-drafted). Any other status is rejected. Identify the restart point via session_id: the id of a failed agent session in that instance (workflow_get lists every session with its node and result); that session's node names the layer to restart. Pass ticket_id for a ticket-scoped instance or instance_id for a project-scoped one, plus the workflow definition name. Track the retried run with workflow_wait.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"workflow":{"type":"string"},
-"session_id":{"type":"string"},
-"ticket_id":{"type":"string"},
-"instance_id":{"type":"string"}
+"workflow":{"type":"string","description":"The workflow definition name the instance ran (workflow_get returns it)"},
+"session_id":{"type":"string","description":"Id of a failed agent session in the instance; its node picks the layer to restart from"},
+"ticket_id":{"type":"string","description":"Set for a ticket-scoped instance (one of ticket_id/instance_id is required)"},
+"instance_id":{"type":"string","description":"Set for a project-scoped instance (one of ticket_id/instance_id is required)"}
 },
 "required":["workflow","session_id"],
 "additionalProperties":false

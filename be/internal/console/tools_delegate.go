@@ -20,15 +20,15 @@ type delegateHandler struct{ d Deps }
 func (delegateHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "delegate",
-		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further. Starts async and returns a delegation_id — poll with get_delegation.",
+		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further (delegate_max_depth, default 2 — past it the tool is simply absent). Starts async and returns {delegation_id, status:\"running\"} — poll with get_delegation. Every worker receives the same brief and context; fanout is how one call becomes many workers, each differing only in its own fanout item.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
 "tier":{"type":"string","enum":["extractor","executor"]},
-"brief":{"type":"string"},
-"context":{"type":"string","description":"Inline context, capped at 4KB"},
-"artifacts":{"type":"array","items":{"type":"string"}},
-"fanout":{"type":"array","items":{"type":"string"}}
+"brief":{"type":"string","description":"The shared task statement every worker receives"},
+"context":{"type":"string","description":"Inline context shared by all workers, capped at 4096 bytes — over the cap the call is rejected (put bulk content in an artifact and name it in artifacts instead)"},
+"artifacts":{"type":"array","items":{"type":"string"},"description":"Names of artifacts already materialized on the run the workers spawn under, passed to workers as a which-to-read hint. Rarely useful from a console session: its workers run under a fresh hidden instance that starts with no artifacts"},
+"fanout":{"type":"array","items":{"type":"string"},"description":"One worker is spawned per item, concurrently; the item text reaches only that worker (its per-worker slice of the job, e.g. a file path or subtopic). Omit for a single worker. Capped by delegate_max_fanout (default 20); over the cap the call is rejected"}
 },
 "required":["tier","brief"],
 "additionalProperties":false
@@ -83,7 +83,7 @@ type getDelegationHandler struct{ d Deps }
 func (getDelegationHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_delegation",
-		Description: "Poll an async delegation started via delegate. Returns aggregated worker findings plus per-worker status.",
+		Description: "Poll an async delegation started via delegate. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

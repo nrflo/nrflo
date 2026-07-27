@@ -276,17 +276,17 @@ A consultant is a named api-mode agent that a caller invokes inline via the `con
 - `executor` → `_t1_executor` (sonnet-5, medium effort, full tool set). Owns a slice of work end to end and may itself call `delegate` (tier `extractor`) one level further down.
 
 **Inputs:**
-- `brief` (required) — what the worker should do; templated identically per fanout item.
-- `context` (optional) — inline context, capped at 4KB; larger context belongs in an artifact.
-- `artifacts` (optional) — names of artifacts already materialized for this run.
+- `brief` (required) — the shared task statement every worker receives.
+- `context` (optional) — inline context shared by all workers, capped at 4KB (rejected over the cap); larger context belongs in an artifact.
+- `artifacts` (optional) — names of artifacts already materialized for this run, passed to workers as a which-to-read hint.
 - `wait_sec` (optional, default 0) — block inline up to this many seconds (max 240) for the result; `0` returns immediately with a `delegation_id` to poll via `get_delegation`.
-- `fanout` (optional) — spawn one worker per item (same brief, templated once per item) instead of a single worker; capped by `delegate_max_fanout` (default 20, project-override, else global).
+- `fanout` (optional) — spawn one worker per item, concurrently; each worker gets the same brief/context plus only its own item (its per-worker slice of the job). Capped by `delegate_max_fanout` (default 20, project-override, else global).
 
 **Result:** each worker's structured findings (its `_delegate_findings` finding), aggregated per fanout item — never the worker's transcript. The `_delegate` worker phase is hidden from the v4 read model, same as `_consult`.
 
 **Recursion guard:** `_t2_extractor` never has `delegate` in its tool set. `_t1_executor` keeps it until `delegate_max_depth` (default 2) is reached, tracked per delegation chain (each worker inherits the caller's depth + 1) — a worker spawned past the cap has `delegate` stripped from its registry. A top-level agent and every fresh top-level `delegate` call start a new chain at depth 0.
 
-**Async polling:** `get_delegation` takes `{delegation_id, wait_sec?}` and returns the current aggregated status (`running`/`completed`/`failed`) plus per-worker results; `wait_sec` blocks up to 240s for still-running workers, heartbeated so the caller's stall timer stays quiet.
+**Async polling:** `get_delegation` takes `{delegation_id, wait_sec?}` and returns the current aggregated status (`running`/`completed`/`failed`) plus per-worker results; `wait_sec` blocks up to 240s for still-running workers, heartbeated so the caller's stall timer stays quiet. The terminal response is read-once: worker findings and the delegation record are deleted as they are returned, and a repeat poll gets an unknown-delegation error.
 
 **Console usage:** `delegate`/`get_delegation` are also available to console (T0) sessions — the one instance-creating tool intentionally exposed there, since a console session has no bound workflow instance for a worker to spawn under.
 

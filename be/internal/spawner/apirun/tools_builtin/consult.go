@@ -13,11 +13,11 @@ type consultHandler struct{}
 func (consultHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "consult",
-		Description: "Ask a named topic-expert consultant a question and receive an inline answer. The consultant runs synchronously and its response is returned directly so you can continue without interruption.",
+		Description: "Ask a named topic-expert consultant a question and receive an inline answer. The consultant runs synchronously and its response is returned directly so you can continue without interruption. Consultants are consultant-flagged agent definitions in your own workflow; your task prompt names the ones available to you — an unknown id fails with an error naming the workflow it was looked up in.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"consultant":{"type":"string","description":"ID of the consultant agent definition to invoke"},
+"consultant":{"type":"string","description":"ID of a consultant agent definition in this workflow"},
 "question":{"type":"string","description":"The question or task to send to the consultant"}
 },
 "required":["consultant","question"],

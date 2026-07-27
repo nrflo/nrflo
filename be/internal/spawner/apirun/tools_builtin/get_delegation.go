@@ -23,7 +23,7 @@ type getDelegationHandler struct{}
 func (getDelegationHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_delegation",
-		Description: "Poll an async delegation started via delegate. Returns aggregated worker findings plus per-worker status; set wait_sec to block up to that many seconds (max 240) for still-running workers.",
+		Description: "Poll an async delegation started via delegate. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data. Set wait_sec to block up to that many seconds (max 240) for still-running workers.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

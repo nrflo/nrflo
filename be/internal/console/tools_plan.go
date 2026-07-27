@@ -64,6 +64,7 @@ func subworkflowStateFor(d Deps, wi *model.WorkflowInstance, resultKey string) a
 				}
 			}
 		}
+		state.Templates = service.PlanTemplateChoicesJSON(d.Pool, d.Clock, wi.ProjectID, wi.WorkflowID)
 		return state
 	default:
 		return apirun.SubworkflowState{Status: "running"}
@@ -78,7 +79,7 @@ type getSubworkflowHandler struct{ d Deps }
 func (getSubworkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_subworkflow",
-		Description: "Poll a workflow instance's status: running/waiting/completed/failed, or (for a plan-driven run) the current plan draft (plan/revision/questions) to drive via revise_plan/approve_plan.",
+		Description: "Poll one workflow instance in this project; returns {status, ...}. status is exactly one of: running; waiting (paused after a pause_after layer — resume with workflow_continue, NOT approve_plan); planning, plan_ready, waiting_input, waiting_approval (a plan-driven run parked at the plan boundary); completed (with result); failed (with failure_reason). The four plan-boundary statuses also return plan (the current manifest), revision (pin it into revise_plan/approve_plan), questions (open planner questions — answer them via revise_plan) and templates (every template name a plan node may bind, with its cost tier). This is one snapshot: to block until the next transition instead of re-polling, use workflow_wait.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -121,15 +122,15 @@ type revisePlanHandler struct{ d Deps }
 func (revisePlanHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "revise_plan",
-		Description: "Revise a workflow instance's plan (started via dynamic_workflow) at the plan boundary: supply an edited manifest (plan) or feedback/answers to re-run the planner. revision must match the instance's current revision (see get_subworkflow) or the call is rejected as stale.",
+		Description: "Append a new revision to a plan-driven run's plan (started via dynamic_workflow), at the plan boundary. Two modes, and plan wins: set plan to store your own edited manifest (feedback and answers are then ignored), or omit plan to re-run the planner with feedback+answers. Either way the revision number increments by exactly 1, so re-read get_subworkflow before the next call. revision must match the instance's current revision or the call is rejected as stale (the error names the current one). Only a draft plan can be revised — once approved, revise_plan is rejected.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
  "instance_id":{"type":"string"},
  "revision":{"type":"integer","description":"Must match the instance's current plan revision (0 if it has none yet)"},
- "plan":{"type":"object","description":"A full, edited plan manifest (version/goal/layers/questions) to store as-is after validation"},
- "feedback":{"type":"string","description":"Feedback for the planner to re-run with (used when plan is omitted)"},
- "answers":{"type":"array","description":"Answers to open plan questions","items":{"type":"object","properties":{"question_id":{"type":"string"},"answer":{"type":"string"}}}}
+ "plan":{"type":"object","description":"Full manifest, stored as-is after validation. Exact v1 shape, no other fields accepted at any level: {\"version\":1,\"goal\":\"...\",\"layers\":[{\"layer\":0,\"policy\":\"any|all|quorum:N|percent:P\",\"nodes\":[{\"id\":\"unique-id\",\"template\":\"<one of get_subworkflow.templates[].id>\",\"instructions\":\"...\"}]}],\"questions\":[]}. Layers run in ascending order, nodes within a layer run concurrently. A node has NO model/effort/tools field — its template decides those, so binding a cheap-tier template is how you keep a worker cheap. Premium-tier nodes are capped at dynwf_max_premium_workers (default 2); over the cap this call is rejected, naming the offending nodes."},
+ "feedback":{"type":"string","description":"Steer a planner re-run in prose. Ignored when plan is set."},
+ "answers":{"type":"array","description":"Answers to the open questions get_subworkflow returned. Ignored when plan is set.","items":{"type":"object","properties":{"question_id":{"type":"string"},"answer":{"type":"string"}}}}
 },
 "required":["instance_id","revision"],
 "additionalProperties":false
@@ -189,7 +190,7 @@ type approvePlanHandler struct{ d Deps }
 func (approvePlanHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "approve_plan",
-		Description: "Approve a workflow instance's plan at the given revision (materializes it and resumes the run if it was parked at the plan boundary). revision must match the instance's current revision (see get_subworkflow) or the call is rejected as stale.",
+		Description: "Approve a plan-driven run's plan at the given revision: materializes the manifest into agent nodes and resumes the run if it was parked at the plan boundary. Open questions never block approval — approve when the plan is good enough. revision must match the instance's current revision (see get_subworkflow) or the call is rejected as stale. The manifest is re-validated here, so approve can fail at the correct revision too: a template's model may have been disabled since the draft, or the plan may exceed dynwf_max_premium_workers — fix it with revise_plan and approve the new revision. A result of \"approved but resume failed\" means the plan IS approved and only the resume needs retrying.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

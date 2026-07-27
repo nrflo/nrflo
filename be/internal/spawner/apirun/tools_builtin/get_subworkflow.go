@@ -22,7 +22,7 @@ type getSubworkflowHandler struct{}
 func (getSubworkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_subworkflow",
-		Description: "Poll a sub-workflow started with run_subworkflow or dynamic_workflow. Returns {instance_id, status} and, when completed/failed, the result finding or failure reason; when parked at the plan boundary (planning/plan_ready/waiting_input/waiting_approval), the current plan draft {plan, revision, questions} — drive it further with revise_plan/approve_plan. Set wait_sec to long-poll up to that many seconds (max 240); it returns as soon as the child reaches a plan-boundary or terminal status.",
+		Description: "Poll a sub-workflow started with run_subworkflow or dynamic_workflow. Returns {instance_id, status} plus, per status: completed → result; failed → failure_reason; waiting → a pause_after layer needs a human resume, this caller cannot finish it; the four plan-boundary statuses (planning/plan_ready/waiting_input/waiting_approval) → the current draft {plan, revision, questions} and templates (every template name a plan node may bind, with its cost tier) — drive it further with revise_plan/approve_plan. Set wait_sec to long-poll up to that many seconds (max 240); it returns as soon as the child reaches a plan-boundary or terminal status.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

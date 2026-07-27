@@ -15,13 +15,16 @@ import (
 
 // --- revise_plan ---
 
-// TestRevisePlanHandler_SpecDescriptionMentionsPremiumCap guards the
-// tier-policy/premium-cap prompt text against drift, mirroring
-// TestReadDocumentPathHandler_SpecDescriptionMentionsPath's convention.
-func TestRevisePlanHandler_SpecDescriptionMentionsPremiumCap(t *testing.T) {
+// TestRevisePlanHandler_SpecMentionsPremiumCap guards the tier-policy/
+// premium-cap prompt text against drift, mirroring
+// TestReadDocumentPathHandler_SpecDescriptionMentionsPath's convention. The cap
+// documents the `plan` argument, so the whole spec (description + schema) is
+// the surface that must carry it — both reach the model.
+func TestRevisePlanHandler_SpecMentionsPremiumCap(t *testing.T) {
 	spec := (revisePlanHandler{}).Spec()
-	if !strings.Contains(spec.Description, service.PremiumWorkerCapKey) {
-		t.Errorf("Spec().Description = %q; want to mention %q", spec.Description, service.PremiumWorkerCapKey)
+	text := spec.Description + string(spec.InputSchema)
+	if !strings.Contains(text, service.PremiumWorkerCapKey) {
+		t.Errorf("Spec() = %q; want to mention %q", text, service.PremiumWorkerCapKey)
 	}
 }
 

@@ -104,18 +104,22 @@ type ChainRunController interface {
 
 // SubworkflowState is the poll result returned by GetSubworkflow. Result and
 // FailureReason are populated only for the completed/failed terminal
-// statuses; Plan/Revision/Questions are populated only for the four
+// statuses; Plan/Revision/Questions/Templates are populated only for the four
 // plan-boundary statuses (planning/plan_ready/waiting_input/waiting_approval)
 // — the polymorphism the plan-vs-terminal payload divergence belongs on this
 // struct (and the orchestrator that fills it), not name-checks in the tool
-// handlers (root CLAUDE.md rule 6).
+// handlers (root CLAUDE.md rule 6). Templates is the bindable template library
+// (service.PlanTemplateChoices): without it a caller cannot author the manifest
+// revise_plan's `plan` argument takes, since `template` is the only field
+// selecting a node's model and unknown names are rejected.
 type SubworkflowState struct {
-	Status        string
-	Result        json.RawMessage
-	FailureReason string
-	Plan          json.RawMessage
-	Revision      int
-	Questions     json.RawMessage
+	Status        string          `json:"status"`
+	Result        json.RawMessage `json:"result,omitempty"`
+	FailureReason string          `json:"failure_reason,omitempty"`
+	Plan          json.RawMessage `json:"plan,omitempty"`
+	Revision      int             `json:"revision,omitempty"`
+	Questions     json.RawMessage `json:"questions,omitempty"`
+	Templates     json.RawMessage `json:"templates,omitempty"`
 }
 
 // SubworkflowRunner starts callable workflows as detached project-scoped child

@@ -139,6 +139,9 @@ func subworkflowJSON(instanceID string, state apirun.SubworkflowState) string {
 	if len(state.Questions) > 0 {
 		out["questions"] = state.Questions
 	}
+	if len(state.Templates) > 0 {
+		out["templates"] = state.Templates
+	}
 	b, _ := json.Marshal(out)
 	return string(b)
 }

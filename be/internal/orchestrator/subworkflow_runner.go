@@ -122,6 +122,7 @@ func (o *Orchestrator) GetSubworkflow(ctx context.Context, callerInstanceID, pro
 				}
 			}
 		}
+		state.Templates = service.PlanTemplateChoicesJSON(pool, o.clock, wi.ProjectID, wi.WorkflowID)
 		return state, nil
 	default:
 		return apirun.SubworkflowState{Status: "running"}, nil

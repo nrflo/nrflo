@@ -15,7 +15,7 @@ type workflowContinueHandler struct{}
 func (workflowContinueHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "workflow_continue",
-		Description: "Resume a paused (waiting) workflow instance from its pause point.",
+		Description: "Resume a workflow instance whose status is exactly `waiting` — parked by a pause_after layer — from its pause point. Any other status is rejected, including the plan-boundary statuses (planning/plan_ready/waiting_input/waiting_approval): a plan-driven run is resumed by approve_plan, not this tool.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{

@@ -70,7 +70,7 @@ func TestGetSubworkflow_HappyPath_ReturnsRunningStatus(t *testing.T) {
 	if err != nil || isErr {
 		t.Fatalf("err=%v isErr=%v out=%s", err, isErr, out)
 	}
-	if !strings.Contains(out, `"Status":"running"`) {
+	if !strings.Contains(out, `"status":"running"`) {
 		t.Errorf("out = %q, want status=running (seedWorkflowInstance inserts status='active')", out)
 	}
 }

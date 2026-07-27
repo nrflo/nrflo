@@ -23,11 +23,11 @@ type dynamicWorkflowHandler struct{ d Deps }
 func (dynamicWorkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "dynamic_workflow",
-		Description: "Start the bundled, plan-driven `dynamic` workflow as a top-level project-scoped run: a planner drafts a multi-agent manifest from your instructions, then parks at waiting_approval for you to drive via get_subworkflow/revise_plan/approve_plan. Returns {instance_id,status} immediately; poll with get_subworkflow.",
+		Description: "Start the bundled, plan-driven `dynamic` workflow as a top-level run for this project (no ticket): a planner drafts a multi-agent manifest from your instructions, then parks for you to approve. Returns {instance_id, status} immediately — status is normally \"planning\" while the planner works, so this call is never the end of the flow. Then: workflow_wait(instance_id) to block until it transitions (the plan statuses are not terminal, so watch state.status, not just terminal), get_subworkflow(instance_id) to read the draft, then revise_plan until it is right and approve_plan to run it. It parks at waiting_input when the planner raised questions and at waiting_approval when it did not; both are answered/approved through the same two tools. Read the final output from the workflow_final_result finding once status is completed.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"instructions":{"type":"string","description":"Goal / instructions for the planner to turn into a multi-agent plan. Default worker nodes to cheap tier; reserve premium (opus/fable) for genuine final-adjudication needs."}
+"instructions":{"type":"string","description":"Goal for the planner to turn into a multi-agent plan. Say what the workers should cost: nodes bind templates, and cheap-tier templates should carry the bulk of the work — premium ones (opus/fable) are capped at dynwf_max_premium_workers (default 2), so reserve them for genuine final adjudication."}
 },
 "required":["instructions"],
 "additionalProperties":false

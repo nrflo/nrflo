@@ -67,26 +67,16 @@ func TestConsultHost_UnknownConsultantID_ReturnsError(t *testing.T) {
 	}
 }
 
-// TestConsultHost_GlobalOnlyDef_FindsButFailsToSpawn documents a confirmed
-// production bug (see be_production_bugs / consult_host.go + consult_run.go):
-// repo.FindConsultant deliberately falls back to a '__global__'-project
-// agent_definitions row when the caller's own project has none (mirroring
-// orchestrator.resolveWorkflowDef's definitionProjectID pattern for global
-// workflows) — but runConsult's spawn never receives that resolved
-// definition project. It always passes the caller's own projectID as
-// req.ProjectID, and the spawned sub-Spawner's loadPromptContent/
-// loadAgentDefinition re-look-up the prompt scoped to req.ProjectID alone
-// (with no '__global__' fallback of its own, unlike loadPromptContent's
-// separate system_agent_definitions fallback). So a consultant that exists
-// ONLY as a '__global__' agent_definitions row (not also registered in
-// system_agent_definitions) is successfully *found* by FindConsultant but
-// then fails to *spawn* with a confusing "agent definition not found" error.
-// This test pins that (undesired) behavior so a fix is a visible, intentional
-// test change rather than a silent flip. Do not "fix" this test without
-// fixing runConsult/ConsultHost itself (e.g. by spawning under def.ProjectID
-// or by loading the prompt from req.Def directly instead of re-querying by
-// req.ProjectID).
-func TestConsultHost_GlobalOnlyDef_FindsButFailsToSpawn(t *testing.T) {
+// TestConsultHost_GlobalOnlyDef_Spawns verifies a consultant that exists ONLY
+// as a '__global__' agent_definitions row (not also registered in
+// system_agent_definitions) both resolves and spawns. repo.FindConsultant
+// falls back to the global namespace when the caller's own project has none,
+// and runConsult still spawns under the caller's own projectID — so the
+// sub-Spawner's prompt lookup only succeeds because lookupAgentDef applies the
+// same project-then-global precedence (spawner/template.go). Before that
+// fallback existed, the consultant was found but failed to spawn with a
+// confusing "agent definition not found".
+func TestConsultHost_GlobalOnlyDef_Spawns(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-fake-key")
 
 	env := setupConsultTestEnv(t)
@@ -118,11 +108,11 @@ func TestConsultHost_GlobalOnlyDef_FindsButFailsToSpawn(t *testing.T) {
 
 	sp := buildConsultSpawner(t, env, mock.New(consultMockScripts("the global answer")...))
 
-	_, err := sp.ConsultHost(context.Background(), env.projectID, "global-consultant", "how?")
-	if err == nil {
-		t.Fatal("ConsultHost: got nil error, want the known template-resolution failure (see be_production_bugs) — if this now passes, replace this test with the intended happy-path assertions")
+	answer, err := sp.ConsultHost(context.Background(), env.projectID, "global-consultant", "how?")
+	if err != nil {
+		t.Fatalf("ConsultHost() error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "agent definition not found") {
-		t.Errorf("ConsultHost error = %v, want the loadPromptContent not-found mismatch", err)
+	if answer != "the global answer" {
+		t.Errorf("answer = %q, want %q", answer, "the global answer")
 	}
 }

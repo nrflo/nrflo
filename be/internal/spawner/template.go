@@ -42,6 +42,25 @@ func (s *Spawner) Preview(agentType, ticketID, projectID, workflowName string) (
 	return body, err
 }
 
+// lookupAgentDef resolves an agent definition under the selected project, then
+// under GlobalProjectID — the same project-then-global precedence
+// service.GetWorkflowDef, orchestrator.resolveWorkflowDef and
+// service.AllowedTemplates already use. Without the second hop a global
+// workflow's defs are invisible here whenever the run is scoped to a real
+// project (instance project_id != def_project_id), which is every launch of a
+// global workflow from a project.
+func (s *Spawner) lookupAgentDef(agentType, projectID, workflowName string) (*model.AgentDefinition, error) {
+	adRepo := repo.NewAgentDefinitionRepo(s.pool(), s.config.Clock)
+	def, err := adRepo.Get(projectID, workflowName, agentType)
+	if err == nil {
+		return def, nil
+	}
+	if strings.EqualFold(projectID, service.GlobalProjectID) {
+		return nil, err
+	}
+	return adRepo.Get(service.GlobalProjectID, workflowName, agentType)
+}
+
 // loadAgentDefinition loads the full agent definition from the DB.
 // Returns nil if not found (caller should fall back to defaults).
 func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string) *model.AgentDefinition {
@@ -50,8 +69,7 @@ func (s *Spawner) loadAgentDefinition(agentType, projectID, workflowName string)
 		return nil
 	}
 
-	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
-	def, err := adRepo.Get(projectID, workflowName, agentType)
+	def, err := s.lookupAgentDef(agentType, projectID, workflowName)
 	if err != nil {
 		return nil
 	}
@@ -67,10 +85,10 @@ func (s *Spawner) loadPromptContent(agentType, projectID, workflowName string) (
 		return "", fmt.Errorf("failed to get database pool")
 	}
 
-	// Try project-scoped agent definition first; fall through to system
-	// agent definition when not found or when prompt is empty (inherit).
-	adRepo := repo.NewAgentDefinitionRepo(pool, s.config.Clock)
-	def, err := adRepo.Get(projectID, workflowName, agentType)
+	// Try the project-scoped (then global) agent definition first; fall through
+	// to the system agent definition when not found or when prompt is empty
+	// (inherit).
+	def, err := s.lookupAgentDef(agentType, projectID, workflowName)
 	if err == nil && def.Prompt != "" {
 		return def.Prompt, nil
 	}

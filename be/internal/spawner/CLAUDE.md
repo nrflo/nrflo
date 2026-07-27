@@ -121,6 +121,8 @@ Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle win
 
 Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The readonly `delegation-guidance` injectable is appended to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, cli_interactive, and the console chat-spec seam (`buildChatEngineSpec` via `spawner.AppendDelegationGuidanceForTools`, `template_injectable.go`) — whenever the effective tool set includes `delegate`; absent that tool, the prompt is unchanged.
 
+Agent-def lookups (`lookupAgentDef`, `template.go`) resolve project-then-`__global__` — the precedence `service.GetWorkflowDef`/`AllowedTemplates` also use — so a global workflow's defs (prompt, `native_tools`, `execution_mode`) stay visible when the run is scoped to a real project.
+
 `#{ARTIFACTS}` expands to tab-separated `name\t<absPath>` lines for all materialized artifacts, or `_No artifacts available for this workflow._` when empty. `#{ARTIFACT:name}` expands to the absolute path of the named artifact (empty + warning when not found).
 
 A `prompt_mode='stepwise'` def gets a further block appended after all findings expansion (guidance injectable + step outline + current step instruction), driven off the server-owned `agent_step_cursors` snapshot: [REFERENCE.md](REFERENCE.md#stepwise-prompt-assembly).

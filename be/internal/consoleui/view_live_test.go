@@ -20,18 +20,15 @@ func liveTestModel(width, height int) *model {
 	return m
 }
 
-// TestLiveRegionView_RunningShowsSpinner verifies the working spinner line
-// renders only while a turn is running, not when idle.
-func TestLiveRegionView_RunningShowsSpinner(t *testing.T) {
+// TestLiveRegionView_NeverShowsSpinner verifies the live region carries no
+// working indicator in any turn state — the footer owns it.
+func TestLiveRegionView_NeverShowsSpinner(t *testing.T) {
 	m := liveTestModel(80, 24)
-	m.status = "idle"
-	if strings.Contains(m.liveRegionView(m.height), "working…") {
-		t.Errorf("idle liveRegionView() contains working indicator, want none")
-	}
-
-	m.status = "running"
-	if !strings.Contains(m.liveRegionView(m.height), "working…") {
-		t.Errorf("running liveRegionView() = %q, want it to contain working indicator", m.liveRegionView(m.height))
+	for _, status := range []string{"idle", "running"} {
+		m.status = status
+		if strings.Contains(m.liveRegionView(m.height), "working…") {
+			t.Errorf("%s liveRegionView() contains working indicator, want none (footer owns it)", status)
+		}
 	}
 }
 
@@ -148,40 +145,35 @@ func TestLiveRegionView_CappedRegardlessOfBudget(t *testing.T) {
 	}
 }
 
-// TestLiveBand_HoldsHeightUntilPrintReleases verifies the live section's
-// height ratchets (liveBand): clearing content keeps the band as blank rows —
-// a frame shrink not paired with an insert would float the chrome — and a
-// print releases exactly its own row count from the band.
-func TestLiveBand_HoldsHeightUntilPrintReleases(t *testing.T) {
-	m := liveTestModel(80, 40)
-	m.ready = true
+// TestFrameBand_HoldsHeightUntilPrintReleases verifies the whole frame's
+// height ratchets (frameBand): ANY shrink — live region clearing, the
+// composer losing a row, an approval box closing — pads back with blank top
+// rows (an unpaired shrink would float the chrome, the renderer top-anchors
+// shrinks), and a print releases exactly its own row count from the band.
+func TestFrameBand_HoldsHeightUntilPrintReleases(t *testing.T) {
+	m := anchorTestModel(t, 80, 24)
 	m.deltaOrder = []string{"a"}
-	m.deltas["a"] = "one\ntwo\nthree"
-
-	if out := m.liveRegionView(20); strings.Count(out, "\n")+1 != 3 || m.liveBand != 3 {
-		t.Fatalf("live region = %q (band %d), want 3 content rows and band 3", out, m.liveBand)
-	}
+	m.deltas = map[string]string{"a": "one\ntwo\nthree"}
+	tall := lipgloss.Height(m.View().Content)
 
 	m.deltas = map[string]string{}
 	m.deltaOrder = nil
-	out := m.liveRegionView(20)
-	lines := strings.Split(out, "\n")
-	if len(lines) != 3 {
-		t.Fatalf("band after clear = %d rows, want 3 blank rows held", len(lines))
+	content := m.View().Content
+	if got := lipgloss.Height(content); got != tall {
+		t.Fatalf("frame height after live clear = %d, want band-held %d", got, tall)
 	}
-	for i, line := range lines {
-		if strings.TrimSpace(ansi.Strip(line)) != "" {
-			t.Errorf("band line %d = %q, want blank", i, line)
-		}
+	// Padding rows carry a single space (a fully empty row is skipped by the
+	// renderer's diff, which then never blanks vacated rows).
+	if !strings.HasPrefix(content, " \n") {
+		t.Errorf("band-held frame = %q..., want space-padded top rows", content[:40])
 	}
 
 	// A 1-row print releases 1 row of band.
-	cmd := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hi"}}, Total: 1})
-	if cmd == nil {
+	if cmd := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hi"}}, Total: 1}); cmd == nil {
 		t.Fatal("printNewMessages returned nil cmd")
 	}
-	if m.liveBand != 2 {
-		t.Errorf("liveBand after 1-row print = %d, want 2", m.liveBand)
+	if got := lipgloss.Height(m.View().Content); got != tall-1 {
+		t.Errorf("frame height after 1-row print = %d, want %d", got, tall-1)
 	}
 }
 

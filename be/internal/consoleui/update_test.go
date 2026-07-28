@@ -44,9 +44,9 @@ func TestApplyStream_SessionCostUpdated(t *testing.T) {
 	}
 }
 
-// TestWorkingIndicator: a running turn renders an animated "working…" line
-// in the live region, and the tick chain starts exactly on the
-// idle→running transition.
+// TestWorkingIndicator: a running turn renders the animated "working…"
+// indicator in the footer (the live region carries no spinner line), and the
+// tick chain starts exactly on the idle→running transition.
 func TestWorkingIndicator(t *testing.T) {
 	m := &model{
 		detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{},
@@ -56,8 +56,11 @@ func TestWorkingIndicator(t *testing.T) {
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "running"}),
 	}})
-	if !strings.Contains(m.liveRegionView(m.height), "working…") {
-		t.Fatalf("running live region = %q, want working indicator", m.liveRegionView(m.height))
+	if !strings.Contains(m.footer(), "working…") {
+		t.Fatalf("running footer = %q, want working indicator", m.footer())
+	}
+	if strings.Contains(m.liveRegionView(m.height), "working…") {
+		t.Fatalf("running live region = %q, want no working indicator (footer owns it)", m.liveRegionView(m.height))
 	}
 	if m.tickOnRunning(false) == nil {
 		t.Fatal("idle→running must start the spinner tick chain")
@@ -68,8 +71,8 @@ func TestWorkingIndicator(t *testing.T) {
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),
 	}})
-	if strings.Contains(m.liveRegionView(m.height), "working…") {
-		t.Fatal("idle live region must drop the working indicator")
+	if strings.Contains(m.footer(), "working…") {
+		t.Fatal("idle footer must drop the working indicator")
 	}
 }
 

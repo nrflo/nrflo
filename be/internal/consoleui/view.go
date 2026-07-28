@@ -68,11 +68,25 @@ func (m *model) View() tea.View {
 		lines := strings.Split(frame, "\n")
 		frame = strings.Join(lines[h-m.height:], "\n")
 	}
-	// The frame is never padded: insertAbove can only insert printed rows into
-	// the free rows above the frame, so a padded full-height frame desyncs the
-	// renderer one row per insert. Run() parks the cursor on the terminal's
-	// bottom row before starting the program, so the inline region — and with
-	// it the chrome — starts bottom-anchored and every insert re-anchors it.
+	// The renderer top-anchors a frame SHRINK (chrome would float up with
+	// blank rows below), so the frame's height ratchets via m.frameBand:
+	// any shrink — live region clearing, the composer losing a row, an
+	// approval box closing — is padded back with blank top rows, and only
+	// printNewMessages releases band rows, paired with an insert that
+	// refills exactly the vacated rows. The band is capped so inserts always
+	// keep at least maxPrintRows free rows above the frame: insertAbove can
+	// only insert into free rows above the on-screen frame, and a
+	// full-height frame desyncs the renderer one row per insert. Run() parks
+	// the cursor on the terminal's bottom row before starting the program,
+	// so the inline region starts bottom-anchored.
+	m.frameNatural = lipgloss.Height(frame)
+	m.frameBand = max(m.frameBand, m.frameNatural)
+	m.frameBand = min(m.frameBand, max(m.frameNatural, m.height-m.maxPrintRows()))
+	if pad := m.frameBand - m.frameNatural; pad > 0 {
+		// Padding rows carry a space: a fully empty top row is skipped by the
+		// renderer's diff, which then never blanks the rows a shrink vacated.
+		frame = strings.Repeat(" \n", pad) + frame
+	}
 	view := tea.NewView(frame)
 	view.AltScreen = false
 	view.WindowTitle = "nrflo console"
@@ -88,15 +102,9 @@ func (m *model) View() tea.View {
 const liveRegionCap = 12
 
 // liveRegionView renders the bounded managed region: the optimistic pending
-// user line, in-flight deltas, thinking, and the working spinner, wrapped to
-// content width and tail-clipped to liveRegionCap rows (printed rows live in
-// the terminal's native scrollback, not here).
-//
-// The section's height ratchets via m.liveBand and shrinks only at print time
-// (printNewMessages releases the band alongside an insert of at least as many
-// rows): the inline renderer top-anchors a frame shrink, so any shrink not
-// immediately refilled by an insert would lift the chrome off the terminal
-// bottom. Shorter content pads with leading blank lines up to the band.
+// user line and in-flight deltas/thinking, wrapped to content width and
+// tail-clipped to liveRegionCap rows (printed rows live in the terminal's
+// native scrollback, not here; the working indicator lives in the footer).
 func (m *model) liveRegionView(maxLines int) string {
 	maxLines = min(maxLines, liveRegionCap)
 	if maxLines < 1 {
@@ -114,33 +122,22 @@ func (m *model) liveRegionView(maxLines int) string {
 	if m.thinking != "" {
 		parts = append(parts, mutedStyle.Italic(true).Render(fitWidth("thinking · "+m.thinking, m.contentWidth())))
 	}
-	if m.status == "running" {
-		line := " working…" + workingSuffix(m.tool, time.Since(m.tool.Since))
-		parts = append(parts, m.spin.View()+mutedStyle.Render(truncate(line, max(20, m.contentWidth()-2))))
-	}
 	content := strings.Join(parts, "\n\n")
-	lines := []string{}
-	if content != "" {
-		lines = strings.Split(content, "\n")
-		if len(lines) > maxLines {
-			lines = lines[len(lines)-maxLines:]
-		}
-	}
-	m.liveBand = min(maxLines, max(m.liveBand, len(lines)))
-	if m.liveBand == 0 {
+	if content == "" {
 		return ""
 	}
-	for len(lines) < m.liveBand {
-		lines = append([]string{""}, lines...)
+	lines := strings.Split(content, "\n")
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
 	}
 	return strings.Join(lines, "\n")
 }
 
+// footer renders the bottom help line; while a turn runs it carries the
+// animated working indicator plus the in-flight tool detail and elapsed time
+// (the live region shows no spinner line — this is the single working
+// indicator).
 func (m *model) footer() string {
-	help := "enter send · ctrl+d detach · ctrl+x close"
-	if m.status == "running" {
-		help = "working… · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
-	}
 	if m.lastErr != "" {
 		return errorStyle.Render(" " + truncate(m.lastErr, max(20, m.width-2)))
 	}
@@ -150,7 +147,11 @@ func (m *model) footer() string {
 	if m.notice != "" {
 		return mutedStyle.Render(" " + m.notice)
 	}
-	return mutedStyle.Render(" " + help)
+	if m.status == "running" {
+		line := " working…" + workingSuffix(m.tool, time.Since(m.tool.Since)) + " · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
+		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
+	}
+	return mutedStyle.Render(" " + "enter send · ctrl+d detach · ctrl+x close")
 }
 
 func (m *model) approvalView() string {

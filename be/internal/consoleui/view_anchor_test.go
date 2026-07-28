@@ -23,12 +23,13 @@ func anchorTestModel(t *testing.T, width, height int) *model {
 	return m
 }
 
-// TestView_FrameIsNeverPadded verifies the view contains only the frame (no
-// top padding rows): bottom-anchoring comes from the terminal cursor position
-// (clearScreenSeq parks it on the bottom row), and a padded full-height frame
-// would leave insertAbove no free rows to insert printed content into,
-// desyncing the renderer one row per insert.
-func TestView_FrameIsNeverPadded(t *testing.T) {
+// TestView_FreshFrameHasNoPadding verifies a fresh frame (no shrink seen yet)
+// carries no band padding and never fills the terminal: bottom-anchoring
+// comes from the terminal cursor position (clearScreenSeq parks it on the
+// bottom row), and insertAbove needs free rows above the frame to insert
+// printed content into — a full-height frame desyncs the renderer one row
+// per insert.
+func TestView_FreshFrameHasNoPadding(t *testing.T) {
 	const height = 20
 	m := anchorTestModel(t, 80, height)
 

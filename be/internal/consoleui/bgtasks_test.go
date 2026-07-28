@@ -64,15 +64,18 @@ func TestApplyStream_ToolStartedFinished(t *testing.T) {
 	}
 }
 
-// TestLiveRegionView_RunningToolOnSpinnerLine verifies the in-flight tool
-// detail renders on the working line while a turn runs.
-func TestLiveRegionView_RunningToolOnSpinnerLine(t *testing.T) {
+// TestFooter_RunningToolOnWorkingLine verifies the in-flight tool detail
+// renders on the footer's working line while a turn runs.
+func TestFooter_RunningToolOnWorkingLine(t *testing.T) {
 	m := liveTestModel(80, 24)
 	m.status = "running"
 	m.tool = runningTool{Detail: "[Bash] make test", Since: time.Now()}
-	out := m.liveRegionView(m.height)
+	out := m.footer()
 	if !strings.Contains(out, "[Bash] make test") {
-		t.Errorf("liveRegionView() = %q, want it to contain the running tool detail", out)
+		t.Errorf("footer() = %q, want it to contain the running tool detail", out)
+	}
+	if !strings.Contains(out, "ctrl+c interrupt") {
+		t.Errorf("footer() = %q, want the interrupt hint kept", out)
 	}
 }
 

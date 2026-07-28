@@ -33,17 +33,18 @@ type model struct {
 	thinking       string
 	thinkingID     string
 
-	liveBand  int
-	approvals []Approval
-	connected bool
-	status    string
-	tool      runningTool
-	bgRunning int
-	lastErr   string
-	width     int
-	height    int
-	ready     bool
-	notice    string
+	frameBand    int
+	frameNatural int
+	approvals    []Approval
+	connected    bool
+	status       string
+	tool         runningTool
+	bgRunning    int
+	lastErr      string
+	width        int
+	height       int
+	ready        bool
+	notice       string
 
 	input   textarea.Model
 	spin    spinner.Model

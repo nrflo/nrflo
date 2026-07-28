@@ -70,13 +70,13 @@ func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	if len(cmds) == 0 {
 		return nil
 	}
-	// Release up to the printed row count from the live-region band: the
+	// Release the frame band's padding (up to the printed row count): the
 	// resulting frame shrink is refilled exactly by these inserts. The pause
 	// lets the frame ticker flush the shrunken frame FIRST — an insert running
 	// against the taller on-screen frame would land fine, but the shrink flush
 	// after it would float the chrome until the next print.
-	if m.liveBand > 0 {
-		m.liveBand = max(0, m.liveBand-rows)
+	if release := min(rows, m.frameBand-m.frameNatural); release > 0 {
+		m.frameBand -= release
 		cmds = append([]tea.Cmd{printReleasePause}, cmds...)
 	}
 	return tea.Sequence(cmds...)

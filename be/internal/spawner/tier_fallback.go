@@ -33,17 +33,6 @@ func isProviderBuildError(err error) bool {
 	return errors.Is(err, errProviderBuild)
 }
 
-// hardFailReason returns "provider_hard_fail" when proc hit a HARD provider
-// failure, else the given fallback reason — trace parity for the api
-// backend's non-terminal-signal completion path (mirrors CLI/codex's
-// "provider_error_pattern" resultReason override in handleCompletion).
-func hardFailReason(proc *processInfo, reason string) string {
-	if proc.hardProviderFail {
-		return "provider_hard_fail"
-	}
-	return reason
-}
-
 // chainEntryModelID derives the "cli:model" form spawnSingle expects from a
 // resolved chain entry.
 func chainEntryModelID(entry service.AgentChainEntry) string {
@@ -106,6 +95,14 @@ func shouldAdvanceChain(proc *processInfo) (nextPos int, entry service.AgentChai
 	return nextPos, proc.chain[nextPos], true
 }
 
+// chainExhausted reports whether proc's chain actually advanced (chainPos>0)
+// and then ran out (chainPos at the last entry). A proc that never advanced
+// (nil chain or a length-1 chain, chainPos still 0) is NOT exhausted — its
+// completion path's classified reason must survive untouched.
+func chainExhausted(proc *processInfo) bool {
+	return proc.chainPos > 0 && proc.chainPos >= len(proc.chain)-1
+}
+
 // tryChainFallback is monitorAll's FAIL-branch entry point: it consults
 // shouldAdvanceChain and, when eligible, mid-work-saves and relaunches under
 // the next entry via relaunch (relaunchFallbackAndRegister, which shares the
@@ -117,8 +114,10 @@ func shouldAdvanceChain(proc *processInfo) (nextPos int, entry service.AgentChai
 func (s *Spawner) tryChainFallback(ctx context.Context, proc *processInfo, req SpawnRequest, relaunch func(*processInfo, service.AgentChainEntry, int) (*processInfo, error)) (newProc *processInfo, advanced bool) {
 	nextPos, entry, ok := shouldAdvanceChain(proc)
 	if !ok {
-		s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
-			proc.sessionID, proc.agentID, "fail", "chain_exhausted", proc.modelID)
+		if chainExhausted(proc) {
+			s.registerAgentStopWithReason(req.ProjectID, req.TicketID, req.WorkflowName,
+				proc.sessionID, proc.agentID, "fail", "chain_exhausted", proc.modelID)
+		}
 		return nil, false
 	}
 

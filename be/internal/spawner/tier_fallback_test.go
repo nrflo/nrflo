@@ -114,6 +114,33 @@ func TestShouldAdvanceChain_MonotonicSequence(t *testing.T) {
 	}
 }
 
+// TestChainExhausted table-drives the advanced-then-ran-out predicate: only a
+// proc that actually advanced (chainPos>0) and landed on the chain's last
+// entry is exhausted; a proc that never advanced (nil chain, or a chain
+// still at chainPos==0) is not, no matter its chain length.
+func TestChainExhausted(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		chain    []service.AgentChainEntry
+		chainPos int
+		want     bool
+	}{
+		{name: "nil_chain_pos0", chain: nil, chainPos: 0, want: false},
+		{name: "len1_pos0_never_advanced", chain: make([]service.AgentChainEntry, 1), chainPos: 0, want: false},
+		{name: "len2_pos1_exhausted", chain: make([]service.AgentChainEntry, 2), chainPos: 1, want: true},
+		{name: "len3_pos2_exhausted", chain: make([]service.AgentChainEntry, 3), chainPos: 2, want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			proc := &processInfo{chain: tt.chain, chainPos: tt.chainPos}
+			if got := chainExhausted(proc); got != tt.want {
+				t.Errorf("chainExhausted(chain len=%d, chainPos=%d) = %v, want %v", len(tt.chain), tt.chainPos, got, tt.want)
+			}
+		})
+	}
+}
+
 // TestChainEntryModelID verifies the "cli:model" derivation used to drive
 // spawnSingle from a resolved chain entry.
 func TestChainEntryModelID(t *testing.T) {
@@ -172,28 +199,5 @@ func TestIsProviderBuildError_And_Wrap(t *testing.T) {
 	textLookalike := errors.New("provider build failure: something else")
 	if isProviderBuildError(textLookalike) {
 		t.Error("isProviderBuildError(plain error with build-ish text) = true, want false (must use errors.Is, not string match)")
-	}
-}
-
-// TestHardFailReason verifies the trace-parity helper: a HARD provider
-// failure always reports "provider_hard_fail" regardless of the fallback
-// reason passed in; otherwise the fallback reason passes through unchanged.
-func TestHardFailReason(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		proc     *processInfo
-		fallback string
-		want     string
-	}{
-		{name: "hard_fail_overrides", proc: &processInfo{hardProviderFail: true}, fallback: "api_error", want: "provider_hard_fail"},
-		{name: "no_hard_fail_passes_through", proc: &processInfo{hardProviderFail: false}, fallback: "api_error", want: "api_error"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hardFailReason(tt.proc, tt.fallback); got != tt.want {
-				t.Errorf("hardFailReason() = %q, want %q", got, tt.want)
-			}
-		})
 	}
 }

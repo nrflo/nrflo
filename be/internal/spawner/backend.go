@@ -206,7 +206,7 @@ func (b *apiBackend) Start(ctx context.Context, proc *processInfo, prep *prepRes
 		} else {
 			result, reason := mapFinalStatus(proc.finalStatus)
 			b.s.registerAgentStopWithReason(proc.projectID, proc.ticketID, proc.workflowName,
-				proc.sessionID, proc.agentID, result, hardFailReason(proc, reason), proc.modelID)
+				proc.sessionID, proc.agentID, result, reason, proc.modelID)
 		}
 
 		logCtx := logger.WithTrx(context.Background(), proc.trx)

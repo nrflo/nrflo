@@ -44,6 +44,16 @@ func (h *Handler) consoleTurnEnd(sessionID string) {
 	h.consoleHooks.ConsoleTurnEnd(sessionID)
 }
 
+// consoleToolResult notifies a live console engine (if any) that a
+// PostToolUse/PostToolUseFailure hook fired. Nil-safe no-op for autonomous
+// sessions.
+func (h *Handler) consoleToolResult(sessionID, toolName string, isError bool) {
+	if h.consoleHooks == nil {
+		return
+	}
+	h.consoleHooks.ConsoleToolResult(sessionID, toolName, isError)
+}
+
 // consoleSessionReady notifies a live console engine (if any) that
 // SessionStart fired, unblocking its TUI-ready wait. Nil-safe no-op for
 // autonomous sessions.

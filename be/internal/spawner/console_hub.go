@@ -14,6 +14,7 @@ type consoleTarget interface {
 	NotifyTurnEnd()
 	NotifySessionReady()
 	NotifyContextLeft(pct int)
+	NotifyToolResult(toolName string, isError bool)
 	// NotifyUserPrompt reports whether a UserPromptSubmit hook echo is the
 	// engine's own submitted turn (true → the socket handler must not persist
 	// it again) or human-typed input from an attached terminal (false).
@@ -75,6 +76,17 @@ func (h *ConsoleHub) ConsoleTurnEnd(sessionID string) (handled bool) {
 		return false
 	}
 	t.NotifyTurnEnd()
+	return true
+}
+
+// ConsoleToolResult notifies the live engine (if any) that a PostToolUse/
+// PostToolUseFailure hook fired for toolName.
+func (h *ConsoleHub) ConsoleToolResult(sessionID, toolName string, isError bool) (handled bool) {
+	t, ok := h.get(sessionID)
+	if !ok {
+		return false
+	}
+	t.NotifyToolResult(toolName, isError)
 	return true
 }
 

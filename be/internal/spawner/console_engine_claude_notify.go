@@ -21,6 +21,17 @@ func (e *claudeEngine) NotifyTurnEnd() {
 	}
 }
 
+// NotifyToolResult emits EventToolResult. Called by
+// ConsoleHub.ConsoleToolResult on the PostToolUse/PostToolUseFailure hooks —
+// the pairing "finished" signal to the EventToolInvoke that RequestApproval
+// emits on every PreToolUse.
+func (e *claudeEngine) NotifyToolResult(toolName string, isError bool) {
+	e.mu.Lock()
+	sessionID := e.spec.SessionID
+	e.mu.Unlock()
+	e.emit(EngineEvent{Type: EventToolResult, SessionID: sessionID, ToolName: toolName, IsError: isError})
+}
+
 // NotifyContextLeft emits EventTokenUsage. Called by
 // ConsoleHub.ConsoleContextLeft on an agent.context_update (statusline).
 func (e *claudeEngine) NotifyContextLeft(pct int) {

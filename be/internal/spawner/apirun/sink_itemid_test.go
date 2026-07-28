@@ -17,8 +17,10 @@ type streamDelta struct {
 // recordingStream records every StreamHook callback, standing in for the
 // console engine's live consumer.
 type recordingStream struct {
-	text     []streamDelta
-	thinking []streamDelta
+	text       []streamDelta
+	thinking   []streamDelta
+	toolStarts []toolSpan
+	toolEnds   []toolSpan
 }
 
 func (s *recordingStream) OnTextDelta(itemID, text string) {
@@ -27,6 +29,20 @@ func (s *recordingStream) OnTextDelta(itemID, text string) {
 
 func (s *recordingStream) OnThinkingDelta(itemID, text string) {
 	s.thinking = append(s.thinking, streamDelta{itemID: itemID, text: text})
+}
+
+type toolSpan struct {
+	toolUseID, name string
+	input           string
+	isError         bool
+}
+
+func (s *recordingStream) OnToolStart(toolUseID, name string, input json.RawMessage) {
+	s.toolStarts = append(s.toolStarts, toolSpan{toolUseID: toolUseID, name: name, input: string(input)})
+}
+
+func (s *recordingStream) OnToolEnd(toolUseID string, isError bool) {
+	s.toolEnds = append(s.toolEnds, toolSpan{toolUseID: toolUseID, isError: isError})
 }
 
 // buffers folds the recorded deltas the way a live consumer does: accumulate

@@ -41,6 +41,10 @@ type ConsoleHooks interface {
 	ApproveConsoleTool(ctx context.Context, sessionID, toolName string, toolInput map[string]any, toolUseID string) (decision, reason string, handled bool)
 	// ConsoleTurnEnd notifies the engine that a Stop hook fired.
 	ConsoleTurnEnd(sessionID string) (handled bool)
+	// ConsoleToolResult notifies the engine that a PostToolUse /
+	// PostToolUseFailure hook fired for toolName, so it can surface
+	// tool completion to live consumers.
+	ConsoleToolResult(sessionID, toolName string, isError bool) (handled bool)
 	// ConsoleSessionReady notifies the engine that a SessionStart hook fired.
 	ConsoleSessionReady(sessionID string) (handled bool)
 	// ConsoleContextLeft forwards an agent.context_update to the engine.

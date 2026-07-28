@@ -34,7 +34,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m.applyStream(msg)
 		commands = append(commands, waitForStream(m.events))
 		if msg.Connected != nil && *msg.Connected {
-			commands = append(commands, m.syncState())
+			commands = append(commands, m.syncState(), m.loadBgCount())
 			if !m.skillsFetched {
 				m.skillsFetched = true
 				commands = append(commands, m.loadSkills())
@@ -47,6 +47,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if needsHistory(msg.Events) {
 			commands = append(commands, m.loadHistory())
 		}
+		if bgRelevant(msg.Events) {
+			commands = append(commands, m.loadBgCount())
+		}
 	case skillsMsg:
 		if msg.err == nil {
 			m.skills = msg.skills
@@ -54,6 +57,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case toolsMsg:
 		if msg.err == nil {
 			m.tools = msg.tools
+		}
+	case bgCountMsg:
+		if msg.err == nil {
+			m.bgRunning = msg.count
 		}
 	case historyMsg:
 		if msg.err != nil {

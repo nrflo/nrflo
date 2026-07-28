@@ -110,6 +110,11 @@ func (s *runnerSink) OnToolUseStop(id string, fullInput json.RawMessage) {
 	delete(s.toolNames, id)
 	s.mu.Unlock()
 
+	// Stream before persisting, same ordering as OnTextDelta.
+	if s.stream != nil {
+		s.stream.OnToolStart(id, name, fullInput)
+	}
+
 	var compact bytes.Buffer
 	compactStr := string(fullInput)
 	if err := json.Compact(&compact, fullInput); err == nil {

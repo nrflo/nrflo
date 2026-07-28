@@ -2,6 +2,7 @@ package consoleui
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
@@ -64,29 +65,38 @@ func (m *model) View() tea.View {
 	return view
 }
 
+// liveRegionCap bounds the live region to a short tail regardless of terminal
+// height. tea.Println inserts scroll the on-screen frame up before the
+// post-print repaint flushes (the renderer flushes on a frame ticker, inserts
+// write immediately), so any live-region row can be pushed into native
+// scrollback permanently; keeping the region small keeps headroom above the
+// frame larger than a print chunk (see maxPrintRows) so that never happens.
+const liveRegionCap = 12
+
 // liveRegionView renders the bounded managed region: the optimistic pending
 // user line, in-flight deltas, thinking, and the working spinner, wrapped to
-// content width and tail-clipped to roughly the terminal height so the
-// managed region never grows unbounded (printed rows live in the terminal's
-// native scrollback, not here).
+// content width and tail-clipped to liveRegionCap rows (printed rows live in
+// the terminal's native scrollback, not here).
 func (m *model) liveRegionView(maxLines int) string {
+	maxLines = min(maxLines, liveRegionCap)
 	if maxLines < 1 {
 		return ""
 	}
 	parts := make([]string, 0, len(m.deltas)+2)
 	if m.pendingUser != "" {
-		parts = append(parts, userStyle.Render("you")+"\n"+wrapToWidth(m.pendingUser, m.contentWidth()))
+		parts = append(parts, userStyle.Render("you")+"\n"+fitWidth(m.pendingUser, m.contentWidth()))
 	}
 	for _, id := range m.deltaOrder {
 		if text := m.deltas[id]; text != "" {
-			parts = append(parts, headerStyle.Render("assistant")+"\n"+wrapToWidth(text, m.contentWidth()))
+			parts = append(parts, headerStyle.Render("assistant")+"\n"+fitWidth(text, m.contentWidth()))
 		}
 	}
 	if m.thinking != "" {
-		parts = append(parts, mutedStyle.Italic(true).Render("thinking · "+m.thinking))
+		parts = append(parts, mutedStyle.Italic(true).Render(fitWidth("thinking · "+m.thinking, m.contentWidth())))
 	}
 	if m.status == "running" {
-		parts = append(parts, m.spin.View()+mutedStyle.Render(" working…"))
+		line := " working…" + workingSuffix(m.tool, time.Since(m.tool.Since))
+		parts = append(parts, m.spin.View()+mutedStyle.Render(truncate(line, max(20, m.contentWidth()-2))))
 	}
 	content := strings.Join(parts, "\n\n")
 	if content == "" {
@@ -183,22 +193,27 @@ func clampChrome(sections []string, maxHeight int) string {
 	return chrome
 }
 
+// renderMessage renders a transcript row for printing. Every branch expands
+// tabs and hard-wraps to width: printed lines must never exceed the terminal
+// width or contain tabs, or bubbletea's insertAbove row math desyncs
+// (ansi.StringWidth counts "\t" as 0 while the terminal advances to the next
+// tab stop) and ghost rows of the live frame leak into native scrollback.
 func renderMessage(message Message, width int) string {
 	switch message.Category {
 	case "user_input":
-		return userStyle.Render("you") + "\n" + wrapToWidth(message.Content, width)
+		return userStyle.Render("you") + "\n" + fitWidth(message.Content, width)
 	case "tool", "tool_use", "tool_result":
-		return mutedStyle.Render(wrapToWidth("tool · "+prettyToolContent(message.Content), width))
+		return mutedStyle.Render(fitWidth("tool · "+prettyToolContent(message.Content), width))
 	case "thinking":
-		return mutedStyle.Italic(true).Render(wrapToWidth("thinking · "+message.Content, width))
+		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
 	default:
 		renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(width))
 		if err == nil {
 			if rendered, renderErr := renderer.Render(message.Content); renderErr == nil {
-				return headerStyle.Render("assistant") + "\n" + strings.TrimSpace(rendered)
+				return headerStyle.Render("assistant") + "\n" + fitWidth(strings.TrimSpace(rendered), width)
 			}
 		}
-		return headerStyle.Render("assistant") + "\n" + message.Content
+		return headerStyle.Render("assistant") + "\n" + fitWidth(message.Content, width)
 	}
 }
 

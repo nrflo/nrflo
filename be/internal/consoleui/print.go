@@ -59,16 +59,45 @@ func (m *model) printNewMessages(page MessagePage) []tea.Cmd {
 		rows := physicalRows(rendered, m.width)
 		m.printedLines += rows
 		m.appendPrintedTail(message, rows)
-		cmds = append(cmds, tea.Println(rendered))
+		for _, chunk := range splitChunks(rendered, m.maxPrintRows()) {
+			cmds = append(cmds, tea.Println(chunk))
+		}
 	}
 	m.pendingUser = ""
 	return cmds
 }
 
+// chromeAllowance is the worst-case chrome height (composer up to 8 rows +
+// border, status bar, footer) reserved when sizing print chunks.
+const chromeAllowance = 12
+
+// maxPrintRows bounds a single tea.Println's physical rows. insertAbove
+// scrolls the screen up by the printed row count against the frame currently
+// on screen (the shrunken repaint only flushes on the next frame tick), so a
+// chunk must fit in the headroom above the live region + chrome or frame rows
+// leak into native scrollback permanently.
+func (m *model) maxPrintRows() int {
+	return max(1, m.height-liveRegionCap-chromeAllowance)
+}
+
+// splitChunks splits rendered into "\n"-delimited groups of at most maxRows
+// lines each. renderMessage hard-wraps every line to below terminal width, so
+// lines and physical rows are one-to-one.
+func splitChunks(rendered string, maxRows int) []string {
+	lines := strings.Split(rendered, "\n")
+	chunks := make([]string, 0, (len(lines)+maxRows-1)/maxRows)
+	for start := 0; start < len(lines); start += maxRows {
+		end := min(start+maxRows, len(lines))
+		chunks = append(chunks, strings.Join(lines[start:end], "\n"))
+	}
+	return chunks
+}
+
 // physicalRows counts the physical scrollback rows rendered occupies when
 // printed to a terminal of the given width, mirroring bubbletea v2's
-// cursedRenderer.insertAbove: one row per "\n"-delimited line, plus one extra
-// row for every full multiple of width a line's display width consumes.
+// cursedRenderer.insertAbove exactly: one row per "\n"-delimited line, plus
+// lineWidth/width extra rows only when a line's display width exceeds width
+// (insertAbove's `lineWidth > w` guard — an exactly-full line adds nothing).
 // tea.Println scrolls at the full terminal width, not the narrower content
 // width rendered was wrapped to, so width here must be the terminal width.
 func physicalRows(rendered string, width int) int {
@@ -78,7 +107,9 @@ func physicalRows(rendered string, width int) int {
 	lines := strings.Split(rendered, "\n")
 	rows := len(lines)
 	for _, line := range lines {
-		rows += ansi.StringWidth(line) / width
+		if lineWidth := ansi.StringWidth(line); lineWidth > width {
+			rows += lineWidth / width
+		}
 	}
 	return rows
 }

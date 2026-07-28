@@ -110,6 +110,26 @@ func (c *Client) SetYolo(ctx context.Context, on bool) error {
 	return c.do(ctx, method, c.chatPath("yolo"), nil, nil)
 }
 
+// ActiveWorkflowCount returns how many active workflow instances the given
+// project has, from the global active-workflows endpoint filtered client-side.
+func (c *Client) ActiveWorkflowCount(ctx context.Context, projectID string) (int, error) {
+	var result struct {
+		Workflows []struct {
+			ProjectID string `json:"project_id"`
+		} `json:"workflows"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/api/v1/workflows/active", nil, &result); err != nil {
+		return 0, err
+	}
+	count := 0
+	for _, w := range result.Workflows {
+		if w.ProjectID == projectID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 // Tools fetches the chat's own invokable tool catalogue.
 func (c *Client) Tools(ctx context.Context) ([]ConsoleTool, error) {
 	var result struct {
@@ -210,6 +230,13 @@ func (c *Client) dialEvents(ctx context.Context) (*websocket.Conn, error) {
 	if err := conn.WriteJSON(subscribe); err != nil {
 		conn.Close()
 		return nil, err
+	}
+	// Project channel carries workflow-lifecycle events for the bg counter.
+	if c.project != "" {
+		if err := conn.WriteJSON(map[string]string{"action": "subscribe", "project_id": c.project}); err != nil {
+			conn.Close()
+			return nil, err
+		}
 	}
 	return conn, nil
 }

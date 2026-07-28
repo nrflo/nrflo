@@ -23,6 +23,10 @@ func (m *model) statusBar() string {
 	if m.detail.CostEstimate != nil {
 		costText = fmt.Sprintf("  ~$%.2f", *m.detail.CostEstimate)
 	}
+	bgText := ""
+	if m.bgRunning > 0 {
+		bgText = fmt.Sprintf("  bg:%d", m.bgRunning)
+	}
 	allowedText := ""
 	if len(m.detail.SessionApprovals) > 0 {
 		allowedText = "  always:" + strings.Join(m.detail.SessionApprovals, ",")
@@ -35,5 +39,11 @@ func (m *model) statusBar() string {
 	if modelName == "" {
 		modelName = "default"
 	}
-	return headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, allowedText)) + yoloText
+	bar := headerStyle.Render(" nrflo") + mutedStyle.Render(fmt.Sprintf("  %s / %s  %s  %s%s%s%s%s", m.detail.Engine, modelName, m.detail.ProjectID, connection, contextText, costText, bgText, allowedText)) + yoloText
+	if m.width <= 0 {
+		return bar
+	}
+	// Single physical row always: a wrapped status bar breaks the chrome
+	// height math (clampChrome counts "\n" lines, terminals count cells).
+	return truncate(bar, max(10, m.width-1))
 }

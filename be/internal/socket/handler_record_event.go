@@ -160,6 +160,7 @@ func (h *Handler) closeToolSpan(ctx context.Context, sessionID string, event map
 func (h *Handler) recordPostToolFailure(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
 	toolName, _ := event["tool_name"].(string)
 	h.closeToolSpan(ctx, sessionID, event)
+	h.consoleToolResult(sessionID, toolName, true)
 	category := spawner.ToolCategory(toolName)
 	content := "[" + toolName + " failed]"
 	if msg := extractErrorMessage(event); msg != "" {
@@ -263,6 +264,7 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 func (h *Handler) recordPostToolUse(ctx context.Context, req Request, sessionID string, event map[string]interface{}) Response {
 	toolName, _ := event["tool_name"].(string)
 	h.closeToolSpan(ctx, sessionID, event)
+	h.consoleToolResult(sessionID, toolName, false)
 	if spawner.IsHiddenResultTool(toolName) {
 		// Read/Bash/Edit success rows are suppressed: the PreToolUse invoke row
 		// already shows the file/command and the output is log noise. PostToolUse

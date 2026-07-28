@@ -106,6 +106,18 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.ApprovalID, "decision": decision})
 			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
 
+		case spawner.EventToolInvoke:
+			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatToolStarted, map[string]interface{}{
+				"tool":   ev.ToolName,
+				"detail": spawner.FormatToolDetail(ev.ToolName, ev.ToolInput),
+			})
+
+		case spawner.EventToolResult:
+			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatToolFinished, map[string]interface{}{
+				"tool":     ev.ToolName,
+				"is_error": ev.IsError,
+			})
+
 		case spawner.EventThinking:
 			sess.appendThinking(ev.ItemID, ev.Text)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatThinking, map[string]interface{}{

@@ -1,6 +1,8 @@
 package spawner
 
 import (
+	"encoding/json"
+	"sync"
 	"time"
 
 	"be/internal/clock"
@@ -81,9 +83,13 @@ func (p *apiEngineProcState) SetProviderHardFail() {}
 // runner sink's ~4KB buffered persistence. ItemID carries the sink's
 // per-segment id (one id per persisted row), which is what the FE keys its
 // live delta buffer by — codex gets the same guarantee from the app-server's
-// own item ids (codex_appserver_events_engine.go).
+// own item ids (codex_appserver_events_engine.go). Tool span hooks map onto
+// EventToolInvoke/EventToolResult so a live console can show the in-flight
+// tool; toolNames pairs the end hook (id-only) back to its name.
 type apiEngineStream struct {
-	e *apiConsoleEngine
+	e         *apiConsoleEngine
+	mu        sync.Mutex
+	toolNames map[string]string
 }
 
 func (s *apiEngineStream) OnTextDelta(itemID, text string) {
@@ -92,6 +98,26 @@ func (s *apiEngineStream) OnTextDelta(itemID, text string) {
 
 func (s *apiEngineStream) OnThinkingDelta(itemID, text string) {
 	s.e.emit(EngineEvent{Type: EventThinking, SessionID: s.e.spec.SessionID, ItemID: itemID, Text: text})
+}
+
+func (s *apiEngineStream) OnToolStart(toolUseID, name string, input json.RawMessage) {
+	s.mu.Lock()
+	if s.toolNames == nil {
+		s.toolNames = map[string]string{}
+	}
+	s.toolNames[toolUseID] = name
+	s.mu.Unlock()
+	var parsed map[string]any
+	_ = json.Unmarshal(input, &parsed)
+	s.e.emit(EngineEvent{Type: EventToolInvoke, SessionID: s.e.spec.SessionID, ToolName: name, ToolInput: parsed})
+}
+
+func (s *apiEngineStream) OnToolEnd(toolUseID string, isError bool) {
+	s.mu.Lock()
+	name := s.toolNames[toolUseID]
+	delete(s.toolNames, toolUseID)
+	s.mu.Unlock()
+	s.e.emit(EngineEvent{Type: EventToolResult, SessionID: s.e.spec.SessionID, ToolName: name, IsError: isError})
 }
 
 var _ apirun.MessageSink = (*apiEngineSink)(nil)

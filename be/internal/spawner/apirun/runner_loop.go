@@ -198,6 +198,9 @@ func (r *Runner) invokeTool(ctx context.Context, block provider.ContentBlock) to
 	if !ok {
 		msg := fmt.Sprintf("unknown tool: %s", block.ToolName)
 		r.cfg.Sink.TrackMessage(msg, "error")
+		if r.cfg.Stream != nil {
+			r.cfg.Stream.OnToolEnd(block.ToolUseID, true)
+		}
 		return toolOutcome{result: provider.ContentBlock{
 			Type:      "tool_result",
 			ToolUseID: block.ToolUseID,
@@ -227,6 +230,9 @@ func (r *Runner) invokeTool(ctx context.Context, block provider.ContentBlock) to
 		out = terr.Error()
 		isErr = true
 		media = nil
+	}
+	if r.cfg.Stream != nil {
+		r.cfg.Stream.OnToolEnd(block.ToolUseID, isErr)
 	}
 	if !isErr {
 		out = MaybeOffloadToolResult(ctx, r.cfg.Env, block.ToolName, out)

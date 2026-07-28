@@ -2,6 +2,7 @@ package apirun
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"be/internal/spawner/apirun/provider"
@@ -19,6 +20,11 @@ import (
 type StreamHook interface {
 	OnTextDelta(itemID, text string)
 	OnThinkingDelta(itemID, text string)
+	// OnToolStart fires when a tool_use block's input is complete — i.e. just
+	// before the runner dispatches the handler; OnToolEnd fires after the
+	// handler returns (skipped for terminal signals, which end the turn).
+	OnToolStart(toolUseID, name string, input json.RawMessage)
+	OnToolEnd(toolUseID string, isError bool)
 }
 
 // Conversation drives a multi-turn API-mode session: unlike Runner (single-

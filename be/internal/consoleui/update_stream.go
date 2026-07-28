@@ -3,6 +3,7 @@ package consoleui
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 func (m *model) applyStream(update streamUpdate) {
@@ -37,7 +38,16 @@ func (m *model) applyStream(update streamUpdate) {
 				m.thinkingID = ""
 				m.deltas = make(map[string]string)
 				m.deltaOrder = m.deltaOrder[:0]
+				m.tool = runningTool{}
 			}
+		case "console_chat.tool_started":
+			detail := eventString(event, "detail")
+			if detail == "" {
+				detail = "[" + eventString(event, "tool") + "]"
+			}
+			m.tool = runningTool{Detail: detail, Since: time.Now()}
+		case "console_chat.tool_finished":
+			m.tool = runningTool{}
 		case "console_chat.approval_request":
 			m.approvals = append(m.approvals, Approval{
 				ID: eventString(event, "approval_id"), Kind: eventString(event, "kind"),
@@ -53,6 +63,7 @@ func (m *model) applyStream(update streamUpdate) {
 			m.detail.Yolo = eventBool(event, "yolo")
 		case "console_chat.error":
 			m.lastErr = eventString(event, "text")
+			m.tool = runningTool{}
 		case "agent.context_updated":
 			value := eventInt(event, "context_left")
 			m.detail.ContextLeft = &value

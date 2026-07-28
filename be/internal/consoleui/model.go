@@ -36,6 +36,8 @@ type model struct {
 	approvals []Approval
 	connected bool
 	status    string
+	tool      runningTool
+	bgRunning int
 	lastErr   string
 	width     int
 	height    int
@@ -85,6 +87,11 @@ func Run(ctx context.Context, cfg Config) error {
 	if err != nil {
 		cancel()
 		return fmt.Errorf("load console chat: %w", err)
+	}
+	if client.project == "" {
+		// Remote attach may omit the project; the chat row knows it, and the
+		// WS project subscription (bg counter) needs it.
+		client.project = detail.ProjectID
 	}
 	page, err := client.TailMessages(loadCtx, historyPageSize)
 	inputHist := newHistory(page.Messages)

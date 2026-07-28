@@ -85,9 +85,11 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 	next, cmd = m.Update(historyMsg{page: page})
 	m = next.(*model)
 
+	// h=24 has no chunk headroom, so each 2-line message prints as two
+	// single-row chunks: 4 Printlns for the 2 messages.
 	bodies := printlnBodies(t, cmd)
-	if len(bodies) != 2 {
-		t.Fatalf("printlnBodies = %d, want 2 tea.Println commands, got %#v", len(bodies), bodies)
+	if len(bodies) != 4 {
+		t.Fatalf("printlnBodies = %d, want 4 tea.Println commands, got %#v", len(bodies), bodies)
 	}
 	if m.printedLines <= 0 {
 		t.Errorf("printedLines = %d, want > 0 after printing a page", m.printedLines)
@@ -119,9 +121,11 @@ func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 	next, cmd := m.Update(syncMsg{detail: m.detail, page: longMessagePage(20)})
 	m = next.(*model)
 
+	// Chunked printing: at least one Println per message, more once a
+	// message's rendered rows exceed the chunk headroom.
 	bodies := printlnBodies(t, cmd)
-	if len(bodies) != 20 {
-		t.Fatalf("printlnBodies = %d, want 20 tea.Println commands", len(bodies))
+	if len(bodies) < 20 {
+		t.Fatalf("printlnBodies = %d, want >= 20 tea.Println commands", len(bodies))
 	}
 	if m.printedLines <= height {
 		t.Fatalf("test setup invalid: printedLines=%d must exceed height=%d to exercise the vanish guard", m.printedLines, height)

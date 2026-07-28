@@ -125,6 +125,28 @@ func TestLiveRegionView_MaxLinesBelowOneIsEmpty(t *testing.T) {
 	}
 }
 
+// TestLiveRegionView_CappedRegardlessOfBudget verifies the live region never
+// exceeds liveRegionCap rows even when the terminal budget is far larger:
+// tea.Println inserts scroll against the frame currently on screen, so a tall
+// live region leaves no headroom and its rows leak into native scrollback.
+func TestLiveRegionView_CappedRegardlessOfBudget(t *testing.T) {
+	m := liveTestModel(80, 60)
+	m.deltaOrder = []string{"answer"}
+	lines := make([]string, 100)
+	for i := range lines {
+		lines[i] = "line"
+	}
+	m.deltas["answer"] = strings.Join(lines, "\n")
+
+	out := m.liveRegionView(50)
+	if gotLines := strings.Count(out, "\n") + 1; gotLines > liveRegionCap {
+		t.Errorf("liveRegionView(50) line count = %d, want <= liveRegionCap %d", gotLines, liveRegionCap)
+	}
+	if !strings.HasSuffix(out, "line") {
+		t.Errorf("liveRegionView() tail = %q, want it to end with the last delta line", out)
+	}
+}
+
 // TestView_NeverExceedsHeight verifies the total rendered view (live region +
 // chrome) never exceeds m.height, even with a delta buffer far taller than
 // the terminal, at a small terminal height.

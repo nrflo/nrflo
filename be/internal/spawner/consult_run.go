@@ -51,9 +51,12 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 
 	var consultMu sync.Mutex
 	var consultSID string
-	consultRegister, consultUnregister := s.childSessionHooks(func(sid string) {
+	var consultSp *Spawner
+	consultRegister, consultUnregister := s.childSessionHooks(func(sid string, child *Spawner) {
 		consultMu.Lock()
-		consultSID = sid
+		if child == consultSp {
+			consultSID = sid
+		}
 		consultMu.Unlock()
 	})
 
@@ -96,6 +99,9 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 		OnSessionRegister:   consultRegister,
 		OnSessionUnregister: consultUnregister,
 	})
+	consultMu.Lock()
+	consultSp = sp
+	consultMu.Unlock()
 
 	s.broadcast(ws.EventConsultStarted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
 		"caller_session_id": req.CallerSessionID,

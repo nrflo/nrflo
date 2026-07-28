@@ -24,7 +24,11 @@ func TestChildSessionHooks_ForwardsToParent(t *testing.T) {
 		OnSessionUnregister: func(sessionID string) { parentUnregistered = sessionID },
 	})
 
-	register, unregister := parent.childSessionHooks(func(sessionID string) { captured = sessionID })
+	var capturedFrom *Spawner
+	register, unregister := parent.childSessionHooks(func(sessionID string, child *Spawner) {
+		captured = sessionID
+		capturedFrom = child
+	})
 
 	child := New(Config{})
 	register("sess-1", child)
@@ -35,6 +39,9 @@ func TestChildSessionHooks_ForwardsToParent(t *testing.T) {
 
 	if captured != "sess-1" {
 		t.Errorf("child capture = %q, want sess-1", captured)
+	}
+	if capturedFrom != child {
+		t.Error("capture received the wrong *Spawner; callers filter on it to ignore grandchild registrations (nested delegate fanout)")
 	}
 	if parentRegistered != "sess-1" {
 		t.Errorf("parent OnSessionRegister got %q, want sess-1 — the child session never reaches the orchestrator index", parentRegistered)
@@ -57,7 +64,7 @@ func TestChildSessionHooks_NilSafe(t *testing.T) {
 	var captured string
 	parent := New(Config{}) // no OnSessionRegister/OnSessionUnregister
 
-	register, unregister := parent.childSessionHooks(func(sessionID string) { captured = sessionID })
+	register, unregister := parent.childSessionHooks(func(sessionID string, _ *Spawner) { captured = sessionID })
 	register("sess-2", New(Config{}))
 	if unregister != nil {
 		unregister("sess-2")

@@ -124,3 +124,93 @@ func TestGetDelegation_FailedWorker_AggregatesFailedStatus(t *testing.T) {
 		t.Errorf("entry = %+v, want status=failed reason='could not answer'", entry)
 	}
 }
+
+// A delegate worker that ends in callback status is terminal-failed: nothing
+// ever answers a delegate worker's callback, so treating it as running would
+// wedge the delegation in "running" forever.
+func TestGetDelegation_CallbackWorker_TerminalFailed(t *testing.T) {
+	env := setupDelegateTestEnv(t)
+	defer env.cleanup()
+
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	workerSID := "worker-session-callback"
+	if err := repo.NewAgentSessionRepo(env.database, clock.Real()).Create(&model.AgentSession{
+		ID:                 workerSID,
+		ProjectID:          env.projectID,
+		WorkflowInstanceID: env.wfiID,
+		AgentType:          "_t2_extractor",
+		Status:             model.AgentSessionCallback,
+		Result:             sql.NullString{String: "callback", Valid: true},
+		StartedAt:          sql.NullString{String: now, Valid: true},
+	}); err != nil {
+		t.Fatalf("create worker session: %v", err)
+	}
+
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	delegationID := env.wfiID + ".callbacktest"
+	val, _ := json.Marshal(map[string]interface{}{"tier": "extractor", "session_ids": []string{workerSID}, "done": true})
+	if err := findingRepo.Upsert("workflow_instance", env.wfiID, "_delegation_"+delegationID, val,
+		repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID}, repo.Actor{Source: "system", ID: "delegate"}); err != nil {
+		t.Fatalf("seed tracking finding: %v", err)
+	}
+
+	sp := buildDelegateSpawner(t, env, mock.New())
+
+	raw, err := sp.GetDelegation(context.Background(), env.callerSessionID, delegationID)
+	if err != nil {
+		t.Fatalf("GetDelegation: %v", err)
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out["status"] != "failed" {
+		t.Fatalf("status = %v, want failed (callback must be terminal)", out["status"])
+	}
+	entry := out["results"].([]interface{})[0].(map[string]interface{})
+	if entry["status"] != "failed" || entry["reason"] == nil {
+		t.Errorf("entry = %+v, want status=failed with a reason", entry)
+	}
+
+	// Terminal response is read-once: the tracking record must be gone.
+	if _, err := sp.GetDelegation(context.Background(), env.callerSessionID, delegationID); err == nil {
+		t.Error("second GetDelegation returned nil error; want unknown-delegation after terminal read")
+	}
+}
+
+// A worker that never registered a session surfaces its spawn error instead
+// of the bare "worker failed to start".
+func TestGetDelegation_SpawnError_Surfaced(t *testing.T) {
+	env := setupDelegateTestEnv(t)
+	defer env.cleanup()
+
+	findingRepo := repo.NewFindingRepo(env.pool, clock.Real())
+	delegationID := env.wfiID + ".spawnerr"
+	val, _ := json.Marshal(map[string]interface{}{
+		"tier": "executor", "session_ids": []string{""},
+		"spawn_errors": []string{"provider build failure: no anthropic API key found"}, "done": true,
+	})
+	if err := findingRepo.Upsert("workflow_instance", env.wfiID, "_delegation_"+delegationID, val,
+		repo.Denorm{ProjectID: env.projectID, WorkflowInstanceID: env.wfiID}, repo.Actor{Source: "system", ID: "delegate"}); err != nil {
+		t.Fatalf("seed tracking finding: %v", err)
+	}
+
+	sp := buildDelegateSpawner(t, env, mock.New())
+
+	raw, err := sp.GetDelegation(context.Background(), env.callerSessionID, delegationID)
+	if err != nil {
+		t.Fatalf("GetDelegation: %v", err)
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if out["status"] != "failed" {
+		t.Fatalf("status = %v, want failed", out["status"])
+	}
+	entry := out["results"].([]interface{})[0].(map[string]interface{})
+	want := "worker failed to start: provider build failure: no anthropic API key found"
+	if entry["error"] != want {
+		t.Errorf("error = %v, want %q", entry["error"], want)
+	}
+}

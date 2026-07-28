@@ -51,5 +51,12 @@ func hiddenHostSpawner(ctx context.Context, o *Orchestrator, pool *db.Pool, proj
 		ArtifactSvc:        service.NewArtifactService(pool, o.clock, o.wsHub, o.dataPath),
 		ProjectEnv:         loadProjectEnv(ctx, pool, projectID, o.clock),
 		APIMode:            true,
+		PTYManager:         o.PTYManager,
+		// cli_interactive workers reach their nrflo tools only through the
+		// socket bridge, which resolves sessions via auxSpawners; without this
+		// registration a CLI-mode delegate/consult worker gets an empty
+		// tools/list and no heartbeat, and stalls out while healthy.
+		OnSessionRegister:   o.registerAuxSpawner,
+		OnSessionUnregister: o.unregisterAuxSpawner,
 	}), nil
 }

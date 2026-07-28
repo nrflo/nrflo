@@ -19,7 +19,10 @@ import (
 type delegationTracking struct {
 	Tier       string   `json:"tier"`
 	SessionIDs []string `json:"session_ids"`
-	Done       bool     `json:"done"`
+	// SpawnErrors is index-aligned with SessionIDs: the spawn error for a
+	// worker that never registered a session (its SessionIDs slot is "").
+	SpawnErrors []string `json:"spawn_errors,omitempty"`
+	Done        bool     `json:"done"`
 }
 
 func delegationFindingKey(delegationID string) string {
@@ -31,12 +34,12 @@ func delegationFindingKey(delegationID string) string {
 // of delegationID's "<wfiID>.<rand>" shape) can find them again. Called twice:
 // once with done=false (seed, empty sessionIDs) and once with done=true (final
 // session-id list) after the workers finish.
-func (s *Spawner) trackDelegation(wfiID, projectID, delegationID, tier string, sessionIDs []string, done bool) error {
+func (s *Spawner) trackDelegation(wfiID, projectID, delegationID, tier string, sessionIDs, spawnErrors []string, done bool) error {
 	pool := s.pool()
 	if pool == nil {
 		return fmt.Errorf("delegate: no database pool")
 	}
-	val, err := json.Marshal(delegationTracking{Tier: tier, SessionIDs: sessionIDs, Done: done})
+	val, err := json.Marshal(delegationTracking{Tier: tier, SessionIDs: sessionIDs, SpawnErrors: spawnErrors, Done: done})
 	if err != nil {
 		return err
 	}
@@ -91,7 +94,7 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 		return delegateStatusJSON(delegationID, "running", nil), nil
 	}
 
-	results, allDone, anyFailed := s.collectDelegateResults(pool, tracking.SessionIDs)
+	results, allDone, anyFailed := s.collectDelegateResults(pool, tracking.SessionIDs, tracking.SpawnErrors)
 	if !allDone {
 		return delegateStatusJSON(delegationID, "running", results), nil
 	}
@@ -108,8 +111,9 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 // collectDelegateResults reads each worker's terminal status and (if
 // present) its `_delegate_findings` session finding — read+deleted, mirroring
 // consult's _consult_answer readback. allDone is true once every session has
-// left the running/continued/callback states.
-func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs []string) ([]map[string]interface{}, bool, bool) {
+// left the running/continued states. spawnErrors is index-aligned with
+// sessionIDs (may be shorter/nil for pre-existing tracking records).
+func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs, spawnErrors []string) ([]map[string]interface{}, bool, bool) {
 	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
 
@@ -117,9 +121,13 @@ func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs []string) ([]
 	allDone := true
 	anyFailed := false
 
-	for _, sid := range sessionIDs {
+	for i, sid := range sessionIDs {
 		if sid == "" {
-			results = append(results, map[string]interface{}{"status": "failed", "error": "worker failed to start"})
+			msg := "worker failed to start"
+			if i < len(spawnErrors) && spawnErrors[i] != "" {
+				msg += ": " + spawnErrors[i]
+			}
+			results = append(results, map[string]interface{}{"status": "failed", "error": msg})
 			anyFailed = true
 			continue
 		}
@@ -136,7 +144,18 @@ func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs []string) ([]
 		}
 
 		entry := map[string]interface{}{"session_id": sid, "status": "completed"}
-		if sess.Result.Valid && sess.Result.String == "fail" {
+		switch {
+		case sess.Status == model.AgentSessionCallback:
+			// Nothing ever answers a delegate worker's callback (there is no
+			// coordinator), so callback is terminal here, not transient.
+			entry["status"] = "failed"
+			entry["reason"] = "worker ended in callback; delegate workers have no coordinator to answer it"
+			anyFailed = true
+		case sess.Status == model.AgentSessionTimeout:
+			entry["status"] = "failed"
+			entry["reason"] = "worker timed out"
+			anyFailed = true
+		case sess.Result.Valid && sess.Result.String == "fail":
 			entry["status"] = "failed"
 			anyFailed = true
 			if sess.ResultReason.Valid {
@@ -156,7 +175,7 @@ func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs []string) ([]
 
 func isDelegateSessionRunning(status model.AgentSessionStatus) bool {
 	switch status {
-	case model.AgentSessionRunning, model.AgentSessionContinued, model.AgentSessionCallback:
+	case model.AgentSessionRunning, model.AgentSessionContinued:
 		return true
 	default:
 		return false

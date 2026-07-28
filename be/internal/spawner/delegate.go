@@ -86,7 +86,7 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 	// agent completes (consult pattern), so the final session-id list only
 	// exists after wg.Wait; without this seed the bounded-wait poll would hit
 	// "unknown delegation" on its first tick and abort.
-	if err := s.trackDelegation(wfi.ID, callerSession.ProjectID, delegationID, req.Tier, nil, false); err != nil {
+	if err := s.trackDelegation(wfi.ID, callerSession.ProjectID, delegationID, req.Tier, nil, nil, false); err != nil {
 		return "", fmt.Errorf("delegate: seed tracking: %w", err)
 	}
 
@@ -111,12 +111,13 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 // tier fallback chain (index 0 = primary, driving the initial spawn).
 func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, items []string, delegationID string, isHost bool) {
 	sessionIDs := make([]string, len(items))
+	spawnErrs := make([]string, len(items))
 	var wg sync.WaitGroup
 	for i, item := range items {
 		wg.Add(1)
 		go func(i int, item string) {
 			defer wg.Done()
-			sessionIDs[i] = s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, chain, req, item)
+			sessionIDs[i], spawnErrs[i] = s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, chain, req, item)
 		}(i, item)
 	}
 	wg.Wait()
@@ -129,7 +130,7 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 		repo.NewWorkflowInstanceRepo(s.pool(), s.config.Clock).UpdateStatus(wfi.ID, model.WorkflowInstanceCompleted) //nolint:errcheck
 	}
 
-	if err := s.trackDelegation(wfi.ID, callerSession.ProjectID, delegationID, req.Tier, sessionIDs, true); err != nil {
+	if err := s.trackDelegation(wfi.ID, callerSession.ProjectID, delegationID, req.Tier, sessionIDs, spawnErrs, true); err != nil {
 		s.broadcast(ws.EventDelegateFailed, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 			"caller_session_id": callerSession.ID,
 			"delegation_id":     delegationID,
@@ -148,13 +149,20 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 // worker's AgentConfig carries the full chain (index 0 = primary, driving
 // Model/ExecutionMode/ReasoningEffort for the initial spawn) so a build-time
 // or HARD failure can advance to a fallback entry. Returns the registered
-// session id, or "" on spawn failure.
-func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, item string) string {
+// session id ("" on spawn failure) and the spawn error message ("" on
+// success), which GetDelegation surfaces for session-less workers.
+func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, item string) (string, string) {
 	var mu sync.Mutex
 	var sid string
-	delegateRegister, delegateUnregister := s.childSessionHooks(func(registeredSID string) {
+	var ownSp *Spawner
+	delegateRegister, delegateUnregister := s.childSessionHooks(func(registeredSID string, child *Spawner) {
 		mu.Lock()
-		sid = registeredSID
+		// Only this worker's own (re)spawns: grandchild registrations (the
+		// worker's nested delegate fanout) bubble up here too and must not
+		// overwrite the tracked session id.
+		if child == ownSp {
+			sid = registeredSID
+		}
 		mu.Unlock()
 	})
 
@@ -207,6 +215,9 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		OnSessionUnregister: delegateUnregister,
 	})
 	defer sp.Close()
+	mu.Lock()
+	ownSp = sp
+	mu.Unlock()
 
 	spawnCtx, cancel := context.WithTimeout(context.Background(), SpawnDeadline(sysDef.Timeout, 30*time.Minute))
 	defer cancel()
@@ -225,17 +236,19 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 			"DELEGATE_ITEM":    item,
 		},
 	})
+	errMsg := ""
 	if spawnErr != nil {
+		errMsg = spawnErr.Error()
 		s.broadcast(ws.EventDelegateFailed, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 			"caller_session_id": callerSession.ID,
 			"tier":              req.Tier,
-			"error":             spawnErr.Error(),
+			"error":             errMsg,
 		})
 	}
 
 	mu.Lock()
 	defer mu.Unlock()
-	return sid
+	return sid, errMsg
 }
 
 // delegateContext appends a hint naming the caller-supplied artifacts to the

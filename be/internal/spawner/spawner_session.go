@@ -124,13 +124,18 @@ func (s *Spawner) unregisterTerminalSignal(sessionID string) {
 // stall_start_timeout_sec and is killed on a loop. The child runs under the
 // caller's workflow instance, so the parent's closure indexes it correctly.
 //
-// captureSID is the child's own use for the id (nil when it has none).
-func (s *Spawner) childSessionHooks(captureSID func(string)) (func(string, *Spawner), func(string)) {
+// captureSID is the child's own use for the id (nil when it has none). It
+// receives the registering spawner too: registrations bubble up through every
+// composed hook in the chain, so a grandchild's session (e.g. an executor
+// worker's own delegate fanout) reaches this capture as well — a caller
+// tracking its direct worker must compare the pointer against the child
+// Spawner it built, or a grandchild registration overwrites the captured id.
+func (s *Spawner) childSessionHooks(captureSID func(string, *Spawner)) (func(string, *Spawner), func(string)) {
 	parentRegister := s.config.OnSessionRegister
 	parentUnregister := s.config.OnSessionUnregister
 	register := func(sessionID string, child *Spawner) {
 		if captureSID != nil {
-			captureSID(sessionID)
+			captureSID(sessionID, child)
 		}
 		if parentRegister != nil {
 			parentRegister(sessionID, child)

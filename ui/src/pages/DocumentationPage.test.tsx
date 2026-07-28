@@ -38,7 +38,7 @@ describe('DocumentationPage', () => {
     )
   }
 
-  it('renders all five sub-tab buttons and calls useAgentManual with common by default', () => {
+  it('renders all six sub-tab buttons and calls useAgentManual with common by default', () => {
     mockUseAgentManual.mockReturnValue({
       data: undefined, isLoading: false, error: null, refetch: mockRefetch, isFetching: false,
     } as ReturnType<typeof useAgentManual>)
@@ -50,6 +50,7 @@ describe('DocumentationPage', () => {
     expect(screen.getByRole('button', { name: 'Python' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'API' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Local Providers' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'External MCP' })).toBeInTheDocument()
     expect(mockUseAgentManual).toHaveBeenCalledWith('common')
   })
 

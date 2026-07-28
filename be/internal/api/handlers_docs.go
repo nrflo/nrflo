@@ -12,6 +12,7 @@ var allowedDocKinds = map[string]string{
 	"python":          "Python Agents",
 	"api":             "API Agents",
 	"local-providers": "Local Providers",
+	"mcp-external":    "External MCP",
 }
 
 // handleGetAgentManual serves embedded documentation as JSON.

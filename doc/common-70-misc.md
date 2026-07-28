@@ -14,8 +14,9 @@ summarization.
 ## Agent IPC Socket
 
 Spawned agents communicate with the server over a Unix socket at
-`$NRFLO_HOME/agent.sock` (override with `NRFLO_SOCKET`). The `nrflo` CLI
-reads this env var automatically — no manual wiring is needed in agent prompts.
+`$NRFLO_HOME/agent.sock` (override with `NRFLO_SOCKET`). The `agent mcp`
+bridge and the other `nrflo_server agent` subcommands read this env var
+automatically — no manual wiring is needed in agent prompts.
 
 The socket uses a JSON-RPC line-delimited protocol. Supported methods:
 `findings.*`, `project_findings.*`, `agent.fail/continue/callback/context_update`,
@@ -28,7 +29,7 @@ protocol details.
 
 ## Doc Layout
 
-The `doc/` folder contains four kinds of files served by the documentation UI:
+The `doc/` folder contains the files served by the documentation UI:
 
 - **`doc/common-*.md`** — Shared concepts served under the "Common" tab.
   The backend concatenates all files matching `doc/common*.md` in lexicographic
@@ -39,6 +40,9 @@ The `doc/` folder contains four kinds of files served by the documentation UI:
 - **`doc/python.md`** — Served 1:1 under the "Python Script" tab
   (`execution_mode=script`)
 - **`doc/api.md`** — Served 1:1 under the "API" tab (`execution_mode=api`)
+- **`doc/local-providers.md`** — Served 1:1 under the "Local Providers" tab
+- **`doc/mcp-external.md`** — Served 1:1 under the "External MCP" tab
+  (connecting external MCP clients via `nrflo_server agent mcp-external`)
 
 To update: edit the markdown files directly. Changes are picked up on next page
 load. Keep each file under 300 lines. If a mode file ever needs splitting, use

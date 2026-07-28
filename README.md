@@ -60,6 +60,7 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - Per-project artifact storage with local, Cloudflare R2, and S3 backends
 - Artifact uploader in the Run Workflow form; per-agent and all-artifacts UI tabs
 - Service tokens — long-lived project-scoped bearer tokens for external REST callers
+- External MCP bridge (`nrflo_server agent mcp-external`) — any MCP client drives the server's tool catalogue with a service token
 
 ### Rate limits
 - CLI-side and API-mode rate-limit detection with automatic backoff and relaunch
@@ -165,36 +166,30 @@ nrflo_server --host 0.0.0.0
 
 ## CLI Overview
 
-NRFLO ships two binaries:
-
-| Binary | Purpose |
-|--------|---------|
-| `nrflo_server` | HTTP API + WebSocket + Unix socket server |
-| `nrflo` | Agent CLI (used by spawned agents) + ticket/dependency management |
-
-**Agent commands** (used by spawned agents via Unix socket):
+NRFLO ships a single binary, `nrflo_server`:
 
 | Command | Description |
 |---------|-------------|
-| `nrflo agent fail` | Report agent failure |
-| `nrflo agent continue` | Signal continuation |
-| `nrflo agent callback --level N` | Trigger callback to re-run an earlier layer |
-| `nrflo findings add key:value` | Write findings to current session |
-| `nrflo findings append key:value` | Append to existing finding |
-| `nrflo findings get [agent-type] [key]` | Read own or cross-agent findings |
+| `nrflo_server` / `nrflo_server serve` | Start the server: web UI, REST API, WebSocket, agent socket |
+| `nrflo_server console` | Native terminal console for server-owned Claude/Codex/API conversations |
+| `nrflo_server agent mcp-external` | MCP bridge for external MCP clients (see below) |
+| `nrflo_server agent mcp` | MCP bridge for spawned agents (invoked by the spawner) |
+| `nrflo_server agent record-event` / `statusline` / `context-update` | Agent infrastructure hooks (invoked by the spawner) |
+| `nrflo_server version` | Print version |
 
-**Ticket management** (requires running server):
-
-| Command | Description |
-|---------|-------------|
-| `nrflo tickets list` | List tickets (filterable by status, type, parent) |
-| `nrflo tickets create --title "..."` | Create a ticket |
-| `nrflo tickets update <id>` | Update ticket fields |
-| `nrflo tickets close <id>` | Close a ticket |
-| `nrflo deps add <ticket> <blocker>` | Add a dependency |
-| `nrflo deps remove <ticket> <blocker>` | Remove a dependency |
+There is no separate agent CLI: spawned agents drive nrflo (findings, lifecycle, artifacts, tickets, …) through MCP tools (`mcp__nrflo__*`) served by the `agent mcp` bridge, which the spawner wires up automatically.
 
 See the agent authoring docs under [doc/](doc/) (served at /documentation in the web UI).
+
+### External MCP access (`agent mcp-external`)
+
+Any MCP client — Claude Code, Codex CLI, an IDE, or your own agent — can drive a running nrflo server through the same tool catalogue the local console uses. Mint a service token in **Settings → Administration → Service Tokens**, then register the bridge with your client:
+
+```bash
+claude mcp add nrflo --env NRFLO_MCP_TOKEN=<service token> -- nrflo_server agent mcp-external
+```
+
+The bridge reads `NRFLO_MCP_TOKEN` (required), `NRFLO_SERVER_URL` (default `http://127.0.0.1:6587`), and `NRFLO_PROJECT` (optional — the working directory is matched against project root paths first). The tool catalogue is server-owned, so new server-side tools appear without any client update. Full reference: [doc/mcp-external.md](doc/mcp-external.md).
 
 ### Local console (`nrflo_server console`)
 

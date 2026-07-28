@@ -57,7 +57,7 @@ Don't add excessive comments. Comment only where intent is non-obvious; keep the
 | `be/` | Go backend (see [be](be/CLAUDE.md)) |
 | `ui/` | React web interface (see [ui](ui/CLAUDE.md)) |
 | `Makefile` | Build, install, test targets (`make help`) |
-| `doc/` | Agent-authoring docs: common/CLI/Python/API, served at /documentation |
+| `doc/` | Agent-authoring + integration docs (common/CLI/Python/API/local-providers/mcp-external), served at /documentation |
 
 ## Architecture Invariants
 

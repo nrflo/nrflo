@@ -4,9 +4,9 @@ Tests SDK method: `c.agent.fail("reason")`. The session row must record
 result='fail' and the reason in result_reason.
 
 Notes:
-  - `max_fail_restarts` is currently INERT for script-mode agents (no
-    script spawn path reads it — ticket nrworkflow-3f397c); it is passed
-    here only for documentation intent, not because it changes behavior.
+  - `max_fail_restarts=0` in the scenario setup is what keeps the fail
+    terminal — a script agent def with a positive value is auto-restarted
+    by the monitor like any other execution mode.
 """
 
 from __future__ import annotations

@@ -2,7 +2,6 @@ package spawner
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,30 +60,13 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		timeout = agentDef.Timeout
 	}
 
-	// Stall settings: stall_start disabled by default for scripts.
-	stallStartTimeout := time.Duration(0)
-	stallRunningTimeout := defaultStallRunningTimeout
-	if agentDef.StallStartTimeoutSec != nil {
-		if *agentDef.StallStartTimeoutSec == 0 {
-			stallStartTimeout = 0
-		} else {
-			stallStartTimeout = time.Duration(*agentDef.StallStartTimeoutSec) * time.Second
-		}
-	}
-	if agentDef.StallRunningTimeoutSec != nil {
-		if *agentDef.StallRunningTimeoutSec == 0 {
-			stallRunningTimeout = 0
-		} else {
-			stallRunningTimeout = time.Duration(*agentDef.StallRunningTimeoutSec) * time.Second
-		}
-	}
-
-	var scriptValidationCommands []string
-	if agentDef.ValidationCommands != "" {
-		if jsonErr := json.Unmarshal([]byte(agentDef.ValidationCommands), &scriptValidationCommands); jsonErr != nil {
-			logger.Warn(ctx, "failed to parse validation_commands", "agent", req.AgentType, "error", jsonErr)
-			scriptValidationCommands = nil
-		}
+	restartThreshold, maxFailRestarts, stallStartTimeout, stallRunningTimeout, scriptValidationCommands :=
+		s.resolveSpawnLimits(ctx, agentDef, req.AgentType)
+	// Scripts emit nothing until they print/call a tool, so the resolver's 2m
+	// default + GlobalStallStartTimeout fallback must not apply here — start-stall
+	// stays disabled unless the def explicitly opts in.
+	if agentDef.StallStartTimeoutSec == nil {
+		stallStartTimeout = 0
 	}
 
 	workDir := s.config.ProjectRoot
@@ -144,7 +126,8 @@ func (s *Spawner) prepareScriptSpawn(ctx context.Context, req SpawnRequest, phas
 		stallStartTimeout:   stallStartTimeout,
 		stallRunningTimeout: stallRunningTimeout,
 		maxContext:          0,
-		restartThreshold:    defaultContextThreshold,
+		restartThreshold:    restartThreshold,
+		maxFailRestarts:     maxFailRestarts,
 		validationCommands:  scriptValidationCommands,
 		workDir:             workDir,
 		env:                 env,

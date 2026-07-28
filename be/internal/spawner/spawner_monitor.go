@@ -198,7 +198,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				}
 
 				// Auto-restart failed agent if configured
-				if proc.finalStatus == "FAIL" && proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
+				if proc.finalStatus == "FAIL" && proc.canFailRestart() {
 					if s.waitBeforeRetry(ctx, proc) {
 						logger.Info(ctx, "auto-restarting failed agent", "model", proc.modelID,
 							"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
@@ -274,7 +274,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 				if elapsed > proc.timeout {
 					s.handleGracefulTimeout(ctx, proc, req)
 					// Auto-restart timed-out agent if configured
-					if proc.maxFailRestarts > 0 && proc.failRestartCount < proc.maxFailRestarts {
+					if proc.canFailRestart() {
 						if !s.waitBeforeRetry(ctx, proc) {
 							completed = append(completed, proc)
 						} else {

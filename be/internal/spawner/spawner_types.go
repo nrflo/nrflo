@@ -212,6 +212,12 @@ type processInfo struct {
 	apiToolEnv  apirun.ToolEnv
 }
 
+// canFailRestart reports whether this proc has budget left for an automatic
+// fail/timeout restart — the exact predicate spawner_monitor.go evaluates.
+func (p *processInfo) canFailRestart() bool {
+	return p.maxFailRestarts > 0 && p.failRestartCount < p.maxFailRestarts
+}
+
 // terminalSignal is routed via the per-session terminalSignals registry to kill
 // an agent immediately so handleCompletion reads the DB-written result
 // (fail/continue/callback).

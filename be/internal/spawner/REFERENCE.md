@@ -154,6 +154,8 @@ Checked per-poll in `monitorAll`; skipped when `stallRestartCount >= maxStallRes
 
 On stall: broadcast `agent.stall_restart`, SIGTERM→SIGKILL, flush messages, `result=continue`, 15s delay, relaunch.
 
+Both the cli/api and script spawn paths resolve `restartThreshold`/`maxFailRestarts`/stall timeouts/`validationCommands` through the single `resolveSpawnLimits` (`spawner_prepare_limits.go`). Script spawns override its start-stall result to 0 unless the def sets `stall_start_timeout_sec` — a silent script emits no stdout until it prints or calls a tool, so the resolver's 2m/global-config default would falsely stall-restart long-running scripts. `processInfo.canFailRestart()` (`maxFailRestarts > 0 && failRestartCount < maxFailRestarts`) is the single predicate `spawner_monitor.go`'s FAIL and timeout branches evaluate for every execution mode.
+
 ## Agent Env Vars
 
 | Variable | Purpose |

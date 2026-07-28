@@ -54,7 +54,8 @@ def run(ctx: Ctx) -> Result:
     if "apples" not in rf.get("read_by_agent", ""):
         return ("PS05 layer get", "FAIL",
                 f"read_by_agent={rf.get('read_by_agent')!r}")
-    # layer=0 returns {agent_type: findings_dict|null}
+    # layer=0 returns {node_id: findings_dict|null}; node_id == agent_def
+    # id for static workflows, which is "producer" here.
     if "producer" not in rf.get("read_by_layer", "") or "apples" not in rf.get("read_by_layer", ""):
         return ("PS05 layer get", "FAIL",
                 f"read_by_layer={rf.get('read_by_layer')!r}")

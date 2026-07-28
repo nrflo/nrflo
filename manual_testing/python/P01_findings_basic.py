@@ -1,11 +1,14 @@
 """PS01 — script: findings.add + agent.finished (own-session basics).
 
-Tests SDK methods: `c.findings.add`, `c.agent.finished`.
+Tests SDK methods: `c.findings.add`, `c.agent.finished`. Findings live in
+the unified `findings(scope, scope_id)` table since migration 000110
+(the old `agent_sessions.findings` JSON column was dropped); `db_mod`
+reconstructs the same dict shape for callers.
 
 Expected PASS:
   - agent_sessions.status ∈ {completed, project_completed}
   - agent_sessions.result == 'pass'
-  - agent_sessions.findings == {"greeting": "hello"}
+  - session findings == {"greeting": "hello"}
 """
 
 from __future__ import annotations

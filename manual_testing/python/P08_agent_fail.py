@@ -4,9 +4,9 @@ Tests SDK method: `c.agent.fail("reason")`. The session row must record
 result='fail' and the reason in result_reason.
 
 Notes:
-  - Without max_fail_restarts cap, the orchestrator would relaunch on
-    failure; we set max_fail_restarts=0 to make the first failure
-    terminal.
+  - `max_fail_restarts` is currently INERT for script-mode agents (no
+    script spawn path reads it — ticket nrworkflow-3f397c); it is passed
+    here only for documentation intent, not because it changes behavior.
 """
 
 from __future__ import annotations

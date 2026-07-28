@@ -3,8 +3,9 @@
 Tests:
   - The CLI integration reports remaining context % to the server,
     populating agent_sessions.context_left.
-  - claude: PreToolUse/PostToolUse hooks via `agent.context_update`.
-  - codex: rollout JSONL tailer (`cli_adapter_codex_jsonl_tail.go`).
+  - claude: the statusLine hook drives `agent statusline`, which reports
+    via `agent.context_update` (be/internal/cli/agent_statusline.go).
+  - codex: app-server token-usage notifications.
 
 Why the prompt asks for substantial output:
   - A trivial the `agent_finished` tool-only prompt consumes essentially

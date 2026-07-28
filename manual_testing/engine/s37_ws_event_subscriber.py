@@ -4,8 +4,8 @@ Tests:
   - `GET /api/v1/ws` accepts a v2 subscribe (`{action, project_id,
     since_seq}`) using the admin cookie from the REST client's jar.
   - On a trivial workflow run, the server broadcasts
-    `agent.completed` (hub.go:19) and `orchestration.completed`
-    (hub.go:37). Both must arrive within 30 s carrying the expected
+    `agent.completed` and `orchestration.completed` (constants in
+    ws/event.go). Both must arrive within 30 s carrying the expected
     `project_id` and `data` fields.
 
 Runtime dep:

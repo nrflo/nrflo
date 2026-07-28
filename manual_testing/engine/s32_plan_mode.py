@@ -3,7 +3,8 @@
 Tests:
   - `POST /api/v1/projects/{pid}/workflow/run` with `plan_mode=true`
     triggers the orchestrator's plan-mode pre-step
-    (`orchestrator_interactive.go:setupInteractivePreStep`), which
+    (`setupInteractivePreStep` in
+    be/internal/orchestrator/orchestrator_interactive_session.go), which
     creates an L0 agent session in `user_interactive` status before
     any normal layer execution starts.
   - REST/DB only — the PTY drive-through (plan-file write, exit) is

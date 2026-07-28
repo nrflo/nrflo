@@ -2,7 +2,7 @@
 
 End-to-end exercise of the artifact subsystem
 (be/internal/service/artifact.go, be/internal/spawner/artifact_stage.go,
-be/internal/cli/artifacts.go):
+be/internal/spawner/apirun/tools_builtin/artifact.go):
 
   1. POST /api/v1/artifact-uploads stages a file as a multipart upload.
   2. The workflow run carries `input_artifacts=[{upload_id, name}]`;

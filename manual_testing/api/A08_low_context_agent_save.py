@@ -1,11 +1,12 @@
 """A08 — api-mode trips low-context + relaunches (forced agent-save).
 
-`shouldUseAgentSave` in `be/internal/spawner/context_save.go` returns
-true unconditionally for the api backend, so the low-context path
-spawns the `context-saver-api` system agent rather than `--resume`.
-With `restart_threshold=100` the spawner trips low-context on the
-first reported `context_left`, and `relaunchForContinuation` produces
-a second main session.
+`contextSaveViaAgent` in `be/internal/spawner/context_save.go` spawns a
+context-saver system agent on low-context unless a fresh refinery
+slot digest already covers the session (the digest-skip branch); this
+scenario's single-turn agent has no prior digest, so the saver spawn
+path fires. With `restart_threshold=100` the spawner trips low-context
+on the first reported `context_left`, and `relaunchForContinuation`
+produces a second main session.
 
 We do NOT assert on the `to_resume` finding because migration 63 docs
 the api-mode saver's cross-session write as a follow-up concern:

@@ -2,11 +2,12 @@
 
 `probe_oauth_token()` — Anthropic OAuth bearer token.
   Injects `ANTHROPIC_OAUTH_TOKEN` into the server env; resolved by
-  `be/internal/spawner/apirun/provider/anthropic/credentials.go:71`.
+  `ResolveAPIKey` in
+  `be/internal/spawner/apirun/provider/anthropic/credentials.go`.
 
 `probe_openai_key()` — OpenAI API key.
-  Injects `OPENAI_API_KEY` into the server env; resolved by
-  `be/internal/spawner/apirun/provider/openai/credentials.go:46`.
+  Injects `OPENAI_API_KEY` into the server env; resolved by `Resolve` in
+  `be/internal/spawner/apirun/provider/openai/credentials.go`.
 
 Both return `(value, reason)` on success or `(None, skip-reason)` when
 no usable credential is reachable, so the runner can skip the whole

@@ -81,9 +81,9 @@ def run(ctx: Ctx) -> Result:
     ctx.client.create_workflow(pid, wid, scope_type="project")
     ctx.client.create_agent_def(
         pid, wid, "main",
-        # Per-agent timeout must comfortably exceed stall_*_timeout_sec, otherwise
-        # the timeout-kill races the stall detector and the test ends with
-        # `cancelled` instead of `stall_restart_*`.
+        # `timeout` is MINUTES (agent_def.timeout); must comfortably exceed
+        # stall_*_timeout_sec, otherwise the timeout-kill races the stall
+        # detector and the test ends with `cancelled` instead of `stall_restart_*`.
         model=resolve_model(ctx, MODELS_BY_PROVIDER), layer=0, timeout=120, prompt=PROMPT,
         tools="slow_probe,agent_finished",
         stall_running_timeout_sec=STALL_TIMEOUT_SEC,

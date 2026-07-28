@@ -3,9 +3,9 @@
 The model calls the `agent_fail` builtin with a reason. The handler
 emits `TerminalSignal{Status:"FAIL", Reason: reason}` which the
 spawner maps to result=fail / reason=api_error via `mapFinalStatus`
-(see be/internal/spawner/backend.go:219 — the agent's reason is
-deliberately stomped to 'api_error' for api-mode, unlike cli_interactive
-where the socket-side reason persists).
+(be/internal/spawner/backend.go — the agent's reason is deliberately
+stomped to 'api_error' for api-mode, unlike cli_interactive where the
+socket-side reason persists).
 
 Expected PASS:
   - agent_sessions.result == 'fail'

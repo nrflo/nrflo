@@ -9,7 +9,7 @@ Tests:
 
 Expected PASS result:
   - WF_B agent_sessions.prompt contains 'blue'.
-  - WF_B agent_sessions.findings.observed_color == 'blue'.
+  - WF_B session-scope finding observed_color == 'blue'.
 """
 
 from __future__ import annotations

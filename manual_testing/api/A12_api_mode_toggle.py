@@ -1,7 +1,7 @@
 """A12 — api_mode_enabled runtime toggle takes effect without restart.
 
 `api_mode_enabled` (be/internal/service/global_settings.go) is read
-freshly on every spawn via prepareSpawn (spawner/spawner.go:971).
+freshly on every spawn via prepareSpawn (spawner/spawner_prepare.go).
 This scenario flips the flag off, attempts a run (rejected), then
 flips it on and runs the same agent_def again (passes) — proving the
 toggle is a runtime gate, not a startup-time decision.

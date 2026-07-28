@@ -1,10 +1,12 @@
 """A04 — api-mode `agent_callback` terminal signal triggers L0 replay.
 
 Mirrors engine/s17 but exercises the apirun callback path: the L1 agent
-calls `agent_callback` with `{"level": 0}`, the handler emits
-`TerminalSignal{Status:"CALLBACK", Level:0}`, `finalizePhase` reads
-the level and re-spawns L0. Stops after the second L0 row appears
-because the naive prompt would loop forever.
+calls `agent_callback` with `{"level": 0}`; the builtin tool
+(be/internal/spawner/apirun/tools_builtin/agent.go) invokes
+`env.Agent.Callback`, which carries the level and re-spawns L0 (the
+`proc.callbackLevel` field on the CLI process struct is unrelated dead
+code — it is written but never read). Stops after the second L0 row
+appears because the naive prompt would loop forever.
 
 Expected PASS:
   - >= 2 agent_sessions rows with agent_type='a' (the L0 replay).

@@ -2,7 +2,9 @@
 
 The script raises before calling agent.finished/fail. backend_script's
 wait goroutine records waitErr; the spawner finalizes the session as
-fail and the orchestrator does not relaunch when max_fail_restarts=0.
+fail and there is no relaunch (`max_fail_restarts` is currently INERT
+for script-mode agents — ticket nrworkflow-3f397c — so the single
+failure is terminal regardless of the value passed).
 """
 
 from __future__ import annotations

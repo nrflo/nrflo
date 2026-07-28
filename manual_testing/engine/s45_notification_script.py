@@ -11,7 +11,8 @@ that it fired by writing a project_finding.
 
 Expected PASS:
   - workflow run finishes pass
-  - within 15 s the project_findings table has `s45_fired` ==
+  - within 15 s the project-scope findings (unified `findings`
+    table, scope='project') have `s45_fired` ==
     'orchestration.completed' (proves the script ran and saw the
     payload event_type)
 """

@@ -1,7 +1,7 @@
 """A05 — api-mode disabled global gate.
 
 Flips `api_mode_enabled` back to `false`, attempts to spawn an api-mode
-agent. `prepareSpawn` (be/internal/spawner/spawner.go:971) returns
+agent. `prepareSpawn` (be/internal/spawner/spawner_prepare.go) returns
 `api_mode_disabled` before any agent_session row is created, so the
 orchestrator's layer aggregator counts the agent as failed, the
 default `any` pass_policy fails for `0/1 passed, 1 required`, and

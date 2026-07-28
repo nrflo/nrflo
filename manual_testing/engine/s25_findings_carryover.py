@@ -12,13 +12,13 @@ Tests:
 
 Note:
   - The same `copyFindingsForContinuation` function is invoked from the
-    low-context relaunch path (`context_save.go` → resume-based or
-    system-agent save → `relaunchForContinuation`). Triggering low
-    context deterministically in a manual test would require either
-    burning real context tokens or driving `restart_threshold` very high
-    and spawning a `context-saver` system agent; the underlying carryover
-    is unit-tested in `findings_carryover_test.go`, so this scenario
-    covers only the fail-restart trigger.
+    low-context relaunch path (`context_save.go` → forced-fold → digest →
+    context-saver → `relaunchForContinuation`). Triggering low context
+    deterministically in a manual test would require either burning real
+    context tokens or driving `restart_threshold` very high and spawning
+    a `context-saver` system agent; the underlying carryover is
+    unit-tested in `findings_carryover_test.go`, so this scenario covers
+    only the fail-restart trigger.
 
 Expected PASS result:
   - 2 agent_sessions rows for the wfi.

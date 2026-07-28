@@ -50,6 +50,14 @@ def send_message(ctx: runtime.Ctx, sid: str, text: str) -> None:
                         body={"text": text})
 
 
+def set_yolo(ctx: runtime.Ctx, sid: str, enabled: bool) -> None:
+    """POST/DELETE /api/v1/console/chats/{sid}/yolo — toggle live yolo mode.
+    Chats are created with yolo default-ON; pass `enabled=False` to force the
+    human-approval path a scenario wants to exercise."""
+    method = "POST" if enabled else "DELETE"
+    ctx.client._request(method, f"/api/v1/console/chats/{sid}/yolo")
+
+
 def close_chat(ctx: runtime.Ctx, sid: str) -> None:
     ctx.client._request("POST", f"/api/v1/console/chats/{sid}/close")
 

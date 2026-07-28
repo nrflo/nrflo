@@ -5,10 +5,11 @@ bridge adopting the pre-minted session (NRFLO_CONSOLE_TOKEN /
 NRFLO_CONSOLE_SESSION_ID) and proxying to the server-owned console tool
 catalogue. Seed one ticket, then ask the model to call the nrflo
 ticket_list tool and echo the ticket id — the id can only come back
-through a live tool round-trip. Console sessions gate every tool behind a
-PreToolUse human approval, so the wait loop answers each request with
-allow_for_session — which also exercises the claude engine's
-session-scoped allowlist end-to-end.
+through a live tool round-trip. Console yolo is default-ON (migration
+000208), so the tool call executes without a PreToolUse approval
+round-trip; `approve='allow_for_session'` is passed defensively so the
+wait loop still answers correctly if an approval request ever does
+arrive, but this scenario does not assert one occurs.
 """
 
 from __future__ import annotations

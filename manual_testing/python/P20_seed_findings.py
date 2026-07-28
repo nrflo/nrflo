@@ -1,8 +1,8 @@
 """P20 — script: c.seed_findings() returns RunRequest.SeedFindings filtered.
 
-Tests SDK method: `c.seed_findings()` (be/internal/sdk/python/nrflo_sdk.py:349)
+Tests SDK method: `c.seed_findings()` (be/internal/sdk/python/nrflo_sdk.py:404)
 and the `script.context` socket handler's seed_findings filtering
-(be/internal/socket/handler_script_context.go:82) which strips
+(be/internal/socket/handler_script_context.go:93-97) which strips
 `user_instructions` (already surfaced separately) and underscore-prefixed
 orchestrator-internal keys.
 

@@ -3,11 +3,10 @@
 Tests:
   - `POST /api/v1/tickets/{id}/workflow/run` with an already-running
     workflow on the same (project, ticket, workflow) triplet must
-    return HTTP 409 — regardless of the `force` body flag (the
-    concurrency check in `handlers_orchestrate.go:84` calls
-    `orchestrator.IsRunning` unconditionally; `force` only relaxes
-    the worktree guard for non-project scopes, see
-    `orchestrator.go:207`).
+    return HTTP 409 — regardless of the `force` body flag (`Orchestrator.
+    Start` calls `IsRunning` unconditionally in
+    `orchestrator_start.go`; `force` only relaxes the separate
+    concurrent-worktree guard further down the same function).
 
 Expected PASS:
   - 1st run → 200.

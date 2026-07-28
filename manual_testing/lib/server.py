@@ -75,7 +75,8 @@ def start_server(
     `extra_env` is merged into the child process environment after the
     standard NRFLO_* vars are set. Used by the api-mode runner to inject
     `ANTHROPIC_OAUTH_TOKEN` so the server resolves it via
-    `apirun/provider/anthropic.ResolveAPIKey` step 4 (server env)."""
+    `apirun/provider/anthropic.ResolveAPIKey` step 2 (server-process env
+    fallback; step 1 is per-project env vars)."""
     server_bin = _resolve_binary()
 
     home = Path(tempfile.mkdtemp(prefix=f"nrflo-manual-{cli_label}-"))
@@ -123,6 +124,9 @@ def start_server(
         env=env,
         stdout=log_fh,
         stderr=subprocess.STDOUT,
+        # `serve` loads `.env` from cwd (be/internal/cli/serve.go); cwd=home
+        # deliberately keeps it out of any repo-root .env — credentials for
+        # manual testing flow through explicit env vars only.
         cwd=str(home),
     )
 

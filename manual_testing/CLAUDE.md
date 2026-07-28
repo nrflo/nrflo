@@ -20,7 +20,7 @@ Providers map to execution modes (`cli_interactive` / `script` / `api`) and SKIP
 
 ## Runtime deps
 
-Stdlib only, except `websockets` (required by `s37_ws_event_subscriber`).
+Stdlib only, except `websockets` (required by s31, s37, s47, s48, A13, O02).
 Install via `pip install websockets` before running the CLI suites.
 
 ## How to run

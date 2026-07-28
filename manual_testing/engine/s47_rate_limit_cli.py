@@ -1,14 +1,15 @@
 """S47 — CLI rate-limit detection broadcasts agent.rate_limited + flips DB.
 
 Tests the cli_interactive rate-limit path (be/internal/spawner/rate_limit_restart.go,
-be/internal/spawner/cli_adapter_claude.go:95): when claude exits non-zero
-with a recognised limit pattern in recent output, the spawner broadcasts
-`agent.rate_limited`, registers the stop as continue/rate_limit, and
-persists `rate_limit_retry_count` + `rate_limit_until_ts` on the session row.
+`ClaudeAdapter.ClassifyExit` in be/internal/spawner/cli_adapter_claude.go): when
+claude exits non-zero with a recognised limit pattern in recent output, the
+spawner broadcasts `agent.rate_limited`, registers the stop as
+continue/rate_limit, and persists `rate_limit_retry_count` +
+`rate_limit_until_ts` on the session row.
 
 Strategy: spin up a private nrflo_server with a `claude` stub at the head
 of PATH. The stub prints "You've hit your limit" (matches the default
-`claude_limit_patterns` in `ClaudeAdapter.ClassifyExit`) and exits non-zero.
+limit patterns in `ClaudeAdapter.ClassifyExit`) and exits non-zero.
 Go's exec.LookPath resolves `claude` against the server-process PATH at
 Command construction time, so this is the only reliable way to substitute
 the binary without per-scenario env hooks. The server is local to the

@@ -82,12 +82,16 @@ def run(ctx: Ctx) -> Result:
     statuses = [s.get("status") for s in steps]
     if len(steps) != 2 or any(s != "completed" for s in statuses):
         return ("S20 chain run", "FAIL", f"step statuses={statuses}")
-    step_b_iid = steps[1].get("workflow_instance_id")
-    if step_b_iid:
-        b_sessions = db_mod.agent_sessions_for_instance(
-            ctx.server.home, step_b_iid)
-        if b_sessions and HANDOFF not in (b_sessions[0].get("prompt") or ""):
-            return ("S20 chain run", "FAIL",
-                    "step B prompt missing handoff text")
+    db_steps = db_mod.chain_run_steps(ctx.server.home, run_id)
+    if len(db_steps) != 2:
+        return ("S20 chain run", "FAIL", f"step count={len(db_steps)}")
+    step_b_iid = db_steps[1].get("workflow_instance_id")
+    if not step_b_iid:
+        return ("S20 chain run", "FAIL",
+                "step B workflow_instance_id missing from chain_run_steps")
+    b_sessions = db_mod.agent_sessions_for_instance(ctx.server.home, step_b_iid)
+    if not b_sessions or HANDOFF not in (b_sessions[0].get("prompt") or ""):
+        return ("S20 chain run", "FAIL",
+                "step B prompt missing handoff text")
     return ("S20 chain run", "PASS",
             "2-step chain completed with handoff")

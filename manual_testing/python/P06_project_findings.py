@@ -2,7 +2,9 @@
 delete}.
 
 Tests all six methods on `c.project_findings`. Project-scoped findings
-persist in the `project_findings` table (separate from session-scoped).
+persist as scope='project' rows in the unified `findings(scope,
+scope_id)` table (migration 000110 dropped the old standalone
+`project_findings` table).
 """
 
 from __future__ import annotations

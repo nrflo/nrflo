@@ -19,7 +19,8 @@ from typing import Any, Callable
 
 def _load_connect():
     """Import lazily so the harness loads even when websockets isn't
-    installed. Only s37 (which constructs a WSClient) needs it."""
+    installed. Only scenarios that construct a WSClient need it:
+    s31, s37, s47, s48, A13, O02."""
     try:
         from websockets.sync.client import connect as _ws_connect
     except ImportError as e:  # pragma: no cover

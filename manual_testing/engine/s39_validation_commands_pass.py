@@ -2,8 +2,9 @@
 
 Tests:
   - `validation_commands=["true"]` registered on the agent_def is invoked
-    by the spawner after the agent self-reports pass
-    (be/internal/spawner/completion.go:129).
+    by the spawner after the agent self-reports pass, via
+    `runValidationCommands` (be/internal/spawner/validation.go), called
+    from `completion.go`.
   - Zero-exit validation leaves the session as pass; spawner records
     progress as `category='validation'` agent_messages rows.
 

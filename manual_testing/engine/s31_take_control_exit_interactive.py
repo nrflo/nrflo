@@ -2,8 +2,10 @@
 
 cli_interactive backends treat take-control as a read-only viewer attach:
 the agent keeps running, `agent_sessions.status` stays `running`, and the
-spawner broadcasts `agent.viewer_attached` (ws/hub.go:47). The DB kill-and-
-flip path is api-mode only and is not covered by this scenario.
+spawner broadcasts `agent.viewer_attached` (constant in ws/event.go). For
+api-mode sessions take-control is instead REJECTED with 409
+`api_mode_unsupported` (handlers_project_workflow.go); that path is not
+covered by this scenario.
 
 Tests:
   - `POST /api/v1/projects/{pid}/workflow/take-control` returns 200 on a

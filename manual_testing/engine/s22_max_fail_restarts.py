@@ -3,13 +3,11 @@
 Tests:
   - Agent definition with max_fail_restarts=2 must auto-respawn after
     the agent calls the `agent_fail` tool, up to 2 additional times.
-  - Each spawn is a fresh agent_sessions row on the same wfi, with
-    restart_count incrementing.
+  - Each spawn is a fresh agent_sessions row on the same wfi.
 
 Expected PASS result:
   - workflow_instances ends with status='failed' (all restarts also fail).
   - agent_sessions count for the wfi == 3 (initial + 2 restarts).
-  - The 2 restart rows have restart_count > 0.
 """
 
 from __future__ import annotations

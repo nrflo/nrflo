@@ -8,7 +8,9 @@ agent socket, or HTTP port. Scenarios within a single provider run
 sequentially under that provider's server.
 
 After everything finishes, results are aggregated, CLI versions probed,
-and `/capabilities.md` overwritten at the repo root.
+and `/capabilities.md` overwritten at the repo root — but only for a full
+run over all providers. A `--only` subset writes `/capabilities.partial.md`
+instead, so a partial run never clobbers the last full-suite report.
 
 Usage:
     python3 manual_testing/run_suite.py
@@ -213,15 +215,18 @@ def main() -> int:
         "python": ver_mod.probe("python3"),
     }
 
+    is_full_run = wanted is None or {p for p, _ in selected} == {p for p, _ in PROVIDERS}
+    report_name = "capabilities.md" if is_full_run else "capabilities.partial.md"
+    report_path = REPO_ROOT / report_name
     write_capabilities(
-        path=REPO_ROOT / "capabilities.md",
+        path=report_path,
         aggregated=aggregated,
         versions=versions,
         suite_wall=suite_wall,
         selected_providers=[p for p, _ in selected],
         timestamp_utc=dt.datetime.now(dt.timezone.utc),
     )
-    _say(f"wrote {REPO_ROOT / 'capabilities.md'}")
+    _say(f"wrote {report_path}")
 
     print()
     print("=== suite summary ===")

@@ -1,15 +1,17 @@
 """C06 — api-engine native bash through the approval flow.
 
-`api_native_tools_enabled` injects the workdir-jailed read_file/edit_file/
-bash tools into an api console chat, with the mutating ones gated behind
-the human approval flow. Ask the model to run one bash command that both
-writes a probe file and echoes a nonce; the wait loop answers each
-approval with allow_for_session, so afterwards the detail snapshot's
-`session_approvals` must list `bash` — that asserts the approval
-round-trip (and the session-allowlist surface) rather than trusting the
-reply text alone. The on-disk probe file is the hard evidence the command
-actually executed in the project root. SKIPs without an Anthropic OAuth
-token, same as C03.
+`api_native_tools_enabled` injects the workdir-jailed FSTools set (8 tools:
+read_file/edit_file/write_file/glob/grep/bash/bash_output/kill_shell) into
+an api console chat, with the mutating ones (edit_file/bash) gated behind
+the human approval flow. Chats default yolo ON, so this scenario turns it
+OFF first to force the approval round-trip. Ask the model to run one bash
+command that both writes a probe file and echoes a nonce; the wait loop
+answers each approval with allow_for_session, so afterwards the detail
+snapshot's `session_approvals` must list `bash` — that asserts the
+approval round-trip (and the session-allowlist surface) rather than
+trusting the reply text alone. The on-disk probe file is the hard evidence
+the command actually executed in the project root. SKIPs without an
+Anthropic OAuth token, same as C03.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ def run(ctx: Ctx) -> Result:
 
     sid = con.create_chat(ctx, pid, engine="api", model=API_MODEL)
     try:
+        con.set_yolo(ctx, sid, False)
         con.send_message(
             ctx, sid,
             "Use the bash tool to run exactly this command, then reply with "

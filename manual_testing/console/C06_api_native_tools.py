@@ -2,7 +2,7 @@
 
 `api_native_tools_enabled` injects the workdir-jailed FSTools set (8 tools:
 read_file/edit_file/write_file/glob/grep/bash/bash_output/kill_shell) into
-an api console chat, with the mutating ones (edit_file/bash) gated behind
+an api console chat, with the mutating ones (edit_file/write_file/bash) gated behind
 the human approval flow. Chats default yolo ON, so this scenario turns it
 OFF first to force the approval round-trip. Ask the model to run one bash
 command that both writes a probe file and echoes a nonce; the wait loop

@@ -92,6 +92,35 @@ func TestFSTools_EditCreateReadRoundtrip(t *testing.T) {
 	}
 }
 
+// TestFSApprovalRequired asserts the gated/exempt split for every FSTools()
+// entry — adding a 9th tool without deciding its gate status fails this test.
+func TestFSApprovalRequired(t *testing.T) {
+	want := map[string]bool{
+		"read_file":   false,
+		"edit_file":   true,
+		"write_file":  true,
+		"glob":        false,
+		"grep":        false,
+		"bash":        true,
+		"bash_output": false,
+		"kill_shell":  false,
+	}
+	tools := FSTools()
+	if len(tools) != len(want) {
+		t.Fatalf("FSTools() has %d entries, want table covering %d", len(tools), len(want))
+	}
+	for name := range tools {
+		gated, ok := want[name]
+		if !ok {
+			t.Errorf("FSTools()[%q] has no entry in the FSApprovalRequired table — decide its gate status", name)
+			continue
+		}
+		if got := FSApprovalRequired(name); got != gated {
+			t.Errorf("FSApprovalRequired(%q) = %v, want %v", name, got, gated)
+		}
+	}
+}
+
 func TestFSTools_Bash(t *testing.T) {
 	env := fsEnv(t)
 

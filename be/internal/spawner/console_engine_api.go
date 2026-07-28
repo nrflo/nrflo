@@ -66,8 +66,8 @@ type apiConsoleEngine struct {
 	// turn (one entry per retry). Injectable so tests use tiny delays.
 	rateLimitBackoff []time.Duration
 
-	// approvals gates the mutating native fs tools (edit_file/bash) behind a
-	// human decision; approvalTimeout is injectable for tests.
+	// approvals gates the mutating native fs tools (edit_file/write_file/bash)
+	// behind a human decision; approvalTimeout is injectable for tests.
 	approvals       *apiEngineApprovals
 	approvalTimeout time.Duration
 }
@@ -111,14 +111,16 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 	e.cancel = cancel
 	e.mu.Unlock()
 
-	// Native fs tools (read_file/edit_file/bash) join the console profile when
-	// the chat has a workdir and the effective policy allows it: a profile's
+	// Native fs tools (read_file/edit_file/write_file/glob/grep/bash/
+	// bash_output/kill_shell) join the console profile when the chat has a
+	// workdir and the effective policy allows it: a profile's
 	// NativeToolPolicy="none" (e.g. t0-decider) always refuses them —
 	// bypassing api_native_tools_enabled would defeat the profile's no-fs/
 	// bash invariant — "full" always allows them, and "" (no profile) keeps
-	// today's api_native_tools_enabled global gate. The mutating ones are
-	// approval-gated (console_engine_api_approval.go). The system prompt
-	// fallback swaps to the variant that stops claiming "no local tools".
+	// today's api_native_tools_enabled global gate. The mutating ones
+	// (edit_file/write_file/bash) are approval-gated
+	// (console_engine_api_approval.go). The system prompt fallback swaps to
+	// the variant that stops claiming "no local tools".
 	tools, handlers, env := e.api.Tools, e.api.Handlers, e.api.ToolEnv
 	fallback := consoleAPISystem
 	fsAllowed := spec.NativeToolPolicy == NativeToolPolicyFull ||

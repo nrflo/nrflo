@@ -110,11 +110,12 @@ func (e *apiConsoleEngine) Yolo() bool {
 
 // consoleAPIFSSystem replaces consoleAPISystem's "no local tools" paragraph
 // when the native fs tools are injected (api_native_tools_enabled).
-const consoleAPIFSSystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, research topics via web_search/web_fetch, and work on files in the session's working directory via read_file, edit_file, and bash (one-shot shell; edit_file/bash require the user's approval). Use the tools available to you to answer the user's requests.`
+const consoleAPIFSSystem = `You are nrflo's console assistant, reached over a direct API connection with no local CLI. You help the user drive nrflo workflows, inspect projects/tickets, research topics via web_search/web_fetch, and work on files in the session's working directory via read_file, edit_file, write_file, and bash (one-shot shell; edit_file/write_file/bash require the user's approval). Use the tools available to you to answer the user's requests.`
 
 // withFSTools returns copies of tools/handlers extended with the native fs
-// tools (read_file/edit_file/bash), wrapping the mutating ones in the human
-// approval gate. The shared console-profile registry is never mutated.
+// tools (read_file/edit_file/write_file/bash/...), wrapping the mutating
+// ones (edit_file/write_file/bash) in the human approval gate. The shared
+// console-profile registry is never mutated.
 func (e *apiConsoleEngine) withFSTools(tools []provider.ToolSpec, handlers apirun.Registry) ([]provider.ToolSpec, apirun.Registry) {
 	outTools := append([]provider.ToolSpec{}, tools...)
 	outHandlers := make(apirun.Registry, len(handlers)+3)

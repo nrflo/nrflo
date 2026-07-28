@@ -15,9 +15,10 @@ import (
 // shell). Deliberately NOT part of Builtins(): they execute model-authored
 // operations on the server's filesystem, so call sites merge them only when
 // the `api_native_tools_enabled` global setting is on — and the console api
-// engine additionally wraps edit_file/bash in a human approval gate
-// (spawner/console_engine_api_approval.go). bash additionally runs through
-// ToolEnv.SafetyCheck (a script gate, resolved by the spawner) when wired.
+// engine additionally wraps edit_file/write_file/bash in a human approval
+// gate (spawner/console_engine_api_approval.go). bash additionally runs
+// through ToolEnv.SafetyCheck (a script gate, resolved by the spawner) when
+// wired.
 func FSTools() map[string]apirun.ToolHandler {
 	return map[string]apirun.ToolHandler{
 		"read_file":   readFileHandler{},
@@ -31,11 +32,15 @@ func FSTools() map[string]apirun.ToolHandler {
 	}
 }
 
-// FSApprovalRequired reports whether a native fs tool mutates state and must
-// go through the console approval gate. read_file is read-only within the
-// jail and is exempt.
+// FSApprovalRequired reports whether a native fs tool must go through the
+// console human approval gate. Gated: edit_file, write_file, bash — each
+// mutates the workdir or spawns a process. Exempt: read_file/glob/grep are
+// read-only within the workdir jail; bash_output/kill_shell only observe or
+// terminate a background shell that an already-approved bash created, so
+// gating them would strand an approved shell behind a second, redundant
+// prompt rather than protect anything new.
 func FSApprovalRequired(name string) bool {
-	return name == "edit_file" || name == "bash"
+	return name == "edit_file" || name == "write_file" || name == "bash"
 }
 
 // resolveFSPath jails path inside env.WorkDir: relative paths resolve

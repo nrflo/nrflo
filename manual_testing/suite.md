@@ -30,7 +30,7 @@ When you add or remove a scenario, edit this file in the same commit.
 | s22 | max_fail_restarts=2 auto-respawns up to limit |
 | s23 | chain with require_ticket_handoff hands ticket to step2 |
 | s25 | findings carryover across mid-flight kill + callback |
-| s26 | low-context relaunch via provider native resume |
+| s26 | low-context relaunch with carryover (refinery digest or context-saver) |
 | s29 | manual restart flow via REST |
 | s30 | concurrency guard rejects 2nd run on a ticket (409) |
 | s31 | take-control on cli_interactive broadcasts viewer-attach (no DB flip) |

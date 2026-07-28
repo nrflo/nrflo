@@ -116,6 +116,23 @@ def project_findings(home: Path, project_id: str) -> dict[str, Any]:
         return _findings_for(c, "project", project_id)
 
 
+def refinery_slot_digests(home: Path, instance_id: str) -> list[dict[str, Any]]:
+    """Autonomous refinery slot digests for a workflow instance, one row per
+    (workflow_instance_id, node_id) slot."""
+    with _connect(home) as c:
+        rows = c.execute(
+            """
+            SELECT workflow_instance_id, node_id, project_id, version,
+                   content, fold_count, updated_at
+            FROM refinery_autonomous_digests
+            WHERE workflow_instance_id = ?
+            ORDER BY node_id ASC
+            """,
+            (instance_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def errors_for_project(home: Path, project_id: str) -> list[dict[str, Any]]:
     with _connect(home) as c:
         rows = c.execute(

@@ -98,6 +98,31 @@ func (m *Manager) StopSession(sessionID string) {
 // paths that call StopSession inline.
 const stopFoldTimeout = 20 * time.Second
 
+// FoldNow runs one bounded synchronous fold for a still-live autonomous
+// session, leaving the sidecar running and the slot lock held (unlike
+// StopSession, which is the teardown path).
+//
+// The spawner's kill-time save path calls this before deciding whether to
+// spawn a context-saver agent. Folds are debounced >=30s, so a session that
+// burns from refinery_fold_start_context_pct down to the relaunch threshold
+// inside one debounce window dies with no digest even though the refinery is
+// healthy — the fold it had scheduled lands seconds later and is never read.
+// Forcing it here costs one bounded local-model call instead of a full
+// context-saver spawn. No-op for an unknown session; foldGateOpen and the
+// empty-delta check inside foldAutonomous still apply, and the shared slot
+// mutex serializes this against the sidecar's own debounced fold.
+func (m *Manager) FoldNow(sessionID string) {
+	m.autonomousMu.Lock()
+	as, ok := m.autonomous[sessionID]
+	m.autonomousMu.Unlock()
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), stopFoldTimeout)
+	defer cancel()
+	m.foldAutonomous(ctx, as, sessionID, as.sc.projectID)
+}
+
 // autonomousEnabled reads refinery_autonomous_enabled with default-ON
 // semantics (absence/anything but the literal "false" means ON) — the
 // inverse of console refinery_enabled's default-off "val=='true'" read.
@@ -107,7 +132,7 @@ func (m *Manager) autonomousEnabled() bool {
 }
 
 // foldGateOpen reports whether context_left has dropped to or below the
-// configured refinery_fold_start_context_pct threshold (default 40), i.e.
+// configured refinery_fold_start_context_pct threshold (default 45), i.e.
 // whether this session is due for an autonomous fold. Re-reads both the
 // threshold and context_left per call so an admin edit takes effect on live
 // sessions. A read error fails closed (returns false): the kill-time

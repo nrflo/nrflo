@@ -7,8 +7,11 @@ import "strconv"
 const RefineryFoldStartContextPctKey = "refinery_fold_start_context_pct"
 
 // DefaultRefineryFoldStartContextPct is used when the setting is unset,
-// unparseable, or out of [0,100].
-const DefaultRefineryFoldStartContextPct = 40
+// unparseable, or out of [0,100]. It sits above the relaunch threshold
+// (context_left <= 25) to leave the >=30s fold debounce room to fire before a
+// session is killed; too tight a gap and fast-burning sessions reach the kill
+// with no digest.
+const DefaultRefineryFoldStartContextPct = 45
 
 // GetRefineryFoldStartContextPct returns the global fold-start context
 // threshold, falling back to DefaultRefineryFoldStartContextPct for an

@@ -21,6 +21,11 @@ import (
 type RefinerySidecar interface {
 	StartSession(sessionID, projectID, workflowInstanceID, nodeID string)
 	StopSession(sessionID string)
+	// FoldNow forces one bounded fold for a live session, leaving the sidecar
+	// running — the kill-time save path calls it so a session that outran the
+	// fold debounce still has a digest to hand off instead of paying for a
+	// context-saver agent.
+	FoldNow(sessionID string)
 }
 
 // ModelConfig holds one enabled row from the unified model registry.

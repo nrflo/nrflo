@@ -6,10 +6,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"be/internal/service"
 )
 
 // TestHandleGetGlobalSettings_RefineryFoldStartContextPctDefault verifies a
-// fresh DB reports the in-code default (40) for the unset setting.
+// fresh DB reports the in-code default for the unset setting. It asserts
+// against the constant rather than a literal: the value is tuned against the
+// spawner's relaunch threshold, and the property under test is that the
+// endpoint surfaces the default at all, not what the tuned number is.
 func TestHandleGetGlobalSettings_RefineryFoldStartContextPctDefault(t *testing.T) {
 	s := newGlobalSettingsServer(t)
 	resp := getSettings(t, s)
@@ -17,8 +22,8 @@ func TestHandleGetGlobalSettings_RefineryFoldStartContextPctDefault(t *testing.T
 	if !ok {
 		t.Fatal("response missing refinery_fold_start_context_pct field")
 	}
-	if int(v.(float64)) != 40 {
-		t.Errorf("refinery_fold_start_context_pct = %v, want 40", v)
+	if int(v.(float64)) != service.DefaultRefineryFoldStartContextPct {
+		t.Errorf("refinery_fold_start_context_pct = %v, want %d", v, service.DefaultRefineryFoldStartContextPct)
 	}
 }
 
@@ -86,8 +91,8 @@ func TestHandlePatchGlobalSettings_RefineryFoldStartContextPct_NullClears(t *tes
 
 	resp := getSettings(t, s)
 	v := resp["refinery_fold_start_context_pct"]
-	if int(v.(float64)) != 40 {
-		t.Errorf("after null PATCH, refinery_fold_start_context_pct = %v, want 40 (default)", v)
+	if int(v.(float64)) != service.DefaultRefineryFoldStartContextPct {
+		t.Errorf("after null PATCH, refinery_fold_start_context_pct = %v, want %d (default)", v, service.DefaultRefineryFoldStartContextPct)
 	}
 }
 

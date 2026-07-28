@@ -13,7 +13,7 @@ import (
 // intPtr is a small helper for setContextLeft's *int parameter.
 func intPtr(v int) *int { return &v }
 
-// TestFoldGate_AboveThreshold_NoFold covers the default-threshold (40) skip
+// TestFoldGate_AboveThreshold_NoFold covers the default-threshold skip
 // case: context_left=80 is well above threshold, so a trigger must not fold.
 func TestFoldGate_AboveThreshold_NoFold(t *testing.T) {
 	pool := newTestPool(t)
@@ -33,12 +33,12 @@ func TestFoldGate_AboveThreshold_NoFold(t *testing.T) {
 	settle(200 * time.Millisecond)
 
 	if s := getSlot(t, mgr, wfiID, nodeID); s != nil {
-		t.Errorf("GetSlot with context_left=80 (default threshold 40) = %+v, want nil (gate closed)", s)
+		t.Errorf("GetSlot with context_left=80 (above the default threshold) = %+v, want nil (gate closed)", s)
 	}
 }
 
 // TestFoldGate_AtOrBelowThreshold_Folds covers the fold-happens case:
-// context_left=30 is at/below the default threshold of 40.
+// context_left=30 is at/below the default threshold.
 func TestFoldGate_AtOrBelowThreshold_Folds(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -144,7 +144,7 @@ func TestFoldGate_ThresholdSetTo0_NeverFolds(t *testing.T) {
 }
 
 // TestFoldGate_GarbageThreshold_FallsBackToDefault verifies an out-of-range
-// or unparseable stored threshold value falls back to the default (40),
+// or unparseable stored threshold value falls back to the in-code default,
 // reachable via the same above/below-threshold behaviour as the default case.
 func TestFoldGate_GarbageThreshold_FallsBackToDefault(t *testing.T) {
 	cases := []struct {

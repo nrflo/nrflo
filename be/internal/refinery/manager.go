@@ -41,6 +41,14 @@ var immediateEventTypes = map[string]bool{
 	ws.EventOrchestrationFailed:    true,
 }
 
+// autonomousTriggerTypes are the session-scoped events that drive an
+// autonomous sidecar's fold. Both must carry Event.SessionID — the route is
+// keyed on it, so an emitter that leaves it empty is silently not a trigger.
+var autonomousTriggerTypes = map[string]bool{
+	ws.EventFindingsUpdated:     true,
+	ws.EventAgentContextUpdated: true,
+}
+
 // Manager implements ws.Listener, routing relevant broadcasts by project id
 // to per-session sidecars (Start/Stop lifecycle keyed by console-chat
 // session id). Registered as a hub listener before Hub.Run (RegisterListener
@@ -183,10 +191,15 @@ func (m *Manager) OnEvent(ev *ws.Event) {
 		}
 	}
 
-	// Autonomous route: a task-boundary findings.updated for a live
-	// autonomous session triggers an immediate fold — no debounce, no
-	// buffered event line (the fold reads the agent_messages delta itself).
-	if ev.Type == ws.EventFindingsUpdated && ev.SessionID != "" {
+	// Autonomous route. Two triggers, because findings alone do not fold a
+	// working session: a workflow node emits once, immediately before
+	// agent_finished, so findings.updated only ever fires as the session
+	// exits — leaving the whole run unfolded and the kill-time path with no
+	// digest. agent.context_updated is the trigger that fires *during* the
+	// run, so folds stay incremental and each one covers a small delta.
+	// Context updates go through the debounce (they arrive per assistant
+	// turn); a task-boundary findings.updated still folds immediately.
+	if ev.SessionID != "" && autonomousTriggerTypes[ev.Type] {
 		m.autonomousMu.Lock()
 		as, ok := m.autonomous[ev.SessionID]
 		m.autonomousMu.Unlock()
@@ -194,7 +207,9 @@ func (m *Manager) OnEvent(ev *ws.Event) {
 			// Non-empty sentinel line: sidecar.runFold no-ops on an empty
 			// buffer, but the autonomous fold ignores buffered lines
 			// entirely — it reads the agent_messages delta itself.
-			as.sc.push(ev.Type, true)
+			// foldGateOpen still vetoes folds above the context threshold,
+			// so an early-session trigger costs one cheap DB read.
+			as.sc.push(ev.Type, ev.Type == ws.EventFindingsUpdated)
 		}
 	}
 }

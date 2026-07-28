@@ -261,12 +261,22 @@ func respondToTerminalQueries(chunk []byte) []byte {
 // Hard total deadline of totalDeadline ensures we never hang forever; if
 // nothing fires we write anyway as a last resort.
 //
+// Both stages only ever *infer* readiness, and under a wide fan-out that
+// inference is sometimes wrong, so the write itself is confirmed and retried
+// by submitPromptWithRetry (prompt_delivery_retry.go).
+//
 // If sessionStartCh and firstByteCh are nil (legacy callers / tests), falls
 // back to a fixed bootstrapFloor delay matching the original behavior.
-func deliverPrompt(s *Spawner, proc *processInfo, sess ptySessionIface, body, adapterName string, sessionStartCh, firstByteCh <-chan struct{}) {
-	const sessionStartTimeout = 3 * time.Second
+func deliverPrompt(s *Spawner, proc *processInfo, sess ptySessionIface, body, adapterName string, sessionStartCh, firstByteCh <-chan struct{}, ackViaHooks bool) {
+	// SessionStart is the authoritative readiness signal; the first-byte
+	// fallback below exists only for builds that never send it. Under a wide
+	// layer fan-out SessionStart has been observed at ~4s, so a tight timeout
+	// here drops an otherwise-healthy spawn onto the weaker fallback and the
+	// prompt gets written into a TUI that has not painted yet. Waiting longer
+	// is free on the happy path — the select returns the instant it arrives.
+	const sessionStartTimeout = 10 * time.Second
 	const bootstrapFloor = 1500 * time.Millisecond
-	const totalDeadline = 20 * time.Second
+	const totalDeadline = 30 * time.Second
 
 	// Empty body = adapter delivered the prompt via argv (codex). Nothing to
 	// type into the PTY; just return.
@@ -277,19 +287,7 @@ func deliverPrompt(s *Spawner, proc *processInfo, sess ptySessionIface, body, ad
 
 	start := time.Now()
 	waitForReady(s, proc, start, sessionStartCh, firstByteCh, sessionStartTimeout, bootstrapFloor, totalDeadline)
-
-	if n, err := sess.Write([]byte(body)); err != nil {
-		s.errorAgent(proc, fmt.Sprintf("deliverPrompt: write body failed: %v", err))
-		return
-	} else {
-		s.logAgent(proc, fmt.Sprintf("deliverPrompt: wrote %d-byte body (adapter=%s)", n, adapterName))
-	}
-	time.Sleep(150 * time.Millisecond)
-	if _, err := sess.Write([]byte("\r")); err != nil {
-		s.errorAgent(proc, fmt.Sprintf("deliverPrompt: write CR failed: %v", err))
-		return
-	}
-	s.logAgent(proc, fmt.Sprintf("deliverPrompt: submitted (total %s)", time.Since(start).Round(time.Millisecond)))
+	submitPromptWithRetry(s, proc, sess, body, adapterName, start, ackViaHooks, promptAckTimeout, promptAckPoll)
 }
 
 // waitForReady blocks until the CLI's TUI is ready to accept a submitted

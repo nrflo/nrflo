@@ -87,17 +87,30 @@ func (o *Orchestrator) WaitTakeControlReady(sessionID string, timeout time.Durat
 func (o *Orchestrator) SignalSessionReady(sessionID string) error {
 	o.mu.Lock()
 	seen := make(map[*spawner.Spawner]struct{})
+	mark := func(sp *spawner.Spawner) {
+		if sp == nil {
+			return
+		}
+		if _, ok := seen[sp]; ok {
+			return
+		}
+		seen[sp] = struct{}{}
+		sp.MarkSessionReady(sessionID)
+	}
 	for _, rs := range o.runs {
 		if rs == nil {
 			continue
 		}
 		for _, sp := range rs.spawners {
-			if _, ok := seen[sp]; ok {
-				continue
-			}
-			seen[sp] = struct{}{}
-			sp.MarkSessionReady(sessionID)
+			mark(sp)
 		}
+	}
+	// One-off children (planner, consult, delegate, context-saver) live only
+	// in auxSpawners. Omitting them here does not fail loudly: their
+	// SessionStart simply never lands, so prompt delivery always burns the
+	// full sessionStartTimeout and drops onto the weaker first-byte fallback.
+	for _, sp := range o.auxSpawners {
+		mark(sp)
 	}
 	o.mu.Unlock()
 	return nil

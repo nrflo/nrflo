@@ -47,6 +47,20 @@ func (s *Spawner) broadcast(eventType, projectID, ticketID, workflow string, dat
 	s.config.WSHub.Broadcast(event)
 }
 
+// broadcastForSession is broadcast with Event.SessionID stamped. Listeners
+// that route per session — the refinery's autonomous sidecar keys its fold
+// trigger off Event.SessionID — cannot read the id out of the payload map, so
+// an event meant to reach one is emitted through here rather than broadcast.
+func (s *Spawner) broadcastForSession(eventType, sessionID, projectID, ticketID, workflow string, data map[string]interface{}) {
+	if s.config.WSHub == nil {
+		logger.Warn(context.Background(), "broadcast skipped: no WebSocket hub configured")
+		return
+	}
+	event := ws.NewEvent(eventType, projectID, ticketID, workflow, data)
+	event.SessionID = sessionID
+	s.config.WSHub.Broadcast(event)
+}
+
 // broadcastSessionCost emits a project-scoped EventSessionCostUpdated for
 // proc's session — the debounced broadcast callback autonomous spawns
 // register with the cost store (mirrors broadcastLedgerEpoch's project-scope

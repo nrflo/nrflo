@@ -98,6 +98,12 @@ Every layer denies rather than erroring non-zero: a hook that exits non-zero or 
 
 `writeCodexProfileForSession` (`cli_adapter_codex_profile.go`) writes the per-session `CODEX_HOME` (auth + a workdir `trust_level="trusted"` entry, without which codex 0.145 blocks on a trust dialog); called by the app-server backend's `Start`.
 
+### Prompt delivery is confirmed, not assumed
+
+`deliverPrompt` (`backend_interactive_helpers.go`) can only *infer* TUI readiness — `waitForReady` takes SessionStart (authoritative, `sessionStartTimeout`=10s) else a first-byte fallback, then gates on PTY quiescence + `bootstrapFloor`. Both inferences fail under a wide layer fan-out, because a quiet PTY during a **starved** bootstrap is byte-for-byte indistinguishable from a quiet PTY parked on a ready input loop. The paste + CR then lands mid-bootstrap, the TUI redraws over it, and the prompt is gone with no error anywhere: the process is healthy, `context_left` stays 100, zero `agent_messages` are recorded, and the only recovery is `checkStall`'s start-stall two minutes later. Measured at ~21% of nodes across two 7-wide fan-outs (both variants observed: SessionStart arriving at ~4s and blowing a then-3s timeout, and the primary path with entirely normal 750–900ms quiescence).
+
+So `submitPromptWithRetry` (`prompt_delivery_retry.go`) confirms the write instead. `proc.hasReceivedMessage` is the acknowledgement — for adapters where `BumpsOnPTYBytes()` is false it flips only on a real recorded event, and the `UserPromptSubmit` echo (seq 0) is always the first — so a re-submit fires only when literally nothing was recorded, i.e. when the turn provably never began. That is what makes re-sending safe: it cannot duplicate a prompt the CLI already took. Up to `maxPromptSubmits`=3 attempts, `promptAckTimeout`=12s each (an order of magnitude above the ~1s a healthy spawn takes); a write error is terminal rather than retried, an exited process counts as acked, and exhausting the budget falls through to stall detection unchanged. Adapters that bump on PTY bytes get one write and no ack wait — paint traffic alone would satisfy the signal.
+
 ### Settings Merge (Claude interactive)
 
 `BuildInteractiveSettingsJSON` (`hooks_settings.go`) returns `--settings` JSON with `hooks` (PreToolUse/PostToolUse → `nrflo agent record-event`) and `statusLine`. `mergeInteractiveSettings` deep-merges safety JSON + hooks JSON, concatenating hook arrays on key conflict so `statusLine` survives.

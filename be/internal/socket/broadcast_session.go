@@ -16,6 +16,7 @@ import (
 func broadcastMessageEvent(hub *ws.Hub, eventType, projectID, ticketID, workflow, sessionID string, data map[string]interface{}) {
 	if projectID != "" {
 		service.BroadcastFromCtx(hub, eventType, service.BroadcastCtx{
+			SessionID: sessionID,
 			ProjectID: projectID,
 			TicketID:  ticketID,
 			Workflow:  workflow,

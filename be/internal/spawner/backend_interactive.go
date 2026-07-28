@@ -168,7 +168,9 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 	if b.adapter.DeliversPromptInline() {
 		deliveryBody = ""
 	}
-	go deliverPrompt(b.s, proc, sess, deliveryBody, b.adapter.Name(), proc.sessionStartCh, proc.firstByteCh)
+	// Adapters that bump stall state on raw PTY bytes have no usable
+	// delivery ack — paint traffic alone would satisfy it.
+	go deliverPrompt(b.s, proc, sess, deliveryBody, b.adapter.Name(), proc.sessionStartCh, proc.firstByteCh, !b.adapter.BumpsOnPTYBytes())
 
 	// Ferry PTY output (drop bytes). Auto-answer terminal capability queries
 	// only for adapters that need them (codex).
@@ -244,7 +246,7 @@ func (ss *spawnerSink) UpdateContextLeft(sessionID string, pct int) (string, str
 	}
 	projectID, ticketID, workflowName, err := ss.s.config.AgentSvcReal.UpdateContextLeft(sessionID, pct)
 	if err == nil && projectID != "" {
-		ss.s.broadcast(ws.EventAgentContextUpdated, projectID, ticketID, workflowName, map[string]interface{}{
+		ss.s.broadcastForSession(ws.EventAgentContextUpdated, sessionID, projectID, ticketID, workflowName, map[string]interface{}{
 			"session_id":   sessionID,
 			"context_left": pct,
 		})

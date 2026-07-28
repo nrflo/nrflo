@@ -24,10 +24,11 @@ func pinTestModel(t *testing.T) *model {
 	return m
 }
 
-// printlnBodies recursively executes cmd (unwrapping tea.BatchMsg) and
-// returns the message bodies of every tea.Println command found, reading
-// the unexported printLineMessage.messageBody field via reflection since
-// the type itself is unexported by the tea package.
+// printlnBodies recursively executes cmd (unwrapping tea.BatchMsg and the
+// unexported tea.sequenceMsg) and returns the message bodies of every
+// tea.Println command found, in traversal order, reading the unexported
+// printLineMessage.messageBody field via reflection since the type itself is
+// unexported by the tea package.
 func printlnBodies(t *testing.T, cmd tea.Cmd) []string {
 	t.Helper()
 	if cmd == nil {
@@ -41,6 +42,16 @@ func printlnBodies(t *testing.T, cmd tea.Cmd) []string {
 		var out []string
 		for _, sub := range batch {
 			out = append(out, printlnBodies(t, sub)...)
+		}
+		return out
+	}
+	if fmt.Sprintf("%T", msg) == "tea.sequenceMsg" {
+		v := reflect.ValueOf(msg)
+		var out []string
+		for i := 0; i < v.Len(); i++ {
+			if sub, ok := v.Index(i).Interface().(tea.Cmd); ok {
+				out = append(out, printlnBodies(t, sub)...)
+			}
 		}
 		return out
 	}
@@ -85,11 +96,17 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 	next, cmd = m.Update(historyMsg{page: page})
 	m = next.(*model)
 
-	// h=24 has no chunk headroom, so each 2-line message prints as two
-	// single-row chunks: 4 Printlns for the 2 messages.
+	// Bodies must arrive in transcript order (tea.Sequence, not Batch): the
+	// user line first, the assistant reply after it.
 	bodies := printlnBodies(t, cmd)
-	if len(bodies) != 4 {
-		t.Fatalf("printlnBodies = %d, want 4 tea.Println commands, got %#v", len(bodies), bodies)
+	joined := strings.Join(bodies, "\n")
+	helloIdx := strings.Index(joined, "hello")
+	replyIdx := strings.Index(joined, "hi there")
+	if helloIdx == -1 || replyIdx == -1 {
+		t.Fatalf("printlnBodies missing message content, got %#v", bodies)
+	}
+	if helloIdx >= replyIdx {
+		t.Errorf("user line (idx %d) not printed before assistant reply (idx %d)", helloIdx, replyIdx)
 	}
 	if m.printedLines <= 0 {
 		t.Errorf("printedLines = %d, want > 0 after printing a page", m.printedLines)

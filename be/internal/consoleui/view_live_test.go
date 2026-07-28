@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // liveTestModel builds a ready *model literal sufficient to exercise
@@ -103,7 +104,7 @@ func TestLiveRegionView_TailBoundedToHeight(t *testing.T) {
 		t.Errorf("liveRegionView() line count = %d, want tail-clipped to <= %d", gotLines, maxLines)
 	}
 	// The tail must be kept (last line), not the head.
-	if !strings.HasSuffix(out, "line") {
+	if !strings.HasSuffix(ansi.Strip(out), "line") {
 		t.Errorf("liveRegionView() tail = %q, want it to end with the last delta line", out)
 	}
 }
@@ -142,7 +143,7 @@ func TestLiveRegionView_CappedRegardlessOfBudget(t *testing.T) {
 	if gotLines := strings.Count(out, "\n") + 1; gotLines > liveRegionCap {
 		t.Errorf("liveRegionView(50) line count = %d, want <= liveRegionCap %d", gotLines, liveRegionCap)
 	}
-	if !strings.HasSuffix(out, "line") {
+	if !strings.HasSuffix(ansi.Strip(out), "line") {
 		t.Errorf("liveRegionView() tail = %q, want it to end with the last delta line", out)
 	}
 }

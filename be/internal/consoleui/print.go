@@ -45,8 +45,10 @@ func newMessagesToPrint(printedTotal int, page MessagePage) (toPrint []Message, 
 // printNewMessages renders any messages newly visible in page (per
 // newMessagesToPrint) into tea.Println commands so they land in the
 // terminal's native scrollback, advances m.printedTotal, and clears
-// m.pendingUser once the optimistic line has landed.
-func (m *model) printNewMessages(page MessagePage) []tea.Cmd {
+// m.pendingUser once the optimistic line has landed. The Printlns are
+// returned as one tea.Sequence: tea.Batch runs commands concurrently, which
+// would land chunks (and messages) in scrollback in random order.
+func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	toPrint, newTotal := newMessagesToPrint(m.printedTotal, page)
 	m.printedTotal = newTotal
 	if len(toPrint) == 0 {
@@ -64,7 +66,7 @@ func (m *model) printNewMessages(page MessagePage) []tea.Cmd {
 		}
 	}
 	m.pendingUser = ""
-	return cmds
+	return tea.Sequence(cmds...)
 }
 
 // chromeAllowance is the worst-case chrome height (composer up to 8 rows +

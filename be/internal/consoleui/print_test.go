@@ -94,17 +94,15 @@ func printTestModel(printedTotal int, pendingUser string) *model {
 }
 
 // TestPrintNewMessages_AdvancesAndClearsPendingUser verifies printNewMessages
-// returns one Println cmd per printed chunk (h=24 has no chunk headroom, so
-// the 2-line row splits into two single-row chunks), advances m.printedTotal
-// to page.Total, and clears the optimistic pendingUser line once >=1 row
-// printed.
+// returns a print command, advances m.printedTotal to page.Total, and clears
+// the optimistic pendingUser line once >=1 row printed.
 func TestPrintNewMessages_AdvancesAndClearsPendingUser(t *testing.T) {
 	m := printTestModel(0, "hello")
 	page := MessagePage{Messages: []Message{{Category: "user_input", Content: "hello"}}, Total: 1}
 
 	cmds := m.printNewMessages(page)
-	if len(cmds) != 2 {
-		t.Fatalf("printNewMessages returned %d cmds, want 2", len(cmds))
+	if cmds == nil {
+		t.Fatal("printNewMessages returned nil cmd, want a print sequence")
 	}
 	if m.printedTotal != 1 {
 		t.Errorf("printedTotal = %d, want 1", m.printedTotal)
@@ -122,8 +120,8 @@ func TestPrintNewMessages_NoNewRowsLeavesPendingUserAlone(t *testing.T) {
 	page := MessagePage{Messages: messagesOf("a", "b"), Total: 2}
 
 	cmds := m.printNewMessages(page)
-	if len(cmds) != 0 {
-		t.Fatalf("printNewMessages returned %d cmds, want 0", len(cmds))
+	if cmds != nil {
+		t.Fatal("printNewMessages returned a cmd, want nil (nothing new)")
 	}
 	if m.printedTotal != 2 {
 		t.Errorf("printedTotal = %d, want 2", m.printedTotal)

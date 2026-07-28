@@ -15,7 +15,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m.resize(msg.Width, msg.Height)
 		if !m.historyPrinted {
 			m.historyPrinted = true
-			commands = append(commands, m.printNewMessages(m.initialPage)...)
+			commands = append(commands, m.printNewMessages(m.initialPage))
 		}
 	case tea.KeyPressMsg:
 		if cmd, handled := m.handleKey(msg); handled {
@@ -66,13 +66,13 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			commands = append(commands, m.printNewMessages(msg.page)...)
+			commands = append(commands, m.printNewMessages(msg.page))
 		}
 	case syncMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			commands = append(commands, m.printNewMessages(msg.page)...)
+			commands = append(commands, m.printNewMessages(msg.page))
 			m.applySync(msg.detail)
 			m.lastErr = ""
 		}

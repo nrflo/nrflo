@@ -6,6 +6,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/glamour/v2"
+	glamouransi "charm.land/glamour/v2/ansi"
+	"charm.land/glamour/v2/styles"
 	"charm.land/lipgloss/v2"
 )
 
@@ -17,11 +19,25 @@ var (
 	bad         = lipgloss.Color("196")
 	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
 	mutedStyle  = lipgloss.NewStyle().Foreground(muted)
-	userStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("117")).Bold(true)
-	errorStyle  = lipgloss.NewStyle().Foreground(bad)
-	approvalBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(warn).Padding(0, 1)
-	composerBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
+	// Role is conveyed by color alone — no "you"/"assistant" header rows:
+	// user input light blue, assistant near-white (distinct from the dim-gray
+	// tool/thinking rows).
+	userStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("117"))
+	assistantStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("254"))
+	errorStyle     = lipgloss.NewStyle().Foreground(bad)
+	approvalBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(warn).Padding(0, 1)
+	composerBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
 )
+
+// assistantGlamour is DarkStyleConfig with the document color lifted to match
+// assistantStyle, so glamour body text doesn't read as the same gray as tool
+// rows.
+var assistantGlamour = func() glamouransi.StyleConfig {
+	cfg := styles.DarkStyleConfig
+	color := "254"
+	cfg.Document.Color = &color
+	return cfg
+}()
 
 func (m *model) View() tea.View {
 	if !m.ready {
@@ -84,11 +100,11 @@ func (m *model) liveRegionView(maxLines int) string {
 	}
 	parts := make([]string, 0, len(m.deltas)+2)
 	if m.pendingUser != "" {
-		parts = append(parts, userStyle.Render("you")+"\n"+fitWidth(m.pendingUser, m.contentWidth()))
+		parts = append(parts, userStyle.Render(fitWidth(m.pendingUser, m.contentWidth())))
 	}
 	for _, id := range m.deltaOrder {
 		if text := m.deltas[id]; text != "" {
-			parts = append(parts, headerStyle.Render("assistant")+"\n"+fitWidth(text, m.contentWidth()))
+			parts = append(parts, assistantStyle.Render(fitWidth(text, m.contentWidth())))
 		}
 	}
 	if m.thinking != "" {
@@ -201,19 +217,19 @@ func clampChrome(sections []string, maxHeight int) string {
 func renderMessage(message Message, width int) string {
 	switch message.Category {
 	case "user_input":
-		return userStyle.Render("you") + "\n" + fitWidth(message.Content, width)
+		return userStyle.Render(fitWidth(message.Content, width))
 	case "tool", "tool_use", "tool_result":
 		return mutedStyle.Render(fitWidth("tool · "+prettyToolContent(message.Content), width))
 	case "thinking":
 		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
 	default:
-		renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"), glamour.WithWordWrap(width))
+		renderer, err := glamour.NewTermRenderer(glamour.WithStyles(assistantGlamour), glamour.WithWordWrap(width))
 		if err == nil {
 			if rendered, renderErr := renderer.Render(message.Content); renderErr == nil {
-				return headerStyle.Render("assistant") + "\n" + fitWidth(strings.TrimSpace(rendered), width)
+				return fitWidth(strings.TrimSpace(rendered), width)
 			}
 		}
-		return headerStyle.Render("assistant") + "\n" + fitWidth(message.Content, width)
+		return assistantStyle.Render(fitWidth(message.Content, width))
 	}
 }
 

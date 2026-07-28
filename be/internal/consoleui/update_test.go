@@ -148,11 +148,9 @@ func TestApplySync_PreservesRecoveredLiveStateAfterHistoryReplacement(t *testing
 	m := &model{deltas: map[string]string{"stale": "old"}}
 	m.width, m.height, m.ready = 80, 24, true
 
-	// h=24 leaves no chunk headroom (liveRegionCap+chromeAllowance), so the
-	// 2-line row prints as two single-row chunks.
 	cmds := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hello"}}, Total: 1})
-	if len(cmds) != 2 {
-		t.Fatalf("printNewMessages returned %d cmds, want 2", len(cmds))
+	if cmds == nil {
+		t.Fatal("printNewMessages returned nil cmd, want a print sequence")
 	}
 	if m.printedTotal != 1 {
 		t.Fatalf("printedTotal = %d, want 1", m.printedTotal)

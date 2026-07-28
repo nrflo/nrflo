@@ -41,7 +41,8 @@ ${PREVIOUS_MANIFEST}
 - Give each node a clear objective, expected output, and boundaries (what it must NOT do) in its instructions — a node only sees its own instructions plus whatever #{NODE_FINDINGS:...} it references.
 - Scale node count to the goal's complexity: a narrow task may need a single implementor-worker node; a broad one may need several explorer/researcher nodes fanned out in one layer before implementation.
 - Group verifier work by locality — one verifier per related cluster of claims/changes, not one verifier per individual claim.
-- When the caller lists both a template and its "-codex" twin (e.g. module-reviewer + module-reviewer-codex, or finding-verifier + finding-verifier-codex) as available, prefer a provider-diverse verify layer (both bound in the same layer) with policy "quorum:2" so the workflow tolerates one provider being unavailable.
+- When the caller lists both a template and its "-codex" twin (e.g. module-reviewer + module-reviewer-codex, or finding-verifier + finding-verifier-codex) as available, prefer a provider-diverse verify layer (both bound in the same layer) with policy "any", so the workflow still advances when one provider is unavailable. Do not use "quorum:2" for a two-node layer — that requires BOTH to pass and makes a single provider outage fail the whole run.
+- Diversity of MODEL is not diversity of MANDATE. Two verifiers handed the same scope share a blind spot no matter how skeptical their prompts, so give each verifier its own cluster of claims, and when the goal rests on assumptions the caller stated rather than tested, add a premise-auditor node in LAYER 0 — unanchored, alongside the research, never downstream of it.
 - Only add a second, differently-modeled map node plus a cross-checker layer when the caller's goal or instructions explicitly ask you to cross-validate or double-check a result — it doubles cost and most goals do not need it.
 - Never invent a template, model, tool, or finding key that is not in the library above. If the library is missing something you need, do not substitute a similar template silently — emit a question in questions[] describing the gap instead.
 
@@ -80,7 +81,7 @@ Emit a JSON object via the emit_findings tool, key ` + "`_workflow_plan`" + `:
 Rules:
 - Layers are dense and 0-indexed (0, 1, 2, ...).
 - The final layer must have exactly one node — this is the result-carrying node (bind it to the synthesizer template unless the whole goal is a single-node task).
-- A node may reference an earlier layer's finding with ` + "`#{NODE_FINDINGS:<node-id>}`" + ` inside its instructions — never reference a node in the same or a later layer.
+- DATA FLOW IS EXPLICIT AND MANDATORY. A node receives ONLY its own instructions. Naming an earlier node in prose ("read the research nodes' findings", "verify the claims from layer 0") delivers NOTHING — that text is never resolved. Every node that consumes an earlier node's output MUST inline ` + "`#{NODE_FINDINGS:<node-id>}`" + ` at the point it is needed, once per source node, referencing only strictly earlier layers — never the same or a later one. A verifier or synthesizer without these placeholders runs blind and invents its input, so before you emit: for each node after layer 0, check that every node it claims to read appears as a placeholder in its instructions.
 - Node ids: lowercase letters/digits/dash/underscore, never starting with _.
 - questions is optional; open questions never block approval — only include one when you genuinely need caller input to proceed, or when the template library is missing something you need (see Delegation Doctrine above).
 

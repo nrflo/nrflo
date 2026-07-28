@@ -131,12 +131,12 @@ func TestPrintNewMessages_NoNewRowsLeavesPendingUserAlone(t *testing.T) {
 	}
 }
 
-// TestContentWidth verifies the composer-padding-matching floor/formula.
+// TestContentWidth verifies the full-width-minus-one floor/formula.
 func TestContentWidth(t *testing.T) {
 	tests := []struct{ width, want int }{
-		{100, 96},
+		{100, 99},
 		{10, 20}, // floors at 20 for narrow terminals
-		{24, 20},
+		{24, 23},
 	}
 	for _, tt := range tests {
 		m := &model{width: tt.width}

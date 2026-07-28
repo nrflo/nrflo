@@ -61,6 +61,38 @@ func TestMaxPrintRows(t *testing.T) {
 	}
 }
 
+// TestPrintNewMessages_EmptyAndBlankRowsStayAccounted verifies the two
+// tea.Println-no-op traps: a message rendering to "" is skipped entirely
+// (counted as zero rows), and a blank line split into its own chunk prints as
+// " " — insertAbove skips an empty body, so an unguarded "" would desync
+// printedLines from the rows actually scrolled and unpin the chrome.
+func TestPrintNewMessages_EmptyAndBlankRowsStayAccounted(t *testing.T) {
+	m := printTestModel(0, "")
+	empty := MessagePage{Messages: []Message{{Category: "assistant", Content: "   "}}, Total: 1}
+	if cmd := m.printNewMessages(empty); cmd != nil {
+		t.Errorf("printNewMessages(empty-rendered message) returned a cmd, want nil")
+	}
+	if m.printedLines != 0 {
+		t.Errorf("printedLines = %d after empty-rendered message, want 0", m.printedLines)
+	}
+
+	// h=24 floors the chunk size to 1 row, so the interior blank line becomes
+	// its own chunk and must print as " ", never "".
+	multi := MessagePage{Messages: []Message{{Category: "user_input", Content: "a\n\nb"}}, Total: 2}
+	bodies := printlnBodies(t, m.printNewMessages(multi))
+	if len(bodies) != 3 {
+		t.Fatalf("printlnBodies = %#v, want 3 chunks", bodies)
+	}
+	for i, body := range bodies {
+		if body == "" {
+			t.Errorf("chunk[%d] is empty — tea.Println skips it and desyncs printedLines", i)
+		}
+	}
+	if m.printedLines != 3 {
+		t.Errorf("printedLines = %d, want 3", m.printedLines)
+	}
+}
+
 // TestRenderMessage_NeverEmitsTabsOrOverWideLines verifies every category's
 // rendered output is tab-free and hard-wrapped within the content width:
 // tabs count as zero-width in ansi.StringWidth but advance to the next tab

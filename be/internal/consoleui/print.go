@@ -58,14 +58,30 @@ func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	cmds := make([]tea.Cmd, 0, len(toPrint))
 	for _, message := range toPrint {
 		rendered := renderMessage(message, width)
+		if rendered == "" {
+			// tea.Println with an empty body is a complete no-op in the
+			// renderer (insertAbove returns early), so counting it would
+			// desync printedLines from the rows actually scrolled and lift
+			// the frame off the terminal bottom permanently.
+			continue
+		}
 		rows := physicalRows(rendered, m.width)
 		m.printedLines += rows
 		m.appendPrintedTail(message, rows)
 		for _, chunk := range splitChunks(rendered, m.maxPrintRows()) {
+			if chunk == "" {
+				// A blank transcript line split into its own chunk: keep the
+				// row real (a space scrolls one row, "" scrolls zero) so the
+				// physicalRows accounting above stays exact.
+				chunk = " "
+			}
 			cmds = append(cmds, tea.Println(chunk))
 		}
 	}
 	m.pendingUser = ""
+	if len(cmds) == 0 {
+		return nil
+	}
 	return tea.Sequence(cmds...)
 }
 
@@ -131,7 +147,8 @@ func (m *model) appendPrintedTail(message Message, rows int) {
 }
 
 // contentWidth returns the content width printed rows and the live region
-// wrap to, mirroring the composerBox horizontal padding.
+// wrap to: the full terminal width minus one column, so an exactly-full line
+// can never trip the terminal's deferred-wrap ambiguity.
 func (m *model) contentWidth() int {
-	return max(20, m.width-4)
+	return max(20, m.width-1)
 }

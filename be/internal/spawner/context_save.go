@@ -177,6 +177,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 	// dependencies so a context-saver-api variant can run via the in-process runner.
 	// PTYManager is forwarded so a context-saver with execution_mode='cli_interactive'
 	// can spawn inside a PTY when its system_agent_definitions row calls for it.
+	saverRegister, saverUnregister := s.childSessionHooks(nil)
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			"_context_save": {
@@ -213,6 +214,11 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		PTYManager:         s.config.PTYManager,
 		ProjectEnv:         s.config.ProjectEnv,
 		APIMode:            true,
+		// A cli_interactive context-saver is heartbeat-driven like any other
+		// PTY agent; without the forwarded hooks its record-event bumps reach
+		// no proc and it start-stalls at 2 min while writing a valid handoff.
+		OnSessionRegister:   saverRegister,
+		OnSessionUnregister: saverUnregister,
 	})
 
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)

@@ -152,6 +152,11 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, item string) string {
 	var mu sync.Mutex
 	var sid string
+	delegateRegister, delegateUnregister := s.childSessionHooks(func(registeredSID string) {
+		mu.Lock()
+		sid = registeredSID
+		mu.Unlock()
+	})
 
 	primary := chain[0]
 	effort := primary.ReasoningEffort
@@ -197,12 +202,9 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		// One level down this delegate chain: the worker's own spawner carries
 		// DelegateDepth+1 so its buildAPIRegistry (and any delegate it makes)
 		// sees the correct per-chain depth. Never a shared instance counter.
-		DelegateDepth: s.config.DelegateDepth + 1,
-		OnSessionRegister: func(registeredSID string, _ *Spawner) {
-			mu.Lock()
-			sid = registeredSID
-			mu.Unlock()
-		},
+		DelegateDepth:       s.config.DelegateDepth + 1,
+		OnSessionRegister:   delegateRegister,
+		OnSessionUnregister: delegateUnregister,
 	})
 	defer sp.Close()
 

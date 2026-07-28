@@ -51,6 +51,11 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 
 	var consultMu sync.Mutex
 	var consultSID string
+	consultRegister, consultUnregister := s.childSessionHooks(func(sid string) {
+		consultMu.Lock()
+		consultSID = sid
+		consultMu.Unlock()
+	})
 
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
@@ -68,31 +73,28 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 				APIMaxTokens:     req.Def.APIMaxTokens,
 			},
 		},
-		DataPath:           s.config.DataPath,
-		ProjectRoot:        s.config.ProjectRoot,
-		WSHub:              s.config.WSHub,
-		Pool:               pool,
-		Clock:              s.config.Clock,
-		ClaudeSettingsJSON: s.config.ClaudeSettingsJSON,
-		ModelConfigs:       s.config.ModelConfigs,
-		ErrorSvc:           s.config.ErrorSvc,
-		BuildAPIProvider:   s.config.BuildAPIProvider,
-		AgentSvc:           s.config.AgentSvc,
-		FindingsSvc:        s.config.FindingsSvc,
-		ProjectFindingsSvc: s.config.ProjectFindingsSvc,
-		AgentSvcReal:       s.config.AgentSvcReal,
-		WorkflowSvc:        s.config.WorkflowSvc,
-		TicketSvc:          s.config.TicketSvc,
-		DispatchRepo:       s.config.DispatchRepo,
-		ArtifactSvc:        s.config.ArtifactSvc,
-		PTYManager:         s.config.PTYManager,
-		ProjectEnv:         s.config.ProjectEnv,
-		APIMode:            true,
-		OnSessionRegister: func(sid string, _ *Spawner) {
-			consultMu.Lock()
-			consultSID = sid
-			consultMu.Unlock()
-		},
+		DataPath:            s.config.DataPath,
+		ProjectRoot:         s.config.ProjectRoot,
+		WSHub:               s.config.WSHub,
+		Pool:                pool,
+		Clock:               s.config.Clock,
+		ClaudeSettingsJSON:  s.config.ClaudeSettingsJSON,
+		ModelConfigs:        s.config.ModelConfigs,
+		ErrorSvc:            s.config.ErrorSvc,
+		BuildAPIProvider:    s.config.BuildAPIProvider,
+		AgentSvc:            s.config.AgentSvc,
+		FindingsSvc:         s.config.FindingsSvc,
+		ProjectFindingsSvc:  s.config.ProjectFindingsSvc,
+		AgentSvcReal:        s.config.AgentSvcReal,
+		WorkflowSvc:         s.config.WorkflowSvc,
+		TicketSvc:           s.config.TicketSvc,
+		DispatchRepo:        s.config.DispatchRepo,
+		ArtifactSvc:         s.config.ArtifactSvc,
+		PTYManager:          s.config.PTYManager,
+		ProjectEnv:          s.config.ProjectEnv,
+		APIMode:             true,
+		OnSessionRegister:   consultRegister,
+		OnSessionUnregister: consultUnregister,
 	})
 
 	s.broadcast(ws.EventConsultStarted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{

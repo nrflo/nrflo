@@ -62,7 +62,7 @@ func TestChatService_InvokeTool_TurnActive_ReturnsErrTurnActive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	if err := svc.SendMessage(sid, "hi"); err != nil {
+	if _, err := svc.SendMessage(sid, "hi"); err != nil {
 		t.Fatalf("SendMessage: %v", err)
 	}
 
@@ -159,7 +159,7 @@ func TestChatService_InvokeTool_InformModel_AppendsSeedContextOnce(t *testing.T)
 		t.Error("Informed = false, want true")
 	}
 
-	if err := svc.SendMessage(sid, "next question"); err != nil {
+	if _, err := svc.SendMessage(sid, "next question"); err != nil {
 		t.Fatalf("SendMessage: %v", err)
 	}
 	eng := factory.last()

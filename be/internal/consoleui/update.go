@@ -79,10 +79,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case actionMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
-			if msg.action == "send" {
-				m.status = "idle"
-				m.pendingUser = ""
-				commands = append(commands, m.loadHistory())
+			if msg.action == "answer" {
+				// Let the user retry the card instead of leaving it stuck "sent".
+				m.qa.sent = false
 			}
 		} else {
 			m.lastErr = ""
@@ -91,6 +90,20 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			if msg.action == "approval" && len(m.approvals) > 0 {
 				m.approvals = m.approvals[1:]
+				m.syncQuestion()
+			}
+		}
+	case sendResultMsg:
+		if msg.err != nil {
+			m.lastErr = msg.err.Error()
+			m.status = "idle"
+			m.pendingUser = ""
+			commands = append(commands, m.loadHistory())
+		} else {
+			m.lastErr = ""
+			if msg.queued {
+				m.queuedCount++
+				m.notice = "queued — delivers when the current turn ends"
 			}
 		}
 	}
@@ -130,7 +143,11 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	if m.handleHistoryKey(key) {
 		return nil, true
 	}
-	if len(m.approvals) > 0 {
+	if m.questionActive() {
+		if cmd, handled := m.handleQuestionKey(key); handled {
+			return cmd, true
+		}
+	} else if len(m.approvals) > 0 {
 		switch key {
 		case "y":
 			approval := m.approvals[0]
@@ -168,7 +185,10 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.pendingUser = text
 		m.history = m.history.record(text)
 		m.status = "running"
-		return action("send", func() error { return m.client.Send(m.ctx, text) }), true
+		return func() tea.Msg {
+			queued, err := m.client.Send(m.ctx, text)
+			return sendResultMsg{queued: queued, err: err}
+		}, true
 	}
 	return nil, false
 }

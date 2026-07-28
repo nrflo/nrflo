@@ -25,7 +25,7 @@ func TestChatService_EngineError_UnpinsTurnState(t *testing.T) {
 	eng := factory.last()
 	ch := subscribeChatSession(t, hub, sid)
 
-	if err := svc.SendMessage(sid, "first"); err != nil {
+	if _, err := svc.SendMessage(sid, "first"); err != nil {
 		t.Fatalf("first SendMessage: %v", err)
 	}
 	eng.emit(spawner.EngineEvent{
@@ -36,7 +36,7 @@ func TestChatService_EngineError_UnpinsTurnState(t *testing.T) {
 	})
 	waitForChatTurnState(t, ch, "idle", 2*time.Second)
 
-	if err := svc.SendMessage(sid, "retry after error"); err != nil {
+	if _, err := svc.SendMessage(sid, "retry after error"); err != nil {
 		t.Fatalf("SendMessage after engine error = %v, want nil (turn must not stay pinned)", err)
 	}
 }
@@ -56,7 +56,7 @@ func TestChatService_EngineExit_ClosesSessionAndKillsToken(t *testing.T) {
 	eng := factory.last()
 	ch := subscribeChatSession(t, hub, sid)
 
-	if err := svc.SendMessage(sid, "first"); err != nil {
+	if _, err := svc.SendMessage(sid, "first"); err != nil {
 		t.Fatalf("first SendMessage: %v", err)
 	}
 
@@ -70,7 +70,7 @@ func TestChatService_EngineExit_ClosesSessionAndKillsToken(t *testing.T) {
 	if _, ok := svc.get(sid); ok {
 		t.Error("session still held by ChatService after its engine exited")
 	}
-	if err := svc.SendMessage(sid, "after engine death"); err != ErrChatSessionNotFound {
+	if _, err := svc.SendMessage(sid, "after engine death"); err != ErrChatSessionNotFound {
 		t.Errorf("SendMessage after engine death = %v, want ErrChatSessionNotFound", err)
 	}
 

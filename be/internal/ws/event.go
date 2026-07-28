@@ -104,6 +104,7 @@ const (
 	EventConsoleChatToolStarted      = "console_chat.tool_started"
 	EventConsoleChatToolFinished     = "console_chat.tool_finished"
 	EventConsoleChatYolo             = "console_chat.yolo"
+	EventConsoleChatQueued           = "console_chat.queued"
 	EventConsoleChatSiblingOpened    = "console_chat.sibling_opened"
 	EventConsoleContextRotated       = "console.context_rotated"
 	EventRefineryFoldFailed          = "refinery.fold_failed"

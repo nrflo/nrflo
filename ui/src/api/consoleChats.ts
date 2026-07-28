@@ -23,6 +23,13 @@ export class TurnActiveError extends Error {
   }
 }
 
+export class QueueFullError extends Error {
+  constructor() {
+    super('the prompt queue is full')
+    this.name = 'QueueFullError'
+  }
+}
+
 export async function getConsoleCatalog(): Promise<ConsoleCatalog> {
   return apiGet<ConsoleCatalog>('/api/v1/console/catalog')
 }
@@ -93,19 +100,33 @@ export async function openConsoleChatHandsSibling(sid: string): Promise<SiblingC
   return apiPost<SiblingChatResponse>(`/api/v1/console/chats/${encodeURIComponent(sid)}/hands-sibling`)
 }
 
-export async function sendConsoleChatMessage(sid: string, text: string): Promise<void> {
+// Resolves to true when a turn was in flight and the server queued the text
+// for delivery when it ends; 409 now means only a full queue.
+export async function sendConsoleChatMessage(sid: string, text: string): Promise<boolean> {
   try {
-    await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/messages`, { text })
+    const resp = await apiPost<{ queued?: boolean }>(`/api/v1/console/chats/${encodeURIComponent(sid)}/messages`, {
+      text,
+    })
+    return resp?.queued === true
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) {
-      throw new TurnActiveError()
+      throw new QueueFullError()
     }
     throw e
   }
 }
 
-export async function replyConsoleChatApproval(sid: string, aid: string, decision: ApprovalDecision): Promise<void> {
-  await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/approvals/${encodeURIComponent(aid)}`, { decision })
+// decision='answer' resolves an AskUserQuestion card; answer is required then.
+export async function replyConsoleChatApproval(
+  sid: string,
+  aid: string,
+  decision: ApprovalDecision,
+  answer?: string
+): Promise<void> {
+  await apiPost<void>(`/api/v1/console/chats/${encodeURIComponent(sid)}/approvals/${encodeURIComponent(aid)}`, {
+    decision,
+    ...(answer !== undefined ? { answer } : {}),
+  })
 }
 
 // Revoke one tool's allow_for_session grant so its next use asks again.

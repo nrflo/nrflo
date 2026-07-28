@@ -10,6 +10,7 @@ import type {
   ConsoleChatDeltaPayload,
   ConsoleChatErrorPayload,
   ConsoleChatSessionApprovalsPayload,
+  ConsoleChatQueuedPayload,
   ConsoleChatSiblingOpenedPayload,
   ConsoleChatThinkingPayload,
   ConsoleChatTurnPayload,
@@ -20,7 +21,7 @@ import type {
 
 export interface ResolvedApproval {
   approval_id: string
-  decision: 'allow' | 'deny'
+  decision: 'allow' | 'deny' | 'answer'
   reason?: string
 }
 
@@ -53,6 +54,9 @@ export interface SessionStreamState {
   // Every console.context_rotated notice seen this session, in arrival order
   // — rendered as inline transcript dividers by ChatMessageList.
   rotations: ConsoleContextRotatedPayload[]
+  // Mid-turn prompt queue — null until the first console_chat.queued push,
+  // so a consumer can prefer the detail snapshot's seed until then.
+  queuedPrompts: string[] | null
 }
 
 export function initialSessionStreamState(): SessionStreamState {
@@ -67,6 +71,7 @@ export function initialSessionStreamState(): SessionStreamState {
     yolo: null,
     errors: [],
     rotations: [],
+    queuedPrompts: null,
   }
 }
 
@@ -114,6 +119,11 @@ export function sessionEventReducer(state: SessionStreamState, event: WSEvent): 
     case 'console_chat.yolo': {
       const { yolo } = data as ConsoleChatYoloPayload
       return { ...state, yolo }
+    }
+    case 'console_chat.queued': {
+      // Always the full queue (never a delta) — see console/chat_queue.go.
+      const { prompts } = data as ConsoleChatQueuedPayload
+      return { ...state, queuedPrompts: prompts ?? [] }
     }
     case 'console_chat.sibling_opened': {
       return { ...state, siblingOpened: data as ConsoleChatSiblingOpenedPayload }

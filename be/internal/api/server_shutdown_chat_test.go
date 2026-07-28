@@ -27,7 +27,7 @@ func TestShutdownCleanup_StopsConsoleChatEngines(t *testing.T) {
 	if !eng.isStopped() {
 		t.Error("console-chat engine was not stopped by shutdownCleanup")
 	}
-	if err := srv.consoleChat.SendMessage(sid, "after shutdown"); !errors.Is(err, console.ErrChatSessionNotFound) {
+	if _, err := srv.consoleChat.SendMessage(sid, "after shutdown"); !errors.Is(err, console.ErrChatSessionNotFound) {
 		t.Errorf("SendMessage after shutdownCleanup = %v, want ErrChatSessionNotFound (session removed)", err)
 	}
 }

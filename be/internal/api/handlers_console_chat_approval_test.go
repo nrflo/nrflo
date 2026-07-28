@@ -74,6 +74,43 @@ func TestHandleConsoleChatApproval_Deny_MapsToApprovalDeny(t *testing.T) {
 	}
 }
 
+// decision=answer routes to the engine's AnswerQuestion (an AskUserQuestion
+// card resolution); an empty answer is a 400 before reaching the engine.
+func TestHandleConsoleChatApproval_Answer_RoutesToAnswerQuestion(t *testing.T) {
+	s, factory := newChatTestServer(t)
+	seedConsoleProject(t, s, "proj-chat-answer")
+	adminID := createTestUser(t, s, "chat-admin-answer@test.com", model.UserRoleAdmin, false)
+	cookie := injectSession(t, s, adminID)
+	sid, eng := createChatSession(t, s, factory, "proj-chat-answer", cookie)
+
+	chain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleConsoleChatApproval)))
+
+	req := chatApprovalReq(sid, "q-1", `{"decision":"answer","answer":"  "}`)
+	req.AddCookie(cookie)
+	rr := httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("empty answer status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+
+	req = chatApprovalReq(sid, "q-1", `{"decision":"answer","answer":"option B"}`)
+	req.AddCookie(cookie)
+	rr = httptest.NewRecorder()
+	chain.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204; body=%s", rr.Code, rr.Body.String())
+	}
+
+	eng.mu.Lock()
+	defer eng.mu.Unlock()
+	if len(eng.answers) != 1 || eng.answers[0] != [2]string{"q-1", "option B"} {
+		t.Errorf("engine answers = %v, want [(q-1, option B)]", eng.answers)
+	}
+	if len(eng.approvals) != 0 {
+		t.Errorf("ReplyApproval must not be called for decision=answer, got %+v", eng.approvals)
+	}
+}
+
 func TestHandleInterruptConsoleChat_ActiveTurn_Returns202(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-interrupt")

@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/Button'
 import { useReplyApproval } from '@/hooks/useConsoleChats'
 import type { PendingApproval } from '@/types/consoleChat'
 import type { ResolvedApproval } from './chatStream'
+import { parseQuestions, QuestionCard } from './QuestionCard'
 
 interface ApprovalCardProps {
   sid: string
@@ -19,8 +20,16 @@ interface ApprovalCardProps {
 export function ApprovalCard({ sid, approval, resolved }: ApprovalCardProps) {
   const replyMutation = useReplyApproval()
 
+  // AskUserQuestion renders as an interactive question card; an unparseable
+  // payload falls through to the generic card (its Allow maps to the
+  // server-side plain-text redirect, never the unreachable TUI picker).
+  const questions = approval.tool === 'AskUserQuestion' ? parseQuestions(approval.input) : null
+  if (questions) {
+    return <QuestionCard sid={sid} approval={approval} questions={questions} resolved={resolved} />
+  }
+
   const isTimedOut = resolved?.decision === 'deny' && !!resolved.reason?.toLowerCase().includes('timed out')
-  const statusLabel = resolved ? (resolved.decision === 'allow' ? 'Allowed' : isTimedOut ? 'Denied — timed out' : 'Denied') : null
+  const statusLabel = resolved ? (resolved.decision !== 'deny' ? 'Allowed' : isTimedOut ? 'Denied — timed out' : 'Denied') : null
 
   return (
     <div

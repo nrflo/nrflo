@@ -1,6 +1,7 @@
 package consoleui
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -46,7 +47,9 @@ func (m *model) View() tea.View {
 		return view
 	}
 	chromeSections := []string{}
-	if len(m.approvals) > 0 {
+	if m.questionActive() {
+		chromeSections = append(chromeSections, m.questionView())
+	} else if len(m.approvals) > 0 {
 		chromeSections = append(chromeSections, m.approvalView())
 	}
 	if m.suggestionsOpen() {
@@ -148,7 +151,11 @@ func (m *model) footer() string {
 		return mutedStyle.Render(" " + m.notice)
 	}
 	if m.status == "running" {
-		line := " working…" + workingSuffix(m.tool, time.Since(m.tool.Since)) + " · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
+		line := " working…" + workingSuffix(m.tool, time.Since(m.tool.Since))
+		if m.queuedCount > 0 {
+			line += " · queued:" + strconv.Itoa(m.queuedCount)
+		}
+		line += " · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
 		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
 	}
 	return mutedStyle.Render(" " + "enter send · ctrl+d detach · ctrl+x close")

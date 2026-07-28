@@ -30,6 +30,7 @@ type ChatDetail struct {
 	LiveItems        []LiveItem `json:"live_items"`
 	Thinking         *LiveItem  `json:"thinking,omitempty"`
 	Yolo             bool       `json:"yolo"`
+	QueuedPrompts    []string   `json:"queued_prompts,omitempty"`
 }
 
 type LiveItem struct {
@@ -40,9 +41,13 @@ type LiveItem struct {
 type Approval struct {
 	ID      string `json:"approval_id"`
 	Kind    string `json:"kind"`
+	Tool    string `json:"tool,omitempty"`
 	Command string `json:"command"`
 	Cwd     string `json:"cwd"`
 	Reason  string `json:"reason"`
+	// Input is the verbatim tool-input JSON; for Tool=AskUserQuestion it
+	// carries the questions array the interactive card renders (question.go).
+	Input string `json:"input,omitempty"`
 }
 
 type Message struct {

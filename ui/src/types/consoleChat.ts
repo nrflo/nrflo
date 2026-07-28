@@ -21,9 +21,15 @@ export interface ConsoleChatSummary {
 export interface PendingApproval {
   approval_id: string
   kind: string
+  // CLI tool name behind a PreToolUse request (claude only); 'AskUserQuestion'
+  // renders as an interactive question card instead of allow/deny buttons.
+  tool?: string
   command: string
   cwd: string
   reason: string
+  // Verbatim tool-input JSON; for tool=AskUserQuestion it carries the
+  // questions array the question card renders.
+  input?: string
 }
 
 // turn/work_dir/pending_approvals are only present when live=true — a chat
@@ -38,6 +44,8 @@ export interface ConsoleChatDetail extends ConsoleChatSummary {
   // reports none). Revocable via DELETE .../session-approvals/{tool}.
   session_approvals?: string[]
   cost_estimate?: number
+  // Prompts queued while a turn was in flight, delivered as the next turn.
+  queued_prompts?: string[]
 }
 
 export interface ConsoleChatListResponse {
@@ -76,7 +84,7 @@ export interface ConsoleChatMessagesResponse {
 // allow_for_session remembers the tool for the rest of the chat: codex maps
 // it natively (acceptForSession); the claude engine keeps a server-side
 // per-tool allowlist. Resolved WS pushes normalize it back to 'allow'.
-export type ApprovalDecision = 'allow' | 'allow_for_session' | 'deny'
+export type ApprovalDecision = 'allow' | 'allow_for_session' | 'deny' | 'answer'
 
 // GET /console/catalog — server-owned engine/model discovery + live
 // resumable chats (be/internal/types/console.go). The same source the
@@ -156,9 +164,10 @@ export type ConsoleChatApprovalRequestPayload = PendingApproval
 
 export interface ConsoleChatApprovalResolvedPayload {
   approval_id: string
-  // Resolutions are pushed in the normalized allow/deny vocabulary — the
-  // pump maps approve_for_session down to 'allow' (chat_events.go).
-  decision: 'allow' | 'deny'
+  // Resolutions are pushed in the normalized vocabulary — the pump maps
+  // approve_for_session down to 'allow'; 'answer' is an AskUserQuestion
+  // resolved with a user answer (chat_events.go).
+  decision: 'allow' | 'deny' | 'answer'
   reason?: string
 }
 
@@ -177,6 +186,13 @@ export interface ConsoleChatSessionApprovalsPayload {
 // ConsoleChatSessionApprovalsPayload.
 export interface ConsoleChatYoloPayload {
   yolo: boolean
+}
+
+// console_chat.queued session-channel push — the full current mid-turn
+// prompt queue, sent whenever it changes (enqueue, fold, flush).
+export interface ConsoleChatQueuedPayload {
+  count: number
+  prompts: string[]
 }
 
 // console_chat.sibling_opened session-channel push (chat_service_sibling.go)

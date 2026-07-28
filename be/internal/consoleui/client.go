@@ -92,12 +92,25 @@ func (c *Client) TailMessages(ctx context.Context, limit int) (MessagePage, erro
 	return c.MessagesPage(ctx, limit, page.Total-limit)
 }
 
-func (c *Client) Send(ctx context.Context, text string) error {
-	return c.do(ctx, http.MethodPost, c.chatPath("messages"), map[string]string{"text": text}, nil)
+// Send submits one user turn. queued=true means a turn was in flight and the
+// server queued the text for delivery when it ends.
+func (c *Client) Send(ctx context.Context, text string) (queued bool, err error) {
+	var resp struct {
+		Queued bool `json:"queued"`
+	}
+	if err := c.do(ctx, http.MethodPost, c.chatPath("messages"), map[string]string{"text": text}, &resp); err != nil {
+		return false, err
+	}
+	return resp.Queued, nil
 }
 
 func (c *Client) Approve(ctx context.Context, id, decision string) error {
 	return c.do(ctx, http.MethodPost, c.chatPath("approvals/"+url.PathEscape(id)), map[string]string{"decision": decision}, nil)
+}
+
+// Answer resolves a pending AskUserQuestion card with the user's answer.
+func (c *Client) Answer(ctx context.Context, id, answer string) error {
+	return c.do(ctx, http.MethodPost, c.chatPath("approvals/"+url.PathEscape(id)), map[string]string{"decision": "answer", "answer": answer}, nil)
 }
 
 // SetYolo toggles auto-approval of console tool calls for the current chat:

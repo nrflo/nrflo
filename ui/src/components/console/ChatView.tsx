@@ -13,7 +13,7 @@ import {
   useConsoleCatalog,
 } from '@/hooks/useConsoleChats'
 import { useConsoleChatStream } from '@/hooks/useConsoleChatStream'
-import { TurnActiveError } from '@/api/consoleChats'
+import { QueueFullError } from '@/api/consoleChats'
 import { ChatMessageList } from './ChatMessageList'
 import { ChatSiblingActions, isT0Profile } from './ChatSiblingActions'
 import { ChatComposer } from './ChatComposer'
@@ -82,13 +82,14 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
   }, [stream.siblingOpened, onOpenSibling])
 
   const isRunning = stream.turn === 'running'
+  const queuedCount = (stream.queuedPrompts ?? []).length
 
   const handleSend = async (value: string) => {
     try {
       await sendMutation.mutateAsync({ sid, text: value })
     } catch (e) {
-      if (e instanceof TurnActiveError) {
-        toast.error('A turn is already running.')
+      if (e instanceof QueueFullError) {
+        toast.error('The prompt queue is full — wait for the turn to finish.')
       } else {
         toast.error('Failed to send message.')
       }
@@ -237,6 +238,11 @@ export function ChatView({ sid, onClosed, onDetach, onOpenSibling }: ChatViewPro
         )}
       </div>
 
+      {queuedCount > 0 && (
+        <div className="px-4 pb-1 text-xs text-muted-foreground" data-testid="queued-indicator">
+          {queuedCount} message{queuedCount === 1 ? '' : 's'} queued — sent when the current turn ends
+        </div>
+      )}
       <ChatComposer
         sid={sid}
         isRunning={isRunning}

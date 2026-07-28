@@ -94,7 +94,10 @@ func (s *Server) loadConsoleChatSession(w http.ResponseWriter, r *http.Request) 
 	return sess, true
 }
 
-// handleConsoleChatMessage submits one user turn.
+// handleConsoleChatMessage submits one user turn. A message landing while a
+// turn is in flight is queued for the next turn rather than rejected —
+// `queued` in the 202 body tells the client which happened; 409 remains only
+// for a full queue.
 // POST /api/v1/console/chats/{sid}/messages
 func (s *Server) handleConsoleChatMessage(w http.ResponseWriter, r *http.Request) {
 	sess, ok := s.loadConsoleChatSession(w, r)
@@ -112,9 +115,10 @@ func (s *Server) handleConsoleChatMessage(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.consoleChat.SendMessage(sess.ID, body.Text); err != nil {
-		if errors.Is(err, spawner.ErrTurnActive) {
-			writeError(w, http.StatusConflict, "a turn is already active")
+	queued, err := s.consoleChat.SendMessage(sess.ID, body.Text)
+	if err != nil {
+		if errors.Is(err, console.ErrPromptQueueFull) {
+			writeError(w, http.StatusConflict, "prompt queue is full")
 			return
 		}
 		if errors.Is(err, console.ErrChatSessionNotFound) {
@@ -126,11 +130,13 @@ func (s *Server) handleConsoleChatMessage(w http.ResponseWriter, r *http.Request
 	}
 
 	appendAudit(s, r, "console_chat.message", "agent_session", sess.ID, "{}")
-	w.WriteHeader(http.StatusAccepted)
+	writeJSON(w, http.StatusAccepted, map[string]bool{"queued": queued})
 }
 
 // handleConsoleChatApproval resolves a pending approval; the wire vocabulary
 // (spawner.ApprovalApprove/ApprovalDeny) is mapped here, never by ChatService.
+// decision=answer resolves an AskUserQuestion card with the user's free-form
+// answer instead of an allow/deny.
 // POST /api/v1/console/chats/{sid}/approvals/{aid}
 func (s *Server) handleConsoleChatApproval(w http.ResponseWriter, r *http.Request) {
 	sess, ok := s.loadConsoleChatSession(w, r)
@@ -141,6 +147,7 @@ func (s *Server) handleConsoleChatApproval(w http.ResponseWriter, r *http.Reques
 
 	var body struct {
 		Decision string `json:"decision"`
+		Answer   string `json:"answer"`
 	}
 	raw, _ := io.ReadAll(r.Body)
 	r.Body.Close() //nolint:errcheck
@@ -149,20 +156,25 @@ func (s *Server) handleConsoleChatApproval(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var decision spawner.ApprovalDecision
+	var err error
 	switch body.Decision {
 	case "allow":
-		decision = spawner.ApprovalApprove
+		err = s.consoleChat.ReplyApproval(sess.ID, aid, spawner.ApprovalApprove)
 	case "allow_for_session":
-		decision = spawner.ApprovalApproveForSession
+		err = s.consoleChat.ReplyApproval(sess.ID, aid, spawner.ApprovalApproveForSession)
 	case "deny":
-		decision = spawner.ApprovalDeny
+		err = s.consoleChat.ReplyApproval(sess.ID, aid, spawner.ApprovalDeny)
+	case "answer":
+		if strings.TrimSpace(body.Answer) == "" {
+			writeError(w, http.StatusBadRequest, "answer required")
+			return
+		}
+		err = s.consoleChat.AnswerQuestion(sess.ID, aid, body.Answer)
 	default:
-		writeError(w, http.StatusBadRequest, "decision must be allow, allow_for_session, or deny")
+		writeError(w, http.StatusBadRequest, "decision must be allow, allow_for_session, deny, or answer")
 		return
 	}
-
-	if err := s.consoleChat.ReplyApproval(sess.ID, aid, decision); err != nil {
+	if err != nil {
 		if errors.Is(err, console.ErrChatSessionNotFound) {
 			writeError(w, http.StatusNotFound, "console chat session not found")
 			return

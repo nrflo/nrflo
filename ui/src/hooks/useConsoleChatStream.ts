@@ -67,6 +67,10 @@ export function useConsoleChatStream(sid: string | undefined) {
   // sessionApprovals above.
   const yolo = stream.yolo ?? detailQuery.data?.yolo ?? false
 
+  // Detail seeds the mid-turn prompt queue on reload; the live push (always
+  // the full queue) takes over once any arrives.
+  const queuedPrompts = stream.queuedPrompts ?? detailQuery.data?.queued_prompts ?? []
+
   return {
     transcript,
     turn,
@@ -74,6 +78,7 @@ export function useConsoleChatStream(sid: string | undefined) {
     resolvedApprovals: stream.resolvedApprovals,
     sessionApprovals,
     yolo,
+    queuedPrompts,
     thinking: stream.thinking,
     errors: stream.errors,
     siblingOpened: stream.siblingOpened,

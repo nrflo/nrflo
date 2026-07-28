@@ -114,7 +114,7 @@ func TestChatService_SwitchModel_SeedsSiblingWithOriginDigest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SwitchModel: %v", err)
 	}
-	if err := svc.SendMessage(siblingID, "continue the work"); err != nil {
+	if _, err := svc.SendMessage(siblingID, "continue the work"); err != nil {
 		t.Fatalf("SendMessage on sibling: %v", err)
 	}
 
@@ -143,7 +143,7 @@ func TestChatService_SwitchModel_NoDigestYet_SeedsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SwitchModel: %v", err)
 	}
-	if err := svc.SendMessage(siblingID, "hello"); err != nil {
+	if _, err := svc.SendMessage(siblingID, "hello"); err != nil {
 		t.Fatalf("SendMessage on sibling: %v", err)
 	}
 	sibEngine := factory.last()
@@ -189,7 +189,7 @@ func TestChatService_OpenHandsSibling_OpensT0HandsProfile(t *testing.T) {
 		t.Errorf("sibling_opened reason = %v, want hands_sibling", ev.Data["reason"])
 	}
 
-	if err := svc.SendMessage(siblingID, "go"); err != nil {
+	if _, err := svc.SendMessage(siblingID, "go"); err != nil {
 		t.Fatalf("SendMessage on sibling: %v", err)
 	}
 	sibEngine := factory.last()

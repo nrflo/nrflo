@@ -85,14 +85,18 @@ describe('ChatComposer', () => {
     expect(box).toHaveValue('line1\nline2')
   })
 
-  it('disables the textarea and shows Stop while a turn is running; clicking Stop calls onStop', async () => {
+  it('keeps the textarea enabled while a turn runs: typed text queues via the Queue button, Stop interrupts', async () => {
     mockSkills([])
-    const { onStop } = setup({ isRunning: true })
+    const { onSend, onStop } = setup({ isRunning: true })
     const user = userEvent.setup()
 
-    const box = screen.getByPlaceholderText('Waiting for the agent to finish its turn…')
-    expect(box).toBeDisabled()
+    const box = screen.getByPlaceholderText('Turn running — your message will be queued…')
+    expect(box).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+
+    await user.type(box, 'steer the agent')
+    await user.click(screen.getByRole('button', { name: 'Queue' }))
+    expect(onSend).toHaveBeenCalledWith('steer the agent')
 
     await user.click(screen.getByRole('button', { name: 'Stop' }))
     expect(onStop).toHaveBeenCalled()
@@ -114,7 +118,8 @@ describe('ChatComposer', () => {
   it('shows a Spinner instead of the Stop label when stopPending', () => {
     mockSkills([])
     setup({ isRunning: true, stopPending: true })
-    const stopButton = screen.getByRole('button')
+    const buttons = screen.getAllByRole('button')
+    const stopButton = buttons[buttons.length - 1]
     expect(stopButton).toBeDisabled()
     expect(stopButton).not.toHaveTextContent('Stop')
   })

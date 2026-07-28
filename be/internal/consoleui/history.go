@@ -29,6 +29,8 @@ func (m *model) applyDetail(detail ChatDetail) {
 	if detail.Thinking != nil {
 		m.thinking, m.thinkingID = trimDeltaTail(detail.Thinking.Text), detail.Thinking.ID
 	}
+	m.queuedCount = len(detail.QueuedPrompts)
+	m.syncQuestion()
 }
 
 // applySync re-seeds live state from a WS-reconnect sync. The caller (the

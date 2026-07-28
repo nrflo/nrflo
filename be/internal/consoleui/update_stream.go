@@ -51,11 +51,14 @@ func (m *model) applyStream(update streamUpdate) {
 		case "console_chat.approval_request":
 			m.approvals = append(m.approvals, Approval{
 				ID: eventString(event, "approval_id"), Kind: eventString(event, "kind"),
-				Command: eventString(event, "command"), Cwd: eventString(event, "cwd"),
-				Reason: eventString(event, "reason"),
+				Tool: eventString(event, "tool"), Command: eventString(event, "command"),
+				Cwd: eventString(event, "cwd"), Reason: eventString(event, "reason"),
+				Input: eventString(event, "input"),
 			})
 		case "console_chat.approval_resolved":
 			m.removeApproval(eventString(event, "approval_id"))
+		case "console_chat.queued":
+			m.queuedCount = eventInt(event, "count")
 		case "console_chat.session_approvals":
 			// Always the full list (never a delta) — see console/chat_events.go.
 			m.detail.SessionApprovals = eventStrings(event, "tools")
@@ -76,6 +79,7 @@ func (m *model) applyStream(update streamUpdate) {
 			}
 		}
 	}
+	m.syncQuestion()
 }
 
 func needsHistory(events []Event) bool {

@@ -81,7 +81,7 @@ func TestChatService_SendMessage_SkillDispatch(t *testing.T) {
 		}
 		eng := factory.last()
 
-		if err := svc.SendMessage(sid, "/finalize extra args"); err != nil {
+		if _, err := svc.SendMessage(sid, "/finalize extra args"); err != nil {
 			t.Fatalf("SendMessage: %v", err)
 		}
 		if got := eng.turnCount(); got != 1 {
@@ -106,7 +106,7 @@ func TestChatService_SendMessage_SkillDispatch(t *testing.T) {
 		}
 		eng := factory.last()
 
-		if err := svc.SendMessage(sid, "/unknown"); err != nil {
+		if _, err := svc.SendMessage(sid, "/unknown"); err != nil {
 			t.Fatalf("SendMessage: %v", err)
 		}
 		if got := eng.turns[0]; got != "/unknown" {
@@ -124,7 +124,7 @@ func TestChatService_SendMessage_SkillDispatch(t *testing.T) {
 		}
 		eng := factory.last()
 
-		if err := svc.SendMessage(sid, "plain question"); err != nil {
+		if _, err := svc.SendMessage(sid, "plain question"); err != nil {
 			t.Fatalf("SendMessage: %v", err)
 		}
 		if got := eng.turns[0]; got != "plain question" {
@@ -160,7 +160,7 @@ func TestChatService_SendMessage_SkillTurn_DefersSeedContext(t *testing.T) {
 	sess.setSeedContext("SEED-DIGEST-XYZ")
 	eng := factory.last()
 
-	if err := svc.SendMessage(sid, "/finalize"); err != nil {
+	if _, err := svc.SendMessage(sid, "/finalize"); err != nil {
 		t.Fatalf("SendMessage: %v", err)
 	}
 	if got := eng.turns[0]; got != "/finalize" {

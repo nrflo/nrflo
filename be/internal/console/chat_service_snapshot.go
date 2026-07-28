@@ -19,6 +19,7 @@ type ChatSnapshot struct {
 	LiveItems        []ChatLiveItem
 	Thinking         ChatLiveItem
 	Yolo             bool
+	QueuedPrompts    []string
 }
 
 type ChatLiveItem struct {
@@ -45,6 +46,7 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		LiveItems:        state.Live,
 		Thinking:         state.Thinking,
 		Yolo:             sess.getEngine().Yolo(),
+		QueuedPrompts:    sess.queuedPrompts(),
 	}, true
 }
 

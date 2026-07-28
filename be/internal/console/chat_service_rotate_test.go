@@ -217,7 +217,7 @@ func TestChatService_Rotation_FullFlow(t *testing.T) {
 	}
 
 	// The next SendMessage must be answered by the fresh engine, not the old one.
-	if err := svc.SendMessage(sid, "post-rotation message"); err != nil {
+	if _, err := svc.SendMessage(sid, "post-rotation message"); err != nil {
 		t.Fatalf("SendMessage after rotation: %v", err)
 	}
 	if got := newEng.turnCount(); got != 1 {

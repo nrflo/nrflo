@@ -103,8 +103,8 @@ export function useSendConsoleChatMessage() {
 
 export function useReplyApproval() {
   return useMutation({
-    mutationFn: ({ sid, aid, decision }: { sid: string; aid: string; decision: ApprovalDecision }) =>
-      replyConsoleChatApproval(sid, aid, decision),
+    mutationFn: ({ sid, aid, decision, answer }: { sid: string; aid: string; decision: ApprovalDecision; answer?: string }) =>
+      replyConsoleChatApproval(sid, aid, decision, answer),
   })
 }
 

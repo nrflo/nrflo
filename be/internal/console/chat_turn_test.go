@@ -47,17 +47,16 @@ func TestChatService_SendMessage_UnknownSession_ReturnsErrChatSessionNotFound(t 
 	t.Parallel()
 	svc, _, _, _ := newChatTestService(t)
 
-	if err := svc.SendMessage("no-such-session", "hi"); err != ErrChatSessionNotFound {
+	if _, err := svc.SendMessage("no-such-session", "hi"); err != ErrChatSessionNotFound {
 		t.Errorf("SendMessage(unknown) = %v, want ErrChatSessionNotFound", err)
 	}
 }
 
-// TestChatService_SendMessage_SecondCallWhileTurnActive_RejectsWithoutEngineRoundTrip
-// exercises acceptance case 2: a second POST /messages while a turn is in
-// flight must be rejected deterministically (spawner.ErrTurnActive) without
-// ever reaching the engine a second time. The fake engine never emits
-// EventTurnCompleted here, so the turn stays "running" for the whole test.
-func TestChatService_SendMessage_SecondCallWhileTurnActive_RejectsWithoutEngineRoundTrip(t *testing.T) {
+// A second POST /messages while a turn is in flight is queued (queued=true,
+// no engine round trip) — never an error. The fake engine never emits
+// EventTurnCompleted here, so the turn stays "running" for the whole test;
+// delivery is chat_queue_test.go's territory.
+func TestChatService_SendMessage_SecondCallWhileTurnActive_QueuesWithoutEngineRoundTrip(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
 
@@ -67,19 +66,23 @@ func TestChatService_SendMessage_SecondCallWhileTurnActive_RejectsWithoutEngineR
 	}
 	eng := factory.last()
 
-	if err := svc.SendMessage(sid, "first turn"); err != nil {
+	if _, err := svc.SendMessage(sid, "first turn"); err != nil {
 		t.Fatalf("first SendMessage: %v", err)
 	}
 	if got := eng.turnCount(); got != 1 {
 		t.Fatalf("engine turn count after first message = %d, want 1", got)
 	}
 
-	err = svc.SendMessage(sid, "second turn")
-	if !errors.Is(err, spawner.ErrTurnActive) {
-		t.Fatalf("second SendMessage while active = %v, want spawner.ErrTurnActive", err)
+	queued, err := svc.SendMessage(sid, "second turn")
+	if err != nil || !queued {
+		t.Fatalf("second SendMessage while active = (%v, %v), want (true, nil)", queued, err)
 	}
 	if got := eng.turnCount(); got != 1 {
-		t.Errorf("engine turn count after rejected second message = %d, want still 1 (no round trip)", got)
+		t.Errorf("engine turn count after queued second message = %d, want still 1 (no round trip)", got)
+	}
+	snap, ok := svc.Snapshot(sid)
+	if !ok || len(snap.QueuedPrompts) != 1 || snap.QueuedPrompts[0] != "second turn" {
+		t.Errorf("snapshot queued prompts = %v (ok=%v), want [second turn]", snap.QueuedPrompts, ok)
 	}
 }
 
@@ -97,13 +100,13 @@ func TestChatService_SendMessage_TurnCompleted_AllowsNextMessage(t *testing.T) {
 	eng := factory.last()
 	ch := subscribeChatSession(t, hub, sid)
 
-	if err := svc.SendMessage(sid, "first"); err != nil {
+	if _, err := svc.SendMessage(sid, "first"); err != nil {
 		t.Fatalf("first SendMessage: %v", err)
 	}
 	eng.emit(spawner.EngineEvent{Type: spawner.EventTurnCompleted, SessionID: sid})
 	waitForChatTurnState(t, ch, "idle", 2*time.Second)
 
-	if err := svc.SendMessage(sid, "second"); err != nil {
+	if _, err := svc.SendMessage(sid, "second"); err != nil {
 		t.Fatalf("second SendMessage after turn completed: %v", err)
 	}
 	if got := eng.turnCount(); got != 2 {
@@ -127,13 +130,13 @@ func TestChatService_SendMessage_EngineError_RollsBackTurnState(t *testing.T) {
 	wantErr := errors.New("transport failure")
 	eng.setSendErr(wantErr)
 
-	err = svc.SendMessage(sid, "will fail")
+	_, err = svc.SendMessage(sid, "will fail")
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("SendMessage = %v, want %v", err, wantErr)
 	}
 
 	// Turn state must have rolled back to idle; a retry should now succeed.
-	if err := svc.SendMessage(sid, "retry"); err != nil {
+	if _, err := svc.SendMessage(sid, "retry"); err != nil {
 		t.Fatalf("retry SendMessage after engine error = %v, want nil (turn state must roll back)", err)
 	}
 }

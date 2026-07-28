@@ -205,3 +205,8 @@ func (e *codexEngine) ReplyApproval(id string, decision ApprovalDecision) error 
 	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.spec.SessionID, ApprovalID: id, Decision: decision})
 	return nil
 }
+
+// AnswerQuestion: codex has no interactive question tool.
+func (e *codexEngine) AnswerQuestion(id, _ string) error {
+	return fmt.Errorf("console engine: approval %q is not a question", id)
+}

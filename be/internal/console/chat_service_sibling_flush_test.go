@@ -27,7 +27,7 @@ func TestChatService_SwitchModel_FlushesOriginBeforeSeeding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SwitchModel: %v", err)
 	}
-	if err := svc.SendMessage(siblingID, "continue the work"); err != nil {
+	if _, err := svc.SendMessage(siblingID, "continue the work"); err != nil {
 		t.Fatalf("SendMessage on sibling: %v", err)
 	}
 

@@ -82,12 +82,16 @@ func (s *Server) handleListConsoleChats(w http.ResponseWriter, r *http.Request) 
 }
 
 // consoleChatApprovalItem is one pending approval in a chat detail snapshot.
+// Tool + Input let a client render tool=AskUserQuestion as a question card
+// (Input is the verbatim tool-input JSON with the questions array).
 type consoleChatApprovalItem struct {
 	ApprovalID string `json:"approval_id"`
 	Kind       string `json:"kind"`
+	Tool       string `json:"tool,omitempty"`
 	Command    string `json:"command"`
 	Cwd        string `json:"cwd"`
 	Reason     string `json:"reason"`
+	Input      string `json:"input,omitempty"`
 }
 
 // handleGetConsoleChat returns one console-chat session's row fields plus its
@@ -133,9 +137,11 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 			approvals = append(approvals, consoleChatApprovalItem{
 				ApprovalID: a.ID,
 				Kind:       a.Kind,
+				Tool:       a.Tool,
 				Command:    a.Command,
 				Cwd:        a.Cwd,
 				Reason:     a.Reason,
+				Input:      string(a.Raw),
 			})
 		}
 		resp["turn"] = snap.Turn
@@ -146,6 +152,11 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 			sessionApprovals = []string{}
 		}
 		resp["session_approvals"] = sessionApprovals
+		queued := snap.QueuedPrompts
+		if queued == nil {
+			queued = []string{}
+		}
+		resp["queued_prompts"] = queued
 		liveItems := make([]map[string]string, 0, len(snap.LiveItems))
 		for _, item := range snap.LiveItems {
 			liveItems = append(liveItems, map[string]string{"item_id": item.ID, "text": item.Text})

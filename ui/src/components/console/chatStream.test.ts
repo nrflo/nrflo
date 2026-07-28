@@ -158,6 +158,31 @@ describe('sessionEventReducer', () => {
     })
   })
 
+  it('console_chat.queued seeds null then folds the full live queue', () => {
+    let state = initialSessionStreamState()
+    expect(state.queuedPrompts).toBeNull()
+
+    state = sessionEventReducer(state, {
+      type: 'console_chat.queued',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { count: 2, prompts: ['one', 'two'] },
+    })
+    expect(state.queuedPrompts).toEqual(['one', 'two'])
+
+    state = sessionEventReducer(state, {
+      type: 'console_chat.queued',
+      project_id: 'p',
+      ticket_id: '',
+      session_id: 'sid-1',
+      timestamp: '2026-01-01T00:00:00Z',
+      data: { count: 0, prompts: [] },
+    })
+    expect(state.queuedPrompts).toEqual([])
+  })
+
   it('console_chat.yolo seeds null then folds the live effective state', () => {
     let state = initialSessionStreamState()
     expect(state.yolo).toBeNull()

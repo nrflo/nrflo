@@ -40,7 +40,7 @@ func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 		if !ok {
 			t.Fatalf("turn %d: session missing", i)
 		}
-		if err := svc.SendMessage(sid, "continue"); err != nil {
+		if _, err := svc.SendMessage(sid, "continue"); err != nil {
 			t.Fatalf("turn %d: SendMessage: %v", i, err)
 		}
 		eng := factory.last()

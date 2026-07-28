@@ -135,6 +135,6 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 		"tokens_after":  tokensAfter,
 	})
 
-	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sess.id) }, s.maybeRotate)
+	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sess.id) }, s.maybeRotate, s.flushQueuedPrompts)
 	return true
 }

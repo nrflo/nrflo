@@ -164,12 +164,16 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 
 	// A tool the human already approved for the whole session skips the
 	// request/reply round-trip entirely — no EventApprovalRequest, so no
-	// resolution to emit either.
-	if e.approvals.allowedForSession(toolName) {
-		return "allow", "nrflo: approved for session"
-	}
-	if yolo {
-		return "allow", "nrflo: yolo"
+	// resolution to emit either. AskUserQuestion never short-circuits: an
+	// allow opens an unanswerable TUI picker (console_engine_claude_question.go),
+	// so it always goes to the human as a question card, yolo included.
+	if toolName != AskUserQuestionTool {
+		if e.approvals.allowedForSession(toolName) {
+			return "allow", "nrflo: approved for session"
+		}
+		if yolo {
+			return "allow", "nrflo: yolo"
+		}
 	}
 
 	id := toolUseID
@@ -187,6 +191,7 @@ func (e *claudeEngine) RequestApproval(ctx context.Context, toolName string, too
 		Approval: &ApprovalRequest{
 			ID:      id,
 			Kind:    "PreToolUse",
+			Tool:    toolName,
 			Command: FormatToolDetail(toolName, toolInput),
 			Cwd:     workDir,
 			Raw:     raw,
@@ -243,12 +248,18 @@ func (e *claudeEngine) ReplyApproval(id string, decision ApprovalDecision) error
 	if !ok {
 		return fmt.Errorf("console engine: decision %q has no claude PreToolUse equivalent", decision)
 	}
-	if decision == ApprovalApproveForSession {
+	if decision == ApprovalApproveForSession && pa.toolName != AskUserQuestionTool {
 		e.approvals.allowForSession(pa.toolName)
 	}
 	reason := ""
 	if decision == ApprovalAbort {
 		reason = "aborted by user"
+	}
+	// An allow-shaped decision on a question (a consumer without a question
+	// card) must not open the unanswerable picker — redirect the model to
+	// plain text instead.
+	if pa.toolName == AskUserQuestionTool && wire == "allow" {
+		wire, reason = "deny", askUserQuestionRedirect
 	}
 	select {
 	case pa.reply <- claudeApprovalResult{wire: wire, reason: reason}:

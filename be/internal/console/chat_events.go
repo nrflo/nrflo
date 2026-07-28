@@ -38,7 +38,11 @@ import (
 // its lifetime — rotate already started a fresh engine + a new pump, which
 // owns teardown/idle-push from here on. maybeRotate may be nil (no
 // rotation support wired, e.g. tests) — nil is a no-op, never a rotation.
-func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSession, onEngineExit func(), maybeRotate func(*chatSession) bool) {
+//
+// flushQueued (nil-safe) runs after every EventTurnCompleted — rotated or
+// not — on its own goroutine, delivering prompts queued mid-turn as the next
+// turn (chat_queue.go).
+func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSession, onEngineExit func(), maybeRotate func(*chatSession) bool, flushQueued func(*chatSession)) {
 	auditRepo := repo.NewAuditRepo(pool, clk)
 	rotated := false
 	// The turn-idle push comes LAST, after the session is torn down: a
@@ -72,10 +76,16 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			if maybeRotate != nil && maybeRotate(sess) {
 				rotated = true
 				appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
+				if flushQueued != nil {
+					go flushQueued(sess)
+				}
 				continue
 			}
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 			appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
+			if flushQueued != nil {
+				go flushQueued(sess)
+			}
 
 		case spawner.EventApprovalRequest:
 			if ev.Approval == nil {
@@ -85,9 +95,11 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatApprovalRequest, map[string]interface{}{
 				"approval_id": ev.Approval.ID,
 				"kind":        ev.Approval.Kind,
+				"tool":        ev.Approval.Tool,
 				"command":     ev.Approval.Command,
 				"cwd":         ev.Approval.Cwd,
 				"reason":      ev.Approval.Reason,
+				"input":       string(ev.Approval.Raw),
 			})
 			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.Approval.ID, "command": ev.Approval.Command})
 			appendChatAudit(auditRepo, sess.id, "console_chat.approval_request", meta)
@@ -149,15 +161,17 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 	}
 }
 
-// clientDecision maps the spawner's engine-facing approval vocabulary onto the
-// two values the REST/WS contract speaks. POST .../approvals/{aid} accepts only
-// "allow"/"deny" (handlers_console_chat.go), so console_chat.approval_resolved
-// must answer in the same vocabulary — pushing the raw spawner value would make
-// an approved tool ("approve") arrive as neither, and render as denied.
+// clientDecision maps the spawner's engine-facing approval vocabulary onto
+// the values the REST/WS contract speaks: "allow"/"deny" for tool approvals
+// (handlers_console_chat.go) plus "answer" for an AskUserQuestion resolved
+// via AnswerQuestion — pushing the raw spawner value would make an approved
+// tool ("approve") arrive as neither, and render as denied.
 func clientDecision(d spawner.ApprovalDecision) string {
 	switch d {
 	case spawner.ApprovalApprove, spawner.ApprovalApproveForSession:
 		return "allow"
+	case spawner.ApprovalAnswer:
+		return "answer"
 	default:
 		return "deny"
 	}

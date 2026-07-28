@@ -36,6 +36,8 @@ type model struct {
 	frameBand    int
 	frameNatural int
 	approvals    []Approval
+	qa           questionState
+	queuedCount  int
 	connected    bool
 	status       string
 	tool         runningTool
@@ -74,6 +76,11 @@ type syncMsg struct {
 
 type actionMsg struct {
 	action string
+	err    error
+}
+
+type sendResultMsg struct {
+	queued bool
 	err    error
 }
 

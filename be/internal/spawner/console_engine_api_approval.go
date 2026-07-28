@@ -249,6 +249,11 @@ func (e *apiConsoleEngine) ReplyApproval(id string, decision ApprovalDecision) e
 	return nil
 }
 
+// AnswerQuestion: the api engine has no interactive question tool.
+func (e *apiConsoleEngine) AnswerQuestion(id, _ string) error {
+	return fmt.Errorf("api console engine: approval %q is not a question", id)
+}
+
 func (e *apiConsoleEngine) currentSessionID() string {
 	e.mu.Lock()
 	defer e.mu.Unlock()

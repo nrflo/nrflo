@@ -29,8 +29,9 @@ type fakeConsoleEngine struct {
 		id       string
 		decision spawner.ApprovalDecision
 	}
-	sessionAllowed []string // returned by SessionApprovals
-	revoked        []string // tools passed to RevokeSessionApproval
+	sessionAllowed []string    // returned by SessionApprovals
+	revoked        []string    // tools passed to RevokeSessionApproval
+	answers        [][2]string // (id, answer) pairs passed to AnswerQuestion
 }
 
 func newFakeConsoleEngine(sink spawner.Sink) *fakeConsoleEngine {
@@ -112,6 +113,16 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 	}{id, decision})
 	f.mu.Unlock()
 	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
+	return nil
+}
+
+// AnswerQuestion mirrors claudeEngine.AnswerQuestion's contract: on success
+// the engine emits EventApprovalResolved with Decision=ApprovalAnswer.
+func (f *fakeConsoleEngine) AnswerQuestion(id, answer string) error {
+	f.mu.Lock()
+	f.answers = append(f.answers, [2]string{id, answer})
+	f.mu.Unlock()
+	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: spawner.ApprovalAnswer, Text: answer})
 	return nil
 }
 

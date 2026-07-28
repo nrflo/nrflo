@@ -47,6 +47,9 @@ type chatSession struct {
 	// cleared — a sibling chat opened via OpenHandsSibling carries the
 	// origin's refinery digest here (chat_service_turn.go).
 	seedContext string
+	// queued holds prompts submitted while a turn was in flight, delivered as
+	// the next turn — see chat_queue.go.
+	queued []string
 }
 
 const (
@@ -82,39 +85,8 @@ func (c *chatSession) SystemTemplateID() string { return c.systemTemplateID }
 func (c *chatSession) MaxContext() int          { return c.maxContext }
 func (c *chatSession) Profile() string          { return c.profile }
 
-// setSeedContext stashes text to prepend to the first SendUserTurn call —
-// used by OpenHandsSibling to seed the sibling's first turn with the
-// origin's refinery digest before the caller ever sends a message.
-func (c *chatSession) setSeedContext(text string) {
-	c.mu.Lock()
-	c.seedContext = text
-	c.mu.Unlock()
-}
-
-// appendSeedContext appends text to the pending seed context, joined by
-// "\n\n" (an empty slot behaves like a plain assign) — used to fold an
-// inform_model invoke digest into the NEXT SendUserTurn without disturbing
-// takeSeedContext's consume-once semantics or the skill-turn deferral
-// (chat_service_turn.go).
-func (c *chatSession) appendSeedContext(text string) {
-	c.mu.Lock()
-	if c.seedContext == "" {
-		c.seedContext = text
-	} else {
-		c.seedContext += "\n\n" + text
-	}
-	c.mu.Unlock()
-}
-
-// takeSeedContext returns and clears the pending seed context — consumed
-// exactly once, by the first SendUserTurn.
-func (c *chatSession) takeSeedContext() string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	text := c.seedContext
-	c.seedContext = ""
-	return text
-}
+// Seed-context accessors (setSeedContext/appendSeedContext/takeSeedContext)
+// live in chat_queue.go with the rest of the next-turn text folding.
 
 // getEngine/setEngine guard sess.engine with mu — a proactive-restart
 // rotation (chat_service_rotate.go) swaps it from the event-pump goroutine

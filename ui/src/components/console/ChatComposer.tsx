@@ -65,7 +65,7 @@ export function ChatComposer({ sid, isRunning, sendPending, stopPending, onSend,
 
   const handleSend = () => {
     const value = text.trim()
-    if (!value || isRunning) return
+    if (!value) return
     setText('')
     closeSuggestions()
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
@@ -146,14 +146,18 @@ export function ChatComposer({ sid, isRunning, sendPending, stopPending, onSend,
               handleSend()
             }
           }}
-          placeholder={isRunning ? 'Waiting for the agent to finish its turn…' : 'Message the agent…'}
-          disabled={isRunning}
+          placeholder={isRunning ? 'Turn running — your message will be queued…' : 'Message the agent…'}
           className="min-h-[40px] max-h-[192px] resize-none overflow-y-auto"
         />
         {isRunning ? (
-          <Button variant="destructive" onClick={onStop} disabled={stopPending}>
-            {stopPending ? <Spinner size="sm" /> : 'Stop'}
-          </Button>
+          <>
+            <Button onClick={handleSend} disabled={!text.trim() || sendPending}>
+              Queue
+            </Button>
+            <Button variant="destructive" onClick={onStop} disabled={stopPending}>
+              {stopPending ? <Spinner size="sm" /> : 'Stop'}
+            </Button>
+          </>
         ) : (
           <Button onClick={handleSend} disabled={!text.trim() || sendPending}>
             Send

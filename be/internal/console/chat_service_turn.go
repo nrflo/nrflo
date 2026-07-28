@@ -2,14 +2,17 @@ package console
 
 import (
 	"context"
+	"errors"
+	"strings"
 
 	"be/internal/spawner"
 )
 
-// SendMessage submits one user turn. Returns spawner.ErrTurnActive when a
-// turn is already in flight (the REST handler maps this to 409) — rejected
-// locally via chatSession.beginTurn before ever reaching the engine, so the
-// reject is deterministic without a round trip.
+// SendMessage submits one user turn, or — when a turn is already in flight —
+// queues the text for delivery as the next turn (queued=true; the flush
+// happens on EventTurnCompleted, chat_queue.go). ErrPromptQueueFull when the
+// mid-turn queue is at capacity. The idle path folds any queued leftovers
+// (e.g. a turn that ended in EventError never flushes) ahead of the new text.
 //
 // A leading "/name" in the RAW text is matched against the session's
 // project skills (resolveSkill); when matched, the resolved
@@ -19,14 +22,31 @@ import (
 // unmatched, the existing takeSeedContext prepend behavior is unchanged.
 // Pass-through-vs-expand for a matched skill is entirely an engine decision
 // (Rule 6) — this method never inspects sess.EngineName().
-func (s *ChatService) SendMessage(sid, text string) error {
+func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
 	sess, ok := s.get(sid)
 	if !ok {
-		return ErrChatSessionNotFound
+		return false, ErrChatSessionNotFound
 	}
 	if err := sess.beginTurn(); err != nil {
-		return err
+		if !errors.Is(err, spawner.ErrTurnActive) {
+			return false, err
+		}
+		if !sess.enqueuePrompt(text) {
+			return false, ErrPromptQueueFull
+		}
+		pushQueued(s.deps.WSHub, sess)
+		return true, nil
 	}
+	if q := sess.takeQueuedPrompts(); len(q) > 0 {
+		text = strings.Join(append(q, text), "\n\n")
+		defer pushQueued(s.deps.WSHub, sess)
+	}
+	return false, s.dispatchTurn(sess, text)
+}
+
+// dispatchTurn hands one composed turn to the engine; the caller has already
+// won beginTurn. Shared by SendMessage and flushQueuedPrompts.
+func (s *ChatService) dispatchTurn(sess *chatSession, text string) error {
 	turn := spawner.UserTurn{Text: text}
 	if match := s.resolveSkill(sess.WorkDir(), text); match != nil {
 		turn.Skill = match
@@ -53,6 +73,17 @@ func (s *ChatService) ReplyApproval(sid, approvalID string, decision spawner.App
 		return ErrChatSessionNotFound
 	}
 	return sess.getEngine().ReplyApproval(approvalID, decision)
+}
+
+// AnswerQuestion resolves a pending AskUserQuestion approval with the user's
+// free-form answer — the engine wires it back to the model and emits the
+// EventApprovalResolved that pumpChatEvents turns into the WS resolution.
+func (s *ChatService) AnswerQuestion(sid, approvalID, answer string) error {
+	sess, ok := s.get(sid)
+	if !ok {
+		return ErrChatSessionNotFound
+	}
+	return sess.getEngine().AnswerQuestion(approvalID, answer)
 }
 
 // Interrupt cancels the active turn without closing the chat session.

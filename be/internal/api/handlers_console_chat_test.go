@@ -261,7 +261,7 @@ func TestHandleConsoleChatMessage_UnknownSession_Returns404(t *testing.T) {
 	}
 }
 
-func TestHandleConsoleChatMessage_SecondWhileTurnActive_Returns409(t *testing.T) {
+func TestHandleConsoleChatMessage_SecondWhileTurnActive_Queues(t *testing.T) {
 	s, factory := newChatTestServer(t)
 	seedConsoleProject(t, s, "proj-chat-409")
 	adminID := createTestUser(t, s, "chat-admin7@test.com", model.UserRoleAdmin, false)
@@ -277,12 +277,18 @@ func TestHandleConsoleChatMessage_SecondWhileTurnActive_Returns409(t *testing.T)
 	if rr1.Code != http.StatusAccepted {
 		t.Fatalf("first message status = %d, want 202; body=%s", rr1.Code, rr1.Body.String())
 	}
+	if body := rr1.Body.String(); !strings.Contains(body, `"queued":false`) {
+		t.Errorf("first message body = %s, want queued=false", body)
+	}
 
 	req2 := chatMessageReq(sid, `{"text":"second"}`)
 	req2.AddCookie(cookie)
 	rr2 := httptest.NewRecorder()
 	chain.ServeHTTP(rr2, req2)
-	if rr2.Code != http.StatusConflict {
-		t.Fatalf("second message status = %d, want 409; body=%s", rr2.Code, rr2.Body.String())
+	if rr2.Code != http.StatusAccepted {
+		t.Fatalf("second message status = %d, want 202; body=%s", rr2.Code, rr2.Body.String())
+	}
+	if body := rr2.Body.String(); !strings.Contains(body, `"queued":true`) {
+		t.Errorf("second message body = %s, want queued=true", body)
 	}
 }

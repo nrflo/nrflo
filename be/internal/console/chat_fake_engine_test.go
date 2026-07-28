@@ -39,6 +39,13 @@ type fakeConsoleEngine struct {
 
 	sessionAllowed []string // returned by SessionApprovals
 	revoked        []string // tools passed to RevokeSessionApproval
+	answers        []fakeAnswerCall
+	answerErr      error // consumed once by the next AnswerQuestion call
+}
+
+type fakeAnswerCall struct {
+	id     string
+	answer string
 }
 
 type fakeApprovalCall struct {
@@ -146,6 +153,31 @@ func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDe
 	return nil
 }
 
+// AnswerQuestion mirrors claudeEngine.AnswerQuestion's contract: on success
+// the engine itself emits EventApprovalResolved with Decision=ApprovalAnswer
+// and the answer as Text.
+func (f *fakeConsoleEngine) AnswerQuestion(id, answer string) error {
+	f.mu.Lock()
+	if f.answerErr != nil {
+		err := f.answerErr
+		f.answerErr = nil
+		f.mu.Unlock()
+		return err
+	}
+	f.answers = append(f.answers, fakeAnswerCall{id: id, answer: answer})
+	f.mu.Unlock()
+	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: spawner.ApprovalAnswer, Text: answer})
+	return nil
+}
+
+func (f *fakeConsoleEngine) answerCalls() []fakeAnswerCall {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]fakeAnswerCall, len(f.answers))
+	copy(out, f.answers)
+	return out
+}
+
 func (f *fakeConsoleEngine) SessionApprovals() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -202,6 +234,14 @@ func (f *fakeConsoleEngine) turnCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.turns)
+}
+
+func (f *fakeConsoleEngine) turnTexts() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, len(f.turns))
+	copy(out, f.turns)
+	return out
 }
 
 func (f *fakeConsoleEngine) approvalCalls() []fakeApprovalCall {

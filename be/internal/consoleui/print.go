@@ -2,18 +2,10 @@ package consoleui
 
 import (
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
-
-	"github.com/charmbracelet/x/ansi"
 )
-
-// printedEntry retains a printed message's source content and the physical
-// scrollback rows it contributed at print time, for resize re-measurement.
-type printedEntry struct {
-	message Message
-	rows    int
-}
 
 // newMessagesToPrint is the pure print-once/dedupe splitter. printedTotal is
 // the DB-absolute high-water mark of rows already printed to scrollback;
@@ -56,25 +48,21 @@ func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	}
 	width := m.contentWidth()
 	cmds := make([]tea.Cmd, 0, len(toPrint))
+	rows := 0
 	for _, message := range toPrint {
 		rendered := renderMessage(message, width)
 		if rendered == "" {
-			// tea.Println with an empty body is a complete no-op in the
-			// renderer (insertAbove returns early), so counting it would
-			// desync printedLines from the rows actually scrolled and lift
-			// the frame off the terminal bottom permanently.
+			// tea.Println with an empty body is a renderer no-op — skip it
+			// rather than emit a command that does nothing.
 			continue
 		}
-		rows := physicalRows(rendered, m.width)
-		m.printedLines += rows
-		m.appendPrintedTail(message, rows)
 		for _, chunk := range splitChunks(rendered, m.maxPrintRows()) {
 			if chunk == "" {
-				// A blank transcript line split into its own chunk: keep the
-				// row real (a space scrolls one row, "" scrolls zero) so the
-				// physicalRows accounting above stays exact.
+				// A blank transcript line split into its own chunk: a space
+				// keeps the row (insertAbove skips an empty body entirely).
 				chunk = " "
 			}
+			rows += strings.Count(chunk, "\n") + 1
 			cmds = append(cmds, tea.Println(chunk))
 		}
 	}
@@ -82,18 +70,37 @@ func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	if len(cmds) == 0 {
 		return nil
 	}
+	// Release up to the printed row count from the live-region band: the
+	// resulting frame shrink is refilled exactly by these inserts. The pause
+	// lets the frame ticker flush the shrunken frame FIRST — an insert running
+	// against the taller on-screen frame would land fine, but the shrink flush
+	// after it would float the chrome until the next print.
+	if m.liveBand > 0 {
+		m.liveBand = max(0, m.liveBand-rows)
+		cmds = append([]tea.Cmd{printReleasePause}, cmds...)
+	}
 	return tea.Sequence(cmds...)
+}
+
+// printPauseMsg is the no-op message printReleasePause resolves to; Update
+// ignores it.
+type printPauseMsg struct{}
+
+// printReleasePause delays the Println sequence long enough for the frame
+// ticker (60fps) to flush the band-released frame before the inserts run.
+var printReleasePause tea.Cmd = func() tea.Msg {
+	time.Sleep(50 * time.Millisecond)
+	return printPauseMsg{}
 }
 
 // chromeAllowance is the worst-case chrome height (composer up to 8 rows +
 // border, status bar, footer) reserved when sizing print chunks.
 const chromeAllowance = 12
 
-// maxPrintRows bounds a single tea.Println's physical rows. insertAbove
-// scrolls the screen up by the printed row count against the frame currently
-// on screen (the shrunken repaint only flushes on the next frame tick), so a
-// chunk must fit in the headroom above the live region + chrome or frame rows
-// leak into native scrollback permanently.
+// maxPrintRows bounds a single tea.Println's physical rows. insertAbove can
+// only insert into the free rows above the on-screen frame — the excess
+// scrolls frame rows into native scrollback permanently — so a chunk must fit
+// in the headroom above the live region + chrome.
 func (m *model) maxPrintRows() int {
 	return max(1, m.height-liveRegionCap-chromeAllowance)
 }
@@ -109,41 +116,6 @@ func splitChunks(rendered string, maxRows int) []string {
 		chunks = append(chunks, strings.Join(lines[start:end], "\n"))
 	}
 	return chunks
-}
-
-// physicalRows counts the physical scrollback rows rendered occupies when
-// printed to a terminal of the given width, mirroring bubbletea v2's
-// cursedRenderer.insertAbove exactly: one row per "\n"-delimited line, plus
-// lineWidth/width extra rows only when a line's display width exceeds width
-// (insertAbove's `lineWidth > w` guard — an exactly-full line adds nothing).
-// tea.Println scrolls at the full terminal width, not the narrower content
-// width rendered was wrapped to, so width here must be the terminal width.
-func physicalRows(rendered string, width int) int {
-	if width <= 0 {
-		width = 1
-	}
-	lines := strings.Split(rendered, "\n")
-	rows := len(lines)
-	for _, line := range lines {
-		if lineWidth := ansi.StringWidth(line); lineWidth > width {
-			rows += lineWidth / width
-		}
-	}
-	return rows
-}
-
-// appendPrintedTail retains message in the bounded on-screen tail buffer used
-// to recompute m.printedLines on resize, evicting the oldest entries once
-// the buffer's cumulative physical height covers at least one terminal
-// height. This is purely a resize re-measure aid, not a scroll/copy surface:
-// completed transcript rows are never held in a viewport.
-func (m *model) appendPrintedTail(message Message, rows int) {
-	m.printedTail = append(m.printedTail, printedEntry{message: message, rows: rows})
-	m.printedTailRows += rows
-	for len(m.printedTail) > 1 && m.printedTailRows-m.printedTail[0].rows >= m.maxHeightSeen {
-		m.printedTailRows -= m.printedTail[0].rows
-		m.printedTail = m.printedTail[1:]
-	}
 }
 
 // contentWidth returns the content width printed rows and the live region

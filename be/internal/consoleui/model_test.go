@@ -6,9 +6,11 @@ import (
 )
 
 // TestClearScreenSeqLiteral pins the exact escape sequence: erase-screen
-// (2J), erase-scrollback (3J), cursor-home (H), in that order.
+// (2J), erase-scrollback (3J), then a bottom-row cursor park (999 clamps),
+// in that order — the inline renderer anchors its region at the cursor, so
+// the park is what bottom-anchors the chrome from the first frame.
 func TestClearScreenSeqLiteral(t *testing.T) {
-	want := "\x1b[2J\x1b[3J\x1b[H"
+	want := "\x1b[2J\x1b[3J\x1b[999;1H"
 	if clearScreenSeq != want {
 		t.Errorf("clearScreenSeq = %q, want %q", clearScreenSeq, want)
 	}
@@ -19,7 +21,7 @@ func TestClearScreenSeqLiteral(t *testing.T) {
 func TestClearTerminalWritesSequence(t *testing.T) {
 	var buf bytes.Buffer
 	clearTerminal(&buf)
-	if got, want := buf.String(), "\x1b[2J\x1b[3J\x1b[H"; got != want {
+	if got, want := buf.String(), clearScreenSeq; got != want {
 		t.Errorf("clearTerminal wrote %q, want %q", got, want)
 	}
 }

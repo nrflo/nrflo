@@ -68,14 +68,12 @@ func (m *model) View() tea.View {
 		lines := strings.Split(frame, "\n")
 		frame = strings.Join(lines[h-m.height:], "\n")
 	}
-	// Pad the frame to the terminal bottom so chrome doesn't float when
-	// native scrollback (counted in m.printedLines as physical rows at full
-	// terminal width, matching how tea.Println actually scrolls) hasn't yet
-	// filled the screen; clamps to zero once it has. The frame itself is
-	// clamped above to never exceed m.height, so a long turn or a tiny
-	// terminal can never push the composer off the bottom.
-	target := max(lipgloss.Height(frame), m.height-m.printedLines)
-	view := tea.NewView(lipgloss.PlaceVertical(target, lipgloss.Bottom, frame))
+	// The frame is never padded: insertAbove can only insert printed rows into
+	// the free rows above the frame, so a padded full-height frame desyncs the
+	// renderer one row per insert. Run() parks the cursor on the terminal's
+	// bottom row before starting the program, so the inline region — and with
+	// it the chrome — starts bottom-anchored and every insert re-anchors it.
+	view := tea.NewView(frame)
 	view.AltScreen = false
 	view.WindowTitle = "nrflo console"
 	return view
@@ -93,6 +91,12 @@ const liveRegionCap = 12
 // user line, in-flight deltas, thinking, and the working spinner, wrapped to
 // content width and tail-clipped to liveRegionCap rows (printed rows live in
 // the terminal's native scrollback, not here).
+//
+// The section's height ratchets via m.liveBand and shrinks only at print time
+// (printNewMessages releases the band alongside an insert of at least as many
+// rows): the inline renderer top-anchors a frame shrink, so any shrink not
+// immediately refilled by an insert would lift the chrome off the terminal
+// bottom. Shorter content pads with leading blank lines up to the band.
 func (m *model) liveRegionView(maxLines int) string {
 	maxLines = min(maxLines, liveRegionCap)
 	if maxLines < 1 {
@@ -115,12 +119,19 @@ func (m *model) liveRegionView(maxLines int) string {
 		parts = append(parts, m.spin.View()+mutedStyle.Render(truncate(line, max(20, m.contentWidth()-2))))
 	}
 	content := strings.Join(parts, "\n\n")
-	if content == "" {
+	lines := []string{}
+	if content != "" {
+		lines = strings.Split(content, "\n")
+		if len(lines) > maxLines {
+			lines = lines[len(lines)-maxLines:]
+		}
+	}
+	m.liveBand = min(maxLines, max(m.liveBand, len(lines)))
+	if m.liveBand == 0 {
 		return ""
 	}
-	lines := strings.Split(content, "\n")
-	if len(lines) > maxLines {
-		lines = lines[len(lines)-maxLines:]
+	for len(lines) < m.liveBand {
+		lines = append([]string{""}, lines...)
 	}
 	return strings.Join(lines, "\n")
 }
@@ -156,35 +167,7 @@ func (m *model) approvalView() string {
 
 func (m *model) resize(width, height int) {
 	m.width, m.height, m.ready = width, height, true
-	if height > m.maxHeightSeen {
-		m.maxHeightSeen = height
-	}
 	m.input.SetWidth(max(10, width-6))
-	m.recomputePrintedLines()
-}
-
-// recomputePrintedLines rebuilds m.printedLines from the retained on-screen
-// tail buffer at the new dimensions, re-rendering each entry via
-// renderMessage (the same path print.go uses) and re-counting physical rows
-// at the new terminal width, so a resize never desyncs the bottom-pin count
-// from what the terminal will actually show.
-func (m *model) recomputePrintedLines() {
-	contentWidth := m.contentWidth()
-	tail := make([]printedEntry, 0, len(m.printedTail))
-	total := 0
-	for _, entry := range m.printedTail {
-		rendered := renderMessage(entry.message, contentWidth)
-		rows := physicalRows(rendered, m.width)
-		total += rows
-		tail = append(tail, printedEntry{message: entry.message, rows: rows})
-	}
-	for len(tail) > 1 && total-tail[0].rows >= m.maxHeightSeen {
-		total -= tail[0].rows
-		tail = tail[1:]
-	}
-	m.printedTail = tail
-	m.printedTailRows = total
-	m.printedLines = total
 }
 
 // clampChrome guarantees the chrome block never exceeds maxHeight rows.

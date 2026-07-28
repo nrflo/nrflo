@@ -12,27 +12,28 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// clearScreenSeq erases the visible screen (2J), erases scrollback (3J), and homes the cursor (H).
-const clearScreenSeq = "\x1b[2J\x1b[3J\x1b[H"
+// clearScreenSeq erases the visible screen (2J), erases scrollback (3J), then
+// parks the cursor on the terminal's bottom row (999 clamps). The inline
+// renderer anchors its region at the cursor, and insertAbove's math assumes
+// the frame's last row is the terminal's last row — starting at the bottom
+// makes that hold from the first frame, with no padding needed.
+const clearScreenSeq = "\x1b[2J\x1b[3J\x1b[999;1H"
 
 type model struct {
-	ctx             context.Context
-	client          *Client
-	events          <-chan streamUpdate
-	detail          ChatDetail
-	printedTotal    int
-	printedLines    int
-	printedTail     []printedEntry
-	printedTailRows int
-	maxHeightSeen   int
-	pendingUser     string
-	historyPrinted  bool
-	initialPage     MessagePage
-	deltas          map[string]string
-	deltaOrder      []string
-	thinking        string
-	thinkingID      string
+	ctx            context.Context
+	client         *Client
+	events         <-chan streamUpdate
+	detail         ChatDetail
+	printedTotal   int
+	pendingUser    string
+	historyPrinted bool
+	initialPage    MessagePage
+	deltas         map[string]string
+	deltaOrder     []string
+	thinking       string
+	thinkingID     string
 
+	liveBand  int
 	approvals []Approval
 	connected bool
 	status    string

@@ -108,10 +108,6 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 	if helloIdx >= replyIdx {
 		t.Errorf("user line (idx %d) not printed before assistant reply (idx %d)", helloIdx, replyIdx)
 	}
-	if m.printedLines <= 0 {
-		t.Errorf("printedLines = %d, want > 0 after printing a page", m.printedLines)
-	}
-
 	content := m.View().Content
 	if got := lipgloss.Height(content); got > height {
 		t.Errorf("lipgloss.Height(View().Content) = %d, want <= %d", got, height)
@@ -124,10 +120,8 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 }
 
 // TestUpdate_LongGlamourPageNeverExceedsHeight verifies that a long page of
-// glamour-rendered assistant messages (many physical rows once wrapped)
-// still keeps View() within the terminal height — the vanish guard: once
-// printedLines exceeds the height, padding clamps to zero rather than
-// pushing the frame off-screen.
+// glamour-rendered assistant messages still keeps View() within the terminal
+// height and the footer on the last line.
 func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 	const width, height = 80, 24
 	m := pinTestModel(t)
@@ -144,10 +138,6 @@ func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 	if len(bodies) < 20 {
 		t.Fatalf("printlnBodies = %d, want >= 20 tea.Println commands", len(bodies))
 	}
-	if m.printedLines <= height {
-		t.Fatalf("test setup invalid: printedLines=%d must exceed height=%d to exercise the vanish guard", m.printedLines, height)
-	}
-
 	content := m.View().Content
 	if got := lipgloss.Height(content); got > height {
 		t.Errorf("lipgloss.Height(View().Content) = %d, want <= %d (vanish guard)", got, height)
@@ -160,10 +150,8 @@ func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 }
 
 // TestUpdate_ResizeAfterPrintsRedocksToNewHeight verifies that after
-// printing a page and then resizing, View() still docks at the new
-// dimensions: printedLines is recomputed from the retained tail buffer
-// rather than drifting, so the frame never overflows and the footer still
-// lands on the last line.
+// printing a page and then resizing, the frame never overflows the new
+// dimensions and the footer still lands on the last line.
 func TestUpdate_ResizeAfterPrintsRedocksToNewHeight(t *testing.T) {
 	const width, height = 80, 24
 	m := pinTestModel(t)
@@ -189,41 +177,6 @@ func TestUpdate_ResizeAfterPrintsRedocksToNewHeight(t *testing.T) {
 	last := lines[len(lines)-1]
 	if !strings.Contains(last, "enter send") {
 		t.Errorf("after resize: last line = %q, want it to contain footer help", last)
-	}
-}
-
-// TestUpdate_ShrinkThenGrowStillDocksAtBottom verifies that a shrink doesn't
-// over-evict printedTail history: the eviction bound must stay pinned to the
-// max terminal height ever seen, not the current (shrunk) height, so that
-// growing back keeps enough retained tail rows to recompute printedLines
-// >= the regrown height. Otherwise the pin (target = m.height-printedLines)
-// injects spurious blank padding above the composer after regrowing — the
-// float-up symptom, reachable via a shrink-then-grow sequence.
-func TestUpdate_ShrinkThenGrowStillDocksAtBottom(t *testing.T) {
-	const width, tallHeight, shortHeight = 80, 40, 10
-	m := pinTestModel(t)
-
-	next, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: tallHeight})
-	m = next.(*model)
-	next, _ = m.Update(historyMsg{page: longMessagePage(20)})
-	m = next.(*model)
-	next, _ = m.Update(tea.WindowSizeMsg{Width: width, Height: shortHeight})
-	m = next.(*model)
-	next, _ = m.Update(tea.WindowSizeMsg{Width: width, Height: tallHeight})
-	m = next.(*model)
-
-	if m.printedLines < tallHeight {
-		t.Errorf("after shrink-then-grow: printedLines=%d, want >= tallHeight=%d — an undercount here means the pin injects phantom blank padding above the composer", m.printedLines, tallHeight)
-	}
-
-	content := m.View().Content
-	if got := lipgloss.Height(content); got > tallHeight {
-		t.Errorf("after shrink-then-grow: lipgloss.Height(View().Content) = %d, want <= %d", got, tallHeight)
-	}
-	lines := strings.Split(content, "\n")
-	last := lines[len(lines)-1]
-	if !strings.Contains(last, "enter send") {
-		t.Errorf("after shrink-then-grow: last line = %q, want it to contain footer help", last)
 	}
 }
 

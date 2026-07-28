@@ -148,6 +148,43 @@ func TestLiveRegionView_CappedRegardlessOfBudget(t *testing.T) {
 	}
 }
 
+// TestLiveBand_HoldsHeightUntilPrintReleases verifies the live section's
+// height ratchets (liveBand): clearing content keeps the band as blank rows —
+// a frame shrink not paired with an insert would float the chrome — and a
+// print releases exactly its own row count from the band.
+func TestLiveBand_HoldsHeightUntilPrintReleases(t *testing.T) {
+	m := liveTestModel(80, 40)
+	m.ready = true
+	m.deltaOrder = []string{"a"}
+	m.deltas["a"] = "one\ntwo\nthree"
+
+	if out := m.liveRegionView(20); strings.Count(out, "\n")+1 != 3 || m.liveBand != 3 {
+		t.Fatalf("live region = %q (band %d), want 3 content rows and band 3", out, m.liveBand)
+	}
+
+	m.deltas = map[string]string{}
+	m.deltaOrder = nil
+	out := m.liveRegionView(20)
+	lines := strings.Split(out, "\n")
+	if len(lines) != 3 {
+		t.Fatalf("band after clear = %d rows, want 3 blank rows held", len(lines))
+	}
+	for i, line := range lines {
+		if strings.TrimSpace(ansi.Strip(line)) != "" {
+			t.Errorf("band line %d = %q, want blank", i, line)
+		}
+	}
+
+	// A 1-row print releases 1 row of band.
+	cmd := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hi"}}, Total: 1})
+	if cmd == nil {
+		t.Fatal("printNewMessages returned nil cmd")
+	}
+	if m.liveBand != 2 {
+		t.Errorf("liveBand after 1-row print = %d, want 2", m.liveBand)
+	}
+}
+
 // TestView_NeverExceedsHeight verifies the total rendered view (live region +
 // chrome) never exceeds m.height, even with a delta buffer far taller than
 // the terminal, at a small terminal height.

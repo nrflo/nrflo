@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+
+	"be/internal/spawner/apirun"
 )
 
 // maxInlineDetail caps inline tool input/output rendered into a single log row,
@@ -30,16 +32,11 @@ func IsHiddenResultTool(toolName string) bool {
 	return hiddenResultTools[titleToolName(toolName)]
 }
 
-// ToolCategory returns the message category for a tool invocation.
+// ToolCategory returns the message category for a tool invocation, delegating
+// to the canonical apirun.ToolCategory so the CLI-hook/codex paths never
+// drift from api mode's categorization (Rule 6).
 func ToolCategory(toolName string) string {
-	switch toolName {
-	case "Task", "Agent":
-		return "subagent"
-	case "Skill":
-		return "skill"
-	default:
-		return "tool"
-	}
+	return apirun.ToolCategory(toolName)
 }
 
 // titleToolName upper-cases the first letter so a lowercase CLI/MCP tool name

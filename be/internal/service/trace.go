@@ -29,8 +29,12 @@ func (s *WorkflowService) BuildTrace(iid string, opts TraceOptions) (*types.Trac
 	}
 
 	lanes, sessionToLane, lifecycle := s.loadTraceLanes(iid, nodeLayers)
+	subLanes, subSessionToLane := s.loadTraceSubLanes(iid, lanes, sessionToLane)
+	for sid, laneID := range subSessionToLane {
+		sessionToLane[sid] = laneID
+	}
 	s.attachTraceRestarts(iid, lanes)
-	rootMarkers, truncated := s.attachTraceMarkers(iid, lanes, sessionToLane, lifecycle, opts)
+	rootMarkers, truncated := s.attachTraceMarkers(iid, lanes, subLanes, sessionToLane, lifecycle, opts)
 
 	resp := &types.TraceResponse{
 		InstanceID:  wi.ID,
@@ -41,6 +45,7 @@ func (s *WorkflowService) BuildTrace(iid string, opts TraceOptions) (*types.Trac
 		StartedAt:   wi.CreatedAt.Format(time.RFC3339Nano),
 		Layers:      buildTraceLayers(defPhases, lanes),
 		Lanes:       lanes,
+		SubLanes:    subLanes,
 		Children:    s.loadTraceChildren(iid),
 		RootMarkers: rootMarkers,
 		Truncated:   truncated,

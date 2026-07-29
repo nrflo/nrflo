@@ -83,6 +83,15 @@ describe('TraceLane', () => {
     expect(screen.queryByTestId('trace-lane-timebar')).not.toBeInTheDocument()
   })
 
+  it('positions segments identically in the nested (indent) variant', () => {
+    render(<TraceLane lane={makeLane()} markers={[]} domain={domain} widthPx={1000} indent />)
+    const segments = screen.getAllByTestId('trace-segment')
+    expect(segments[0].style.left).toBe('0%')
+    expect(segments[0].style.width).toBe('50%')
+    expect(segments[1].style.left).toBe('50%')
+    expect(segments[1].style.width).toBe('50%')
+  })
+
   it('skips segments without a parsable start', () => {
     render(
       <TraceLane

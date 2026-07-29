@@ -24,7 +24,7 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 ## Trace
 
-`Trace/` — Gantt-style run timeline (`TraceView`) with tool-duration spans, lifecycle markers, zoom, and sub-workflow drill-down; data from `useTrace`, hosted by `TicketTraceSection`/`ProjectTraceSection`. Details: [REFERENCE.md](REFERENCE.md#trace) — read before changing timeline math, zoom, or marker bucketing. Each lane's header renders `TimeBreakdownBar` — a 4-segment thinking/tool-arg/text/tool-wait stacked bar from `TraceLaneData.time_buckets` — returning `null` (no bar) when the lane has no granular per-block timing data.
+`Trace/` — Gantt-style run timeline (`TraceView`) with tool-duration spans, lifecycle markers, zoom, and sub-workflow drill-down; data from `useTrace`, hosted by `TicketTraceSection`/`ProjectTraceSection`. Details: [REFERENCE.md](REFERENCE.md#trace) — read before changing timeline math, zoom, or marker bucketing. Each lane's header renders `TimeBreakdownBar` — a 4-segment thinking/tool-arg/text/tool-wait stacked bar from `TraceLaneData.time_buckets` — returning `null` (no bar) when the lane has no granular per-block timing data. Delegate/consult worker sessions render as a collapsed-by-default `TraceSubLaneGroup` nested under their parent lane; `TraceChildRow` still owns top-level sub-workflow rows (`trace.children[]`) unchanged.
 
 ## Agent Log Panel
 

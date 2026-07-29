@@ -56,6 +56,11 @@ export interface TraceLaneData {
   nudge_count?: number
   stop_block_count?: number
   time_buckets?: TimeBuckets
+  parent_lane_id?: string
+  kind?: 'delegate' | 'consult' | string
+  delegation_id?: string
+  consult_id?: string
+  depth?: number
 }
 
 export interface TraceLayer {
@@ -84,6 +89,7 @@ export interface WorkflowTraceResponse {
   ended_at?: string | null
   layers?: TraceLayer[]
   lanes?: TraceLaneData[]
+  sub_lanes?: TraceLaneData[]
   children?: TraceChild[]
   root_markers?: TraceMarker[]
   truncated?: boolean

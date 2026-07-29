@@ -147,6 +147,52 @@ describe('TraceView', () => {
     expect(screen.getByTestId('trace-truncated')).toBeInTheDocument()
   })
 
+  it('renders a sub-lane group after its parent lane inside the same layer band, alongside the unaffected trace-child row', () => {
+    const trace = makeTrace({
+      sub_lanes: [
+        {
+          lane_id: 'w1',
+          phase: 'delegate:w1',
+          layer: -1,
+          agent_type: 'extractor',
+          status: 'completed',
+          parent_lane_id: 's2',
+          kind: 'delegate',
+          delegation_id: 'd1',
+          segments: [{ session_id: 'w1', status: 'completed', started_at: '2025-01-01T00:01:10Z', ended_at: '2025-01-01T00:01:20Z' }],
+        },
+      ],
+    })
+    mockUseTrace.mockReturnValue({ data: trace, isLoading: false, error: null })
+    renderWithQuery(<TraceView instanceId="wfi-1" />)
+
+    // Sub-lane group is collapsed by default: no nested trace-lane rendered yet.
+    expect(screen.getAllByTestId('trace-lane')).toHaveLength(2)
+    const group = screen.getByTestId('trace-sublane-group')
+    expect(group).toBeInTheDocument()
+
+    // It sits within the "Layer 1" band, immediately after the builder lane (parent s2).
+    const layer1Label = screen.getByText('Layer 1')
+    const band = layer1Label.parentElement!.parentElement!
+    expect(band.contains(group)).toBe(true)
+
+    // The pre-existing sub-workflow child row is unaffected by sub_lanes.
+    expect(screen.getAllByTestId('trace-child')).toHaveLength(1)
+    fireEvent.click(screen.getByLabelText('open trace of global-research'))
+    expect(screen.getByTestId('trace-breadcrumb')).toBeInTheDocument()
+  })
+
+  it('renders exactly as today when the payload has no sub_lanes key (backward compatibility)', () => {
+    const trace = makeTrace()
+    delete (trace as { sub_lanes?: unknown }).sub_lanes
+    mockUseTrace.mockReturnValue({ data: trace, isLoading: false, error: null })
+    renderWithQuery(<TraceView instanceId="wfi-1" />)
+
+    expect(screen.getAllByTestId('trace-lane')).toHaveLength(2)
+    expect(screen.queryByTestId('trace-sublane-group')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('trace-child')).toHaveLength(1)
+  })
+
   it('lane click builds SelectedAgentData from sessions', () => {
     mockUseTrace.mockReturnValue({ data: makeTrace(), isLoading: false, error: null })
     const onAgentSelect = vi.fn()

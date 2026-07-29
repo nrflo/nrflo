@@ -22,16 +22,25 @@ export function TraceLane({
   domain,
   widthPx,
   onSelect,
+  indent,
 }: {
   lane: TraceLaneData
   markers: TraceMarker[]
   domain: TimeDomain
   widthPx: number
   onSelect?: (sessionId: string) => void
+  /** Nested worker row: shifts the sticky label column and dims the row. */
+  indent?: boolean
 }) {
   return (
-    <div data-testid="trace-lane" className="grid grid-cols-[10rem_1fr] border-b border-border/40 last:border-b-0">
-      <div className="px-2 py-1 sticky left-0 bg-background min-w-0">
+    <div
+      data-testid="trace-lane"
+      className={cn(
+        'grid grid-cols-[10rem_1fr] border-b border-border/40 last:border-b-0',
+        indent && 'opacity-80'
+      )}
+    >
+      <div className={cn('px-2 py-1 sticky left-0 bg-background min-w-0', indent && 'pl-5')}>
         <button
           className="text-xs font-medium truncate block max-w-full hover:text-primary text-left"
           onClick={() => {

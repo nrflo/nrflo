@@ -7,7 +7,7 @@ const nodeTests = [
   'src/lib/**/*.test.ts',
   'src/components/workflow/{AgentLogDetail.formatTime,normalizeApiMessages}.test.ts',
   'src/components/workflow/PhaseGraph/layout*.test.ts',
-  'src/components/workflow/Trace/{timeScale,useTraceZoom}.test.ts',
+  'src/components/workflow/Trace/{timeScale,useTraceZoom,subLanes}.test.ts',
 ]
 
 export default defineConfig({

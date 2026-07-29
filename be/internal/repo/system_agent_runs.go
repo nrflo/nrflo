@@ -15,7 +15,7 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 		 tier, resolved_provider, resolved_execution_mode, resolved_effort, chain_position, fallback_from,
 		 tokens_json, cost_estimate, created_at
 		 FROM agent_sessions
-		 WHERE (tier IS NOT NULL OR agent_type IN (SELECT id FROM system_agent_definitions))`
+		 WHERE (tier IS NOT NULL OR agent_type IN (SELECT id FROM system_agent_definitions) OR node_id = '_consult')`
 	args := []interface{}{}
 	if !since.IsZero() {
 		query += ` AND created_at >= ?`

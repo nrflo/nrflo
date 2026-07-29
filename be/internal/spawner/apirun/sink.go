@@ -123,7 +123,7 @@ func (s *runnerSink) OnToolUseStop(id string, fullInput json.RawMessage) {
 	if len(compactStr) > 2048 {
 		compactStr = compactStr[:2048]
 	}
-	s.msgSink.TrackToolInvoke(fmt.Sprintf("[%s] %s", name, compactStr), toolCategory(name), id, fullInput)
+	s.msgSink.TrackToolInvoke(fmt.Sprintf("[%s] %s", name, compactStr), ToolCategory(name), id, fullInput)
 }
 
 func (s *runnerSink) OnUsage(u provider.Usage) {
@@ -167,12 +167,22 @@ func (s *runnerSink) close() {
 	s.flush()
 }
 
-func toolCategory(name string) string {
+// ToolCategory returns the message category for a tool invocation; the
+// canonical implementation shared by every provider path (CLI-hook, codex,
+// api mode — spawner.ToolCategory delegates here, tool_format.go). MCP
+// bridge prefixes (mcp__nrflo__, nrflo/) are stripped before matching so a
+// CLI/codex agent's mcp__nrflo__delegate categorizes identically to an
+// api-mode agent's delegate.
+func ToolCategory(name string) string {
+	name = strings.TrimPrefix(name, "mcp__nrflo__")
+	name = strings.TrimPrefix(name, "nrflo/")
 	switch name {
 	case "Task", "Agent":
 		return "subagent"
 	case "Skill":
 		return "skill"
+	case "delegate", "consult", "dynamic_workflow", "run_subworkflow":
+		return "subagent"
 	default:
 		return "tool"
 	}

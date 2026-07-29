@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
@@ -47,6 +49,25 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 	}
 	if req.Def.ExecutionMode != "api" {
 		return "", fmt.Errorf("consult: agent %q must have execution_mode=api (got %q)", req.ConsultantID, req.Def.ExecutionMode)
+	}
+
+	// Seed the durable consults row (migration 000217) before spawning, so
+	// consult children gain the caller linkage/stable id agent_sessions
+	// cannot provide — mirrors createDelegationRecord (delegate_record.go).
+	consultRepo := repo.NewConsultRepo(pool, s.config.Clock)
+	consultID := "consult." + uuid.New().String()[:8]
+	if err := consultRepo.Create(&model.Consult{
+		ID:                 consultID,
+		CallerSessionID:    req.CallerSessionID,
+		WorkflowInstanceID: req.ParentWFI,
+		ProjectID:          req.ProjectID,
+		ConsultantID:       req.ConsultantID,
+		Question:           req.Question,
+	}); err != nil {
+		return "", fmt.Errorf("consult: seed tracking: %w", err)
+	}
+	markTerminal := func(status, errMsg string) {
+		_, _ = consultRepo.MarkTerminal(consultID, status, errMsg)
 	}
 
 	var consultMu sync.Mutex
@@ -144,18 +165,22 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 
 	if spawnErr != nil {
 		failBroadcast(spawnErr.Error())
+		markTerminal("failed", spawnErr.Error())
 		return "", fmt.Errorf("consult: spawn failed: %w", spawnErr)
 	}
 	if sid == "" {
 		msg := fmt.Sprintf("no session registered for consultant %q", req.ConsultantID)
 		failBroadcast(msg)
+		markTerminal("failed", msg)
 		return "", fmt.Errorf("consult: %s", msg)
 	}
+	_ = consultRepo.SetChildSession(consultID, sid)
 
 	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
 	findings, err := findingRepo.GetOwn("session", sid)
 	if err != nil {
 		failBroadcast(err.Error())
+		markTerminal("failed", err.Error())
 		return "", fmt.Errorf("consult: read findings: %w", err)
 	}
 
@@ -163,6 +188,7 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 	if !ok {
 		msg := fmt.Sprintf("consultant %q did not write _consult_answer", req.ConsultantID)
 		failBroadcast(msg)
+		markTerminal("failed", msg)
 		return "", fmt.Errorf("consult: %s", msg)
 	}
 
@@ -178,6 +204,7 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 		"consultant_id":     req.ConsultantID,
 		"session_id":        sid,
 	})
+	markTerminal("completed", "")
 
 	return answer, nil
 }

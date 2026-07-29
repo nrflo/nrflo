@@ -5,8 +5,10 @@ import { useWebSocketEvent } from '@/hooks/useWebSocketSubscription'
 import type { AgentSession, WorkflowState } from '@/types/workflow'
 import type { SelectedAgentData } from '@/components/workflow/PhaseGraph/types'
 import { buildDomain, laneRows } from './timeScale'
+import { indexSubLanesByParent, subLaneGroupsFor } from './subLanes'
 import { TraceAxis } from './TraceAxis'
 import { TraceLane } from './TraceLane'
+import { TraceSubLaneGroup } from './TraceSubLaneGroup'
 import { TraceMarkers } from './TraceMarkers'
 import { TraceChildRow } from './TraceChildRow'
 import { TraceLegend } from './TraceLegend'
@@ -74,7 +76,7 @@ export function TraceView({
   const sessionIdsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     const ids = new Set<string>()
-    for (const lane of trace?.lanes ?? []) {
+    for (const lane of [...(trace?.lanes ?? []), ...(trace?.sub_lanes ?? [])]) {
       for (const seg of lane.segments ?? []) ids.add(seg.session_id)
     }
     sessionIdsRef.current = ids
@@ -106,6 +108,8 @@ export function TraceView({
 
   const groups = laneRows(trace.lanes ?? [])
   const rootMarkers = (trace.root_markers ?? []).filter((m) => activeTypes.has(m.type))
+  const subLanesByParent = indexSubLanesByParent(trace.sub_lanes ?? [])
+  const renderedLaneIds = new Set((trace.lanes ?? []).map((l) => l.lane_id))
 
   return (
     <div className="space-y-2">
@@ -159,16 +163,30 @@ export function TraceView({
                 </div>
                 <div />
               </div>
-              {group.lanes.map((lane) => (
-                <TraceLane
-                  key={lane.lane_id}
-                  lane={lane}
-                  markers={(lane.markers ?? []).filter((m) => activeTypes.has(m.type))}
-                  domain={domain}
-                  widthPx={width}
-                  onSelect={(sid) => selectSession(lane.phase, sid)}
-                />
-              ))}
+              {group.lanes.map((lane) => {
+                const subGroups = subLaneGroupsFor(lane.lane_id, subLanesByParent, renderedLaneIds)
+                return (
+                  <div key={lane.lane_id}>
+                    <TraceLane
+                      lane={lane}
+                      markers={(lane.markers ?? []).filter((m) => activeTypes.has(m.type))}
+                      domain={domain}
+                      widthPx={width}
+                      onSelect={(sid) => selectSession(lane.phase, sid)}
+                    />
+                    {subGroups.map((sg) => (
+                      <TraceSubLaneGroup
+                        key={sg.key}
+                        group={sg}
+                        domain={domain}
+                        widthPx={width}
+                        activeTypes={activeTypes}
+                        onSelect={selectSession}
+                      />
+                    ))}
+                  </div>
+                )
+              })}
             </div>
           ))}
           {rootMarkers.length > 0 && (

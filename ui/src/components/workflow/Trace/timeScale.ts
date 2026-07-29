@@ -30,7 +30,7 @@ export function toPct(tMs: number | null, domain: TimeDomain): number | null {
 export function buildDomain(trace: WorkflowTraceResponse, receivedAtMs: number): TimeDomain | null {
   let min = parseTs(trace.started_at)
   let latest = min ?? 0
-  for (const lane of trace.lanes ?? []) {
+  for (const lane of [...(trace.lanes ?? []), ...(trace.sub_lanes ?? [])]) {
     for (const seg of lane.segments ?? []) {
       const s = parseTs(seg.started_at)
       const e = parseTs(seg.ended_at)

@@ -52,6 +52,27 @@ describe('buildDomain', () => {
     expect(d.max - d.min).toBe(1000)
     expect(buildDomain(makeTrace({ started_at: 'bogus', lanes: [] }), 0)).toBeNull()
   })
+
+  it('extends the domain max for a sub-lane segment ending after every parent-lane timestamp', () => {
+    const staleReceivedAt = parseTs(T0)!
+    const d = buildDomain(
+      makeTrace({
+        sub_lanes: [
+          {
+            lane_id: 'w1',
+            phase: 'delegate:w1',
+            layer: -1,
+            agent_type: 'extractor',
+            status: 'completed',
+            parent_lane_id: 's1',
+            segments: [{ session_id: 'w1', status: 'completed', started_at: T1, ended_at: T2 }],
+          },
+        ],
+      }),
+      staleReceivedAt
+    )!
+    expect(d.max).toBe(parseTs(T2))
+  })
 })
 
 describe('toPct', () => {

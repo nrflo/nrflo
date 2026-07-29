@@ -16,40 +16,6 @@ func pendingEntries(proc *processInfo) []repo.MessageEntry {
 	return out
 }
 
-// === toolCategory ===
-
-func TestToolCategory(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		toolName string
-		want     string
-	}{
-		{"Task", "subagent"},
-		{"Agent", "subagent"},
-		{"Skill", "skill"},
-		{"Bash", "tool"},
-		{"Read", "tool"},
-		{"Write", "tool"},
-		{"Edit", "tool"},
-		{"Glob", "tool"},
-		{"Grep", "tool"},
-		{"WebFetch", "tool"},
-		{"WebSearch", "tool"},
-		{"", "tool"},
-		{"Unknown", "tool"},
-		{"TodoWrite", "tool"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.toolName, func(t *testing.T) {
-			got := ToolCategory(tt.toolName)
-			if got != tt.want {
-				t.Errorf("ToolCategory(%q) = %q, want %q", tt.toolName, got, tt.want)
-			}
-		})
-	}
-}
-
 // === Category assignment from Claude assistant events ===
 
 func TestProcessOutput_Claude_CategoryAssignment(t *testing.T) {

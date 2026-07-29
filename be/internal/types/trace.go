@@ -4,15 +4,20 @@ package types
 // time from agent_sessions, agent_messages, findings_history, and child
 // workflow_instances. Served by GET /api/v1/workflow-instances/{iid}/trace.
 type TraceResponse struct {
-	InstanceID  string          `json:"instance_id"`
-	ProjectID   string          `json:"project_id"`
-	TicketID    string          `json:"ticket_id,omitempty"`
-	Workflow    string          `json:"workflow"`
-	Status      string          `json:"status"`
-	StartedAt   string          `json:"started_at"`
-	EndedAt     *string         `json:"ended_at,omitempty"`
-	Layers      []TraceLayer    `json:"layers"`
-	Lanes       []TraceLane     `json:"lanes"`
+	InstanceID string       `json:"instance_id"`
+	ProjectID  string       `json:"project_id"`
+	TicketID   string       `json:"ticket_id,omitempty"`
+	Workflow   string       `json:"workflow"`
+	Status     string       `json:"status"`
+	StartedAt  string       `json:"started_at"`
+	EndedAt    *string      `json:"ended_at,omitempty"`
+	Layers     []TraceLayer `json:"layers"`
+	Lanes      []TraceLane  `json:"lanes"`
+	// SubLanes carries delegate-worker and consult-child sessions grouped
+	// under their caller (durable `delegations`/`consults` rows), kept
+	// separate from Lanes so they never widen layer bands (buildTraceLayers)
+	// or the primary lane sort.
+	SubLanes    []TraceLane     `json:"sub_lanes"`
 	Children    []TraceChildRun `json:"children"`
 	RootMarkers []TraceMarker   `json:"root_markers,omitempty"`
 	Truncated   bool            `json:"truncated"`
@@ -40,6 +45,16 @@ type TraceLane struct {
 	Segments  []TraceSegment `json:"segments"`
 	Restarts  []TraceRestart `json:"restarts,omitempty"`
 	Markers   []TraceMarker  `json:"markers"`
+	// Sub-lane-only fields (zero-valued on ordinary Lanes entries): ParentLaneID
+	// names the caller's own lane_id, Kind discriminates "delegate"|"consult",
+	// DelegationID/ConsultID carry the durable delegations/consults row id
+	// (field names reserved for nrworkflow-8500b5's read models), and Depth
+	// mirrors delegations.depth (0 for consult children).
+	ParentLaneID string `json:"parent_lane_id,omitempty"`
+	Kind         string `json:"kind,omitempty"`
+	DelegationID string `json:"delegation_id,omitempty"`
+	ConsultID    string `json:"consult_id,omitempty"`
+	Depth        int    `json:"depth,omitempty"`
 	// Timestamp-less counters summed across the chain, shown as lane badges.
 	NudgeCount     int `json:"nudge_count,omitempty"`
 	StopBlockCount int `json:"stop_block_count,omitempty"`

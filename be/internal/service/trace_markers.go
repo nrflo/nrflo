@@ -70,7 +70,7 @@ func ParseTraceOptions(categoriesParam, markerLimitParam string) (TraceOptions, 
 // writes), attaches them to their lanes, and returns the markers that cannot
 // be attributed to a session (instance-scope finding writes by unknown
 // actors) plus whether the global cap truncated the set (earliest-first).
-func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLane, sessionToLane map[string]string, lifecycle []types.TraceMarker, opts TraceOptions) ([]types.TraceMarker, bool) {
+func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes, subLanes []types.TraceLane, sessionToLane map[string]string, lifecycle []types.TraceMarker, opts TraceOptions) ([]types.TraceMarker, bool) {
 	if len(opts.Categories) == 0 {
 		opts.Categories = traceDefaultCategories
 	}
@@ -111,15 +111,24 @@ func (s *WorkflowService) attachTraceMarkers(wfiID string, lanes []types.TraceLa
 		truncated = true
 	}
 
-	laneIdx := make(map[string]int, len(lanes))
+	laneIdx := make(map[string]int, len(lanes)+len(subLanes))
+	isSubLane := make(map[string]bool, len(subLanes))
 	for i := range lanes {
 		laneIdx[lanes[i].LaneID] = i
+	}
+	for i := range subLanes {
+		laneIdx[subLanes[i].LaneID] = i
+		isSubLane[subLanes[i].LaneID] = true
 	}
 	rootMarkers := []types.TraceMarker{}
 	for _, m := range markers {
 		if laneID, ok := sessionToLane[m.SessionID]; ok {
 			i := laneIdx[laneID]
-			lanes[i].Markers = append(lanes[i].Markers, m)
+			if isSubLane[laneID] {
+				subLanes[i].Markers = append(subLanes[i].Markers, m)
+			} else {
+				lanes[i].Markers = append(lanes[i].Markers, m)
+			}
 		} else {
 			rootMarkers = append(rootMarkers, m)
 		}

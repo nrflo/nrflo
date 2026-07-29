@@ -34,4 +34,13 @@ type SystemAgentRun struct {
 	Error                 string          `json:"error,omitempty"`
 	FoldCount             int             `json:"fold_count,omitempty"`
 	CreatedAt             time.Time       `json:"created_at"`
+
+	// Delegation group key, populated only for delegate-worker sessions via
+	// the LEFT JOIN in ListSystemAgentRuns. DelegateTier is delegations.tier
+	// (TEXT: "extractor"|"executor"), distinct from the numeric Tier above.
+	DelegationID     string `json:"delegation_id,omitempty"`
+	CallerSessionID  string `json:"caller_session_id,omitempty"`
+	DelegateTier     string `json:"delegate_tier,omitempty"`
+	Fanout           int    `json:"fanout,omitempty"`
+	DelegationStatus string `json:"delegation_status,omitempty"`
 }

@@ -5,15 +5,16 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { TableRow, TableCell } from '@/components/ui/Table'
 import { HandoffDigestSection } from '@/components/workflow/HandoffDigestSection'
-import { formatDateTime } from '@/lib/utils'
+import { cn, formatDateTime } from '@/lib/utils'
 import { fallbackLabel, formatCost, runAgentLabel, runStatusVariant, runTokens } from '@/lib/systemAgentRuns'
 import type { SystemAgentRun } from '@/types/systemAgentRuns'
 
 interface SystemAgentRunRowProps {
   run: SystemAgentRun
+  nested?: boolean
 }
 
-function TicketLink({ run }: { run: SystemAgentRun }) {
+export function TicketLink({ run }: { run: SystemAgentRun }) {
   if (run.ticket_id) {
     return (
       <Link to={`/tickets/${run.ticket_id}?tab=workflow`} className="text-primary hover:underline text-xs">
@@ -28,7 +29,7 @@ function TicketLink({ run }: { run: SystemAgentRun }) {
   )
 }
 
-export function SystemAgentRunRow({ run }: SystemAgentRunRowProps) {
+export function SystemAgentRunRow({ run, nested }: SystemAgentRunRowProps) {
   const [expanded, setExpanded] = useState(false)
   const tokens = runTokens(run)
   const label = fallbackLabel(run)
@@ -39,7 +40,7 @@ export function SystemAgentRunRow({ run }: SystemAgentRunRowProps) {
   return (
     <>
       <TableRow>
-        <TableCell className="text-xs">
+        <TableCell className={cn('text-xs', nested && 'pl-6')}>
           <div className="flex items-center gap-1">
             {isSession && (
               <Button

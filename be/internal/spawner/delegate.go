@@ -238,6 +238,7 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		errMsg = spawnErr.Error()
 		s.broadcast(ws.EventDelegateFailed, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 			"caller_session_id": callerSession.ID,
+			"delegation_id":     run.delegationID,
 			"tier":              req.Tier,
 			"error":             errMsg,
 		})

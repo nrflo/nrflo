@@ -219,4 +219,37 @@ describe('SystemAgentRunsSection', () => {
 
     expect(await screen.findByText('qa-verifier')).toBeInTheDocument()
   })
+
+  it('renders a delegation group for workers sharing a delegation_id alongside ungrouped rows', async () => {
+    vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValue({
+      items: [
+        makeSessionRun({ session_id: 'standalone', agent_type: 'qa-verifier' }),
+        makeSessionRun({
+          session_id: 'worker-1',
+          agent_type: 'executor',
+          delegation_id: 'delegation-1',
+          caller_session_id: 'caller-1',
+          delegate_tier: 'executor',
+          fanout: 2,
+        }),
+        makeSessionRun({
+          session_id: 'worker-2',
+          agent_type: 'executor',
+          delegation_id: 'delegation-1',
+          caller_session_id: 'caller-1',
+          delegate_tier: 'executor',
+          fanout: 2,
+        }),
+      ],
+      limit: 50,
+    })
+
+    renderSection()
+
+    expect(await screen.findByText('qa-verifier')).toBeInTheDocument()
+    expect(screen.getByText('2 of 2 workers')).toBeInTheDocument()
+    // Worker rows stay collapsed inside the group until expanded: only the
+    // group header's tier badge renders "executor", not the two worker rows.
+    expect(screen.getAllByText('executor')).toHaveLength(1)
+  })
 })

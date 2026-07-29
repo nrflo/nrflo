@@ -11,17 +11,25 @@ import (
 // resolved tier or belong to a system-agent definition, newest first. Cross-
 // project by design — callers gate this admin-only.
 func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*model.SystemAgentRun, error) {
-	query := `SELECT id, workflow_instance_id, project_id, ticket_id, node_id, agent_type, model_id, status, result,
-		 tier, resolved_provider, resolved_execution_mode, resolved_effort, chain_position, fallback_from,
-		 tokens_json, cost_estimate, created_at
-		 FROM agent_sessions
-		 WHERE (tier IS NOT NULL OR agent_type IN (SELECT id FROM system_agent_definitions) OR node_id = '_consult')`
+	query := `SELECT s.id, s.workflow_instance_id, s.project_id, s.ticket_id, s.node_id, s.agent_type, s.model_id, s.status, s.result,
+		 s.tier, s.resolved_provider, s.resolved_execution_mode, s.resolved_effort, s.chain_position, s.fallback_from,
+		 s.tokens_json, s.cost_estimate, s.created_at,
+		 dw.id, dw.caller_session_id, dw.tier, dw.fanout, dw.status
+		 FROM agent_sessions s
+		 LEFT JOIN (
+		   SELECT je.value AS worker_session_id, d.id AS id, d.caller_session_id AS caller_session_id,
+		          d.tier AS tier, d.fanout AS fanout, d.status AS status
+		   FROM delegations d, json_each(d.worker_session_ids) je
+		   WHERE je.value <> ''
+		   GROUP BY je.value
+		 ) dw ON dw.worker_session_id = s.id
+		 WHERE (s.tier IS NOT NULL OR s.agent_type IN (SELECT id FROM system_agent_definitions) OR s.node_id = '_consult')`
 	args := []interface{}{}
 	if !since.IsZero() {
-		query += ` AND created_at >= ?`
+		query += ` AND s.created_at >= ?`
 		args = append(args, since.UTC().Format(time.RFC3339Nano))
 	}
-	query += ` ORDER BY created_at DESC LIMIT ?`
+	query += ` ORDER BY s.created_at DESC LIMIT ?`
 	args = append(args, limit)
 
 	rows, err := r.db.Query(query, args...)
@@ -34,17 +42,20 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 	for rows.Next() {
 		run := &model.SystemAgentRun{Kind: "agent_session"}
 		var (
-			workflowInstanceID, nodeID, modelID                     sql.NullString
-			ticketID                                                string
-			tier                                                    sql.NullInt64
-			resolvedProvider, resolvedExecutionMode, resolvedEffort sql.NullString
-			fallbackFrom, tokensJSON, result                        sql.NullString
-			costEstimate                                            sql.NullFloat64
-			createdAt                                               string
+			workflowInstanceID, nodeID, modelID                           sql.NullString
+			ticketID                                                      string
+			tier                                                          sql.NullInt64
+			resolvedProvider, resolvedExecutionMode, resolvedEffort       sql.NullString
+			fallbackFrom, tokensJSON, result                              sql.NullString
+			costEstimate                                                  sql.NullFloat64
+			createdAt                                                     string
+			delegationID, callerSessionID, delegateTier, delegationStatus sql.NullString
+			fanout                                                        sql.NullInt64
 		)
 		if err := rows.Scan(&run.SessionID, &workflowInstanceID, &run.ProjectID, &ticketID, &nodeID, &run.AgentType,
 			&modelID, &run.Status, &result, &tier, &resolvedProvider, &resolvedExecutionMode,
-			&resolvedEffort, &run.ChainPosition, &fallbackFrom, &tokensJSON, &costEstimate, &createdAt); err != nil {
+			&resolvedEffort, &run.ChainPosition, &fallbackFrom, &tokensJSON, &costEstimate, &createdAt,
+			&delegationID, &callerSessionID, &delegateTier, &fanout, &delegationStatus); err != nil {
 			return nil, err
 		}
 		run.WorkflowInstanceID = workflowInstanceID.String
@@ -69,6 +80,13 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 			run.CostEstimate = &costEstimate.Float64
 		}
 		run.CreatedAt, _ = time.Parse(time.RFC3339Nano, createdAt)
+		run.DelegationID = delegationID.String
+		run.CallerSessionID = callerSessionID.String
+		run.DelegateTier = delegateTier.String
+		run.DelegationStatus = delegationStatus.String
+		if fanout.Valid {
+			run.Fanout = int(fanout.Int64)
+		}
 		runs = append(runs, run)
 	}
 	if err := rows.Err(); err != nil {

@@ -16,6 +16,7 @@ import { traceKeys } from './useTrace'
 import { planKeys } from './usePlan'
 import { throttledInvalidate as inv } from './useWSInvalidate'
 import { defRegistryHandlers, type WSEventHandler } from './useWSReducerDefs'
+import { invalidateAgents, childAgentHandlers } from './useWSReducerAgents'
 import type { WSEventType } from './useWebSocket'
 import type { LiveAgentSessionsResponse } from '@/types/agentSessionLogs'
 
@@ -137,18 +138,6 @@ function invalidateWorkflow(
   }
 }
 
-// Helper: workflow + agent-session queries — the common agent-lifecycle set
-const invalidateAgents: WSEventHandler = (event, qc, isProjectScope) => {
-  if (isProjectScope) {
-    inv(qc, projectWorkflowKeys.workflow(event.project_id))
-    inv(qc, projectWorkflowKeys.agentSessions(event.project_id))
-  } else {
-    inv(qc, ticketKeys.detail(event.ticket_id))
-    inv(qc, ticketKeys.workflow(event.ticket_id))
-    inv(qc, ticketKeys.agentSessions(event.ticket_id))
-  }
-}
-
 // Helper: workflow lifecycle set — workflow state plus ticket lists
 const invalidateWorkflowLifecycle: WSEventHandler = (event, qc, isProjectScope) => {
   if (isProjectScope) {
@@ -159,11 +148,6 @@ const invalidateWorkflowLifecycle: WSEventHandler = (event, qc, isProjectScope) 
     inv(qc, ticketKeys.agentSessions(event.ticket_id))
     inv(qc, ticketKeys.lists())
   }
-}
-
-const consultHandler: WSEventHandler = (event, qc, isProjectScope) => {
-  invalidateAgents(event, qc, isProjectScope)
-  inv(qc, ['session-messages'])
 }
 
 const planHandler: WSEventHandler = (event, qc, isProjectScope) => {
@@ -217,9 +201,7 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
     inv(qc, traceKeys.all)
   },
 
-  'consult.started': consultHandler,
-  'consult.answered': consultHandler,
-  'consult.failed': consultHandler,
+  ...childAgentHandlers,
 
   'agent.continued': invalidateAgents,
   'agent.take_control': invalidateAgents,

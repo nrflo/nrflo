@@ -92,7 +92,7 @@ export type WSEventType =
   | 'agent.rate_limited'
   | 'consult.started'
   | 'consult.answered'
-  | 'consult.failed'
+  | 'consult.failed' | 'delegate.started' | 'delegate.completed' | 'delegate.failed'
   | 'plan.drafted'
   | 'plan.revised'
   | 'plan.approved'

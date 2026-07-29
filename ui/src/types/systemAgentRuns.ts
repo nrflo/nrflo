@@ -46,6 +46,11 @@ export interface SystemAgentRun {
   fold_count?: number
   step_id?: string
   created_at: string
+  delegation_id?: string
+  caller_session_id?: string
+  delegate_tier?: string
+  fanout?: number
+  delegation_status?: string
 }
 
 export interface SystemAgentRunsResponse {

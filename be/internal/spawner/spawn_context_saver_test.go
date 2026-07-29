@@ -2,9 +2,11 @@ package spawner
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"be/internal/clock"
+	"be/internal/repo"
 )
 
 // TestSpawnContextSaver_NoPool verifies that spawnContextSaver returns false
@@ -61,5 +63,52 @@ func TestSpawnContextSaver_NoMessages(t *testing.T) {
 	got := env.spawner.spawnContextSaver(context.Background(), proc, SpawnRequest{})
 	if got {
 		t.Errorf("spawnContextSaver() = true, want false when no messages exist")
+	}
+}
+
+// TestCopyToResumeToTarget verifies the saver-session → target-session finding
+// copy: findings_add can only write to the saver's own session, so the spawner
+// must move to_resume where the relaunch reader looks for it.
+func TestCopyToResumeToTarget(t *testing.T) {
+	t.Parallel()
+	env := setupContextSaveTestEnv(t)
+	defer env.cleanup()
+
+	targetSID := env.createSessionWithFindings(t, map[string]interface{}{})
+	saverSID := env.createSessionWithFindings(t, map[string]interface{}{
+		"to_resume": "implemented X, remaining Y",
+	})
+
+	env.spawner.copyToResumeToTarget(context.Background(), saverSID, targetSID)
+
+	findings, err := repo.NewFindingRepo(env.database, clock.Real()).GetOwn("session", targetSID)
+	if err != nil {
+		t.Fatalf("GetOwn(target): %v", err)
+	}
+	var got string
+	if err := json.Unmarshal(findings["to_resume"], &got); err != nil {
+		t.Fatalf("to_resume missing or not a string on target session: %v", err)
+	}
+	if got != "implemented X, remaining Y" {
+		t.Errorf("to_resume = %q, want copied summary", got)
+	}
+}
+
+// TestCopyToResumeToTarget_NoSaverSession verifies a missing saver session id
+// (saver never registered) is a no-op rather than a panic or spurious write.
+func TestCopyToResumeToTarget_NoSaverSession(t *testing.T) {
+	t.Parallel()
+	env := setupContextSaveTestEnv(t)
+	defer env.cleanup()
+
+	targetSID := env.createSessionWithFindings(t, map[string]interface{}{})
+	env.spawner.copyToResumeToTarget(context.Background(), "", targetSID)
+
+	findings, err := repo.NewFindingRepo(env.database, clock.Real()).GetOwn("session", targetSID)
+	if err != nil {
+		t.Fatalf("GetOwn(target): %v", err)
+	}
+	if _, ok := findings["to_resume"]; ok {
+		t.Errorf("to_resume unexpectedly present on target session")
 	}
 }

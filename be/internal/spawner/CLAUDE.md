@@ -63,7 +63,7 @@ Agent-def `native_tools` (claude-only CSV) and `sandbox` (codex-only) restrict a
 
 ## Context Save
 
-The kill-time save path (`context_save.go`): forces one refinery fold, and only if no fresh slot digest then covers the session spawns a `context-saver` agent (`context_save_agent.go`, model inherited from the dying agent, falling back to `ResolveAgentChain`'s primary entry) that reads message history and writes `to_resume` findings. Script-mode agents are exempt (`TracksContext()=false`). Mechanics: [REFERENCE.md](REFERENCE.md#context-save).
+The kill-time save path (`context_save.go`): forces one refinery fold, and only if no fresh slot digest then covers the session spawns a `context-saver` agent (`context_save_agent.go`, model inherited from the dying agent, falling back to `ResolveAgentChain`'s primary entry) that reads message history and saves a `to_resume` finding via `findings_add` — onto its own session, which the spawner then copies to the dying session (`copyToResumeToTarget`), where the relaunch reader looks. Script-mode agents are exempt (`TracksContext()=false`). Mechanics: [REFERENCE.md](REFERENCE.md#context-save).
 
 ## Low-Context Relaunch
 

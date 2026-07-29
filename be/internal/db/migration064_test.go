@@ -104,8 +104,9 @@ func TestMigration064_NewInjectableTemplatesHaveDefaultTemplate(t *testing.T) {
 	}
 }
 
-// TestMigration064_ContextSaverSweep verifies that migration 000064 removes
-// the "Do NOT call / just exit 0" guidance from the context-saver prompt.
+// TestMigration064_ContextSaverSweep verifies the migrated context-saver
+// prompt end-state: no "just exit 0" guidance and (post-000215) no removed
+// `nrflo` CLI invocations — the saver drives nrflo via the findings_add tool.
 func TestMigration064_ContextSaverSweep(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -125,9 +126,12 @@ func TestMigration064_ContextSaverSweep(t *testing.T) {
 	if strings.Contains(prompt, "just exit 0 after saving findings") {
 		t.Error("context-saver prompt still contains 'just exit 0 after saving findings'; sweep failed")
 	}
-	// The replacement text must be present
-	if !strings.Contains(prompt, "exit 0 or call `nrflo agent continue`") {
-		t.Error("context-saver prompt missing replacement 'exit 0 or call `nrflo agent continue`'")
+	// The removed nrflo CLI must not be referenced anywhere in the prompt
+	if strings.Contains(prompt, "nrflo ") {
+		t.Error("context-saver prompt still references the removed nrflo CLI")
+	}
+	if !strings.Contains(prompt, "`findings_add` tool") {
+		t.Error("context-saver prompt missing the findings_add tool instruction")
 	}
 }
 

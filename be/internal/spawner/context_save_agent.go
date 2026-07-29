@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sync"
 
 	"be/internal/foldfmt"
 	"be/internal/logger"
@@ -100,7 +101,16 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 	// dependencies so a context-saver-api variant can run via the in-process runner.
 	// PTYManager is forwarded so a context-saver with execution_mode='cli_interactive'
 	// can spawn inside a PTY when its system_agent_definitions row calls for it.
-	saverRegister, saverUnregister := s.childSessionHooks(nil)
+	var saverMu sync.Mutex
+	var saverSID string
+	var saverSp *Spawner
+	saverRegister, saverUnregister := s.childSessionHooks(func(sid string, child *Spawner) {
+		saverMu.Lock()
+		if child == saverSp {
+			saverSID = sid
+		}
+		saverMu.Unlock()
+	})
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
 			"_context_save": {
@@ -144,6 +154,8 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		OnSessionUnregister: saverUnregister,
 	})
 
+	saverSp = sp
+
 	saveCtx, cancel := context.WithTimeout(ctx, contextSaveTimeout)
 	defer cancel()
 
@@ -170,5 +182,44 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		return false
 	}
 
+	saverMu.Lock()
+	sid := saverSID
+	saverMu.Unlock()
+	s.copyToResumeToTarget(ctx, sid, proc.sessionID)
 	return true
+}
+
+// copyToResumeToTarget moves the saver's to_resume finding onto the dying
+// agent's session. findings_add attributes to the calling session, so the
+// saver can only write to its own row — but checkToResumeFindings and
+// fetchPreviousDataAndReason both read the target session.
+func (s *Spawner) copyToResumeToTarget(ctx context.Context, saverSID, targetSID string) {
+	pool := s.pool()
+	if pool == nil || saverSID == "" {
+		return
+	}
+	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
+	findings, err := findingRepo.GetOwn("session", saverSID)
+	if err != nil || len(findings) == 0 {
+		return
+	}
+	raw, ok := findings["to_resume"]
+	if !ok {
+		return
+	}
+	target, err := repo.NewAgentSessionRepo(pool, s.config.Clock).Get(targetSID)
+	if err != nil {
+		logger.Warn(ctx, "to_resume copy: target session lookup failed", "err", err, "session_id", targetSID)
+		return
+	}
+	denorm := repo.Denorm{
+		ProjectID:          target.ProjectID,
+		WorkflowInstanceID: target.WorkflowInstanceID,
+		AgentType:          target.AgentType,
+		ModelID:            target.ModelID.String,
+	}
+	actor := repo.Actor{ID: saverSID, Source: "agent"}
+	if err := findingRepo.Upsert("session", targetSID, "to_resume", raw, denorm, actor); err != nil {
+		logger.Warn(ctx, "to_resume copy to target session failed", "err", err, "session_id", targetSID)
+	}
 }

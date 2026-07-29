@@ -85,8 +85,8 @@ func TestMigration061_ConflictResolverPromptIntactAfterMigrations(t *testing.T) 
 }
 
 // TestMigration061_ContextSaverPromptIntactAfterMigrations confirms the
-// context-saver prompt retains the singular to_resume command and lost the
-// two-command block.
+// context-saver prompt end-state: the singular to_resume save via the
+// findings_add tool (post-000215), with the two-command block long gone.
 func TestMigration061_ContextSaverPromptIntactAfterMigrations(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
@@ -95,14 +95,14 @@ func TestMigration061_ContextSaverPromptIntactAfterMigrations(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	prompt := loadSystemAgentPrompt(t, pool, "context-saver")
-	if !strings.Contains(prompt, "Then run this command:") {
-		t.Errorf("context-saver missing 'Then run this command:' header")
-	}
 	if strings.Contains(prompt, "Then run these two commands in order:") {
 		t.Errorf("context-saver still contains the deleted two-command block")
 	}
-	if !strings.Contains(prompt, "NRF_SESSION_ID=${TARGET_SESSION_ID} nrflo findings add to_resume") {
-		t.Errorf("context-saver missing the to_resume command (post-rename)")
+	if !strings.Contains(prompt, "key: `to_resume`") {
+		t.Errorf("context-saver missing the to_resume findings_add instruction")
+	}
+	if !strings.Contains(prompt, "`agent_finished` tool") {
+		t.Errorf("context-saver missing the agent_finished completion instruction")
 	}
 }
 

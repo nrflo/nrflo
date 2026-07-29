@@ -217,7 +217,7 @@ func TestExport_ExcludesReservedWorkflows(t *testing.T) {
 		t.Errorf("Workflows len = %d, want 1 (reserved excluded)", len(bundle.Workflows))
 	}
 	for _, entry := range bundle.Workflows {
-		if entry.Workflow != nil && IsReservedWorkflowName(entry.Workflow.ID) {
+		if entry.Workflow != nil && IsHiddenWorkflowName(entry.Workflow.ID) {
 			t.Errorf("bundle includes reserved workflow %q", entry.Workflow.ID)
 		}
 	}

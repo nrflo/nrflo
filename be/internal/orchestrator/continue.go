@@ -72,6 +72,8 @@ func (o *Orchestrator) ContinueWorkflow(ctx context.Context, projectID, ticketID
 		LaunchDepth:             wi.LaunchDepth,
 		ParentInstanceID:        wi.ParentInstanceID,
 		SubworkflowDepth:        wi.SubworkflowDepth,
+		Origin:                  wi.Origin,
+		OriginSessionID:         wi.OriginSessionID,
 		CloseTicketOnComplete:   svcWf.CloseTicketOnComplete,
 		FinalizeSuccessCommand:  svcWf.FinalizeSuccessCommand,
 		FinalizeSuccessScriptID: svcWf.FinalizeSuccessScriptID,

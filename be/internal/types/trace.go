@@ -21,6 +21,10 @@ type TraceResponse struct {
 	Children    []TraceChildRun `json:"children"`
 	RootMarkers []TraceMarker   `json:"root_markers,omitempty"`
 	Truncated   bool            `json:"truncated"`
+	// Origin/OriginSessionID surface the run's launch attribution (server-set
+	// workflow_instances.origin/origin_session_id) so the trace header can show it.
+	Origin          string `json:"origin,omitempty"`
+	OriginSessionID string `json:"origin_session_id,omitempty"`
 }
 
 // TraceLayer is the time band covered by one execution layer.

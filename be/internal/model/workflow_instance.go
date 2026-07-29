@@ -45,6 +45,13 @@ func IsPlanSuspended(status WorkflowInstanceStatus) bool {
 	}
 }
 
+// Launch origin values for workflow_instances.origin. Empty means unknown
+// (pre-existing rows and start paths not yet attributed) and is treated as human.
+const (
+	RunOriginConsole = "console"
+	RunOriginHuman   = "human"
+)
+
 // WorkflowInstance represents a running workflow on a ticket or project
 type WorkflowInstance struct {
 	ID                            string                 `json:"id"`
@@ -70,6 +77,8 @@ type WorkflowInstance struct {
 	ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 	ExternalID                    string                 `json:"external_id,omitempty"`
 	ExternalContext               string                 `json:"external_context,omitempty"`
+	Origin                        string                 `json:"-"` // launch surface: RunOriginConsole/RunOriginHuman/"" (unknown, treated as human)
+	OriginSessionID               string                 `json:"-"` // launching console session id, when Origin is RunOriginConsole
 	CreatedAt                     time.Time              `json:"created_at"`
 	UpdatedAt                     time.Time              `json:"updated_at"`
 }
@@ -156,6 +165,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		ScheduledTaskID               string                 `json:"scheduled_task_id,omitempty"`
 		ExternalID                    string                 `json:"external_id,omitempty"`
 		ExternalContext               string                 `json:"external_context,omitempty"`
+		Origin                        string                 `json:"origin,omitempty"`
+		OriginSessionID               string                 `json:"origin_session_id,omitempty"`
 		CreatedAt                     time.Time              `json:"created_at"`
 		UpdatedAt                     time.Time              `json:"updated_at"`
 	}{
@@ -180,6 +191,8 @@ func (wi WorkflowInstance) MarshalJSON() ([]byte, error) {
 		ScheduledTaskID:               wi.ScheduledTaskID,
 		ExternalID:                    wi.ExternalID,
 		ExternalContext:               wi.ExternalContext,
+		Origin:                        wi.Origin,
+		OriginSessionID:               wi.OriginSessionID,
 		CreatedAt:                     wi.CreatedAt,
 		UpdatedAt:                     wi.UpdatedAt,
 	})

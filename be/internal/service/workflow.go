@@ -88,6 +88,8 @@ func (s *WorkflowService) Init(projectID, ticketID string, req *types.WorkflowIn
 	wi.ScheduledTaskID = req.ScheduledTaskID
 	wi.ExternalID = req.ExternalID
 	wi.ExternalContext = req.ExternalContext
+	wi.Origin = req.Origin
+	wi.OriginSessionID = req.OriginSessionID
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
@@ -119,6 +121,8 @@ func (s *WorkflowService) InitProjectWorkflow(projectID string, req *types.Proje
 	wi.ScheduledTaskID = req.ScheduledTaskID
 	wi.ExternalID = req.ExternalID
 	wi.ExternalContext = req.ExternalContext
+	wi.Origin = req.Origin
+	wi.OriginSessionID = req.OriginSessionID
 
 	if err := s.wfiRepo.Create(wi); err != nil {
 		return nil, err
@@ -229,16 +233,6 @@ func (s *WorkflowService) GetProjectWorkflowInstance(projectID, workflowName str
 		return nil, fmt.Errorf("project workflow '%s' not found on %s", workflowName, projectID)
 	}
 	return latest, nil
-}
-
-// ListWorkflowInstances returns all workflow instances for a ticket
-func (s *WorkflowService) ListWorkflowInstances(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
-	return s.wfiRepo.ListByTicket(projectID, ticketID)
-}
-
-// ListProjectWorkflowInstances returns all project-scoped workflow instances
-func (s *WorkflowService) ListProjectWorkflowInstances(projectID string) ([]*model.WorkflowInstance, error) {
-	return s.wfiRepo.ListByProjectScope(projectID)
 }
 
 // ListWorkflows lists available workflows (loads from DB)

@@ -89,6 +89,12 @@ func (s *WorkflowService) buildV4State(wi *model.WorkflowInstance) map[string]in
 	if wi.ParentSession.Valid {
 		result["parent_session"] = wi.ParentSession.String
 	}
+	if wi.Origin != "" {
+		result["origin"] = wi.Origin
+	}
+	if wi.OriginSessionID != "" {
+		result["origin_session_id"] = wi.OriginSessionID
+	}
 	if wi.WorktreePath.Valid {
 		result["worktree_path"] = wi.WorktreePath.String
 	}

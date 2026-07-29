@@ -49,6 +49,9 @@ func (s *WorkflowService) BuildTrace(iid string, opts TraceOptions) (*types.Trac
 		Children:    s.loadTraceChildren(iid),
 		RootMarkers: rootMarkers,
 		Truncated:   truncated,
+
+		Origin:          wi.Origin,
+		OriginSessionID: wi.OriginSessionID,
 	}
 	if isTerminalInstanceStatus(wi.Status) {
 		ended := wi.UpdatedAt.Format(time.RFC3339Nano)

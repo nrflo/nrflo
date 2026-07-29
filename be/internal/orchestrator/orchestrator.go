@@ -47,6 +47,8 @@ type RunRequest struct {
 	LaunchDepth             int                      `json:"-"`                           // lineage distance from a human start; persisted (chain cap; bumped by run_subworkflow + next_workflow_on_success)
 	ParentInstanceID        string                   `json:"-"`                           // run_subworkflow caller's instance id; persisted ("" for top-level/chain runs)
 	SubworkflowDepth        int                      `json:"-"`                           // run_subworkflow nesting only; persisted (chain hops carry it unchanged)
+	Origin                  string                   `json:"-"`                           // launch surface (model.RunOriginConsole/RunOriginHuman); persisted
+	OriginSessionID         string                   `json:"-"`                           // launching console session id, when Origin is RunOriginConsole; persisted
 }
 
 // IsProjectScope returns true if this is a project-scoped run request

@@ -38,7 +38,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 		}
 		globalByWF := groupAgentsByWorkflow(globalAgents)
 		for _, m := range globalMetas {
-			if IsReservedWorkflowName(m.id) {
+			if IsHiddenWorkflowName(m.id) {
 				continue
 			}
 			result[m.id] = buildWorkflowDef(m, globalByWF[m.id])
@@ -46,7 +46,7 @@ func (s *WorkflowService) ListWorkflowDefs(projectID string) (map[string]Workflo
 	}
 
 	for _, m := range localMetas {
-		if IsReservedWorkflowName(m.id) {
+		if IsHiddenWorkflowName(m.id) {
 			continue
 		}
 		result[m.id] = buildWorkflowDef(m, localByWF[m.id])

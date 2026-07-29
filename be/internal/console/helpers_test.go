@@ -109,13 +109,14 @@ func invoke(t *testing.T, reg apirun.Registry, env apirun.ToolEnv, name string, 
 
 // fakeOrchestrator implements console.Orchestrator, recording calls.
 type fakeOrchestrator struct {
-	startProjectID    string
-	startTicketID     string
-	startWorkflow     string
-	startInstructions string
-	startScopeType    string
-	startInstanceID   string
-	startErr          error
+	startProjectID        string
+	startTicketID         string
+	startWorkflow         string
+	startInstructions     string
+	startScopeType        string
+	startInstanceID       string
+	startErr              error
+	startConsoleSessionID string
 
 	stopProjectProjectID  string
 	stopProjectWorkflow   string
@@ -148,6 +149,11 @@ func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketI
 		f.startInstanceID = "wfi-fake"
 	}
 	return f.startInstanceID, nil
+}
+
+func (f *fakeOrchestrator) StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string) (string, error) {
+	f.startConsoleSessionID = consoleSessionID
+	return f.StartWorkflow(ctx, projectID, ticketID, workflowName, instructions, scopeType)
 }
 
 func (f *fakeOrchestrator) StopByProject(projectID, workflowName, instanceID string) error {

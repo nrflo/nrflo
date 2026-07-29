@@ -28,6 +28,9 @@ func TestWorkflowRun_TicketScoped_ValidatesAndStarts(t *testing.T) {
 	if !strings.Contains(out, "instance_id") {
 		t.Errorf("out = %q, want contains instance_id", out)
 	}
+	if fake.startConsoleSessionID != "sess-1" {
+		t.Errorf("startConsoleSessionID = %q, want the launching console session id %q", fake.startConsoleSessionID, "sess-1")
+	}
 }
 
 func TestWorkflowRun_TicketScoped_UnknownTicket_Errors(t *testing.T) {

@@ -23,6 +23,7 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
+import { WorkflowOriginBadge } from '@/components/workflow/WorkflowOriginBadge'
 import { AgentLogPanel } from '@/components/workflow/AgentLogPanel'
 import { ConflictResolverBanner } from '@/components/workflow/ConflictResolverBanner'
 import { FinalizeResultPanel } from '@/components/workflow/FinalizeResultPanel'
@@ -143,10 +144,9 @@ export function WorkflowTabContent({
                   <Badge variant="secondary">{displayedWorkflowName}</Badge>
                 ) : null}
                 {isOrchestrated && (
-                  <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">
-                    Auto
-                  </Badge>
+                  <Badge className="bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/30">Auto</Badge>
                 )}
+                <WorkflowOriginBadge origin={displayedState.origin} originSessionId={displayedState.origin_session_id} />
                 {(isOrchestrated || hasActivePhase) && (
                   <>
                     <Button

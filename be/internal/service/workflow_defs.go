@@ -19,6 +19,9 @@ func (s *WorkflowService) CreateWorkflowDef(projectID string, req *types.Workflo
 	if req.ID == "" {
 		return nil, fmt.Errorf("workflow id is required")
 	}
+	if IsHiddenWorkflowName(req.ID) {
+		return nil, fmt.Errorf("workflow id cannot start with '_': reserved for internal workflows")
+	}
 
 	// Validate scope_type
 	scopeType := req.ScopeType

@@ -205,6 +205,13 @@ func TestHandleListWorkflowDefs_ExcludesSpecImport(t *testing.T) {
 	); err != nil {
 		t.Fatalf("seed visible workflow: %v", err)
 	}
+	if _, err := s.pool.Exec(
+		`INSERT INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, next_workflow_on_success, created_at, updated_at)
+		 VALUES ('_delegate_host', ?, 'Delegate host', 'project', '[]', 0, '', ?, ?)`,
+		projectID, now, now,
+	); err != nil {
+		t.Fatalf("seed _delegate_host workflow: %v", err)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/workflows", nil)
 	req = injectProject(req, projectID)
@@ -220,6 +227,9 @@ func TestHandleListWorkflowDefs_ExcludesSpecImport(t *testing.T) {
 	}
 	if _, ok := defs["__spec_import__"]; ok {
 		t.Error("__spec_import__ must not appear in ListWorkflowDefs response")
+	}
+	if _, ok := defs["_delegate_host"]; ok {
+		t.Error("_delegate_host must not appear in ListWorkflowDefs response")
 	}
 	if _, ok := defs["visible-wf"]; !ok {
 		t.Error("visible-wf should appear in ListWorkflowDefs response")

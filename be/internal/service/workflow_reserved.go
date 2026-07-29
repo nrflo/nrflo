@@ -10,8 +10,11 @@ import "strings"
 // the selected project; execution still happens under the real selected project.
 const GlobalProjectID = "__global__"
 
-// IsReservedWorkflowName returns true for internal system workflow names like
-// __spec_import__. Reserved workflows are excluded from the workflow listing.
-func IsReservedWorkflowName(name string) bool {
-	return strings.HasPrefix(name, "__") && strings.HasSuffix(name, "__")
+// IsHiddenWorkflowName returns true for internal/system workflow and instance
+// names — any leading underscore, mirroring the transientAgentTypeExclusion
+// rule for agent_type/phase (workflow_response.go). Covers __spec_import__,
+// _delegate_host, and future hidden defs. Hidden workflows are excluded from
+// workflow-def listings and instance listings.
+func IsHiddenWorkflowName(name string) bool {
+	return strings.HasPrefix(name, "_")
 }

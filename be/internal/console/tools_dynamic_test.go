@@ -40,6 +40,9 @@ func TestDynamicWorkflow_HappyPath_StartsTopLevelProjectRun(t *testing.T) {
 	if fake.startTicketID != "" {
 		t.Errorf("startTicketID = %q, want empty (dynamic_workflow is always project-scoped)", fake.startTicketID)
 	}
+	if fake.startConsoleSessionID != "sess-1" {
+		t.Errorf("startConsoleSessionID = %q, want the launching console session id %q", fake.startConsoleSessionID, "sess-1")
+	}
 }
 
 func TestDynamicWorkflow_MissingInstructions_Errors(t *testing.T) {

@@ -156,6 +156,35 @@ func TestBuildTrace_TerminalInstanceHasEndedAt(t *testing.T) {
 	}
 }
 
+func TestBuildTrace_SurfacesOrigin(t *testing.T) {
+	t.Parallel()
+	pool, svc, _ := setupTraceTestEnv(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, origin, origin_session_id, created_at, updated_at)
+		 VALUES ('wfi-origin-console', 'test-proj', '', 'test-wf', 'ticket', 'active', 0, 'console', 'sess-trace-1', ?, ?)`, now, now)
+	mustExec(t, pool, `INSERT INTO workflow_instances (id, project_id, ticket_id, workflow_id, scope_type, status, retry_count, created_at, updated_at)
+		 VALUES ('wfi-origin-unset', 'test-proj', '', 'test-wf', 'ticket', 'active', 0, ?, ?)`, now, now)
+
+	trace, err := svc.BuildTrace("wfi-origin-console", TraceOptions{})
+	if err != nil {
+		t.Fatalf("BuildTrace: %v", err)
+	}
+	if trace.Origin != "console" {
+		t.Errorf("Origin = %q, want console", trace.Origin)
+	}
+	if trace.OriginSessionID != "sess-trace-1" {
+		t.Errorf("OriginSessionID = %q, want sess-trace-1", trace.OriginSessionID)
+	}
+
+	unset, err := svc.BuildTrace("wfi-origin-unset", TraceOptions{})
+	if err != nil {
+		t.Fatalf("BuildTrace: %v", err)
+	}
+	if unset.Origin != "" || unset.OriginSessionID != "" {
+		t.Errorf("Origin/OriginSessionID = %q/%q, want both empty (unknown)", unset.Origin, unset.OriginSessionID)
+	}
+}
+
 func TestBuildTrace_UnknownInstance(t *testing.T) {
 	t.Parallel()
 	_, svc, _ := setupTraceTestEnv(t)

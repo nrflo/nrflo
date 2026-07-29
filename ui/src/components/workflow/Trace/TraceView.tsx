@@ -13,6 +13,7 @@ import { TraceMarkers } from './TraceMarkers'
 import { TraceChildRow } from './TraceChildRow'
 import { TraceLegend } from './TraceLegend'
 import { TraceBreadcrumb, type TraceCrumb } from './TraceBreadcrumb'
+import { WorkflowOriginBadge } from '@/components/workflow/WorkflowOriginBadge'
 import { MARKER_TYPES } from './colors'
 import { useTraceZoom, TRACE_ZOOM_MIN, TRACE_ZOOM_MAX } from './useTraceZoom'
 import { Button } from '@/components/ui/Button'
@@ -114,10 +115,13 @@ export function TraceView({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <TraceBreadcrumb
-          stack={stack}
-          onNavigate={(i) => setStack(i === 0 ? [] : stack.slice(0, i + 1))}
-        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <TraceBreadcrumb
+            stack={stack}
+            onNavigate={(i) => setStack(i === 0 ? [] : stack.slice(0, i + 1))}
+          />
+          <WorkflowOriginBadge origin={trace.origin} originSessionId={trace.origin_session_id} />
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           <TraceLegend
             active={activeTypes}

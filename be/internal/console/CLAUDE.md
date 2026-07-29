@@ -14,6 +14,8 @@ Because those ids are caller-supplied, **every** tool taking an `instance_id` is
 
 `ticket_current` returns the ticket the session is working on, read from `agent_sessions.ticket_id` for `env.SessionID` (full ticket when set, `{"current_ticket":null}` otherwise — never an error). `agent mcp-external` stamps that column from its git branch when it opens a standalone console tool session; console-chat sessions are project-scoped but have no implicit ticket.
 
+Console-initiated workflow runs (`dynamic_workflow`, `workflow_run`) start via `Deps.Orch.StartConsoleWorkflow`, attributing the instance's `origin`/`origin_session_id` to `"console"` + the launching `env.SessionID`.
+
 ## ArtifactSvc Nil in ToolEnv
 
 `env.go`'s `NewToolEnv` leaves `ToolEnv.ArtifactSvc` nil: `artifacts.workflow_instance_id` is `NOT NULL REFERENCES workflow_instances(id)` with `foreign_keys(1)` on, and a console session owns no instance, so any write through the shared `web_fetch`/etc. artifact path would FK-fail after already writing the blob. `web_fetch` takes its documented nil-artifact-store branch instead. The console `artifact_list`/`artifact_get` tools (`tools_artifact.go`) hold their **own** `*service.ArtifactService` from `Deps` and take an explicit `instance_id`, so they are unaffected.

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // handleGetActiveWorkflows returns all active workflow instances across all projects.
@@ -19,7 +20,7 @@ func (s *Server) handleGetActiveWorkflows(w http.ResponseWriter, r *http.Request
 
 	rows := make([]map[string]interface{}, 0, len(instances))
 	for _, wi := range instances {
-		if wi.WorkflowID == specImportWorkflowID {
+		if service.IsHiddenWorkflowName(wi.WorkflowID) {
 			continue
 		}
 		rows = append(rows, map[string]interface{}{

@@ -14,10 +14,11 @@ import (
 // unlike the session-bound builtin (tools_builtin.dynamicWorkflowHandler,
 // which starts a *child* run via apirun.SubworkflowRunner under the caller's
 // own WorkflowInstanceID), a console session has none, so this starts a
-// top-level project-scoped `dynamic` run via Deps.Orch.StartWorkflow — no
-// parent instance needed. Always plan mode (StartWorkflow never sets
-// PlanAutoApprove): the run suspends at waiting_approval for the caller to
-// drive via get_subworkflow/revise_plan/approve_plan.
+// top-level project-scoped `dynamic` run via Deps.Orch.StartConsoleWorkflow,
+// attributed to the launching console session — no parent instance needed.
+// Always plan mode (StartConsoleWorkflow never sets PlanAutoApprove): the run
+// suspends at waiting_approval for the caller to drive via
+// get_subworkflow/revise_plan/approve_plan.
 type dynamicWorkflowHandler struct{ d Deps }
 
 func (dynamicWorkflowHandler) Spec() provider.ToolSpec {
@@ -49,7 +50,7 @@ func (h dynamicWorkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, 
 		return missingService("orchestrator")
 	}
 
-	instanceID, err := h.d.Orch.StartWorkflow(ctx, env.ProjectID, "", service.DynamicWorkflow, args.Instructions, "project")
+	instanceID, err := h.d.Orch.StartConsoleWorkflow(ctx, env.ProjectID, "", service.DynamicWorkflow, args.Instructions, "project", env.SessionID)
 	if err != nil {
 		return err.Error(), true, nil
 	}

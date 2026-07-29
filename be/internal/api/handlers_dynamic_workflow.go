@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"be/internal/model"
 	"be/internal/orchestrator"
 	"be/internal/service"
 )
@@ -54,6 +55,7 @@ func (s *Server) handleRunDynamicWorkflow(w http.ResponseWriter, r *http.Request
 		Instructions:    body.Instructions,
 		ScopeType:       "project",
 		PlanAutoApprove: planAuto,
+		Origin:          model.RunOriginHuman,
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())

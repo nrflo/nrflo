@@ -93,4 +93,6 @@ export interface WorkflowTraceResponse {
   children?: TraceChild[]
   root_markers?: TraceMarker[]
   truncated?: boolean
+  origin?: string
+  origin_session_id?: string
 }

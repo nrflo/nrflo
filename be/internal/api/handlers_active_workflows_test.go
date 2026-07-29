@@ -205,6 +205,37 @@ func TestHandleGetActiveWorkflows_SpecImportExcluded(t *testing.T) {
 	}
 }
 
+func TestHandleGetActiveWorkflows_DelegateHostExcluded(t *testing.T) {
+	s, database := newActiveWorkflowsServer(t)
+	defer database.Close()
+
+	seedProjectOnly(t, database, "proj-dh", "DH Project", "_delegate_host", "project")
+	insertWorkflowInstance(t, database, "wfi-delegate", "proj-dh", "", "_delegate_host", "active", "project")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/workflows/active", nil)
+	rr := httptest.NewRecorder()
+	s.handleGetActiveWorkflows(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var resp map[string]interface{}
+	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	workflows, ok := resp["workflows"].([]interface{})
+	if !ok {
+		t.Fatalf("workflows field missing: %v", resp)
+	}
+	if len(workflows) != 0 {
+		t.Errorf("workflows = %d, want 0 (_delegate_host filtered)", len(workflows))
+	}
+	count, _ := resp["count"].(float64)
+	if count != 0 {
+		t.Errorf("count = %v, want 0", count)
+	}
+}
+
 func TestHandleGetActiveWorkflows_TicketScopedInstanceReturned(t *testing.T) {
 	s, database := newActiveWorkflowsServer(t)
 	defer database.Close()

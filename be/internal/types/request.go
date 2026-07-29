@@ -51,6 +51,9 @@ type WorkflowInitRequest struct {
 	ExternalID      string            `json:"external_id,omitempty"`
 	ExternalContext string            `json:"external_context,omitempty"`
 	SeedFindings    map[string]string `json:"seed_findings,omitempty"`
+
+	Origin          string `json:"-"` // launch surface, server-set only (model.RunOriginConsole/RunOriginHuman)
+	OriginSessionID string `json:"-"` // launching console session id, server-set only
 }
 
 // WorkflowGetRequest is the request for getting workflow state
@@ -286,16 +289,6 @@ type ProjectWorkflowRunRequest struct {
 	LaunchDepth      int                `json:"-"` // set by the orchestrator (sub-workflow / next-on-success starts), never by clients
 	ParentInstanceID string             `json:"-"` // run_subworkflow caller's instance id; orchestrator-set only
 	SubworkflowDepth int                `json:"-"` // run_subworkflow nesting; orchestrator-set only
-}
-
-// DependencyRequest is the request for adding/removing dependencies
-type DependencyRequest struct {
-	Child  string `json:"child"`
-	Parent string `json:"parent"`
-}
-
-// StatusRequest is the request for ticket status summary
-type StatusRequest struct {
-	PendingLimit   int `json:"pending_limit,omitempty"`
-	CompletedLimit int `json:"completed_limit,omitempty"`
+	Origin           string             `json:"-"` // launch surface, server-set only (model.RunOriginConsole/RunOriginHuman)
+	OriginSessionID  string             `json:"-"` // launching console session id, server-set only
 }

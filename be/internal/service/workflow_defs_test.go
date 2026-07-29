@@ -96,6 +96,26 @@ func TestCreateWorkflowDef_NoGroups(t *testing.T) {
 	}
 }
 
+// TestCreateWorkflowDef_LeadingUnderscoreID_Rejected verifies that a
+// `_`-prefixed workflow id is rejected — leading underscore ids are reserved
+// for internal system workflows (IsHiddenWorkflowName).
+func TestCreateWorkflowDef_LeadingUnderscoreID_Rejected(t *testing.T) {
+	t.Parallel()
+	_, svc := setupWorkflowDefsTestEnv(t)
+
+	cases := []string{"_delegate_host", "__spec_import__", "_x"}
+	for _, id := range cases {
+		id := id
+		t.Run(id, func(t *testing.T) {
+			t.Parallel()
+			_, err := svc.CreateWorkflowDef("proj1", &types.WorkflowDefCreateRequest{ID: id})
+			if err == nil {
+				t.Fatalf("CreateWorkflowDef(%q) = nil error, want rejection", id)
+			}
+		})
+	}
+}
+
 func TestCreateWorkflowDef_EmptyGroupEntry(t *testing.T) {
 	t.Parallel()
 	_, svc := setupWorkflowDefsTestEnv(t)

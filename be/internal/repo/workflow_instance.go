@@ -25,7 +25,7 @@ func NewWorkflowInstanceRepo(pool *db.Pool, clk clock.Clock) *WorkflowInstanceRe
 const wfiCols = `id, project_id, def_project_id, ticket_id, workflow_id, scope_type, status,
 	skip_tags, retry_count, parent_session, worktree_path, branch_name,
 	endless_loop, stop_endless_loop_after_iteration, purge_on_completion, launch_depth, parent_instance_id, subworkflow_depth, subworkflow_starts, plan_auto_approve, created_at, updated_at, scheduled_task_id,
-	external_id, external_context`
+	external_id, external_context, origin, origin_session_id`
 
 func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowInstance, error) {
 	wi := &model.WorkflowInstance{}
@@ -36,7 +36,7 @@ func scanWFI(scanner interface{ Scan(...interface{}) error }) (*model.WorkflowIn
 		&wi.Status, &wi.SkipTags,
 		&wi.RetryCount, &wi.ParentSession, &wi.WorktreePath, &wi.BranchName,
 		&wi.EndlessLoop, &wi.StopEndlessLoopAfterIteration, &wi.PurgeOnCompletion, &wi.LaunchDepth, &wi.ParentInstanceID, &wi.SubworkflowDepth, &wi.SubworkflowStarts, &wi.PlanAutoApprove, &createdAt, &updatedAt,
-		&scheduledTaskID, &externalID, &externalContext,
+		&scheduledTaskID, &externalID, &externalContext, &wi.Origin, &wi.OriginSessionID,
 	)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 
 	_, err := r.pool.Exec(`
 		INSERT INTO workflow_instances (`+wfiCols+`)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		wi.ID, strings.ToLower(wi.ProjectID), strings.ToLower(wi.DefProjectID), strings.ToLower(wi.TicketID),
 		strings.ToLower(wi.WorkflowID), wi.ScopeType, wi.Status,
 		wi.SkipTags, wi.RetryCount, wi.ParentSession,
@@ -77,6 +77,7 @@ func (r *WorkflowInstanceRepo) Create(wi *model.WorkflowInstance) error {
 		sql.NullString{String: wi.ScheduledTaskID, Valid: wi.ScheduledTaskID != ""},
 		sql.NullString{String: wi.ExternalID, Valid: wi.ExternalID != ""},
 		sql.NullString{String: wi.ExternalContext, Valid: wi.ExternalContext != ""},
+		wi.Origin, wi.OriginSessionID,
 	)
 	return err
 }

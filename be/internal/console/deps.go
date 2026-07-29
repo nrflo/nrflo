@@ -23,6 +23,9 @@ import (
 // orchestrator_stoppage.go).
 type Orchestrator interface {
 	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error)
+	// StartConsoleWorkflow is StartWorkflow for console-initiated starts: the
+	// run's origin is attributed to the launching console session.
+	StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string) (string, error)
 	StopByProject(projectID, workflowName, instanceID string) error
 	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
 	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error

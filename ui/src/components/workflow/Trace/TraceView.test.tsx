@@ -193,6 +193,24 @@ describe('TraceView', () => {
     expect(screen.getAllByTestId('trace-child')).toHaveLength(1)
   })
 
+  it('shows the origin badge in the header when the trace payload carries origin=console', () => {
+    mockUseTrace.mockReturnValue({
+      data: makeTrace({ origin: 'console', origin_session_id: 'sess-1234567890' }),
+      isLoading: false,
+      error: null,
+    })
+    renderWithQuery(<TraceView instanceId="wfi-1" />)
+
+    expect(screen.getByText('Console')).toBeInTheDocument()
+  })
+
+  it('does not show the origin badge when the trace payload has no origin', () => {
+    mockUseTrace.mockReturnValue({ data: makeTrace(), isLoading: false, error: null })
+    renderWithQuery(<TraceView instanceId="wfi-1" />)
+
+    expect(screen.queryByText('Console')).not.toBeInTheDocument()
+  })
+
   it('lane click builds SelectedAgentData from sessions', () => {
     mockUseTrace.mockReturnValue({ data: makeTrace(), isLoading: false, error: null })
     const onAgentSelect = vi.fn()

@@ -78,6 +78,8 @@ Four `protected` routes resume (`continue`, optional instructions) or fail (`fai
 
 `POST /api/v1/projects/{id}/workflow/run` accepts `endless_loop: bool` (mutually exclusive with `interactive`/`plan_mode`; requires project-scope workflow). `POST .../stop-endless-loop` toggles the graceful-stop flag on an active instance without interrupting the in-flight iteration. See `handlers_project_workflow.go` for validation details.
 
+Instance listings (`handleGetProjectWorkflow`, `handleGetActiveWorkflows`) and workflow-def listings exclude leading-underscore hidden definitions (e.g. `_delegate_host`, `__spec_import__`) via `service.IsHiddenWorkflowName`.
+
 ## Plan Routes
 
 Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v1/projects/{id}/dynamic-workflow`) are all `protected` per-instance RUNTIME operations — deliberately NOT gated by `denyNonAdminGlobalWrite`, so spawn/service tokens can drive `dynamic_workflow` runs in `__global__`; revise/approve are revision-pinned (stale `revision` → 409). Approve materializes in the same request and resumes a plan-suspended run via `PlanResumer.ResumeAfterPlanApproval`. Mechanics: [REFERENCE.md](REFERENCE.md#plan-routes) — read before changing plan auth or the approve flow; see also [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#plan-boundary--materialization).

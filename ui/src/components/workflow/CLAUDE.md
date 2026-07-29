@@ -34,6 +34,10 @@ React Flow (`@xyflow/react`) graph with ELK.js auto-layout (layered/Sugiyama); s
 
 `StepProgressStrip.tsx` renders an "N/M" badge plus per-step pips (hover tooltip: title/state/timestamp), fed by `useStepCursors` (REST snapshot + live `step.advanced` WS patches). Mounted in `AgentFlowNode.tsx`'s card body (graph view) and in `AgentsTable.tsx`'s Agent cell (simplified/table view, guarded on an `instanceId` prop threaded from `PhaseTimeline.tsx`); self-contained, renders `null` without a step cursor.
 
+## Origin Attribution
+
+`WorkflowOriginBadge.tsx` — console-launch attribution surface: renders a "Console" badge (linked to `/console?session=<id>` for admins) when `origin === 'console'`, and nothing for empty/`human` origin. Consumed by `WorkflowTabContent.tsx`'s header badge row and `Trace/TraceView.tsx`'s header.
+
 ## Findings
 
 - `FindingsPanel.tsx` — project findings first, then agent findings grouped by `agent_type`; each key collapsible; filters internal keys (`_` prefix). Exports `FindingRow` and `isInternalKey`.

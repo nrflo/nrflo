@@ -28,6 +28,38 @@ func TestBuildV4State_PlanBlockAbsentWithNoPlan(t *testing.T) {
 	}
 }
 
+// TestBuildV4State_OriginOmittedWhenEmptyPresentWhenSet mirrors parent_session's
+// omit-when-empty pattern for origin/origin_session_id.
+func TestBuildV4State_OriginOmittedWhenEmptyPresentWhenSet(t *testing.T) {
+	t.Parallel()
+	pool, instanceID := setupPlanTestEnv(t)
+	clk := clock.Real()
+	svc := NewWorkflowService(pool, clk)
+	wfiRepo := repo.NewWorkflowInstanceRepo(pool, clk)
+
+	wi, err := wfiRepo.Get(instanceID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	state := svc.buildV4State(wi)
+	if _, ok := state["origin"]; ok {
+		t.Errorf(`state["origin"] = %+v, want key absent (empty origin)`, state["origin"])
+	}
+	if _, ok := state["origin_session_id"]; ok {
+		t.Errorf(`state["origin_session_id"] = %+v, want key absent (empty origin_session_id)`, state["origin_session_id"])
+	}
+
+	wi.Origin = "console"
+	wi.OriginSessionID = "sess-v4-1"
+	state = svc.buildV4State(wi)
+	if state["origin"] != "console" {
+		t.Errorf(`state["origin"] = %v, want "console"`, state["origin"])
+	}
+	if state["origin_session_id"] != "sess-v4-1" {
+		t.Errorf(`state["origin_session_id"] = %v, want "sess-v4-1"`, state["origin_session_id"])
+	}
+}
+
 // TestBuildV4State_PlanBlockReflectsHeadAndMaterializedRevision asserts the
 // plan block reports the approved status and the materialized revision number
 // after Revise+Approve (which materializes in the same request).

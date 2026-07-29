@@ -155,6 +155,8 @@ export interface WorkflowState {
   scope_type?: ScopeType
   worktree_path?: string
   branch_name?: string
+  origin?: string
+  origin_session_id?: string
   current_phase?: string
   status?: WorkflowInstanceStatus
   plan?: PlanBlock

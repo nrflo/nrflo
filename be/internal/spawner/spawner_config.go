@@ -142,10 +142,11 @@ type Config struct {
 	Subworkflows apirun.SubworkflowRunner
 	// DelegateDepth is this spawner's position in a delegate chain: 0 for a
 	// top-level (non-delegate) spawner, N for a spawner running a delegate
-	// worker N levels down. Threaded in-memory down the spawn tree (never a
-	// shared DB counter), so it is per-chain and race-free: buildAPIRegistry
-	// strips `delegate` once DelegateDepth+1 exceeds the cap, and Delegate
-	// stamps each worker's child spawner with DelegateDepth+1.
+	// worker N levels down. Seeded from the persisted `delegations` row's
+	// depth column (repo.DelegationRepo.DepthForSession), not threaded
+	// in-memory, so a fresh Spawner per call (the console path) still
+	// resolves the correct depth: buildAPIRegistry strips `delegate` once
+	// DelegateDepth+1 exceeds the cap.
 	DelegateDepth int
 	// RefinerySidecar drives the autonomous refinery fold sidecar's
 	// StartSession/StopSession lifecycle around cli_interactive spawns.

@@ -77,4 +77,24 @@ func TestDelegate_ConsoleCaller_NoBoundInstance_MintsHiddenHost(t *testing.T) {
 	if wfCount != 1 {
 		t.Errorf("_delegate_host workflow count = %d, want 1", wfCount)
 	}
+
+	// The delegations row must be scoped to the minted host instance and
+	// the console caller — not the base test-env workflow instance.
+	d, err := repo.NewDelegationRepo(env.pool, clock.Real()).Get(delegationID)
+	if err != nil {
+		t.Fatalf("Get delegation row: %v", err)
+	}
+	if d.CallerSessionID != consoleSID {
+		t.Errorf("delegation caller_session_id = %q, want %q", d.CallerSessionID, consoleSID)
+	}
+	if d.WorkflowInstanceID == env.wfiID || d.WorkflowInstanceID == "" {
+		t.Errorf("delegation workflow_instance_id = %q, want a freshly minted host instance (not %q)", d.WorkflowInstanceID, env.wfiID)
+	}
+	var hostWfiCount int
+	if err := env.pool.QueryRow(`SELECT COUNT(*) FROM workflow_instances WHERE id = ? AND workflow_id = '_delegate_host'`, d.WorkflowInstanceID).Scan(&hostWfiCount); err != nil {
+		t.Fatalf("count host instance: %v", err)
+	}
+	if hostWfiCount != 1 {
+		t.Errorf("host instance count for %q = %d, want 1", d.WorkflowInstanceID, hostWfiCount)
+	}
 }

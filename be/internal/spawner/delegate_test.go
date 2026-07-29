@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"be/internal/clock"
+	"be/internal/repo"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider/mock"
 )
@@ -54,15 +56,41 @@ func TestDelegate_SyncRoundTrip_SingleWorker(t *testing.T) {
 		t.Errorf("worker entry missing findings: %+v", entry)
 	}
 
-	// Tracking finding must be cleaned up once the delegation is terminal.
-	var count int
-	if err := env.pool.QueryRow(`SELECT COUNT(*) FROM findings WHERE key LIKE '_delegation_%'`).Scan(&count); err != nil {
-		t.Fatalf("count tracking findings: %v", err)
+	// The durable delegations row survives a terminal GetDelegation — it is
+	// marked completed + consumed, never deleted (migration 000216).
+	d, err := repo.NewDelegationRepo(env.pool, clock.Real()).Get(delegationID)
+	if err != nil {
+		t.Fatalf("Get delegation row after terminal read: %v", err)
 	}
-	if count != 0 {
-		t.Errorf("tracking finding count = %d, want 0 (deleted once terminal)", count)
+	if d.Status != "completed" {
+		t.Errorf("delegation row status = %q, want completed", d.Status)
 	}
+	if d.ConsumedAt == nil {
+		t.Error("delegation row consumed_at = nil, want set after terminal GetDelegation")
+	}
+
+	// A second GetDelegation must return the terminal status with no results
+	// and no error, instead of re-reading (and re-deleting) worker findings.
+	secondRaw, err := sp.GetDelegation(context.Background(), env.callerSessionID, delegationID)
+	if err != nil {
+		t.Fatalf("second GetDelegation() error: %v", err)
+	}
+	var second map[string]interface{}
+	if err := json.Unmarshal([]byte(secondRaw), &second); err != nil {
+		t.Fatalf("unmarshal second GetDelegation result: %v", err)
+	}
+	if second["status"] != "completed" {
+		t.Errorf("second GetDelegation status = %v, want completed", second["status"])
+	}
+	if second["consumed"] != true {
+		t.Errorf("second GetDelegation consumed = %v, want true", second["consumed"])
+	}
+	if _, hasResults := second["results"]; hasResults {
+		t.Errorf("second GetDelegation results = %v, want absent (consumed reads return no results)", second["results"])
+	}
+
 	// Worker's _delegate_findings must be deleted (read+delete, like _consult_answer).
+	var count int
 	if err := env.pool.QueryRow(`SELECT COUNT(*) FROM findings WHERE key = '_delegate_findings'`).Scan(&count); err != nil {
 		t.Fatalf("count delegate findings: %v", err)
 	}

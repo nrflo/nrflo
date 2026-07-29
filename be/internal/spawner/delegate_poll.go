@@ -11,53 +11,17 @@ import (
 	"be/internal/repo"
 )
 
-// delegationTracking is the `_delegation_<id>` finding value persisted on the
-// (real or hidden-host) workflow instance a delegate call spawned workers
-// under — survives across turns/requests so GetDelegation can poll it. Seeded
-// with Done=false before the workers run (SessionIDs empty), then rewritten
-// with Done=true and the full SessionIDs list once the fanout finishes.
-type delegationTracking struct {
-	Tier       string   `json:"tier"`
-	SessionIDs []string `json:"session_ids"`
-	// SpawnErrors is index-aligned with SessionIDs: the spawn error for a
-	// worker that never registered a session (its SessionIDs slot is "").
-	SpawnErrors []string `json:"spawn_errors,omitempty"`
-	Done        bool     `json:"done"`
-}
-
-func delegationFindingKey(delegationID string) string {
-	return "_delegation_" + delegationID
-}
-
-// trackDelegation persists the fanout's worker session ids on wfiID, keyed by
-// delegationID, so a later GetDelegation call (which resolves wfiID back out
-// of delegationID's "<wfiID>.<rand>" shape) can find them again. Called twice:
-// once with done=false (seed, empty sessionIDs) and once with done=true (final
-// session-id list) after the workers finish.
-func (s *Spawner) trackDelegation(wfiID, projectID, delegationID, tier string, sessionIDs, spawnErrors []string, done bool) error {
-	pool := s.pool()
-	if pool == nil {
-		return fmt.Errorf("delegate: no database pool")
-	}
-	val, err := json.Marshal(delegationTracking{Tier: tier, SessionIDs: sessionIDs, SpawnErrors: spawnErrors, Done: done})
-	if err != nil {
-		return err
-	}
-	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
-	return findingRepo.Upsert("workflow_instance", wfiID, delegationFindingKey(delegationID), val,
-		repo.Denorm{ProjectID: projectID, WorkflowInstanceID: wfiID}, repo.Actor{Source: "system", ID: "delegate"})
-}
-
 // GetDelegation implements apirun.Delegator: returns the delegation's current
 // aggregated status without blocking (the delegate/get_delegation builtin
-// handlers own the bounded, heartbeated poll loop around this).
+// handlers own the bounded, heartbeated poll loop around this). The
+// delegations row (migration 000216) is never deleted — only marked
+// completed/failed and consumed once a terminal result has been read back.
 func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error) {
 	pool := s.pool()
 	if pool == nil {
 		return "", fmt.Errorf("delegate: no database pool")
 	}
-	wfiID, _, ok := strings.Cut(delegationID, ".")
-	if !ok || wfiID == "" {
+	if !strings.Contains(delegationID, ".") {
 		return "", fmt.Errorf("delegate: malformed delegation_id %q", delegationID)
 	}
 
@@ -65,46 +29,42 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 	if err != nil {
 		return "", fmt.Errorf("delegate: resolve caller session: %w", err)
 	}
-	wfi, err := repo.NewWorkflowInstanceRepo(pool, s.config.Clock).Get(wfiID)
+
+	delegationRepo := repo.NewDelegationRepo(pool, s.config.Clock)
+	d, err := delegationRepo.Get(delegationID)
 	if err != nil {
-		return "", fmt.Errorf("delegate: resolve workflow instance: %w", err)
+		return "", fmt.Errorf("delegate: unknown delegation %q", delegationID)
 	}
-	if !strings.EqualFold(wfi.ProjectID, callerSession.ProjectID) {
+	if !strings.EqualFold(d.ProjectID, callerSession.ProjectID) {
 		return "", fmt.Errorf("delegate: delegation %q was not started by this caller", delegationID)
 	}
 
-	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
-	findings, err := findingRepo.GetOwn("workflow_instance", wfiID)
-	if err != nil {
-		return "", fmt.Errorf("delegate: read tracking: %w", err)
-	}
-	raw, ok := findings[delegationFindingKey(delegationID)]
-	if !ok {
-		return "", fmt.Errorf("delegate: unknown delegation %q", delegationID)
-	}
-	var tracking delegationTracking
-	if err := json.Unmarshal(raw, &tracking); err != nil {
-		return "", fmt.Errorf("delegate: decode tracking: %w", err)
+	// Already consumed by an earlier terminal read: return the stored status
+	// with no results rather than re-reading (and re-deleting) worker
+	// findings that are already gone.
+	if d.ConsumedAt != nil {
+		out := map[string]interface{}{"delegation_id": delegationID, "status": d.Status, "consumed": true}
+		b, _ := json.Marshal(out)
+		return string(b), nil
 	}
 
-	// Not-yet-done seed record: workers are still being spawned/running and the
-	// final session-id list is not known yet — report running without deleting
-	// the tracking record.
-	if !tracking.Done {
+	// Fanout not yet done: workers are still being spawned/running and the
+	// final worker session-id list is not known yet — report running.
+	if !d.FanoutDone {
 		return delegateStatusJSON(delegationID, "running", nil), nil
 	}
 
-	results, allDone, anyFailed := s.collectDelegateResults(pool, tracking.SessionIDs, tracking.SpawnErrors)
+	results, allDone, anyFailed := s.collectDelegateResults(pool, d.WorkerSessionIDs, d.SpawnErrors)
 	if !allDone {
 		return delegateStatusJSON(delegationID, "running", results), nil
 	}
-
-	findingRepo.DeleteKeys("workflow_instance", wfiID, []string{delegationFindingKey(delegationID)}, repo.Actor{Source: "system", ID: "delegate"}) //nolint:errcheck
 
 	status := "completed"
 	if anyFailed {
 		status = "failed"
 	}
+	delegationRepo.MarkTerminal(delegationID, status) //nolint:errcheck
+
 	return delegateStatusJSON(delegationID, status, results), nil
 }
 

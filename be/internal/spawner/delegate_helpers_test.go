@@ -129,6 +129,41 @@ func manyDelegateWorkerScripts(n int, answer string) []mock.Script {
 	return out
 }
 
+// seedDelegationRow inserts a durable delegations row (migration 000216)
+// directly via DelegationRepo, replacing the old `_delegation_<id>` finding
+// seed. workerSessionIDs/spawnErrors are index-aligned and written via
+// SetWorkerSlot; fanoutDone marks the row done so GetDelegation evaluates
+// worker results instead of reporting "running".
+func seedDelegationRow(t *testing.T, env *delegateTestEnv, delegationID, tier string, workerSessionIDs, spawnErrors []string, fanoutDone bool) {
+	t.Helper()
+	delegationRepo := repo.NewDelegationRepo(env.pool, clock.Real())
+	if err := delegationRepo.Create(&model.Delegation{
+		ID:                 delegationID,
+		CallerSessionID:    env.callerSessionID,
+		WorkflowInstanceID: env.wfiID,
+		ProjectID:          env.projectID,
+		Tier:               tier,
+		Fanout:             len(workerSessionIDs),
+		Depth:              1,
+	}); err != nil {
+		t.Fatalf("seed delegation row: %v", err)
+	}
+	for i, sid := range workerSessionIDs {
+		errMsg := ""
+		if i < len(spawnErrors) {
+			errMsg = spawnErrors[i]
+		}
+		if err := delegationRepo.SetWorkerSlot(delegationID, i, sid, errMsg); err != nil {
+			t.Fatalf("SetWorkerSlot(%d): %v", i, err)
+		}
+	}
+	if fanoutDone {
+		if err := delegationRepo.MarkFanoutDone(delegationID); err != nil {
+			t.Fatalf("MarkFanoutDone: %v", err)
+		}
+	}
+}
+
 // waitForDelegationDone polls GetDelegation until the delegation leaves the
 // "running" state. Delegate seeds a done=false tracking record synchronously
 // before returning, so GetDelegation resolves the delegation as "running" for

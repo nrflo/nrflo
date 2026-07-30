@@ -89,6 +89,69 @@ func TestGetDelegation_FailedStatus_IsError(t *testing.T) {
 	}
 }
 
+func TestGetDelegation_BareRunning_CarriesWaitSecHint(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+	}
+
+	out, isErr, err := invoke(t, env.env, "get_delegation", `{"delegation_id":"wfi.abc"}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	if !strings.Contains(out, "wait_sec") {
+		t.Errorf("out=%q, want running result carrying a wait_sec hint", out)
+	}
+}
+
+func TestGetDelegation_TerminalResult_NoHint(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"completed","results":[{"status":"completed"}]}`, nil
+		},
+	}
+
+	out, _, err := invoke(t, env.env, "get_delegation", `{"delegation_id":"wfi.abc"}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if strings.Contains(out, "hint") {
+		t.Errorf("out=%q, want terminal result without a poll hint", out)
+	}
+}
+
+func TestGetDelegation_WaitExpires_StillRunningCarriesHint(t *testing.T) {
+	old := delegatePollInterval
+	delegatePollInterval = time.Millisecond
+	defer func() { delegatePollInterval = old }()
+
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // expire immediately: first poll runs, then ctx.Done wins
+	out, isErr, err := getDelegationHandler{}.Invoke(ctx, env.env, []byte(`{"delegation_id":"wfi.abc","wait_sec":5}`))
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	if !strings.Contains(out, "wait_sec") {
+		t.Errorf("out=%q, want expired-wait running result carrying a wait_sec hint", out)
+	}
+}
+
 func TestGetDelegation_WaitSecPositive_PollsUntilDone(t *testing.T) {
 	old := delegatePollInterval
 	delegatePollInterval = time.Millisecond

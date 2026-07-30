@@ -174,7 +174,7 @@ func TestAppendDelegationGuidance_ComposesWithTierT1Executor_NoDuplication(t *te
 	if got := strings.Count(prep.apiSystem, "## Role: T1 Executor"); got != 1 {
 		t.Errorf("count(%q) = %d, want 1; prep.apiSystem = %q", "## Role: T1 Executor", got, prep.apiSystem)
 	}
-	if got := strings.Count(prep.apiSystem, "get_delegation"); got != 1 {
-		t.Errorf("count(%q) = %d, want 1; prep.apiSystem = %q", "get_delegation", got, prep.apiSystem)
+	if got := strings.Count(prep.apiSystem, "## Delegation"); got != 1 {
+		t.Errorf("count(%q) = %d, want 1; prep.apiSystem = %q", "## Delegation", got, prep.apiSystem)
 	}
 }

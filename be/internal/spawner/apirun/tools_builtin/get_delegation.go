@@ -23,7 +23,7 @@ type getDelegationHandler struct{}
 func (getDelegationHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_delegation",
-		Description: "Poll an async delegation started via delegate. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data. Set wait_sec to block up to that many seconds (max 240) for still-running workers.",
+		Description: "Collect an async delegation started via delegate. ALWAYS pass wait_sec to block up to that many seconds (max 240) for still-running workers — one blocking call, never a bare-poll loop. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -55,9 +55,26 @@ func (getDelegationHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 		if err != nil {
 			return err.Error(), true, nil
 		}
-		return result, delegationStatus(result) == "failed", nil
+		return appendPollHint(result), delegationStatus(result) == "failed", nil
 	}
 	return pollDelegation(ctx, env, args.DelegationID, args.WaitSec)
+}
+
+// appendPollHint stamps a "hint" field onto a still-running result returned
+// from a non-blocking call, steering the model to a single bounded wait — an
+// async return with no hint reliably produces a get_delegation call per model
+// turn until the workers finish.
+func appendPollHint(raw string) string {
+	var v map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &v); err != nil || v["status"] != "running" {
+		return raw
+	}
+	v["hint"] = "still running — collect with one get_delegation call passing wait_sec (max 240), do not re-poll without it"
+	b, err := json.Marshal(v)
+	if err != nil {
+		return raw
+	}
+	return string(b)
 }
 
 // delegationStatus extracts the top-level "status" field from a delegate/
@@ -96,9 +113,9 @@ func pollDelegation(ctx context.Context, env apirun.ToolEnv, delegationID string
 		}
 		select {
 		case <-ctx.Done():
-			return last, false, nil
+			return appendPollHint(last), false, nil
 		case <-deadline.C:
-			return last, false, nil
+			return appendPollHint(last), false, nil
 		case <-ticker.C:
 			heartbeatEvery++
 			if env.Heartbeat != nil && heartbeatEvery%10 == 0 { // ~every 30s

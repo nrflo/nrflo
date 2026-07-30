@@ -36,7 +36,7 @@ Builtin tool handlers registered in `tools_builtin/builtins.go`; the map literal
 
 `consult` (`tools_builtin/consult.go`) synchronously spawns a named consultant agent via `apirun.ConsultantSpawner` and returns the `_consult_answer` finding inline; see [doc/api.md § Consultants](../../../../doc/api.md#consultants) for authoring requirements.
 
-`delegate` / `get_delegation` (`tools_builtin/delegate.go`, `get_delegation.go`) spawn tier-resolved (`extractor`/`executor`) workers downward via `apirun.Delegator`, async-with-poll like the sub-workflow builtins; mechanics: [REFERENCE.md](REFERENCE.md#delegate--get_delegation-builtins).
+`delegate` / `get_delegation` (`tools_builtin/delegate.go`, `get_delegation.go`) spawn tier-resolved (`extractor`/`executor`) workers downward via `apirun.Delegator`; extractor waits inline, executor async-with-poll; mechanics: [REFERENCE.md](REFERENCE.md#delegate--get_delegation-builtins).
 
 `findings_add_from_file` (`tools_builtin/findings_from_file.go`) stores a workdir-jailed file's content as a finding via the normal `FindingsService.Add` path (256KB cap, rejects non-UTF8), returning `{key,bytes,sha256}` so agents can persist existing text without re-streaming it through the model; it is force-baseline like `findings_add`.
 

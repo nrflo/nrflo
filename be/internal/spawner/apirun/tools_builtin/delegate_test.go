@@ -175,6 +175,85 @@ func TestDelegate_DelegateErrorPropagates(t *testing.T) {
 	}
 }
 
+func TestDelegate_ExtractorOmittedWaitSec_BlocksInline(t *testing.T) {
+	old := delegatePollInterval
+	delegatePollInterval = time.Millisecond
+	defer func() { delegatePollInterval = old }()
+
+	env := newBuiltinTestEnv(t)
+	polls := 0
+	env.env.Delegator = &fakeDelegator{
+		delegateFn: func(context.Context, string, apirun.DelegateRequest) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			polls++
+			if polls < 2 {
+				return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+			}
+			return `{"delegation_id":"wfi.abc","status":"completed","results":[{"status":"completed"}]}`, nil
+		},
+	}
+
+	out, isErr, err := invoke(t, env.env, "delegate", `{"tier":"extractor","brief":"do it"}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	if !strings.Contains(out, "completed") {
+		t.Errorf("out=%q, want completed via the default inline wait", out)
+	}
+	if polls < 2 {
+		t.Errorf("polls=%d, want >=2 (default extractor wait must poll)", polls)
+	}
+}
+
+func TestDelegate_ExtractorExplicitZero_StaysAsyncWithHint(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		delegateFn: func(context.Context, string, apirun.DelegateRequest) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			t.Fatal("GetDelegation must not be called for an explicit wait_sec:0")
+			return "", nil
+		},
+	}
+
+	out, isErr, err := invoke(t, env.env, "delegate", `{"tier":"extractor","brief":"do it","wait_sec":0}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	if !strings.Contains(out, "running") || !strings.Contains(out, "wait_sec") {
+		t.Errorf("out=%q, want async running result carrying a wait_sec hint", out)
+	}
+}
+
+func TestDelegate_ExecutorOmittedWaitSec_StaysAsyncWithHint(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		delegateFn: func(context.Context, string, apirun.DelegateRequest) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+	}
+
+	out, isErr, err := invoke(t, env.env, "delegate", `{"tier":"executor","brief":"do it"}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	if !strings.Contains(out, "running") || !strings.Contains(out, "hint") {
+		t.Errorf("out=%q, want async running result carrying a hint", out)
+	}
+}
+
 func TestDelegate_WaitSecPositive_PollsUntilDone(t *testing.T) {
 	old := delegatePollInterval
 	delegatePollInterval = time.Millisecond

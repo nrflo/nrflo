@@ -35,6 +35,11 @@ func TestConsoleDelegate_HappyPath_RoutesThroughDepsDelegator(t *testing.T) {
 		delegateFn: func(context.Context, string, apirun.DelegateRequest) (string, error) {
 			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
 		},
+		// An extractor call with no wait_sec blocks inline (builtin default),
+		// so the handler polls GetDelegation through the same Deps.Delegator.
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"completed","results":[{"status":"completed"}]}`, nil
+		},
 	}
 	env.deps.Delegator = fake
 	reg, err := BuildRegistry(env.deps, nil)
@@ -47,8 +52,8 @@ func TestConsoleDelegate_HappyPath_RoutesThroughDepsDelegator(t *testing.T) {
 	if err != nil || isErr {
 		t.Fatalf("err=%v isErr=%v out=%s", err, isErr, out)
 	}
-	if !strings.Contains(out, "wfi.abc") {
-		t.Errorf("out=%q, want contains delegation_id", out)
+	if !strings.Contains(out, "wfi.abc") || !strings.Contains(out, "completed") {
+		t.Errorf("out=%q, want the inline-waited terminal result", out)
 	}
 	if fake.lastCaller != "sess-1" {
 		t.Errorf("lastCaller=%q, want sess-1", fake.lastCaller)

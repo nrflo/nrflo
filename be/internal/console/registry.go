@@ -15,12 +15,15 @@ import (
 // artifact_add and the builtin artifact_list/artifact_get) is session-bound
 // (needs WorkflowInstanceID, session-scoped findings, or lifecycle semantics
 // a console session has none of) and is deliberately excluded — see
-// CLAUDE.md. delegate/get_delegation/dynamic_workflow/get_subworkflow/
-// revise_plan/approve_plan/consult are the exception: they are console-only
-// reimplementations (tools_delegate.go, tools_dynamic.go, tools_plan.go,
-// tools_consult.go), not reused from this map, because they route through
-// Deps (Delegator/Consultant/Orch) or a project guard instead of the
-// session-bound WorkflowInstanceID the builtin handlers key off.
+// CLAUDE.md. dynamic_workflow/get_subworkflow/revise_plan/approve_plan/
+// consult are the exception: they are console-only reimplementations
+// (tools_dynamic.go, tools_plan.go, tools_consult.go), not reused from this
+// map, because they route through Deps (Consultant/Orch) or a project guard
+// instead of the session-bound WorkflowInstanceID the builtin handlers key
+// off. delegate/get_delegation reuse the builtins — NewToolEnv wires
+// env.Delegator from Deps.Delegator, and the builtin handlers only key off
+// that plus session/project identity, so console callers get the same
+// wait_sec defaults and poll hints as api-mode agents.
 func reusedBuiltins() []string {
 	return []string{
 		"project_findings_add",
@@ -36,6 +39,8 @@ func reusedBuiltins() []string {
 		"ticket_add_dependency",
 		"web_search",
 		"web_fetch",
+		"delegate",
+		"get_delegation",
 	}
 }
 
@@ -71,8 +76,6 @@ func BuildRegistry(d Deps, catalogue []string) (apirun.Registry, error) {
 	reg["ticket_current"] = ticketCurrentHandler{d: d}
 	reg["artifact_list"] = artifactListHandler{d: d}
 	reg["artifact_get"] = artifactGetHandler{d: d}
-	reg["delegate"] = delegateHandler{d: d}
-	reg["get_delegation"] = getDelegationHandler{d: d}
 	reg["dynamic_workflow"] = dynamicWorkflowHandler{d: d}
 	reg["get_subworkflow"] = getSubworkflowHandler{d: d}
 	reg["revise_plan"] = revisePlanHandler{d: d}

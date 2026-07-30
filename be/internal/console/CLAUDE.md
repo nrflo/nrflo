@@ -8,7 +8,7 @@ The console `apirun.ToolEnv` has no `WorkflowInstanceID` — a console session i
 
 Because those ids are caller-supplied, **every** tool taking an `instance_id` is project-guarded: console handlers via `loadGuardedInstance` (`helpers.go`), and the reused `workflow_continue`/`workflow_fail` builtins via the orchestrator's `APIWorkflowControl` adapter (see [orchestrator/CLAUDE.md](../orchestrator/CLAUDE.md#misc)). A console token must never act on another project's instance. The `ticket_list`/`ticket_get`/`ticket_current` readers (`tools_ticket.go`, the picker feeding `workflow_run`'s `ticket_id`) take no project arg at all — they scope to `env.ProjectID` via `TicketRepo`/`TicketSvc`, so there is no cross-project id to guard.
 
-`delegate`/`get_delegation` (`tools_delegate.go`) are the one exception to "session-bound tools are excluded": unlike `consult`, they are intentionally exposed to console (T0) sessions, routing through `Deps.Delegator` (`orchestrator.APIDelegator`) instead of `env.Delegator` — the implementation creates its own hidden host workflow instance since a console session has no `WorkflowInstanceID` to spawn workers under.
+`delegate`/`get_delegation` are reused builtins despite being delegation tools: `NewToolEnv` wires `env.Delegator` from `Deps.Delegator` (`orchestrator.APIDelegator`), whose implementation mints a hidden host workflow instance since a console session has no `WorkflowInstanceID` to spawn workers under — so console callers get the builtin handlers' wait_sec defaults and poll hints, not a console-specific fork.
 
 ## Current Ticket
 

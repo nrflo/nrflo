@@ -26,5 +26,6 @@ func NewToolEnv(d Deps, sessionID, projectID string) apirun.ToolEnv {
 		Ticket:          d.TicketSvc,
 		Workflow:        d.WorkflowSvc,
 		WorkflowControl: d.WorkflowControl,
+		Delegator:       d.Delegator,
 	}
 }

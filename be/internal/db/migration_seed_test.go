@@ -26,8 +26,8 @@ func TestMigration039_SeedsConflictResolver(t *testing.T) {
 	if id != "conflict-resolver" {
 		t.Errorf("id = %q, want %q", id, "conflict-resolver")
 	}
-	if model != "sonnet-5" {
-		t.Errorf("model = %q, want %q", model, "sonnet-5")
+	if model != "" {
+		t.Errorf("model = %q, want empty (tier-resolved since 000222)", model)
 	}
 	if timeout != 20 {
 		t.Errorf("timeout = %d, want 20", timeout)

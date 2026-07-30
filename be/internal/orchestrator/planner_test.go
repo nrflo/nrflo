@@ -101,12 +101,16 @@ func TestResolvePlannerDef_ReasoningEffort_WorkflowLocalOverride(t *testing.T) {
 func TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallback(t *testing.T) {
 	env := newTestEnv(t)
 
-	var plannerModel, wantEffort string
-	if err := env.pool.QueryRow(`SELECT model FROM system_agent_definitions WHERE id = 'planner-system'`).Scan(&plannerModel); err != nil {
-		t.Fatalf("query planner-system model: %v", err)
+	// planner-system is tier-resolved (model='' since 000222), so the
+	// chain's primary entry — its tier's position-0 tier_models row —
+	// supplies both model and effort.
+	var tier int
+	if err := env.pool.QueryRow(`SELECT tier FROM system_agent_definitions WHERE id = 'planner-system'`).Scan(&tier); err != nil {
+		t.Fatalf("query planner-system tier: %v", err)
 	}
-	if err := env.pool.QueryRow(`SELECT default_effort FROM models WHERE id = ?`, plannerModel).Scan(&wantEffort); err != nil {
-		t.Fatalf("query model %q default_effort: %v", plannerModel, err)
+	var wantEffort string
+	if err := env.pool.QueryRow(`SELECT reasoning_effort FROM tier_models WHERE tier = ? AND position = 0`, tier).Scan(&wantEffort); err != nil {
+		t.Fatalf("query tier %d head effort: %v", tier, err)
 	}
 
 	cfg, err := env.orch.resolvePlannerDef(env.pool, env.project, "test")
@@ -117,7 +121,7 @@ func TestResolvePlannerDef_ReasoningEffort_SystemDefaultFallback(t *testing.T) {
 		t.Fatal("ReasoningEffort = nil, want a resolved pointer (via ResolveAgentChain)")
 	}
 	if *cfg.ReasoningEffort != wantEffort {
-		t.Errorf("ReasoningEffort = %q, want %q (model %q's default_effort)", *cfg.ReasoningEffort, wantEffort, plannerModel)
+		t.Errorf("ReasoningEffort = %q, want %q (tier chain head effort)", *cfg.ReasoningEffort, wantEffort)
 	}
 }
 

@@ -56,8 +56,8 @@ func TestMigration182_ExecutorSeed(t *testing.T) {
 	).Scan(&model, &executionMode, &tools, &reasoningEffort); err != nil {
 		t.Fatalf("query _t1_executor: %v", err)
 	}
-	if model != "sonnet-5" {
-		t.Errorf("model = %q, want sonnet-5", model)
+	if model != "" {
+		t.Errorf("model = %q, want empty (tier-resolved since 000222)", model)
 	}
 	if executionMode != "api" {
 		t.Errorf("execution_mode = %q, want api", executionMode)

@@ -95,7 +95,7 @@ func TestBuildSpawnerConfig_TierWithNoResolvableChain_DegradesToRawModel(t *test
 
 	if _, err := pool.Exec(
 		`INSERT INTO tier_models (tier, position, provider, execution_mode, model_id, reasoning_effort)
-		 VALUES (3, 2, 'anthropic', 'api', 'does-not-exist', 'low')`,
+		 VALUES (3, 9, 'anthropic', 'api', 'does-not-exist', 'low')`,
 	); err != nil {
 		t.Fatalf("insert bogus tier_models row: %v", err)
 	}

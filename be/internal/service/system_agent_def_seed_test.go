@@ -32,8 +32,8 @@ func TestSystemAgentDef_SeededRowAccessible(t *testing.T) {
 		t.Fatalf("Get seeded conflict-resolver: %v", err)
 	}
 
-	if def.Model != "sonnet-5" {
-		t.Errorf("seeded model = %q, want %q", def.Model, "sonnet-5")
+	if def.Model != "" {
+		t.Errorf("seeded model = %q, want empty (tier-resolved since 000222)", def.Model)
 	}
 	if def.Timeout != 20 {
 		t.Errorf("seeded timeout = %d, want 20", def.Timeout)
@@ -78,8 +78,8 @@ func TestSystemAgentDef_SeededRowDeleteAndRecreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get initial seeded row: %v", err)
 	}
-	if orig.Model != "sonnet-5" {
-		t.Fatalf("seeded model = %q, want sonnet-5", orig.Model)
+	if orig.Model != "" {
+		t.Fatalf("seeded model = %q, want empty (tier-resolved since 000222)", orig.Model)
 	}
 
 	// Delete seeded row.

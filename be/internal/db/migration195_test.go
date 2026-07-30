@@ -152,9 +152,9 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		}
 	}
 
-	// No stray fallback rows: tier 1 is haiku api/cli + the 000220 codex
-	// hop; tier 4 keeps the two-entry 000195 seed.
-	for tier, want := range map[int]int{1: 3, 4: 2} {
+	// No stray fallback rows: every seeded tier is its two anthropic
+	// entries plus one codex hop (000220 tier 1, 000222 tiers 2-4).
+	for tier, want := range map[int]int{1: 3, 4: 3} {
 		var count int
 		if err := pool.QueryRow(`SELECT COUNT(*) FROM tier_models WHERE tier = ?`, tier).Scan(&count); err != nil {
 			t.Fatalf("count tier=%d: %v", tier, err)

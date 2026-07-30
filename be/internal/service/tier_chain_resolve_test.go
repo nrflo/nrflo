@@ -65,13 +65,16 @@ func TestResolveDefChain_InheritanceWalksDown(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	t.Cleanup(cleanup)
 
+	if _, err := svc.pool.Exec(`DELETE FROM tier_models WHERE tier = 5`); err != nil {
+		t.Fatalf("clear tier 5: %v", err)
+	}
 	tier := 5
 	def := agentDef("", "api", &tier, nil)
 	chain, err := ResolveDefChain(svc.pool, clock.Real(), svc.modelSvc, def)
 	if err != nil {
 		t.Fatalf("ResolveDefChain: %v", err)
 	}
-	if len(chain) != 2 || chain[0].ModelID != "sonnet-5" {
+	if len(chain) != 3 || chain[0].ModelID != "sonnet-5" {
 		t.Errorf("chain = %+v, want inherited tier4 chain (sonnet-5 primary)", chain)
 	}
 }
@@ -102,7 +105,7 @@ func TestResolveDefChain_InvalidModelInChain_Errors(t *testing.T) {
 
 	if _, err := svc.pool.Exec(
 		`INSERT INTO tier_models (tier, position, provider, execution_mode, model_id, reasoning_effort)
-		 VALUES (3, 2, 'anthropic', 'api', 'does-not-exist', 'low')`,
+		 VALUES (3, 9, 'anthropic', 'api', 'does-not-exist', 'low')`,
 	); err != nil {
 		t.Fatalf("insert bogus tier_models row: %v", err)
 	}

@@ -23,8 +23,11 @@ func TestResolveAgentChain_TierChainCarriesResolvedTier(t *testing.T) {
 	})
 
 	t.Run("inheritance walk-down carries the tier actually loaded, not the requested one", func(t *testing.T) {
-		// Tier 5 has no seeded rows (1-4 are all populated post-000200);
-		// resolution walks down to tier 4's chain.
+		// Empty tier 5 (seeded since 000222) so resolution has an
+		// unpopulated tier to walk down from into tier 4's chain.
+		if _, err := svc.pool.Exec(`DELETE FROM tier_models WHERE tier = 5`); err != nil {
+			t.Fatalf("clear tier 5: %v", err)
+		}
 		def := tierDef(intPtr(5))
 		chain, err := svc.ResolveAgentChain(def)
 		if err != nil {

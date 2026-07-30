@@ -26,7 +26,7 @@ func TestMigration179_RefinerySystemAgentSeeded(t *testing.T) {
 	if role != "refinery" {
 		t.Errorf("role = %q, want %q", role, "refinery")
 	}
-	if model != "haiku-4-5" {
+	if model != "" {
 		t.Errorf("model = %q, want %q", model, "haiku-4-5")
 	}
 	if executionMode != "api" {

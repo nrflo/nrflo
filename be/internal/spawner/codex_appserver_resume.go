@@ -95,7 +95,11 @@ func (b *codexAppServerBackend) startOrResumeThread(runCtx context.Context, proc
 		if rerr == nil {
 			if id := unmarshalThreadID(resp); id != "" {
 				SetSessionCostBaseline(proc.sessionID, h.baseline.InputTokens, h.baseline.OutputTokens, h.baseline.CacheReadTokens, h.baseline.CacheWriteTokens)
-				return id, b.s.expandInjectable("crash-resume", map[string]string{"RESTART_REASON": "fail_restart"}), nil
+				firstTurn := b.s.expandInjectable("crash-resume", map[string]string{"RESTART_REASON": reasonFailRestart})
+				if fb := b.s.restartFeedbackForProc(proc); fb != "" {
+					firstTurn += "\n\n" + fb
+				}
+				return id, firstTurn, nil
 			}
 			rerr = fmt.Errorf("thread/resume: empty thread id")
 		}

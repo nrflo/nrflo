@@ -207,6 +207,22 @@ func (r *FindingRepo) GetSessionFindingByKey(wfiID, key string) (json.RawMessage
 	return json.RawMessage(value), true
 }
 
+// GetOwnKeyByActor returns the value of a single key on a scope/scope_id
+// pair, but only when the row was last written by actorID — used to accept a
+// genuine write while rejecting a copy carried forward under a different
+// actor (e.g. continuation carry-forward).
+func (r *FindingRepo) GetOwnKeyByActor(scope, scopeID, key, actorID string) (json.RawMessage, bool) {
+	var value string
+	err := r.db.QueryRow(
+		`SELECT value FROM findings WHERE scope=? AND scope_id=? AND key=? AND updated_by=?`,
+		scope, scopeID, key, actorID,
+	).Scan(&value)
+	if err != nil {
+		return nil, false
+	}
+	return json.RawMessage(value), true
+}
+
 // findingAppendValue implements array-merge semantics for finding values.
 func findingAppendValue(existing, newVal interface{}) interface{} {
 	if existing == nil {

@@ -36,6 +36,13 @@ func TestLoadTemplate_LowContextPrepended(t *testing.T) {
 	}
 }
 
+// TestLoadTemplate_ContinuationReasonNoPrepend covers the reasons that never
+// have anything truthful to prepend absent real previous data: plain
+// stall-restart reasons, and fail_restart with no genuine validation_failure
+// finding (rejected/missing). timeout_restart is NOT one of these — it
+// always renders its block regardless of previous data (covered by
+// TestLoadTemplate_TimeoutRestart_RendersTimeoutBlock in
+// template_restart_feedback_test.go).
 func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 	t.Parallel()
 	reasons := []string{
@@ -43,7 +50,6 @@ func TestLoadTemplate_ContinuationReasonNoPrepend(t *testing.T) {
 		"stall_restart_start_stall",
 		"stall_restart_running_stall",
 		"fail_restart",
-		"timeout_restart",
 	}
 	for _, reason := range reasons {
 		t.Run(reason, func(t *testing.T) {

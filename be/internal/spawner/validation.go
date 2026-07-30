@@ -9,11 +9,22 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/foldfmt"
 	"be/internal/logger"
 	"be/internal/repo"
 )
 
 const validationTailSize = 64 * 1024 // 64KB
+
+// findingKeyValidationFailure is the findings key written on a validation
+// command failure and read back by the restart-feedback prepend seam.
+// validationFindingActorID is the actor.ID stamped on that write — the gate
+// that distinguishes a genuine validation-failure finding from a copy
+// forwarded by copyFindingsForContinuation (actor ID "continuation").
+const (
+	findingKeyValidationFailure = "validation_failure"
+	validationFindingActorID    = "validation"
+)
 
 // validationCommandTimeout controls the per-command execution timeout.
 // Tests may override this package-level var to use shorter durations.
@@ -119,11 +130,25 @@ func (s *Spawner) writeValidationFailureFinding(proc *processInfo, idx, exitCode
 		AgentType:          proc.agentType,
 		ModelID:            proc.modelID,
 	}
-	actor := repo.Actor{Source: "system", ID: "validation"}
+	actor := repo.Actor{Source: "system", ID: validationFindingActorID}
 
-	if upsertErr := findingRepo.Upsert("session", proc.sessionID, "validation_failure", json.RawMessage(payload), denorm, actor); upsertErr != nil {
+	if upsertErr := findingRepo.Upsert("session", proc.sessionID, findingKeyValidationFailure, json.RawMessage(payload), denorm, actor); upsertErr != nil {
 		logger.Warn(context.Background(), "validation: failed to write finding", "session", proc.sessionID, "err", upsertErr)
+		return
 	}
+
+	logger.Warn(logger.WithTrx(context.Background(), proc.trx), "validation command failed",
+		"session", proc.sessionID, "command", proc.validationCommands[idx], "exit_code", exitCode,
+		"output_first_line", firstLine(outputTail, 200))
+}
+
+// firstLine returns the first line of s, capped to at most maxLen bytes on a
+// UTF-8 rune boundary.
+func firstLine(s string, maxLen int) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i]
+	}
+	return foldfmt.CapBytes(s, maxLen)
 }
 
 // buildValidationEnv returns proc.env with session-specific credentials stripped.

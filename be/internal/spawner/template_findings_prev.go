@@ -12,20 +12,30 @@ import (
 	"be/internal/repo"
 )
 
-// fetchPreviousDataAndReason retrieves to_resume data and result_reason from the most
-// recent continued session for the same agent type, model, and phase.
-// instanceID is optional — when set, used directly instead of DB lookup.
-func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, phase, instanceID string) (data string, resultReason string) {
-	if phase == "" {
-		return "", ""
-	}
+// prevContinuedSession identifies the most recent continued session for an
+// agent type/model/phase, resolved once and shared by the previous-data read
+// (previousDataFor) and the restart-feedback prepend (restartFeedbackBlock)
+// so both act on the same row.
+type prevContinuedSession struct {
+	sessionID string
+	reason    string
+	startedAt time.Time // zero value when the row had no started_at
+}
 
+// resolvePrevContinuedSession resolves the workflow instance (directly from
+// instanceID when set, else by ticket/project lookup) and the most recent
+// 'continued' agent_sessions row for agentType/modelID/phase within it.
+// ok is false when no workflow instance or no continued session was found.
+func (s *Spawner) resolvePrevContinuedSession(projectID, ticketID, workflowName, agentType, modelID, phase, instanceID string) (prev prevContinuedSession, wfiID string, ok bool) {
+	if phase == "" {
+		return prevContinuedSession{}, "", false
+	}
 	pool := s.pool()
 	if pool == nil {
-		return "", ""
+		return prevContinuedSession{}, "", false
 	}
 
-	wfiID := instanceID
+	wfiID = instanceID
 	var err error
 	if wfiID == "" {
 		if ticketID == "" {
@@ -41,7 +51,7 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 				projectID, ticketID, workflowName).Scan(&wfiID)
 		}
 		if err != nil {
-			return "", ""
+			return prevContinuedSession{}, "", false
 		}
 	}
 
@@ -53,53 +63,63 @@ func (s *Spawner) fetchPreviousDataAndReason(projectID, ticketID, workflowName, 
 		ORDER BY ended_at DESC LIMIT 1`,
 		wfiID, agentType, modelID, phase).Scan(&sessionID, &reasonStr, &startedAtStr)
 	if err != nil {
-		return "", ""
+		return prevContinuedSession{}, "", false
 	}
 
 	reason := ""
 	if reasonStr.Valid {
 		reason = reasonStr.String
 	}
+	var startedAt time.Time
+	if startedAtStr.Valid {
+		startedAt, _ = time.Parse(time.RFC3339Nano, startedAtStr.String)
+	}
+
+	return prevContinuedSession{sessionID: sessionID, reason: reason, startedAt: startedAt}, wfiID, true
+}
+
+// previousDataFor resolves ${PREVIOUS_DATA} for the low-context injectable
+// from an already-resolved prevContinuedSession: stepwise defs short-circuit
+// to the server-owned cursor snapshot; full-mode defs prefer a fresh
+// autonomous refinery slot digest over the to_resume finding, and wrap
+// either through handoff.Compose.
+func (s *Spawner) previousDataFor(prev prevContinuedSession, wfiID, agentType, projectID, workflowName, phase string) string {
+	pool := s.pool()
+	if pool == nil {
+		return ""
+	}
 
 	// Stepwise defs never read the to_resume finding / handoff.Compose — the
 	// server-owned cursor is the source of truth for what a relaunch has
-	// already done. Always returns here (even "") once matched, so a
-	// stepwise def relaunched before finishing its first step still never
-	// falls through to the full-mode path below.
+	// already done.
 	if s.stepwiseDefFor(agentType, projectID, workflowName) {
-		var prevStarted time.Time
-		if startedAtStr.Valid {
-			prevStarted, _ = time.Parse(time.RFC3339Nano, startedAtStr.String)
-		}
-		return s.stepwiseResumeData(pool, s.config.Clock, wfiID, phase, prevStarted), reason
+		return s.stepwiseResumeData(pool, s.config.Clock, wfiID, phase, prev.startedAt)
 	}
 
 	// Fresh autonomous refinery slot digest takes priority over the
 	// to_resume finding — one canonical source for the low-context
 	// injectable's data (see digest_freshness.go).
-	if startedAtStr.Valid {
-		if prevStarted, perr := time.Parse(time.RFC3339Nano, startedAtStr.String); perr == nil {
-			if content, ok := freshSlotDigest(pool, s.config.Clock, wfiID, phase, prevStarted); ok {
-				return composeOrNarrative(pool, s.config.Clock, sessionID, content), reason
-			}
+	if !prev.startedAt.IsZero() {
+		if content, ok := freshSlotDigest(pool, s.config.Clock, wfiID, phase, prev.startedAt); ok {
+			return composeOrNarrative(pool, s.config.Clock, prev.sessionID, content)
 		}
 	}
 
 	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
-	rawFindings, err := findingRepo.GetOwn("session", sessionID)
+	rawFindings, err := findingRepo.GetOwn("session", prev.sessionID)
 	if err != nil || len(rawFindings) == 0 {
-		return "", reason
+		return ""
 	}
 
 	rawVal, ok := rawFindings["to_resume"]
 	if !ok {
-		return "", reason
+		return ""
 	}
 	var str string
 	if json.Unmarshal(rawVal, &str) != nil || str == "" {
-		return "", reason
+		return ""
 	}
-	return composeOrNarrative(pool, s.config.Clock, sessionID, str), reason
+	return composeOrNarrative(pool, s.config.Clock, prev.sessionID, str)
 }
 
 // composeOrNarrative wraps a resolved narrative (fresh slot digest or

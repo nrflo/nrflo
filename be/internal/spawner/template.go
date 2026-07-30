@@ -196,13 +196,19 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 	template = strings.ReplaceAll(template, "${CALLBACK_INSTRUCTIONS}", "")
 	template = strings.ReplaceAll(template, "${PREVIOUS_DATA}", "")
 
-	// Build prepend blocks (order: user-instructions → low-context → callback)
+	// Build prepend blocks (order: user-instructions → restart-feedback/low-context → callback)
 	var prepend []string
 	if ui := s.fetchUserInstructionsRaw(projectID, ticketID, workflowName, wfiID); ui != "" {
 		prepend = append(prepend, s.expandInjectable("user-instructions", map[string]string{"USER_INSTRUCTIONS": ui}))
 	}
-	prevData, _ := s.fetchPreviousDataAndReason(projectID, ticketID, workflowName, agentType, modelID, nodeID, wfiID)
-	if prevData != "" {
+	prev, prevWfiID, prevOK := s.resolvePrevContinuedSession(projectID, ticketID, workflowName, agentType, modelID, nodeID, wfiID)
+	var prevData string
+	if prevOK {
+		prevData = s.previousDataFor(prev, prevWfiID, agentType, projectID, workflowName, nodeID)
+	}
+	if fb := s.restartFeedbackBlock(prev, prevData); fb != "" {
+		prepend = append(prepend, fb)
+	} else if prevData != "" {
 		prepend = append(prepend, s.expandInjectable("low-context", map[string]string{"PREVIOUS_DATA": prevData}))
 	}
 	if cbInstr, cbFrom := s.fetchCallbackRaw(projectID, ticketID, workflowName, wfiID); cbInstr != "" {

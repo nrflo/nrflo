@@ -146,7 +146,7 @@ func (s *Spawner) handleCompletion(ctx context.Context, proc *processInfo, req S
 		} else if failedIdx >= 0 {
 			s.writeValidationFailureFinding(proc, failedIdx, exitCode, tail)
 			result = "fail"
-			resultReason = "validation_failure"
+			resultReason = findingKeyValidationFailure
 			proc.finalStatus = "FAIL"
 		}
 	}

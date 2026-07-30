@@ -205,7 +205,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 						// Override the already-registered failed session to continued/fail_restart
 						if pool := s.pool(); pool != nil {
 							sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-							sessionRepo.UpdateResult(proc.sessionID, "continue", "fail_restart")
+							sessionRepo.UpdateResult(proc.sessionID, "continue", reasonFailRestart)
 							sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
 						}
 						proc.failRestartCount++
@@ -282,7 +282,7 @@ func (s *Spawner) monitorAll(ctx context.Context, processes []*processInfo, req 
 								"fail_restart_count", proc.failRestartCount+1, "max", proc.maxFailRestarts)
 							if pool := s.pool(); pool != nil {
 								sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-								sessionRepo.UpdateResult(proc.sessionID, "continue", "timeout_restart")
+								sessionRepo.UpdateResult(proc.sessionID, "continue", reasonTimeoutRestart)
 								sessionRepo.UpdateStatus(proc.sessionID, model.AgentSessionContinued)
 							}
 							proc.failRestartCount++

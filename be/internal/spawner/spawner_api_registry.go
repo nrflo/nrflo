@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"fmt"
+	"strings"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -56,10 +57,15 @@ func (s *Spawner) buildAPIRegistry(
 	pythonHandlers, _ := s.loadProjectPythonTools(req.ProjectID, proc.sessionID)
 
 	builtins := tools_builtin.Builtins()
-	if includeFS && proc.workDir != "" && (bypassNativeGate || apiNativeToolsEnabled(s.config.Pool, s.config.Clock)) {
+	if includeFS && proc.workDir != "" && (bypassNativeGate || csvNamesFSTool(toolsCSV) || apiNativeToolsEnabled(s.config.Pool, s.config.Clock)) {
 		for name, handler := range tools_builtin.FSTools() {
 			builtins[name] = handler
 		}
+	} else if csvNamesFSTool(toolsCSV) {
+		// No workdir to jail to (or FS excluded for this backend): degrade by
+		// dropping the FS names from the CSV instead of hard-failing the
+		// spawn on "no tools matched".
+		toolsCSV = stripFSNames(toolsCSV)
 	}
 	// complete_step is deliberately NOT in tools_builtin.Builtins() (the `*`
 	// pool also backs GET /api/v1/available-tools) — a stepwise def gets it
@@ -143,6 +149,35 @@ func (s *Spawner) buildAPIRegistry(
 	}
 
 	return specs, handlers, toolEnv, nil
+}
+
+// csvNamesFSTool reports whether the tools CSV names a native FS tool
+// EXACTLY. An explicit per-def entry is unambiguous operator intent
+// (mirroring the cli_interactive native_tools=="none" bypass), so it wins
+// over the api_native_tools_enabled gate — without this, a def whose CSV
+// names read_file would hard-fail to spawn ("no tools matched") whenever
+// the gate is off.
+func csvNamesFSTool(toolsCSV string) bool {
+	fs := tools_builtin.FSTools()
+	for _, pat := range strings.Split(toolsCSV, ",") {
+		if _, ok := fs[strings.TrimSpace(pat)]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// stripFSNames returns toolsCSV without the entries that name a native FS
+// tool exactly, preserving order of the rest.
+func stripFSNames(toolsCSV string) string {
+	fs := tools_builtin.FSTools()
+	kept := []string{}
+	for _, pat := range strings.Split(toolsCSV, ",") {
+		if _, ok := fs[strings.TrimSpace(pat)]; !ok {
+			kept = append(kept, pat)
+		}
+	}
+	return strings.Join(kept, ",")
 }
 
 // apiNativeToolsEnabled reads the `api_native_tools_enabled` global setting

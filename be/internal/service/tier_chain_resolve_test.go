@@ -53,8 +53,8 @@ func TestResolveDefChain_TierOrderedByPosition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDefChain: %v", err)
 	}
-	if len(chain) != 2 || chain[0].ModelID != "haiku-4-5" {
-		t.Errorf("chain = %+v, want tier1 chain (haiku-4-5 primary)", chain)
+	if len(chain) != 3 || chain[0].ModelID != "haiku-4-5" {
+		t.Errorf("chain = %+v, want 3-entry tier1 chain (haiku-4-5 primary)", chain)
 	}
 }
 

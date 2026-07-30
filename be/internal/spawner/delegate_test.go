@@ -106,7 +106,7 @@ func TestDelegate_Fanout_SpawnsOneWorkerPerItem(t *testing.T) {
 	defer env.cleanup()
 
 	items := []string{"a.go", "b.go", "c.go"}
-	sp := buildDelegateSpawner(t, env, mock.New(manyDelegateWorkerScripts(len(items), "ok")...))
+	sp := buildDelegateSpawner(t, env, newItemRoutedProvider(items, "ok"))
 
 	startRaw, err := sp.Delegate(context.Background(), env.callerSessionID, apirun.DelegateRequest{
 		Tier:   "executor",

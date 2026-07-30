@@ -16,6 +16,13 @@ import (
 // unbounded python subprocesses / consultant spawns.
 const maxParallelToolDispatch = 4
 
+// capWarningTurns: when exactly this many provider turns remain before
+// MaxIterations, a wrap-up notice rides as a text block on that turn's
+// tool-results message (never as a standalone message — it must not split an
+// assistant tool_use from its tool_result) so the model records findings
+// instead of being cut off mid-exploration.
+const capWarningTurns = 2
+
 // runTurns drives the shared tool-use loop starting from msgs until a
 // terminal status is reached, returning the accumulated message history
 // alongside the terminal status string. It calls proc.SetFinalStatus/r.fail()
@@ -113,6 +120,11 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 			if len(toolResults) == 0 {
 				r.fail(proc, "tool_use stop_reason but no tool_use blocks in response")
 				return msgs, "FAIL"
+			}
+			if left := r.cfg.MaxIterations - turn - 1; left == capWarningTurns && r.cfg.MaxIterations > capWarningTurns+1 {
+				notice := fmt.Sprintf("[system] Iteration cap: only %d tool turn(s) remain (cap %d). Stop exploring now — record findings from what you already have and finish via agent_finished, or agent_fail with a reason.", left, r.cfg.MaxIterations)
+				toolResults = append(toolResults, provider.ContentBlock{Type: "text", Text: notice})
+				r.cfg.Sink.TrackMessage(notice, "system")
 			}
 			// Do NOT filter resp.Content — thinking blocks must ride along for required API replay.
 			msgs = append(msgs,

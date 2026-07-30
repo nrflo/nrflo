@@ -94,14 +94,17 @@ func TestResolveAgentChain_TierPopulated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveAgentChain: %v", err)
 	}
-	if len(chain) != 2 {
-		t.Fatalf("chain length = %d, want 2 (seeded tier1 chain)", len(chain))
+	if len(chain) != 3 {
+		t.Fatalf("chain length = %d, want 3 (seeded tier1 chain)", len(chain))
 	}
 	if chain[0].ExecutionMode != "api" || chain[0].ModelID != "haiku-4-5" {
 		t.Errorf("chain[0] = %+v, want api/haiku-4-5 (position 0)", chain[0])
 	}
 	if chain[1].ExecutionMode != "cli_interactive" || chain[1].ModelID != "haiku-4-5" {
 		t.Errorf("chain[1] = %+v, want cli_interactive/haiku-4-5 (position 1)", chain[1])
+	}
+	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "gpt-5.6-luna" {
+		t.Errorf("chain[2] = %+v, want cli_interactive/gpt-5.6-luna (000220 codex hop)", chain[2])
 	}
 }
 

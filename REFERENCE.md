@@ -88,7 +88,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 
 ## Web search (SearXNG)
 
-`web_search` uses the self-hosted `searxng` provider by default and treats a missing `SEARXNG_BASE_URL` as a hard setup error, so agents that call `web_search` need a running SearXNG. `web_fetch` uses the `direct` provider (pure-Go fetch → readability → markdown behind an SSRF-guarded pinning dialer); neither needs a paid API key. Provider internals: [be/internal/spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md).
+`web_search` uses the self-hosted `searxng` provider by default, chained with a keyless DuckDuckGo-HTML fallback (`web_search_fallback_provider`, default `ddg`, `none` disables) that answers when SearXNG errors, is unconfigured, or returns empty (suspended upstream engines). `web_fetch` uses the `direct` provider (pure-Go fetch → readability → markdown behind an SSRF-guarded pinning dialer); neither needs a paid API key. Provider internals: [be/internal/spawner/apirun/CLAUDE.md](be/internal/spawner/apirun/CLAUDE.md).
 
 **Run SearXNG** (optional, opt-in): [`docker-compose.searxng.yml`](docker-compose.searxng.yml) + [`searxng/settings.yml`](searxng/settings.yml).
 

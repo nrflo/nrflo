@@ -21,8 +21,8 @@ func TestMigration182_ExtractorSeed(t *testing.T) {
 	).Scan(&model, &executionMode, &tools, &reasoningEffort); err != nil {
 		t.Fatalf("query _t2_extractor: %v", err)
 	}
-	if model != "haiku-4-5" {
-		t.Errorf("model = %q, want haiku-4-5", model)
+	if model != "" {
+		t.Errorf("model = %q, want empty (tier-resolved since 000220)", model)
 	}
 	if executionMode != "api" {
 		t.Errorf("execution_mode = %q, want api", executionMode)

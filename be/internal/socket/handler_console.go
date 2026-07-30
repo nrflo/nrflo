@@ -139,11 +139,12 @@ func (h *Handler) handleConsoleChat(ctx context.Context, req Request) Response {
 	}
 	engine := strings.TrimSpace(params.Engine)
 	modelID := strings.TrimSpace(params.Model)
-	if engine == "" {
-		return MakeErrorResponse(req.ID, NewValidationError("engine is required"))
+	profileName := strings.TrimSpace(params.Profile)
+	if engine == "" && profileName == "" {
+		return MakeErrorResponse(req.ID, NewValidationError("engine is required when no profile is set"))
 	}
 	projectID := h.resolveConsoleProject(ctx, strings.TrimSpace(params.Project), params.Cwd)
-	sid, token, err := h.consoleChat.CreateAuthenticated(engine, modelID, strings.TrimSpace(params.Effort), projectID, strings.TrimSpace(params.SystemTemplateID), strings.TrimSpace(params.Profile), params.RefineryEnabled)
+	sid, token, err := h.consoleChat.CreateAuthenticated(engine, modelID, strings.TrimSpace(params.Effort), projectID, strings.TrimSpace(params.SystemTemplateID), profileName, params.RefineryEnabled)
 	if err != nil {
 		if errors.Is(err, service.ErrConsoleProjectNotFound) {
 			return MakeErrorResponse(req.ID, NewNotFoundError("project not found: "+projectID))

@@ -69,6 +69,8 @@ type Selection struct {
 	// Effort is a create-time reasoning-effort override; "" inherits the
 	// model row's configured effort.
 	Effort string
+	// Profile is a console.Profile name the chat is created under; "" = none.
+	Profile string
 }
 
 type Catalog = types.ConsoleCatalog

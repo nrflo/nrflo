@@ -99,6 +99,48 @@ func TestEffortItemsAlwaysStartWithDefault(t *testing.T) {
 	}
 }
 
+func TestSelectionItemsProfileBranches(t *testing.T) {
+	catalog := Catalog{
+		Profiles: []types.ConsoleProfileOption{{
+			Name: "t0-bare", DisplayName: "T0 Bare", Description: "Pure-delegation T0",
+			DefaultEngine: "claude", DefaultModelID: "opus-5", DefaultEffort: "xhigh",
+		}},
+		Engines: []types.ConsoleEngineOption{
+			{ID: "claude", DisplayName: "Claude", Kind: "cli", Brand: "claude", Enabled: true,
+				Models: []types.ConsoleModelOption{{ID: "sonnet-5", DisplayName: "Sonnet 5", Brand: "claude", SupportedEfforts: []string{"low"}}}},
+		},
+	}
+	items := selectionItems(catalog)
+	if len(items) != 2 {
+		t.Fatalf("root item count = %d, want profile + brand", len(items))
+	}
+
+	profile := items[0].(selectionItem)
+	if profile.title != "T0 Bare" || profile.crumb != "T0 Bare" || len(profile.children) != 2 {
+		t.Fatalf("profile branch = %+v, want defaults leaf + Claude brand", profile)
+	}
+	defaults := profile.children[0].(selectionItem)
+	want := Selection{Engine: "claude", Model: "opus-5", Effort: "xhigh", Profile: "t0-bare"}
+	if defaults.title != "Profile defaults" || defaults.selection != want {
+		t.Fatalf("defaults leaf = %+v", defaults)
+	}
+	if defaults.detail != "claude / opus-5 · xhigh" {
+		t.Fatalf("defaults detail = %q", defaults.detail)
+	}
+
+	stamped := profile.children[1].(selectionItem).
+		children[0].(selectionItem).children[0].(selectionItem).children[0].(selectionItem)
+	if stamped.selection != (Selection{Engine: "claude", Model: "sonnet-5", Profile: "t0-bare"}) {
+		t.Fatalf("stamped brand-tree leaf = %+v", stamped)
+	}
+
+	plain := items[1].(selectionItem).
+		children[0].(selectionItem).children[0].(selectionItem).children[0].(selectionItem)
+	if plain.selection.Profile != "" {
+		t.Fatalf("root brand-tree leaf must stay profile-less, got %+v", plain.selection)
+	}
+}
+
 func TestSelectionModelPushPop(t *testing.T) {
 	items := selectionItems(Catalog{Engines: []types.ConsoleEngineOption{
 		{ID: "claude", DisplayName: "Claude", Kind: "cli", Brand: "claude", Enabled: true,

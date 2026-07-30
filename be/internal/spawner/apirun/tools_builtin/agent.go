@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
@@ -78,6 +79,16 @@ func (agentFinishedHandler) Spec() provider.ToolSpec {
 func (agentFinishedHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	if env.Agent == nil {
 		return missingService("agent")
+	}
+	// A _delegate worker's findings ARE its deliverable: without
+	// _delegate_findings the whole delegation returns empty, so finishing
+	// with an empty hand is rejected rather than trusted to the prompt.
+	if env.NodeID == "_delegate" && env.Pool != nil {
+		if findings, err := repo.NewFindingRepo(env.Pool, env.Clock).GetOwn("session", env.SessionID); err == nil {
+			if _, ok := findings["_delegate_findings"]; !ok {
+				return "record findings first: findings_add key `_delegate_findings` with your answer (or agent_fail with a reason), then call agent_finished", true, nil
+			}
+		}
 	}
 	bctx, err := env.Agent.Finished(&types.AgentRequest{
 		SessionID:  env.SessionID,

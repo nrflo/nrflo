@@ -65,9 +65,23 @@ func (r *Resolver) settingInt(key string, def int) int {
 	return def
 }
 
-// SearchProvider returns the configured search provider (default "searxng").
+// SearchProvider returns the configured search provider (default "searxng"),
+// chained with the web_search_fallback_provider (default "ddg"; "none"
+// disables) unless the fallback names the primary itself.
 func (r *Resolver) SearchProvider() (SearchProvider, error) {
-	return resolveSearch(r.setting("web_search_provider", defaultSearchProvider), r)
+	primary, err := resolveSearch(r.setting("web_search_provider", defaultSearchProvider), r)
+	if err != nil {
+		return nil, err
+	}
+	fbName := r.setting("web_search_fallback_provider", defaultSearchFallback)
+	if fbName == "none" || fbName == primary.Name() {
+		return primary, nil
+	}
+	secondary, err := resolveSearch(fbName, r)
+	if err != nil {
+		return nil, err
+	}
+	return &fallbackSearch{primary: primary, secondary: secondary}, nil
 }
 
 // FetchProvider returns the configured fetch provider (default "direct").
@@ -100,6 +114,7 @@ func (r *Resolver) MaxBytes() int {
 
 const (
 	defaultSearchProvider     = "searxng"
+	defaultSearchFallback     = "ddg"
 	defaultFetchProvider      = "direct"
 	defaultExcerptBytes       = 6000
 	defaultMaxPerDomain       = 3

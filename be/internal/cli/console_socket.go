@@ -63,14 +63,14 @@ func mintConsoleSessionOverSocket(projectHint, ticketHint string) (consoleSessio
 	return res, nil
 }
 
-func mintConsoleChatOverSocket(projectHint, engine, model, effort string) (consoleChatMint, error) {
+func mintConsoleChatOverSocket(projectHint, engine, model, effort, profile string) (consoleChatMint, error) {
 	cwd, _ := os.Getwd()
 	c := client.New(projectHint)
 	if !c.IsServerRunning() {
 		return consoleChatMint{}, client.ServerNotRunningError()
 	}
 	var res consoleChatMint
-	params := map[string]string{"project": projectHint, "cwd": cwd, "engine": engine, "model": model, "reasoning_effort": effort}
+	params := map[string]string{"project": projectHint, "cwd": cwd, "engine": engine, "model": model, "reasoning_effort": effort, "profile": profile}
 	if err := c.ExecuteAndUnmarshal("console.chat", params, &res); err != nil {
 		return consoleChatMint{}, fmt.Errorf("start console chat over socket: %w", err)
 	}

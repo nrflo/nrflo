@@ -36,7 +36,7 @@ Contents: [Supported Methods](#supported-methods) · [Observer Authorization](#o
 | `workflow.continue` | Resume a paused (waiting) workflow instance. Params: `{session_id, instance_id, instructions?}`; validates session ownership |
 | `workflow.fail` | Fail a workflow instance with a reason. Params: `{session_id, instance_id, reason}`; validates session ownership |
 | `console.session` | Mint a `kind='console'` tool session over the trusted socket for a local `agent mcp-external`. Params: `{project?, cwd?, ticket_id?}`; project resolves explicit hint → cwd match → global |
-| `console.chat` | Start a server-owned `console_chat` engine and return its session-scoped bearer to the native TUI. Params: `{project?, cwd?, engine, model?}`; same project resolution as `console.session` |
+| `console.chat` | Start a server-owned `console_chat` engine and return its session-scoped bearer to the native TUI. Params: `{project?, cwd?, engine?, model?, reasoning_effort?, profile?}` — engine required only when no profile is set (the profile's default engine fills it); same project resolution as `console.session` |
 | `console.catalog` | Return the resolved project, server-enabled engine/model options, and live resumable chats. Params: `{project?, cwd?}` |
 | `console.attach` | Return an existing live chat's unchanged scoped bearer after project validation; never rotates the token because the engine's MCP bridge shares it. Params: `{project?, cwd?, session_id}` |
 | `console.close` | Close/kill a live chat by id after project validation, same guard as `console.attach`; stops the engine, closes the DB row, and kills its bearer. Params: `{project?, cwd?, session_id}` |

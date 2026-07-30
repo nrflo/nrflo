@@ -23,17 +23,21 @@ type modelGroup struct {
 	modes []modelMode
 }
 
-// selectionItems builds resume leaves followed by brand → model → mode →
-// effort branches. Disabled engines are absent, so every displayed mode is
-// both supported by the model and currently available on the server.
+// selectionItems builds resume leaves, then profile branches, then brand →
+// model → mode → effort branches. Disabled engines are absent, so every
+// displayed mode is both supported by the model and currently available on
+// the server.
 func selectionItems(catalog Catalog) []list.Item {
-	items := make([]list.Item, 0, len(catalog.Sessions)+4)
+	items := make([]list.Item, 0, len(catalog.Sessions)+len(catalog.Profiles)+4)
 	for _, session := range catalog.Sessions {
 		model := session.Model
 		if model == "" {
 			model = "default"
 		}
 		detail := fmt.Sprintf("%s / %s", session.Engine, model)
+		if session.Profile != "" {
+			detail += " · " + session.Profile
+		}
 		if session.ContextLeft != nil {
 			detail += fmt.Sprintf(" · context %d%%", *session.ContextLeft)
 		}
@@ -42,7 +46,50 @@ func selectionItems(catalog Catalog) []list.Item {
 			title:     "Resume " + shortSessionID(session.SessionID), detail: detail,
 		})
 	}
+	items = append(items, profileItems(catalog)...)
 	return append(items, brandItems(catalog)...)
+}
+
+// profileItems builds one branch per built-in console profile: a "Profile
+// defaults" leaf (the profile's own engine/model/effort, mirroring the web
+// form's prefill) followed by the brand tree with the profile stamped on
+// every leaf, so any available model/effort can still be picked under it.
+func profileItems(catalog Catalog) []list.Item {
+	items := make([]list.Item, 0, len(catalog.Profiles))
+	for _, p := range catalog.Profiles {
+		defaults := fmt.Sprintf("%s / %s", p.DefaultEngine, p.DefaultModelID)
+		if p.DefaultEffort != "" {
+			defaults += " · " + p.DefaultEffort
+		}
+		children := make([]list.Item, 0, 1)
+		children = append(children, selectionItem{
+			selection: Selection{Engine: p.DefaultEngine, Model: p.DefaultModelID, Effort: p.DefaultEffort, Profile: p.Name},
+			title:     "Profile defaults", detail: defaults,
+		})
+		children = append(children, stampProfile(brandItems(catalog), p.Name)...)
+		items = append(items, selectionItem{
+			title: p.DisplayName, detail: p.Description,
+			children: children, crumb: p.DisplayName,
+		})
+	}
+	return items
+}
+
+// stampProfile tags every leaf Selection in a picker subtree with the profile
+// name, rebuilding branch child slices so the profile-scoped tree never
+// aliases the profile-less root tree.
+func stampProfile(items []list.Item, profile string) []list.Item {
+	out := make([]list.Item, 0, len(items))
+	for _, raw := range items {
+		item := raw.(selectionItem)
+		if len(item.children) > 0 {
+			item.children = stampProfile(item.children, profile)
+		} else {
+			item.selection.Profile = profile
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 func brandItems(catalog Catalog) []list.Item {

@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"runtime"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -121,12 +124,42 @@ func delegateWorkerScripts(answer string) []mock.Script {
 	}
 }
 
-func manyDelegateWorkerScripts(n int, answer string) []mock.Script {
-	var out []mock.Script
-	for i := 0; i < n; i++ {
-		out = append(out, delegateWorkerScripts(answer)...)
+// itemRoutedProvider gives each fanout worker its own mock script pair,
+// routed by which fanout item appears in the worker's prompt. A shared
+// linear script queue would interleave across concurrent workers, letting
+// one worker draw another's agent_finished turn — which the _delegate
+// findings guard rejects, desyncing the queue.
+type itemRoutedProvider struct {
+	mu     sync.Mutex
+	byItem map[string]provider.Provider
+}
+
+func newItemRoutedProvider(items []string, answer string) *itemRoutedProvider {
+	p := &itemRoutedProvider{byItem: map[string]provider.Provider{}}
+	for _, item := range items {
+		p.byItem[item] = mock.New(delegateWorkerScripts(answer)...)
 	}
-	return out
+	return p
+}
+
+func (p *itemRoutedProvider) Name() string                { return "mock-routed" }
+func (p *itemRoutedProvider) MaxContext(model string) int { return 200000 }
+
+func (p *itemRoutedProvider) Run(ctx context.Context, req provider.Request, sink provider.EventSink) (*provider.FinalResponse, error) {
+	var blob strings.Builder
+	for _, m := range req.Messages {
+		for _, b := range m.Content {
+			blob.WriteString(b.Text)
+		}
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for item, inner := range p.byItem {
+		if strings.Contains(blob.String(), item) {
+			return inner.Run(ctx, req, sink)
+		}
+	}
+	return nil, fmt.Errorf("itemRoutedProvider: no fanout item matched in prompt")
 }
 
 // seedDelegationRow inserts a durable delegations row (migration 000216)

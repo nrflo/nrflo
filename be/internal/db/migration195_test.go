@@ -152,14 +152,15 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		}
 	}
 
-	// Exactly two positions per seeded tier — no stray fallback rows.
-	for _, tier := range []int{1, 4} {
+	// No stray fallback rows: tier 1 is haiku api/cli + the 000220 codex
+	// hop; tier 4 keeps the two-entry 000195 seed.
+	for tier, want := range map[int]int{1: 3, 4: 2} {
 		var count int
 		if err := pool.QueryRow(`SELECT COUNT(*) FROM tier_models WHERE tier = ?`, tier).Scan(&count); err != nil {
 			t.Fatalf("count tier=%d: %v", tier, err)
 		}
-		if count != 2 {
-			t.Errorf("tier=%d row count = %d, want 2", tier, count)
+		if count != want {
+			t.Errorf("tier=%d row count = %d, want %d", tier, count, want)
 		}
 	}
 }

@@ -39,8 +39,8 @@ func (s *Server) handleCreateConsoleChat(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	if body.Engine == "" {
-		writeError(w, http.StatusBadRequest, "engine required")
+	if body.Engine == "" && body.Profile == "" {
+		writeError(w, http.StatusBadRequest, "engine or profile required")
 		return
 	}
 

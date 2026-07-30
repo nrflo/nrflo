@@ -47,8 +47,8 @@ func TestBuildSpawnerConfig_TierOnlyDef_FillsModelEffortAndChain(t *testing.T) {
 	if cfg.ReasoningEffort == nil || *cfg.ReasoningEffort != "low" {
 		t.Errorf("ReasoningEffort = %v, want low", cfg.ReasoningEffort)
 	}
-	if len(cfg.Chain) != 2 {
-		t.Errorf("Chain length = %d, want 2 (tier1 chain)", len(cfg.Chain))
+	if len(cfg.Chain) != 3 {
+		t.Errorf("Chain length = %d, want 3 (tier1 chain incl. 000220 codex hop)", len(cfg.Chain))
 	}
 }
 

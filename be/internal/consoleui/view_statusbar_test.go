@@ -22,6 +22,41 @@ func TestStatusBar_YoloBadge(t *testing.T) {
 	}
 }
 
+// TestStatusBar_Profile verifies the profile segment renders the profile
+// name (as used by --profile) when set, and is omitted entirely when empty.
+func TestStatusBar_Profile(t *testing.T) {
+	m := &model{detail: ChatDetail{Engine: "claude", Model: "opus-5", ProjectID: "proj-1"}}
+	if got := m.statusBar(); strings.Contains(got, "t0-bare") {
+		t.Errorf("statusBar() with empty Profile = %q, want no profile segment", got)
+	}
+
+	m.detail.Profile = "t0-bare"
+	if got := m.statusBar(); !strings.Contains(got, "t0-bare") {
+		t.Errorf("statusBar() with Profile=t0-bare = %q, want the profile name rendered", got)
+	}
+}
+
+// TestStatusBar_GitSegment verifies the git segment renders `[branch: +A -D]`
+// when dirty, `[branch]` when clean, and is omitted entirely when no branch
+// is known (not a repo / git unavailable).
+func TestStatusBar_GitSegment(t *testing.T) {
+	m := &model{detail: ChatDetail{Engine: "claude", ProjectID: "proj-1"}}
+	if got := m.statusBar(); strings.Contains(ansi.Strip(got), "[") {
+		t.Errorf("statusBar() with no GitBranch = %q, want no bracket segment", got)
+	}
+
+	m.detail.GitBranch = "master"
+	if got := m.statusBar(); !strings.Contains(got, "[master]") {
+		t.Errorf("statusBar() clean repo = %q, want [master]", got)
+	}
+
+	m.detail.GitAdded = 20
+	m.detail.GitDeleted = 3
+	if got := m.statusBar(); !strings.Contains(got, "[master: +20 -3]") {
+		t.Errorf("statusBar() dirty repo = %q, want [master: +20 -3]", got)
+	}
+}
+
 // TestStatusBar_TruncatesToSingleRow verifies a status bar longer than the
 // terminal width is truncated to one physical row: a wrapped bar breaks the
 // chrome height math and can leak into scrollback via tea.Println inserts.

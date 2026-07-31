@@ -38,6 +38,8 @@ The third engine, `api`, has no CLI/PTY: `ChatDeps.Tools` injects the console to
 
 An engine that dies is not a stuck chat: `pumpChatEvents` ends the turn on every `EventError` (each one is turn-terminal), and when `Events()` closes — Stop, or the engine dying on its own — it tears the session down (drop from the map, `CloseConsoleChat`, killing the bearer token) and pushes `console_chat.turn` state=idle **last**, so a subscriber that sees it knows the row is already closed. Without that, an engine that died mid-turn would pin the turn `running` and 409 every later message forever. Both close paths (`Close`, `engineExited`, in `chat_service_close.go`) also call `spawner.DropProactiveRestartState`, releasing the session's `globalRestartStore` entry so it doesn't leak past the chat's lifetime.
 
+`ChatSnapshot`/`console_chat.git` report the workdir's git branch and uncommitted added/deleted line counts (`chat_gitstatus.go`), recomputed on snapshot fetch and pushed on turn completion; omitted entirely when the workdir is not a git repo.
+
 ## Console-Chat Profiles
 
 `profiles.go`'s built-in registry (`ProfileByName`/`ListProfiles`) bundles a named chat configuration (`Catalogue`, `NativeToolPolicy`, default model/effort, `ContextBudgetTokens`, `RefineryDefault`, `SystemTemplateID`, `SiblingFlows`) threaded into the started `EngineSpec` and persisted on `agent_sessions.console_profile`, re-applied identically on rotation. Full profile roster and threading/rotation/persistence mechanics: [REFERENCE.md](REFERENCE.md#console-chat-profiles).

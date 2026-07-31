@@ -20,6 +20,9 @@ type ChatSnapshot struct {
 	Thinking         ChatLiveItem
 	Yolo             bool
 	QueuedPrompts    []string
+	GitBranch        string
+	GitAdded         int
+	GitDeleted       int
 }
 
 type ChatLiveItem struct {
@@ -36,6 +39,7 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		return ChatSnapshot{}, false
 	}
 	state := sess.snapshot()
+	branch, added, deleted, _ := gitWorkdirStatus(sess.WorkDir())
 	return ChatSnapshot{
 		Engine:           sess.EngineName(),
 		ModelID:          sess.ModelID(),
@@ -47,6 +51,9 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		Thinking:         state.Thinking,
 		Yolo:             sess.getEngine().Yolo(),
 		QueuedPrompts:    sess.queuedPrompts(),
+		GitBranch:        branch,
+		GitAdded:         added,
+		GitDeleted:       deleted,
 	}, true
 }
 

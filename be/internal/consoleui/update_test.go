@@ -165,6 +165,18 @@ func TestApplySync_PreservesRecoveredLiveStateAfterHistoryReplacement(t *testing
 	}
 }
 
+// TestApplyStream_GitStatus verifies a console_chat.git event patches the
+// branch/added/deleted fields onto m.detail.
+func TestApplyStream_GitStatus(t *testing.T) {
+	m := &model{detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{}}
+	m.applyStream(streamUpdate{Events: []Event{
+		event("console_chat.git", "s1", map[string]any{"branch": "master", "added": 20, "deleted": 3}),
+	}})
+	if m.detail.GitBranch != "master" || m.detail.GitAdded != 20 || m.detail.GitDeleted != 3 {
+		t.Fatalf("git = %q +%d -%d, want master +20 -3", m.detail.GitBranch, m.detail.GitAdded, m.detail.GitDeleted)
+	}
+}
+
 func event(eventType, session string, data map[string]any) Event {
 	raw := make(map[string]json.RawMessage, len(data))
 	for key, value := range data {

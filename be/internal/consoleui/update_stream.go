@@ -64,6 +64,10 @@ func (m *model) applyStream(update streamUpdate) {
 			m.detail.SessionApprovals = eventStrings(event, "tools")
 		case "console_chat.yolo":
 			m.detail.Yolo = eventBool(event, "yolo")
+		case "console_chat.git":
+			m.detail.GitBranch = eventString(event, "branch")
+			m.detail.GitAdded = eventInt(event, "added")
+			m.detail.GitDeleted = eventInt(event, "deleted")
 		case "console_chat.error":
 			m.lastErr = eventString(event, "text")
 			m.tool = runningTool{}

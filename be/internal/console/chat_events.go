@@ -73,6 +73,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 		case spawner.EventTurnCompleted:
 			sess.endTurn()
 			sess.clearLive()
+			pushGitStatus(wsHub, sess)
 			if maybeRotate != nil && maybeRotate(sess) {
 				rotated = true
 				appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
@@ -195,6 +196,19 @@ func pushSessionApprovals(wsHub *ws.Hub, sess *chatSession) {
 func pushYolo(wsHub *ws.Hub, sess *chatSession) {
 	pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatYolo, map[string]interface{}{
 		"yolo": sess.getEngine().Yolo(),
+	})
+}
+
+// pushGitStatus recomputes and pushes sess's workdir git status — called on
+// every turn completion, the point at which an agent's edits land. A
+// not-ok result (no repo, git unavailable, error) pushes an empty branch so
+// the TUI clears any previously shown segment rather than leaving it stale.
+func pushGitStatus(wsHub *ws.Hub, sess *chatSession) {
+	branch, added, deleted, _ := gitWorkdirStatus(sess.WorkDir())
+	pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatGit, map[string]interface{}{
+		"branch":  branch,
+		"added":   added,
+		"deleted": deleted,
 	})
 }
 

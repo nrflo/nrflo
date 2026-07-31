@@ -146,6 +146,11 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 		}
 		resp["turn"] = snap.Turn
 		resp["work_dir"] = snap.WorkDir
+		if snap.GitBranch != "" {
+			resp["git_branch"] = snap.GitBranch
+			resp["git_added"] = snap.GitAdded
+			resp["git_deleted"] = snap.GitDeleted
+		}
 		resp["pending_approvals"] = approvals
 		sessionApprovals := snap.SessionApprovals
 		if sessionApprovals == nil {

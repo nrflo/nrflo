@@ -31,6 +31,9 @@ type ChatDetail struct {
 	Thinking         *LiveItem  `json:"thinking,omitempty"`
 	Yolo             bool       `json:"yolo"`
 	QueuedPrompts    []string   `json:"queued_prompts,omitempty"`
+	GitBranch        string     `json:"git_branch,omitempty"`
+	GitAdded         int        `json:"git_added,omitempty"`
+	GitDeleted       int        `json:"git_deleted,omitempty"`
 }
 
 type LiveItem struct {

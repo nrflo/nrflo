@@ -28,14 +28,14 @@ func TestStatusBar_CostEstimate(t *testing.T) {
 func TestStatusBar_ConnectionAndProject(t *testing.T) {
 	t.Run("offline", func(t *testing.T) {
 		m := &model{detail: ChatDetail{Engine: "codex", ProjectID: "p1"}, connected: false}
-		if got := m.statusBar(); !strings.Contains(got, "offline") || !strings.Contains(got, "p1") {
-			t.Errorf("statusBar() = %q, want offline + project id p1", got)
+		if got := m.statusBar(); !strings.Contains(got, "○") || !strings.Contains(got, "p1") {
+			t.Errorf("statusBar() = %q, want ○ + project id p1", got)
 		}
 	})
 	t.Run("connected", func(t *testing.T) {
 		m := &model{detail: ChatDetail{Engine: "codex", ProjectID: "p1"}, connected: true}
-		if got := m.statusBar(); !strings.Contains(got, "connected") || strings.Contains(got, "offline") {
-			t.Errorf("statusBar() = %q, want connected without offline", got)
+		if got := m.statusBar(); !strings.Contains(got, "●") || strings.Contains(got, "○") {
+			t.Errorf("statusBar() = %q, want ● without ○", got)
 		}
 	})
 }

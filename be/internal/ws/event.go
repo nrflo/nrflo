@@ -106,6 +106,7 @@ const (
 	EventConsoleChatYolo             = "console_chat.yolo"
 	EventConsoleChatQueued           = "console_chat.queued"
 	EventConsoleChatSiblingOpened    = "console_chat.sibling_opened"
+	EventConsoleChatGit              = "console_chat.git"
 	EventConsoleContextRotated       = "console.context_rotated"
 	EventRefineryFoldFailed          = "refinery.fold_failed"
 	EventStepAdvanced                = "step.advanced"

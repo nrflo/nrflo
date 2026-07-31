@@ -32,6 +32,7 @@ func (grepHandler) Spec() provider.ToolSpec {
 "type":"object",
 "properties":{
 "pattern":{"type":"string","description":"Regular expression to search for"},
+"path":{"type":"string","description":"Directory to search in, relative to the working directory or absolute (defaults to the working directory)"},
 "glob":{"type":"string","description":"Glob to filter which files are searched, e.g. \"*.go\" or \"**/*.ts\""},
 "output_mode":{"type":"string","enum":["content","files_with_matches","count"],"description":"Defaults to files_with_matches"},
 "-i":{"type":"boolean","description":"Case-insensitive match"},
@@ -48,6 +49,7 @@ func (grepHandler) Spec() provider.ToolSpec {
 func (grepHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
 		Pattern    string `json:"pattern"`
+		Path       string `json:"path"`
 		Glob       string `json:"glob"`
 		OutputMode string `json:"output_mode"`
 		IgnoreCase bool   `json:"-i"`
@@ -57,9 +59,6 @@ func (grepHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawM
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
-	}
-	if env.WorkDir == "" {
-		return "no working directory configured for this session", true, nil
 	}
 	if strings.TrimSpace(args.Pattern) == "" {
 		return "pattern is required", true, nil
@@ -97,10 +96,23 @@ func (grepHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawM
 		}
 	}
 
-	root, err := filepath.EvalSymlinks(env.WorkDir)
+	searchPath := args.Path
+	if searchPath == "" {
+		if env.WorkDir == "" {
+			return "no working directory configured for this session", true, nil
+		}
+		searchPath = env.WorkDir
+	}
+	root, err := resolveReadPath(env, searchPath)
 	if err != nil {
 		return err.Error(), true, nil
 	}
+	if fi, statErr := os.Stat(root); statErr != nil {
+		return statErr.Error(), true, nil
+	} else if !fi.IsDir() {
+		return fmt.Sprintf("%s is not a directory", args.Path), true, nil
+	}
+	rootIsWorkdir := insideWorkdir(env, root)
 
 	type fileResult struct {
 		rel     string
@@ -161,20 +173,27 @@ func (grepHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawM
 	}
 	sort.Slice(results, func(i, j int) bool { return results[i].mtime > results[j].mtime })
 
+	displayPath := func(rel string) string {
+		if rootIsWorkdir {
+			return rel
+		}
+		return filepath.Join(root, rel)
+	}
+
 	var out strings.Builder
 	switch mode {
 	case "files_with_matches":
 		for _, r := range results {
-			out.WriteString(r.rel)
+			out.WriteString(displayPath(r.rel))
 			out.WriteString("\n")
 		}
 	case "count":
 		for _, r := range results {
-			fmt.Fprintf(&out, "%s:%d\n", r.rel, r.count)
+			fmt.Fprintf(&out, "%s:%d\n", displayPath(r.rel), r.count)
 		}
 	case "content":
 		for _, r := range results {
-			out.WriteString(r.rel)
+			out.WriteString(displayPath(r.rel))
 			out.WriteString(":\n")
 			for _, l := range r.matches {
 				out.WriteString(l)

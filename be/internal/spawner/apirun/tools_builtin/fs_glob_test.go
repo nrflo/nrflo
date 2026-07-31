@@ -1,6 +1,7 @@
 package tools_builtin
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,6 +106,50 @@ func TestFSTools_Glob_NoMatch(t *testing.T) {
 	out, isErr := invokeFS(t, "glob", env, `{"pattern":"**/*.rs"}`)
 	if isErr || !strings.Contains(out, "no files matched") {
 		t.Errorf("glob no-match = (%q, %v), want no-files-matched message", out, isErr)
+	}
+}
+
+// TestFSTools_Glob_PathOutsideWorkdirReturnsAbsolute asserts an out-of-tree
+// search root (Claude Code parity) matches and emits absolute paths, since a
+// relative hit couldn't be re-resolved against a foreign root.
+func TestFSTools_Glob_PathOutsideWorkdirReturnsAbsolute(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	writeGlobFixture(t, outside)
+
+	out, isErr := invokeFS(t, "glob", env, fmt.Sprintf(`{"pattern":"**/*.go","path":%q}`, outside))
+	if isErr {
+		t.Fatalf("glob outside path = (%q, %v)", out, isErr)
+	}
+	want := filepath.Join(outside, "a.go")
+	if !strings.Contains(out, want) {
+		t.Errorf("glob outside path = %q, want absolute hit %q", out, want)
+	}
+}
+
+// TestFSTools_Glob_PathOmittedStaysWorkdirRelative pins today's default
+// behavior when path is not supplied.
+func TestFSTools_Glob_PathOmittedStaysWorkdirRelative(t *testing.T) {
+	env := fsEnv(t)
+	writeGlobFixture(t, env.WorkDir)
+
+	out, isErr := invokeFS(t, "glob", env, `{"pattern":"**/*.go"}`)
+	if isErr {
+		t.Fatalf("glob = (%q, %v)", out, isErr)
+	}
+	if !strings.Contains(out, "a.go") || strings.Contains(out, env.WorkDir) {
+		t.Errorf("glob path-omitted = %q, want workdir-relative hits", out)
+	}
+}
+
+// TestFSTools_Glob_PathNotADirectory asserts a path pointing at a regular
+// file (not a directory) returns an isError, not a silent empty match.
+func TestFSTools_Glob_PathNotADirectory(t *testing.T) {
+	env := fsEnv(t)
+	writeGlobFixture(t, env.WorkDir)
+	out, isErr := invokeFS(t, "glob", env, `{"pattern":"**/*.go","path":"a.go"}`)
+	if !isErr || !strings.Contains(out, "not a directory") {
+		t.Errorf("glob path=regular file = (%q, %v), want not-a-directory error", out, isErr)
 	}
 }
 

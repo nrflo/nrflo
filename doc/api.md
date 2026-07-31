@@ -147,15 +147,15 @@ compatible). For in-process `api` agents an empty field means no tools
 | `revise_plan` | Revise a sub-workflow's plan (edited manifest, or planner feedback/answers). Input: `{instance_id, revision, plan?, feedback?, answers?}` |
 | `approve_plan` | Approve+materialize a sub-workflow's plan at a revision. Input: `{instance_id, revision}` |
 
-**Native fs tools** (workdir-jailed, offered only when `native_tools=none` on a claude def — bridge — or the `api_native_tools_enabled` global setting is on — in-process/console; see `tools_builtin.FSTools()`):
+**Native fs tools** (reads unrestricted, writes workdir-jailed; offered only when `native_tools=none` on a claude def — bridge — or the `api_native_tools_enabled` global setting is on — in-process/console; see `tools_builtin.FSTools()`):
 
 | Tool | Description |
 |------|-------------|
-| `read_file` | Read a file (line-numbered `cat -n` text, or an image content block for PNG/JPEG). Input: `{path, offset?, limit?}` |
-| `edit_file` | Exact-string replacement on a file already `read_file`'d this session. Input: `{path, old_string, new_string, replace_all?}` |
-| `write_file` | Create a file, or overwrite one already `read_file`'d this session. Input: `{path, content}` |
-| `glob` | Fast filename pattern matching (`**` supported), mtime-sorted. Input: `{pattern}` |
-| `grep` | Regex content search: `files_with_matches`\|`count`\|`content` modes, line numbers + `-A`/`-B`/`-C` context, optional `glob` filter. Input: `{pattern, glob?, output_mode?, -i?, -A?, -B?, -C?}` |
+| `read_file` | Read a file (line-numbered `cat -n` text, or an image content block for PNG/JPEG); workdir-relative but unrestricted. Input: `{path, offset?, limit?}` |
+| `edit_file` | Exact-string replacement on a file already `read_file`'d this session; jailed to the workdir. Input: `{path, old_string, new_string, replace_all?}` |
+| `write_file` | Create a file, or overwrite one already `read_file`'d this session; jailed to the workdir. Input: `{path, content}` |
+| `glob` | Fast filename pattern matching (`**` supported), mtime-sorted. Input: `{pattern, path?}` |
+| `grep` | Regex content search: `files_with_matches`\|`count`\|`content` modes, line numbers + `-A`/`-B`/`-C` context, optional `glob` filter. Input: `{pattern, path?, glob?, output_mode?, -i?, -A?, -B?, -C?}` |
 | `bash` | Run `sh -c`; set `run_in_background` for a long-running command. Input: `{command, timeout_ms?, run_in_background?}` |
 | `bash_output` | Poll a background shell for new output + status/exit code. Input: `{shell_id, filter?}` |
 | `kill_shell` | Kill a background shell. Input: `{shell_id}` |

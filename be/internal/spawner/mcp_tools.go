@@ -65,7 +65,8 @@ func substituteReadDocument(specs []provider.ToolSpec, handlers apirun.Registry,
 // full set, for backward compatibility); the agent_* lifecycle baseline is
 // force-merged so a restrictive tools CSV can never strip an agent's ability to
 // signal findings/lifecycle. When the def resolves native_tools=="none", the
-// jailed FS trio (read_file/edit_file/bash) is merged in too — bypassing the
+// native FS trio (read_file/edit_file/bash — only edit_file/bash jailed to
+// the workdir) is merged in too — bypassing the
 // api_native_tools_enabled global, since an explicit def opt-out is
 // unambiguous intent — so results still flow through DispatchTool quarantine.
 // read_document is swapped per adapter capability: path-returning variant when

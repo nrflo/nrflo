@@ -1,6 +1,7 @@
 package tools_builtin
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,6 +141,49 @@ func TestFSTools_Grep_OutputCap(t *testing.T) {
 	}
 	if !strings.Contains(out, "truncated") {
 		t.Errorf("grep output = missing truncated marker (len %d)", len(out))
+	}
+}
+
+// TestFSTools_Grep_PathOutsideWorkdirReturnsAbsolute mirrors glob's parity
+// case: an out-of-tree search root matches and emits absolute paths.
+func TestFSTools_Grep_PathOutsideWorkdirReturnsAbsolute(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	writeGrepFixture(t, outside)
+
+	out, isErr := invokeFS(t, "grep", env, fmt.Sprintf(`{"pattern":"func Foo","path":%q}`, outside))
+	if isErr {
+		t.Fatalf("grep outside path = (%q, %v)", out, isErr)
+	}
+	want := filepath.Join(outside, "a.go")
+	if !strings.Contains(out, want) {
+		t.Errorf("grep outside path = %q, want absolute hit %q", out, want)
+	}
+}
+
+// TestFSTools_Grep_PathOmittedStaysWorkdirRelative pins today's default
+// behavior when path is not supplied.
+func TestFSTools_Grep_PathOmittedStaysWorkdirRelative(t *testing.T) {
+	env := fsEnv(t)
+	writeGrepFixture(t, env.WorkDir)
+
+	out, isErr := invokeFS(t, "grep", env, `{"pattern":"func Foo"}`)
+	if isErr {
+		t.Fatalf("grep = (%q, %v)", out, isErr)
+	}
+	if !strings.Contains(out, "a.go") || strings.Contains(out, env.WorkDir) {
+		t.Errorf("grep path-omitted = %q, want workdir-relative hits", out)
+	}
+}
+
+// TestFSTools_Grep_PathNotADirectory asserts a path pointing at a regular
+// file returns an isError, not a silent empty match.
+func TestFSTools_Grep_PathNotADirectory(t *testing.T) {
+	env := fsEnv(t)
+	writeGrepFixture(t, env.WorkDir)
+	out, isErr := invokeFS(t, "grep", env, `{"pattern":"func Foo","path":"a.go"}`)
+	if !isErr || !strings.Contains(out, "not a directory") {
+		t.Errorf("grep path=regular file = (%q, %v), want not-a-directory error", out, isErr)
 	}
 }
 

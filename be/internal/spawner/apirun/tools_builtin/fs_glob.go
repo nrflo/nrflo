@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -17,7 +18,8 @@ import (
 const globMaxResults = 500
 
 // globHandler implements glob: fast file-pattern matching under the working
-// directory, sorted by modification time.
+// directory (or an optional caller-supplied search root), sorted by
+// modification time.
 type globHandler struct{}
 
 func (globHandler) Spec() provider.ToolSpec {
@@ -27,7 +29,8 @@ func (globHandler) Spec() provider.ToolSpec {
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"pattern":{"type":"string","description":"Glob pattern, relative to the working directory (\"**\" matches any number of directories)"}
+"pattern":{"type":"string","description":"Glob pattern, relative to the working directory (\"**\" matches any number of directories)"},
+"path":{"type":"string","description":"Directory to search in, relative to the working directory or absolute (defaults to the working directory)"}
 },
 "required":["pattern"],
 "additionalProperties":false
@@ -38,20 +41,31 @@ func (globHandler) Spec() provider.ToolSpec {
 func (globHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
 		Pattern string `json:"pattern"`
+		Path    string `json:"path"`
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
 	}
-	if env.WorkDir == "" {
-		return "no working directory configured for this session", true, nil
-	}
 	if strings.TrimSpace(args.Pattern) == "" {
 		return "pattern is required", true, nil
 	}
-	root, err := filepath.EvalSymlinks(env.WorkDir)
+	searchPath := args.Path
+	if searchPath == "" {
+		if env.WorkDir == "" {
+			return "no working directory configured for this session", true, nil
+		}
+		searchPath = env.WorkDir
+	}
+	root, err := resolveReadPath(env, searchPath)
 	if err != nil {
 		return err.Error(), true, nil
 	}
+	if fi, statErr := os.Stat(root); statErr != nil {
+		return statErr.Error(), true, nil
+	} else if !fi.IsDir() {
+		return fmt.Sprintf("%s is not a directory", args.Path), true, nil
+	}
+	rootIsWorkdir := insideWorkdir(env, root)
 	re, err := globToRegexp(args.Pattern)
 	if err != nil {
 		return "invalid pattern: " + err.Error(), true, nil
@@ -95,7 +109,11 @@ func (globHandler) Invoke(_ context.Context, env apirun.ToolEnv, input json.RawM
 	}
 	var out strings.Builder
 	for _, h := range hits {
-		out.WriteString(h.rel)
+		display := h.rel
+		if !rootIsWorkdir {
+			display = filepath.Join(root, h.rel)
+		}
+		out.WriteString(display)
 		out.WriteString("\n")
 	}
 	if truncated {

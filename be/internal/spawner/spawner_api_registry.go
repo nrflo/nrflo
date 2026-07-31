@@ -27,7 +27,9 @@ import (
 // intentionally text-only).
 //
 // includeFS additionally offers the native filesystem/shell tools
-// (tools_builtin.FSTools — read_file/edit_file/bash, jailed to the workdir).
+// (tools_builtin.FSTools — read_file/edit_file/bash; only edit_file/
+// write_file/bash are jailed to the workdir, reads are workdir-relative but
+// unrestricted).
 // The pure in-process api branch passes true only when the
 // `api_native_tools_enabled` global setting is on (bypassNativeGate=false):
 // CLI-backed agents have their CLI's own native tools, so granting a second
@@ -62,7 +64,7 @@ func (s *Spawner) buildAPIRegistry(
 			builtins[name] = handler
 		}
 	} else if csvNamesFSTool(toolsCSV) {
-		// No workdir to jail to (or FS excluded for this backend): degrade by
+		// No workdir configured (or FS excluded for this backend): degrade by
 		// dropping the FS names from the CSV instead of hard-failing the
 		// spawn on "no tools matched".
 		toolsCSV = stripFSNames(toolsCSV)

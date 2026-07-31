@@ -32,9 +32,12 @@ func NewFSSession() *FSSession {
 	}
 }
 
-// MarkRead records abs (a resolveFSPath-jailed absolute path) as read (or
-// written) this session, satisfying a later edit_file/write_file
-// read-before-overwrite check. No-op on a nil receiver.
+// MarkRead records abs (a symlink-resolved absolute path — resolveReadPath
+// for read_file, resolveFSPath for write_file) as read (or written) this
+// session, satisfying a later edit_file/write_file read-before-overwrite
+// check. Both resolvers agree on the resolved form for a given file, so a
+// read via either path matches WasRead on the write side. No-op on a nil
+// receiver.
 func (fs *FSSession) MarkRead(abs string) {
 	if fs == nil {
 		return

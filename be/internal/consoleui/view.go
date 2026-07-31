@@ -213,6 +213,10 @@ func renderMessage(message Message, width int) string {
 		return mutedStyle.Render(fitWidth("tool · "+prettyToolContent(message.Content), width))
 	case "thinking":
 		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
+	case "system_notice":
+		return ""
+	case "task_notification":
+		return mutedStyle.Render(fitWidth(collapseTaskNotification(message.Content), width))
 	default:
 		renderer, err := glamour.NewTermRenderer(glamour.WithStyles(assistantGlamour), glamour.WithWordWrap(width))
 		if err == nil {

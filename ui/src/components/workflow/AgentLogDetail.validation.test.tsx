@@ -101,7 +101,7 @@ describe('AgentLogDetail - validation category', () => {
     expect(tabs[8].textContent).toContain('2')
   })
 
-  it('Validation tab is at index 8 in the tab list (9 total tabs)', async () => {
+  it('Validation tab is at index 8 in the tab list (12 total tabs)', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [{ content: 'hello', category: 'text', created_at: '2026-01-01T00:00:10Z' }],
@@ -112,7 +112,7 @@ describe('AgentLogDetail - validation category', () => {
     await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(10)
+    expect(tabs).toHaveLength(12)
     expect(tabs[8].textContent).toMatch(/Validation/)
   })
 

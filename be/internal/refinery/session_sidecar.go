@@ -8,6 +8,7 @@ import (
 	"be/internal/foldfmt"
 	"be/internal/handoff"
 	"be/internal/logger"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 	"be/internal/ws"
@@ -197,9 +198,15 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		prevContent = prevDigest.Content
 	}
 
-	lines := make([]string, len(delta))
-	for i, msg := range delta {
-		lines[i] = "[" + msg.Category + "] " + msg.Content
+	lines := make([]string, 0, len(delta))
+	for _, msg := range delta {
+		if msg.Category == model.MsgCategorySystemNotice {
+			continue
+		}
+		lines = append(lines, "["+msg.Category+"] "+msg.Content)
+	}
+	if len(lines) == 0 {
+		return
 	}
 	userText := buildFoldUserText(as.taskAnchor, prevContent, []string{foldfmt.JoinTail(lines, maxFoldDeltaChars)})
 	foldSeq := 0

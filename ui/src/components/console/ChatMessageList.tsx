@@ -2,6 +2,7 @@ import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
 import { formatTime } from '@/components/workflow/MessageTable'
 import { ChatThinking } from './ChatThinking'
 import { ChatToolCard } from './ChatToolCard'
+import { ChatTaskNotification } from './ChatTaskNotification'
 import { ApprovalCard } from './ApprovalCard'
 import { pairToolMessages, type MergedTranscriptItem, type ResolvedApproval } from './chatStream'
 import type { ConsoleContextRotatedPayload, PendingApproval } from '@/types/consoleChat'
@@ -79,6 +80,13 @@ function ContextRotatedDivider({ rotation }: { rotation: ConsoleContextRotatedPa
 }
 
 function PersistedMessageRow({ message }: { message: MessageWithTime }) {
+  if (message.category === 'system_notice') {
+    // Turn state already conveys idle/running — no separate row needed.
+    return null
+  }
+  if (message.category === 'task_notification') {
+    return <ChatTaskNotification content={message.content} />
+  }
   if (message.category === 'user_input') {
     return (
       <div className="rounded-md border-l-4 border-l-primary bg-primary/5 px-3 py-2 text-sm">

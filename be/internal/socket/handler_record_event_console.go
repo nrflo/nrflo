@@ -3,6 +3,9 @@ package socket
 import (
 	"context"
 	"encoding/json"
+	"strings"
+
+	"be/internal/model"
 )
 
 // consolePreToolApproval routes a PreToolUse event through ConsoleHooks (when
@@ -80,13 +83,24 @@ func (h *Handler) handleUserPromptSubmit(ctx context.Context, req Request, sessi
 	if h.consoleHooks != nil && h.consoleHooks.ConsoleUserPrompt(sessionID, prompt) {
 		resp = MakeResponse(req.ID, map[string]interface{}{"recorded": false})
 	} else {
-		resp = h.recordSimpleEvent(ctx, req, sessionID, prompt, "user_input")
+		category := "user_input"
+		if isTaskNotification(prompt) {
+			category = model.MsgCategoryTaskNotification
+		}
+		resp = h.recordSimpleEvent(ctx, req, sessionID, prompt, category)
 	}
 
 	if injected == "" || resp.Error != nil {
 		return resp
 	}
 	return addAdditionalContext(req.ID, resp, injected)
+}
+
+// isTaskNotification reports whether prompt is a Claude Code CLI harness
+// <task-notification> envelope (injected when a backgrounded MCP
+// get_delegation call resolves), rather than a human-typed prompt.
+func isTaskNotification(prompt string) bool {
+	return strings.HasPrefix(strings.TrimSpace(prompt), "<task-notification>")
 }
 
 // addAdditionalContext merges an additional_context key into resp's result

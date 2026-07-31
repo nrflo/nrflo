@@ -69,7 +69,7 @@ describe('AgentLogDetail - thinking category', () => {
     vi.clearAllMocks()
   })
 
-  it('Thinking tab exists at index 9 (last tab)', async () => {
+  it('Thinking tab exists at index 9', async () => {
     vi.mocked(ticketsApi.getSessionMessages).mockResolvedValue({
       session_id: 'session-1',
       messages: [{ content: 'a thought', category: 'thinking', created_at: '2026-01-01T00:00:10Z' }],
@@ -80,7 +80,7 @@ describe('AgentLogDetail - thinking category', () => {
     await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(10)
+    expect(tabs).toHaveLength(12)
     expect(tabs[9].textContent).toMatch(/Thinking/)
   })
 

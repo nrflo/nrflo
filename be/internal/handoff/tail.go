@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"be/internal/foldfmt"
+	"be/internal/model"
 	"be/internal/repo"
 )
 
@@ -15,6 +16,9 @@ var tailDropPrefixes = []string{"[Read] ", "[Glob] ", "[Grep] ", "[TodoWrite]"}
 func renderTail(msgs []repo.TailMessage) string {
 	var lines []string
 	for _, m := range msgs {
+		if m.Category == model.MsgCategorySystemNotice {
+			continue
+		}
 		if hasTailDropPrefix(m.Content) {
 			continue
 		}

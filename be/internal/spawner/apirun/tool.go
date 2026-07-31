@@ -199,9 +199,10 @@ type ToolEnv struct {
 	// Heartbeat bumps the calling agent's lastMessageTime so stall detection does
 	// not kill it during a long blocking tool call. Nil-safe.
 	Heartbeat func()
-	// WorkDir is the agent/chat working directory the native fs tools
-	// (read_file/edit_file/bash, tools_builtin/fs*.go) are jailed to. Empty
-	// means no filesystem access — those tools error.
+	// WorkDir is the agent/chat working directory: read_file/glob/grep
+	// resolve relative paths against it but are not restricted to it,
+	// edit_file/write_file/bash (tools_builtin/fs*.go) are jailed to it.
+	// Empty means no filesystem access — those tools error.
 	WorkDir string
 	// FS holds per-session state for the native fs tools: the read-before-
 	// edit/write tracking set and the background-shell registry (bash's

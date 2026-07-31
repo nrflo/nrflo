@@ -120,9 +120,10 @@ export function GlobalSettingsSection() {
               <div>
                 <div className="text-sm font-medium">API native file/shell tools</div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Gives API-mode agents and console chats read_file/edit_file/bash, jailed to the
-                  working directory; edit_file/bash in console chats require your approval. The
-                  server executes model-authored shell commands — leave off unless you need it
+                  Gives API-mode agents and console chats read_file/glob/grep/edit_file/write_file/bash;
+                  reads are unrestricted but writes stay jailed to the working directory.
+                  edit_file/write_file/bash in console chats require your approval. The server
+                  executes model-authored shell commands — leave off unless you need it
                 </p>
               </div>
               <Toggle

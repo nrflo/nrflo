@@ -161,6 +161,93 @@ func TestFSTools_Read_Directory(t *testing.T) {
 	}
 }
 
+// TestFSTools_Read_OutsideWorkdirAbsolutePath asserts the motivating parity
+// case: an absolute path outside the workdir reads successfully instead of
+// refusing with an "escapes" error (Claude Code's own Read has no cwd jail).
+func TestFSTools_Read_OutsideWorkdirAbsolutePath(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "foreign.txt"), []byte("one\ntwo\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, isErr := invokeFS(t, "read_file", env, fmt.Sprintf(`{"path":%q}`, filepath.Join(outside, "foreign.txt")))
+	if isErr {
+		t.Fatalf("read_file outside workdir = (%q, %v), want success", out, isErr)
+	}
+	if !strings.Contains(out, "1\tone") || !strings.Contains(out, "2\ttwo") {
+		t.Errorf("read_file outside workdir = %q, want line-numbered content", out)
+	}
+}
+
+// TestFSTools_Read_InTreeSymlinkToOutsideDir mirrors the above through a
+// symlink planted inside the workdir pointing at the foreign directory.
+func TestFSTools_Read_InTreeSymlinkToOutsideDir(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "foreign.txt"), []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(env.WorkDir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	out, isErr := invokeFS(t, "read_file", env, `{"path":"link/foreign.txt"}`)
+	if isErr {
+		t.Fatalf("read_file via in-tree symlink = (%q, %v), want success", out, isErr)
+	}
+	if !strings.Contains(out, "1\thello") {
+		t.Errorf("read_file via in-tree symlink = %q, want line-numbered content", out)
+	}
+}
+
+// TestFSTools_Read_RelativePathStillResolvesUnderWorkdir asserts the
+// unjailed read path did not break the ordinary workdir-relative case.
+func TestFSTools_Read_RelativePathStillResolvesUnderWorkdir(t *testing.T) {
+	env := fsEnv(t)
+	if err := os.WriteFile(filepath.Join(env.WorkDir, "in.txt"), []byte("relative\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, isErr := invokeFS(t, "read_file", env, `{"path":"in.txt"}`)
+	if isErr || !strings.Contains(out, "1\trelative") {
+		t.Errorf("read_file relative path = (%q, %v), want line-numbered content", out, isErr)
+	}
+}
+
+// TestFSTools_Read_OutsideWorkdirPNGReturnsMediaBlock is the motivating
+// screenshot case: a PNG outside the workdir still returns an image block.
+func TestFSTools_Read_OutsideWorkdirPNGReturnsMediaBlock(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	picPath := filepath.Join(outside, "screenshot.png")
+	writeTestPNG(t, picPath)
+
+	out, media, isErr := invokeMedia(t, "read_file", env, fmt.Sprintf(`{"path":%q}`, picPath))
+	if isErr {
+		t.Fatalf("read_file outside png = (%q, %v)", out, isErr)
+	}
+	if len(media) != 1 || media[0].Kind != "image" || media[0].MediaType != "image/png" {
+		t.Errorf("media = %+v, want single image/png block", media)
+	}
+}
+
+// TestFSTools_Read_EditOutsideWorkdirStillRefused proves the read/write
+// split: reading an out-of-tree file succeeds, but edit_file on the same
+// path is still refused with "escapes" — edits stay jailed.
+func TestFSTools_Read_EditOutsideWorkdirStillRefused(t *testing.T) {
+	env := fsEnv(t)
+	outside := t.TempDir()
+	foreign := filepath.Join(outside, "foreign.txt")
+	if err := os.WriteFile(foreign, []byte("hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, isErr := invokeFS(t, "read_file", env, fmt.Sprintf(`{"path":%q}`, foreign)); isErr {
+		t.Fatalf("read_file outside workdir = (%q, %v), want success", out, isErr)
+	}
+	out, isErr := invokeFS(t, "edit_file", env, fmt.Sprintf(`{"path":%q,"old_string":"hello","new_string":"bye"}`, foreign))
+	if !isErr || !strings.Contains(out, "escapes") {
+		t.Errorf("edit_file outside workdir after read = (%q, %v), want escape error", out, isErr)
+	}
+}
+
 // TestFSTools_Read_ImageTooLargeGuard exercises the 32 MiB inline-media cap
 // without actually allocating 32 MiB: it fakes a large PNG-suffixed file and
 // relies on the size check (via os.Stat) short-circuiting before any read.

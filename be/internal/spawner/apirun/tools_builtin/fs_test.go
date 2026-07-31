@@ -46,16 +46,18 @@ func TestFSTools_WorkdirJail(t *testing.T) {
 			t.Errorf("edit_file(%s) = (%q, %v), want escape error", args, out, isErr)
 		}
 	}
-	if out, isErr := invokeFS(t, "read_file", env, fmt.Sprintf(`{"path":%q}`, filepath.Join(outside, "secret.txt"))); !isErr || !strings.Contains(out, "escapes") {
-		t.Errorf("read_file outside jail = (%q, %v), want escape error", out, isErr)
+	// read_file is unjailed (Claude Code parity): an out-of-tree absolute
+	// path reads successfully instead of refusing with "escapes".
+	if out, isErr := invokeFS(t, "read_file", env, fmt.Sprintf(`{"path":%q}`, filepath.Join(outside, "secret.txt"))); isErr {
+		t.Errorf("read_file outside workdir = (%q, %v), want success", out, isErr)
 	}
 
-	// Symlink escape: a link inside the tree pointing outside must not pass.
+	// Symlink to an out-of-tree dir: read_file follows it successfully too.
 	if err := os.Symlink(outside, filepath.Join(env.WorkDir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	if out, isErr := invokeFS(t, "read_file", env, `{"path":"link/secret.txt"}`); !isErr || !strings.Contains(out, "escapes") {
-		t.Errorf("read_file via symlink = (%q, %v), want escape error", out, isErr)
+	if out, isErr := invokeFS(t, "read_file", env, `{"path":"link/secret.txt"}`); isErr {
+		t.Errorf("read_file via symlink to outside = (%q, %v), want success", out, isErr)
 	}
 
 	// No workdir at all → error.

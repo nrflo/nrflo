@@ -20,8 +20,9 @@ const (
 )
 
 // readFileHandler implements read_file: line-numbered text content (cat -n
-// shape) from inside the session workdir jail, or a native image content
-// block for PNG/JPEG files so the model can see them directly.
+// shape), resolved workdir-relative but not restricted to it (Claude Code
+// parity — absolute paths anywhere on disk are honored), or a native image
+// content block for PNG/JPEG files so the model can see them directly.
 type readFileHandler struct{}
 
 func (readFileHandler) Spec() provider.ToolSpec {
@@ -31,7 +32,7 @@ func (readFileHandler) Spec() provider.ToolSpec {
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"path":{"type":"string","description":"File path, relative to the working directory (absolute allowed if inside it)"},
+"path":{"type":"string","description":"File path, relative to the working directory (absolute paths are also allowed, anywhere on disk)"},
 "offset":{"type":"integer","description":"1-based line to start from (default 1)"},
 "limit":{"type":"integer","description":"Max lines to return (default 2000)"}
 },
@@ -60,7 +61,7 @@ func (readFileHandler) InvokeMedia(_ context.Context, env apirun.ToolEnv, input 
 		out, isErr, ierr := invalidArgs(err)
 		return out, nil, isErr, ierr
 	}
-	abs, err := resolveFSPath(env, args.Path)
+	abs, err := resolveReadPath(env, args.Path)
 	if err != nil {
 		return err.Error(), nil, true, nil
 	}

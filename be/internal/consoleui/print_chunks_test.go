@@ -97,6 +97,7 @@ func TestRenderMessage_NeverEmitsTabsOrOverWideLines(t *testing.T) {
 	messages := []Message{
 		{Category: "user_input", Content: "a\tb\n" + long},
 		{Category: "tool", Content: "[Bash] sqlite3\theader\tcolumn " + long},
+		{Category: "subagent", Content: "[Task] general-purpose:\tdescribe\tthe " + long},
 		{Category: "thinking", Content: "pondering\ttabs " + long},
 		{Category: "assistant", Content: "para\n\n```python\n\tindented = 1\n" + long + "\n```\n"},
 	}

@@ -209,8 +209,8 @@ func renderMessage(message Message, width int) string {
 	switch message.Category {
 	case "user_input":
 		return userStyle.Render(fitWidth(message.Content, width))
-	case "tool", "tool_use", "tool_result":
-		return mutedStyle.Render(fitWidth("tool · "+prettyToolContent(message.Content), width))
+	case "tool", "tool_use", "tool_result", "subagent":
+		return mutedStyle.Render(toolCard(message.Content, width))
 	case "thinking":
 		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
 	case "system_notice":

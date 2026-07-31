@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"be/internal/spawner/apirun/provider"
 )
 
 func TestGetDelegation_HappyPath_ForwardsIDAndCallerSessionID(t *testing.T) {
@@ -149,6 +151,44 @@ func TestGetDelegation_WaitExpires_StillRunningCarriesHint(t *testing.T) {
 	}
 	if !strings.Contains(out, "wait_sec") {
 		t.Errorf("out=%q, want expired-wait running result carrying a wait_sec hint", out)
+	}
+}
+
+func TestGetDelegation_BareRunning_HintCarriesConsoleBackgroundCaveat(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.Delegator = &fakeDelegator{
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			return `{"delegation_id":"wfi.abc","status":"running"}`, nil
+		},
+	}
+
+	out, isErr, err := invoke(t, env.env, "get_delegation", `{"delegation_id":"wfi.abc"}`)
+	if err != nil {
+		t.Fatalf("Invoke err: %v", err)
+	}
+	if isErr {
+		t.Errorf("isErr=true, want false; out=%q", out)
+	}
+	for _, anchor := range []string{"background-task", "does not consume", "get_delegation once more"} {
+		if !strings.Contains(out, anchor) {
+			t.Errorf("out=%q, want hint to contain %q", out, anchor)
+		}
+	}
+}
+
+func TestToolSpecs_DescriptionsCarryConsoleBackgroundCaveat(t *testing.T) {
+	for name, spec := range map[string]interface {
+		Spec() provider.ToolSpec
+	}{
+		"get_delegation": getDelegationHandler{},
+		"delegate":       delegateHandler{},
+	} {
+		desc := spec.Spec().Description
+		for _, anchor := range []string{"background-task", "does not consume", "get_delegation once more"} {
+			if !strings.Contains(desc, anchor) {
+				t.Errorf("%s Description missing anchor %q; got %q", name, anchor, desc)
+			}
+		}
 	}
 }
 

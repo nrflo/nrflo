@@ -23,7 +23,7 @@ type getDelegationHandler struct{}
 func (getDelegationHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "get_delegation",
-		Description: "Collect an async delegation started via delegate. ALWAYS pass wait_sec to block up to that many seconds (max 240) for still-running workers — one blocking call, never a bare-poll loop. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data.",
+		Description: "Collect an async delegation started via delegate. ALWAYS pass wait_sec to block up to that many seconds (max 240) for still-running workers — one blocking call, never a bare-poll loop. Returns {delegation_id, status, results?}: status running while any worker still runs (results list per-worker progress), then completed — or failed when at least one worker failed — with results[{session_id, status, reason?, findings?}] where findings is each worker's structured output. READ-ONCE: the terminal response is consumed as it is returned — worker findings and the delegation record are deleted — so store the results; polling the same delegation_id again returns an unknown-delegation error, not a repeat of the data. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -69,7 +69,7 @@ func appendPollHint(raw string) string {
 	if err := json.Unmarshal([]byte(raw), &v); err != nil || v["status"] != "running" {
 		return raw
 	}
-	v["hint"] = "still running — collect with one get_delegation call passing wait_sec (max 240), do not re-poll without it"
+	v["hint"] = "still running — collect with one get_delegation call passing wait_sec (max 240), do not re-poll without it. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error."
 	b, err := json.Marshal(v)
 	if err != nil {
 		return raw

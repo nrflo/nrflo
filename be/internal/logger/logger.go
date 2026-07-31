@@ -72,6 +72,12 @@ func Info(ctx context.Context, msg string, args ...any) {
 	log("INFO", ctx, msg, args...)
 }
 
+// Debug logs a message at DEBUG level. Ungated: no level filtering exists in
+// the server, the logs API, or the UI.
+func Debug(ctx context.Context, msg string, args ...any) {
+	log("DEBUG", ctx, msg, args...)
+}
+
 // Warn logs a message at WARN level.
 func Warn(ctx context.Context, msg string, args ...any) {
 	log("WARN", ctx, msg, args...)

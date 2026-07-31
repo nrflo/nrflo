@@ -10,40 +10,20 @@ import (
 	"be/internal/ws"
 )
 
-// handleAgentRecordEvent processes agent.record_event socket requests from
-// Claude --settings hooks. Routes each event type to a specific recorder so
+// dispatchRecordEvent routes each hook event type to a specific recorder so
 // the agent_messages table captures everything visible in the Claude TUI:
 // tool calls, user prompts, notifications, turn boundaries, session events.
 // Completion is still signaled by `agent finished/fail/continue` — Stop only
 // records turn boundaries for visibility.
-func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Response {
-	var params struct {
-		Event      json.RawMessage `json:"event"`
-		SessionID  string          `json:"session_id"`
-		InstanceID string          `json:"instance_id"`
-	}
-	if err := json.Unmarshal(req.Params, &params); err != nil {
-		return MakeErrorResponse(req.ID, NewInvalidParamsError(err.Error()))
-	}
-	if params.SessionID == "" {
-		return MakeErrorResponse(req.ID, NewValidationError("session_id is required"))
-	}
-
-	var event map[string]interface{}
-	if err := json.Unmarshal(params.Event, &event); err != nil {
-		return MakeErrorResponse(req.ID, NewInvalidParamsError("invalid event JSON: "+err.Error()))
-	}
-
-	hookEventName, _ := event["hook_event_name"].(string)
-
+func (h *Handler) dispatchRecordEvent(ctx context.Context, req Request, sessionID, hookEventName string, event map[string]interface{}) Response {
 	switch hookEventName {
 	case "PreToolUse":
-		recorded := h.recordPreToolUse(ctx, req, params.SessionID, event)
-		return h.consolePreToolApproval(ctx, req, params.SessionID, event, recorded)
+		recorded := h.recordPreToolUse(ctx, req, sessionID, event)
+		return h.consolePreToolApproval(ctx, req, sessionID, event, recorded)
 	case "PostToolUse":
-		return h.recordPostToolUse(ctx, req, params.SessionID, event)
+		return h.recordPostToolUse(ctx, req, sessionID, event)
 	case "PostToolUseFailure":
-		return h.recordPostToolFailure(ctx, req, params.SessionID, event)
+		return h.recordPostToolFailure(ctx, req, sessionID, event)
 	case "UserPromptSubmit":
 		// A live console engine that submitted this exact turn itself
 		// (claudeEngine.SendUserTurn writes the user_input row before typing
@@ -52,7 +32,7 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		// return handled=false and are recorded here, their only writer. A
 		// wired ContextInjector additionally attaches additional_context for
 		// console-kind sessions — see handleUserPromptSubmit.
-		return h.handleUserPromptSubmit(ctx, req, params.SessionID, asString(event["prompt"]))
+		return h.handleUserPromptSubmit(ctx, req, sessionID, asString(event["prompt"]))
 	case "UserPromptExpansion":
 		cmd := asString(event["command_name"])
 		args := asString(event["command_args"])
@@ -60,9 +40,9 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		if args != "" {
 			msg += " " + args
 		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "user_input")
+		return h.recordSimpleEvent(ctx, req, sessionID, msg, "user_input")
 	case "Notification":
-		return h.handleNotification(ctx, req, params.SessionID, event)
+		return h.handleNotification(ctx, req, sessionID, event)
 	case "SubagentStart":
 		agentType := asString(event["agent_type"])
 		prompt := asString(event["prompt"])
@@ -73,46 +53,43 @@ func (h *Handler) handleAgentRecordEvent(ctx context.Context, req Request) Respo
 		if prompt != "" {
 			msg += ": " + prompt
 		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "subagent")
+		return h.recordSimpleEvent(ctx, req, sessionID, msg, "subagent")
 	case "SubagentStop":
-		return h.recordSimpleEvent(ctx, req, params.SessionID, "subagent complete", "subagent")
+		return h.recordSimpleEvent(ctx, req, sessionID, "subagent complete", "subagent")
 	case "StopFailure":
 		msg := "turn failed (api error)"
 		if errStr := extractErrorMessage(event); errStr != "" {
 			msg = "turn failed: " + errStr
 		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "text")
+		return h.recordSimpleEvent(ctx, req, sessionID, msg, "text")
 	case "PreCompact":
-		h.tailThinking(ctx, params.SessionID, asString(event["transcript_path"]))
+		h.tailThinking(ctx, sessionID, asString(event["transcript_path"]))
 		trigger := asString(event["trigger"])
 		msg := "context compaction"
 		if trigger != "" {
 			msg += " (" + trigger + ")"
 		}
-		return h.recordSimpleEvent(ctx, req, params.SessionID, msg, "text")
+		return h.recordSimpleEvent(ctx, req, sessionID, msg, "text")
 	case "SessionStart":
 		// Don't record — but use as a TUI-ready signal so the spawner can
 		// release the prompt-delivery wait. Idempotent on the spawner side.
-		source := asString(event["source"])
-		logger.Info(ctx, "record_event: SessionStart received", "session_id", params.SessionID, "source", source)
 		if h.signaler != nil {
-			if err := h.signaler.SignalSessionReady(params.SessionID); err != nil {
+			if err := h.signaler.SignalSessionReady(sessionID); err != nil {
 				logger.Info(ctx, "record_event: SignalSessionReady error (best-effort)", "error", err)
 			}
 		}
-		h.consoleSessionReady(params.SessionID)
+		h.consoleSessionReady(sessionID)
 		return MakeResponse(req.ID, map[string]string{"status": "ready"})
 	case "Stop":
-		h.consoleTurnEnd(params.SessionID)
-		return h.handleStopHook(ctx, req, params.SessionID)
+		h.consoleTurnEnd(sessionID)
+		return h.handleStopHook(ctx, req, sessionID)
 	case "SessionEnd":
 		// Predictable per-session noise — ignored. Clean up offset state.
 		h.thinkingMu.Lock()
-		delete(h.thinkingOffsets, params.SessionID)
+		delete(h.thinkingOffsets, sessionID)
 		h.thinkingMu.Unlock()
 		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 	default:
-		logger.Info(ctx, "record_event: unknown hook event", "hook_event_name", hookEventName, "session_id", params.SessionID)
 		return MakeResponse(req.ID, map[string]string{"status": "ignored"})
 	}
 }
@@ -196,7 +173,6 @@ func extractErrorMessage(event map[string]interface{}) string {
 func (h *Handler) recordSimpleEvent(ctx context.Context, req Request, sessionID, content, category string) Response {
 	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, "")
 	if err != nil {
-		logger.Error(ctx, "record_event: failed to record hook message", "error", err, "content", content)
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 	}
 	broadcastMessageEvent(h.wsHub, ws.EventMessagesUpdated, projectID, ticketID, workflowName, sessionID, map[string]interface{}{
@@ -236,7 +212,6 @@ func (h *Handler) recordPreToolUse(ctx context.Context, req Request, sessionID s
 
 	projectID, ticketID, workflowName, err := h.agentSvc.RecordHookMessage(sessionID, content, category, payload)
 	if err != nil {
-		logger.Error(ctx, "record_event: failed to record pre-tool message", "error", err)
 		return MakeErrorResponse(req.ID, NewInternalError(err.Error()))
 	}
 

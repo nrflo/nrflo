@@ -121,8 +121,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 
 		case spawner.EventToolInvoke:
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatToolStarted, map[string]interface{}{
-				"tool":   ev.ToolName,
-				"detail": spawner.FormatToolDetail(ev.ToolName, ev.ToolInput),
+				"tool": ev.ToolName,
 			})
 
 		case spawner.EventToolResult:

@@ -9,13 +9,14 @@ import (
 
 // runningTool is the live in-flight tool line, fed by
 // console_chat.tool_started/tool_finished and cleared on turn idle/error.
+// Detail is the bracketed tool name only — params would overflow the footer.
 type runningTool struct {
 	Detail string
 	Since  time.Time
 }
 
 // workingSuffix renders the spinner-line suffix for an in-flight tool, e.g.
-// " · [Bash] make test · 42s". Empty when no tool is running.
+// " · [Bash] · 42s". Empty when no tool is running.
 func workingSuffix(tool runningTool, elapsed time.Duration) string {
 	if tool.Detail == "" {
 		return ""

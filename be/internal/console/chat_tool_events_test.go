@@ -1,7 +1,6 @@
 package console
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -11,8 +10,7 @@ import (
 
 // TestChatService_ToolEvents_PushToolStartedFinished verifies the pump maps
 // EventToolInvoke/EventToolResult onto console_chat.tool_started/tool_finished
-// session pushes carrying the tool name, a human-readable detail, and the
-// error flag.
+// session pushes carrying the tool name and the error flag.
 func TestChatService_ToolEvents_PushToolStartedFinished(t *testing.T) {
 	t.Parallel()
 	svc, _, hub, factory := newChatTestService(t)
@@ -35,9 +33,8 @@ func TestChatService_ToolEvents_PushToolStartedFinished(t *testing.T) {
 	if started.Data["tool"] != "Bash" {
 		t.Errorf("tool_started tool = %v, want Bash", started.Data["tool"])
 	}
-	detail, _ := started.Data["detail"].(string)
-	if !strings.Contains(detail, "make test") {
-		t.Errorf("tool_started detail = %q, want it to contain the command", detail)
+	if _, hasDetail := started.Data["detail"]; hasDetail {
+		t.Error("tool_started carries detail, want tool name only")
 	}
 
 	eng.emit(spawner.EngineEvent{

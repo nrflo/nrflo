@@ -41,11 +41,7 @@ func (m *model) applyStream(update streamUpdate) {
 				m.tool = runningTool{}
 			}
 		case "console_chat.tool_started":
-			detail := eventString(event, "detail")
-			if detail == "" {
-				detail = "[" + eventString(event, "tool") + "]"
-			}
-			m.tool = runningTool{Detail: detail, Since: time.Now()}
+			m.tool = runningTool{Detail: "[" + eventString(event, "tool") + "]", Since: time.Now()}
 		case "console_chat.tool_finished":
 			m.tool = runningTool{}
 		case "console_chat.approval_request":

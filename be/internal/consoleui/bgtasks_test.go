@@ -31,14 +31,14 @@ func TestWorkingSuffixAndElapsed(t *testing.T) {
 }
 
 // TestApplyStream_ToolStartedFinished verifies tool_started sets the running
-// tool line (falling back to the tool name when detail is empty), and that
-// tool_finished, turn idle, and error all clear it.
+// tool line to the bracketed tool name only, and that tool_finished, turn
+// idle, and error all clear it.
 func TestApplyStream_ToolStartedFinished(t *testing.T) {
 	m := &model{detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{}}
 
-	m.applyStream(streamUpdate{Events: []Event{event("console_chat.tool_started", "s1", map[string]any{"tool": "Bash", "detail": "[Bash] make test"})}})
-	if m.tool.Detail != "[Bash] make test" || m.tool.Since.IsZero() {
-		t.Fatalf("tool after tool_started = %+v, want detail + non-zero Since", m.tool)
+	m.applyStream(streamUpdate{Events: []Event{event("console_chat.tool_started", "s1", map[string]any{"tool": "Bash"})}})
+	if m.tool.Detail != "[Bash]" || m.tool.Since.IsZero() {
+		t.Fatalf("tool after tool_started = %+v, want [Bash] + non-zero Since", m.tool)
 	}
 
 	m.applyStream(streamUpdate{Events: []Event{event("console_chat.tool_finished", "s1", map[string]any{"tool": "Bash"})}})
@@ -48,7 +48,7 @@ func TestApplyStream_ToolStartedFinished(t *testing.T) {
 
 	m.applyStream(streamUpdate{Events: []Event{event("console_chat.tool_started", "s1", map[string]any{"tool": "WebFetch"})}})
 	if m.tool.Detail != "[WebFetch]" {
-		t.Errorf("tool detail fallback = %q, want [WebFetch]", m.tool.Detail)
+		t.Errorf("tool detail = %q, want [WebFetch]", m.tool.Detail)
 	}
 	m.applyStream(streamUpdate{Events: []Event{event("console_chat.turn", "s1", map[string]any{"state": "idle"})}})
 	if m.tool.Detail != "" {

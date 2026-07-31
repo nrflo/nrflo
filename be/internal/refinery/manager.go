@@ -125,7 +125,12 @@ func (m *Manager) Start(sessionID, projectID string) {
 	if _, ok := m.sidecars[sessionID]; ok {
 		return
 	}
-	sc := newSidecar(sessionID, projectID, m.clock, m.fold)
+	cs := &consoleSession{}
+	foldFn := func(ctx context.Context, sid, pid string, events []string) {
+		m.foldConsole(ctx, cs, sid, pid, events)
+	}
+	cs.sc = newSidecar(sessionID, projectID, m.clock, foldFn)
+	sc := cs.sc
 	m.sidecars[sessionID] = sc
 	if m.byProject[projectID] == nil {
 		m.byProject[projectID] = make(map[string]*sidecar)
@@ -204,12 +209,23 @@ func (m *Manager) OnEvent(ev *ws.Event) {
 		as, ok := m.autonomous[ev.SessionID]
 		m.autonomousMu.Unlock()
 		if ok {
-			// Non-empty sentinel line: sidecar.runFold no-ops on an empty
-			// buffer, but the autonomous fold ignores buffered lines
-			// entirely — it reads the agent_messages delta itself.
 			// foldGateOpen still vetoes folds above the context threshold,
 			// so an early-session trigger costs one cheap DB read.
-			as.sc.push(ev.Type, ev.Type == ws.EventFindingsUpdated)
+			as.sc.push("", ev.Type == ws.EventFindingsUpdated)
 		}
+	}
+}
+
+// Touch signals a live console sidecar (if any) that new conversation
+// content landed, without buffering an event line — the console fold reads
+// its own agent_messages delta, mirroring the autonomous trigger contract.
+// Non-blocking (sidecar.push's select/default), idempotent for an unknown
+// session id.
+func (m *Manager) Touch(sessionID string) {
+	m.mu.Lock()
+	sc, ok := m.sidecars[sessionID]
+	m.mu.Unlock()
+	if ok {
+		sc.push("", false)
 	}
 }

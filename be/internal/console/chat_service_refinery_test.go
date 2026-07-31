@@ -22,6 +22,7 @@ type fakeRefineryLifecycle struct {
 	started []string // sessionID
 	stopped []string // sessionID
 	flushed []string // sessionID
+	touched []string // sessionID
 
 	// onFlush, when set, is invoked outside the lock on every Flush call so a
 	// test can simulate "the flush folded a digest" (e.g. upserting into
@@ -48,6 +49,18 @@ func (f *fakeRefineryLifecycle) Flush(ctx context.Context, sessionID string) {
 	if f.onFlush != nil {
 		f.onFlush(sessionID)
 	}
+}
+
+func (f *fakeRefineryLifecycle) Touch(sessionID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.touched = append(f.touched, sessionID)
+}
+
+func (f *fakeRefineryLifecycle) touchCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return len(f.touched)
 }
 
 func (f *fakeRefineryLifecycle) startCount() int {
@@ -209,4 +222,53 @@ func TestChatService_NilRefineryMgr_IsANoop(t *testing.T) {
 	if err := svc.Close(sid); err != nil {
 		t.Fatalf("Close with nil RefineryMgr: %v", err)
 	}
+}
+
+// TestChatSink_RecordHookMessage_TouchesRefineryOnce verifies
+// chatSink.RecordHookMessage is the single choke point that touches the
+// session's refinery sidecar after a message row lands: one persisted
+// engine message must yield exactly one Touch call.
+func TestChatSink_RecordHookMessage_TouchesRefineryOnce(t *testing.T) {
+	t.Parallel()
+	mgr := &fakeRefineryLifecycle{}
+	_, pool, _, _ := newChatTestServiceWithRefinery(t, mgr)
+
+	sessionID := "sess-touch-1"
+	insertTestAgentSession(t, pool, sessionID, chatTestProjectID)
+
+	sink := &chatSink{pool: pool, clock: clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)), sessionID: sessionID, projectID: chatTestProjectID, refinery: mgr}
+	if _, _, _, err := sink.RecordHookMessage(sessionID, "hello", "text", ""); err != nil {
+		t.Fatalf("RecordHookMessage: %v", err)
+	}
+
+	if got := mgr.touchCount(); got != 1 {
+		t.Errorf("touchCount after one RecordHookMessage = %d, want 1", got)
+	}
+}
+
+// TestChatSink_RecordHookMessage_NilRefineryIsNoop verifies a chatSink built
+// with a nil refinery field (the zero value, mirroring an unwired
+// ChatDeps.RefineryMgr) never panics on RecordHookMessage.
+func TestChatSink_RecordHookMessage_NilRefineryIsNoop(t *testing.T) {
+	t.Parallel()
+	_, pool, _, _ := newChatTestServiceWithRefinery(t, nil)
+
+	sessionID := "sess-touch-2"
+	insertTestAgentSession(t, pool, sessionID, chatTestProjectID)
+
+	sink := &chatSink{pool: pool, clock: clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)), sessionID: sessionID, projectID: chatTestProjectID, refinery: nil}
+	if _, _, _, err := sink.RecordHookMessage(sessionID, "hello", "text", ""); err != nil {
+		t.Fatalf("RecordHookMessage with nil refinery: %v", err)
+	}
+}
+
+// insertTestAgentSession seeds the minimal agent_sessions row
+// RecordHookMessage's agent_messages insert needs (no FK on agent_messages
+// itself, but keeps the fixture representative of a real console_chat row).
+func insertTestAgentSession(t *testing.T, pool *db.Pool, sessionID, projectID string) {
+	t.Helper()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	mustExec(t, pool, `INSERT INTO agent_sessions (id, project_id, ticket_id, phase, node_id, agent_type, status, kind, created_at, updated_at)
+		 VALUES (?, ?, '', 'console_chat', 'console_chat', 'console_chat', 'user_interactive', 'console_chat', ?, ?)`,
+		sessionID, projectID, now, now)
 }

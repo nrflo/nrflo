@@ -72,7 +72,7 @@ func TestRecordFoldRun_SuccessWritesOkRow(t *testing.T) {
 		Usage:      provider.Usage{InputTokens: 42, OutputTokens: 7},
 	}}))
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{`{"type":"findings.updated"}`})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{`{"type":"findings.updated"}`})
 
 	rows := queryRefineryRuns(t, pool)
 	if len(rows) != 1 {
@@ -114,7 +114,7 @@ func TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts(t *testing.T) {
 		events = append(events, ev)
 	})
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{"event"})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event"})
 
 	rows := queryRefineryRuns(t, pool)
 	if len(rows) != 1 {

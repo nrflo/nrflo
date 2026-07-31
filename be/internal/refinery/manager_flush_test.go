@@ -31,6 +31,9 @@ func TestManager_Flush_FoldsBufferedEventsSynchronously(t *testing.T) {
 
 // TestManager_Flush_EmptyBufferDoesNotFold verifies Flush on a live session
 // with nothing buffered is a no-op fold (no wasted provider call, no row).
+// foldNow itself no longer gates on an empty buffer (it always calls
+// s.fold) — the no-op here comes from foldConsole's own emptiness check
+// (both the agent_messages delta and the buffered events are empty).
 func TestManager_Flush_EmptyBufferDoesNotFold(t *testing.T) {
 	mgr, _ := newTestManager(t)
 	sessionID, projectID := "sess-flush-2", "proj-flush-2"
@@ -102,6 +105,8 @@ func TestManager_Stop_PerformsFinalFold(t *testing.T) {
 
 // TestManager_Stop_EmptyBufferDoesNotFold prevents a per-close wasted
 // provider call on every chat session that never saw a relevant event.
+// As with Flush, the no-op comes from foldConsole's own emptiness check,
+// not from foldNow gating on the buffer.
 func TestManager_Stop_EmptyBufferDoesNotFold(t *testing.T) {
 	mgr, _ := newTestManager(t)
 	sessionID, projectID := "sess-flush-6", "proj-flush-6"

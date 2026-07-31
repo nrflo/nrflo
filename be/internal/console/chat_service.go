@@ -158,6 +158,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 		errorSvc:  s.deps.ErrorSvc,
 		sessionID: sessionID,
 		projectID: projectID,
+		refinery:  s.deps.RefineryMgr,
 	}
 
 	// Built unconditionally (no engine name-check) — a chat engine gets the

@@ -18,6 +18,11 @@ import (
 // autonomous fold call, via foldfmt.JoinTail's tail-keep idiom.
 const maxFoldDeltaChars = 8000
 
+// maxFoldRowChars head-caps each delta row before JoinTail, so a single
+// multi-KB tool row can never alone evict every earlier turn from the
+// tail-keep budget.
+const maxFoldRowChars = 2000
+
 // autonomousSession pairs a sidecar (trigger channel + goroutine, reused
 // as-is from the console path) with the slot identity and per-session fold
 // progress an autonomous fold needs that a console fold does not: the
@@ -208,7 +213,8 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 	if len(lines) == 0 {
 		return
 	}
-	userText := buildFoldUserText(as.taskAnchor, prevContent, []string{foldfmt.JoinTail(lines, maxFoldDeltaChars)})
+	lines = foldfmt.CapRows(lines, maxFoldRowChars)
+	userText := buildFoldUserText(as.taskAnchor, prevContent, []string{foldfmt.JoinTail(lines, maxFoldDeltaChars)}, nil)
 	foldSeq := 0
 	if prevDigest != nil {
 		foldSeq = prevDigest.FoldCount

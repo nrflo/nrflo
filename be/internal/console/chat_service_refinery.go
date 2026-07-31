@@ -16,6 +16,20 @@ type RefineryLifecycle interface {
 	// Flush requests a bounded, best-effort synchronous fold of sessionID's
 	// buffered events. No-op for a session that was never Started.
 	Flush(ctx context.Context, sessionID string)
+	// Touch signals that new conversation content landed for sessionID, so a
+	// live console sidecar's next fold picks up the agent_messages delta.
+	// Non-blocking, no-op for a session that was never Started.
+	Touch(sessionID string)
+}
+
+// touchRefinery signals sid's refinery sidecar (if wired) that new
+// conversation content landed. Nil-safe, mirroring flushOriginRefinery
+// (chat_service_sibling.go).
+func (s *ChatService) touchRefinery(sessionID string) {
+	if s.deps.RefineryMgr == nil {
+		return
+	}
+	s.deps.RefineryMgr.Touch(sessionID)
 }
 
 // refineryEffective resolves whether the refinery sidecar should run for this

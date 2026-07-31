@@ -110,7 +110,7 @@ func TestFold_RejectsEmptyOutput_ConsolePath(t *testing.T) {
 	prov := newCapturingProvider("valid console digest")
 	stubBuildProvider(t, prov)
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{"event one"})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event one"})
 
 	d, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestFold_RejectsEmptyOutput_ConsolePath(t *testing.T) {
 	}
 	prov.mu.Unlock()
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{"event two"})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event two"})
 
 	d2, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {

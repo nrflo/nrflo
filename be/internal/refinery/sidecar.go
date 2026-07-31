@@ -139,16 +139,15 @@ func (s *sidecar) loop() {
 	}
 }
 
-// foldNow drains the buffered event lines under s.mu and folds them, if any.
-// Returns false (no-op) when the buffer was empty.
+// foldNow drains the buffered event lines under s.mu and always calls
+// s.fold — each fold implementation owns its own emptiness check (Rule 6),
+// since an autonomous fold ignores the buffer entirely while a console fold
+// must also consider its own agent_messages delta.
 func (s *sidecar) foldNow(ctx context.Context) bool {
 	s.mu.Lock()
 	events := s.buffered
 	s.buffered = nil
 	s.mu.Unlock()
-	if len(events) == 0 {
-		return false
-	}
 	s.fold(ctx, s.sessionID, s.projectID, events)
 	return true
 }

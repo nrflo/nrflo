@@ -59,3 +59,19 @@ func CapBytes(s string, n int) string {
 	}
 	return s[:n]
 }
+
+// CapRows head-caps each line to at most perRow bytes (rune-safe, via
+// CapBytes), appending a truncation marker to any row that was cut. Applied
+// before JoinTail so a single multi-KB row (e.g. a tool result) cannot alone
+// consume the tail-keep budget and evict every earlier turn.
+func CapRows(lines []string, perRow int) []string {
+	capped := make([]string, len(lines))
+	for i, line := range lines {
+		if len(line) <= perRow {
+			capped[i] = line
+			continue
+		}
+		capped[i] = CapBytes(line, perRow) + "…[truncated]"
+	}
+	return capped
+}

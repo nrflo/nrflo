@@ -78,6 +78,7 @@ func (s *ChatService) InvokeTool(ctx context.Context, sid, tool string, args jso
 	userContent := "/invoke " + tool + " " + compact
 	toolContent := tool + " → " + result
 	s.recordInvokeTranscript(sid, sess.projectID, userContent, toolContent)
+	s.touchRefinery(sid)
 
 	informed := false
 	if informModel {

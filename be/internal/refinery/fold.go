@@ -22,46 +22,10 @@ const defaultFoldMaxTokens = 1500
 // real credentials or a network call.
 var buildProvider = service.BuildAPIProvider
 
-// fold loads the `_refinery` api-mode def, resolves its model row, reads the
-// previous digest, runs a single direct provider.Run (no tools), caps the
-// result to maxDigestBytes, and upserts it. Best-effort: errors are logged,
-// never propagated (a sidecar's caller does not block on fold outcome).
-func (m *Manager) fold(ctx context.Context, sessionID, projectID string, events []string) {
-	prevDigest, err := m.digestRepo.Get(sessionID)
-	if err != nil {
-		logger.Error(ctx, "refinery: read previous digest failed", "session_id", sessionID, "error", err)
-		return
-	}
-	prevContent := ""
-	if prevDigest != nil {
-		prevContent = prevDigest.Content
-	}
-
-	foldSeq := 0
-	if prevDigest != nil {
-		foldSeq = prevDigest.FoldCount
-	}
-	target := foldTarget{sessionID: sessionID, foldSeq: foldSeq}
-	content, usage, ok := m.runFoldCore(ctx, target, projectID, buildFoldUserText("", prevContent, events))
-	if !ok {
-		return
-	}
-
-	foldCount, err := m.digestRepo.Upsert(sessionID, projectID, content)
-	if err != nil {
-		logger.Error(ctx, "refinery: upsert digest failed", "session_id", sessionID, "error", err)
-		return
-	}
-
-	logger.Info(ctx, "refinery fold complete",
-		"session_id", sessionID, "fold_count", foldCount,
-		"input_tokens", usage.InputTokens, "output_tokens", usage.OutputTokens,
-		"digest_bytes", len(content))
-}
-
-// runFoldCore is the provider-run core shared by the console fold above and
-// the autonomous fold (session_sidecar.go): load the `_refinery` api-mode
-// def, resolve its model row, run one direct provider.Run (no tools) over
+// runFoldCore is the provider-run core shared by the console fold
+// (fold_console.go) and the autonomous fold (session_sidecar.go): load the
+// `_refinery` api-mode def, resolve its model row, run one direct
+// provider.Run (no tools) over
 // userText, and cap the result to maxDigestBytes. target identifies the fold
 // slot for log lines and the refinery_runs footprint row, written on every
 // return path (recordFoldRun, best-effort). Best-effort: errors are logged
@@ -150,7 +114,13 @@ func isDegenerateStopReason(sr string) bool {
 // non-empty (autonomous fold only), is prepended as an immutable ## Task
 // section supplied verbatim each fold — the model must anchor the digest to
 // it but never summarize/drop/contradict it. Console fold passes "".
-func buildFoldUserText(taskAnchor, prevDigest string, events []string) string {
+// conversation is the categorized message delta (user turns, assistant
+// replies, consumed delegation findings) that makes the digest's subject;
+// events is the compact WS event-metadata line batch, rendered as a
+// secondary ## New Events section that is omitted entirely when empty (the
+// autonomous fold has none — it reads its delta straight from
+// agent_messages and passes nil).
+func buildFoldUserText(taskAnchor, prevDigest string, conversation, events []string) string {
 	var b strings.Builder
 	if taskAnchor != "" {
 		b.WriteString("## Task\n\n")
@@ -163,8 +133,12 @@ func buildFoldUserText(taskAnchor, prevDigest string, events []string) string {
 	} else {
 		b.WriteString(prevDigest)
 	}
-	b.WriteString("\n\n## New Events\n\n")
-	b.WriteString(strings.Join(events, "\n"))
+	b.WriteString("\n\n## Conversation\n\n")
+	b.WriteString(strings.Join(conversation, "\n"))
+	if len(events) > 0 {
+		b.WriteString("\n\n## New Events\n\n")
+		b.WriteString(strings.Join(events, "\n"))
+	}
 	return b.String()
 }
 

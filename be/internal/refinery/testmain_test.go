@@ -1,6 +1,7 @@
 package refinery
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,14 @@ import (
 
 	"be/internal/db"
 )
+
+// foldConsoleOnce drives Manager.foldConsole with a fresh, throwaway
+// consoleSession — the test-seam replacement for the deleted Manager.fold —
+// so tests that only exercise the event-line-driven console fold (no
+// agent_messages delta) don't need to track a consoleSession across calls.
+func foldConsoleOnce(ctx context.Context, mgr *Manager, sessionID, projectID string, events []string) {
+	mgr.foldConsole(ctx, &consoleSession{}, sessionID, projectID, events)
+}
 
 // refineryTemplateDBPath holds the path to a pre-migrated DB created once by
 // TestMain. Every test copies this file instead of running all migrations

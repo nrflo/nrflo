@@ -28,15 +28,24 @@ type chatSink struct {
 	errorSvc  *service.ErrorService
 	sessionID string
 	projectID string
+	// refinery signals the session's refinery sidecar after a message row
+	// lands, so a fold trigger sees fresh conversation content. Nil-safe —
+	// unset when no RefineryLifecycle is wired.
+	refinery RefineryLifecycle
 }
 
-// RecordHookMessage inserts one agent_messages row directly. projectID is
-// this session's own project; ticket/workflow stay empty (a chat session is
-// bound to neither).
+// RecordHookMessage inserts one agent_messages row directly and touches the
+// refinery sidecar (if wired) — the single choke point for engine-originated
+// conversation rows across all three console engines. projectID is this
+// session's own project; ticket/workflow stay empty (a chat session is bound
+// to neither).
 func (s *chatSink) RecordHookMessage(sessionID, content, category, payload string) (projectID, ticketID, workflowName string, err error) {
 	msgRepo := repo.NewAgentMessageRepo(s.pool, s.clock)
 	if err := msgRepo.InsertBatch(sessionID, []repo.MessageEntry{{Content: content, Category: category, Payload: payload}}); err != nil {
 		return "", "", "", err
+	}
+	if s.refinery != nil {
+		s.refinery.Touch(sessionID)
 	}
 	return s.projectID, "", "", nil
 }

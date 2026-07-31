@@ -94,7 +94,7 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 	newEngine, err := s.engineFactory(sess.EngineName(), spawner.EngineDeps{
 		Sink: &chatSink{
 			pool: s.deps.Pool, clock: s.deps.Clock, wsHub: s.deps.WSHub, errorSvc: s.deps.ErrorSvc,
-			sessionID: sess.id, projectID: sess.ProjectID(),
+			sessionID: sess.id, projectID: sess.ProjectID(), refinery: s.deps.RefineryMgr,
 		},
 		PTY:       s.deps.PTY,
 		Hub:       s.deps.Hub,

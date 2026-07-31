@@ -36,7 +36,7 @@ func TestFold_UpsertsDigestAndIncrementsVersionAndFoldCount(t *testing.T) {
 		mockScript("digest v2"),
 	))
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{`{"type":"findings.updated"}`})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{`{"type":"findings.updated"}`})
 
 	d, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestFold_UpsertsDigestAndIncrementsVersionAndFoldCount(t *testing.T) {
 		t.Errorf("FoldCount = %d, want 1", d.FoldCount)
 	}
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{`{"type":"orchestration.completed"}`})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{`{"type":"orchestration.completed"}`})
 
 	d2, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {
@@ -92,7 +92,7 @@ func TestFold_TruncatesOverCapDigestOnUTF8Boundary(t *testing.T) {
 	oversized := strings.Repeat("a", maxDigestBytes-2) + "€" + "TAIL"
 	stubBuildProvider(t, mock.New(mockScript(oversized)))
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{"event"})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event"})
 
 	d, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestFold_MissingRefineryDef_SkipsWithoutPanicking(t *testing.T) {
 	mgr := NewManager(pool, clk)
 	stubBuildProvider(t, mock.New(mockScript("unused")))
 
-	mgr.fold(context.Background(), sessionID, projectID, []string{"event"})
+	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event"})
 
 	d, err := mgr.digestRepo.Get(sessionID)
 	if err != nil {
@@ -137,7 +137,7 @@ func TestFold_MissingRefineryDef_SkipsWithoutPanicking(t *testing.T) {
 
 func TestBuildFoldUserText_TaskAnchor(t *testing.T) {
 	t.Run("non-empty anchor renders Task section with labeled event lines", func(t *testing.T) {
-		got := buildFoldUserText("Implement the widget.", "prev digest", []string{"[user_input] please add a widget", "[tool] ran ls"})
+		got := buildFoldUserText("Implement the widget.", "prev digest", []string{"[user_input] please add a widget", "[tool] ran ls"}, nil)
 		if !strings.Contains(got, "## Task\n\nImplement the widget.") {
 			t.Errorf("buildFoldUserText = %q, want a ## Task section with the anchor verbatim", got)
 		}
@@ -150,7 +150,7 @@ func TestBuildFoldUserText_TaskAnchor(t *testing.T) {
 	})
 
 	t.Run("empty anchor omits Task section (console-fold parity)", func(t *testing.T) {
-		got := buildFoldUserText("", "prev digest", []string{"event one"})
+		got := buildFoldUserText("", "prev digest", []string{"event one"}, nil)
 		if strings.Contains(got, "## Task") {
 			t.Errorf("buildFoldUserText with empty anchor = %q, want no ## Task section", got)
 		}

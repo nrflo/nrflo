@@ -103,4 +103,25 @@ describe('SystemAgentRunDelegationGroup', () => {
       '/tickets/ticket-xyz?tab=workflow'
     )
   })
+
+  it('renders the branch name with a full-name title when the group carries a branch', () => {
+    renderGroup(makeGroup({ branch: 'nrworkflow-8b1344' }))
+    const branchText = screen.getByText('nrworkflow-8b1344')
+    expect(branchText).toBeInTheDocument()
+    expect(branchText).toHaveAttribute('title', 'nrworkflow-8b1344')
+  })
+
+  it('omits the branch chip and other header assertions still pass when the group has no branch (in-place delegation)', () => {
+    renderGroup(
+      makeGroup({
+        branch: undefined,
+        workers: [makeWorker({ session_id: 'w1' })],
+        fanout: 2,
+      })
+    )
+    expect(screen.queryByText('nrworkflow-8b1344')).not.toBeInTheDocument()
+    expect(screen.getByText('1 of 2 workers')).toBeInTheDocument()
+    expect(screen.getByText('executor')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /caller-s/ })).toBeInTheDocument()
+  })
 })

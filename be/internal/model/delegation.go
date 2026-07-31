@@ -22,4 +22,13 @@ type Delegation struct {
 	CreatedAt          time.Time
 	CompletedAt        *time.Time
 	ConsumedAt         *time.Time
+
+	// Worktree isolation metadata (migration 000224), set only when this
+	// delegation ran under prepareDelegateWorktree. WorktreePath/BranchName
+	// are persisted at fanout start; BaseCommit/Summary are filled in by
+	// finalizeDelegateWorktree once the fanout's workers finish.
+	WorktreePath string
+	BranchName   string
+	BaseCommit   string
+	Summary      string
 }

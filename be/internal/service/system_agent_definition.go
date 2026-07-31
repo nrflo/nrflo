@@ -71,15 +71,20 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 
 	now := s.clock.Now().UTC().Format(time.RFC3339Nano)
 
+	isolateWorktree := false
+	if req.IsolateWorktree != nil {
+		isolateWorktree = *req.IsolateWorktree
+	}
+
 	_, err := s.pool.Exec(`
 		INSERT INTO system_agent_definitions
 			(id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 			 restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-			 execution_mode, reasoning_effort, tier, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			 execution_mode, reasoning_effort, tier, isolate_worktree, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		id, role, modelName, timeout, req.Prompt, req.Tools, req.APIMaxIterations, req.APIMaxTokens,
 		req.RestartThreshold, req.MaxFailRestarts, req.StallStartTimeoutSec, req.StallRunningTimeoutSec,
-		executionMode, req.ReasoningEffort, req.Tier, now, now,
+		executionMode, req.ReasoningEffort, req.Tier, isolateWorktree, now, now,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint") || strings.Contains(err.Error(), "already exists") {
@@ -105,6 +110,7 @@ func (s *SystemAgentDefinitionService) Create(req *types.SystemAgentDefCreateReq
 		StallRunningTimeoutSec: req.StallRunningTimeoutSec,
 		ReasoningEffort:        req.ReasoningEffort,
 		Tier:                   req.Tier,
+		IsolateWorktree:        isolateWorktree,
 		CreatedAt:              ts,
 		UpdatedAt:              ts,
 	}, nil
@@ -161,6 +167,10 @@ func (s *SystemAgentDefinitionService) Update(id string, req *types.SystemAgentD
 	if req.Tier != nil {
 		updates = append(updates, "tier = ?")
 		args = append(args, *req.Tier)
+	}
+	if req.IsolateWorktree != nil {
+		updates = append(updates, "isolate_worktree = ?")
+		args = append(args, *req.IsolateWorktree)
 	}
 	if req.Timeout != nil {
 		updates = append(updates, "timeout = ?")

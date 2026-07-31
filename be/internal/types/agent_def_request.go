@@ -111,6 +111,7 @@ type SystemAgentDefCreateRequest struct {
 	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
 	ReasoningEffort        *string `json:"reasoning_effort,omitempty"`
 	Tier                   *int    `json:"tier,omitempty"`
+	IsolateWorktree        *bool   `json:"isolate_worktree,omitempty"`
 }
 
 // SystemAgentDefUpdateRequest is the request for updating a system agent definition
@@ -129,4 +130,5 @@ type SystemAgentDefUpdateRequest struct {
 	StallRunningTimeoutSec *int    `json:"stall_running_timeout_sec,omitempty"`
 	ReasoningEffort        *string `json:"reasoning_effort,omitempty"`
 	Tier                   *int    `json:"tier,omitempty"`
+	IsolateWorktree        *bool   `json:"isolate_worktree,omitempty"`
 }

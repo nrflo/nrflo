@@ -33,6 +33,9 @@ func TestListSystemAgentRuns_DelegateWorkerPopulatesDelegationFields(t *testing.
 	if err := dr.SetWorkerSlot("deleg-1", 0, "sess-worker-1", ""); err != nil {
 		t.Fatalf("SetWorkerSlot: %v", err)
 	}
+	if err := dr.SetWorktree("deleg-1", "/tmp/nrflo/worktrees/nrdelegate-deleg-1", "nrdelegate/deleg-1", "abc123"); err != nil {
+		t.Fatalf("SetWorktree: %v", err)
+	}
 
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	insertAgentSessionForRuns(t, database, wfiID, "sess-worker-1", "_t1_executor", nil, now)
@@ -65,6 +68,56 @@ func TestListSystemAgentRuns_DelegateWorkerPopulatesDelegationFields(t *testing.
 	}
 	if worker.DelegationStatus != "running" {
 		t.Errorf("DelegationStatus = %q, want running", worker.DelegationStatus)
+	}
+	if worker.DelegationBranch != "nrdelegate/deleg-1" {
+		t.Errorf("DelegationBranch = %q, want nrdelegate/deleg-1 (joined from delegations.branch_name)", worker.DelegationBranch)
+	}
+}
+
+// TestListSystemAgentRuns_NonIsolatedDelegationHasEmptyBranch verifies a
+// delegation that never ran under worktree isolation (branch_name == ”)
+// leaves SystemAgentRun.DelegationBranch empty rather than surfacing an
+// empty-string branch as if it were set.
+func TestListSystemAgentRuns_NonIsolatedDelegationHasEmptyBranch(t *testing.T) {
+	t.Parallel()
+	database, r, wfiID := setupTokenTestDB(t)
+	defer database.Close()
+
+	dr := NewDelegationRepo(database, clock.Real())
+	del := &model.Delegation{
+		ID:                 "deleg-noiso",
+		CallerSessionID:    "sess-caller-noiso",
+		WorkflowInstanceID: wfiID,
+		ProjectID:          "proj",
+		Tier:               "extractor",
+		Fanout:             1,
+		Depth:              1,
+	}
+	if err := dr.Create(del); err != nil {
+		t.Fatalf("Create delegation: %v", err)
+	}
+	if err := dr.SetWorkerSlot("deleg-noiso", 0, "sess-worker-noiso", ""); err != nil {
+		t.Fatalf("SetWorkerSlot: %v", err)
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	insertAgentSessionForRuns(t, database, wfiID, "sess-worker-noiso", "_t2_extractor", nil, now)
+
+	got, err := r.ListSystemAgentRuns(50, time.Time{})
+	if err != nil {
+		t.Fatalf("ListSystemAgentRuns: %v", err)
+	}
+	var worker *model.SystemAgentRun
+	for _, run := range got {
+		if run.SessionID == "sess-worker-noiso" {
+			worker = run
+		}
+	}
+	if worker == nil {
+		t.Fatalf("sess-worker-noiso not found in %+v", got)
+	}
+	if worker.DelegationBranch != "" {
+		t.Errorf("DelegationBranch = %q, want empty for a non-isolated delegation", worker.DelegationBranch)
 	}
 }
 

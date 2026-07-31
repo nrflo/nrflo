@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, GitBranch } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { TableRow, TableCell } from '@/components/ui/Table'
+import { Tooltip } from '@/components/ui/Tooltip'
 import { formatDateTime } from '@/lib/utils'
 import { formatCost } from '@/lib/systemAgentRuns'
 import type { SystemAgentRunDelegationGroup as DelegationGroup } from '@/lib/systemAgentRunGroups'
@@ -55,6 +56,16 @@ export function SystemAgentRunDelegationGroup({ group }: SystemAgentRunDelegatio
               {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </Button>
             {workersShown} of {group.fanout} workers
+            {group.branch && (
+              <Tooltip text={`Branch: ${group.branch}`} placement="top">
+                <div className="flex items-center gap-1 text-muted-foreground">
+                  <GitBranch className="h-3.5 w-3.5" />
+                  <span className="truncate max-w-24" title={group.branch}>
+                    {group.branch}
+                  </span>
+                </div>
+              </Tooltip>
+            )}
           </div>
         </TableCell>
         <TableCell className="text-xs">

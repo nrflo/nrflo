@@ -57,6 +57,39 @@ func TestStatusBar_GitSegment(t *testing.T) {
 	}
 }
 
+// TestStatusBar_NoBanner verifies the hardcoded leading "nrflo" banner
+// segment is gone.
+func TestStatusBar_NoBanner(t *testing.T) {
+	m := &model{detail: ChatDetail{Engine: "claude", Model: "opus-5", ProjectID: "proj-1"}}
+	if got := ansi.Strip(m.statusBar()); strings.Contains(got, "nrflo") {
+		t.Errorf("statusBar() = %q, want no nrflo banner segment", got)
+	}
+}
+
+// TestStatusBar_EngineModelFormat verifies the engine/model segment renders
+// as "engine/model" with no spaces around the slash.
+func TestStatusBar_EngineModelFormat(t *testing.T) {
+	m := &model{detail: ChatDetail{Engine: "claude", Model: "opus-5", ProjectID: "proj-1"}}
+	if got := ansi.Strip(m.statusBar()); !strings.Contains(got, "claude/opus-5") {
+		t.Errorf("statusBar() = %q, want to contain %q", got, "claude/opus-5")
+	}
+}
+
+// TestStatusBar_CwdSegment verifies the working directory renders as the
+// last segment, compacted, and is omitted when WorkDir is empty.
+func TestStatusBar_CwdSegment(t *testing.T) {
+	m := &model{detail: ChatDetail{Engine: "claude", ProjectID: "proj-1"}}
+	if got := ansi.Strip(m.statusBar()); strings.Contains(got, "/tmp/nrflo") {
+		t.Errorf("statusBar() with no WorkDir = %q, want no cwd segment", got)
+	}
+
+	m.detail.WorkDir = "/tmp/nrflo"
+	got := ansi.Strip(m.statusBar())
+	if !strings.HasSuffix(got, "/tmp/nrflo") {
+		t.Errorf("statusBar() = %q, want to end with the cwd segment", got)
+	}
+}
+
 // TestStatusBar_TruncatesToSingleRow verifies a status bar longer than the
 // terminal width is truncated to one physical row: a wrapped bar breaks the
 // chrome height math and can leak into scrollback via tea.Println inserts.

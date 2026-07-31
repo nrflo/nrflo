@@ -2,10 +2,16 @@ package consoleui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"charm.land/lipgloss/v2"
 )
+
+// profileStyle highlights detail.Profile: warn (orange, unused elsewhere in
+// the bar) stays visually distinct from the git-branch accent and the YOLO
+// bad/red badge.
+var profileStyle = lipgloss.NewStyle().Foreground(warn)
 
 // statusBar renders the bottom status line (relocated from the former
 // top header()): engine/model, project id, connection, context%, cost
@@ -49,11 +55,18 @@ func (m *model) statusBar() string {
 	}
 	profileText := ""
 	if m.detail.Profile != "" {
-		profileText = "  " + m.detail.Profile
+		profileText = "  " + profileStyle.Render(m.detail.Profile)
 	}
-	prefix := mutedStyle.Render(fmt.Sprintf("  %s / %s%s  %s  ", m.detail.Engine, modelName, profileText, m.detail.ProjectID))
+	engineModel := mutedStyle.Render(fmt.Sprintf("  %s/%s", m.detail.Engine, modelName))
+	project := mutedStyle.Render(fmt.Sprintf("  %s  ", m.detail.ProjectID))
+	prefix := engineModel + profileText + project
 	suffix := mutedStyle.Render(fmt.Sprintf("%s%s%s%s", contextText, costText, bgText, allowedText))
-	bar := headerStyle.Render(" nrflo") + prefix + connection + suffix + gitText + yoloText
+	cwdText := ""
+	if m.detail.WorkDir != "" {
+		home, _ := os.UserHomeDir()
+		cwdText = "  " + mutedStyle.Render(compactPath(m.detail.WorkDir, home))
+	}
+	bar := prefix + connection + suffix + gitText + yoloText + cwdText
 	if m.width <= 0 {
 		return bar
 	}

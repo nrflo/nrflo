@@ -152,10 +152,11 @@ func (p *itemGatedProvider) Run(ctx context.Context, req provider.Request, sink 
 }
 
 // TestDelegate_WorkerSlot_WrittenIncrementally_BeforeFanoutWaitCompletes
-// verifies recordWorkerSlot lands each worker's slot as soon as its own Spawn
-// returns, not only after every worker in the fanout finishes: with one item
-// held open, the other item's slot must already be populated in the
-// delegations row while the held item is still running.
+// verifies recordWorkerSlot lands each worker's slot at registration time —
+// before its own Spawn call even returns, not only after every worker in the
+// fanout finishes. With one item held open mid-run, both slots must already
+// be populated in the delegations row (the held worker's slot included, from
+// its registration-time write), while FanoutDone is still false.
 func TestDelegate_WorkerSlot_WrittenIncrementally_BeforeFanoutWaitCompletes(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-ant-fake-key")
 
@@ -183,11 +184,12 @@ func TestDelegate_WorkerSlot_WrittenIncrementally_BeforeFanoutWaitCompletes(t *t
 	}
 	delegationID := start["delegation_id"].(string)
 
-	// Wait until the held worker has actually started (so the fast worker has
-	// had a fair chance to finish and record its slot), then check the row
-	// while the held worker is still blocked in Run().
+	// Wait until the held worker has actually started, then wait until its own
+	// slot lands (registration-time write fires before its Spawn call
+	// unblocks), so both slots are populated while it is still blocked in
+	// Run().
 	<-prov.startedGated
-	waitForSlotFilled(t, env, delegationID)
+	waitForAllSlotsFilled(t, env, delegationID, 2)
 
 	d, err := repo.NewDelegationRepo(env.pool, clock.Real()).Get(delegationID)
 	if err != nil {
@@ -202,8 +204,8 @@ func TestDelegate_WorkerSlot_WrittenIncrementally_BeforeFanoutWaitCompletes(t *t
 			filled++
 		}
 	}
-	if filled != 1 {
-		t.Errorf("filled worker slots = %d, want exactly 1 recorded while the other worker is still held", filled)
+	if filled != 2 {
+		t.Errorf("filled worker slots = %d, want both slots recorded at registration time even though the held worker's Spawn hasn't returned", filled)
 	}
 
 	close(prov.release)
@@ -227,4 +229,28 @@ func waitForSlotFilled(t *testing.T, env *delegateTestEnv, delegationID string) 
 		runtime.Gosched()
 	}
 	t.Fatal("no worker slot filled within timeout")
+}
+
+// waitForAllSlotsFilled polls the delegations row until every one of the
+// first `want` worker slots is non-blank, yielding via runtime.Gosched (never
+// time.Sleep, per Rule 4).
+func waitForAllSlotsFilled(t *testing.T, env *delegateTestEnv, delegationID string, want int) {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		d, err := repo.NewDelegationRepo(env.pool, clock.Real()).Get(delegationID)
+		if err == nil {
+			filled := 0
+			for _, sid := range d.WorkerSessionIDs {
+				if sid != "" {
+					filled++
+				}
+			}
+			if filled >= want {
+				return
+			}
+		}
+		runtime.Gosched()
+	}
+	t.Fatal("not all worker slots filled within timeout")
 }

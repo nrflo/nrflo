@@ -155,10 +155,18 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		// Only this worker's own (re)spawns: grandchild registrations (the
 		// worker's nested delegate fanout) bubble up here too and must not
 		// overwrite the tracked session id.
-		if child == ownSp {
+		isOwn := child == ownSp
+		if isOwn {
 			sid = registeredSID
 		}
 		mu.Unlock()
+		// Fire the DB write outside mu (lock-order discipline, mirrors
+		// registerTerminalSignal) so the slot is linkable from
+		// delegations.worker_session_ids while the worker is still running,
+		// not only after Spawn returns.
+		if isOwn {
+			s.recordWorkerSlot(s.pool(), run.delegationID, slot, registeredSID, "") //nolint:errcheck
+		}
 	})
 
 	primary := chain[0]
@@ -248,6 +256,9 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 	resultSID := sid
 	mu.Unlock()
 
+	// Finalizes the spawn error field (registration already wrote the sid
+	// above); re-writes the same resultSID so it cannot blank an sid already
+	// recorded.
 	if err := s.recordWorkerSlot(s.pool(), run.delegationID, slot, resultSID, errMsg); err != nil {
 		s.broadcast(ws.EventDelegateFailed, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 			"caller_session_id": callerSession.ID,

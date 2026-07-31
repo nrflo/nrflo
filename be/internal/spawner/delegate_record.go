@@ -56,8 +56,10 @@ func (s *Spawner) createDelegationRecord(pool *db.Pool, wfiID, projectID, caller
 }
 
 // recordWorkerSlot writes one fanout worker's session id/spawn error into its
-// slot as soon as Spawn returns, so session ids land incrementally instead of
-// only after wg.Wait.
+// slot. Called at registration time (session id, empty error) so the slot is
+// linkable while the worker is still running, and again after Spawn returns
+// to finalize the spawn error (or re-confirm the same session id on
+// success) — session ids land incrementally instead of only after wg.Wait.
 func (s *Spawner) recordWorkerSlot(pool *db.Pool, delegationID string, idx int, sessionID, spawnErr string) error {
 	return repo.NewDelegationRepo(pool, s.config.Clock).SetWorkerSlot(delegationID, idx, sessionID, spawnErr)
 }

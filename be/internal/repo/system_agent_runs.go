@@ -14,11 +14,11 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 	query := `SELECT s.id, s.workflow_instance_id, s.project_id, s.ticket_id, s.node_id, s.agent_type, s.model_id, s.status, s.result,
 		 s.tier, s.resolved_provider, s.resolved_execution_mode, s.resolved_effort, s.chain_position, s.fallback_from,
 		 s.tokens_json, s.cost_estimate, s.created_at,
-		 dw.id, dw.caller_session_id, dw.tier, dw.fanout, dw.status
+		 dw.id, dw.caller_session_id, dw.tier, dw.fanout, dw.status, dw.branch_name
 		 FROM agent_sessions s
 		 LEFT JOIN (
 		   SELECT je.value AS worker_session_id, d.id AS id, d.caller_session_id AS caller_session_id,
-		          d.tier AS tier, d.fanout AS fanout, d.status AS status
+		          d.tier AS tier, d.fanout AS fanout, d.status AS status, d.branch_name AS branch_name
 		   FROM delegations d, json_each(d.worker_session_ids) je
 		   WHERE je.value <> ''
 		   GROUP BY je.value
@@ -51,11 +51,12 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 			createdAt                                                     string
 			delegationID, callerSessionID, delegateTier, delegationStatus sql.NullString
 			fanout                                                        sql.NullInt64
+			delegationBranch                                              sql.NullString
 		)
 		if err := rows.Scan(&run.SessionID, &workflowInstanceID, &run.ProjectID, &ticketID, &nodeID, &run.AgentType,
 			&modelID, &run.Status, &result, &tier, &resolvedProvider, &resolvedExecutionMode,
 			&resolvedEffort, &run.ChainPosition, &fallbackFrom, &tokensJSON, &costEstimate, &createdAt,
-			&delegationID, &callerSessionID, &delegateTier, &fanout, &delegationStatus); err != nil {
+			&delegationID, &callerSessionID, &delegateTier, &fanout, &delegationStatus, &delegationBranch); err != nil {
 			return nil, err
 		}
 		run.WorkflowInstanceID = workflowInstanceID.String
@@ -84,6 +85,7 @@ func (r *AgentSessionRepo) ListSystemAgentRuns(limit int, since time.Time) ([]*m
 		run.CallerSessionID = callerSessionID.String
 		run.DelegateTier = delegateTier.String
 		run.DelegationStatus = delegationStatus.String
+		run.DelegationBranch = delegationBranch.String
 		if fanout.Valid {
 			run.Fanout = int(fanout.Int64)
 		}

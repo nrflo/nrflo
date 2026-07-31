@@ -87,6 +87,13 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 		return "", fmt.Errorf("delegate: seed tracking: %w", err)
 	}
 
+	// Degrades to in-place ("" worktreePath) on any ineligibility or setup
+	// failure — see prepareDelegateWorktree.
+	worktreePath, branchName, baseCommit, err := s.prepareAndPersistDelegateWorktree(pool, sysDef, isHost, callerSession.ProjectID, run.delegationID)
+	if err != nil {
+		return "", fmt.Errorf("delegate: persist worktree: %w", err)
+	}
+
 	s.broadcast(ws.EventDelegateStarted, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 		"caller_session_id": callerSessionID,
 		"delegation_id":     run.delegationID,
@@ -96,9 +103,9 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 
 	// Detached: the caller's tool ctx must not cancel the workers (async
 	// contract, matches startChildRun's context.Background() start).
-	go s.runDelegateFanout(wfi, callerSession, tierAgentID, sysDef, chain, req, items, run, isHost)
+	go s.runDelegateFanout(wfi, callerSession, tierAgentID, sysDef, chain, req, items, run, isHost, worktreePath, branchName, baseCommit)
 
-	return delegateStatusJSON(run.delegationID, "running", nil), nil
+	return delegateStatusJSON(run.delegationID, "running", nil, nil), nil
 }
 
 // runDelegateFanout spawns one worker per item concurrently (each Spawn blocks
@@ -106,16 +113,21 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 // done=true so GetDelegation flips out of "running", completes a hidden host
 // instance, and broadcasts completion. chain is the worker's full resolved
 // tier fallback chain (index 0 = primary, driving the initial spawn).
-func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, items []string, run *delegateRun, isHost bool) {
+func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, items []string, run *delegateRun, isHost bool, worktreePath, branchName, baseCommit string) {
 	var wg sync.WaitGroup
 	for i, item := range items {
 		wg.Add(1)
 		go func(i int, item string) {
 			defer wg.Done()
-			s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, chain, req, item, run, i)
+			s.spawnDelegateWorker(wfi, callerSession, tierAgentID, sysDef, chain, req, item, run, i, worktreePath)
 		}(i, item)
 	}
 	wg.Wait()
+
+	// Commit is server-owned, not prompt-owned: workers are told never to
+	// commit themselves, so a worker that failed or timed out still leaves
+	// its partial work recoverable on the branch.
+	s.finalizeDelegateWorktree(s.pool(), callerSession.ProjectID, run.delegationID, worktreePath, branchName, baseCommit, briefHead(req.Brief))
 
 	// Hidden host instances (run-less console callers) never re-enter the
 	// orchestrator, so mark this one terminal here instead of leaving it
@@ -136,6 +148,7 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 	s.broadcast(ws.EventDelegateCompleted, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 		"caller_session_id": callerSession.ID,
 		"delegation_id":     run.delegationID,
+		"branch":            branchName,
 	})
 }
 
@@ -146,7 +159,7 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 // or HARD failure can advance to a fallback entry. Returns the registered
 // session id ("" on spawn failure) and the spawn error message ("" on
 // success), which GetDelegation surfaces for session-less workers.
-func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, item string, run *delegateRun, slot int) (string, string) {
+func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession *model.AgentSession, tierAgentID string, sysDef *model.SystemAgentDefinition, chain []service.AgentChainEntry, req apirun.DelegateRequest, item string, run *delegateRun, slot int, worktreePath string) (string, string) {
 	var mu sync.Mutex
 	var sid string
 	var ownSp *Spawner
@@ -190,7 +203,7 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 			},
 		},
 		DataPath:           s.config.DataPath,
-		ProjectRoot:        s.config.ProjectRoot,
+		ProjectRoot:        delegateWorkerProjectRoot(s.config.ProjectRoot, worktreePath),
 		WSHub:              s.config.WSHub,
 		Pool:               s.config.Pool,
 		Clock:              s.config.Clock,

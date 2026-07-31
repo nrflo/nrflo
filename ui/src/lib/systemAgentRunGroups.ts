@@ -9,6 +9,7 @@ export interface SystemAgentRunDelegationGroup {
   delegation_id: string
   caller_session_id?: string
   delegate_tier?: string
+  branch?: string
   fanout: number
   workers: SystemAgentRun[]
   input_tokens: number
@@ -50,6 +51,7 @@ export function groupSystemAgentRuns(items: SystemAgentRun[]): SystemAgentRunGro
       delegation_id: run.delegation_id,
       caller_session_id: run.caller_session_id,
       delegate_tier: run.delegate_tier,
+      branch: run.delegation_branch,
       fanout: run.fanout ?? 1,
       workers: [run],
       input_tokens: tokens.input,

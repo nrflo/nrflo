@@ -90,4 +90,26 @@ describe('groupSystemAgentRuns', () => {
     const entries = groupSystemAgentRuns([makeRun({ session_id: 'w1', delegation_id: 'd1', fanout: 1 })])
     expect(entries[0].kind).toBe('delegation_group')
   })
+
+  it('puts a worktree-isolated worker delegation_branch onto the group', () => {
+    const entries = groupSystemAgentRuns([
+      makeRun({ session_id: 'w1', delegation_id: 'd1', delegation_branch: 'nrworkflow-abc123' }),
+    ])
+    expect(entries[0]).toMatchObject({ kind: 'delegation_group', branch: 'nrworkflow-abc123' })
+  })
+
+  it('leaves group.branch undefined when no worker carries a delegation_branch (in-place delegation)', () => {
+    const entries = groupSystemAgentRuns([makeRun({ session_id: 'w1', delegation_id: 'd1' })])
+    if (entries[0].kind === 'delegation_group') {
+      expect(entries[0].branch).toBeUndefined()
+    }
+  })
+
+  it('does not overwrite the anchor branch when a later worker in the same delegation joins', () => {
+    const entries = groupSystemAgentRuns([
+      makeRun({ session_id: 'w1', delegation_id: 'd1', delegation_branch: 'nrworkflow-anchor' }),
+      makeRun({ session_id: 'w2', delegation_id: 'd1', delegation_branch: 'nrworkflow-other' }),
+    ])
+    expect(entries[0]).toMatchObject({ kind: 'delegation_group', branch: 'nrworkflow-anchor' })
+  })
 })

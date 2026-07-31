@@ -51,6 +51,7 @@ export interface SystemAgentRun {
   delegate_tier?: string
   fanout?: number
   delegation_status?: string
+  delegation_branch?: string
 }
 
 export interface SystemAgentRunsResponse {

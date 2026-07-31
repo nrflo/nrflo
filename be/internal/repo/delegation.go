@@ -48,9 +48,26 @@ func (r *DelegationRepo) Create(d *model.Delegation) error {
 // Get retrieves a delegation row by id, returning sql.ErrNoRows when absent.
 func (r *DelegationRepo) Get(id string) (*model.Delegation, error) {
 	row := r.db.QueryRow(
-		`SELECT id, caller_session_id, workflow_instance_id, project_id, tier, brief, fanout, worker_session_ids, spawn_errors, depth, fanout_done, status, created_at, completed_at, consumed_at
+		`SELECT id, caller_session_id, workflow_instance_id, project_id, tier, brief, fanout, worker_session_ids, spawn_errors, depth, fanout_done, status, created_at, completed_at, consumed_at, worktree_path, branch_name, base_commit, worktree_summary
 		 FROM delegations WHERE id = ?`, id)
 	return scanDelegation(row)
+}
+
+// SetWorktree persists the worktree path/branch/base commit chosen by
+// prepareDelegateWorktree at fanout start, before any worker spawns.
+func (r *DelegationRepo) SetWorktree(id, worktreePath, branchName, baseCommit string) error {
+	_, err := r.db.Exec(
+		`UPDATE delegations SET worktree_path = ?, branch_name = ?, base_commit = ? WHERE id = ?`,
+		worktreePath, branchName, baseCommit, id,
+	)
+	return err
+}
+
+// SetWorktreeSummary persists finalizeDelegateWorktree's post-commit summary
+// (changed files + diffstat) once the fanout's workers have all finished.
+func (r *DelegationRepo) SetWorktreeSummary(id, summary string) error {
+	_, err := r.db.Exec(`UPDATE delegations SET worktree_summary = ? WHERE id = ?`, summary, id)
+	return err
 }
 
 // SetWorkerSlot writes one fanout worker's session id and spawn error into
@@ -118,7 +135,8 @@ func scanDelegation(scanner interface{ Scan(...interface{}) error }) (*model.Del
 	var workerIDsJSON, spawnErrsJSON, createdAt string
 	var completedAt, consumedAt sql.NullString
 	err := scanner.Scan(&d.ID, &d.CallerSessionID, &d.WorkflowInstanceID, &d.ProjectID, &d.Tier, &d.Brief, &d.Fanout,
-		&workerIDsJSON, &spawnErrsJSON, &d.Depth, &d.FanoutDone, &d.Status, &createdAt, &completedAt, &consumedAt)
+		&workerIDsJSON, &spawnErrsJSON, &d.Depth, &d.FanoutDone, &d.Status, &createdAt, &completedAt, &consumedAt,
+		&d.WorktreePath, &d.BranchName, &d.BaseCommit, &d.Summary)
 	if err == sql.ErrNoRows {
 		return nil, sql.ErrNoRows
 	}

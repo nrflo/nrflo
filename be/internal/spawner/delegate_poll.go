@@ -44,6 +44,7 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 	// findings that are already gone.
 	if d.ConsumedAt != nil {
 		out := map[string]interface{}{"delegation_id": delegationID, "status": d.Status, "consumed": true}
+		addWorktreeBlock(out, d)
 		b, _ := json.Marshal(out)
 		return string(b), nil
 	}
@@ -51,12 +52,12 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 	// Fanout not yet done: workers are still being spawned/running and the
 	// final worker session-id list is not known yet — report running.
 	if !d.FanoutDone {
-		return delegateStatusJSON(delegationID, "running", nil), nil
+		return delegateStatusJSON(delegationID, "running", nil, d), nil
 	}
 
 	results, allDone, anyFailed := s.collectDelegateResults(pool, d.WorkerSessionIDs, d.SpawnErrors)
 	if !allDone {
-		return delegateStatusJSON(delegationID, "running", results), nil
+		return delegateStatusJSON(delegationID, "running", results, d), nil
 	}
 
 	status := "completed"
@@ -65,7 +66,7 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 	}
 	delegationRepo.MarkTerminal(delegationID, status) //nolint:errcheck
 
-	return delegateStatusJSON(delegationID, status, results), nil
+	return delegateStatusJSON(delegationID, status, results, d), nil
 }
 
 // collectDelegateResults reads each worker's terminal status and (if
@@ -142,11 +143,42 @@ func isDelegateSessionRunning(status model.AgentSessionStatus) bool {
 	}
 }
 
-func delegateStatusJSON(delegationID, status string, results []map[string]interface{}) string {
+// delegateStatusJSON builds the GetDelegation response payload. d is the
+// delegation row (nil when not yet loaded, e.g. Delegate's immediate
+// "running" return) — its worktree columns, when set, add a block naming the
+// branch a caller/user can merge.
+func delegateStatusJSON(delegationID, status string, results []map[string]interface{}, d *model.Delegation) string {
 	out := map[string]interface{}{"delegation_id": delegationID, "status": status}
 	if results != nil {
 		out["results"] = results
 	}
+	addWorktreeBlock(out, d)
 	b, _ := json.Marshal(out)
 	return string(b)
+}
+
+// addWorktreeBlock attaches the isolated delegation's branch/base
+// commit/diff summary to out, giving the caller a `git merge <branch>` hint.
+// No-op when d is nil or the delegation was never isolated.
+func addWorktreeBlock(out map[string]interface{}, d *model.Delegation) {
+	if d == nil || d.BranchName == "" {
+		return
+	}
+	block := map[string]interface{}{
+		"branch":      d.BranchName,
+		"base_commit": d.BaseCommit,
+		"merge_hint":  "git merge " + d.BranchName,
+	}
+	if d.Summary != "" {
+		var summary map[string]interface{}
+		if err := json.Unmarshal([]byte(d.Summary), &summary); err == nil {
+			if cf, ok := summary["changed_files"]; ok {
+				block["changed_files"] = cf
+			}
+			if ds, ok := summary["diffstat"]; ok {
+				block["diffstat"] = ds
+			}
+		}
+	}
+	out["worktree"] = block
 }

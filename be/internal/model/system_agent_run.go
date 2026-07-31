@@ -43,4 +43,5 @@ type SystemAgentRun struct {
 	DelegateTier     string `json:"delegate_tier,omitempty"`
 	Fanout           int    `json:"fanout,omitempty"`
 	DelegationStatus string `json:"delegation_status,omitempty"`
+	DelegationBranch string `json:"delegation_branch,omitempty"`
 }

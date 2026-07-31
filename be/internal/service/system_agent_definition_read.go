@@ -19,12 +19,12 @@ func (s *SystemAgentDefinitionService) Get(id string) (*model.SystemAgentDefinit
 	err := s.pool.QueryRow(`
 		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, reasoning_effort, tier, created_at, updated_at
+		       execution_mode, reasoning_effort, tier, isolate_worktree, created_at, updated_at
 		FROM system_agent_definitions
 		WHERE LOWER(id) = LOWER(?)`, id).Scan(
 		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-		&def.ExecutionMode, &reasoningEffort, &tier, &createdAt, &updatedAt,
+		&def.ExecutionMode, &reasoningEffort, &tier, &def.IsolateWorktree, &createdAt, &updatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("system agent definition not found: %s", id)
@@ -59,13 +59,13 @@ func (s *SystemAgentDefinitionService) GetForBackend(role, backend string) (*mod
 	err := s.pool.QueryRow(`
 		SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, reasoning_effort, tier, created_at, updated_at
+		       execution_mode, reasoning_effort, tier, isolate_worktree, created_at, updated_at
 		FROM system_agent_definitions
 		WHERE role = ? AND execution_mode = ?
 		LIMIT 1`, role, backend).Scan(
 		&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 		&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-		&def.ExecutionMode, &reasoningEffort, &tier, &createdAt, &updatedAt,
+		&def.ExecutionMode, &reasoningEffort, &tier, &def.IsolateWorktree, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err // sql.ErrNoRows returned unwrapped for caller fallback
@@ -104,7 +104,7 @@ func (s *SystemAgentDefinitionService) ListForAPI(includeAPIMode bool) ([]*model
 func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.SystemAgentDefinition, error) {
 	q := `SELECT id, role, model, timeout, prompt, tools, api_max_iterations, api_max_tokens,
 		       restart_threshold, max_fail_restarts, stall_start_timeout_sec, stall_running_timeout_sec,
-		       execution_mode, reasoning_effort, tier, created_at, updated_at
+		       execution_mode, reasoning_effort, tier, isolate_worktree, created_at, updated_at
 		FROM system_agent_definitions`
 	if whereClause != "" {
 		q += " " + whereClause
@@ -128,7 +128,7 @@ func (s *SystemAgentDefinitionService) listQuery(whereClause string) ([]*model.S
 		err := rows.Scan(
 			&def.ID, &def.Role, &def.Model, &def.Timeout, &def.Prompt, &def.Tools, &apiMaxIterations, &apiMaxTokens,
 			&restartThreshold, &maxFailRestarts, &stallStartTimeout, &stallRunningTimeout,
-			&def.ExecutionMode, &reasoningEffort, &tier, &createdAt, &updatedAt,
+			&def.ExecutionMode, &reasoningEffort, &tier, &def.IsolateWorktree, &createdAt, &updatedAt,
 		)
 		if err != nil {
 			return nil, err

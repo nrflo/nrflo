@@ -167,7 +167,7 @@ func addWorktreeBlock(out map[string]interface{}, d *model.Delegation) {
 	block := map[string]interface{}{
 		"branch":      d.BranchName,
 		"base_commit": d.BaseCommit,
-		"merge_hint":  "git merge " + d.BranchName,
+		"merge_hint":  "merge server-side with the merge_delegation tool (delegation_id " + d.ID + ") — do not run git merge yourself",
 	}
 	if d.Summary != "" {
 		var summary map[string]interface{}

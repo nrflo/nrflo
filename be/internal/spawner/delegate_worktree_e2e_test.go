@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,8 +126,9 @@ func TestDelegate_ExecutorRunless_PersistsWorktreeAndReportsBranch(t *testing.T)
 	if wt["branch"] != wantBranch {
 		t.Errorf("worktree.branch = %v, want %q", wt["branch"], wantBranch)
 	}
-	if wt["merge_hint"] != "git merge "+wantBranch {
-		t.Errorf("worktree.merge_hint = %v, want %q", wt["merge_hint"], "git merge "+wantBranch)
+	hint, _ := wt["merge_hint"].(string)
+	if !strings.Contains(hint, "merge_delegation") || !strings.Contains(hint, delegationID) {
+		t.Errorf("worktree.merge_hint = %v, want a merge_delegation-tool hint naming the delegation", wt["merge_hint"])
 	}
 	if wt["base_commit"] != fakeBase {
 		t.Errorf("worktree.base_commit = %v, want %q", wt["base_commit"], fakeBase)

@@ -3,6 +3,7 @@ package spawner
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"be/internal/clock"
@@ -70,8 +71,9 @@ func TestGetDelegation_IsolatedDelegation_WorktreeBlockPresent(t *testing.T) {
 	if wt["base_commit"] != "abc123" {
 		t.Errorf("worktree.base_commit = %v, want abc123", wt["base_commit"])
 	}
-	if wt["merge_hint"] != "git merge nrdelegate/withworktree" {
-		t.Errorf("worktree.merge_hint = %v, want the git merge hint", wt["merge_hint"])
+	hint, _ := wt["merge_hint"].(string)
+	if !strings.Contains(hint, "merge_delegation") || !strings.Contains(hint, delegationID) {
+		t.Errorf("worktree.merge_hint = %v, want a merge_delegation-tool hint naming the delegation", wt["merge_hint"])
 	}
 	if _, hasChanged := wt["changed_files"]; hasChanged {
 		t.Errorf("worktree.changed_files = %v, want absent (no summary persisted yet)", wt["changed_files"])

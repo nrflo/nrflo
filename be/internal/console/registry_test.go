@@ -39,6 +39,7 @@ var wantConsoleOnly = []string{
 	"artifact_get",
 	"delegate",
 	"get_delegation",
+	"merge_delegation",
 	"dynamic_workflow",
 	"get_subworkflow",
 	"revise_plan",
@@ -148,7 +149,7 @@ func TestBuildRegistry_T0DeciderCatalogue_ExactSet(t *testing.T) {
 
 // TestBuildRegistry_T0BareCatalogue_ExactSet mirrors
 // TestBuildRegistry_T0DeciderCatalogue_ExactSet for the t0-bare profile: its
-// 13-tool catalogue filters BuildRegistry down to exactly that set, and
+// 14-tool catalogue filters BuildRegistry down to exactly that set, and
 // fs/bash/findings/artifact/consult/web tools are structurally absent.
 func TestBuildRegistry_T0BareCatalogue_ExactSet(t *testing.T) {
 	env := newConsoleTestEnv(t)
@@ -163,8 +164,8 @@ func TestBuildRegistry_T0BareCatalogue_ExactSet(t *testing.T) {
 	if len(reg) != len(profile.Catalogue) {
 		t.Fatalf("len(reg) = %d, want %d (exactly the catalogue)", len(reg), len(profile.Catalogue))
 	}
-	if len(profile.Catalogue) != 13 {
-		t.Fatalf("len(profile.Catalogue) = %d, want 13", len(profile.Catalogue))
+	if len(profile.Catalogue) != 14 {
+		t.Fatalf("len(profile.Catalogue) = %d, want 14", len(profile.Catalogue))
 	}
 	for _, name := range profile.Catalogue {
 		if _, ok := reg[name]; !ok {

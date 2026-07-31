@@ -58,7 +58,7 @@ type Profile struct {
 // via delegate/dynamic_workflow, not by running or polling workflows
 // directly).
 var t0DeciderCatalogue = []string{
-	"delegate", "get_delegation",
+	"delegate", "get_delegation", "merge_delegation",
 	"workflow_run", "workflow_get", "workflow_list", "workflow_continue", "workflow_stop",
 	"dynamic_workflow", "get_subworkflow", "revise_plan", "approve_plan",
 	"project_findings_add", "project_findings_add_bulk",
@@ -71,9 +71,9 @@ var t0DeciderCatalogue = []string{
 
 // t0BareCatalogue is the T0 bare profile's tool allowlist: pure delegation +
 // read/drive access to workflows, sub-workflow plans, and tickets — no
-// findings, artifacts, web search/consult, or fs/bash. Exactly 13 tools.
+// findings, artifacts, web search/consult, or fs/bash. Exactly 14 tools.
 var t0BareCatalogue = []string{
-	"delegate", "get_delegation",
+	"delegate", "get_delegation", "merge_delegation",
 	"dynamic_workflow", "get_subworkflow", "revise_plan", "approve_plan",
 	"workflow_run", "workflow_list", "workflow_get", "workflow_continue", "workflow_stop",
 	"ticket_list", "ticket_current",

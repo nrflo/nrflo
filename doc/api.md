@@ -141,6 +141,7 @@ compatible). For in-process `api` agents an empty field means no tools
 | `consult` | Ask a named consultant agent a question and receive an inline answer (api-mode only). Input: `{consultant, question}` |
 | `delegate` | Spawn tier-resolved worker(s) downward (async-with-poll). Input: `{tier: "extractor"\|"executor", brief, context?, artifacts?, wait_sec?, fanout?}` |
 | `get_delegation` | Poll a delegation started via `delegate`. Input: `{delegation_id, wait_sec?}` |
+| `merge_delegation` | Merge an isolated delegation's server-committed branch into the live checkout's current branch, server-side. Input: `{delegation_id}` |
 | `run_subworkflow` | Start a callable workflow as a detached sub-workflow; returns `{instance_id, status}`. Input: `{workflow, instructions, result_key?, wait_sec?}` |
 | `get_subworkflow` | Poll a sub-workflow; terminal statuses include the result finding/failure reason, plan-boundary statuses include `{plan, revision, questions, templates, premium_cap}`. Input: `{instance_id, result_key?, wait_sec?}` |
 | `dynamic_workflow` | Start the bundled plan-driven `dynamic` workflow as a sub-workflow; a planner drafts a manifest from `instructions`. Input: `{instructions, mode?: "approve"\|"auto", wait_sec?}` |
@@ -288,6 +289,8 @@ A consultant is a named api-mode agent that a caller invokes inline via the `con
 
 **Async polling:** `get_delegation` takes `{delegation_id, wait_sec?}` and returns the current aggregated status (`running`/`completed`/`failed`) plus per-worker results; `wait_sec` blocks up to 240s for still-running workers, heartbeated so the caller's stall timer stays quiet. The terminal response is read-once: worker findings and the delegation record are deleted as they are returned, and a repeat poll gets an unknown-delegation error.
 
-**Console usage:** `delegate`/`get_delegation` are also available to console (T0) sessions — the one instance-creating tool intentionally exposed there, since a console session has no bound workflow instance for a worker to spawn under.
+**Landing the branch:** an isolated executor delegation's work is committed by the server onto a `nrdelegate/` branch (reported in the `worktree` block of `get_delegation`'s payload). Land it with `merge_delegation` (`{delegation_id}`) — a server-side merge into the live checkout's current branch that refuses a dirty tree, treats an already-merged branch as idempotent success, and aborts cleanly on conflict keeping the branch for manual resolution. Never merge the branch by hand.
+
+**Console usage:** `delegate`/`get_delegation`/`merge_delegation` are also available to console (T0) sessions — the one instance-creating tool intentionally exposed there, since a console session has no bound workflow instance for a worker to spawn under.
 
 WebSocket events: `delegate.started`, `delegate.completed`, `delegate.failed`.

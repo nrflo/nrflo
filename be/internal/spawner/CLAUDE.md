@@ -91,7 +91,7 @@ A HARD provider failure (build-time construct, auth, persistent 5xx — never ra
 
 ## Delegate
 
-`Spawner.Delegate`/`GetDelegation` (`delegate.go`, `delegate_poll.go`, `delegate_record.go`) implement `apirun.Delegator`: tier workers spawned downward, async-with-poll, depth-capped via the durable `delegations` row. Mechanics: [REFERENCE.md](REFERENCE.md#delegate).
+`Spawner.Delegate`/`GetDelegation`/`MergeDelegation` (`delegate*.go`) implement `apirun.Delegator`: tier workers spawned downward, async-with-poll, depth-capped via the durable `delegations` row; `merge_delegation` lands the branch server-side. Mechanics: [REFERENCE.md](REFERENCE.md#delegate).
 
 ## Planner
 

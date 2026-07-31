@@ -58,3 +58,16 @@ func (d apiDelegator) GetDelegation(ctx context.Context, callerSessionID, delega
 	defer sp.Close()
 	return sp.GetDelegation(ctx, callerSessionID, delegationID)
 }
+
+func (d apiDelegator) MergeDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error) {
+	sess, err := repo.NewAgentSessionRepo(d.pool, d.o.clock).Get(callerSessionID)
+	if err != nil {
+		return "", fmt.Errorf("delegate: resolve caller session: %w", err)
+	}
+	sp, err := d.spawnerFor(ctx, sess.ProjectID)
+	if err != nil {
+		return "", err
+	}
+	defer sp.Close()
+	return sp.MergeDelegation(ctx, callerSessionID, delegationID)
+}

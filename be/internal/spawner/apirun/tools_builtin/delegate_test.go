@@ -15,10 +15,11 @@ import (
 // stubSubworkflows (run_subworkflow_test.go) — tests set only the methods
 // they exercise.
 type fakeDelegator struct {
-	delegateFn      func(ctx context.Context, callerSessionID string, req apirun.DelegateRequest) (string, error)
-	getDelegationFn func(ctx context.Context, callerSessionID, delegationID string) (string, error)
-	lastCaller      string
-	lastReq         apirun.DelegateRequest
+	delegateFn        func(ctx context.Context, callerSessionID string, req apirun.DelegateRequest) (string, error)
+	getDelegationFn   func(ctx context.Context, callerSessionID, delegationID string) (string, error)
+	mergeDelegationFn func(ctx context.Context, callerSessionID, delegationID string) (string, error)
+	lastCaller        string
+	lastReq           apirun.DelegateRequest
 }
 
 var _ apirun.Delegator = (*fakeDelegator)(nil)
@@ -31,6 +32,11 @@ func (f *fakeDelegator) Delegate(ctx context.Context, callerSessionID string, re
 
 func (f *fakeDelegator) GetDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error) {
 	return f.getDelegationFn(ctx, callerSessionID, delegationID)
+}
+
+func (f *fakeDelegator) MergeDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error) {
+	f.lastCaller = callerSessionID
+	return f.mergeDelegationFn(ctx, callerSessionID, delegationID)
 }
 
 func TestDelegate_HappyPath_ForwardsFieldsAndCallerSessionID(t *testing.T) {

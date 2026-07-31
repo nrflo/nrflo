@@ -20,10 +20,10 @@ import (
 // (tools_dynamic.go, tools_plan.go, tools_consult.go), not reused from this
 // map, because they route through Deps (Consultant/Orch) or a project guard
 // instead of the session-bound WorkflowInstanceID the builtin handlers key
-// off. delegate/get_delegation reuse the builtins — NewToolEnv wires
-// env.Delegator from Deps.Delegator, and the builtin handlers only key off
-// that plus session/project identity, so console callers get the same
-// wait_sec defaults and poll hints as api-mode agents.
+// off. delegate/get_delegation/merge_delegation reuse the builtins —
+// NewToolEnv wires env.Delegator from Deps.Delegator, and the builtin
+// handlers only key off that plus session/project identity, so console
+// callers get the same wait_sec defaults and poll hints as api-mode agents.
 func reusedBuiltins() []string {
 	return []string{
 		"project_findings_add",
@@ -41,6 +41,7 @@ func reusedBuiltins() []string {
 		"web_fetch",
 		"delegate",
 		"get_delegation",
+		"merge_delegation",
 	}
 }
 

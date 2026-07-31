@@ -128,7 +128,7 @@ func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 
 // TestProfileByName_T0Bare_Defaults mirrors TestProfileByName_T0Decider_Defaults:
 // claude/opus-5/xhigh, 30k budget, refinery on, tier-t0-bare template,
-// native policy none, and the exact 13-tool bare catalogue.
+// native policy none, and the exact 14-tool bare catalogue.
 func TestProfileByName_T0Bare_Defaults(t *testing.T) {
 	t.Parallel()
 	p, err := ProfileByName("t0-bare")
@@ -159,8 +159,8 @@ func TestProfileByName_T0Bare_Defaults(t *testing.T) {
 	if !p.SiblingFlows {
 		t.Error("SiblingFlows = false, want true")
 	}
-	if len(p.Catalogue) != 13 {
-		t.Fatalf("len(Catalogue) = %d, want 13", len(p.Catalogue))
+	if len(p.Catalogue) != 14 {
+		t.Fatalf("len(Catalogue) = %d, want 14", len(p.Catalogue))
 	}
 	for _, banned := range []string{
 		"read_file", "edit_file", "bash", "web_fetch", "web_search", "consult",

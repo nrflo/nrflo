@@ -70,6 +70,11 @@ type Delegator interface {
 	// without blocking: worker findings for finished workers, "running" while
 	// any are still in flight.
 	GetDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error)
+	// MergeDelegation merges an isolated delegation's server-committed
+	// branch into the live checkout's current branch, server-side — the
+	// sanctioned path for landing executor results without any agent
+	// running git against the live tree.
+	MergeDelegation(ctx context.Context, callerSessionID, delegationID string) (string, error)
 }
 
 // StepSession is the spawner-side seam the complete_step builtin uses to

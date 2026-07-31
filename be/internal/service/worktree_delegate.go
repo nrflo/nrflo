@@ -10,9 +10,12 @@ import (
 // DelegateWorktreeSummary is the post-commit result of CommitAndCollect,
 // persisted as JSON onto delegations.worktree_summary.
 type DelegateWorktreeSummary struct {
-	Committed    bool     `json:"committed"`
-	ChangedFiles []string `json:"changed_files,omitempty"`
-	Diffstat     string   `json:"diffstat,omitempty"`
+	Committed       bool     `json:"committed"`
+	ChangedFiles    []string `json:"changed_files,omitempty"`
+	Diffstat        string   `json:"diffstat,omitempty"`
+	LiveTreeMutated bool     `json:"live_tree_mutated,omitempty"`
+	HeadBefore      string   `json:"head_before,omitempty"`
+	HeadAfter       string   `json:"head_after,omitempty"`
 }
 
 // SetupFromHEAD branches branchName off the live checkout's current HEAD (no
@@ -53,6 +56,21 @@ func (s *WorktreeService) SetupFromHEAD(projectRoot, branchName string) (string,
 	seedAgentContext(repoPath, absPath)
 
 	return absPath, baseCommit, nil
+}
+
+// LiveHead resolves the project live checkout's current HEAD sha, used by
+// finalizeDelegateWorktree to detect whether the live tree moved underneath
+// a no-commit delegation.
+func (s *WorktreeService) LiveHead(projectRoot string) (string, error) {
+	repoPath, err := resolveRepoPath(projectRoot)
+	if err != nil {
+		return "", fmt.Errorf("live head: %w", err)
+	}
+	headOut, err := runGit(repoPath, "rev-parse", "HEAD")
+	if err != nil {
+		return "", fmt.Errorf("live head: %w", err)
+	}
+	return strings.TrimSpace(headOut), nil
 }
 
 // CommitAndCollect commits the worktree's working tree (git add -A, skipped

@@ -1,24 +1,31 @@
 package spawner
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"strings"
 
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
 )
 
 // Swappable seams (package-level func vars, mirrors mergeRetryDelay) so
-// spawner tests can fake git without a real repo.
+// spawner tests can fake git without a real repo. worktreeLiveHead mirrors
+// worktreeSetupFromHEAD/worktreeCommitAndCollect for the live-tree-escape
+// check in finalizeDelegateWorktree.
 var (
 	worktreeSetupFromHEAD = func(projectRoot, branchName string) (string, string, error) {
 		return (&service.WorktreeService{}).SetupFromHEAD(projectRoot, branchName)
 	}
 	worktreeCommitAndCollect = func(projectRoot, worktreePath, branchName, baseCommit, delegationID, briefHead string) (*service.DelegateWorktreeSummary, error) {
 		return (&service.WorktreeService{}).CommitAndCollect(projectRoot, worktreePath, branchName, baseCommit, delegationID, briefHead)
+	}
+	worktreeLiveHead = func(projectRoot string) (string, error) {
+		return (&service.WorktreeService{}).LiveHead(projectRoot)
 	}
 )
 
@@ -113,11 +120,37 @@ func (s *Spawner) finalizeDelegateWorktree(pool *db.Pool, projectID, delegationI
 		if err := delegationRepo.SetWorktree(delegationID, worktreePath, "", baseCommit); err != nil {
 			log.Printf("delegate: failed to clear empty-commit branch for %s: %v", delegationID, err)
 		}
+		stampLiveTreeMutation(summary, project.RootPath.String, delegationID, baseCommit)
 	}
 	b, _ := json.Marshal(summary)
 	if err := delegationRepo.SetWorktreeSummary(delegationID, string(b)); err != nil {
 		log.Printf("delegate: failed to persist worktree summary for %s: %v", delegationID, err)
 	}
+}
+
+// stampLiveTreeMutation checks whether the project live tree's HEAD moved
+// during a no-commit delegation and, if so, stamps summary with
+// live_tree_mutated/head_before/head_after and logs a WARN naming the
+// delegation. A HEAD move is not proof of worker misbehavior — the user may
+// have committed concurrently, or another delegation may have merged — it is
+// only a signal, best-effort and silent on any error.
+func stampLiveTreeMutation(summary *service.DelegateWorktreeSummary, projectRoot, delegationID, baseCommit string) {
+	if baseCommit == "" {
+		return
+	}
+	head, err := worktreeLiveHead(projectRoot)
+	if err != nil {
+		logger.Warn(context.Background(), "delegate: live-tree HEAD check skipped", "delegation_id", delegationID, "error", err)
+		return
+	}
+	if head == "" || head == baseCommit {
+		return
+	}
+	summary.LiveTreeMutated = true
+	summary.HeadBefore = baseCommit
+	summary.HeadAfter = head
+	logger.Warn(context.Background(), "delegate: live tree HEAD moved during delegation",
+		"delegation_id", delegationID, "head_before", baseCommit, "head_after", head, "worktree_committed", false)
 }
 
 // briefHead returns the first line of brief, truncated, for use in the

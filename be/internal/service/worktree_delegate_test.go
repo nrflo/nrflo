@@ -216,6 +216,52 @@ func TestConcurrentDelegateWorktrees_DistinctBranchesLiveTreeUntouched(t *testin
 	}
 }
 
+// TestLiveHead_ReturnsCurrentHEAD_AndTracksNewCommits verifies LiveHead
+// resolves the checkout's current HEAD sha and reflects a subsequent commit
+// — the read finalizeDelegateWorktree's live-tree-escape check relies on.
+func TestLiveHead_ReturnsCurrentHEAD_AndTracksNewCommits(t *testing.T) {
+	t.Parallel()
+	repoPath := setupWorktreeTestRepo(t)
+	defer os.RemoveAll(repoPath)
+
+	svc := &WorktreeService{}
+	wantHead := strings.TrimSpace(runOutOrFatal(t, repoPath, "rev-parse", "HEAD"))
+
+	got, err := svc.LiveHead(repoPath)
+	if err != nil {
+		t.Fatalf("LiveHead: %v", err)
+	}
+	if got != wantHead {
+		t.Errorf("LiveHead() = %q, want %q", got, wantHead)
+	}
+
+	createCommit(t, repoPath, "livehead.txt", "moved on", "moved HEAD")
+	wantHead2 := strings.TrimSpace(runOutOrFatal(t, repoPath, "rev-parse", "HEAD"))
+	if wantHead2 == wantHead {
+		t.Fatal("test setup: HEAD did not move after createCommit")
+	}
+
+	got2, err := svc.LiveHead(repoPath)
+	if err != nil {
+		t.Fatalf("LiveHead after new commit: %v", err)
+	}
+	if got2 != wantHead2 {
+		t.Errorf("LiveHead() after new commit = %q, want %q", got2, wantHead2)
+	}
+}
+
+// TestLiveHead_NonGitDir_ReturnsError verifies the resolveRepoPath guard
+// fires before any git plumbing runs.
+func TestLiveHead_NonGitDir_ReturnsError(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+
+	svc := &WorktreeService{}
+	if _, err := svc.LiveHead(tmpDir); err == nil {
+		t.Fatal("expected error for non-git directory")
+	}
+}
+
 func runOrFatal(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)

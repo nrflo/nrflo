@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"be/internal/db"
+	"be/internal/model"
 	"be/internal/types"
 )
 
@@ -226,6 +227,22 @@ func TestParseTraceOptions(t *testing.T) {
 	if err != nil || len(opts.Categories) != 2 || opts.MarkerLimit != 10 {
 		t.Fatalf("parsed = %+v err=%v", opts, err)
 	}
+
+	// Both new hook-derived categories are accepted by the filter...
+	opts, err = ParseTraceOptions(model.MsgCategorySystemNotice+","+model.MsgCategoryTaskNotification, "")
+	if err != nil {
+		t.Fatalf("ParseTraceOptions(system_notice,task_notification) unexpected error: %v", err)
+	}
+	if len(opts.Categories) != 2 || opts.Categories[0] != model.MsgCategorySystemNotice || opts.Categories[1] != model.MsgCategoryTaskNotification {
+		t.Errorf("Categories = %v, want [%s %s]", opts.Categories, model.MsgCategorySystemNotice, model.MsgCategoryTaskNotification)
+	}
+	// ...but neither joins the default set (mirrors user_input, also excluded by default).
+	for _, c := range traceDefaultCategories {
+		if c == model.MsgCategorySystemNotice || c == model.MsgCategoryTaskNotification {
+			t.Errorf("traceDefaultCategories = %v, want it to NOT include %s", traceDefaultCategories, c)
+		}
+	}
+
 	for _, bad := range [][2]string{{"bogus", ""}, {",", ""}, {"", "0"}, {"", "9999"}, {"", "nan"}} {
 		if _, err := ParseTraceOptions(bad[0], bad[1]); err == nil {
 			t.Errorf("ParseTraceOptions(%q, %q) should error", bad[0], bad[1])

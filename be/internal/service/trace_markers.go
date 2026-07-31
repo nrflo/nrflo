@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/model"
 	"be/internal/types"
 )
 
@@ -23,6 +24,7 @@ var traceMarkerCategories = map[string]bool{
 	"text": true, "tool": true, "subagent": true, "skill": true,
 	"user_input": true, "error": true, "result": true, "validation": true,
 	"thinking": true, "finding": true, "lifecycle": true,
+	model.MsgCategorySystemNotice: true, model.MsgCategoryTaskNotification: true,
 }
 
 // traceDefaultCategories excludes high-volume, low-signal rows (text,

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"be/internal/clock"
+	"be/internal/model"
 )
 
 // TestRecordEvent_Notification_IdleMessage_TriggersNudge verifies a
@@ -47,6 +48,43 @@ func TestRecordEvent_Notification_IdleMessage_TriggersNudge(t *testing.T) {
 	}
 	if sig.nudgeCalls[0].reason != "idle" {
 		t.Errorf("nudge reason = %q, want %q", sig.nudgeCalls[0].reason, "idle")
+	}
+
+	_, category := lastAgentMessage(t, env, sessionID)
+	if category != model.MsgCategorySystemNotice {
+		t.Errorf("category = %q, want %q", category, model.MsgCategorySystemNotice)
+	}
+}
+
+// TestRecordEvent_Notification_IdleMessage_ConsoleChatSession_NoNudge verifies
+// an idle Notification on a console_chat session (not workflow_agent) still
+// records model.MsgCategorySystemNotice but does NOT fire TriggerIdleNudge —
+// the nudge is scoped to workflow_agent sessions only.
+func TestRecordEvent_Notification_IdleMessage_ConsoleChatSession_NoNudge(t *testing.T) {
+	env := newHandlerTestEnv(t)
+	sessionID := "sess-notif-idle-console-1"
+	insertConsoleChatSessionForBroadcastTest(t, env, sessionID)
+
+	sig := &fakeTerminalSignaler{}
+	h := NewHandler(env.pool, env.hub, clock.Real(), sig)
+	req := buildRecordEventReq(t, "req-notif-idle-console", sessionID, map[string]interface{}{
+		"hook_event_name": "Notification",
+		"message":         "Claude is waiting for your input",
+	})
+
+	resp := h.Handle(req)
+	if resp.Error != nil {
+		t.Fatalf("expected no error, got: %v", resp.Error)
+	}
+	if n := countAgentMessages(t, env, sessionID); n != 1 {
+		t.Fatalf("agent_messages count = %d, want 1", n)
+	}
+	_, category := lastAgentMessage(t, env, sessionID)
+	if category != model.MsgCategorySystemNotice {
+		t.Errorf("category = %q, want %q", category, model.MsgCategorySystemNotice)
+	}
+	if len(sig.nudgeCalls) != 0 {
+		t.Errorf("TriggerIdleNudge call count = %d, want 0 (console_chat session must not nudge)", len(sig.nudgeCalls))
 	}
 }
 
@@ -91,9 +129,10 @@ func TestRecordEvent_Notification_PermissionMessage_TriggersNudgeWithMarker(t *t
 }
 
 // TestRecordEvent_Notification_UnknownMessage_NoNudge verifies an
-// unrecognized Notification message is recorded exactly as before (category
-// "text") and does NOT trigger a nudge — matches the pre-existing
-// "permission requested" case covered by TestRecordEvent_VerboseEventsRecorded.
+// unrecognized Notification message is recorded under the default
+// model.MsgCategorySystemNotice category (content unchanged) and does NOT
+// trigger a nudge — matches the pre-existing "permission requested" case
+// covered by TestRecordEvent_VerboseEventsRecorded.
 func TestRecordEvent_Notification_UnknownMessage_NoNudge(t *testing.T) {
 	env := newHandlerTestEnv(t)
 	env.createTicketAndWorkflow(t, "NOTIF-UNK-1")
@@ -126,8 +165,8 @@ func TestRecordEvent_Notification_UnknownMessage_NoNudge(t *testing.T) {
 	if content != "permission requested" {
 		t.Errorf("content = %q, want %q (recorded exactly as before)", content, "permission requested")
 	}
-	if category != "text" {
-		t.Errorf("category = %q, want %q", category, "text")
+	if category != model.MsgCategorySystemNotice {
+		t.Errorf("category = %q, want %q", category, model.MsgCategorySystemNotice)
 	}
 	if len(sig.nudgeCalls) != 0 {
 		t.Errorf("TriggerIdleNudge call count = %d, want 0 (unknown message must not nudge)", len(sig.nudgeCalls))

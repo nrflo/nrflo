@@ -79,7 +79,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const normalized = useMemo(() => normalizeApiMessages(messages), [messages])
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: normalized.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0, validation: 0, thinking: 0 }
+    const counts: Record<string, number> = { all: normalized.length, text: 0, tool: 0, subagent: 0, skill: 0, user_input: 0, error: 0, result: 0, validation: 0, thinking: 0, system_notice: 0, task_notification: 0 }
     for (const m of normalized) {
       const cat = m.category || 'text'
       counts[cat] = (counts[cat] || 0) + 1

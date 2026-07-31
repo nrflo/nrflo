@@ -16,6 +16,8 @@ function MessageTableRowInner({ msg }: MessageTableRowProps) {
   const isResult = msg.category === 'result'
   const isValidation = msg.category === 'validation'
   const isThinking = msg.category === 'thinking'
+  const isTaskNotification = msg.category === 'task_notification'
+  const isSystemNotice = msg.category === 'system_notice'
   return (
     <TableRow
       className={cn(
@@ -24,6 +26,7 @@ function MessageTableRowInner({ msg }: MessageTableRowProps) {
         isError && "border-l-4 border-l-destructive bg-destructive/5 dark:bg-destructive/10",
         isResult && "border-l-4 border-l-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20",
         isValidation && "border-l-4 border-l-destructive bg-destructive/5 dark:bg-destructive/10",
+        isTaskNotification && "border-l-4 border-l-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20",
       )}
       data-testid="message-row"
     >
@@ -50,6 +53,14 @@ function MessageTableRowInner({ msg }: MessageTableRowProps) {
         ) : isThinking ? (
           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-muted text-muted-foreground border border-border">
             Thinking
+          </span>
+        ) : isTaskNotification ? (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-700">
+            Task
+          </span>
+        ) : isSystemNotice ? (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold mr-1.5 shrink-0 bg-muted text-muted-foreground border border-border">
+            Notice
           </span>
         ) : (
           toolName && <ToolBadge name={toolName} compact />

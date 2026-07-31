@@ -679,7 +679,7 @@ describe('AgentLogDetail', () => {
       })
 
       const tabs = screen.getAllByRole('tab')
-      expect(tabs).toHaveLength(10)
+      expect(tabs).toHaveLength(12)
       expect(tabs[0]).toHaveAttribute('aria-selected', 'true') // All is default
     })
 

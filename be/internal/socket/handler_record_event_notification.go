@@ -26,7 +26,7 @@ func (h *Handler) handleNotification(ctx context.Context, req Request, sessionID
 	}
 
 	content := asString(event["message"])
-	category := "text"
+	category := model.MsgCategorySystemNotice
 	if kind == "permission" && isWorkflowAgent {
 		category = "permission"
 		if tool != "" {

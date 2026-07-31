@@ -16,6 +16,8 @@ export const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] 
   { value: 'result', label: 'Results' },
   { value: 'validation', label: 'Validation' },
   { value: 'thinking', label: 'Thinking' },
+  { value: 'task_notification', label: 'Tasks' },
+  { value: 'system_notice', label: 'Notices' },
 ]
 
 // Live transcripts run to thousands of rows; render the newest slice and let
@@ -59,7 +61,7 @@ export function MessageTable({ filteredMessages, categoryFilter, setCategoryFilt
             : `${normalizedCount} messages`}
         </span>
       </div>
-      <div className="flex items-center gap-0.5 mb-2 border-b border-border" role="tablist">
+      <div className="flex items-center flex-wrap gap-0.5 mb-2 border-b border-border" role="tablist">
         {CATEGORY_TABS.map((tab) => (
           <button
             key={tab.value}

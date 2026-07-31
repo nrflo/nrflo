@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -206,6 +207,32 @@ func removeStaleLock(lockPath string) {
 		// Process is dead — safe to remove
 		os.Remove(lockPath)
 	}
+}
+
+// BranchMerged reports whether branchName is already an ancestor of
+// defaultBranch (i.e. fully merged), via `git merge-base --is-ancestor`.
+// Exit code 1 means "not an ancestor" (false, nil); any other failure
+// (unknown branch, non-repo path) is returned as an error.
+func (s *WorktreeService) BranchMerged(projectRoot, defaultBranch, branchName string) (bool, error) {
+	if _, err := resolveRepoPath(projectRoot); err != nil {
+		return false, fmt.Errorf("worktree branch-merged: %w", err)
+	}
+	if err := validateBranch(defaultBranch); err != nil {
+		return false, fmt.Errorf("worktree branch-merged: invalid default branch: %w", err)
+	}
+	if err := validateBranch(branchName); err != nil {
+		return false, fmt.Errorf("worktree branch-merged: invalid branch name: %w", err)
+	}
+
+	cmd := exec.Command("git", "merge-base", "--is-ancestor", branchName, defaultBranch)
+	cmd.Dir = projectRoot
+	if err := cmd.Run(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return false, nil
+		}
+		return false, fmt.Errorf("worktree branch-merged: %w", err)
+	}
+	return true, nil
 }
 
 // Cleanup force-removes the worktree and branch without merging.

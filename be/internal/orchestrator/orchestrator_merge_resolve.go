@@ -8,11 +8,44 @@ import (
 
 	"be/internal/db"
 	"be/internal/logger"
-	"be/internal/repo"
+	"be/internal/model"
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/ws"
 )
+
+// conflictResolverConfig derives a spawner.Config for the one-off
+// conflict-resolver spawn from the run's baseCfg, overriding only what the
+// synthetic single-phase workflow needs. Copying baseCfg (rather than
+// hand-listing fields) keeps every tool-backing service — AgentSvcReal,
+// FindingsSvc, ProjectFindingsSvc, WorkflowSvc, TicketSvc, ArtifactSvc,
+// BuildAPIProvider — wired so `agent_*`/`findings_*` tools work in the
+// resolver session. RefinerySidecar is explicitly cleared: one-off system
+// spawns get no fold sidecar by omission (see spawner/CLAUDE.md § Context Save).
+func conflictResolverConfig(
+	baseCfg spawner.Config,
+	wt *worktreeInfo,
+	primaryModel string,
+	sysDef *model.SystemAgentDefinition,
+	chain []service.AgentChainEntry,
+	onRegister func(string, *spawner.Spawner),
+	onUnregister func(string),
+) spawner.Config {
+	cfg := baseCfg
+	cfg.Workflows = map[string]spawner.WorkflowDef{
+		"_conflict_resolution": {
+			Phases: []spawner.PhaseDef{{NodeID: "conflict-resolver", Agent: "conflict-resolver", Layer: 0}},
+		},
+	}
+	cfg.Agents = map[string]spawner.AgentConfig{
+		"conflict-resolver": {Model: primaryModel, Timeout: sysDef.Timeout, Chain: chain},
+	}
+	cfg.ProjectRoot = wt.projectRoot
+	cfg.RefinerySidecar = nil
+	cfg.OnSessionRegister = onRegister
+	cfg.OnSessionUnregister = onUnregister
+	return cfg
+}
 
 // attemptConflictResolution tries to resolve a merge conflict by spawning the
 // conflict-resolver system agent. Returns nil on success (branch merged and
@@ -24,9 +57,7 @@ func (o *Orchestrator) attemptConflictResolution(
 	wt *worktreeInfo,
 	pool *db.Pool,
 	mergeError string,
-	modelConfigs map[string]spawner.ModelConfig,
-	claudeSettingsJSON string,
-	projectEnv []string,
+	baseCfg spawner.Config,
 ) error {
 	// Load conflict-resolver system agent definition.
 	// API-mode conflict resolution is not yet supported — the resolver needs
@@ -51,50 +82,23 @@ func (o *Orchestrator) attemptConflictResolution(
 
 	// Construct spawner with synthetic single-phase workflow.
 	// Conflict resolution is CLI-only; manifest tools are not used here.
-	apiModeSettingsSvc := service.NewGlobalSettingsService(pool, o.clock)
-	apiModeSettingVal, _ := apiModeSettingsSvc.Get("api_mode_enabled")
-	apiViaCLI, _ := apiModeSettingsSvc.GetAPIViaCLIEnabled()
-
-	dispatchRepo := repo.NewDispatchRepo(pool, o.clock)
-	sp := spawner.New(spawner.Config{
-		Workflows: map[string]spawner.WorkflowDef{
-			"_conflict_resolution": {
-				Phases: []spawner.PhaseDef{{NodeID: "conflict-resolver", Agent: "conflict-resolver", Layer: 0}},
-			},
-		},
-		Agents: map[string]spawner.AgentConfig{
-			"conflict-resolver": {Model: primaryModel, Timeout: sysDef.Timeout, Chain: chain},
-		},
-		DataPath:           o.dataPath,
-		ProjectRoot:        wt.projectRoot,
-		WSHub:              o.wsHub,
-		Pool:               pool,
-		Clock:              o.clock,
-		ClaudeSettingsJSON: claudeSettingsJSON,
-		ModelConfigs:       modelConfigs,
-		ErrorSvc:           o.errorSvc,
-		APIMode:            apiModeSettingVal == "true",
-		APIViaCLI:          apiViaCLI,
-		PTYManager:         o.PTYManager,
-		DispatchRepo:       dispatchRepo,
-		ProjectEnv:         projectEnv,
-		SDKDir:             o.sdkDir,
-		PythonScriptRepo:   repo.NewPythonScriptRepo(pool, o.clock),
-		OnSessionRegister: func(sid string, s *spawner.Spawner) {
+	cfg := conflictResolverConfig(baseCfg, wt, primaryModel, sysDef, chain,
+		func(sid string, s *spawner.Spawner) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {
 				rs.spawners[sid] = s
 			}
 			o.mu.Unlock()
 		},
-		OnSessionUnregister: func(sid string) {
+		func(sid string) {
 			o.mu.Lock()
 			if rs, ok := o.runs[wfiID]; ok {
 				delete(rs.spawners, sid)
 			}
 			o.mu.Unlock()
 		},
-	})
+	)
+	sp := spawner.New(cfg)
 
 	spawnErr := sp.Spawn(ctx, spawner.SpawnRequest{
 		AgentType:          "conflict-resolver",
@@ -113,6 +117,17 @@ func (o *Orchestrator) attemptConflictResolution(
 	sp.Close()
 
 	if spawnErr != nil {
+		// The resolver session's reporting channel can fail (spawn error, stall,
+		// crash) even though it already merged the branch before exiting. Check
+		// git ancestry before declaring failure: an already-merged branch is a
+		// success regardless of what the session's exit status says.
+		if merged, mergedErr := (&service.WorktreeService{}).BranchMerged(wt.projectRoot, wt.defaultBranch, wt.branchName); mergedErr == nil && merged {
+			logger.Warn(ctx, "conflict-resolver session reported failure but branch is already merged — treating as success",
+				"branch", wt.branchName, "spawn_err", spawnErr)
+			o.deleteResolvedBranch(ctx, wt, req, wfiID)
+			return nil
+		}
+
 		if o.errorSvc != nil {
 			o.errorSvc.RecordError(req.ProjectID, "system", wfiID, fmt.Sprintf("merge conflict resolution failed for branch %s: %s", wt.branchName, spawnErr.Error()))
 		}
@@ -125,6 +140,13 @@ func (o *Orchestrator) attemptConflictResolution(
 	}
 
 	// Resolution succeeded — delete the feature branch
+	o.deleteResolvedBranch(ctx, wt, req, wfiID)
+	return nil
+}
+
+// deleteResolvedBranch removes the now-merged feature branch and broadcasts
+// merge.conflict_resolved. Branch deletion failure is logged but non-fatal.
+func (o *Orchestrator) deleteResolvedBranch(ctx context.Context, wt *worktreeInfo, req RunRequest, wfiID string) {
 	cmd := exec.Command("git", "branch", "-d", wt.branchName)
 	cmd.Dir = wt.projectRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -135,8 +157,6 @@ func (o *Orchestrator) attemptConflictResolution(
 		"instance_id": wfiID,
 		"branch":      wt.branchName,
 	}))
-
-	return nil
 }
 
 // pushIfEnabled pushes the default branch to origin after a successful merge,

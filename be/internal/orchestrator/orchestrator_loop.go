@@ -293,7 +293,7 @@ func (o *Orchestrator) runLoop(
 		wtService := &service.WorktreeService{}
 		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
 			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), modelConfigs, claudeSettingsJSON, projectEnv); resolveErr != nil {
+			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), baseCfg); resolveErr != nil {
 				// Resolution failed or no resolver configured — fall through to manual resolution
 				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
 					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)

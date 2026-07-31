@@ -36,7 +36,7 @@ Sequential chain item execution via `ChainRunner` (`chain_runner.go`); newer eng
 
 ## Git Worktree Lifecycle
 
-Worktrees are only used for **ticket-scoped** workflows; project-scoped runs stay in the project root. Success merges into `default_branch` (auto conflict resolution → manual fallback) and optionally pushes; failure/cancel force-removes worktree + branch. Mechanics: REFERENCE.md § Git Worktree Lifecycle.
+Worktrees are only used for **ticket-scoped** workflows; project-scoped runs stay in the project root. Success merges into `default_branch` (auto conflict resolution → manual fallback) and optionally pushes; failure/cancel force-removes worktree + branch. Mechanics: REFERENCE.md § Git Worktree Lifecycle. The conflict-resolver spawn derives its `spawner.Config` from the run's `baseCfg` (`conflictResolverConfig`, `orchestrator_merge_resolve.go`) rather than hand-listing fields, so it keeps every tool-backing service (`AgentSvcReal`, `FindingsSvc`, etc.) — a hand-copied subset silently breaks `agent_*`/`findings_*` tools in the resolver session. If the resolver spawn itself errors, finalization checks `WorktreeService.BranchMerged` (`git merge-base --is-ancestor`) before recording failure, since an already-merged branch means the error was a reporting-channel failure, not a merge failure.
 
 ## Take-Control / Interactive / Plan Mode
 

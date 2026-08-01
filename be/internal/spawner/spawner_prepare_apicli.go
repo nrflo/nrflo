@@ -123,8 +123,9 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	pf.Close()
 	promptFile := pf.Name()
 
-	// Build MCP config JSON pointing at the nrflo agent mcp bridge.
-	mcpConfig, mcpErr := buildNrfloMCPConfig()
+	// Build MCP config JSON pointing at the nrflo agent mcp bridge plus any
+	// project-configured external MCP servers.
+	mcpConfig, mcpAllowed, mcpErr := buildClaudeMCPConfig(s.config.ExternalMCPServers)
 	if mcpErr != nil {
 		os.Remove(systemPromptOverrideFile)
 		os.Remove(promptFile)
@@ -149,7 +150,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 		SystemPromptOverrideFile: systemPromptOverrideFile,
 		MCPConfigJSON:            mcpConfig,
 		NativeToolsCSV:           "Read",
-		AllowedToolsCSV:          "mcp__nrflo__* Read",
+		AllowedToolsCSV:          mcpAllowed + " Read",
 		Env:                      s.buildCLIAgentEnv(ctx, req.ProjectID, wfiID, sessionID, spawnToken, effectiveThreshold, proc.maxContext, cliStageDir, extID, extCtx),
 	}
 

@@ -11,6 +11,7 @@ import { ProjectArtifactStorageEditor } from './ProjectArtifactStorageEditor'
 import { ProjectCleanupEditor } from './ProjectCleanupEditor'
 import { ProjectObserverEditor } from './ProjectObserverEditor'
 import { ProjectCaptureThinkingEditor } from './ProjectCaptureThinkingEditor'
+import { ProjectMCPServersEditor } from './ProjectMCPServersEditor'
 import { useProjectSubforms } from './useProjectSubforms'
 import type { ArtifactStorageConfig, CleanupSettings, ObserverSettings } from '@/api/projectSettings'
 import { type ProjectFormData, emptyProjectForm } from './projectFormUtils'
@@ -217,6 +218,7 @@ export function ProjectForm({
             serverError={mutation.observerError}
           />
           <ProjectCaptureThinkingEditor projectId={disabledId} />
+          <ProjectMCPServersEditor projectId={disabledId} />
         </>
       )}
       <div className="flex gap-2 justify-end">

@@ -1,7 +1,6 @@
 package spawner
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -12,23 +11,13 @@ import (
 	"be/internal/spawner/apirun/tools_builtin"
 )
 
-// buildNrfloMCPConfig returns the --mcp-config JSON that registers the nrflo
-// agent mcp stdio bridge with the spawned Claude process. The bridge proxies
-// tools/list + tools/call back over the Unix socket to this server's tool
-// registry, so the agent calls mcp__nrflo__* tools instead of the nrflo CLI.
+// buildNrfloMCPConfig returns the --mcp-config JSON that registers only the
+// nrflo agent mcp stdio bridge with the spawned Claude process. The bridge
+// proxies tools/list + tools/call back over the Unix socket to this server's
+// tool registry, so the agent calls mcp__nrflo__* tools instead of the nrflo CLI.
 func buildNrfloMCPConfig() (string, error) {
-	cfg, err := json.Marshal(map[string]interface{}{
-		"mcpServers": map[string]interface{}{
-			"nrflo": map[string]interface{}{
-				"command": resolvedNrfloPath(),
-				"args":    []string{"agent", "mcp"},
-			},
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	return string(cfg), nil
+	cfg, _, err := buildClaudeMCPConfig(nil)
+	return cfg, err
 }
 
 // substituteReadDocumentPath swaps the read_document handler/spec for the
@@ -102,6 +91,7 @@ func (s *Spawner) attachNrfloToolRegistry(
 	proc.apiTools = specs
 	proc.apiHandlers = handlers
 	proc.apiToolEnv = toolEnv
+	proc.externalMCPServers = s.config.ExternalMCPServers
 	return nil
 }
 
@@ -120,11 +110,11 @@ func (s *Spawner) configureClaudeMCPTools(
 	if regErr := s.attachNrfloToolRegistry(req, wfiID, agentDef, proc, adapter); regErr != nil {
 		return "", "", regErr
 	}
-	cfg, cfgErr := buildNrfloMCPConfig()
+	cfg, allowed, cfgErr := buildClaudeMCPConfig(s.config.ExternalMCPServers)
 	if cfgErr != nil {
 		return "", "", fmt.Errorf("build mcp config: %w", cfgErr)
 	}
-	return cfg, "mcp__nrflo__*", nil
+	return cfg, allowed, nil
 }
 
 // configureCLIToolRegistry attaches the nrflo tool registry for a

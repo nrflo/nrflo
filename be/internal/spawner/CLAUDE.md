@@ -37,6 +37,10 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 `codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio; a fail-restart resumes the same thread instead of a fresh spawn (other relaunch reasons stay fresh), and take-control hands the live `CODEX_HOME` to a `codex resume` PTY launch. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
 
+## External MCP Servers
+
+The `external_mcp_servers` project config is read once at run start into `Config.ExternalMCPServers` and merged into every CLI spawn's MCP surface. Mechanics: [REFERENCE.md](REFERENCE.md#external-mcp-servers).
+
 ## Native Tool Restriction
 
 Agent-def `native_tools` (claude-only CSV) and `sandbox` (codex-only) restrict a def's tool surface; resolution is `nativeSpawnFields` (`spawner_prepare_native.go`), nil-def (global workflows) = unrestricted. Mechanics + the `native_tools=="none"` jailed-FS-trio behavior: [REFERENCE.md](REFERENCE.md#native-tool-restriction).
@@ -71,7 +75,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Tier Fallback
 
-A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Every resolved/relaunched spawn records `tier`, `resolved_provider/execution_mode/effort`, `chain_position`, and `fallback_from` (JSON of the entries that hard-failed) onto the `agent_sessions` row via `tier_observability.go`'s `recordResolvedSpawn` (best-effort). Mechanics: [REFERENCE.md](REFERENCE.md#tier-fallback).
+A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics + per-spawn observability columns: [REFERENCE.md](REFERENCE.md#tier-fallback).
 
 ## Context Ledger
 

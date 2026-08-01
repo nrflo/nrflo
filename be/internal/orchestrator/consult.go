@@ -87,6 +87,7 @@ func (o *Orchestrator) Consult(ctx context.Context, callerSessionID, consultantI
 		Clock:              o.clock,
 		APIMode:            true,
 		ClaudeSettingsJSON: claudeSettingsJSON,
+		ExternalMCPServers: readExternalMCPServers(ctx, pool, projectID),
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {

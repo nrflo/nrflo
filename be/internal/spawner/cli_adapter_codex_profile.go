@@ -99,6 +99,9 @@ func writeCodexSessionProfile(dir string, proc *processInfo) error {
 	if err := writeCodexProfileForSession(dir, proc.workDir); err != nil {
 		return err
 	}
+	if err := appendExternalCodexMCPServers(dir, proc.externalMCPServers); err != nil {
+		return err
+	}
 	if len(proc.apiTools) == 0 {
 		return nil
 	}

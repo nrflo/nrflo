@@ -8,9 +8,12 @@ import {
   setObserver,
   getCaptureThinking,
   setCaptureThinking,
+  getMCPServers,
+  setMCPServers,
   type ArtifactStorageConfig,
   type CleanupSettings,
   type ObserverSettings,
+  type MCPServerSpec,
 } from '@/api/projectSettings'
 
 export const projectSettingsKeys = {
@@ -19,6 +22,7 @@ export const projectSettingsKeys = {
   cleanup: (projectId: string) => [...projectSettingsKeys.all, 'cleanup', projectId] as const,
   observer: (projectId: string) => [...projectSettingsKeys.all, 'observer', projectId] as const,
   captureThinking: (projectId: string) => [...projectSettingsKeys.all, 'capture-thinking', projectId] as const,
+  mcpServers: (projectId: string) => [...projectSettingsKeys.all, 'mcp-servers', projectId] as const,
 }
 
 export function useArtifactStorage(projectId: string) {
@@ -74,6 +78,25 @@ export function useSetObserver() {
       setObserver(projectId, cfg),
     onSuccess: (_data, { projectId }) => {
       qc.invalidateQueries({ queryKey: projectSettingsKeys.observer(projectId) })
+    },
+  })
+}
+
+export function useMCPServers(projectId: string) {
+  return useQuery({
+    queryKey: projectSettingsKeys.mcpServers(projectId),
+    queryFn: () => getMCPServers(projectId),
+    enabled: !!projectId,
+  })
+}
+
+export function useSetMCPServers() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ projectId, servers }: { projectId: string; servers: Record<string, MCPServerSpec> | null }) =>
+      setMCPServers(projectId, servers),
+    onSuccess: (_data, { projectId }) => {
+      qc.invalidateQueries({ queryKey: projectSettingsKeys.mcpServers(projectId) })
     },
   })
 }

@@ -103,6 +103,7 @@ func (s *Spawner) runConsult(ctx context.Context, req consultRequest) (string, e
 		Pool:                pool,
 		Clock:               s.config.Clock,
 		ClaudeSettingsJSON:  s.config.ClaudeSettingsJSON,
+		ExternalMCPServers:  s.config.ExternalMCPServers,
 		ModelConfigs:        s.config.ModelConfigs,
 		ErrorSvc:            s.config.ErrorSvc,
 		BuildAPIProvider:    s.config.BuildAPIProvider,

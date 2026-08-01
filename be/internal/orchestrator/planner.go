@@ -214,6 +214,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 		Clock:              o.clock,
 		APIMode:            true,
 		ClaudeSettingsJSON: claudeSettingsJSON,
+		ExternalMCPServers: readExternalMCPServers(ctx, pool, wfi.ProjectID),
 		ModelConfigs:       modelConfigs,
 		ErrorSvc:           o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {

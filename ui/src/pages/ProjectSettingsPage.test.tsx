@@ -95,7 +95,7 @@ describe('ProjectSettingsPage — active project', () => {
     renderPage()
 
     await screen.findByText('Environment Variables')
-    await user.click(screen.getByRole('button', { name: /save/i }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(projectsApi.updateProject).toHaveBeenCalledOnce())
     expect(projectsApi.updateProject).toHaveBeenCalledWith('proj1', expect.objectContaining({ name: 'Test Project' }))
@@ -120,7 +120,7 @@ describe('ProjectSettingsPage — no active project', () => {
     })
     renderPage()
     expect(screen.getByText('No active project selected.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 })
 

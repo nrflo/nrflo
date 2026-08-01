@@ -67,7 +67,7 @@ Per-project venv: `Ensure(ctx, projectID, projectRoot)` syncs with `requirements
 
 ## Project settings endpoints
 
-Per-project cleanup toggle (`workflow_cleanup_enabled`, default off) + per-project retention limit: `GET|PUT /api/v1/projects/{id}/settings/cleanup` and `GET|PUT /api/v1/projects/{id}/settings/artifact-storage` (see `internal/api/handlers_project_settings.go`).
+Per-project cleanup toggle (`workflow_cleanup_enabled`, default off) + per-project retention limit: `GET|PUT /api/v1/projects/{id}/settings/cleanup` and `GET|PUT /api/v1/projects/{id}/settings/artifact-storage` (see `internal/api/handlers_project_settings.go`). External MCP servers (`external_mcp_servers`, validated via `spawner.ParseExternalMCPServers`): `GET|PUT /api/v1/projects/{id}/settings/mcp-servers` (`handlers_project_mcp_servers.go`).
 
 ## DB tests never migrate per-test
 

@@ -581,15 +581,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	projectAdmin("PUT /api/v1/projects/{id}/env-vars/{name}", s.handlePutProjectEnvVar)
 	projectAdmin("DELETE /api/v1/projects/{id}/env-vars/{name}", s.handleDeleteProjectEnvVar)
 
-	// Project settings: artifact storage, workflow cleanup, and observer
-	protected("GET /api/v1/projects/{id}/settings/artifact-storage", s.handleGetProjectArtifactStorage)
-	projectAdmin("PUT /api/v1/projects/{id}/settings/artifact-storage", s.handlePutProjectArtifactStorage)
-	protected("GET /api/v1/projects/{id}/settings/cleanup", s.handleGetProjectCleanup)
-	projectAdmin("PUT /api/v1/projects/{id}/settings/cleanup", s.handlePutProjectCleanup)
-	protected("GET /api/v1/projects/{id}/settings/observer", s.handleGetProjectObserver)
-	projectAdmin("PUT /api/v1/projects/{id}/settings/observer", s.handlePutProjectObserver)
-	protected("GET /api/v1/projects/{id}/settings/capture-thinking", s.handleGetProjectCaptureThinking)
-	projectAdmin("PUT /api/v1/projects/{id}/settings/capture-thinking", s.handlePutProjectCaptureThinking)
+	s.registerProjectSettingsRoutes(protected, projectAdmin)
 
 	// Python scripts (project-scoped) — writes are admin-only
 	protected("GET /api/v1/python-scripts", s.handleListPythonScripts)

@@ -67,6 +67,11 @@ type Config struct {
 	// ClaudeSettingsJSON is the --settings JSON for Claude CLI agents (safety hooks).
 	// Empty string means no settings. Read once at workflow start from project config.
 	ClaudeSettingsJSON string
+	// ExternalMCPServers are project-configured external MCP servers merged into
+	// every CLI spawn's MCP surface (Claude --mcp-config + --allowedTools, codex
+	// config.toml). Read once at workflow start from the external_mcp_servers
+	// project config.
+	ExternalMCPServers map[string]ExternalMCPServer
 	// ModelConfigs maps registry slug to its enabled provider/mode configuration.
 	// Unknown slugs remain valid only as raw CLI passthrough values.
 	ModelConfigs map[string]ModelConfig

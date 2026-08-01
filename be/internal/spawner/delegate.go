@@ -208,6 +208,7 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		Pool:               s.config.Pool,
 		Clock:              s.config.Clock,
 		ClaudeSettingsJSON: s.config.ClaudeSettingsJSON,
+		ExternalMCPServers: s.config.ExternalMCPServers,
 		ModelConfigs:       s.config.ModelConfigs,
 		ErrorSvc:           s.config.ErrorSvc,
 		BuildAPIProvider:   s.config.BuildAPIProvider,

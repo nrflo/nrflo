@@ -10,7 +10,6 @@ import (
 	"be/internal/service"
 	"be/internal/spawner"
 	"be/internal/spawner/apirun/provider"
-	"be/internal/ws"
 )
 
 // runLoop executes workflow phases grouped by layer.
@@ -131,6 +130,8 @@ func (o *Orchestrator) runLoop(
 	runAPIMode := apiModeSettingVal == "true"
 	runAPIViaCLI, _ := apiModeSettingsSvc.GetAPIViaCLIEnabled()
 
+	externalMCP := readExternalMCPServers(ctx, pool, req.ProjectID)
+
 	// Shared spawner config for all phases; OnSessionRegister/Unregister set per-spawn in spawnPhases.
 	baseCfg := spawner.Config{
 		Workflows:                 workflows,
@@ -144,6 +145,7 @@ func (o *Orchestrator) runLoop(
 		GlobalStallStartTimeout:   globalStallStartTimeout,
 		GlobalStallRunningTimeout: globalStallRunningTimeout,
 		ClaudeSettingsJSON:        claudeSettingsJSON,
+		ExternalMCPServers:        externalMCP,
 		ModelConfigs:              modelConfigs,
 		ErrorSvc:                  o.errorSvc,
 		BuildAPIProvider: func(ctx context.Context, providerName, projectID string) (provider.Provider, error) {
@@ -290,27 +292,7 @@ func (o *Orchestrator) runLoop(
 
 	// Merge worktree branch on success
 	if wt != nil {
-		wtService := &service.WorktreeService{}
-		if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
-			// Attempt automatic conflict resolution
-			if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), baseCfg); resolveErr != nil {
-				// Resolution failed or no resolver configured — fall through to manual resolution
-				logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
-					"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)
-				o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
-					"instance_id":   wfiID,
-					"merge_error":   err.Error(),
-					"branch":        wt.branchName,
-					"worktree_path": wt.worktreePath,
-				}))
-			} else {
-				logger.Info(ctx, "merge conflict resolved automatically", "branch", wt.branchName)
-				o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
-			}
-		} else {
-			logger.Info(ctx, "worktree merged and cleaned up", "branch", wt.branchName)
-			o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
-		}
+		o.mergeWorktreeOnSuccess(ctx, wfiID, req, wt, pool, pushAfterMerge, baseCfg)
 		worktreeHandled = true
 	}
 

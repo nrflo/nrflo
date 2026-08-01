@@ -135,6 +135,7 @@ func (s *Spawner) spawnContextSaver(ctx context.Context, proc *processInfo, req 
 		Pool:               pool,
 		Clock:              s.config.Clock,
 		ClaudeSettingsJSON: s.config.ClaudeSettingsJSON,
+		ExternalMCPServers: s.config.ExternalMCPServers,
 		ModelConfigs:       s.config.ModelConfigs,
 		ErrorSvc:           s.config.ErrorSvc,
 		BuildAPIProvider:   s.config.BuildAPIProvider,

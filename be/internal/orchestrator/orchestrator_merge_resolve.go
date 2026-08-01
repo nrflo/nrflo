@@ -159,6 +159,32 @@ func (o *Orchestrator) deleteResolvedBranch(ctx context.Context, wt *worktreeInf
 	}))
 }
 
+// mergeWorktreeOnSuccess merges the run's worktree branch into the default
+// branch after all layers complete, attempting automatic conflict resolution
+// and falling back to preserving the branch for manual resolution.
+func (o *Orchestrator) mergeWorktreeOnSuccess(ctx context.Context, wfiID string, req RunRequest, wt *worktreeInfo, pool *db.Pool, pushAfterMerge bool, baseCfg spawner.Config) {
+	wtService := &service.WorktreeService{}
+	if err := wtService.MergeAndCleanup(wt.projectRoot, wt.defaultBranch, wt.branchName, wt.worktreePath); err != nil {
+		if resolveErr := o.attemptConflictResolution(ctx, wfiID, req, wt, pool, err.Error(), baseCfg); resolveErr != nil {
+			// Resolution failed or no resolver configured — fall through to manual resolution
+			logger.Error(ctx, "worktree merge failed — branch preserved for manual resolution",
+				"branch", wt.branchName, "resolve_err", resolveErr, "merge_err", err)
+			o.wsHub.Broadcast(ws.NewEvent(ws.EventOrchestrationCompleted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+				"instance_id":   wfiID,
+				"merge_error":   err.Error(),
+				"branch":        wt.branchName,
+				"worktree_path": wt.worktreePath,
+			}))
+		} else {
+			logger.Info(ctx, "merge conflict resolved automatically", "branch", wt.branchName)
+			o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
+		}
+	} else {
+		logger.Info(ctx, "worktree merged and cleaned up", "branch", wt.branchName)
+		o.pushIfEnabled(ctx, pushAfterMerge, wt, wfiID, req)
+	}
+}
+
 // pushIfEnabled pushes the default branch to origin after a successful merge,
 // if the push_after_merge project setting is enabled. Push failure is logged
 // and broadcast but does NOT fail the workflow.

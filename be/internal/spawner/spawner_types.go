@@ -210,6 +210,10 @@ type processInfo struct {
 	apiTools    []provider.ToolSpec
 	apiHandlers apirun.Registry
 	apiToolEnv  apirun.ToolEnv
+	// externalMCPServers are project-configured external MCP servers to merge
+	// into the spawn's MCP surface (codex config.toml path; Claude reads them
+	// from Config directly when building --mcp-config).
+	externalMCPServers map[string]ExternalMCPServer
 }
 
 // canFailRestart reports whether this proc has budget left for an automatic

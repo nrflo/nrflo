@@ -44,6 +44,27 @@ export async function setObserver(projectId: string, cfg: Partial<ObserverSettin
   return apiPut<ObserverSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/observer`, cfg)
 }
 
+export interface MCPServerSpec {
+  type?: string
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  url?: string
+  headers?: Record<string, string>
+}
+
+export interface MCPServersSettings {
+  servers: Record<string, MCPServerSpec> | null
+}
+
+export async function getMCPServers(projectId: string): Promise<MCPServersSettings> {
+  return apiGet<MCPServersSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/mcp-servers`)
+}
+
+export async function setMCPServers(projectId: string, servers: Record<string, MCPServerSpec> | null): Promise<MCPServersSettings> {
+  return apiPut<MCPServersSettings>(`/api/v1/projects/${encodeURIComponent(projectId)}/settings/mcp-servers`, { servers })
+}
+
 export interface CaptureThinkingSettings {
   enabled: boolean
   inherited: boolean

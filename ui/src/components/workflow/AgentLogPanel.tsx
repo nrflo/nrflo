@@ -115,22 +115,23 @@ export function AgentLogPanel({
         <CollapsedBar />
       ) : (
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0">
+          <div className="flex items-center gap-1 px-3 py-1 border-b border-border shrink-0 flex-wrap">
             {runningAgents.map((agent, i) => {
               const key = agentTabKeys[i]
               const phaseName = (agent.phase || agent.agent_type || '').replace(/_/g, ' ')
               const mid = agent.model_id
               const modelName = mid
-                ? mid.split('-').slice(-2).join('-') || mid
+                ? (mid.includes(':') ? mid.slice(mid.indexOf(':') + 1) : mid)
                 : ''
               const label = modelName ? `${phaseName} : ${modelName}` : phaseName
               return (
                 <button
                   key={key}
                   data-testid="agent-tab"
+                  title={mid}
                   onClick={() => setActiveTabKey(key)}
                   className={cn(
-                    'px-2.5 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5',
+                    'px-2.5 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1.5 whitespace-nowrap',
                     activeTabKey === key
                       ? 'bg-muted text-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',

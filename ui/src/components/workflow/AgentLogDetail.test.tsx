@@ -101,7 +101,7 @@ describe('AgentLogDetail', () => {
       })
 
       expect(screen.getByText('implementation')).toBeInTheDocument()
-      expect(screen.getByText('4-5')).toBeInTheDocument()
+      expect(screen.getByText('claude-sonnet-4-5')).toBeInTheDocument()
     })
 
     it('shows pass badge for completed agent', async () => {

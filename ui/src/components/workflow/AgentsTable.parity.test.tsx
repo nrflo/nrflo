@@ -114,7 +114,7 @@ describe('AgentsTable parity signals', () => {
           phaseOrder={['impl']}
         />
       )
-      expect(screen.getByText('—')).toBeInTheDocument()
+      expect(screen.getAllByText('—').length).toBeGreaterThan(0)
     })
   })
 

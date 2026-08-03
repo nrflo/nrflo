@@ -64,7 +64,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
   const result = isRunning || isInteractive ? undefined : (agent?.result || historyEntry?.result || session?.result)
   const modelId = agent?.model_id || historyEntry?.model_id
   const modelName = modelId
-    ? modelId.split('-').slice(-2).join('-') || modelId
+    ? (modelId.includes(':') ? modelId.slice(modelId.indexOf(':') + 1) : modelId)
     : historyEntry?.agent_type || 'agent'
   const duration = historyEntry?.duration_sec ? formatDuration(historyEntry.duration_sec) : null
 
@@ -122,7 +122,7 @@ export function AgentLogDetail({ selectedAgent, onBack, onResumeSession, resumeP
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium truncate">{phaseName.replace(/_/g, ' ')}</div>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span>{modelName}</span>
+              <span className="break-all" title={modelId}>{modelName}</span>
               {isInteractive && (
                 <>
                   <span>·</span>

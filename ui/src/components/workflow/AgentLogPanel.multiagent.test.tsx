@@ -352,24 +352,24 @@ describe('AgentLogPanel - multi-agent detail view', () => {
   })
 
   describe('tab label includes model name', () => {
-    it('shows "phase : model" format for hyphen-separated model_id', () => {
-      // model_id 'claude-sonnet-4-5' → slice(-2).join('-') = '4-5'
+    it('shows "phase : model" format with the full hyphenated model_id', () => {
+      // no ':' prefix → full model_id is used unshortened
       renderPanel({
         activeAgents: { 'a1': makeAgent({ phase: 'implementation', model_id: 'claude-sonnet-4-5' }) },
         sessions: [],
       })
       const tab = screen.getByTestId('agent-tab')
-      expect(tab).toHaveTextContent('implementation : 4-5')
+      expect(tab).toHaveTextContent('implementation : claude-sonnet-4-5')
     })
 
-    it('passes through colon-separated model_id unchanged', () => {
-      // 'claude:opus'.split('-') = ['claude:opus'] → slice(-2) = ['claude:opus'] → join = 'claude:opus'
+    it('strips only the cli: prefix from colon-separated model_id', () => {
+      // 'claude:opus' → strip 'claude:' prefix → 'opus'
       renderPanel({
         activeAgents: { 'a1': makeAgent({ phase: 'ticket-creator', model_id: 'claude:opus' }) },
         sessions: [],
       })
       const tab = screen.getByTestId('agent-tab')
-      expect(tab).toHaveTextContent('ticket-creator : claude:opus')
+      expect(tab).toHaveTextContent('ticket-creator : opus')
     })
 
     it('shows only phase name when model_id is absent', () => {
@@ -387,7 +387,7 @@ describe('AgentLogPanel - multi-agent detail view', () => {
         sessions: [],
       })
       const tab = screen.getByTestId('agent-tab')
-      expect(tab).toHaveTextContent('setup analyzer : claude:sonnet')
+      expect(tab).toHaveTextContent('setup analyzer : sonnet')
     })
   })
 

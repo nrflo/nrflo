@@ -201,6 +201,9 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.chain = oldProc.chain
 	newProc.chainPos = oldProc.chainPos
 	newProc.hardProviderFail = false
+	// Re-persist the same chain position's resolution columns onto the new
+	// session row, since createAgentSessionRow only ran for oldProc.
+	s.recordResolvedSpawn(newProc, newProc.chain, newProc.chainPos)
 
 	// Native-resume handoff: moves to newProc only when oldProc opted in
 	// (fail-restart branch in spawner_monitor.go); discarded otherwise.

@@ -1,5 +1,6 @@
 import type { InputArtifactRef } from '@/types/artifact'
 import type { PlanQuestion, PlanStatus } from '@/types/plan'
+import type { ActiveAgentV4, AgentHistoryEntry } from './workflow.agentRuns'
 
 export type PhaseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped' | 'error' | 'rate_limited'
 export type PhaseResult = 'pass' | 'fail' | 'skipped' | null
@@ -12,57 +13,6 @@ export interface PhaseState {
   error?: string
   rate_limit_until_ts?: string
   rate_limit_retry_count?: number
-}
-
-export interface RestartDetail {
-  reason: string
-  duration_sec: number
-  context_left?: number
-  message_count: number
-}
-
-// Parallel agents (v4 format)
-export interface ActiveAgentV4 {
-  agent_type: string
-  phase?: string
-  model_id?: string
-  pid?: number
-  session_id?: string
-  started_at?: string
-  ended_at?: string
-  result?: string
-  context_left?: number
-  restart_count?: number
-  restart_threshold?: number
-  restart_details?: RestartDetail[]
-  nudge_count?: number
-  tag?: string
-  effective_mode?: 'cli_interactive' | 'api' | 'script'
-  waiting_for_rate_limit?: boolean
-  rate_limit_until_ts?: string
-  rate_limit_retry_count?: number
-}
-
-export interface AgentHistoryEntry {
-  agent_type: string
-  session_id?: string
-  model_id?: string
-  phase: string
-  started_at?: string
-  ended_at?: string
-  result?: string
-  duration_sec?: number
-  context_left?: number
-  restart_count?: number
-  restart_threshold?: number
-  restart_details?: RestartDetail[]
-  nudge_count?: number
-  tag?: string
-  effective_mode?: 'cli_interactive' | 'api' | 'script'
-}
-
-export interface CompletedAgentRow extends AgentHistoryEntry {
-  workflow_label: string
 }
 
 // Findings structure: agent_type -> findings (field -> value)
@@ -375,6 +325,7 @@ export interface WorkflowDef {
 
 export type { WorkflowDefCreateRequest, WorkflowDefUpdateRequest } from './workflow.defs'
 export type { AgentDef, AgentDefCreateRequest, AgentDefUpdateRequest, StepDefinition, RequiredFinding, PathOverlap, PromptMode } from './workflow.agentDefs'
+export type { RestartDetail, ActiveAgentV4, AgentHistoryEntry, CompletedAgentRow } from './workflow.agentRuns'
 
 export interface ContinueWorkflowRequest {
   workflow?: string

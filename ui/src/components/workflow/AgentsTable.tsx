@@ -44,6 +44,10 @@ function runModeLabel(active?: ActiveAgentV4, history?: AgentHistoryEntry): stri
   return mode
 }
 
+function effortLabel(active?: ActiveAgentV4, history?: AgentHistoryEntry): string {
+  return active?.resolved_effort ?? history?.resolved_effort ?? '—'
+}
+
 export function AgentsTable({
   phases,
   activeAgents,
@@ -151,6 +155,7 @@ export function AgentsTable({
               <TableHead className="w-16">Level</TableHead>
               <TableHead className="w-28">Model</TableHead>
               <TableHead className="w-24">Run mode</TableHead>
+              <TableHead className="w-20">Effort</TableHead>
               <TableHead className="w-32">Status</TableHead>
               <TableHead className="w-20">Attempts</TableHead>
               <TableHead className="w-24">Context left</TableHead>
@@ -176,7 +181,7 @@ export function AgentsTable({
                 <Fragment key={row.phaseName}>
                   {showSeparator && (
                     <TableRow className="hover:bg-transparent border-0 pointer-events-none" aria-hidden="true">
-                      <TableCell colSpan={8} className="p-0 h-3 bg-muted-foreground/30 border-0" />
+                      <TableCell colSpan={9} className="p-0 h-3 bg-muted-foreground/30 border-0" />
                     </TableRow>
                   )}
                 <TableRow
@@ -198,6 +203,9 @@ export function AgentsTable({
                   <TableCell className="text-muted-foreground text-xs">{getModel(row)}</TableCell>
                   <TableCell className="text-muted-foreground text-xs">
                     {runModeLabel(row.active, row.history)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {effortLabel(row.active, row.history)}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 flex-wrap">

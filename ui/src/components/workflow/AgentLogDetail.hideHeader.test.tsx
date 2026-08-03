@@ -72,20 +72,20 @@ describe('AgentLogDetail - hideHeader prop', () => {
     renderDetail(defaultSelected)
     // Phase name rendered in header
     expect(screen.getByText('implementation')).toBeInTheDocument()
-    // model_id 'claude-sonnet-4-5' → last 2 segments = '4-5'
-    expect(screen.getByText('4-5')).toBeInTheDocument()
+    // model_id 'claude-sonnet-4-5' has no cli: prefix → shown unshortened
+    expect(screen.getByText('claude-sonnet-4-5')).toBeInTheDocument()
   })
 
   it('hides phase name and model when hideHeader=true', () => {
     renderDetail(defaultSelected, true)
     expect(screen.queryByText('implementation')).not.toBeInTheDocument()
-    expect(screen.queryByText('4-5')).not.toBeInTheDocument()
+    expect(screen.queryByText('claude-sonnet-4-5')).not.toBeInTheDocument()
   })
 
   it('renders header when hideHeader=false (explicit)', () => {
     renderDetail(defaultSelected, false)
     expect(screen.getByText('implementation')).toBeInTheDocument()
-    expect(screen.getByText('4-5')).toBeInTheDocument()
+    expect(screen.getByText('claude-sonnet-4-5')).toBeInTheDocument()
   })
 
   it('detail tab bar (Messages/Context/Findings) always renders regardless of hideHeader', () => {

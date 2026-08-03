@@ -20,7 +20,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 	agents := make(map[string]interface{})
 	rows, err := s.pool.Query(`
 		SELECT s.id, s.phase, s.node_id, s.agent_type, s.model_id, s.pid, s.result, s.started_at, s.context_left, s.restart_count,
-		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode, s.status, s.rate_limit_until_ts, s.rate_limit_retry_count
+		       ad.restart_threshold, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode, s.status, s.rate_limit_until_ts, s.rate_limit_retry_count, s.resolved_effort
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
@@ -37,7 +37,8 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		var phase, modelID, agentResult, startedAt, ancestorSessionID, tag, effectiveMode, rateLimitUntilTs sql.NullString
 		var pid, contextLeft, restartThreshold sql.NullInt64
 		var restartCount, nudgeCount, rateLimitRetryCount int
-		rows.Scan(&id, &phase, &nodeID, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode, &status, &rateLimitUntilTs, &rateLimitRetryCount)
+		var resolvedEffort string
+		rows.Scan(&id, &phase, &nodeID, &agentType, &modelID, &pid, &agentResult, &startedAt, &contextLeft, &restartCount, &restartThreshold, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode, &status, &rateLimitUntilTs, &rateLimitRetryCount, &resolvedEffort)
 
 		key := nodeID
 		agent := map[string]interface{}{
@@ -75,6 +76,9 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 		if effectiveMode.Valid && effectiveMode.String != "" {
 			agent["effective_mode"] = effectiveMode.String
 		}
+		if resolvedEffort != "" {
+			agent["resolved_effort"] = resolvedEffort
+		}
 		if restartCount > 0 {
 			chainRoot := id
 			if ancestorSessionID.Valid {
@@ -107,7 +111,7 @@ func (s *WorkflowService) buildActiveAgentsMap(wfiID string, detailsMap map[stri
 func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string][]RestartDetail) []interface{} {
 	history := []interface{}{}
 	rows, err := s.pool.Query(`
-		SELECT s.id, s.phase, s.node_id, s.agent_type, s.model_id, s.status, s.result, s.result_reason, s.pid, s.started_at, s.ended_at, s.context_left, s.restart_count, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode
+		SELECT s.id, s.phase, s.node_id, s.agent_type, s.model_id, s.status, s.result, s.result_reason, s.pid, s.started_at, s.ended_at, s.context_left, s.restart_count, s.ancestor_session_id, ad.tag, s.nudge_count, s.effective_mode, s.resolved_effort
 		FROM agent_sessions s
 		LEFT JOIN workflow_instances wi ON wi.id = s.workflow_instance_id
 		LEFT JOIN agent_definitions ad ON LOWER(ad.project_id) = LOWER(wi.project_id)
@@ -125,7 +129,8 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		var phase, modelID, status, agentResult, resultReason, startedAt, endedAt, ancestorSessionID, tag, effectiveMode sql.NullString
 		var pid, contextLeft sql.NullInt64
 		var restartCount, nudgeCount int
-		rows.Scan(&id, &phase, &nodeID, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode)
+		var resolvedEffort string
+		rows.Scan(&id, &phase, &nodeID, &agentType, &modelID, &status, &agentResult, &resultReason, &pid, &startedAt, &endedAt, &contextLeft, &restartCount, &ancestorSessionID, &tag, &nudgeCount, &effectiveMode, &resolvedEffort)
 
 		entry := map[string]interface{}{
 			"node_id":    nodeID,
@@ -172,6 +177,9 @@ func (s *WorkflowService) buildAgentHistory(wfiID string, detailsMap map[string]
 		}
 		if effectiveMode.Valid && effectiveMode.String != "" {
 			entry["effective_mode"] = effectiveMode.String
+		}
+		if resolvedEffort != "" {
+			entry["resolved_effort"] = resolvedEffort
 		}
 		entry["restart_count"] = restartCount
 		entry["nudge_count"] = nudgeCount

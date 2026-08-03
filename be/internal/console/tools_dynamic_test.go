@@ -46,6 +46,36 @@ func TestDynamicWorkflow_HappyPath_StartsTopLevelProjectRun(t *testing.T) {
 	}
 }
 
+// A caller-authored plan param threads through to StartConsoleWorkflow's
+// planManifest verbatim (seeded as revision 1 at the plan boundary, skipping
+// the planner); omitting it passes nil.
+func TestDynamicWorkflow_PlanParam_ThreadsManifest(t *testing.T) {
+	env := newConsoleTestEnv(t)
+	fake := &fakeOrchestrator{startInstanceID: "wfi-dyn-plan"}
+	env.deps.Orch = fake
+	reg, err := BuildRegistry(env.deps, nil)
+	if err != nil {
+		t.Fatalf("BuildRegistry: %v", err)
+	}
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
+
+	_, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":"run my plan","plan":{"goal":"g","nodes":[]}}`)
+	if err != nil || isErr {
+		t.Fatalf("err=%v isErr=%v", err, isErr)
+	}
+	if got := string(fake.startPlanManifest); got != `{"goal":"g","nodes":[]}` {
+		t.Errorf("startPlanManifest = %q, want the plan param verbatim", got)
+	}
+
+	fake.startPlanManifest = nil
+	if _, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":"no plan"}`); err != nil || isErr {
+		t.Fatalf("err=%v isErr=%v", err, isErr)
+	}
+	if fake.startPlanManifest != nil {
+		t.Errorf("startPlanManifest = %q, want nil when plan omitted", fake.startPlanManifest)
+	}
+}
+
 func TestDynamicWorkflow_MissingInstructions_Errors(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.deps.Orch = &fakeOrchestrator{}

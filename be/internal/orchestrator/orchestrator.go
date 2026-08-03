@@ -5,6 +5,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"sync"
 
@@ -49,6 +50,7 @@ type RunRequest struct {
 	SubworkflowDepth        int                      `json:"-"`                           // run_subworkflow nesting only; persisted (chain hops carry it unchanged)
 	Origin                  string                   `json:"-"`                           // launch surface (model.RunOriginConsole/RunOriginHuman); persisted
 	OriginSessionID         string                   `json:"-"`                           // launching console session id, when Origin is RunOriginConsole; persisted
+	SeedPlanManifest        json.RawMessage          `json:"-"`                           // caller-authored plan manifest: seeded as revision 1 at the plan boundary, no planner spawn (nrworkflow-4d0243)
 }
 
 // IsProjectScope returns true if this is a project-scoped run request

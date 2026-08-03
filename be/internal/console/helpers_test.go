@@ -117,6 +117,7 @@ type fakeOrchestrator struct {
 	startInstanceID       string
 	startErr              error
 	startConsoleSessionID string
+	startPlanManifest     json.RawMessage
 
 	stopProjectProjectID  string
 	stopProjectWorkflow   string
@@ -154,8 +155,9 @@ func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketI
 	return f.startInstanceID, nil
 }
 
-func (f *fakeOrchestrator) StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string) (string, error) {
+func (f *fakeOrchestrator) StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string, planManifest json.RawMessage) (string, error) {
 	f.startConsoleSessionID = consoleSessionID
+	f.startPlanManifest = planManifest
 	return f.StartWorkflow(ctx, projectID, ticketID, workflowName, instructions, scopeType)
 }
 

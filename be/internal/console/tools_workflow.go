@@ -57,7 +57,7 @@ func (h workflowRunHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 		}
 	}
 
-	instanceID, err := h.d.Orch.StartConsoleWorkflow(ctx, env.ProjectID, args.TicketID, args.Workflow, args.Instructions, scopeType, env.SessionID)
+	instanceID, err := h.d.Orch.StartConsoleWorkflow(ctx, env.ProjectID, args.TicketID, args.Workflow, args.Instructions, scopeType, env.SessionID, nil)
 	if err != nil {
 		return err.Error(), true, nil
 	}

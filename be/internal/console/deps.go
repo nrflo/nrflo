@@ -8,6 +8,7 @@ package console
 
 import (
 	"context"
+	"encoding/json"
 
 	"be/internal/clock"
 	"be/internal/db"
@@ -24,8 +25,10 @@ import (
 type Orchestrator interface {
 	StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error)
 	// StartConsoleWorkflow is StartWorkflow for console-initiated starts: the
-	// run's origin is attributed to the launching console session.
-	StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string) (string, error)
+	// run's origin is attributed to the launching console session. A non-nil
+	// planManifest seeds a plan-driven run's revision 1 (author=caller) at
+	// the plan boundary, skipping the planner.
+	StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string, planManifest json.RawMessage) (string, error)
 	StopByProject(projectID, workflowName, instanceID string) error
 	RetryFailed(ctx context.Context, projectID, ticketID, workflowName, sessionID string) error
 	RetryFailedProject(ctx context.Context, projectID, workflowName, sessionID, instanceID string) error

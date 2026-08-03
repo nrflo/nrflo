@@ -24,11 +24,12 @@ type dynamicWorkflowHandler struct{ d Deps }
 func (dynamicWorkflowHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "dynamic_workflow",
-		Description: "Start the bundled, plan-driven `dynamic` workflow as a top-level run for this project (no ticket): a planner drafts a multi-agent manifest from your instructions, then parks for you to approve. Returns {instance_id, status} immediately — status is normally \"planning\" while the planner works, so this call is never the end of the flow. Then: workflow_wait(instance_id) to block until it transitions (the plan statuses are not terminal, so watch state.status, not just terminal), get_subworkflow(instance_id) to read the draft, then revise_plan until it is right and approve_plan to run it. It parks at waiting_input when the planner raised questions and at waiting_approval when it did not; both are answered/approved through the same two tools. To skip the planner entirely, call revise_plan with revision 0 and your own plan: the run self-drafts only while no revision exists, so a manifest you supply first becomes revision 1 and no planner ever runs — and if the planner lands its draft first, your revision-0 call is rejected as stale with the current revision named; resubmit your manifest as a revision on top of it. Abandon a run with workflow_stop (or workflow_fail); nothing else cancels it, but a draft left unapproved for plan_draft_ttl_min (default 1440 min) is cancelled by a background sweep. The project is the one this session is bound to — you cannot target another — and workflow_list finds an instance_id you lost. The result is one value in one place — the run's workflow_final_result session finding, read literally by that key — surfaced either by workflow_wait on its terminal response or by get_subworkflow once status is completed; use whichever you are already calling. Keep the plan's last node bound to a result-carrying template, or read its actual key back via get_subworkflow's result_key.",
+		Description: "Start the bundled, plan-driven `dynamic` workflow as a top-level run for this project (no ticket): a planner drafts a multi-agent manifest from your instructions, then parks for you to approve. Returns {instance_id, status} immediately — status is normally \"planning\" while the planner works, so this call is never the end of the flow. Then: workflow_wait(instance_id) to block until it transitions (the plan statuses are not terminal, so watch state.status, not just terminal), get_subworkflow(instance_id) to read the draft, then revise_plan until it is right and approve_plan to run it. It parks at waiting_input when the planner raised questions and at waiting_approval when it did not; both are answered/approved through the same two tools. To author the plan yourself, pass it as the plan parameter: it is seeded as revision 1 (author=caller), no planner ever spawns, and the run parks at waiting_approval for your pinned approve_plan — this is the only race-free skip-planner path, so never emulate it with a revision-0 revise_plan against a run already planning. Abandon a run with workflow_stop (or workflow_fail); nothing else cancels it, but a draft left unapproved for plan_draft_ttl_min (default 1440 min) is cancelled by a background sweep. The project is the one this session is bound to — you cannot target another — and workflow_list finds an instance_id you lost. The result is one value in one place — the run's workflow_final_result session finding, read literally by that key — surfaced either by workflow_wait on its terminal response or by get_subworkflow once status is completed; use whichever you are already calling. Keep the plan's last node bound to a result-carrying template, or read its actual key back via get_subworkflow's result_key.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
-"instructions":{"type":"string","description":"Goal for the planner to turn into a multi-agent plan. You do not pick templates here — the planner picks them from a library you cannot see until get_subworkflow returns it, so state cost as intent in prose: cheap-tier workers should carry the bulk of the job and premium ones are for genuine final adjudication. Rebind specific nodes exactly once you can see templates and premium_cap, via revise_plan."}
+"instructions":{"type":"string","description":"Goal for the planner to turn into a multi-agent plan. You do not pick templates here — the planner picks them from a library you cannot see until get_subworkflow returns it, so state cost as intent in prose: cheap-tier workers should carry the bulk of the job and premium ones are for genuine final adjudication. Rebind specific nodes exactly once you can see templates and premium_cap, via revise_plan."},
+"plan":{"type":"object","description":"Optional caller-authored plan manifest (same shape revise_plan accepts). When present the planner is skipped entirely: this manifest is seeded as revision 1 and the run parks at waiting_approval for your approve_plan. Validated at the plan boundary — an invalid manifest fails the run with the validation error in failure_reason."}
 },
 "required":["instructions"],
 "additionalProperties":false
@@ -38,7 +39,8 @@ func (dynamicWorkflowHandler) Spec() provider.ToolSpec {
 
 func (h dynamicWorkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.RawMessage) (string, bool, error) {
 	var args struct {
-		Instructions string `json:"instructions"`
+		Instructions string          `json:"instructions"`
+		Plan         json.RawMessage `json:"plan,omitempty"`
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return invalidArgs(err)
@@ -50,7 +52,7 @@ func (h dynamicWorkflowHandler) Invoke(ctx context.Context, env apirun.ToolEnv, 
 		return missingService("orchestrator")
 	}
 
-	instanceID, err := h.d.Orch.StartConsoleWorkflow(ctx, env.ProjectID, "", service.DynamicWorkflow, args.Instructions, "project", env.SessionID)
+	instanceID, err := h.d.Orch.StartConsoleWorkflow(ctx, env.ProjectID, "", service.DynamicWorkflow, args.Instructions, "project", env.SessionID, args.Plan)
 	if err != nil {
 		return err.Error(), true, nil
 	}

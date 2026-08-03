@@ -82,6 +82,19 @@ func (s *PlanService) reviseWithPlanner(ctx context.Context, instanceID string, 
 	if err != nil {
 		return nil, err
 	}
+
+	// The stale check at Revise entry ran before the (minutes-long) planner
+	// session; a caller revision landed via revise_plan in the meantime means
+	// the caller authored the plan deliberately — drop the planner's draft and
+	// return the caller's head instead of bumping it (nrworkflow-4d0243).
+	expected := 0
+	if headExists {
+		expected = head.LatestRevision
+	}
+	if current, cerr := s.planRepo.GetHead(instanceID); cerr == nil && current.LatestRevision != expected {
+		return s.planRepo.GetRevision(instanceID, current.LatestRevision)
+	}
+
 	revNum, err := s.planRepo.Append(instanceID, string(raw), HashManifest(m), model.PlanAuthorPlanner, sessionID, m.Goal)
 	if err != nil {
 		return nil, err

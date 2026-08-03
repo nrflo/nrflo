@@ -120,6 +120,30 @@ func (o *Orchestrator) draftPlanAndProceed(
 	}
 
 	planSvc := service.NewPlanService(pool, o.clock, o)
+
+	// A caller-authored manifest skips the planner entirely: seeded as
+	// revision 1 (author=caller), the run parks at its derived plan status
+	// (typically waiting_approval) for the caller's pinned approve — no
+	// planner session, no revision race (nrworkflow-4d0243).
+	if len(req.SeedPlanManifest) > 0 {
+		rev, err := planSvc.Revise(ctx, wfiID, types.PlanReviseRequest{Revision: 0, Goal: goal, Manifest: req.SeedPlanManifest})
+		if err != nil {
+			o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: seed caller plan: %v", err))
+			return layerGroups, false, true, false
+		}
+		o.wsHub.Broadcast(ws.NewEvent(ws.EventPlanDrafted, req.ProjectID, req.TicketID, req.WorkflowName, map[string]interface{}{
+			"instance_id": wfiID,
+			"revision":    rev.Revision,
+			"author":      rev.Author,
+		}))
+		status, derr := service.DerivePlanInstanceStatus(pool, o.clock, wfiID)
+		if derr != nil {
+			o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: derive plan status: %v", derr))
+			return layerGroups, false, true, false
+		}
+		o.suspendForPlan(ctx, wfiID, req, pool, status)
+		return layerGroups, false, true, true
+	}
 	o.enterPlanBoundary(wfiID)
 	rev, err := planSvc.Revise(ctx, wfiID, types.PlanReviseRequest{Revision: 0, Goal: goal})
 	claimed := o.leavePlanBoundary(wfiID)

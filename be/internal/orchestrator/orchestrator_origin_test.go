@@ -57,7 +57,7 @@ func TestOrchestrator_StartConsoleWorkflow_PersistsConsoleOriginAndSessionID(t *
 		{ID: "agent-1", Layer: 0},
 	})
 
-	instanceID, err := env.orch.StartConsoleWorkflow(context.Background(), env.project, "", "wf-origin-console", "do it", "project", "sess-console-xyz")
+	instanceID, err := env.orch.StartConsoleWorkflow(context.Background(), env.project, "", "wf-origin-console", "do it", "project", "sess-console-xyz", nil)
 	if err != nil {
 		t.Fatalf("StartConsoleWorkflow: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestOrchestrator_StartConsoleWorkflow_TicketScope_PersistsConsoleOrigin(t *
 	env := newTestEnv(t)
 	env.createTicket(t, "tkt-origin-console", "Origin console ticket")
 
-	instanceID, err := env.orch.StartConsoleWorkflow(context.Background(), env.project, "tkt-origin-console", "test", "do it", "ticket", "sess-console-ticket")
+	instanceID, err := env.orch.StartConsoleWorkflow(context.Background(), env.project, "tkt-origin-console", "test", "do it", "ticket", "sess-console-ticket", nil)
 	if err != nil {
 		t.Fatalf("StartConsoleWorkflow: %v", err)
 	}

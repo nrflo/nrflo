@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 
 	"be/internal/model"
 )
@@ -23,16 +24,19 @@ func (o *Orchestrator) StartWorkflow(ctx context.Context, projectID, ticketID, w
 }
 
 // StartConsoleWorkflow starts a workflow launched from the native console TUI,
-// attributing the run's origin to the launching console session.
-func (o *Orchestrator) StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string) (string, error) {
+// attributing the run's origin to the launching console session. A non-nil
+// planManifest is seeded as the plan-driven run's revision 1 (author=caller)
+// at the plan boundary instead of spawning the planner (nrworkflow-4d0243).
+func (o *Orchestrator) StartConsoleWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType, consoleSessionID string, planManifest json.RawMessage) (string, error) {
 	result, err := o.Start(ctx, RunRequest{
-		ProjectID:       projectID,
-		TicketID:        ticketID,
-		WorkflowName:    workflowName,
-		Instructions:    instructions,
-		ScopeType:       scopeType,
-		Origin:          model.RunOriginConsole,
-		OriginSessionID: consoleSessionID,
+		ProjectID:        projectID,
+		TicketID:         ticketID,
+		WorkflowName:     workflowName,
+		Instructions:     instructions,
+		ScopeType:        scopeType,
+		Origin:           model.RunOriginConsole,
+		OriginSessionID:  consoleSessionID,
+		SeedPlanManifest: planManifest,
 	})
 	if err != nil {
 		return "", err

@@ -41,6 +41,10 @@ func newConsoleChatService(s *Server, cfg *config.Config, pool *db.Pool, clk clo
 		}
 		return spawner.GetConsoleEngine(name, deps)
 	})
+	// Chat lifecycle notifier (delegation/sub-workflow completions pushed as
+	// chat turns, console/chat_notify.go); RegisterListener is pre-Run only —
+	// NewServer runs before Start's hub.Run.
+	hub.RegisterListener(console.NewChatNotifier(svc, pool, clk))
 	return svc
 }
 

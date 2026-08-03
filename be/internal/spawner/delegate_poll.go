@@ -55,7 +55,7 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 		return delegateStatusJSON(delegationID, "running", nil, d), nil
 	}
 
-	results, allDone, anyFailed := s.collectDelegateResults(pool, d.WorkerSessionIDs, d.SpawnErrors)
+	results, allDone, anyFailed := s.collectDelegateResults(pool, d.WorkerSessionIDs, d.SpawnErrors, true)
 	if !allDone {
 		return delegateStatusJSON(delegationID, "running", results, d), nil
 	}
@@ -64,17 +64,22 @@ func (s *Spawner) GetDelegation(ctx context.Context, callerSessionID, delegation
 	if anyFailed {
 		status = "failed"
 	}
-	delegationRepo.MarkTerminal(delegationID, status) //nolint:errcheck
+	// Completion may already be stamped by runDelegateFanout; consumption is
+	// this read handing the results back, exactly once.
+	delegationRepo.MarkCompleted(delegationID, status) //nolint:errcheck
+	delegationRepo.MarkConsumed(delegationID)          //nolint:errcheck
 
 	return delegateStatusJSON(delegationID, status, results, d), nil
 }
 
-// collectDelegateResults reads each worker's terminal status and (if
-// present) its `_delegate_findings` session finding — read+deleted, mirroring
-// consult's _consult_answer readback. allDone is true once every session has
-// left the running/continued states. spawnErrors is index-aligned with
+// collectDelegateResults reads each worker's terminal status and (when
+// consumeFindings is set) its `_delegate_findings` session finding —
+// read+deleted, mirroring consult's _consult_answer readback. The
+// non-consuming form computes the fanout outcome without touching findings
+// (runDelegateFanout's completion stamp). allDone is true once every session
+// has left the running/continued states. spawnErrors is index-aligned with
 // sessionIDs (may be shorter/nil for pre-existing tracking records).
-func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs, spawnErrors []string) ([]map[string]interface{}, bool, bool) {
+func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs, spawnErrors []string, consumeFindings bool) ([]map[string]interface{}, bool, bool) {
 	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
 	findingRepo := repo.NewFindingRepo(pool, s.config.Clock)
 
@@ -123,10 +128,12 @@ func (s *Spawner) collectDelegateResults(pool *db.Pool, sessionIDs, spawnErrors 
 				entry["reason"] = sess.ResultReason.String
 			}
 		}
-		if findings, ferr := findingRepo.GetOwn("session", sid); ferr == nil {
-			if raw, ok := findings["_delegate_findings"]; ok {
-				entry["findings"] = raw
-				findingRepo.DeleteKeys("session", sid, []string{"_delegate_findings"}, repo.Actor{Source: "system", ID: "delegate"}) //nolint:errcheck
+		if consumeFindings {
+			if findings, ferr := findingRepo.GetOwn("session", sid); ferr == nil {
+				if raw, ok := findings["_delegate_findings"]; ok {
+					entry["findings"] = raw
+					findingRepo.DeleteKeys("session", sid, []string{"_delegate_findings"}, repo.Actor{Source: "system", ID: "delegate"}) //nolint:errcheck
+				}
 			}
 		}
 		results = append(results, entry)

@@ -31,7 +31,7 @@ func TestDelegation_MarkFanoutDone(t *testing.T) {
 	}
 }
 
-func TestDelegation_MarkTerminal_SetsStatusAndGuardsSecondCall(t *testing.T) {
+func TestDelegation_MarkCompleted_SetsStatusWithoutConsuming(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)
 	r := NewDelegationRepo(pool, clock.Real())
@@ -41,12 +41,12 @@ func TestDelegation_MarkTerminal_SetsStatusAndGuardsSecondCall(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	won, err := r.MarkTerminal(d.ID, "completed")
+	won, err := r.MarkCompleted(d.ID, "completed")
 	if err != nil {
-		t.Fatalf("MarkTerminal: %v", err)
+		t.Fatalf("MarkCompleted: %v", err)
 	}
 	if !won {
-		t.Fatal("MarkTerminal first call: won = false, want true")
+		t.Fatal("MarkCompleted first call: won = false, want true")
 	}
 
 	got, err := r.Get(d.ID)
@@ -59,25 +59,62 @@ func TestDelegation_MarkTerminal_SetsStatusAndGuardsSecondCall(t *testing.T) {
 	if got.CompletedAt == nil {
 		t.Error("CompletedAt = nil, want set")
 	}
+	if got.ConsumedAt != nil {
+		t.Error("ConsumedAt set by MarkCompleted, want nil (completion is independent of consumption)")
+	}
+
+	// Second call loses the completed_at IS NULL guard: it must report it did
+	// not win, and must not silently rewrite the row's status.
+	won2, err := r.MarkCompleted(d.ID, "failed")
+	if err != nil {
+		t.Fatalf("MarkCompleted (second call): %v", err)
+	}
+	if won2 {
+		t.Error("MarkCompleted second call: won = true, want false (already completed)")
+	}
+	got2, err := r.Get(d.ID)
+	if err != nil {
+		t.Fatalf("Get after second MarkCompleted: %v", err)
+	}
+	if got2.Status != "completed" {
+		t.Errorf("Status after guarded second call = %q, want unchanged completed", got2.Status)
+	}
+}
+
+func TestDelegation_MarkConsumed_ExactlyOnce(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewDelegationRepo(pool, clock.Real())
+
+	d := &model.Delegation{ID: "wfi-5.term02", CallerSessionID: "c", WorkflowInstanceID: "wfi-5", ProjectID: "proj-1", Tier: "executor", Fanout: 1, Depth: 1}
+	if err := r.Create(d); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := r.MarkCompleted(d.ID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
+	}
+
+	won, err := r.MarkConsumed(d.ID)
+	if err != nil {
+		t.Fatalf("MarkConsumed: %v", err)
+	}
+	if !won {
+		t.Fatal("MarkConsumed first call: won = false, want true")
+	}
+	got, err := r.Get(d.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
 	if got.ConsumedAt == nil {
 		t.Error("ConsumedAt = nil, want set")
 	}
 
-	// Second call loses the consumed_at IS NULL guard: it must report it did
-	// not win, and must not silently rewrite the row's status.
-	won2, err := r.MarkTerminal(d.ID, "failed")
+	won2, err := r.MarkConsumed(d.ID)
 	if err != nil {
-		t.Fatalf("MarkTerminal (second call): %v", err)
+		t.Fatalf("MarkConsumed (second call): %v", err)
 	}
 	if won2 {
-		t.Error("MarkTerminal second call: won = true, want false (already consumed)")
-	}
-	got2, err := r.Get(d.ID)
-	if err != nil {
-		t.Fatalf("Get after second MarkTerminal: %v", err)
-	}
-	if got2.Status != "completed" {
-		t.Errorf("Status after guarded second call = %q, want unchanged completed", got2.Status)
+		t.Error("MarkConsumed second call: won = true, want false (already consumed)")
 	}
 }
 

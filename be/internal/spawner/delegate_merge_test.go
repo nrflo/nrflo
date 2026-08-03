@@ -37,8 +37,8 @@ func TestMergeDelegation_HappyPath_MergesAndStampsSummary(t *testing.T) {
 	if err := delegationRepo.SetWorktree(delegationID, "/tmp/x", "nrdelegate/merge1", "base1"); err != nil {
 		t.Fatalf("SetWorktree: %v", err)
 	}
-	if _, err := delegationRepo.MarkTerminal(delegationID, "completed"); err != nil {
-		t.Fatalf("MarkTerminal: %v", err)
+	if _, err := delegationRepo.MarkCompleted(delegationID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
 	}
 	calledBranch := fakeMergeSeam(t, "mergesha", false, nil)
 
@@ -95,8 +95,8 @@ func TestMergeDelegation_NoBranch_Refused(t *testing.T) {
 
 	delegationID := env.wfiID + ".mergenb"
 	seedDelegationRow(t, env, delegationID, "extractor", []string{""}, nil, true)
-	if _, err := repo.NewDelegationRepo(env.pool, clock.Real()).MarkTerminal(delegationID, "completed"); err != nil {
-		t.Fatalf("MarkTerminal: %v", err)
+	if _, err := repo.NewDelegationRepo(env.pool, clock.Real()).MarkCompleted(delegationID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
 	}
 	calledBranch := fakeMergeSeam(t, "", false, nil)
 
@@ -121,8 +121,8 @@ func TestMergeDelegation_AlreadyMerged_Reported(t *testing.T) {
 	if err := delegationRepo.SetWorktree(delegationID, "/tmp/x", "nrdelegate/mergeam", "base1"); err != nil {
 		t.Fatalf("SetWorktree: %v", err)
 	}
-	if _, err := delegationRepo.MarkTerminal(delegationID, "completed"); err != nil {
-		t.Fatalf("MarkTerminal: %v", err)
+	if _, err := delegationRepo.MarkCompleted(delegationID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
 	}
 	fakeMergeSeam(t, "headsha", true, nil)
 

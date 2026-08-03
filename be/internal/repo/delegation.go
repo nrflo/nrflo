@@ -89,14 +89,35 @@ func (r *DelegationRepo) MarkFanoutDone(id string) error {
 	return err
 }
 
-// MarkTerminal sets status/completed_at/consumed_at, guarded on
-// consumed_at IS NULL so a delegation is consumed exactly once; returns
-// whether this call won the guard (false means it was already consumed).
-func (r *DelegationRepo) MarkTerminal(id, status string) (bool, error) {
+// MarkCompleted sets status/completed_at, guarded on completed_at IS NULL so
+// the first observer of the terminal outcome (worker-fanout end or a
+// GetDelegation poll) wins and later calls are no-ops. Completion is
+// independent of consumption: an unconsumed delegation still flips out of
+// 'running' the moment its workers finish.
+func (r *DelegationRepo) MarkCompleted(id, status string) (bool, error) {
 	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
 	result, err := r.db.Exec(
-		`UPDATE delegations SET status = ?, completed_at = ?, consumed_at = ? WHERE id = ? AND consumed_at IS NULL`,
-		status, now, now, id,
+		`UPDATE delegations SET status = ?, completed_at = ? WHERE id = ? AND completed_at IS NULL`,
+		status, now, id,
+	)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return affected == 1, nil
+}
+
+// MarkConsumed sets consumed_at, guarded on consumed_at IS NULL so a
+// delegation's result is handed to its caller exactly once; returns whether
+// this call won the guard (false means it was already consumed).
+func (r *DelegationRepo) MarkConsumed(id string) (bool, error) {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	result, err := r.db.Exec(
+		`UPDATE delegations SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL`,
+		now, id,
 	)
 	if err != nil {
 		return false, err

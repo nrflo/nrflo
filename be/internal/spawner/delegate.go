@@ -145,6 +145,7 @@ func (s *Spawner) runDelegateFanout(wfi *model.WorkflowInstance, callerSession *
 		})
 		return
 	}
+	s.markDelegationCompleted(run.delegationID)
 	s.broadcast(ws.EventDelegateCompleted, callerSession.ProjectID, callerSession.TicketID, wfi.WorkflowID, map[string]interface{}{
 		"caller_session_id": callerSession.ID,
 		"delegation_id":     run.delegationID,

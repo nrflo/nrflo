@@ -69,6 +69,28 @@ func (s *Spawner) markFanoutDone(pool *db.Pool, delegationID string) error {
 	return repo.NewDelegationRepo(pool, s.config.Clock).MarkFanoutDone(delegationID)
 }
 
+// markDelegationCompleted stamps status/completed_at at fanout end from the
+// workers' terminal outcomes — without consuming findings — so a delegation
+// whose caller never polls still leaves 'running' (nrworkflow-23cbe6).
+// Consumption stays with GetDelegation's result readback.
+func (s *Spawner) markDelegationCompleted(delegationID string) {
+	pool := s.pool()
+	delegationRepo := repo.NewDelegationRepo(pool, s.config.Clock)
+	d, err := delegationRepo.Get(delegationID)
+	if err != nil {
+		return
+	}
+	_, allDone, anyFailed := s.collectDelegateResults(pool, d.WorkerSessionIDs, d.SpawnErrors, false)
+	if !allDone {
+		return
+	}
+	status := "completed"
+	if anyFailed {
+		status = "failed"
+	}
+	delegationRepo.MarkCompleted(delegationID, status) //nolint:errcheck
+}
+
 // createDelegateHostInstance lazily seeds the hidden `_delegate_host` global
 // workflow definition (idempotent, INSERT OR IGNORE — see
 // service.EnsureGlobalDynamicWorkflow for the identical shape) and mints a

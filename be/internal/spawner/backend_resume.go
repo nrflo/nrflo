@@ -12,10 +12,12 @@ type resumeHandoff interface {
 
 // costBaselineCapture is an optional resumeHandoff sub-interface for
 // backends whose native session reports cumulative (not per-turn delta)
-// usage, so the dying session's final cost snapshot must ride along on the
-// handoff to seed the resumed session's baseline (SetSessionCostBaseline).
-// Asserted at the call site in transferResume; a handoff without it is
-// simply moved without a captured baseline.
+// usage, so the dying session's raw reported cumulative must ride along on
+// the handoff to seed the resumed session's reported high water
+// (SeedSessionCostReported) — captured via SessionCostReported, not
+// SessionCost, so a second consecutive resume of the same thread cannot
+// re-bill the first segment. Asserted at the call site in transferResume; a
+// handoff without it is simply moved without a captured baseline.
 type costBaselineCapture interface {
 	captureCostBaseline(snap CostSnapshot)
 }
@@ -53,7 +55,7 @@ func transferResume(oldProc, newProc *processInfo) {
 	}
 	if oldProc.resumeOnRelaunch && oldProc.resumeHandoff != nil {
 		if capturer, ok := oldProc.resumeHandoff.(costBaselineCapture); ok {
-			if snap, ok := SessionCost(oldProc.sessionID); ok {
+			if snap, ok := SessionCostReported(oldProc.sessionID); ok {
 				capturer.captureCostBaseline(snap)
 			}
 		}

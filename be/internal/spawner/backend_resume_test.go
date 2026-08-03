@@ -150,13 +150,18 @@ func TestTransferResume_NoHandoff_NoOp(t *testing.T) {
 
 // TestTransferResume_CapturesBaselineOnlyWhenTransferring verifies the
 // optional costBaselineCapture sub-interface is invoked (with the dying
-// session's live cost snapshot) only on the transfer path, never on discard.
+// session's raw reported cumulative — SessionCostReported, not the attributed
+// snapshot, so a second consecutive resume of the same thread cannot re-bill
+// the first segment) only on the transfer path, never on discard. setUsage
+// (not addUsage) is used to drive the store, since only setUsage's
+// cumulative-report shape advances the reported high water that
+// SessionCostReported reads.
 func TestTransferResume_CapturesBaselineOnlyWhenTransferring(t *testing.T) {
 	t.Cleanup(func() { globalCostStore.drop("old-transfer"); globalCostStore.drop("old-discard") })
 
 	t.Run("transfer captures baseline", func(t *testing.T) {
 		globalCostStore.register("old-transfer", "", nil, clock.Real(), nil)
-		globalCostStore.addUsage("old-transfer", 111, 22, 0, 0)
+		globalCostStore.setUsage("old-transfer", 111, 22, 0, 0)
 
 		h := &fakeResumeHandoff{}
 		oldProc := &processInfo{sessionID: "old-transfer", resumeHandoff: h, resumeOnRelaunch: true}
@@ -174,7 +179,7 @@ func TestTransferResume_CapturesBaselineOnlyWhenTransferring(t *testing.T) {
 
 	t.Run("discard never captures a baseline", func(t *testing.T) {
 		globalCostStore.register("old-discard", "", nil, clock.Real(), nil)
-		globalCostStore.addUsage("old-discard", 5, 5, 0, 0)
+		globalCostStore.setUsage("old-discard", 5, 5, 0, 0)
 
 		h := &fakeResumeHandoff{}
 		oldProc := &processInfo{sessionID: "old-discard", resumeHandoff: h, resumeOnRelaunch: false}

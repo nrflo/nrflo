@@ -124,6 +124,12 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 
 	sess.setEngine(newEngine)
 	sess.resetContext()
+	// The swapped-in engine's cumulative usage restarts at zero on its own
+	// provider thread; without this, codex's next tokenUsage report would
+	// read as a downward correction and setUsage would bill nothing until
+	// the new thread's totals climb back past the old high water. No-op for
+	// claude/api, which never populate the reported high water.
+	spawner.ResetSessionCostThread(sess.id)
 	spawner.NoteProactiveRestart(sess.id, s.deps.Clock)
 
 	tokensAfter, _ := sess.currentTokens()

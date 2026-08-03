@@ -20,6 +20,15 @@ func (m *model) applyStream(update streamUpdate) {
 		if event.SessionID != "" && event.SessionID != m.detail.SessionID {
 			continue
 		}
+		// The envelope id above is unset for a project-scoped push (e.g. an
+		// autonomous spawn's session.cost_updated); some payloads carry their
+		// own session_id instead (agent.context_updated has always; cost now
+		// does too — see spawner_util.go:broadcastSessionCost). Reject those
+		// the same way so a background agent never overwrites this chat's
+		// state.
+		if sid := eventString(event, "session_id"); sid != "" && sid != m.detail.SessionID {
+			continue
+		}
 		switch event.Type {
 		case "console_chat.delta":
 			id := eventString(event, "item_id")

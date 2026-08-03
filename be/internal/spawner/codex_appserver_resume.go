@@ -11,16 +11,16 @@ import (
 
 // codexThreadHandoff carries a live codex app-server thread across a
 // fail-restart relaunch: the per-session CODEX_HOME profile dir (holding the
-// thread's rollout JSONL under sessions/) and the thread id to resume, plus a
-// snapshot of the dying session's cumulative usage so the resumed session's
-// cost baseline can be subtracted (codex reports thread-cumulative totals, so
-// without a baseline the resumed thread's first tokenUsage event would
+// thread's rollout JSONL under sessions/) and the thread id to resume, plus
+// the dying session's raw reported cumulative usage so the resumed session's
+// reported high water can be seeded (codex reports thread-cumulative totals,
+// so without seeding, the resumed thread's first tokenUsage event would
 // re-bill the dead session's tokens onto the new agent_sessions row).
 type codexThreadHandoff struct {
 	threadID   string
 	profileDir string
 
-	baseline CostSnapshot // dying session's cumulative usage at hand-off time
+	baseline CostSnapshot // dying session's raw reported cumulative at hand-off time
 }
 
 // discard implements resumeHandoff — removes the temp profile dir. Called
@@ -94,7 +94,7 @@ func (b *codexAppServerBackend) startOrResumeThread(runCtx context.Context, proc
 		resp, rerr := client.call(runCtx, "thread/resume", threadResumeParams(h.threadID, cliModel, proc.workDir, sandbox, "never"))
 		if rerr == nil {
 			if id := unmarshalThreadID(resp); id != "" {
-				SetSessionCostBaseline(proc.sessionID, h.baseline.InputTokens, h.baseline.OutputTokens, h.baseline.CacheReadTokens, h.baseline.CacheWriteTokens)
+				SeedSessionCostReported(proc.sessionID, h.baseline.InputTokens, h.baseline.OutputTokens, h.baseline.CacheReadTokens, h.baseline.CacheWriteTokens)
 				firstTurn := b.s.expandInjectable("crash-resume", map[string]string{"RESTART_REASON": reasonFailRestart})
 				if fb := b.s.restartFeedbackForProc(proc); fb != "" {
 					firstTurn += "\n\n" + fb

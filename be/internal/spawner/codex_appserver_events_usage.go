@@ -20,7 +20,8 @@ type codexUsageBreakdown struct {
 // upstream response, not per turn. `total` is cumulative across the thread
 // (each turn re-sends the growing history), so it overcounts and must NOT
 // drive context_left, but IS the right basis for cumulative cost billing
-// (SetSessionCostUsage overwrites, it does not accumulate).
+// (SetSessionCostUsage accumulates each field's increase over its last
+// reported high water — see sessioncost.go).
 //
 // A checkpoint with `last.inputTokens==0` is NOT a usage sample: it is the
 // post-compaction footprint report that immediately follows a contextCompaction
@@ -72,8 +73,8 @@ func dispatchTokenUsage(sessionID string, params json.RawMessage, sink Sink, max
 	SetSessionCostUsage(sessionID, freshInputTokens(p.TokenUsage.Total), p.TokenUsage.Total.OutputTokens, p.TokenUsage.Total.CachedInputTokens, p.TokenUsage.Total.CacheWriteInputTokens)
 
 	if p.TokenUsage.Last.InputTokens <= 0 {
-		// Compaction checkpoint, not a usage sample — the cost overwrite above
-		// is a harmless no-op since total is unchanged on this event.
+		// Compaction checkpoint, not a usage sample — the cost accumulation
+		// above is a harmless no-op since total is unchanged on this event.
 		sink.BumpLastMessage(sessionID)
 		return
 	}

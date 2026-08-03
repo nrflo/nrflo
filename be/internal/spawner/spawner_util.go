@@ -61,12 +61,15 @@ func (s *Spawner) broadcastForSession(eventType, sessionID, projectID, ticketID,
 	s.config.WSHub.Broadcast(event)
 }
 
-// broadcastSessionCost emits a project-scoped EventSessionCostUpdated for
-// proc's session — the debounced broadcast callback autonomous spawns
-// register with the cost store (mirrors broadcastLedgerEpoch's project-scope
-// routing; console sessions register their own session-channel callback).
+// broadcastSessionCost emits a project-scoped, session-stamped
+// EventSessionCostUpdated for proc's session — the debounced broadcast
+// callback autonomous spawns register with the cost store (mirrors
+// broadcastLedgerEpoch's project-scope routing; console sessions register
+// their own session-channel callback). Routed through broadcastForSession so
+// Event.SessionID is stamped — a payload-blind session filter (e.g. the
+// console TUI) can't otherwise reject another agent's cost push.
 func (s *Spawner) broadcastSessionCost(proc *processInfo, snap CostSnapshot) {
-	s.broadcast(ws.EventSessionCostUpdated, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
+	s.broadcastForSession(ws.EventSessionCostUpdated, proc.sessionID, proc.projectID, proc.ticketID, proc.workflowName, map[string]interface{}{
 		"session_id":    proc.sessionID,
 		"cost_estimate": snap.CostUSD,
 		"pricing_known": snap.PricingKnown,

@@ -27,49 +27,6 @@ type CostSnapshot struct {
 	PricingKnown     bool
 }
 
-// costEntry is one session's live cost accounting: cumulative counters,
-// pricing resolved once at register, and the debounce/broadcast wiring for
-// this session's flush target.
-type costEntry struct {
-	mu        sync.Mutex
-	pool      *db.Pool
-	clock     clock.Clock
-	pricing   modelPricing
-	known     bool
-	snap      CostSnapshot
-	lastFlush time.Time
-	broadcast func(CostSnapshot) // nil-safe; project- or session-scoped push
-	// baseline* subtract out a resumed native session's pre-crash cumulative
-	// usage (set via SetSessionCostBaseline) so codex's thread-cumulative
-	// tokenUsage reports don't re-bill the dead session's tokens onto this
-	// one. Zero for every non-resumed session.
-	baselineIn, baselineOut, baselineCacheRead, baselineCacheWrite int
-	// seenUsage dedups per-turn usage keyed by the transcript entry's stable
-	// id (uuid/message.id) so an offset-reset re-read never re-bills the same
-	// turn twice. Dropped with the entry on FinalizeSessionCost.
-	seenUsage map[string]bool
-}
-
-// subtractBaselineClamped returns v-b, floored at 0.
-func subtractBaselineClamped(v, b int) int {
-	if v-b < 0 {
-		return 0
-	}
-	return v - b
-}
-
-func (e *costEntry) recomputeLocked() {
-	e.snap.PricingKnown = e.known
-	if !e.known {
-		e.snap.CostUSD = 0
-		return
-	}
-	e.snap.CostUSD = float64(e.snap.InputTokens)/1e6*e.pricing.in +
-		float64(e.snap.OutputTokens)/1e6*e.pricing.out +
-		float64(e.snap.CacheReadTokens)/1e6*e.pricing.cacheRead +
-		float64(e.snap.CacheWriteTokens)/1e6*e.pricing.cacheWrite
-}
-
 // costStore is a session-keyed table of cost entries, mirroring ledgerStore's
 // shape. Production code goes through the process-global globalCostStore;
 // tests construct their own newCostStore(clock.NewTest(...)) for isolation
@@ -121,11 +78,7 @@ func (s *costStore) addUsage(sessionID string, in, out, cacheRead, cacheWrite in
 		return
 	}
 	e.mu.Lock()
-	e.snap.InputTokens += in
-	e.snap.OutputTokens += out
-	e.snap.CacheReadTokens += cacheRead
-	e.snap.CacheWriteTokens += cacheWrite
-	e.recomputeLocked()
+	e.addUsageLocked(in, out, cacheRead, cacheWrite)
 	e.mu.Unlock()
 	e.maybeFlushAndBroadcast(sessionID)
 }
@@ -154,35 +107,56 @@ func (s *costStore) addUsageOnce(sessionID, key string, in, out, cacheRead, cach
 	s.addUsage(sessionID, in, out, cacheRead, cacheWrite)
 }
 
-// setUsage overwrites sessionID's cumulative counters (codex app-server
-// reports cumulative totals per event, not deltas), subtracting any
-// registered baseline (clamped at 0) so a resumed thread doesn't re-bill the
-// pre-crash usage already attributed to the dead session.
+// setUsage accumulates sessionID's cumulative counters (codex app-server
+// reports cumulative totals per event, not deltas) by adding each field's
+// increase over its last-reported high water — see costEntry.setUsageLocked.
 func (s *costStore) setUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 	e := s.get(sessionID)
 	if e == nil {
 		return
 	}
 	e.mu.Lock()
-	e.snap.InputTokens = subtractBaselineClamped(in, e.baselineIn)
-	e.snap.OutputTokens = subtractBaselineClamped(out, e.baselineOut)
-	e.snap.CacheReadTokens = subtractBaselineClamped(cacheRead, e.baselineCacheRead)
-	e.snap.CacheWriteTokens = subtractBaselineClamped(cacheWrite, e.baselineCacheWrite)
-	e.recomputeLocked()
+	e.setUsageLocked(in, out, cacheRead, cacheWrite)
 	e.mu.Unlock()
 	e.maybeFlushAndBroadcast(sessionID)
 }
 
-// setBaseline registers sessionID's pre-resume usage baseline. No-op when the
-// session has no registered entry.
-func (s *costStore) setBaseline(sessionID string, in, out, cacheRead, cacheWrite int) {
+// seedReported arms sessionID's reported high water at a resumed thread's
+// pre-crash cumulative usage. No-op when the session has no registered
+// entry.
+func (s *costStore) seedReported(sessionID string, in, out, cacheRead, cacheWrite int) {
 	e := s.get(sessionID)
 	if e == nil {
 		return
 	}
 	e.mu.Lock()
-	e.baselineIn, e.baselineOut, e.baselineCacheRead, e.baselineCacheWrite = in, out, cacheRead, cacheWrite
+	e.seedReportedLocked(in, out, cacheRead, cacheWrite)
 	e.mu.Unlock()
+}
+
+// resetReported clears sessionID's reported high water back to zero (an
+// in-place rotation onto a fresh provider thread), leaving the accumulated
+// snap untouched. No-op when the session has no registered entry.
+func (s *costStore) resetReported(sessionID string) {
+	e := s.get(sessionID)
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	e.resetReportedLocked()
+	e.mu.Unlock()
+}
+
+// reportedSnapshot returns sessionID's raw reported cumulative high water, or
+// ok=false when the session has no registered entry.
+func (s *costStore) reportedSnapshot(sessionID string) (CostSnapshot, bool) {
+	e := s.get(sessionID)
+	if e == nil {
+		return CostSnapshot{}, false
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.reported, true
 }
 
 // snapshot returns sessionID's current cost accounting, or ok=false when the
@@ -195,26 +169,6 @@ func (s *costStore) snapshot(sessionID string) (CostSnapshot, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.snap, true
-}
-
-// maybeFlushAndBroadcast debounce-gates a DB flush + broadcast to at most
-// once per costFlushDebounce for this session; calls between windows
-// coalesce into the next.
-func (e *costEntry) maybeFlushAndBroadcast(sessionID string) {
-	e.mu.Lock()
-	now := e.clock.Now()
-	if now.Sub(e.lastFlush) < costFlushDebounce {
-		e.mu.Unlock()
-		return
-	}
-	e.lastFlush = now
-	snap := e.snap
-	e.mu.Unlock()
-
-	flushCostSnapshot(e.pool, e.clock, sessionID, snap)
-	if e.broadcast != nil {
-		e.broadcast(snap)
-	}
 }
 
 // finalFlush forces an immediate DB flush bypassing the debounce window, so a
@@ -266,24 +220,41 @@ func AddSessionCostUsageOnce(sessionID, key string, in, out, cacheRead, cacheWri
 	globalCostStore.addUsageOnce(sessionID, key, in, out, cacheRead, cacheWrite)
 }
 
-// SetSessionCostUsage overwrites sessionID's cumulative usage (codex
-// app-server cumulative totals).
+// SetSessionCostUsage accumulates sessionID's cumulative usage (codex
+// app-server cumulative totals) — see costStore.setUsage.
 func SetSessionCostUsage(sessionID string, in, out, cacheRead, cacheWrite int) {
 	globalCostStore.setUsage(sessionID, in, out, cacheRead, cacheWrite)
 }
 
-// SetSessionCostBaseline registers sessionID's pre-resume cumulative usage
-// baseline, subtracted from every subsequent SetSessionCostUsage call (clamped
-// at 0) — call once, right after RegisterSessionCost, for a resumed native
-// session whose provider reports thread-cumulative totals.
-func SetSessionCostBaseline(sessionID string, in, out, cacheRead, cacheWrite int) {
-	globalCostStore.setBaseline(sessionID, in, out, cacheRead, cacheWrite)
+// SeedSessionCostReported arms sessionID's reported high water at a resumed
+// session's pre-crash cumulative usage — call once, right after
+// RegisterSessionCost, for a resumed native session whose provider reports
+// thread-cumulative totals, so the first post-resume SetSessionCostUsage call
+// bills only the segment past the hand-off point.
+func SeedSessionCostReported(sessionID string, in, out, cacheRead, cacheWrite int) {
+	globalCostStore.seedReported(sessionID, in, out, cacheRead, cacheWrite)
+}
+
+// ResetSessionCostThread clears sessionID's reported high water back to zero
+// — call right after an in-place console rotation swaps in a fresh provider
+// thread, whose cumulative counters restart at zero too. The session's
+// accumulated cost snapshot is left untouched.
+func ResetSessionCostThread(sessionID string) {
+	globalCostStore.resetReported(sessionID)
 }
 
 // SessionCost returns sessionID's live cost snapshot, or ok=false when the
 // session has no registered cost entry (never registered, or dropped).
 func SessionCost(sessionID string) (CostSnapshot, bool) {
 	return globalCostStore.snapshot(sessionID)
+}
+
+// SessionCostReported returns sessionID's raw provider-reported cumulative
+// high water (codex thread-cumulative totals), or ok=false when the session
+// has no registered cost entry. Used to hand off a resume's baseline without
+// re-billing the attributed snapshot (see backend_resume.go).
+func SessionCostReported(sessionID string) (CostSnapshot, bool) {
+	return globalCostStore.reportedSnapshot(sessionID)
 }
 
 // FinalizeSessionCost force-flushes sessionID's last snapshot then drops its

@@ -44,6 +44,50 @@ func TestApplyStream_SessionCostUpdated(t *testing.T) {
 	}
 }
 
+// TestApplyStream_SessionCostUpdated_EmptyEnvelopeForeignPayload verifies a
+// session.cost_updated event with an EMPTY envelope SessionID (a project-
+// scoped push, e.g. an autonomous spawn) but a payload session_id belonging
+// to another session is rejected, leaving m.detail.CostEstimate untouched;
+// the same event carrying the chat's own session id in the payload still
+// applies. Mirrors the identical pre-existing leak on agent.context_updated.
+func TestApplyStream_SessionCostUpdated_EmptyEnvelopeForeignPayload(t *testing.T) {
+	m := &model{detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{}}
+	m.applyStream(streamUpdate{Events: []Event{
+		event("session.cost_updated", "", map[string]any{"cost_estimate": 9.9, "pricing_known": true, "session_id": "other"}),
+	}})
+	if m.detail.CostEstimate != nil {
+		t.Fatalf("CostEstimate = %v after foreign payload session_id, want untouched (nil)", m.detail.CostEstimate)
+	}
+
+	m.applyStream(streamUpdate{Events: []Event{
+		event("session.cost_updated", "", map[string]any{"cost_estimate": 2.5, "pricing_known": true, "session_id": "s1"}),
+	}})
+	if m.detail.CostEstimate == nil || *m.detail.CostEstimate != 2.5 {
+		t.Fatalf("CostEstimate = %v after own-session payload session_id, want 2.5", m.detail.CostEstimate)
+	}
+}
+
+// TestApplyStream_ContextUpdated_EmptyEnvelopeForeignPayload mirrors the cost
+// case for agent.context_updated: an empty envelope SessionID with a foreign
+// payload session_id must be rejected, and the chat's own id must still
+// apply.
+func TestApplyStream_ContextUpdated_EmptyEnvelopeForeignPayload(t *testing.T) {
+	m := &model{detail: ChatDetail{SessionID: "s1"}, deltas: map[string]string{}}
+	m.applyStream(streamUpdate{Events: []Event{
+		event("agent.context_updated", "", map[string]any{"context_left": 42, "session_id": "other"}),
+	}})
+	if m.detail.ContextLeft != nil {
+		t.Fatalf("ContextLeft = %v after foreign payload session_id, want untouched (nil)", m.detail.ContextLeft)
+	}
+
+	m.applyStream(streamUpdate{Events: []Event{
+		event("agent.context_updated", "", map[string]any{"context_left": 60, "session_id": "s1"}),
+	}})
+	if m.detail.ContextLeft == nil || *m.detail.ContextLeft != 60 {
+		t.Fatalf("ContextLeft = %v after own-session payload session_id, want 60", m.detail.ContextLeft)
+	}
+}
+
 // TestWorkingIndicator: a running turn renders the animated "working…"
 // indicator in the footer (the live region carries no spinner line), and the
 // tick chain starts exactly on the idle→running transition.

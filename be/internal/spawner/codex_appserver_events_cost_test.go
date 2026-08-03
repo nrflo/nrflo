@@ -49,13 +49,15 @@ func TestDispatchTokenUsage_SplitsFreshVsCachedInput(t *testing.T) {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}
 
-	// A second, larger cumulative event must overwrite (not add to) the
-	// running counters — codex reports totals, not deltas.
+	// A second, larger cumulative event must attribute only each field's
+	// increase over its prior high water onto the running counters — codex
+	// reports totals, not deltas, and the store accumulates the delta rather
+	// than overwriting with the raw cumulative total.
 	params2 := json.RawMessage(`{"tokenUsage":{"total":{"inputTokens":200000,"cachedInputTokens":50000,"outputTokens":15000},"modelContextWindow":258400}}`)
 	dispatchTokenUsage("sess-codex-dispatch", params2, sink, 200000, nil)
 	snap2, _ := SessionCost("sess-codex-dispatch")
 	if snap2.InputTokens != 150_000 || snap2.CacheReadTokens != 50_000 || snap2.OutputTokens != 15_000 {
-		t.Errorf("second dispatch snapshot = %+v, want in:150000 cacheRd:50000 out:15000 (overwritten, not summed)", snap2)
+		t.Errorf("second dispatch snapshot = %+v, want in:150000 cacheRd:50000 out:15000 (high-water delta accumulated, not overwritten)", snap2)
 	}
 }
 

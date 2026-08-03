@@ -8,7 +8,10 @@ const isDev = import.meta.env.DEV
 // replay/snapshot — be/internal/ws/hub_session.go): a session-scoped event
 // must never reach the seq tracker or snapshot buffer. This is the only
 // invalidation a session event drives today; live chat state is handled by
-// useConsoleChatStream, not the query cache.
+// useConsoleChatStream, not the query cache. An envelope-stamped
+// session.cost_updated also lands here (useWebSocket.ts diverts every
+// envelope-stamped event into this handler) and is intentionally dropped —
+// only useConsoleChatStream consumes it, and no project-scope view reads it.
 export function handleSessionScopedEvent(event: WSEventV2, qc: QueryClient): void {
   if (event.type === 'messages.updated' && event.session_id) {
     qc.invalidateQueries({ queryKey: ['session-messages', event.session_id] })

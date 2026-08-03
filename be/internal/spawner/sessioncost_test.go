@@ -84,11 +84,16 @@ func TestCostStore_AddUsage_ComputesCostAndDebouncesFlush(t *testing.T) {
 	}
 }
 
-// TestCostStore_SetUsage_OverwritesCumulativeCounters drives the codex
-// app-server shape (SetSessionCostUsage): each call reports cumulative totals,
-// not a delta, so the running snapshot must reflect only the LAST call, never
-// the sum across calls.
-func TestCostStore_SetUsage_OverwritesCumulativeCounters(t *testing.T) {
+// TestCostStore_SetUsage_AccumulatesHighWaterDeltas drives the codex
+// app-server shape (SetSessionCostUsage): each call reports cumulative
+// totals, not a delta, so the running snapshot accumulates each report's
+// increase over the prior high water — for a monotonically increasing
+// sequence starting from an unregistered (zero) high water, that sums to the
+// same total as the last report, but the store gets there by adding deltas,
+// not by overwriting with the raw cumulative value (see
+// TestCostStore_Interleaved_AddUsage_SetUsage_Monotonic for the case where
+// that distinction is observable).
+func TestCostStore_SetUsage_AccumulatesHighWaterDeltas(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
 	insertCostTestSession(t, pool, "sess-cost-set", "gpt-5.6-sol")
@@ -108,7 +113,7 @@ func TestCostStore_SetUsage_OverwritesCumulativeCounters(t *testing.T) {
 		t.Fatal("snapshot ok = false after setUsage")
 	}
 	if snap.InputTokens != 400_000 || snap.OutputTokens != 90_000 {
-		t.Errorf("snapshot tokens = in:%d out:%d, want in:400000 out:90000 (last cumulative call, not summed)",
+		t.Errorf("snapshot tokens = in:%d out:%d, want in:400000 out:90000 (sum of high-water deltas across the increasing sequence)",
 			snap.InputTokens, snap.OutputTokens)
 	}
 	// gpt-5.6-sol: price_in=5, price_out=30 per MTok.
@@ -149,13 +154,14 @@ func TestCostStore_UnknownModel_PricingUnknownCostStaysZero(t *testing.T) {
 	}
 }
 
-// TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps verifies setBaseline
-// registers a resumed session's pre-crash cumulative usage, subtracted from
-// every subsequent setUsage report (clamped at 0 rather than going negative
-// when a report momentarily undercuts the baseline) — and that a session with
-// no registered baseline is byte-identical to today (setUsage passes through
-// unchanged, the SetSessionCostUsage/no-baseline case already covered above).
-func TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps(t *testing.T) {
+// TestCostStore_SetUsage_WithSeedReported_AttributesOnlyDelta verifies
+// seedReported arms a resumed session's pre-crash cumulative usage as the
+// reported high water, so a subsequent setUsage report attributes only the
+// increase past that point — and that a stale/low cumulative report (at or
+// below the high water) is ignored (contributes a 0 delta) rather than
+// clamping the whole snapshot back to 0: the store is monotone by
+// construction, so the snapshot must hold, never drop.
+func TestCostStore_SetUsage_WithSeedReported_AttributesOnlyDelta(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
 	insertCostTestSession(t, pool, "sess-cost-baseline", "gpt-5.6-sol")
@@ -164,9 +170,9 @@ func TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps(t *testing.T) {
 	store := newCostStore(clk)
 	store.register("sess-cost-baseline", "gpt-5.6-sol", pool, clk, nil)
 
-	store.setBaseline("sess-cost-baseline", 100_000, 20_000, 0, 0)
+	store.seedReported("sess-cost-baseline", 100_000, 20_000, 0, 0)
 
-	// Report exceeds the baseline: subtracted, not summed.
+	// Report exceeds the seeded high water: only the increase is attributed.
 	store.setUsage("sess-cost-baseline", 150_000, 25_000, 0, 0)
 	snap, ok := store.snapshot("sess-cost-baseline")
 	if !ok {
@@ -177,26 +183,29 @@ func TestCostStore_SetUsage_WithBaseline_SubtractsAndClamps(t *testing.T) {
 			snap.InputTokens, snap.OutputTokens)
 	}
 
-	// Report undercuts the baseline (e.g. a stale/out-of-order tick): clamped
-	// at 0, never negative.
+	// Report undercuts the high water (e.g. a stale/out-of-order tick): the
+	// delta floors at 0 and the already-accumulated snapshot holds — it must
+	// NOT drop back toward 0.
 	store.setUsage("sess-cost-baseline", 80_000, 10_000, 0, 0)
 	snap, ok = store.snapshot("sess-cost-baseline")
 	if !ok {
 		t.Fatal("snapshot ok = false")
 	}
-	if snap.InputTokens != 0 || snap.OutputTokens != 0 {
-		t.Errorf("snapshot tokens = in:%d out:%d, want in:0 out:0 (clamped, report below baseline)",
+	if snap.InputTokens != 50_000 || snap.OutputTokens != 5_000 {
+		t.Errorf("snapshot tokens = in:%d out:%d, want unchanged in:50000 out:5000 (stale report ignored, not clamped to 0)",
 			snap.InputTokens, snap.OutputTokens)
 	}
 }
 
-// TestCostStore_SetBaseline_NoRegisteredSession_IsNoOp verifies setBaseline on
-// a session with no registered cost entry never panics.
-func TestCostStore_SetBaseline_NoRegisteredSession_IsNoOp(t *testing.T) {
+// TestCostStore_ResetReported_NoRegisteredSession_IsNoOp verifies
+// seedReported/resetReported on a session with no registered cost entry never
+// panic.
+func TestCostStore_ResetReported_NoRegisteredSession_IsNoOp(t *testing.T) {
 	t.Parallel()
 	clk := clock.NewTest(time.Now())
 	store := newCostStore(clk)
-	store.setBaseline("sess-never-registered", 100, 50, 0, 0) // must not panic
+	store.seedReported("sess-never-registered", 100, 50, 0, 0) // must not panic
+	store.resetReported("sess-never-registered")               // must not panic
 	if _, ok := store.snapshot("sess-never-registered"); ok {
 		t.Error("snapshot ok = true for a never-registered session, want false")
 	}

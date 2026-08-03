@@ -205,8 +205,10 @@ export interface ConsoleChatSiblingOpenedPayload {
   reason: 'model_switch' | 'hands_sibling'
 }
 
-// session.cost_updated session-channel push (be/internal/spawner sessioncost
-// broadcast) — debounced running-cost estimate for the session.
+// session.cost_updated push (be/internal/spawner sessioncost broadcast) —
+// debounced, non-decreasing running-cost estimate for the session. Sent on
+// the session channel, and also project-scoped with the envelope stamped
+// with this session's id.
 export interface ConsoleChatCostPayload {
   cost_estimate: number
   // false when the session's model has no seeded pricing — cost_estimate is

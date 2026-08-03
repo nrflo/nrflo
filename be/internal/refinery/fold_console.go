@@ -75,7 +75,7 @@ func (m *Manager) foldConsole(ctx context.Context, cs *consoleSession, sessionID
 		foldSeq = prevDigest.FoldCount
 	}
 	target := foldTarget{sessionID: sessionID, foldSeq: foldSeq}
-	content, usage, ok := m.runFoldCore(ctx, target, projectID, buildFoldUserText("", prevContent, conversation, events))
+	content, usage, _, ok := m.runFoldCore(ctx, target, projectID, buildFoldUserText("", prevContent, conversation, events))
 	if !ok {
 		return
 	}

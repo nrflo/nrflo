@@ -205,7 +205,7 @@ func TestClassifyProviderError(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			status, msg, class := classifyProviderError(tc.ctx, tc.err)
+			status, msg, class := ClassifyProviderError(tc.ctx, tc.err)
 			if status != tc.wantStatus {
 				t.Errorf("status = %q, want %q", status, tc.wantStatus)
 			}
@@ -224,7 +224,7 @@ func TestClassifyProviderError(t *testing.T) {
 // RetryClassRateLimit — the spawner's retry dance would loop forever
 // retrying an unfunded key instead of surfacing a terminal failure.
 func TestClassifyProviderError_402NeverRateLimit(t *testing.T) {
-	_, _, class := classifyProviderError(context.Background(), makeOpenAIErr(402))
+	_, _, class := ClassifyProviderError(context.Background(), makeOpenAIErr(402))
 	if class == RetryClassRateLimit {
 		t.Fatal("402 classified as RetryClassRateLimit, want RetryClassError (terminal)")
 	}

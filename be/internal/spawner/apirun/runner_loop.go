@@ -76,7 +76,7 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 		resp, err := r.cfg.Provider.Run(ctx, req, sink)
 		sink.close()
 		if err != nil {
-			status, msg, class := classifyProviderError(ctx, err)
+			status, msg, class := ClassifyProviderError(ctx, err)
 			r.cfg.Sink.TrackMessage(msg, "system")
 			if class == RetryClassRateLimit {
 				proc.SetFinalStatus("RATE_LIMITED")

@@ -60,7 +60,7 @@ export function SystemAgentRunRow({ run, nested }: SystemAgentRunRowProps) {
           {run.tier ? <Badge variant="outline">Tier {run.tier}</Badge> : '—'}
         </TableCell>
         <TableCell className="text-xs whitespace-nowrap">
-          {run.resolved_provider || '—'} · {run.model_id || '—'} · {run.resolved_effort || '—'}
+          {run.resolved_provider || '—'} · {run.model_id || '—'} · {run.resolved_effort || run.resolved_execution_mode || '—'}
         </TableCell>
         <TableCell className="text-xs">
           {label ? <Badge variant={failed ? 'destructive' : 'secondary'}>{label}</Badge> : '—'}

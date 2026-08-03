@@ -118,6 +118,45 @@ describe('SystemAgentRunsSection', () => {
     expect(screen.getByText('no api key')).toBeInTheDocument()
   })
 
+  it('renders each attempt of a refinery fold chain as its own row, keyed by chain_position, with the landing row carrying the fallback badge', async () => {
+    vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValue({
+      items: [
+        makeFoldRun({
+          chain_position: 0,
+          status: 'failed',
+          error: 'no api key',
+          resolved_execution_mode: 'api',
+          model_id: 'haiku-4-5',
+        }),
+        makeFoldRun({
+          chain_position: 1,
+          status: 'ok',
+          error: undefined,
+          resolved_execution_mode: 'cli_interactive',
+          model_id: 'haiku-4-5',
+          fallback_from: [{ provider: 'anthropic', model_id: 'haiku-4-5', execution_mode: 'api', reasoning_effort: '', tier: 1 }],
+        }),
+      ],
+      limit: 50,
+    })
+
+    renderSection()
+
+    // Both attempt rows render even though they share session_id/created_at.
+    expect(await screen.findByText('no api key')).toBeInTheDocument()
+    const statusBadges = screen.getAllByText(/^(failed|ok)$/)
+    expect(statusBadges).toHaveLength(2)
+
+    // The landing (chain_position 1) row shows the mode-hop fallback badge.
+    expect(screen.getByText('api → cli_interactive')).toBeInTheDocument()
+
+    // The api attempt's Provider · Model · Effort cell shows its execution
+    // mode in place of the (absent) effort, distinguishing it from its
+    // cli_interactive successor instead of both trailing in a bare em dash.
+    expect(screen.getByText(/· api$/)).toBeInTheDocument()
+    expect(screen.getByText(/· cli_interactive$/)).toBeInTheDocument()
+  })
+
   it('renders a step_rotation row with its label, zero token counts, a secondary badge, and no expand chevron', async () => {
     vi.mocked(systemAgentRunsApi.listSystemAgentRuns).mockResolvedValue({
       items: [makeStepRotationRun()],

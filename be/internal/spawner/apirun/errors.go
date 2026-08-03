@@ -19,9 +19,11 @@ const (
 	RetryClassError     RetryClass = 2 // non-retriable provider or auth error
 )
 
-// classifyProviderError categorises a provider error and returns the agent
-// final status, a human-readable system message, and a RetryClass.
-func classifyProviderError(ctx context.Context, err error) (status, message string, class RetryClass) {
+// ClassifyProviderError categorises a provider error and returns the agent
+// final status, a human-readable system message, and a RetryClass. Exported
+// so refinery's fold chain walk (be/internal/refinery/fold_chain.go) reuses
+// this single classifier instead of duplicating it (Rule 6).
+func ClassifyProviderError(ctx context.Context, err error) (status, message string, class RetryClass) {
 	if ctx.Err() != nil {
 		return "CANCELLED", fmt.Sprintf("cancelled: %s", ctx.Err().Error()), RetryClassNone
 	}

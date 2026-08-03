@@ -80,6 +80,12 @@ type Manager struct {
 	// nil-safe: unset in tests that never call SetBroadcaster, so a fold
 	// simply doesn't broadcast there.
 	broadcaster func(*ws.Event)
+
+	// cliFolder runs a cli_interactive chain-entry fold attempt as a one-off
+	// headless child (satisfied structurally by *spawner.Spawner). nil-safe:
+	// unset in tests and until server.go wires it, so a cli_interactive
+	// chain entry simply counts as unavailable and the walk advances past it.
+	cliFolder CLIFolder
 }
 
 // NewManager constructs a Manager over pool/clk. Shared by server wiring;
@@ -115,6 +121,15 @@ func (m *Manager) SetCostAttributor(fn func(sessionID string, in, out, cacheRead
 // broadcast.
 func (m *Manager) SetBroadcaster(fn func(*ws.Event)) {
 	m.broadcaster = fn
+}
+
+// SetCLIFolder injects the cli_interactive fold-attempt seam (=
+// *spawner.Spawner, satisfying CLIFolder structurally). Kept as a setter
+// rather than a NewManager param so existing fold_test.go/manager_test.go
+// construction call sites stay unchanged. nil-safe: a cli_interactive chain
+// entry with no seam wired simply advances to the next entry.
+func (m *Manager) SetCLIFolder(f CLIFolder) {
+	m.cliFolder = f
 }
 
 // Start launches a sidecar for a console-chat session. Idempotent — a second

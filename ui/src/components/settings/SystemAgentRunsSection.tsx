@@ -65,7 +65,7 @@ export function SystemAgentRunsSection() {
                 <SystemAgentRunDelegationGroup key={`group:${entry.delegation_id}`} group={entry} />
               ) : (
                 <SystemAgentRunRow
-                  key={`${entry.run.kind}:${entry.run.session_id}:${entry.run.created_at}`}
+                  key={`${entry.run.kind}:${entry.run.session_id}:${entry.run.created_at}:${entry.run.chain_position ?? 0}:${entry.run.fold_count ?? 0}`}
                   run={entry.run}
                 />
               )

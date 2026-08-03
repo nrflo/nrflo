@@ -220,7 +220,7 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 		foldSeq = prevDigest.FoldCount
 	}
 	target := foldTarget{sessionID: sessionID, workflowInstanceID: as.workflowInstanceID, nodeID: as.nodeID, foldSeq: foldSeq}
-	content, usage, ok := m.runFoldCore(ctx, target, projectID, userText)
+	content, usage, execMode, ok := m.runFoldCore(ctx, target, projectID, userText)
 	if !ok {
 		return
 	}
@@ -238,7 +238,10 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 	as.nextFoldSeq = delta[len(delta)-1].Seq + 1
 	as.mu.Unlock()
 
-	if m.costAttributor != nil {
+	// A cli_interactive landing already owns its own agent_sessions cost row
+	// (the one-off `_refinery-cli` child) — attributing here too would
+	// double-charge the folded session.
+	if m.costAttributor != nil && execMode != "cli_interactive" {
 		m.costAttributor(sessionID, usage.InputTokens, usage.OutputTokens, usage.CacheReadTokens, usage.CacheCreationTokens)
 	}
 

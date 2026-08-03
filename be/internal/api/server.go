@@ -128,13 +128,13 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 
 	consoleHub := spawner.NewConsoleHub()
 
-	// Refinery sidecar manager (console-chat working-set digest folding);
-	// RegisterListener is pre-Run only.
+	// Refinery sidecar manager (console-chat working-set digest folding); RegisterListener is pre-Run only.
 	refineryMgr := refinery.NewManager(pool, clk)
 	hub.RegisterListener(refineryMgr)
 	refineryMgr.SetCostAttributor(spawner.AddSessionCostUsage)
 	refineryMgr.SetBroadcaster(hub.Broadcast)
 	orch.RefineryMgr = refineryMgr
+	wireRefineryFoldSpawner(refineryMgr, pool, clk, hub, dataPath, ptyMgr)
 
 	// Proactive-restart task-boundary coordinator (findings.updated stamps a
 	// session's ledger turn as a task boundary); RegisterListener is pre-Run only.

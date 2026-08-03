@@ -94,9 +94,12 @@ func TestRecordFoldRun_SuccessWritesOkRow(t *testing.T) {
 }
 
 // TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts reproduces a
-// "no anthropic API key" build failure: asserts a status='failed' row whose
-// error contains the message and whose provider matches the model row's
-// provider, and that refinery.fold_failed reaches a stub broadcaster.
+// "no anthropic API key" build failure at chain position 0: with no
+// CLIFolder wired, the two cli_interactive fallback entries (positions 1-2)
+// are also advance-eligible (unavailable-backend) and get walked, so the
+// chain exhausts with one failed row per entry. Asserts position 0's row
+// (the api attempt) carries the original error and provider, and that
+// refinery.fold_failed reaches a stub broadcaster.
 func TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -117,18 +120,20 @@ func TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts(t *testing.T) {
 	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event"})
 
 	rows := queryRefineryRuns(t, pool)
-	if len(rows) != 1 {
-		t.Fatalf("len(rows) = %d, want 1", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("len(rows) = %d, want 3 (chain exhausted: api pos0 + 2 cli fallback entries, no CLIFolder wired)", len(rows))
+	}
+	for i, row := range rows {
+		if row.status != "failed" {
+			t.Errorf("rows[%d].status = %q, want failed", i, row.status)
+		}
 	}
 	r := rows[0]
-	if r.status != "failed" {
-		t.Errorf("status = %q, want failed", r.status)
-	}
 	if !strings.Contains(r.errMsg, "no anthropic API key") {
-		t.Errorf("error = %q, want it to contain %q", r.errMsg, "no anthropic API key")
+		t.Errorf("rows[0].error = %q, want it to contain %q", r.errMsg, "no anthropic API key")
 	}
 	if r.provider == "" {
-		t.Error("provider = \"\", want the model row's provider populated even on build failure")
+		t.Error("rows[0].provider = \"\", want the model row's provider populated even on build failure")
 	}
 
 	// Guard: no digest row was written on failure (existing invariant).

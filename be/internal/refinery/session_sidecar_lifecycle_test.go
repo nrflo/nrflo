@@ -1,6 +1,7 @@
 package refinery
 
 import (
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"be/internal/clock"
 	"be/internal/service"
 	"be/internal/spawner/apirun/provider/mock"
+	"be/internal/types"
 	"be/internal/ws"
 )
 
@@ -127,6 +129,48 @@ func TestFoldAutonomous_CostAttributedOncePerFold(t *testing.T) {
 	}
 	if got.in != 11 || got.out != 22 || got.cacheRead != 3 || got.cacheCreation != 4 {
 		t.Errorf("attributed usage = %+v, want {in:11 out:22 cacheRead:3 cacheCreation:4}", got)
+	}
+}
+
+// TestFoldAutonomous_CLILandingSkipsCostAttribution verifies a fold that
+// lands on a cli_interactive chain entry (the api entry fails at
+// buildProvider, the fake CLIFolder lands) does NOT call costAttributor —
+// the one-off `_refinery-cli` child owns its own agent_sessions cost row, so
+// attributing here too would double-charge.
+func TestFoldAutonomous_CLILandingSkipsCostAttribution(t *testing.T) {
+	pool := newTestPool(t)
+	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	sessionID, projectID := "sess-cli-cost", "proj-cli-cost"
+	wfiID, nodeID := "wfi-cli-cost", "node-cli-cost"
+	seedAutonomousSession(t, pool, sessionID, projectID)
+	seedMessages(t, pool, clk, sessionID, "hello")
+
+	mgr := NewManager(pool, clk)
+	stubBuildProviderErr(t, errors.New("no anthropic API key"))
+	mgr.SetCLIFolder(&fakeCLIFolder{result: types.RefineryFoldResult{Content: "cli landed digest", InputTokens: 7, OutputTokens: 9}})
+
+	var mu sync.Mutex
+	called := false
+	mgr.SetCostAttributor(func(sid string, in, out, cacheRead, cacheWrite int) {
+		mu.Lock()
+		defer mu.Unlock()
+		called = true
+	})
+
+	mgr.StartSession(sessionID, projectID, wfiID, nodeID)
+	t.Cleanup(func() { mgr.StopSession(sessionID) })
+	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID, SessionID: sessionID})
+
+	waitForCondition(t, 2*time.Second, func() bool {
+		s := getSlot(t, mgr, wfiID, nodeID)
+		return s != nil && s.Content == "cli landed digest"
+	})
+	settle(100 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+	if called {
+		t.Error("costAttributor was called on a cli_interactive landing, want skipped")
 	}
 }
 

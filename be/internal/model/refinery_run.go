@@ -19,4 +19,12 @@ type RefineryRun struct {
 	Error              string    `json:"error"`
 	FoldCount          int       `json:"fold_count"`
 	FoldedAt           time.Time `json:"folded_at"`
+
+	// ChainPosition/ExecutionMode/FallbackFrom record which chain entry this
+	// attempt landed on: 0 = primary, execution_mode is that entry's mode
+	// (api/cli_interactive), fallback_from is the JSON-marshaled prefix of
+	// entries attempted and failed before this one (empty at position 0).
+	ChainPosition int    `json:"chain_position"`
+	FallbackFrom  string `json:"fallback_from,omitempty"`
+	ExecutionMode string `json:"execution_mode"`
 }

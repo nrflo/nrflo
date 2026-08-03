@@ -104,6 +104,78 @@ func TestRefineryRun_ListRecent_LimitAndSince(t *testing.T) {
 	}
 }
 
+// TestRefineryRun_ChainFieldsRoundTripThroughInsertAndListRecent verifies
+// ChainPosition/FallbackFrom/ExecutionMode survive Insert->ListRecent, and
+// that a row inserted without them (zero values) defaults sanely.
+func TestRefineryRun_ChainFieldsRoundTripThroughInsertAndListRecent(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
+	r := NewRefineryRunRepo(pool, clk)
+
+	fallback := `[{"provider":"anthropic","execution_mode":"api","model_id":"haiku-4-5"}]`
+	run := &model.RefineryRun{
+		SessionID:     "sess-chain-fields",
+		ProjectID:     "proj",
+		Provider:      "openai",
+		Model:         "gpt-5.6-luna",
+		Status:        "ok",
+		ChainPosition: 2,
+		FallbackFrom:  fallback,
+		ExecutionMode: "cli_interactive",
+		FoldedAt:      clk.Now(),
+	}
+	if err := r.Insert(run); err != nil {
+		t.Fatalf("Insert: %v", err)
+	}
+
+	defaultRun := &model.RefineryRun{
+		SessionID: "sess-chain-fields-default",
+		ProjectID: "proj",
+		Provider:  "anthropic",
+		Model:     "haiku-4-5",
+		Status:    "ok",
+		FoldedAt:  clk.Now().Add(time.Minute),
+	}
+	if err := r.Insert(defaultRun); err != nil {
+		t.Fatalf("Insert default: %v", err)
+	}
+
+	got, err := r.ListRecent(50, time.Time{})
+	if err != nil {
+		t.Fatalf("ListRecent: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2", len(got))
+	}
+	// Newest first: defaultRun (folded a minute later) precedes run.
+	if got[0].SessionID != "sess-chain-fields-default" || got[1].SessionID != "sess-chain-fields" {
+		t.Fatalf("got order = [%s, %s], want [sess-chain-fields-default, sess-chain-fields]", got[0].SessionID, got[1].SessionID)
+	}
+
+	chained := got[1]
+	if chained.ChainPosition != 2 {
+		t.Errorf("ChainPosition = %d, want 2", chained.ChainPosition)
+	}
+	if chained.FallbackFrom != fallback {
+		t.Errorf("FallbackFrom = %q, want %q", chained.FallbackFrom, fallback)
+	}
+	if chained.ExecutionMode != "cli_interactive" {
+		t.Errorf("ExecutionMode = %q, want cli_interactive", chained.ExecutionMode)
+	}
+
+	defaulted := got[0]
+	if defaulted.ChainPosition != 0 {
+		t.Errorf("default ChainPosition = %d, want 0", defaulted.ChainPosition)
+	}
+	if defaulted.FallbackFrom != "" {
+		t.Errorf("default FallbackFrom = %q, want empty", defaulted.FallbackFrom)
+	}
+	if defaulted.ExecutionMode != "" {
+		t.Errorf("default ExecutionMode = %q, want empty", defaulted.ExecutionMode)
+	}
+}
+
 func TestRefineryRun_Insert_StampsFoldedAtWhenZero(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)

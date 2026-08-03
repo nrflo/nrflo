@@ -26,11 +26,11 @@ func (r *RefineryRunRepo) Insert(run *model.RefineryRun) error {
 		run.FoldedAt = r.clock.Now().UTC()
 	}
 	_, err := r.db.Exec(
-		`INSERT INTO refinery_runs (session_id, workflow_instance_id, node_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, fold_count, folded_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO refinery_runs (session_id, workflow_instance_id, node_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, fold_count, folded_at, chain_position, fallback_from, execution_mode)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		run.SessionID, run.WorkflowInstanceID, run.NodeID, run.ProjectID, run.Provider, run.Model,
 		run.PromptTokens, run.OutputTokens, run.Status, run.Error, run.FoldCount,
-		run.FoldedAt.Format(time.RFC3339Nano),
+		run.FoldedAt.Format(time.RFC3339Nano), run.ChainPosition, run.FallbackFrom, run.ExecutionMode,
 	)
 	return err
 }
@@ -38,7 +38,7 @@ func (r *RefineryRunRepo) Insert(run *model.RefineryRun) error {
 // ListRecent returns up to limit refinery_runs rows, newest first, folded_at
 // >= since when since is non-zero.
 func (r *RefineryRunRepo) ListRecent(limit int, since time.Time) ([]*model.RefineryRun, error) {
-	query := `SELECT id, session_id, workflow_instance_id, node_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, fold_count, folded_at
+	query := `SELECT id, session_id, workflow_instance_id, node_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, fold_count, folded_at, chain_position, fallback_from, execution_mode
 		 FROM refinery_runs`
 	args := []interface{}{}
 	if !since.IsZero() {
@@ -60,7 +60,7 @@ func (r *RefineryRunRepo) ListRecent(limit int, since time.Time) ([]*model.Refin
 		var foldedAt string
 		if err := rows.Scan(&run.ID, &run.SessionID, &run.WorkflowInstanceID, &run.NodeID, &run.ProjectID,
 			&run.Provider, &run.Model, &run.PromptTokens, &run.OutputTokens, &run.Status, &run.Error,
-			&run.FoldCount, &foldedAt); err != nil {
+			&run.FoldCount, &foldedAt, &run.ChainPosition, &run.FallbackFrom, &run.ExecutionMode); err != nil {
 			return nil, err
 		}
 		run.FoldedAt, _ = time.Parse(time.RFC3339Nano, foldedAt)

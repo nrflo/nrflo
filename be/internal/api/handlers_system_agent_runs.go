@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -60,20 +61,23 @@ func (s *Server) handleListSystemAgentRuns(w http.ResponseWriter, r *http.Reques
 	items = append(items, rotations...)
 	for _, f := range folds {
 		items = append(items, &model.SystemAgentRun{
-			Kind:               "refinery_fold",
-			SessionID:          f.SessionID,
-			WorkflowInstanceID: f.WorkflowInstanceID,
-			NodeID:             f.NodeID,
-			ProjectID:          f.ProjectID,
-			AgentType:          "_refinery",
-			ResolvedProvider:   f.Provider,
-			ModelID:            f.Model,
-			PromptTokens:       f.PromptTokens,
-			OutputTokens:       f.OutputTokens,
-			Status:             f.Status,
-			Error:              f.Error,
-			FoldCount:          f.FoldCount,
-			CreatedAt:          f.FoldedAt,
+			Kind:                  "refinery_fold",
+			SessionID:             f.SessionID,
+			WorkflowInstanceID:    f.WorkflowInstanceID,
+			NodeID:                f.NodeID,
+			ProjectID:             f.ProjectID,
+			AgentType:             "_refinery",
+			ResolvedProvider:      f.Provider,
+			ResolvedExecutionMode: f.ExecutionMode,
+			ModelID:               f.Model,
+			PromptTokens:          f.PromptTokens,
+			OutputTokens:          f.OutputTokens,
+			Status:                f.Status,
+			Error:                 f.Error,
+			FoldCount:             f.FoldCount,
+			ChainPosition:         f.ChainPosition,
+			FallbackFrom:          json.RawMessage(f.FallbackFrom),
+			CreatedAt:             f.FoldedAt,
 		})
 	}
 

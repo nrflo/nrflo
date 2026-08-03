@@ -29,10 +29,12 @@ func (t foldTarget) logKey() string {
 }
 
 // recordFoldRun best-effort persists a refinery_runs row for target's fold
-// attempt and, on failure, broadcasts refinery.fold_failed through the
-// nil-safe broadcaster seam. Never propagates an insert error — mirrors the
-// package's best-effort fold invariant.
-func (m *Manager) recordFoldRun(ctx context.Context, target foldTarget, projectID, provName, modelName string, usage provider.Usage, status, errMsg string) {
+// attempt at chain position chainPos (execMode is that entry's mode,
+// fallbackFrom the JSON-marshaled prefix of entries tried and failed before
+// it, empty at position 0) and, on failure, broadcasts refinery.fold_failed
+// through the nil-safe broadcaster seam. Never propagates an insert error —
+// mirrors the package's best-effort fold invariant.
+func (m *Manager) recordFoldRun(ctx context.Context, target foldTarget, projectID, provName, modelName string, usage provider.Usage, status, errMsg string, chainPos int, execMode, fallbackFrom string) {
 	run := &model.RefineryRun{
 		SessionID:          target.sessionID,
 		WorkflowInstanceID: target.workflowInstanceID,
@@ -45,6 +47,9 @@ func (m *Manager) recordFoldRun(ctx context.Context, target foldTarget, projectI
 		Status:             status,
 		Error:              errMsg,
 		FoldCount:          target.foldSeq,
+		ChainPosition:      chainPos,
+		FallbackFrom:       fallbackFrom,
+		ExecutionMode:      execMode,
 	}
 	if err := m.runRepo.Insert(run); err != nil {
 		logger.Warn(ctx, "refinery: record fold run failed", "key", target.logKey(), "error", err)
@@ -58,6 +63,8 @@ func (m *Manager) recordFoldRun(ctx context.Context, target foldTarget, projectI
 			"provider":             provName,
 			"model":                modelName,
 			"error":                errMsg,
+			"chain_position":       chainPos,
+			"execution_mode":       execMode,
 		}))
 	}
 }

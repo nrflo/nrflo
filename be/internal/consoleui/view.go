@@ -200,12 +200,50 @@ func clampChrome(sections []string, maxHeight int) string {
 	return chrome
 }
 
-// renderMessage renders a transcript row for printing. Every branch expands
-// tabs and hard-wraps to width: printed lines must never exceed the terminal
-// width or contain tabs, or bubbletea's insertAbove row math desyncs
-// (ansi.StringWidth counts "\t" as 0 while the terminal advances to the next
-// tab stop) and ghost rows of the live frame leak into native scrollback.
+// timePrefixWidth is the printed width of "HH:MM:SS " — the muted local-time
+// prefix on every transcript row.
+const timePrefixWidth = 9
+
+// timePrefix formats a message's persisted created_at as a local "HH:MM:SS "
+// prefix; "" (no prefix) when the timestamp is absent or unparseable.
+func timePrefix(createdAt string) string {
+	t, err := time.Parse(time.RFC3339Nano, createdAt)
+	if err != nil {
+		return ""
+	}
+	return t.Local().Format("15:04:05") + " "
+}
+
+// renderMessage renders a transcript row for printing: the body (rendered at
+// width minus the timestamp column) prefixed on its first line with the muted
+// local created_at time, continuation lines indented to align. Rows without a
+// parseable timestamp — and terminals too narrow for the column — render the
+// body alone at full width. Every line stays tab-free and within width:
+// bubbletea's insertAbove row math desyncs otherwise (ansi.StringWidth counts
+// "\t" as 0 while the terminal advances to the next tab stop) and ghost rows
+// of the live frame leak into native scrollback.
 func renderMessage(message Message, width int) string {
+	prefix := timePrefix(message.CreatedAt)
+	if prefix == "" || width-timePrefixWidth < 20 {
+		return renderMessageBody(message, width)
+	}
+	body := renderMessageBody(message, width-timePrefixWidth)
+	if body == "" {
+		return ""
+	}
+	pad := strings.Repeat(" ", timePrefixWidth)
+	lines := strings.Split(body, "\n")
+	for i := range lines {
+		if i == 0 {
+			lines[i] = mutedStyle.Render(prefix) + lines[i]
+		} else if lines[i] != "" {
+			lines[i] = pad + lines[i]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func renderMessageBody(message Message, width int) string {
 	switch message.Category {
 	case "user_input":
 		return userStyle.Render(fitWidth(message.Content, width))

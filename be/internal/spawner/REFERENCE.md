@@ -218,6 +218,19 @@ Entry point: `spawn_observer.go:23`. Called by `ObserverService.Launch` (service
 
 `WorkingSetInjector` (`console_context_injector.go`) implements `socket.ContextInjector`: it reads the latest per-session refinery digest (`repo.RefineryDigestRepo`, see [refinery/CLAUDE.md](../refinery/CLAUDE.md)) as the `${DIGEST}` content source and renders it through the `working-set` injectable wrapper into a console session's UserPromptSubmit `additionalContext`, capped at 8KB with truncation logged. No digest (or empty content) → `""`, a backward-silent no-op.
 
+The readonly `delegation-guidance` injectable is appended to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, cli_interactive, and the console chat-spec seam (`buildChatEngineSpec` via `spawner.AppendDelegationGuidanceForTools`, `template_injectable.go`) — whenever the effective tool set includes `delegate`; absent that tool, the prompt is unchanged.
+
+## Workspace Context
+
+`workspaceContextBlock` (`template_workspace.go`) resolves and appends a readonly workspace-context injectable to the rendered prompt **body** in `loadTemplate` — after project-findings expansion, before `appendStepwiseBlock`, joined with `"\n\n"` — so a stepwise agent's current-step instruction stays the final text. It is deliberately not part of the `system-prompt-suffix`: api-via-cli builds its system prompt from `defaultAPISystemPrompt`/def template + delegation guidance only (`spawner_prepare_apicli.go:92-98`) and never sees the suffix, so the body is the only seam all four execution paths (cli PTY prompt file, codex argv, api user message, api-via-cli prompt file) share.
+
+Classification compares `filepath.Clean(Config.ProjectRoot)` against `filepath.Clean(projects.root_path)` — the single seam every backend derives its cwd from, including a delegate worker's per-delegation worktree (`delegate.go:206`):
+- equal → `workspace-live-tree` (agent works directly in the live checkout; nrflo created no branch for this run)
+- different → `workspace-worktree` (agent works in an nrflo-owned isolated worktree; nrflo owns and merges that branch)
+- `ProjectRoot` unset (`""` or `"."`), or the project lookup fails/has no `root_path` → returns `""`, no block appended
+
+Both seeded rows share one reporting rule: never create or switch branches; if a report names a branch or commit, read it from git (`git branch --show-current`, `git rev-parse --short HEAD`) rather than deriving it from the ticket id, and omit the branch entirely when it was not read from git — HEAD can move mid-run (delegation merges, take-control), so a resolved branch name is never embedded directly. Seeded by migration `000228_workspace_branch_context`; rendered via `expandInjectable`, which already warns-and-returns `""` for a missing row.
+
 ## External MCP Servers
 
 `external_mcp_servers` project config: JSON map of server name → spec (`ExternalMCPServer`: stdio via `command`/`args`/`env`, or `type: http|sse` via `url`/`headers`); names must match `[A-Za-z0-9_-]+` and `nrflo` is reserved (`ParseExternalMCPServers`, validated at PUT time by `handlers_project_mcp_servers.go`, edited in the UI project settings). The orchestrator reads it once per run (`readExternalMCPServers`, also at consult/planner spawn) into `Config.ExternalMCPServers`; one-off child spawners (delegate/consult/context-saver) copy the parent's set, observers stay nrflo-only. Claude spawns (including api-via-cli) get the servers merged into `--mcp-config` and `mcp__<name>__*` appended to `--allowedTools` (`buildClaudeMCPConfig`); codex spawns get `[mcp_servers.<name>]` tables appended to the per-session config.toml with same-name user tables stripped first (duplicate keys are a strict-parse error), stdio servers only — http/sse are skipped (`appendExternalCodexMCPServers`).

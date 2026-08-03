@@ -17,7 +17,6 @@
 #
 be/cmd/binaries_test.go	317
 be/internal/api/handlers_chains.go	388
-be/internal/api/handlers_default_template_type_test.go	332
 be/internal/api/handlers_git_test.go	670
 be/internal/api/handlers_observer_test.go	314
 be/internal/api/handlers_orchestrate.go	619
@@ -33,7 +32,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	709
+be/internal/api/server.go	701
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -74,7 +73,7 @@ be/internal/notify/notify_test.go	342
 be/internal/orchestrator/chain_runner.go	385
 be/internal/orchestrator/chain_runner_logging_test.go	352
 be/internal/orchestrator/orchestrator_logging_test.go	337
-be/internal/orchestrator/orchestrator_loop.go	329
+be/internal/orchestrator/orchestrator_loop.go	311
 be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	485
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
@@ -101,7 +100,6 @@ be/internal/service/chain_preview_test.go	343
 be/internal/service/chain_remove_test.go	425
 be/internal/service/chain_test.go	723
 be/internal/service/daily_stats_test.go	604
-be/internal/service/default_template_type_test.go	361
 be/internal/service/findings_layer_test.go	338
 be/internal/service/git_test.go	696
 be/internal/service/scheduled_task_chain_test.go	381
@@ -188,7 +186,7 @@ ui/src/components/workflows/NotificationChannelForm.tsx	325
 ui/src/hooks/useChains.test.tsx	470
 ui/src/hooks/useTickets.ts	589
 ui/src/hooks/useWSReducer.test.ts	1048
-ui/src/hooks/useWSReducer.ts	401
+ui/src/hooks/useWSReducer.ts	383
 ui/src/hooks/useWSSnapshot.test.ts	623
 ui/src/hooks/useWebSocket.eventHandling.test.tsx	735
 ui/src/hooks/useWebSocket.ts	467
@@ -216,4 +214,4 @@ ui/src/pages/WorkflowTabContent.retry.test.tsx	425
 ui/src/pages/WorkflowTabContent.test.tsx	312
 ui/src/pages/WorkflowTabContent.tsx	388
 ui/src/pages/WorkflowsPage.test.tsx	533
-ui/src/types/workflow.ts	430
+ui/src/types/workflow.ts	381

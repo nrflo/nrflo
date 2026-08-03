@@ -250,6 +250,13 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 		logger.Warn(context.Background(), "project findings expansion failed", "error", err)
 	}
 
+	// Append the workspace-context block (live tree vs. isolated worktree)
+	// before the stepwise block, so a stepwise agent's current-step
+	// instruction stays the final text.
+	if b := s.workspaceContextBlock(projectID); b != "" {
+		template = template + "\n\n" + b
+	}
+
 	// Append the stepwise guidance + step outline + current step instruction
 	// block. No-op (returns template unchanged) for full-mode/nil defs.
 	template = s.appendStepwiseBlock(template, def, wfiID, nodeID, stdVars)

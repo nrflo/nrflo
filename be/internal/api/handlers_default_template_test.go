@@ -72,8 +72,8 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 23 {
-		t.Fatalf("len = %d, want 23 (pre-filled readonly templates)", len(list))
+	if len(list) != 25 {
+		t.Fatalf("len = %d, want 25 (pre-filled readonly templates)", len(list))
 	}
 	for _, tmpl := range list {
 		if !tmpl.Readonly {
@@ -90,7 +90,8 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 	// migration 203 adds stepwise-guidance, sorting right after setup-analyzer).
 	// migration 219 adds timeout-restart (sorting right after tier-t2-extractor)
 	// and validation-failure (sorting right after user-instructions).
-	wantOrder := []string{"api-system-prompt", "callback", "crash-resume", "delegation-guidance", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "stepwise-guidance", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-bare", "tier-t0-decider", "tier-t1-executor", "tier-t2-extractor", "timeout-restart", "user-instructions", "validation-failure", "working-set"}
+	// migration 228 adds workspace-live-tree/workspace-worktree (sorting right after working-set).
+	wantOrder := []string{"api-system-prompt", "callback", "crash-resume", "delegation-guidance", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "stepwise-guidance", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-bare", "tier-t0-decider", "tier-t1-executor", "tier-t2-extractor", "timeout-restart", "user-instructions", "validation-failure", "working-set", "workspace-live-tree", "workspace-worktree"}
 	for i, want := range wantOrder {
 		if list[i].ID != want {
 			t.Errorf("list[%d].ID = %q, want %q", i, list[i].ID, want)
@@ -110,8 +111,8 @@ func TestHandleListDefaultTemplates_IncludesUserCreated(t *testing.T) {
 		t.Errorf("status = %d, want 200", rr.Code)
 	}
 	list := decodeDefaultTemplateList(t, rr)
-	if len(list) != 24 {
-		t.Errorf("len = %d, want 24 (23 readonly + 1 user-created)", len(list))
+	if len(list) != 26 {
+		t.Errorf("len = %d, want 26 (25 readonly + 1 user-created)", len(list))
 	}
 }
 

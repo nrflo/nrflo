@@ -123,7 +123,9 @@ Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle win
 
 ## Template Variables
 
-Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The readonly `delegation-guidance` injectable is appended to the rendered system prompt at every prompt-assembly seam — api, api-via-cli, cli_interactive, and the console chat-spec seam (`buildChatEngineSpec` via `spawner.AppendDelegationGuidanceForTools`, `template_injectable.go`) — whenever the effective tool set includes `delegate`; absent that tool, the prompt is unchanged.
+Full variable list (`${AGENT}`, `${NODE_ID}`, `#{FINDINGS:...}`, `#{ARTIFACTS}`, etc.) and expansion order are in `template.go`; node- vs template-keyed semantics: [doc/common-20-findings.md](../../../doc/common-20-findings.md). Injectables load from `default_templates`. The `delegation-guidance` injectable's append points: [REFERENCE.md](REFERENCE.md#template-variables).
+
+`loadTemplate` also appends a readonly workspace-context injectable (live tree vs. isolated worktree, resolved from `Config.ProjectRoot`) to the prompt body before the stepwise block: [REFERENCE.md](REFERENCE.md#workspace-context).
 
 Agent-def lookups (`lookupAgentDef`, `template.go`) resolve project-then-`__global__` — the precedence `service.GetWorkflowDef`/`AllowedTemplates` also use — so a global workflow's defs (prompt, `native_tools`, `execution_mode`) stay visible when the run is scoped to a real project.
 

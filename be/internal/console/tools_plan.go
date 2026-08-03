@@ -191,7 +191,7 @@ type approvePlanHandler struct{ d Deps }
 func (approvePlanHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "approve_plan",
-		Description: "Approve a plan-driven run's plan at the given revision: materializes the manifest into agent nodes and resumes the run if it was parked at the plan boundary. Open questions never block approval — approve when the plan is good enough. revision must match the instance's current revision (see get_subworkflow) or the call is rejected as stale. The manifest is re-validated here, so approve can fail at the correct revision too: a template's model may have been disabled since the draft, or the plan may exceed dynwf_max_premium_workers — fix it with revise_plan and approve the new revision. A result of \"approved but resume failed\" means the plan IS approved and only the run did not restart: call approve_plan again at the same revision — re-approving an already-approved revision is idempotent and retries the resume. (workflow_continue cannot do this; it only accepts status waiting.)",
+		Description: "Approve a plan-driven run's plan at the given revision: materializes the manifest into agent nodes and resumes the run if it was parked at the plan boundary. Open questions never block approval — approve when the plan is good enough. revision must match the instance's current revision (see get_subworkflow) or the call is rejected as stale. The manifest is re-validated here, so approve can fail at the correct revision too: a template's model may have been disabled since the draft, or the plan may exceed dynwf_max_premium_workers — fix it with revise_plan and approve the new revision. The response is the approved revision; a present \"note\" field means the run already owns the approval (a live plan boundary picked it up) and no further calls are needed. Only a result of \"approved but resume failed\" means the plan IS approved and the run did not restart: call approve_plan again at the same revision — re-approving an already-approved revision is idempotent and retries the resume. (workflow_continue cannot do this; it only accepts status waiting.)",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -237,6 +237,19 @@ func (h approvePlanHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 	}))
 
 	if refreshed, rerr := repo.NewWorkflowInstanceRepo(h.d.Pool, h.d.Clock).Get(args.InstanceID); rerr == nil && model.IsPlanSuspended(refreshed.Status) {
+		if h.d.Orch.ClaimPlanApprovalAtBoundary(args.InstanceID) {
+			out, err := json.Marshal(struct {
+				*model.PlanRevision
+				Note string `json:"note,omitempty"`
+			}{
+				PlanRevision: rev,
+				Note:         "the live plan boundary will materialize this revision; no further calls are needed",
+			})
+			if err != nil {
+				return err.Error(), true, nil
+			}
+			return string(out), false, nil
+		}
 		if err := h.d.Orch.ResumeAfterPlanApproval(ctx, args.InstanceID); err != nil {
 			return fmt.Sprintf("approved but resume failed: %s", err.Error()), true, nil
 		}

@@ -134,6 +134,9 @@ type fakeOrchestrator struct {
 
 	resumeInstanceID string
 	resumeErr        error
+
+	claimInstanceID string
+	claimResult     bool
 }
 
 func (f *fakeOrchestrator) StartWorkflow(ctx context.Context, projectID, ticketID, workflowName, instructions, scopeType string) (string, error) {
@@ -187,6 +190,11 @@ func (f *fakeOrchestrator) RunPlanner(ctx context.Context, instanceID string, in
 func (f *fakeOrchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID string) error {
 	f.resumeInstanceID = instanceID
 	return f.resumeErr
+}
+
+func (f *fakeOrchestrator) ClaimPlanApprovalAtBoundary(instanceID string) bool {
+	f.claimInstanceID = instanceID
+	return f.claimResult
 }
 
 var _ Orchestrator = (*fakeOrchestrator)(nil)

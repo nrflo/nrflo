@@ -38,6 +38,13 @@ type Orchestrator interface {
 	// passes directly where that interface is expected.
 	RunPlanner(ctx context.Context, instanceID string, in service.PlannerInput) (sessionID string, err error)
 	ResumeAfterPlanApproval(ctx context.Context, instanceID string) error
+	// ClaimPlanApprovalAtBoundary hands an approval to a live runLoop still
+	// drafting inline at the plan boundary, returning true when claimed. The
+	// approve_plan handler needs the claim result itself (to choose its
+	// response text — a "note" vs. the parked "approved but resume failed"
+	// case) rather than just ResumeAfterPlanApproval's error, since a
+	// successful claim and a successful resume both return nil there.
+	ClaimPlanApprovalAtBoundary(instanceID string) bool
 }
 
 // Deps bundles the injected dependencies every console tool handler needs.

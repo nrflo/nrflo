@@ -96,6 +96,73 @@ func TestReloadPlanLayers_ApprovedPlan_MaterializesAndSplices(t *testing.T) {
 	}
 }
 
+// TestDraftPlanAndProceed_ClaimedBoundary_MaterializesDespiteRevisePlanError
+// is the regression test for the live-boundary claim: an approved plan head
+// (simulating a concurrent Approve that landed while the inline self-draft
+// was in flight) plus planApprovedAtBoundary pre-seeded on the run's
+// registered runState. Approving the head first makes the inline
+// Revise(revision=0) call itself fail fast with ErrPlanNotDraft (head.Status
+// != draft) — RunPlanner has no injectable mock, so the success variant of
+// this race cannot be driven directly, but the error path exercises the same
+// claimed branch without ever needing a real planner CLI. The naive fix
+// (checking DB status instead of the live boundary claim) would strand this
+// run: draftPlanAndProceed must still flip the instance to active and
+// materialize+splice instead of markFailed/suspending.
+func TestDraftPlanAndProceed_ClaimedBoundary_MaterializesDespiteRevisePlanError(t *testing.T) {
+	env := newTestEnv(t)
+	addFanoutTemplate(t, env, "test", "fanout-tmpl")
+	env.createTicket(t, "PB-7", "claimed boundary despite draft error")
+	wfiID := env.initWorkflow(t, "PB-7")
+	ch := env.subscribeWSClient(t, "ws-pb-7", "PB-7")
+
+	rev := appendDraftPlan(t, env, wfiID, validManifest("do the thing", "fanout-tmpl"))
+	planRepo := repo.NewPlanRepo(env.pool, clock.Real())
+	if err := planRepo.Approve(wfiID, rev); err != nil {
+		t.Fatalf("Approve: %v", err)
+	}
+
+	rs := registerBoundaryRun(t, env, wfiID, false)
+	rs.planApprovedAtBoundary = true // simulate a claim that landed before this call
+
+	svcWf, workflows, agents := buildPlanReloadInputs(t, env, "test")
+	layerGroups := groupPhasesByLayer(svcWf.Phases)
+	layerPolicies := map[int]string{}
+	req := RunRequest{ProjectID: env.project, TicketID: "PB-7", WorkflowName: "test", ScopeType: "ticket"}
+
+	_, _, defProjectID, err := env.orch.resolveWorkflowDef(env.pool, env.project, "test")
+	if err != nil {
+		t.Fatalf("resolveWorkflowDef: %v", err)
+	}
+
+	newGroups, extended, terminal, worktreeHandled := env.orch.draftPlanAndProceed(
+		context.Background(), wfiID, req, env.pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
+
+	if !extended || terminal || worktreeHandled {
+		t.Fatalf("got (extended=%v, terminal=%v, worktreeHandled=%v), want (true, false, false)", extended, terminal, worktreeHandled)
+	}
+
+	found := false
+	for _, lg := range newGroups {
+		for _, p := range lg.phases {
+			if p.NodeID == "step1" {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Errorf("newGroups = %+v, want to contain materialized node step1", newGroups)
+	}
+
+	wi := env.getWorkflowInstance(t, wfiID)
+	if wi.Status != model.WorkflowInstanceActive {
+		t.Errorf("status = %v, want active", wi.Status)
+	}
+	if countInstanceNodes(t, env, wfiID) == 0 {
+		t.Errorf("want workflow_instance_nodes materialized, got none")
+	}
+	expectEvent(t, ch, ws.EventPlanMaterialized, 2*time.Second)
+}
+
 func countInstanceNodes(t *testing.T, env *testEnv, wfiID string) int {
 	t.Helper()
 	var n int

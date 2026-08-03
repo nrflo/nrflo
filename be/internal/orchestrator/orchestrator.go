@@ -81,6 +81,14 @@ type runState struct {
 	callbackPlan    callbackPlan  // active callback plan; zero value = no plan
 	callbackPlanIdx int           // index of the next unexecuted plan step
 	failReason      string        // custom failure reason set before cancel() by FailWorkflow
+
+	// atPlanBoundary is set while the runLoop is drafting inline at the plan
+	// boundary (draftPlanAndProceed) and cleared when it leaves that section.
+	// planApprovedAtBoundary is set by an approver's claim
+	// (ClaimPlanApprovalAtBoundary) while atPlanBoundary is true; see
+	// plan_boundary_claim.go for the handoff invariant.
+	atPlanBoundary         bool
+	planApprovedAtBoundary bool
 }
 
 // Orchestrator manages server-side workflow runs.

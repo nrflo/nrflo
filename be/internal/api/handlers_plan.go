@@ -163,7 +163,8 @@ func (s *Server) handleApprovePlan(w http.ResponseWriter, r *http.Request) {
 
 	// Approve() already materialized; resume the run if it was parked at the
 	// plan boundary. No-op (per PlanResumer contract) when the instance is
-	// still active — its own runLoop will materialize inline at the boundary.
+	// still active, or when a live runLoop still owns the plan boundary — it
+	// claims the approval and materializes inline instead.
 	if wfi, wfiErr := repo.NewWorkflowInstanceRepo(s.pool, s.clock).Get(iid); wfiErr == nil && model.IsPlanSuspended(wfi.Status) {
 		var resumer PlanResumer = s.orchestrator
 		if err := resumer.ResumeAfterPlanApproval(r.Context(), iid); err != nil {

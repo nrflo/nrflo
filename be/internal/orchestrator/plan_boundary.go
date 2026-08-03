@@ -94,7 +94,10 @@ func (o *Orchestrator) reloadPlanLayers(
 // rejecting it) and falls straight through to materializeAndSplice so the run
 // never visibly suspends; otherwise it suspends in the freshly-derived plan status
 // (typically waiting_approval) for the caller to drive via
-// revise_plan/approve_plan (or the equivalent plan routes).
+// revise_plan/approve_plan (or the equivalent plan routes). An approval
+// claimed via ClaimPlanApprovalAtBoundary while the inline Revise call is in
+// flight (see plan_boundary_claim.go) takes the same materialize-and-splice
+// path as mode=auto instead of suspending.
 func (o *Orchestrator) draftPlanAndProceed(
 	ctx context.Context,
 	wfiID string,
@@ -117,8 +120,17 @@ func (o *Orchestrator) draftPlanAndProceed(
 	}
 
 	planSvc := service.NewPlanService(pool, o.clock, o)
+	o.enterPlanBoundary(wfiID)
 	rev, err := planSvc.Revise(ctx, wfiID, types.PlanReviseRequest{Revision: 0, Goal: goal})
+	claimed := o.leavePlanBoundary(wfiID)
 	if err != nil {
+		if claimed {
+			// An approval landed while the inline draft was in flight: the
+			// approved plan beats failing the run over this (now-superseded)
+			// planner error.
+			_ = repo.NewWorkflowInstanceRepo(pool, o.clock).UpdateStatus(wfiID, model.WorkflowInstanceActive)
+			return o.materializeAndSplice(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
+		}
 		o.markFailed(wfiID, req, fmt.Sprintf("plan boundary: draft: %v", err))
 		return layerGroups, false, true, false
 	}
@@ -127,6 +139,11 @@ func (o *Orchestrator) draftPlanAndProceed(
 		"revision":    rev.Revision,
 		"author":      rev.Author,
 	}))
+
+	if claimed {
+		_ = repo.NewWorkflowInstanceRepo(pool, o.clock).UpdateStatus(wfiID, model.WorkflowInstanceActive)
+		return o.materializeAndSplice(ctx, wfiID, req, pool, svcWf, layerGroups, layerPolicies, workflows, agents, defProjectID)
+	}
 
 	if req.PlanAutoApprove && service.DynamicAutoEnabled(pool, req.ProjectID) {
 		if _, err := planSvc.ApproveAuto(wfiID, rev.Revision); err != nil {

@@ -21,8 +21,10 @@ import (
 // this rebuilds the run's spawner config via EffectivePhases, flips the
 // instance back to active, re-arms the subworkflow watcher, and relaunches
 // runLoop at the first materialized layer. A no-op (no error) when the
-// instance is already active — the plan boundary inside that active run's own
-// runLoop will materialize inline instead.
+// instance is already active, or when a live runLoop still owns the plan
+// boundary — ClaimPlanApprovalAtBoundary hands the approval to that runLoop
+// instead, which materializes and splices inline once its blocking planner
+// call returns (see plan_boundary_claim.go).
 func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID string) error {
 	logger.Info(ctx, "resuming plan-suspended workflow", "instance_id", instanceID)
 
@@ -43,6 +45,11 @@ func (o *Orchestrator) ResumeAfterPlanApproval(ctx context.Context, instanceID s
 	}
 	if !model.IsPlanSuspended(wi.Status) {
 		return fmt.Errorf("workflow is not plan-suspended (current: %s)", wi.Status)
+	}
+
+	if o.ClaimPlanApprovalAtBoundary(instanceID) {
+		logger.Info(ctx, "plan approval handed to live boundary", "instance_id", instanceID)
+		return nil
 	}
 
 	if err := o.waitForRunToSettle(ctx, wi.ID); err != nil {

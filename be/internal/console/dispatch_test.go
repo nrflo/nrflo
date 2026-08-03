@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+
+	"be/internal/model"
 )
 
 func TestDispatch_UnknownTool_ReturnsErrToolNotFound(t *testing.T) {
@@ -13,7 +15,7 @@ func TestDispatch_UnknownTool_ReturnsErrToolNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	_, _, err = Dispatch(context.Background(), reg, toolEnv, "nope", json.RawMessage(`{}`))
 	if !errors.Is(err, ErrToolNotFound) {
@@ -27,7 +29,7 @@ func TestDispatch_KnownTool_EmptyArgsDefaultToEmptyObject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := Dispatch(context.Background(), reg, toolEnv, "project_list", nil)
 	if err != nil {
@@ -50,7 +52,7 @@ func TestDispatch_KnownTool_ArgsForwarded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	_, isErr, err := Dispatch(context.Background(), reg, toolEnv, "workflow_run", json.RawMessage(`{"workflow":"w1"}`))
 	if err != nil {

@@ -94,7 +94,7 @@ func (s *Server) handleCallConsoleTool(w http.ResponseWriter, r *http.Request) {
 	}
 
 	projectID := consoleToolProject(r, sess)
-	env := console.NewToolEnv(deps, sess.ID, projectID)
+	env := console.NewToolEnv(deps, sess.ID, projectID, sess.Kind)
 
 	start := s.clock.Now()
 	output, isError, callErr := console.Dispatch(r.Context(), reg, env, name, body.Arguments)

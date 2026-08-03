@@ -7,6 +7,7 @@ import (
 	"errors"
 	"unicode/utf8"
 
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/ws"
 )
@@ -57,7 +58,7 @@ func (s *ChatService) InvokeTool(ctx context.Context, sid, tool string, args jso
 	if err != nil {
 		return InvokeResult{}, err
 	}
-	env := NewToolEnv(s.deps.Tools, sid, sess.projectID)
+	env := NewToolEnv(s.deps.Tools, sid, sess.projectID, model.AgentSessionKindConsoleChat)
 
 	start := s.deps.Clock.Now()
 	output, isErr, callErr := Dispatch(ctx, reg, env, tool, args)

@@ -78,7 +78,6 @@ be/internal/orchestrator/orchestrator_mark_completed_test.go	578
 be/internal/orchestrator/orchestrator_retry_test.go	485
 be/internal/orchestrator/orchestrator_ticket_status_test.go	321
 be/internal/orchestrator/orchestrator_worktree_test.go	753
-be/internal/repo/agent_session.go	605
 be/internal/repo/artifact_test.go	318
 be/internal/repo/audit_repo_test.go	307
 be/internal/repo/daily_stats_test.go	440
@@ -186,7 +185,7 @@ ui/src/components/workflows/NotificationChannelForm.tsx	325
 ui/src/hooks/useChains.test.tsx	470
 ui/src/hooks/useTickets.ts	589
 ui/src/hooks/useWSReducer.test.ts	1048
-ui/src/hooks/useWSReducer.ts	383
+ui/src/hooks/useWSReducer.ts	382
 ui/src/hooks/useWSSnapshot.test.ts	623
 ui/src/hooks/useWebSocket.eventHandling.test.tsx	735
 ui/src/hooks/useWebSocket.ts	467

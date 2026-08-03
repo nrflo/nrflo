@@ -21,6 +21,17 @@ import "net/http"
 // kind=console_chat agent_sessions row), falling back to admin-user or
 // matching/global service-token semantics for non-console callers.
 func (s *Server) registerSessionRoutes(protected, projectAdmin func(string, http.HandlerFunc)) {
+	// Session read model: project-scoped and global listing, plus the
+	// per-session flow graph / tool-call+cost stats (mirrors the trace
+	// subsystem's GET /api/v1/workflow-instances/{iid}/trace). "global" is a
+	// literal path segment, resolved before {sid} by Go's mux, and the
+	// two-segment {sid}/flow|stats patterns never collide with the existing
+	// single-segment /api/v1/sessions/{id}/* routes below.
+	protected("GET /api/v1/sessions", s.handleListSessions)
+	protected("GET /api/v1/sessions/global", s.handleListSessionsGlobal)
+	protected("GET /api/v1/sessions/{sid}/flow", s.handleGetSessionFlow)
+	protected("GET /api/v1/sessions/{sid}/stats", s.handleGetSessionStats)
+
 	// Observer sessions
 	protected("POST /api/v1/observers", s.handleLaunchObserver)
 	protected("GET /api/v1/observers", s.handleListObservers)

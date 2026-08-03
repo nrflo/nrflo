@@ -70,6 +70,8 @@ Global model administration uses `/api/v1/models` CRUD plus `POST /api/v1/models
 
 `GET /api/v1/workflow-instances/{iid}/steps` (`protected`, `server_routes_instance.go`/`handlers_step_cursors.go`) returns per-node stepwise cursor progress (`service.BuildStepCursors`) for one workflow instance, same 404/403 guard order as the trace endpoint.
 
+`GET /api/v1/sessions`/`/sessions/global` (`protected`, `server_routes_sessions.go`/`handlers_sessions.go`) list agent_sessions across every kind (project-scoped / cross-project); `GET /api/v1/sessions/{sid}/flow` and `/{sid}/stats` (`handlers_session_flow.go`) serve the read-time session-rooted flow graph and its tool-call/cost rollup (`service.BuildSessionFlow`/`BuildSessionStats`), same guard order as the trace endpoint.
+
 ## Pause-Continue-Fail Routes
 
 Four `protected` routes resume (`continue`, optional instructions) or fail (`fail`, reason required) a waiting/active instance: ticket-scoped resolves by workflow name, project-scoped by `instance_id`. Bodies + resolution rules: [REFERENCE.md](REFERENCE.md#pause-continue-fail-routes).

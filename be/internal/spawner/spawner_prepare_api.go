@@ -70,7 +70,7 @@ func (s *Spawner) prepareAPIModeSpawn(ctx context.Context, req SpawnRequest, age
 	proc.maxContext = maxCtx
 	prep.apiContextBudget = resolveContextBudget(agentDef, deriveContextBudgetDefault(s.pool(), maxCtx))
 
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", false, true, false)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, "", false, true, false, model.DispatchSourceHTTP)
 	if regErr != nil {
 		return nil, nil, regErr
 	}

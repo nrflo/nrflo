@@ -126,6 +126,29 @@ func (r *DelegationRepo) DepthForSession(sessionID string) (int, error) {
 	return depth, nil
 }
 
+// ListByCallerSession returns every delegation seeded by callerSessionID,
+// oldest first — used by service.BuildSessionFlow to walk the delegate
+// fanout edge of the flow graph.
+func (r *DelegationRepo) ListByCallerSession(callerSessionID string) ([]*model.Delegation, error) {
+	rows, err := r.db.Query(
+		`SELECT id, caller_session_id, workflow_instance_id, project_id, tier, brief, fanout, worker_session_ids, spawn_errors, depth, fanout_done, status, created_at, completed_at, consumed_at, worktree_path, branch_name, base_commit, worktree_summary
+		 FROM delegations WHERE caller_session_id = ? ORDER BY created_at ASC`, callerSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*model.Delegation
+	for rows.Next() {
+		d, err := scanDelegation(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, rows.Err()
+}
+
 func jsonIndexPath(idx int) string {
 	return "$[" + strconv.Itoa(idx) + "]"
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 
 	"be/internal/logger"
+	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/spawner"
 	"be/internal/ws"
@@ -104,7 +105,7 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 			Clock:    s.deps.Clock,
 			Tools:    Specs(reg),
 			Handlers: reg,
-			ToolEnv:  NewToolEnv(s.deps.Tools, sess.id, sess.ProjectID()),
+			ToolEnv:  NewToolEnv(s.deps.Tools, sess.id, sess.ProjectID(), model.AgentSessionKindConsoleChat),
 		},
 	})
 	if err != nil {

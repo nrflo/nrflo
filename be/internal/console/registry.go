@@ -84,7 +84,7 @@ func BuildRegistry(d Deps, catalogue []string) (apirun.Registry, error) {
 	reg["consult"] = consultHandler{d: d}
 
 	if len(catalogue) == 0 {
-		return reg, nil
+		return apirun.WrapToolAudit(reg), nil
 	}
 	filtered := make(apirun.Registry, len(catalogue))
 	for _, name := range catalogue {
@@ -94,7 +94,7 @@ func BuildRegistry(d Deps, catalogue []string) (apirun.Registry, error) {
 		}
 		filtered[name] = h
 	}
-	return filtered, nil
+	return apirun.WrapToolAudit(filtered), nil
 }
 
 // Specs returns the catalogue: every handler's Spec(), sorted by name.

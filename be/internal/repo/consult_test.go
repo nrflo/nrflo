@@ -157,6 +157,50 @@ func TestConsult_ListByInstance_OrderedByCreatedAtAscAndScopedToInstance(t *test
 	}
 }
 
+func TestConsult_ListByCallerSession_ScopedAndOrderedByCreatedAtAsc(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewConsultRepo(pool, clock.Real())
+
+	c1 := &model.Consult{ID: "consult.caller-a1", CallerSessionID: "caller-a", WorkflowInstanceID: "wfi-6", ProjectID: "proj-1", ConsultantID: "cons"}
+	c2 := &model.Consult{ID: "consult.caller-a2", CallerSessionID: "caller-a", WorkflowInstanceID: "wfi-6", ProjectID: "proj-1", ConsultantID: "cons"}
+	other := &model.Consult{ID: "consult.caller-b1", CallerSessionID: "caller-b", WorkflowInstanceID: "wfi-6", ProjectID: "proj-1", ConsultantID: "cons"}
+	if err := r.Create(c1); err != nil {
+		t.Fatalf("Create c1: %v", err)
+	}
+	if err := r.Create(c2); err != nil {
+		t.Fatalf("Create c2: %v", err)
+	}
+	if err := r.Create(other); err != nil {
+		t.Fatalf("Create other: %v", err)
+	}
+
+	list, err := r.ListByCallerSession("caller-a")
+	if err != nil {
+		t.Fatalf("ListByCallerSession: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("len(list) = %d, want 2 (scoped to caller-a)", len(list))
+	}
+	if list[0].ID != "consult.caller-a1" || list[1].ID != "consult.caller-a2" {
+		t.Errorf("order = %s,%s, want consult.caller-a1,consult.caller-a2 (created_at ASC)", list[0].ID, list[1].ID)
+	}
+}
+
+func TestConsult_ListByCallerSession_UnknownCaller_ReturnsEmpty(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewConsultRepo(pool, clock.Real())
+
+	list, err := r.ListByCallerSession("no-such-caller")
+	if err != nil {
+		t.Fatalf("ListByCallerSession: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("len(list) = %d, want 0", len(list))
+	}
+}
+
 func TestConsult_ListByInstance_UnknownInstance_ReturnsEmpty(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)

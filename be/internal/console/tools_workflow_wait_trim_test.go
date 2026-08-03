@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/model"
 	"be/internal/repo"
 )
 
@@ -18,7 +19,7 @@ func TestWorkflowWait_TimeoutHasNoStateKey(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-nostate")
 	reg, _ := BuildRegistry(env.deps, nil)
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	base, _, _ := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-nostate"}`)
 	baseline := parseWaitResult(t, base)
@@ -56,7 +57,7 @@ func TestWorkflowWait_ChangedResponseOmitsTopologyAndFullState(t *testing.T) {
 	env := newConsoleTestEnv(t)
 	env.seedWorkflowInstance(t, testProjectID, "wfi-wait-chg")
 	reg, _ := BuildRegistry(env.deps, nil)
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	base, _, _ := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-chg"}`)
 	baseline := parseWaitResult(t, base)
@@ -112,7 +113,7 @@ func TestWorkflowWait_TerminalCompletedSurfacesFinalResult(t *testing.T) {
 	}
 	mustExec(t, env.pool, `UPDATE workflow_instances SET status='completed' WHERE id='wfi-wait-done2'`)
 	reg, _ := BuildRegistry(env.deps, nil)
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-done2"}`)
 	if err != nil || isErr {
@@ -143,7 +144,7 @@ func TestWorkflowWait_TerminalFailedSurfacesFailureReason(t *testing.T) {
 	}
 	mustExec(t, env.pool, `UPDATE workflow_instances SET status='failed' WHERE id='wfi-wait-failed'`)
 	reg, _ := BuildRegistry(env.deps, nil)
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-failed"}`)
 	if err != nil || isErr {
@@ -179,7 +180,7 @@ func TestWorkflowWait_ActiveAgentsTrimmedToTrackingFields(t *testing.T) {
 		VALUES ('sess-agents', ?, '', 'wfi-wait-agents', 'review', 'review', 'implementor', 'anthropic:claude', 'running', 4242, 80, 2, ?, ?)`,
 		testProjectID, now, now)
 	reg, _ := BuildRegistry(env.deps, nil)
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_wait", `{"instance_id":"wfi-wait-agents"}`)
 	if err != nil || isErr {

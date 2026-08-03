@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"be/internal/model"
 )
 
 func TestWorkflowGet_CrossProjectInstanceID_Rejected(t *testing.T) {
@@ -13,7 +15,7 @@ func TestWorkflowGet_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_get", `{"instance_id":"wfi-get-other"}`)
 	if err != nil {
@@ -31,7 +33,7 @@ func TestWorkflowGet_HappyPath_ReturnsV4State(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_get", `{"instance_id":"wfi-get-own"}`)
 	if err != nil || isErr {
@@ -55,7 +57,7 @@ func TestWorkflowGet_MissingInstanceID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_get", `{}`)
 	if err != nil {
@@ -72,7 +74,7 @@ func TestWorkflowList_ReturnsProjectDefs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_list", `{}`)
 	if err != nil || isErr {

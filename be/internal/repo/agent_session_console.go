@@ -102,6 +102,39 @@ func (r *AgentSessionRepo) SetConsoleYolo(id string, on bool) error {
 	return nil
 }
 
+// SetSiblingOrigin persists sid's durable sibling->origin link (migration
+// 000230), alongside ChatService.openSibling's existing transient
+// console_chat.sibling_opened WS push, so the flow graph can reconstruct
+// sibling chats after the fact.
+func (r *AgentSessionRepo) SetSiblingOrigin(sid, originSessionID string) error {
+	now := r.clock.Now().UTC().Format(time.RFC3339Nano)
+	_, err := r.db.Exec(
+		`UPDATE agent_sessions SET sibling_origin_session_id = ?, updated_at = ? WHERE id = ?`,
+		originSessionID, now, sid)
+	return err
+}
+
+// ListSiblingsByOrigin returns console sibling chats opened from
+// originSessionID (model_switch/hands_sibling), oldest first.
+func (r *AgentSessionRepo) ListSiblingsByOrigin(originSessionID string) ([]*model.AgentSession, error) {
+	rows, err := r.db.Query(`SELECT `+sessionCols+` FROM agent_sessions
+		WHERE sibling_origin_session_id = ? ORDER BY started_at ASC`, originSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []*model.AgentSession
+	for rows.Next() {
+		s, err := scanSession(rows)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
+}
+
 // ExpireIdleConsoles closes every console session still user_interactive whose
 // updated_at is older than cutoff (RFC3339Nano). Returns the number expired.
 // Restricted to kind='console': chat rows are closed via the chats/{sid}/close

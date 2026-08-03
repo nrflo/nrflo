@@ -3,6 +3,8 @@ package console
 import (
 	"strings"
 	"testing"
+
+	"be/internal/model"
 )
 
 func TestWorkflowRun_TicketScoped_ValidatesAndStarts(t *testing.T) {
@@ -13,7 +15,7 @@ func TestWorkflowRun_TicketScoped_ValidatesAndStarts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"feature","ticket_id":"`+testTicketID+`"}`)
 	if err != nil || isErr {
@@ -41,7 +43,7 @@ func TestWorkflowRun_TicketScoped_UnknownTicket_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	_, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"feature","ticket_id":"no-such-ticket"}`)
 	if err != nil {
@@ -63,7 +65,7 @@ func TestWorkflowRun_ProjectScoped_NoTicketID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	_, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"some-project-wf"}`)
 	if err != nil || isErr {
@@ -83,7 +85,7 @@ func TestWorkflowRun_MissingWorkflow_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{}`)
 	if err != nil {
@@ -100,7 +102,7 @@ func TestWorkflowRun_NilOrchestrator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_run", `{"workflow":"feature"}`)
 	if err != nil || !isErr || !strings.Contains(out, "orchestrator") {
@@ -117,7 +119,7 @@ func TestWorkflowStop_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_stop", `{"instance_id":"wfi-other-1"}`)
 	if err != nil {
@@ -140,7 +142,7 @@ func TestWorkflowStop_ProjectScoped_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_stop", `{"instance_id":"wfi-own-1"}`)
 	if err != nil || isErr {
@@ -160,7 +162,7 @@ func TestWorkflowStop_TicketScopedInstance_StopsById(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_stop", `{"instance_id":"wfi-own-2"}`)
 	if err != nil || isErr {
@@ -180,7 +182,7 @@ func TestWorkflowRetryFailed_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	_, isErr, err := invoke(t, reg, toolEnv, "workflow_retry_failed",
 		`{"workflow":"feature","session_id":"s1","instance_id":"wfi-other-2"}`)
@@ -198,7 +200,7 @@ func TestWorkflowRetryFailed_MissingTicketAndInstance_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "workflow_retry_failed", `{"workflow":"feature","session_id":"s1"}`)
 	if err != nil {

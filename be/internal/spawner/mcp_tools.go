@@ -79,7 +79,7 @@ func (s *Spawner) attachNrfloToolRegistry(
 	}
 	nativeToolsCSV, _ := nativeSpawnFields(agentDef, adapterName)
 	includeFS := nativeToolsCSV == model.NativeToolsNone
-	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true, includeFS, true)
+	specs, handlers, toolEnv, regErr := s.buildAPIRegistry(req, wfiID, agentDef, proc, toolsCSV, true, includeFS, true, model.DispatchSourceMCP)
 	if regErr != nil {
 		return regErr
 	}

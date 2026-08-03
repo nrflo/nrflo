@@ -11,7 +11,7 @@ const sessionCols = `id, project_id, ticket_id, workflow_instance_id, phase, nod
 	model_id, status, result, result_reason, pid,
 	context_left, ancestor_session_id, spawn_command, prompt, system_prompt,
 	restart_count, nudge_count, config, started_at, ended_at, spawn_token, effective_mode, created_at, updated_at,
-	rate_limit_retry_count, rate_limit_until_ts, last_retry_class, kind, observer_scope, observer_workflow_id, console_engine, console_profile, console_yolo`
+	rate_limit_retry_count, rate_limit_until_ts, last_retry_class, kind, observer_scope, observer_workflow_id, console_engine, console_profile, console_yolo, sibling_origin_session_id`
 
 func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentSession, error) {
 	s := &model.AgentSession{}
@@ -22,7 +22,7 @@ func scanSession(scanner interface{ Scan(...interface{}) error }) (*model.AgentS
 		&s.ModelID, &s.Status, &s.Result, &s.ResultReason, &s.PID,
 		&s.ContextLeft, &s.AncestorSessionID, &s.SpawnCommand, &s.Prompt, &s.SystemPrompt,
 		&s.RestartCount, &s.NudgeCount, &s.Config, &s.StartedAt, &s.EndedAt, &s.SpawnToken, &s.EffectiveMode, &createdAt, &updatedAt,
-		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass, &s.Kind, &s.ObserverScope, &s.ObserverWorkflowID, &s.ConsoleEngine, &s.ConsoleProfile, &s.ConsoleYolo,
+		&s.RateLimitRetryCount, &s.RateLimitUntilTs, &s.LastRetryClass, &s.Kind, &s.ObserverScope, &s.ObserverWorkflowID, &s.ConsoleEngine, &s.ConsoleProfile, &s.ConsoleYolo, &s.SiblingOriginSessionID,
 	)
 	if err != nil {
 		return nil, err

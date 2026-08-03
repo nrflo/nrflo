@@ -180,7 +180,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 			Clock:    s.deps.Clock,
 			Tools:    Specs(reg),
 			Handlers: reg,
-			ToolEnv:  NewToolEnv(s.deps.Tools, sessionID, projectID),
+			ToolEnv:  NewToolEnv(s.deps.Tools, sessionID, projectID, model.AgentSessionKindConsoleChat),
 		},
 	})
 	if err != nil {

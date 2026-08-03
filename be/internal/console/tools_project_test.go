@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/model"
 	"be/internal/service"
 )
 
@@ -14,7 +15,7 @@ func TestProjectList_ReturnsSeededProjects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "project_list", `{}`)
 	if err != nil || isErr {
@@ -66,7 +67,7 @@ func TestProjectStatus_ProjectScopedSession_IgnoresProjectOverride(t *testing.T)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "project_status", `{"project":"`+testOtherProjectID+`"}`)
 	if err != nil || isErr {
@@ -88,7 +89,7 @@ func TestProjectStatus_GlobalScopeSession_HonorsProjectOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", service.GlobalProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", service.GlobalProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "project_status", `{"project":"`+testOtherProjectID+`"}`)
 	if err != nil || isErr {

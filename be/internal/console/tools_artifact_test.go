@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"be/internal/model"
 )
 
 // addArtifact writes a real artifact blob via ArtifactService.AddFromAgent
@@ -24,7 +26,7 @@ func TestArtifactList_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_list", `{"instance_id":"wfi-art-other"}`)
 	if err != nil {
@@ -43,7 +45,7 @@ func TestArtifactList_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_list", `{"instance_id":"wfi-art-own"}`)
 	if err != nil || isErr {
@@ -66,7 +68,7 @@ func TestArtifactGet_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_get", `{"instance_id":"wfi-artget-other","name":"secret.txt"}`)
 	if err != nil {
@@ -85,7 +87,7 @@ func TestArtifactGet_TextContent_InlinedAsText(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_get", `{"instance_id":"wfi-artget-own","name":"notes.txt"}`)
 	if err != nil || isErr {
@@ -109,7 +111,7 @@ func TestArtifactGet_BinaryContent_InlinedAsBase64(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_get", `{"instance_id":"wfi-artget-bin","name":"blob.bin"}`)
 	if err != nil || isErr {
@@ -131,7 +133,7 @@ func TestArtifactGet_NotFound_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "artifact_get", `{"instance_id":"wfi-artget-missing","name":"nope.txt"}`)
 	if err != nil {

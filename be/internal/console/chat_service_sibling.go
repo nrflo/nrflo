@@ -83,6 +83,9 @@ func (s *ChatService) openSibling(origin *chatSession, engine, modelID, effort, 
 			sib.setSeedContext(digest)
 		}
 	}
+	if s.deps.Pool != nil {
+		_ = repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).SetSiblingOrigin(siblingID, origin.id)
+	}
 
 	pushSessionEvent(s.deps.WSHub, origin.id, origin.ProjectID(), ws.EventConsoleChatSiblingOpened, map[string]interface{}{
 		"origin_session_id":  origin.id,

@@ -1,17 +1,36 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { LogsFinishedTab } from './LogsFinishedTab'
 import { LogsLiveTab } from './LogsLiveTab'
+import { LogsSessionsTab } from './LogsSessionsTab'
 
-type TabId = 'finished' | 'live'
+type TabId = 'sessions' | 'finished' | 'live'
 
 const tabs: { id: TabId; label: string }[] = [
+  { id: 'sessions', label: 'Sessions' },
   { id: 'finished', label: 'Finished sessions' },
   { id: 'live', label: 'Live processes' },
 ]
 
+const tabIds = new Set<string>(tabs.map((t) => t.id))
+
+function isValidTab(value: string | null): value is TabId {
+  return value !== null && tabIds.has(value)
+}
+
 export function LogsPage() {
-  const [tab, setTab] = useState<TabId>('finished')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const rawTab = searchParams.get('tab')
+  const tab: TabId = isValidTab(rawTab) ? rawTab : 'sessions'
+
+  const setTab = (id: TabId) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', id)
+      if (id !== 'sessions') next.delete('sid')
+      return next
+    })
+  }
 
   return (
     <div className="space-y-4">
@@ -36,7 +55,13 @@ export function LogsPage() {
         </div>
       </div>
 
-      {tab === 'finished' ? <LogsFinishedTab /> : <LogsLiveTab />}
+      {tab === 'sessions' ? (
+        <LogsSessionsTab />
+      ) : tab === 'finished' ? (
+        <LogsFinishedTab />
+      ) : (
+        <LogsLiveTab />
+      )}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"be/internal/model"
 	"be/internal/spawner/apirun"
 )
 
@@ -52,7 +53,7 @@ func TestConsoleDelegate_HappyPath_RoutesThroughDepsDelegator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "delegate", `{"tier":"extractor","brief":"summarize the ticket"}`)
 	if err != nil || isErr {
@@ -75,7 +76,7 @@ func TestConsoleDelegate_NilDelegator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "delegate", `{"tier":"extractor","brief":"do it"}`)
 	if err != nil {
@@ -93,7 +94,7 @@ func TestConsoleDelegate_InvalidTier_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "delegate", `{"tier":"manager","brief":"do it"}`)
 	if err != nil {
@@ -111,7 +112,7 @@ func TestConsoleDelegate_MissingBrief_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "delegate", `{"tier":"extractor","brief":""}`)
 	if err != nil {
@@ -129,7 +130,7 @@ func TestConsoleDelegate_ContextTooLarge_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	bigContext := strings.Repeat("x", 4097)
 	out, isErr, err := invoke(t, reg, toolEnv, "delegate", `{"tier":"extractor","brief":"do it","context":"`+bigContext+`"}`)
@@ -153,7 +154,7 @@ func TestConsoleDelegate_FanoutExceedsCap_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	fanout := make([]string, 21) // default delegate_max_fanout is 20
 	for i := range fanout {
@@ -185,7 +186,7 @@ func TestConsoleGetDelegation_HappyPath_RoutesThroughDepsDelegator(t *testing.T)
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_delegation", `{"delegation_id":"wfi.abc"}`)
 	if err != nil || isErr {
@@ -202,7 +203,7 @@ func TestConsoleGetDelegation_NilDelegator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_delegation", `{"delegation_id":"wfi.abc"}`)
 	if err != nil {
@@ -220,7 +221,7 @@ func TestConsoleGetDelegation_MissingID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_delegation", `{}`)
 	if err != nil {

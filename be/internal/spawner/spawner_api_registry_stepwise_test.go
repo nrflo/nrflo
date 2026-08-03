@@ -38,7 +38,7 @@ func TestBuildAPIRegistry_Stepwise_RestrictiveCSVStillGetsCompleteStep(t *testin
 	req := SpawnRequest{ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}
 	agentDef := stepwiseAgentDef(oneStepJSON)
 
-	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", false, false, false)
+	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", false, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry: %v", err)
 	}
@@ -66,7 +66,7 @@ func TestBuildAPIRegistry_Stepwise_ExplicitCSVResolvesWithoutError(t *testing.T)
 	req := SpawnRequest{ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}
 	agentDef := stepwiseAgentDef(oneStepJSON)
 
-	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "complete_step", false, false, false)
+	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "complete_step", false, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry with explicit complete_step CSV: unexpected error (want no 'no tools matched pattern'): %v", err)
 	}
@@ -94,7 +94,7 @@ func TestBuildAPIRegistry_FullMode_NeverSeesCompleteStep(t *testing.T) {
 	req := SpawnRequest{ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}
 	agentDef := &model.AgentDefinition{Tools: "*"} // full-mode: PromptMode zero-value, no Steps
 
-	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "*", true, false, false)
+	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "*", true, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestBuildAPIRegistry_Stepwise_MissingCSVStillForceMerged(t *testing.T) {
 	req := SpawnRequest{ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID}
 	agentDef := stepwiseAgentDef(oneStepJSON)
 
-	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "", false, false, false)
+	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "", false, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry: %v", err)
 	}

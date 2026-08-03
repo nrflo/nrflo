@@ -3,6 +3,8 @@ package console
 import (
 	"strings"
 	"testing"
+
+	"be/internal/model"
 )
 
 func TestGetSubworkflow_CrossProjectInstanceID_Rejected(t *testing.T) {
@@ -12,7 +14,7 @@ func TestGetSubworkflow_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_subworkflow", `{"instance_id":"wfi-plan-other"}`)
 	if err != nil {
@@ -29,7 +31,7 @@ func TestGetSubworkflow_MissingInstanceID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_subworkflow", `{}`)
 	if err != nil {
@@ -46,7 +48,7 @@ func TestGetSubworkflow_UnknownInstanceID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_subworkflow", `{"instance_id":"no-such-instance"}`)
 	if err != nil {
@@ -64,7 +66,7 @@ func TestGetSubworkflow_HappyPath_ReturnsRunningStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "get_subworkflow", `{"instance_id":"wfi-plan-own"}`)
 	if err != nil || isErr {
@@ -82,7 +84,7 @@ func TestRevisePlan_MissingInstanceID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "revise_plan", `{"revision":0}`)
 	if err != nil {
@@ -100,7 +102,7 @@ func TestRevisePlan_NilOrchestrator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "revise_plan", `{"instance_id":"wfi-revise-noorch","revision":0}`)
 	if err != nil {
@@ -119,7 +121,7 @@ func TestRevisePlan_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "revise_plan", `{"instance_id":"wfi-revise-other","revision":0}`)
 	if err != nil {
@@ -137,7 +139,7 @@ func TestApprovePlan_MissingInstanceID_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "approve_plan", `{"revision":1}`)
 	if err != nil {
@@ -155,7 +157,7 @@ func TestApprovePlan_NilOrchestrator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "approve_plan", `{"instance_id":"wfi-approve-noorch","revision":1}`)
 	if err != nil {
@@ -174,7 +176,7 @@ func TestApprovePlan_CrossProjectInstanceID_Rejected(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "approve_plan", `{"instance_id":"wfi-approve-other","revision":1}`)
 	if err != nil {

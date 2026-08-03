@@ -47,9 +47,15 @@ func IsPlanSuspended(status WorkflowInstanceStatus) bool {
 
 // Launch origin values for workflow_instances.origin. Empty means unknown
 // (pre-existing rows and start paths not yet attributed) and is treated as human.
+// RunOriginDelegate marks the hidden `_delegate_host` instance minted for a
+// Delegate call from a caller with no bound workflow instance (e.g. a
+// console session); OriginSessionID then names that caller session, which is
+// not necessarily a console session — it is whatever kind of session called
+// Delegate.
 const (
-	RunOriginConsole = "console"
-	RunOriginHuman   = "human"
+	RunOriginConsole  = "console"
+	RunOriginHuman    = "human"
+	RunOriginDelegate = "delegate"
 )
 
 // WorkflowInstance represents a running workflow on a ticket or project

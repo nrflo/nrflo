@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"be/internal/model"
 	"be/internal/service"
 )
 
@@ -16,7 +17,7 @@ func TestDynamicWorkflow_HappyPath_StartsTopLevelProjectRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":"build the thing"}`)
 	if err != nil || isErr {
@@ -52,7 +53,7 @@ func TestDynamicWorkflow_MissingInstructions_Errors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":""}`)
 	if err != nil {
@@ -69,7 +70,7 @@ func TestDynamicWorkflow_NilOrchestrator_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":"do it"}`)
 	if err != nil {
@@ -87,7 +88,7 @@ func TestDynamicWorkflow_StartError_SurfacedAsToolError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "dynamic_workflow", `{"instructions":"do it"}`)
 	if err != nil {
@@ -126,7 +127,7 @@ func TestConsult_HappyPath_RoutesThroughDepsConsultant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "consult", `{"consultant":"security-expert","question":"is this safe?"}`)
 	if err != nil || isErr {
@@ -152,7 +153,7 @@ func TestConsult_NilConsultant_MissingService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "consult", `{"consultant":"x","question":"y"}`)
 	if err != nil {
@@ -174,7 +175,7 @@ func TestConsult_ConsultantError_SurfacedAsToolError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "consult", `{"consultant":"x","question":"y"}`)
 	if err != nil {

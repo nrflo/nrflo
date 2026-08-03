@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/model"
 	"be/internal/service"
 )
 
@@ -31,7 +32,7 @@ func listTickets(t *testing.T, env *consoleTestEnv, projectID, args string) []ma
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", projectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", projectID, model.AgentSessionKindConsole)
 	out, isErr, err := invoke(t, reg, toolEnv, "ticket_list", args)
 	if err != nil || isErr {
 		t.Fatalf("ticket_list err=%v isErr=%v out=%s", err, isErr, out)
@@ -160,7 +161,7 @@ func TestTicketGet_ReturnsFullRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "ticket_get", `{"ticket_id":"`+testTicketID+`"}`)
 	if err != nil || isErr {
@@ -186,7 +187,7 @@ func TestTicketGet_CrossProjectIsolation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, _ := invoke(t, reg, toolEnv, "ticket_get", `{"ticket_id":"T-foreign"}`)
 	if !isErr {
@@ -205,7 +206,7 @@ func TestTicketCurrent_ReturnsStampedTicket(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, sid, testProjectID)
+	toolEnv := NewToolEnv(env.deps, sid, testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "ticket_current", `{}`)
 	if err != nil || isErr {
@@ -233,7 +234,7 @@ func TestTicketCurrent_NoTicket_ReturnsNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, sid, testProjectID)
+	toolEnv := NewToolEnv(env.deps, sid, testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, err := invoke(t, reg, toolEnv, "ticket_current", `{}`)
 	if err != nil || isErr {
@@ -250,7 +251,7 @@ func TestTicketGet_MissingID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildRegistry: %v", err)
 	}
-	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID)
+	toolEnv := NewToolEnv(env.deps, "sess-1", testProjectID, model.AgentSessionKindConsole)
 
 	out, isErr, _ := invoke(t, reg, toolEnv, "ticket_get", `{}`)
 	if !isErr {

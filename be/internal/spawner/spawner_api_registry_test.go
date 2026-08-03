@@ -29,7 +29,7 @@ func TestBuildAPIRegistry_BaselineForce(t *testing.T) {
 	agentDef := &model.AgentDefinition{Tools: "findings_add"}
 
 	// forceBaseline=false: only the explicitly-selected tool resolves.
-	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", false, false, false)
+	_, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", false, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry(false): %v", err)
 	}
@@ -38,7 +38,7 @@ func TestBuildAPIRegistry_BaselineForce(t *testing.T) {
 	}
 
 	// forceBaseline=true: all baseline tools are force-merged in.
-	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", true, false, false)
+	specs, handlers, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "findings_add", true, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry(true): %v", err)
 	}
@@ -56,7 +56,7 @@ func TestBuildAPIRegistry_BaselineForce(t *testing.T) {
 
 	// Restrictive CSV that excludes findings_add: forceBaseline=true must
 	// include findings_add; forceBaseline=false must not.
-	_, handlersNoForce, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "agent_finished", false, false, false)
+	_, handlersNoForce, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "agent_finished", false, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry restrictive/false: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestBuildAPIRegistry_BaselineForce(t *testing.T) {
 		t.Errorf("findings_add present in handlers with forceBaseline=false and restrictive CSV")
 	}
 
-	specsForce, handlersForce, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "agent_finished", true, false, false)
+	specsForce, handlersForce, _, err := s.buildAPIRegistry(req, env.wfiID, agentDef, proc, "agent_finished", true, false, false, model.DispatchSourceHTTP)
 	if err != nil {
 		t.Fatalf("buildAPIRegistry restrictive/true: %v", err)
 	}

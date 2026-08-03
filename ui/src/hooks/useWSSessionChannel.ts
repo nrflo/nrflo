@@ -1,20 +1,29 @@
 import { useCallback, useRef, type MutableRefObject } from 'react'
 import type { QueryClient } from '@tanstack/react-query'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
+import { throttledInvalidate as inv } from './useWSInvalidate'
+import { sessionKeys } from './useSessions'
+import { sessionFlowKeys } from './useSessionFlow'
 
 const isDev = import.meta.env.DEV
 
 // Session-channel events are ephemeral (no seq, never event-logged, no
 // replay/snapshot — be/internal/ws/hub_session.go): a session-scoped event
-// must never reach the seq tracker or snapshot buffer. This is the only
-// invalidation a session event drives today; live chat state is handled by
-// useConsoleChatStream, not the query cache. An envelope-stamped
-// session.cost_updated also lands here (useWebSocket.ts diverts every
-// envelope-stamped event into this handler) and is intentionally dropped —
-// only useConsoleChatStream consumes it, and no project-scope view reads it.
+// must never reach the seq tracker or snapshot buffer. Live chat state is
+// handled by useConsoleChatStream, not the query cache; the Sessions tab
+// (list + per-session flow/stats) is the one query-cache consumer here,
+// invalidated on session.cost_updated and console_chat.sibling_opened.
 export function handleSessionScopedEvent(event: WSEventV2, qc: QueryClient): void {
   if (event.type === 'messages.updated' && event.session_id) {
     qc.invalidateQueries({ queryKey: ['session-messages', event.session_id] })
+    return
+  }
+  if (event.type === 'session.cost_updated' || event.type === 'console_chat.sibling_opened') {
+    inv(qc, sessionKeys.all)
+    if (event.session_id) {
+      inv(qc, sessionFlowKeys.flow(event.session_id))
+      inv(qc, sessionFlowKeys.stats(event.session_id))
+    }
   }
 }
 

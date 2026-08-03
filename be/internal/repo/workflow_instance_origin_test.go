@@ -131,3 +131,55 @@ func TestCreate_Origin_RoundTrip(t *testing.T) {
 		}
 	})
 }
+
+func TestListByOriginSession_ScopedToSessionAndOrderedByCreatedAt(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	mustExec(t, pool, `INSERT INTO projects (id, name, created_at, updated_at) VALUES ('proj-origin-list', 'P', ?, ?)`, now, now)
+	mustExec(t, pool, `INSERT INTO workflows (id, project_id, description, scope_type, created_at, updated_at) VALUES ('_delegate_host', 'proj-origin-list', '', 'project', ?, ?)`, now, now)
+
+	r := NewWorkflowInstanceRepo(pool, clock.Real())
+	first := &model.WorkflowInstance{
+		ID: "wfi-origin-list-1", ProjectID: "proj-origin-list", WorkflowID: "_delegate_host", ScopeType: "project",
+		Status: model.WorkflowInstanceActive, Origin: model.RunOriginDelegate, OriginSessionID: "caller-sess-1",
+	}
+	second := &model.WorkflowInstance{
+		ID: "wfi-origin-list-2", ProjectID: "proj-origin-list", WorkflowID: "_delegate_host", ScopeType: "project",
+		Status: model.WorkflowInstanceActive, Origin: model.RunOriginDelegate, OriginSessionID: "caller-sess-1",
+	}
+	other := &model.WorkflowInstance{
+		ID: "wfi-origin-list-other", ProjectID: "proj-origin-list", WorkflowID: "_delegate_host", ScopeType: "project",
+		Status: model.WorkflowInstanceActive, Origin: model.RunOriginDelegate, OriginSessionID: "caller-sess-2",
+	}
+	for _, wi := range []*model.WorkflowInstance{first, second, other} {
+		if err := r.Create(wi); err != nil {
+			t.Fatalf("Create(%s): %v", wi.ID, err)
+		}
+	}
+
+	list, err := r.ListByOriginSession("caller-sess-1")
+	if err != nil {
+		t.Fatalf("ListByOriginSession: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("len(list) = %d, want 2 (scoped to caller-sess-1)", len(list))
+	}
+	if list[0].ID != "wfi-origin-list-1" || list[1].ID != "wfi-origin-list-2" {
+		t.Errorf("order = %s,%s, want wfi-origin-list-1,wfi-origin-list-2 (created_at ASC)", list[0].ID, list[1].ID)
+	}
+}
+
+func TestListByOriginSession_UnknownSession_ReturnsEmpty(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewWorkflowInstanceRepo(pool, clock.Real())
+
+	list, err := r.ListByOriginSession("no-such-session")
+	if err != nil {
+		t.Fatalf("ListByOriginSession: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("len(list) = %d, want 0", len(list))
+	}
+}

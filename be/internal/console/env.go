@@ -1,6 +1,10 @@
 package console
 
-import "be/internal/spawner/apirun"
+import (
+	"be/internal/model"
+	"be/internal/repo"
+	"be/internal/spawner/apirun"
+)
 
 // NewToolEnv builds the console apirun.ToolEnv for one tool call: session +
 // project identity only. WorkflowInstanceID/TicketID stay empty (a console
@@ -14,7 +18,16 @@ import "be/internal/spawner/apirun"
 // `env.ArtifactSvc == nil` branch (excerpt + "full content unavailable: no
 // artifact store"). The console artifact_list/artifact_get tools hold their
 // own ArtifactService from Deps and are unaffected.
-func NewToolEnv(d Deps, sessionID, projectID string) apirun.ToolEnv {
+//
+// sessionKind is stamped onto the returned ToolEnv (model.AgentSessionKindConsole
+// or model.AgentSessionKindConsoleChat) so the tool-audit decorator
+// (registry.go's WrapToolAudit) denormalizes it onto every recorded
+// tool_dispatches row without a join back to a possibly-since-closed session.
+func NewToolEnv(d Deps, sessionID, projectID, sessionKind string) apirun.ToolEnv {
+	var dispatchRepo *repo.DispatchRepo
+	if d.Pool != nil {
+		dispatchRepo = repo.NewDispatchRepo(d.Pool, d.Clock)
+	}
 	return apirun.ToolEnv{
 		Pool:            d.Pool,
 		WSHub:           d.WSHub,
@@ -27,5 +40,8 @@ func NewToolEnv(d Deps, sessionID, projectID string) apirun.ToolEnv {
 		Workflow:        d.WorkflowSvc,
 		WorkflowControl: d.WorkflowControl,
 		Delegator:       d.Delegator,
+		DispatchRepo:    dispatchRepo,
+		Source:          model.DispatchSourceConsole,
+		SessionKind:     sessionKind,
 	}
 }

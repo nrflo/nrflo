@@ -52,7 +52,7 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 	if isHost {
 		// Console (or other run-less) caller: no bound workflow instance to
 		// spawn workers under, so mint a hidden host instance for this call.
-		wfi, err = s.createDelegateHostInstance(pool, callerSession.ProjectID)
+		wfi, err = s.createDelegateHostInstance(pool, callerSession.ProjectID, callerSession.ID)
 	} else {
 		wfi, err = wfiRepo.Get(callerSession.WorkflowInstanceID)
 	}

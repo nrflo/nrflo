@@ -137,6 +137,31 @@ func (r *WorkflowInstanceRepo) ListByParentInstance(parentInstanceID string) ([]
 	return instances, nil
 }
 
+// ListByOriginSession returns instances whose origin_session_id is
+// sessionID — hidden `_delegate_host` runs and console-initiated
+// (StartConsoleWorkflow) runs directly attributable to that caller session.
+// Used by service.BuildSessionFlow to walk the origin edge of the flow graph.
+func (r *WorkflowInstanceRepo) ListByOriginSession(sessionID string) ([]*model.WorkflowInstance, error) {
+	rows, err := r.pool.Query(`
+		SELECT `+wfiCols+` FROM workflow_instances
+		WHERE origin_session_id = ?
+		ORDER BY created_at`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var instances []*model.WorkflowInstance
+	for rows.Next() {
+		wi, err := scanWFI(rows)
+		if err != nil {
+			return nil, err
+		}
+		instances = append(instances, wi)
+	}
+	return instances, nil
+}
+
 // ListByTicket retrieves all workflow instances for a ticket
 func (r *WorkflowInstanceRepo) ListByTicket(projectID, ticketID string) ([]*model.WorkflowInstance, error) {
 	rows, err := r.pool.Query(`

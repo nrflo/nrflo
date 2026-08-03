@@ -72,8 +72,10 @@ func (s *Spawner) markFanoutDone(pool *db.Pool, delegationID string) error {
 // createDelegateHostInstance lazily seeds the hidden `_delegate_host` global
 // workflow definition (idempotent, INSERT OR IGNORE — see
 // service.EnsureGlobalDynamicWorkflow for the identical shape) and mints a
-// fresh instance under it, scoped to projectID.
-func (s *Spawner) createDelegateHostInstance(pool *db.Pool, projectID string) (*model.WorkflowInstance, error) {
+// fresh instance under it, scoped to projectID, stamped with
+// RunOriginDelegate + callerSessionID so the flow graph can attribute it back
+// to the caller that had no workflow instance of its own.
+func (s *Spawner) createDelegateHostInstance(pool *db.Pool, projectID, callerSessionID string) (*model.WorkflowInstance, error) {
 	now := s.config.Clock.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := pool.Exec(
 		`INSERT OR IGNORE INTO workflows (id, project_id, description, scope_type, groups, close_ticket_on_complete, purge_on_completion, callable_as_subworkflow, is_global, finding_schemas, created_at, updated_at)
@@ -86,12 +88,14 @@ func (s *Spawner) createDelegateHostInstance(pool *db.Pool, projectID string) (*
 	}
 
 	wi := &model.WorkflowInstance{
-		ID:           uuid.New().String(),
-		ProjectID:    projectID,
-		DefProjectID: service.GlobalProjectID,
-		WorkflowID:   delegateHiddenWorkflow,
-		ScopeType:    "project",
-		Status:       model.WorkflowInstanceActive,
+		ID:              uuid.New().String(),
+		ProjectID:       projectID,
+		DefProjectID:    service.GlobalProjectID,
+		WorkflowID:      delegateHiddenWorkflow,
+		ScopeType:       "project",
+		Status:          model.WorkflowInstanceActive,
+		Origin:          model.RunOriginDelegate,
+		OriginSessionID: callerSessionID,
 	}
 	if err := repo.NewWorkflowInstanceRepo(pool, s.config.Clock).Create(wi); err != nil {
 		return nil, fmt.Errorf("create host instance: %w", err)

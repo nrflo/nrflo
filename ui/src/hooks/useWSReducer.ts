@@ -14,6 +14,7 @@ import { serviceTokenKeys } from './useServiceTokens'
 import { artifactKeys } from './useArtifacts'
 import { traceKeys } from './useTrace'
 import { planKeys } from './usePlan'
+import { sessionKeys } from './useSessions'
 import { throttledInvalidate as inv } from './useWSInvalidate'
 import { defRegistryHandlers, type WSEventHandler } from './useWSReducerDefs'
 import { invalidateAgents, childAgentHandlers } from './useWSReducerAgents'
@@ -136,6 +137,7 @@ function invalidateWorkflow(
     inv(qc, ticketKeys.detail(event.ticket_id))
     inv(qc, ticketKeys.workflow(event.ticket_id))
   }
+  inv(qc, sessionKeys.all) // orchestration.* can spawn/change session-flow nodes
 }
 
 // Helper: workflow lifecycle set — workflow state plus ticket lists
@@ -199,6 +201,7 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
     if (!isProjectScope) inv(qc, ticketKeys.lists())
     inv(qc, agentSessionLogKeys.all)
     inv(qc, traceKeys.all)
+    inv(qc, sessionKeys.all)
   },
 
   ...childAgentHandlers,
@@ -303,12 +306,8 @@ const eventHandlers: Partial<Record<WSEventType, WSEventHandler>> = {
   'orchestration.started': orchestrationLifecycleHandler,
   'orchestration.completed': orchestrationLifecycleHandler,
   'orchestration.failed': orchestrationLifecycleHandler,
-  'orchestration.retried': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
-  'orchestration.callback': (event, qc, isProjectScope) => {
-    invalidateWorkflow(event, qc, isProjectScope)
-  },
+  'orchestration.retried': invalidateWorkflow,
+  'orchestration.callback': invalidateWorkflow,
 
   'layer.skipped': (event, qc, isProjectScope) => {
     invalidateAgents(event, qc, isProjectScope)

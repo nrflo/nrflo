@@ -182,9 +182,17 @@ type ToolEnv struct {
 	Workflow        *service.WorkflowService
 	Ticket          *service.TicketService
 	ArtifactSvc     *service.ArtifactService
-	// DispatchRepo is required for tools that record dispatch rows (tools_python).
-	// Nil-safe: handlers skip Insert when nil.
+	// DispatchRepo is required for tools that record dispatch rows (tools_python)
+	// and for the toolAuditDecorator (registry.go wrapping). Nil-safe: both
+	// skip Insert when nil.
 	DispatchRepo *repo.DispatchRepo
+	// Source discriminates which invoke site this ToolEnv is dispatched from
+	// (model.DispatchSource* — mcp/http/console/engine); read by
+	// toolAuditDecorator at Invoke time. Empty is treated as unattributed.
+	Source string
+	// SessionKind mirrors agent_sessions.kind for SessionID (workflow_agent/
+	// console/console_chat), denormalized onto every recorded dispatch row.
+	SessionKind string
 	// WorkflowControl allows workflow_continue/workflow_fail builtins to act on the workflow.
 	// Nil when the orchestrator is not wired (e.g. tests).
 	WorkflowControl WorkflowController

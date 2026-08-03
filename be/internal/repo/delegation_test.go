@@ -154,6 +154,50 @@ func TestDelegation_SetWorkerSlot_RecordsSpawnError(t *testing.T) {
 	}
 }
 
+func TestDelegation_ListByCallerSession_ScopedAndOrderedByCreatedAtAsc(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewDelegationRepo(pool, clock.Real())
+
+	d1 := &model.Delegation{ID: "wfi-9.a", CallerSessionID: "caller-x", WorkflowInstanceID: "wfi-9", ProjectID: "proj-1", Tier: "extractor", Fanout: 1, Depth: 1}
+	d2 := &model.Delegation{ID: "wfi-9.b", CallerSessionID: "caller-x", WorkflowInstanceID: "wfi-9", ProjectID: "proj-1", Tier: "extractor", Fanout: 1, Depth: 1}
+	other := &model.Delegation{ID: "wfi-9.c", CallerSessionID: "caller-y", WorkflowInstanceID: "wfi-9", ProjectID: "proj-1", Tier: "extractor", Fanout: 1, Depth: 1}
+	if err := r.Create(d1); err != nil {
+		t.Fatalf("Create d1: %v", err)
+	}
+	if err := r.Create(d2); err != nil {
+		t.Fatalf("Create d2: %v", err)
+	}
+	if err := r.Create(other); err != nil {
+		t.Fatalf("Create other: %v", err)
+	}
+
+	list, err := r.ListByCallerSession("caller-x")
+	if err != nil {
+		t.Fatalf("ListByCallerSession: %v", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("len(list) = %d, want 2 (scoped to caller-x)", len(list))
+	}
+	if list[0].ID != "wfi-9.a" || list[1].ID != "wfi-9.b" {
+		t.Errorf("order = %s,%s, want wfi-9.a,wfi-9.b (created_at ASC)", list[0].ID, list[1].ID)
+	}
+}
+
+func TestDelegation_ListByCallerSession_UnknownCaller_ReturnsEmpty(t *testing.T) {
+	t.Parallel()
+	pool := newTestPool(t)
+	r := NewDelegationRepo(pool, clock.Real())
+
+	list, err := r.ListByCallerSession("no-such-caller")
+	if err != nil {
+		t.Fatalf("ListByCallerSession: %v", err)
+	}
+	if len(list) != 0 {
+		t.Errorf("len(list) = %d, want 0", len(list))
+	}
+}
+
 func TestDelegation_Create_SeedsBlankArraysAsValidJSON(t *testing.T) {
 	t.Parallel()
 	pool := newTestPool(t)

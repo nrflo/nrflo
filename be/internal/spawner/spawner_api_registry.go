@@ -37,6 +37,12 @@ import (
 // true with bypassNativeGate=true when the resolved def opts out of native
 // tools (native_tools=="none") — an explicit per-def opt-out is unambiguous
 // intent and skips the global gate.
+// dispatchSource tags every ToolEnv this call builds so the tool-audit
+// decorator (apirun.WrapToolAudit) can attribute rows without re-deriving
+// the invoke site: model.DispatchSourceMCP for the two CLI-driven paths
+// (cli_interactive real MCP, and the api-via-cli hybrid dispatched through
+// the same Spawner.DispatchTool bridge), model.DispatchSourceHTTP for the
+// pure in-process api branch (apirun Runner.invokeTool, no CLI in front).
 func (s *Spawner) buildAPIRegistry(
 	req SpawnRequest,
 	wfiID string,
@@ -46,6 +52,7 @@ func (s *Spawner) buildAPIRegistry(
 	forceBaseline bool,
 	includeFS bool,
 	bypassNativeGate bool,
+	dispatchSource string,
 ) ([]provider.ToolSpec, apirun.Registry, apirun.ToolEnv, error) {
 	toolsCSV := toolsCSVOverride
 	if toolsCSV == "" {
@@ -148,9 +155,11 @@ func (s *Spawner) buildAPIRegistry(
 		WorkDir:            proc.workDir,
 		FS:                 apirun.NewFSSession(),
 		SafetyCheck:        s.resolveSafetyCheck(req.ProjectID),
+		Source:             dispatchSource,
+		SessionKind:        model.AgentSessionKindWorkflowAgent,
 	}
 
-	return specs, handlers, toolEnv, nil
+	return specs, apirun.WrapToolAudit(handlers), toolEnv, nil
 }
 
 // csvNamesFSTool reports whether the tools CSV names a native FS tool

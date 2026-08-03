@@ -58,6 +58,11 @@ func New(row *model.PythonScript, pythonPath, sdkDir string, projectEnv []string
 
 // Spec returns the ToolSpec for this handler. Empty InputSchema falls back to
 // the permissive default (a free-form object).
+// RecordsDispatchItself marks PythonToolHandler as self-recording
+// (recordDispatch above) — apirun.WrapToolAudit skips wrapping it so a
+// python tool call never writes two tool_dispatches rows.
+func (h *PythonToolHandler) RecordsDispatchItself() {}
+
 func (h *PythonToolHandler) Spec() provider.ToolSpec {
 	schema := json.RawMessage(h.row.InputSchema)
 	if len(schema) == 0 {
@@ -235,14 +240,17 @@ func (h *PythonToolHandler) recordDispatch(env apirun.ToolEnv, input json.RawMes
 	}
 	sessionID := env.SessionID
 	dispatch := &model.ToolDispatch{
-		ProjectID:  env.ProjectID,
-		SessionID:  &sessionID,
-		ToolName:   h.row.Name,
-		Input:      string(input),
-		Output:     outPtr,
-		Status:     status,
-		ErrorMsg:   errMsg,
-		DurationMs: durationMs,
+		ProjectID:          env.ProjectID,
+		SessionID:          &sessionID,
+		ToolName:           h.row.Name,
+		Input:              string(input),
+		Output:             outPtr,
+		Status:             status,
+		ErrorMsg:           errMsg,
+		DurationMs:         durationMs,
+		Source:             model.DispatchSourcePython,
+		SessionKind:        model.AgentSessionKindWorkflowAgent,
+		WorkflowInstanceID: env.WorkflowInstanceID,
 	}
 	var dispatchID string
 	if env.DispatchRepo != nil {

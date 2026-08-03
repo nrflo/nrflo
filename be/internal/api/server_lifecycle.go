@@ -101,6 +101,13 @@ func (s *Server) startRetentionCleanup() {
 		} else if expired > 0 {
 			logger.Info(context.Background(), "retention cleanup: console sessions expired", "count", expired)
 		}
+
+		// Purge tool_dispatches rows older than tool_call_retention_days.
+		if deleted, err := service.SweepToolDispatches(s.pool, s.clock, s.clock.Now()); err != nil {
+			logger.Info(context.Background(), "retention cleanup: tool dispatch sweep error", "error", err)
+		} else if deleted > 0 {
+			logger.Info(context.Background(), "retention cleanup: tool dispatches purged", "count", deleted)
+		}
 	}
 
 	// Run once immediately on startup

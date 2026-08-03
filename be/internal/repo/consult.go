@@ -84,6 +84,29 @@ func (r *ConsultRepo) ListByInstance(wfiID string) ([]*model.Consult, error) {
 	return out, rows.Err()
 }
 
+// ListByCallerSession returns every consult seeded by callerSessionID, oldest
+// first — used by service.BuildSessionFlow to walk the consult edge of the
+// flow graph.
+func (r *ConsultRepo) ListByCallerSession(callerSessionID string) ([]*model.Consult, error) {
+	rows, err := r.db.Query(
+		`SELECT id, caller_session_id, workflow_instance_id, project_id, consultant_id, question, child_session_id, status, error, created_at, completed_at
+		 FROM consults WHERE caller_session_id = ? ORDER BY created_at ASC`, callerSessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*model.Consult
+	for rows.Next() {
+		c, err := scanConsult(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
 func scanConsult(scanner interface{ Scan(...interface{}) error }) (*model.Consult, error) {
 	c := &model.Consult{}
 	var createdAt string

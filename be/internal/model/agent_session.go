@@ -32,41 +32,42 @@ const (
 
 // AgentSession represents a spawned agent session
 type AgentSession struct {
-	ID                  string             `json:"id"`
-	ProjectID           string             `json:"project_id"`
-	TicketID            string             `json:"ticket_id"`
-	WorkflowInstanceID  string             `json:"workflow_instance_id"`
-	Phase               string             `json:"phase"`
-	NodeID              string             `json:"node_id"` // Execution identity (which slot in the run); AgentType stays the agent_definitions template key
-	AgentType           string             `json:"agent_type"`
-	ModelID             sql.NullString     `json:"-"`
-	Status              AgentSessionStatus `json:"status"`
-	Result              sql.NullString     `json:"-"` // pass | fail | continue | timeout | callback
-	ResultReason        sql.NullString     `json:"-"`
-	PID                 sql.NullInt64      `json:"-"`
-	ContextLeft         sql.NullInt64      `json:"-"` // Remaining context percentage
-	AncestorSessionID   sql.NullString     `json:"-"` // Ancestor session for continuation
-	SpawnCommand        sql.NullString     `json:"-"` // Full CLI command used to spawn
-	Prompt              sql.NullString     `json:"-"` // Rendered user prompt sent to the agent
-	SystemPrompt        sql.NullString     `json:"-"` // Rendered system-prompt-suffix delivered to the agent
-	RestartCount        int                `json:"-"` // Number of low-context restarts
-	NudgeCount          int                `json:"-"` // Number of idle nudges sent
-	Config              string             `json:"-"` // Safety settings JSON used for this session
-	StartedAt           sql.NullString     `json:"-"`
-	EndedAt             sql.NullString     `json:"-"`
-	SpawnToken          sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
-	EffectiveMode       sql.NullString     `json:"-"` // Effective execution backend: cli|cli_interactive|api|script (set at spawn time)
-	RateLimitRetryCount int                `json:"-"`
-	RateLimitUntilTs    sql.NullString     `json:"-"`
-	LastRetryClass      sql.NullString     `json:"-"`
-	Kind                string             `json:"-"` // "workflow_agent", "observer", "console", or "console_chat"
-	ObserverScope       sql.NullString     `json:"-"` // "workflow", "project", or "global"
-	ObserverWorkflowID  sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
-	ConsoleEngine       sql.NullString     `json:"-"` // For kind="console_chat": the engine name ('claude'|'codex') the row was started with
-	ConsoleProfile      string             `json:"-"` // For kind="console_chat": the console.Profile name the row was started with ('' = none)
-	ConsoleYolo         sql.NullBool       `json:"-"` // For kind="console_chat": per-session yolo override; NULL = inherit the console_yolo global default
-	CreatedAt           time.Time          `json:"created_at"`
-	UpdatedAt           time.Time          `json:"updated_at"`
+	ID                     string             `json:"id"`
+	ProjectID              string             `json:"project_id"`
+	TicketID               string             `json:"ticket_id"`
+	WorkflowInstanceID     string             `json:"workflow_instance_id"`
+	Phase                  string             `json:"phase"`
+	NodeID                 string             `json:"node_id"` // Execution identity (which slot in the run); AgentType stays the agent_definitions template key
+	AgentType              string             `json:"agent_type"`
+	ModelID                sql.NullString     `json:"-"`
+	Status                 AgentSessionStatus `json:"status"`
+	Result                 sql.NullString     `json:"-"` // pass | fail | continue | timeout | callback
+	ResultReason           sql.NullString     `json:"-"`
+	PID                    sql.NullInt64      `json:"-"`
+	ContextLeft            sql.NullInt64      `json:"-"` // Remaining context percentage
+	AncestorSessionID      sql.NullString     `json:"-"` // Ancestor session for continuation
+	SpawnCommand           sql.NullString     `json:"-"` // Full CLI command used to spawn
+	Prompt                 sql.NullString     `json:"-"` // Rendered user prompt sent to the agent
+	SystemPrompt           sql.NullString     `json:"-"` // Rendered system-prompt-suffix delivered to the agent
+	RestartCount           int                `json:"-"` // Number of low-context restarts
+	NudgeCount             int                `json:"-"` // Number of idle nudges sent
+	Config                 string             `json:"-"` // Safety settings JSON used for this session
+	StartedAt              sql.NullString     `json:"-"`
+	EndedAt                sql.NullString     `json:"-"`
+	SpawnToken             sql.NullString     `json:"-"` // Bearer token for spawned agent's HTTP API access (valid while session is running/user_interactive)
+	EffectiveMode          sql.NullString     `json:"-"` // Effective execution backend: cli|cli_interactive|api|script (set at spawn time)
+	RateLimitRetryCount    int                `json:"-"`
+	RateLimitUntilTs       sql.NullString     `json:"-"`
+	LastRetryClass         sql.NullString     `json:"-"`
+	Kind                   string             `json:"-"` // "workflow_agent", "observer", "console", or "console_chat"
+	ObserverScope          sql.NullString     `json:"-"` // "workflow", "project", or "global"
+	ObserverWorkflowID     sql.NullString     `json:"-"` // For workflow-scope observers: bound workflow definition id
+	ConsoleEngine          sql.NullString     `json:"-"` // For kind="console_chat": the engine name ('claude'|'codex') the row was started with
+	ConsoleProfile         string             `json:"-"` // For kind="console_chat": the console.Profile name the row was started with ('' = none)
+	ConsoleYolo            sql.NullBool       `json:"-"` // For kind="console_chat": per-session yolo override; NULL = inherit the console_yolo global default
+	SiblingOriginSessionID string             `json:"-"` // For a console sibling chat (SwitchModel/OpenHandsSibling): the origin session it was opened from; "" for an ordinary chat
+	CreatedAt              time.Time          `json:"created_at"`
+	UpdatedAt              time.Time          `json:"updated_at"`
 
 	// Derived fields (populated via JOIN, not stored in agent_sessions)
 	Workflow string `json:"-"` // workflow_id from workflow_instances (for API compat)

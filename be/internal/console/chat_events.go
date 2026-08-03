@@ -129,6 +129,7 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 				"tool":     ev.ToolName,
 				"is_error": ev.IsError,
 			})
+			recordEngineToolDispatch(pool, clk, sess, ev.ToolName, ev.IsError)
 
 		case spawner.EventThinking:
 			sess.appendThinking(ev.ItemID, ev.Text)
@@ -159,6 +160,29 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 		}
 	}
+}
+
+// recordEngineToolDispatch writes one tool_dispatches row (source='engine')
+// for a native CLI tool call reported only as start/finish events with no
+// tool_use_id — invoke and result cannot be paired, so duration_ms is 0
+// (unknown) rather than a real timing. Nil-safe on pool (tests, no DB).
+func recordEngineToolDispatch(pool *db.Pool, clk clock.Clock, sess *chatSession, toolName string, isError bool) {
+	if pool == nil {
+		return
+	}
+	status := model.DispatchStatusSuccess
+	if isError {
+		status = model.DispatchStatusError
+	}
+	sessionID := sess.id
+	_ = repo.NewDispatchRepo(pool, clk).Insert(&model.ToolDispatch{
+		ProjectID:   sess.projectID,
+		SessionID:   &sessionID,
+		ToolName:    toolName,
+		Status:      status,
+		Source:      model.DispatchSourceEngine,
+		SessionKind: model.AgentSessionKindConsoleChat,
+	})
 }
 
 // clientDecision maps the spawner's engine-facing approval vocabulary onto

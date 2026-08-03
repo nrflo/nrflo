@@ -128,7 +128,7 @@ func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 
 // TestProfileByName_T0Bare_Defaults mirrors TestProfileByName_T0Decider_Defaults:
 // claude/opus-5/xhigh, 30k budget, refinery on, tier-t0-bare template,
-// native policy none, and the exact 14-tool bare catalogue.
+// native policy none, and the exact 15-tool bare catalogue.
 func TestProfileByName_T0Bare_Defaults(t *testing.T) {
 	t.Parallel()
 	p, err := ProfileByName("t0-bare")
@@ -159,8 +159,8 @@ func TestProfileByName_T0Bare_Defaults(t *testing.T) {
 	if !p.SiblingFlows {
 		t.Error("SiblingFlows = false, want true")
 	}
-	if len(p.Catalogue) != 14 {
-		t.Fatalf("len(Catalogue) = %d, want 14", len(p.Catalogue))
+	if len(p.Catalogue) != 15 {
+		t.Fatalf("len(Catalogue) = %d, want 15", len(p.Catalogue))
 	}
 	for _, banned := range []string{
 		"read_file", "edit_file", "bash", "web_fetch", "web_search", "consult",
@@ -177,7 +177,8 @@ func TestProfileByName_T0Bare_Defaults(t *testing.T) {
 	for _, want := range []string{
 		"delegate", "get_delegation", "dynamic_workflow", "get_subworkflow",
 		"revise_plan", "approve_plan", "workflow_run", "workflow_list",
-		"workflow_get", "workflow_continue", "workflow_stop", "ticket_list", "ticket_current",
+		"workflow_get", "workflow_continue", "workflow_stop", "workflow_wait",
+		"ticket_list", "ticket_current",
 	} {
 		found := false
 		for _, name := range p.Catalogue {

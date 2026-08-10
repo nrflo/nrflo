@@ -71,15 +71,23 @@ func BuildSessionFlow(pool *db.Pool, clk clock.Clock, rootSessionID string) (*ty
 			nodes = append(nodes, types.SessionFlowNode{SessionID: cur.sessionID, Depth: cur.depth})
 			continue
 		}
-		nodes = append(nodes, types.SessionFlowNode{
+		node := types.SessionFlowNode{
 			SessionID:          sess.ID,
 			Kind:               sess.Kind,
 			AgentType:          sess.AgentType,
 			Status:             string(sess.Status),
 			Result:             sess.Result.String,
 			WorkflowInstanceID: sess.WorkflowInstanceID,
+			ModelID:            sess.ModelID.String,
+			StartedAt:          sess.StartedAt.String,
+			EndedAt:            sess.EndedAt.String,
 			Depth:              cur.depth,
-		})
+		}
+		if sess.ContextLeft.Valid {
+			pct := int(sess.ContextLeft.Int64)
+			node.ContextLeft = &pct
+		}
+		nodes = append(nodes, node)
 
 		children := repos.children(cur.sessionID, sess.WorkflowInstanceID)
 		for _, edge := range children {

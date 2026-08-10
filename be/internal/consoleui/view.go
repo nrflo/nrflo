@@ -46,6 +46,14 @@ func (m *model) View() tea.View {
 		view.AltScreen = true
 		return view
 	}
+	if m.graph.open {
+		// Full-screen flow overlay on the alt buffer: the inline frame and
+		// native scrollback underneath stay untouched and restore on close.
+		view := tea.NewView(m.graphView())
+		view.AltScreen = true
+		view.WindowTitle = "nrflo console"
+		return view
+	}
 	chromeSections := []string{}
 	if m.questionActive() {
 		chromeSections = append(chromeSections, m.questionView())
@@ -155,10 +163,10 @@ func (m *model) footer() string {
 		if m.queuedCount > 0 {
 			line += " · queued:" + strconv.Itoa(m.queuedCount)
 		}
-		line += " · ctrl+c interrupt · ctrl+d detach · ctrl+x close"
+		line += " · ctrl+c interrupt · ctrl+t graph"
 		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
 	}
-	return mutedStyle.Render(" " + "enter send · ctrl+d detach · ctrl+x close")
+	return mutedStyle.Render(" " + "ctrl+t graph")
 }
 
 func (m *model) approvalView() string {

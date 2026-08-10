@@ -21,24 +21,73 @@ func TestChatNotifier_DelegateCompleted_DeliversTurn(t *testing.T) {
 	}
 	n := NewChatNotifier(svc, pool, svc.deps.Clock)
 
-	gotSID, text := n.resolve(&ws.Event{Type: ws.EventDelegateCompleted, Data: map[string]interface{}{
+	note := n.resolve(&ws.Event{Type: ws.EventDelegateCompleted, Data: map[string]interface{}{
 		"caller_session_id": sid, "delegation_id": "wfi-1.abc",
 	}})
-	if gotSID != sid || !strings.Contains(text, "get_delegation") || !strings.Contains(text, "wfi-1.abc") {
-		t.Fatalf("resolve = (%q, %q), want sid + get_delegation hint", gotSID, text)
+	if note.sid != sid || note.delegationID != "wfi-1.abc" || !strings.Contains(note.text, "get_delegation") {
+		t.Fatalf("resolve = %+v, want sid + delegation id + get_delegation hint", note)
 	}
 
-	n.deliver(sid, text)
+	n.deliver(note)
 	eng := factory.last()
-	if len(eng.turns) != 1 || eng.turns[0] != text {
+	if len(eng.turns) != 1 || eng.turns[0] != note.text {
 		t.Fatalf("engine turns = %v, want the notification delivered as one turn", eng.turns)
 	}
 
-	// A second notification while that turn is still running queues instead
-	// of erroring, coalescing until the turn ends.
-	n.deliver(sid, "[nrflo] second")
+	// A second non-delegation notification while that turn is still running
+	// queues instead of erroring, coalescing until the turn ends.
+	n.deliver(chatNotification{sid: sid, text: "[nrflo] second"})
 	if sess, _ := svc.get(sid); len(sess.queuedPrompts()) != 1 {
 		t.Fatalf("queuedPrompts = %v, want the mid-turn notification queued", sess.queuedPrompts())
+	}
+}
+
+// A delegation already consumed by an inline delegate wait (extractor default
+// wait_sec 120) must not wake the chat: the caller got its results in the
+// tool call, and get_delegation could only answer "already consumed".
+func TestChatNotifier_ConsumedDelegation_Skipped(t *testing.T) {
+	t.Parallel()
+	svc, pool, _, factory := newChatTestService(t)
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	n := NewChatNotifier(svc, pool, svc.deps.Clock)
+
+	dRepo := repo.NewDelegationRepo(pool, svc.deps.Clock)
+	d := &model.Delegation{ID: "wfi-1.consumed", CallerSessionID: sid, WorkflowInstanceID: "wfi-1",
+		ProjectID: chatTestProjectID, Tier: "extractor", Brief: "b", Fanout: 1, Depth: 1}
+	if err := dRepo.Create(d); err != nil {
+		t.Fatalf("Create delegation: %v", err)
+	}
+	if _, err := dRepo.MarkCompleted(d.ID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
+	}
+	if _, err := dRepo.MarkConsumed(d.ID); err != nil {
+		t.Fatalf("MarkConsumed: %v", err)
+	}
+
+	n.deliver(n.resolve(&ws.Event{Type: ws.EventDelegateCompleted, Data: map[string]interface{}{
+		"caller_session_id": sid, "delegation_id": d.ID,
+	}}))
+	if eng := factory.last(); len(eng.turns) != 0 {
+		t.Fatalf("engine turns = %v, want consumed-delegation notification dropped", eng.turns)
+	}
+
+	// An unconsumed delegation still notifies (the async/executor contract).
+	d2 := &model.Delegation{ID: "wfi-1.pending", CallerSessionID: sid, WorkflowInstanceID: "wfi-1",
+		ProjectID: chatTestProjectID, Tier: "executor", Brief: "b", Fanout: 1, Depth: 1}
+	if err := dRepo.Create(d2); err != nil {
+		t.Fatalf("Create delegation: %v", err)
+	}
+	if _, err := dRepo.MarkCompleted(d2.ID, "completed"); err != nil {
+		t.Fatalf("MarkCompleted: %v", err)
+	}
+	n.deliver(n.resolve(&ws.Event{Type: ws.EventDelegateCompleted, Data: map[string]interface{}{
+		"caller_session_id": sid, "delegation_id": d2.ID,
+	}}))
+	if eng := factory.last(); len(eng.turns) != 1 {
+		t.Fatalf("engine turns = %v, want unconsumed-delegation notification delivered", eng.turns)
 	}
 }
 
@@ -50,24 +99,24 @@ func TestChatNotifier_Resolve_Filters(t *testing.T) {
 	svc, pool, _, _ := newChatTestService(t)
 	n := NewChatNotifier(svc, pool, svc.deps.Clock)
 
-	if sid, _ := n.resolve(&ws.Event{Type: ws.EventDelegateFailed, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventDelegateFailed, Data: map[string]interface{}{
 		"caller_session_id": "s1", "delegation_id": "d1", "tier": "extractor", "error": "boom",
-	}}); sid != "" {
+	}}); note.sid != "" {
 		t.Error("per-worker spawn failure resolved, want skipped")
 	}
-	if sid, text := n.resolve(&ws.Event{Type: ws.EventDelegateFailed, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventDelegateFailed, Data: map[string]interface{}{
 		"caller_session_id": "s1", "delegation_id": "d1", "error": "boom",
-	}}); sid != "s1" || !strings.Contains(text, "boom") {
-		t.Errorf("fanout-level failure resolve = (%q, %q), want s1 + error text", sid, text)
+	}}); note.sid != "s1" || note.delegationID != "d1" || !strings.Contains(note.text, "boom") {
+		t.Errorf("fanout-level failure resolve = %+v, want s1 + delegation id + error text", note)
 	}
-	if sid, _ := n.resolve(&ws.Event{Type: ws.EventPlanWaiting, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventPlanWaiting, Data: map[string]interface{}{
 		"instance_id": "iid-1", "status": "planning",
-	}}); sid != "" {
+	}}); note.sid != "" {
 		t.Error("plan_waiting status=planning resolved, want skipped (only waiting_approval/waiting_input notify)")
 	}
 
 	// deliver to a session ChatService does not hold is a silent no-op.
-	n.deliver("no-such-session", "[nrflo] hello")
+	n.deliver(chatNotification{sid: "no-such-session", text: "[nrflo] hello"})
 }
 
 // orchestration.completed resolves through the instance's origin: only a
@@ -95,19 +144,19 @@ func TestChatNotifier_OrchestrationCompleted_OriginChat(t *testing.T) {
 		}
 	}
 
-	if gotSID, text := n.resolve(&ws.Event{Type: ws.EventOrchestrationCompleted, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventOrchestrationCompleted, Data: map[string]interface{}{
 		"instance_id": "wfi-console-origin",
-	}}); gotSID != sid || !strings.Contains(text, "wfi-console-origin") {
-		t.Errorf("resolve(console origin) = (%q, %q), want the launching chat", gotSID, text)
+	}}); note.sid != sid || !strings.Contains(note.text, "wfi-console-origin") {
+		t.Errorf("resolve(console origin) = %+v, want the launching chat", note)
 	}
-	if gotSID, _ := n.resolve(&ws.Event{Type: ws.EventOrchestrationCompleted, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventOrchestrationCompleted, Data: map[string]interface{}{
 		"instance_id": "wfi-human-origin",
-	}}); gotSID != "" {
+	}}); note.sid != "" {
 		t.Error("resolve(human origin) resolved, want skipped")
 	}
-	if gotSID, text := n.resolve(&ws.Event{Type: ws.EventPlanWaiting, Data: map[string]interface{}{
+	if note := n.resolve(&ws.Event{Type: ws.EventPlanWaiting, Data: map[string]interface{}{
 		"instance_id": "wfi-console-origin", "status": string(model.WorkflowInstanceWaitingApproval),
-	}}); gotSID != sid || !strings.Contains(text, "approve_plan") {
-		t.Errorf("resolve(plan waiting_approval) = (%q, %q), want approve_plan hint", gotSID, text)
+	}}); note.sid != sid || !strings.Contains(note.text, "approve_plan") {
+		t.Errorf("resolve(plan waiting_approval) = %+v, want approve_plan hint", note)
 	}
 }

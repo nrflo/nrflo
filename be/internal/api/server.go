@@ -134,7 +134,7 @@ func NewServer(cfg *config.Config, dataPath string, logsDir string, pool *db.Poo
 	refineryMgr.SetCostAttributor(spawner.AddSessionCostUsage)
 	refineryMgr.SetBroadcaster(hub.Broadcast)
 	orch.RefineryMgr = refineryMgr
-	wireRefineryFoldSpawner(refineryMgr, pool, clk, hub, dataPath, ptyMgr)
+	wireRefineryFoldSpawner(refineryMgr, orch, pool, clk, hub, dataPath, ptyMgr)
 
 	// Proactive-restart task-boundary coordinator (findings.updated stamps a
 	// session's ledger turn as a task boundary); RegisterListener is pre-Run only.

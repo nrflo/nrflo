@@ -61,6 +61,8 @@ type model struct {
 	tools        []ConsoleTool
 	toolsFetched bool
 	invoke       invokeState
+
+	graph graphState
 }
 
 type historyMsg struct {

@@ -191,9 +191,26 @@ func (m *Manager) Flush(ctx context.Context, sessionID string) {
 	sc.flush(ctx)
 }
 
+// refineryCLIAgentType is the fold's own one-off child (`_refinery-cli`).
+// Its events must never trigger a fold: the child's findings_add (the digest
+// write) broadcasts findings.updated on the same project, which would
+// re-trigger the sidecar and spawn one fold child per debounce window
+// forever.
+const refineryCLIAgentType = "_refinery-cli"
+
+// selfInflicted reports whether an event originates from refinery's own fold
+// child, breaking the fold → findings.updated → fold feedback loop.
+func selfInflicted(ev *ws.Event) bool {
+	agentType, _ := ev.Data["agent_type"].(string)
+	return agentType == refineryCLIAgentType
+}
+
 // OnEvent implements ws.Listener. Non-blocking: it only appends a compact
 // event line and signals each matching sidecar's trigger channel.
 func (m *Manager) OnEvent(ev *ws.Event) {
+	if selfInflicted(ev) {
+		return
+	}
 	if relevantEventTypes[ev.Type] {
 		m.mu.Lock()
 		sessions := m.byProject[ev.ProjectID]

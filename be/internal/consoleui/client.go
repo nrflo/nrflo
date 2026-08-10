@@ -143,6 +143,21 @@ func (c *Client) ActiveWorkflowCount(ctx context.Context, projectID string) (int
 	return count, nil
 }
 
+// Flow fetches the session-rooted flow graph (delegations, consults,
+// sub-workflow children) for this chat's session.
+func (c *Client) Flow(ctx context.Context) (types.SessionFlowResponse, error) {
+	var result types.SessionFlowResponse
+	err := c.do(ctx, http.MethodGet, "/api/v1/sessions/"+url.PathEscape(c.session)+"/flow", nil, &result)
+	return result, err
+}
+
+// SessionStats fetches the flow's tool-call distribution + cost/token rollup.
+func (c *Client) SessionStats(ctx context.Context) (types.SessionStatsResponse, error) {
+	var result types.SessionStatsResponse
+	err := c.do(ctx, http.MethodGet, "/api/v1/sessions/"+url.PathEscape(c.session)+"/stats", nil, &result)
+	return result, err
+}
+
 // Tools fetches the chat's own invokable tool catalogue.
 func (c *Client) Tools(ctx context.Context) ([]ConsoleTool, error) {
 	var result struct {

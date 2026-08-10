@@ -239,9 +239,9 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 			sidMu.Lock()
 			plannerSID = sid
 			sidMu.Unlock()
-			o.registerAuxSpawner(sid, sp)
+			o.RegisterAuxSpawner(sid, sp)
 		},
-		OnSessionUnregister: o.unregisterAuxSpawner,
+		OnSessionUnregister: o.UnregisterAuxSpawner,
 	}
 
 	sp := spawner.New(cfg)
@@ -253,7 +253,7 @@ func (o *Orchestrator) RunPlanner(ctx context.Context, instanceID string, in ser
 		sid := plannerSID
 		sidMu.Unlock()
 		if sid != "" {
-			o.unregisterAuxSpawner(sid)
+			o.UnregisterAuxSpawner(sid)
 		}
 	}()
 

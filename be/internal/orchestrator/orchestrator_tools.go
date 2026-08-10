@@ -20,15 +20,18 @@ func (o *Orchestrator) resolveSessionSpawner(instanceID, sessionID string) *spaw
 	return o.auxSpawners[sessionID]
 }
 
-// registerAuxSpawner records a one-off child spawner so the socket bridge can
-// serve its session's tools; unregisterAuxSpawner is its symmetric teardown.
-func (o *Orchestrator) registerAuxSpawner(sessionID string, sp *spawner.Spawner) {
+// RegisterAuxSpawner records a one-off child spawner so the socket bridge can
+// serve its session's tools; UnregisterAuxSpawner is its symmetric teardown.
+// Exported for host spawners built outside this package (api's refinery fold
+// host) — a session missing from this index silently gets an empty tools/list
+// and no heartbeat.
+func (o *Orchestrator) RegisterAuxSpawner(sessionID string, sp *spawner.Spawner) {
 	o.mu.Lock()
 	o.auxSpawners[sessionID] = sp
 	o.mu.Unlock()
 }
 
-func (o *Orchestrator) unregisterAuxSpawner(sessionID string) {
+func (o *Orchestrator) UnregisterAuxSpawner(sessionID string) {
 	o.mu.Lock()
 	delete(o.auxSpawners, sessionID)
 	o.mu.Unlock()

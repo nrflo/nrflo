@@ -114,7 +114,7 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "enter send") {
+	if !strings.Contains(last, "ctrl+t graph") {
 		t.Errorf("last line = %q, want it to contain footer help", last)
 	}
 }
@@ -144,7 +144,7 @@ func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "enter send") {
+	if !strings.Contains(last, "ctrl+t graph") {
 		t.Errorf("last line = %q, want it to contain footer help", last)
 	}
 }
@@ -175,7 +175,7 @@ func TestUpdate_ResizeAfterPrintsRedocksToNewHeight(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "enter send") {
+	if !strings.Contains(last, "ctrl+t graph") {
 		t.Errorf("after resize: last line = %q, want it to contain footer help", last)
 	}
 }
@@ -241,7 +241,7 @@ func TestView_ExtremeTinyTerminalDropsComposerKeepsFooterVisible(t *testing.T) {
 	if strings.Contains(content, "╭") || strings.Contains(content, "nrflo…") {
 		t.Errorf("View().Content = %q, want the composer box dropped at h=%d", content, tinyHeight)
 	}
-	if !strings.Contains(content, "enter send") {
+	if !strings.Contains(content, "ctrl+t graph") {
 		t.Errorf("View().Content = %q, want the footer still visible on the single remaining line", content)
 	}
 }

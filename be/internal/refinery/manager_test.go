@@ -58,6 +58,27 @@ func TestManager_Debounce_BelowFloorDoesNotFold(t *testing.T) {
 	}
 }
 
+// TestManager_SelfInflictedEventNeverTriggers verifies an event from the
+// fold's own `_refinery-cli` child (its digest findings_add broadcast) never
+// re-triggers a fold — the fold → findings.updated → fold feedback loop.
+func TestManager_SelfInflictedEventNeverTriggers(t *testing.T) {
+	mgr, clk := newTestManager(t)
+	sessionID, projectID := "sess-selfloop-1", "proj-selfloop-1"
+	seedConsoleChatSession(t, mgr.pool, sessionID, projectID)
+	mgr.Start(sessionID, projectID)
+	t.Cleanup(func() { mgr.Stop(sessionID) })
+
+	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID,
+		Data: map[string]interface{}{"agent_type": "_refinery-cli", "action": "add"}})
+	settle(50 * time.Millisecond)
+	clk.Advance(60 * time.Second)
+
+	settle(200 * time.Millisecond)
+	if got := foldCount(t, mgr, sessionID); got != 0 {
+		t.Errorf("fold_count = %d, want 0 (fold child's own event must not re-trigger)", got)
+	}
+}
+
 // TestManager_Debounce_AtFloorFolds verifies crossing the 30s floor triggers
 // exactly one fold.
 func TestManager_Debounce_AtFloorFolds(t *testing.T) {

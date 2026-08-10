@@ -49,7 +49,12 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if bgRelevant(msg.Events) {
 			commands = append(commands, m.loadBgCount())
+			if m.graph.open {
+				commands = append(commands, m.loadGraph())
+			}
 		}
+	case graphMsg:
+		m.applyGraph(msg)
 	case skillsMsg:
 		if msg.err == nil {
 			m.skills = msg.skills
@@ -65,14 +70,20 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case historyMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
-		} else {
+		} else if !m.graph.open {
+			// Printing is suppressed while the alt-screen graph overlay is
+			// open (tea.Println targets the inline region); closing the
+			// overlay reloads the tail and the printedTotal high-water mark
+			// prints only what was missed.
 			commands = append(commands, m.printNewMessages(msg.page))
 		}
 	case syncMsg:
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else {
-			commands = append(commands, m.printNewMessages(msg.page))
+			if !m.graph.open {
+				commands = append(commands, m.printNewMessages(msg.page))
+			}
 			m.applySync(msg.detail)
 			m.lastErr = ""
 		}
@@ -134,6 +145,9 @@ func (m *model) tickOnRunning(wasRunning bool) tea.Cmd {
 func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	m.notice = ""
 	key := msg.Keystroke()
+	if m.graph.open {
+		return m.handleGraphKey(key)
+	}
 	if m.invoke.active {
 		return m.handleInvokeKey(key)
 	}
@@ -173,6 +187,10 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 	case "ctrl+y":
 		toggled := !m.detail.Yolo
 		return action("yolo", func() error { return m.client.SetYolo(m.ctx, toggled) }), true
+	case "ctrl+t":
+		m.graph.open = true
+		m.graph.scroll = 0
+		return m.loadGraph(), true
 	case "enter":
 		text := strings.TrimSpace(m.input.Value())
 		if text == "" {

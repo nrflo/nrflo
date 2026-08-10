@@ -56,7 +56,7 @@ func hiddenHostSpawner(ctx context.Context, o *Orchestrator, pool *db.Pool, proj
 		// socket bridge, which resolves sessions via auxSpawners; without this
 		// registration a CLI-mode delegate/consult worker gets an empty
 		// tools/list and no heartbeat, and stalls out while healthy.
-		OnSessionRegister:   o.registerAuxSpawner,
-		OnSessionUnregister: o.unregisterAuxSpawner,
+		OnSessionRegister:   o.RegisterAuxSpawner,
+		OnSessionUnregister: o.UnregisterAuxSpawner,
 	}), nil
 }

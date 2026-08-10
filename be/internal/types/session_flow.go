@@ -33,6 +33,10 @@ type SessionFlowNode struct {
 	Status             string `json:"status"`
 	Result             string `json:"result,omitempty"`
 	WorkflowInstanceID string `json:"workflow_instance_id,omitempty"`
+	ModelID            string `json:"model_id,omitempty"`
+	StartedAt          string `json:"started_at,omitempty"`
+	EndedAt            string `json:"ended_at,omitempty"`
+	ContextLeft        *int   `json:"context_left,omitempty"`
 	// Depth is hops from the root session (0 = root).
 	Depth int `json:"depth"`
 }

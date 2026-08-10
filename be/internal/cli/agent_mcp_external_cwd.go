@@ -5,8 +5,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
+
+// pathCaseInsensitive folds case in path comparison on darwin, where the
+// default APFS is case-insensitive: a shell cwd typed in the wrong case must
+// still match the registered root. Mirrors service.foldPathCase
+// (service/project_cwd.go), this resolver's server-side twin.
+var pathCaseInsensitive = runtime.GOOS == "darwin"
+
+func foldPathCase(p string) string {
+	if pathCaseInsensitive {
+		return strings.ToLower(p)
+	}
+	return p
+}
 
 // projRoot is the subset of a project needed to match a directory to a project.
 type projRoot struct {
@@ -36,13 +50,13 @@ func canonPath(p string) string {
 // /a/foobar does not match root /a/foo). Empty and root ("/") project paths are
 // skipped so they can't become a catch-all. Pure — no I/O.
 func matchProjectByCwd(cwd string, projects []projRoot) string {
-	cwd = canonPath(cwd)
+	cwd = foldPathCase(canonPath(cwd))
 	if cwd == "" {
 		return ""
 	}
 	best, bestLen := "", -1
 	for _, p := range projects {
-		root := canonPath(p.RootPath)
+		root := foldPathCase(canonPath(p.RootPath))
 		if root == "" || root == string(os.PathSeparator) {
 			continue
 		}

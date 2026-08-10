@@ -82,7 +82,7 @@ func (s *Spawner) RunRefineryFold(ctx context.Context, req types.RefineryFoldReq
 
 	sp := New(Config{
 		Workflows: map[string]WorkflowDef{
-			"_refinery_fold": {
+			refineryFoldHiddenWorkflow: {
 				Phases: []PhaseDef{{NodeID: "_refinery-cli", Agent: "_refinery-cli", Layer: 0}},
 			},
 		},
@@ -128,12 +128,22 @@ func (s *Spawner) RunRefineryFold(ctx context.Context, req types.RefineryFoldReq
 	foldCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
+	// Console chats carry no workflow instance, but Spawn demands one; back
+	// the fold with a reusable hidden host instance keyed to the session.
+	wfiID := req.WorkflowInstanceID
+	if wfiID == "" {
+		wfiID, err = s.ensureRefineryFoldHostInstance(pool, req.ProjectID, req.SessionID)
+		if err != nil {
+			return types.RefineryFoldResult{}, fmt.Errorf("refinery fold: host instance: %w", err)
+		}
+	}
+
 	spawnErr := sp.Spawn(foldCtx, SpawnRequest{
 		AgentType:          "_refinery-cli",
 		NodeID:             "_refinery-cli",
 		ProjectID:          req.ProjectID,
-		WorkflowName:       "_refinery_fold",
-		WorkflowInstanceID: req.WorkflowInstanceID,
+		WorkflowName:       refineryFoldHiddenWorkflow,
+		WorkflowInstanceID: wfiID,
 		ScopeType:          "project",
 		ExtraVars: map[string]string{
 			"FOLD_INPUT": req.UserText,

@@ -34,6 +34,20 @@ func TestMatchProjectByCwd(t *testing.T) {
 	}
 }
 
+// Case-fold matching follows pathCaseInsensitive (read, not mutated — the
+// sibling test above runs parallel): folded on darwin, exact elsewhere.
+func TestMatchProjectByCwd_CaseFold(t *testing.T) {
+	t.Parallel()
+	projects := []projRoot{{ID: "kdre", RootPath: "/work/KDRE"}}
+	want := ""
+	if pathCaseInsensitive {
+		want = "kdre"
+	}
+	if got := matchProjectByCwd("/work/kdre/sub", projects); got != want {
+		t.Errorf("matchProjectByCwd(/work/kdre/sub) = %q, want %q", got, want)
+	}
+}
+
 // The following three tests cover case 2: the project resolved at SESSION
 // CREATION (resolveSessionProject, exercised via openConsoleSession) — cwd
 // match beats NRFLO_PROJECT, no cwd match falls back to NRFLO_PROJECT, and

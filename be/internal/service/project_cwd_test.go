@@ -73,6 +73,43 @@ func TestResolveByCwd(t *testing.T) {
 	}
 }
 
+// TestResolveByCwd_CaseFold verifies a cwd whose case differs from the
+// registered root still matches when path comparison is case-insensitive
+// (darwin default APFS), and does not match when it is case-sensitive.
+func TestResolveByCwd_CaseFold(t *testing.T) {
+	svc := setupProjectCwdEnv(t)
+	// Pre-resolve symlinks (macOS /var → /private/var) so the nonexistent
+	// lowercase variant canonicalizes consistently with the real root.
+	base := canonProjectPath(t.TempDir())
+	root := filepath.Join(base, "KDRE")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	insertProjectRoot(t, svc, "kdre", root)
+	lower := filepath.Join(base, "kdre")
+
+	orig := pathCaseInsensitive
+	t.Cleanup(func() { pathCaseInsensitive = orig })
+
+	pathCaseInsensitive = true
+	got, err := svc.ResolveByCwd(lower)
+	if err != nil {
+		t.Fatalf("ResolveByCwd: %v", err)
+	}
+	if got != "kdre" {
+		t.Errorf("case-insensitive ResolveByCwd(%q) = %q, want kdre", lower, got)
+	}
+
+	pathCaseInsensitive = false
+	got, err = svc.ResolveByCwd(lower)
+	if err != nil {
+		t.Fatalf("ResolveByCwd: %v", err)
+	}
+	if got != "" {
+		t.Errorf("case-sensitive ResolveByCwd(%q) = %q, want empty", lower, got)
+	}
+}
+
 // TestResolveByCwd_RootPathNotCatchAll verifies a "/" root_path never becomes a
 // catch-all match.
 func TestResolveByCwd_RootPathNotCatchAll(t *testing.T) {

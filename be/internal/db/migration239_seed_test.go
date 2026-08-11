@@ -94,8 +94,5 @@ func TestMigration239_GuidanceRoutesToVerifier(t *testing.T) {
 		if strings.Contains(tpl, "a fresh extractor per claim") {
 			t.Errorf("%s still tells deciders to re-check with an extractor", id)
 		}
-		if !strings.Contains(tpl, "Extractor and verifier delegations return their findings inline") {
-			t.Errorf("%s inline-return contract does not cover verifier", id)
-		}
 	}
 }

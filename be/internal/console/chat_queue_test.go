@@ -44,6 +44,7 @@ func TestChatService_QueuedPrompts_FlushOnTurnCompleted(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	eng := factory.last()
+	eng.setSteerUnsupported(true) // pin the queue path; steering is covered in chat_turn_test.go
 	ch := subscribeChatSession(t, hub, sid)
 
 	if _, err := svc.SendMessage(sid, "first"); err != nil {
@@ -85,6 +86,7 @@ func TestChatService_QueuedPrompts_FoldIntoNextMessageAfterError(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	eng := factory.last()
+	eng.setSteerUnsupported(true) // pin the queue path; steering is covered in chat_turn_test.go
 	ch := subscribeChatSession(t, hub, sid)
 
 	if _, err := svc.SendMessage(sid, "first"); err != nil {
@@ -132,6 +134,7 @@ func TestChatService_AnswerQuestion_ResolvesPendingApproval(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 	eng := factory.last()
+	eng.setSteerUnsupported(true) // pin the queue path; steering is covered in chat_turn_test.go
 	ch := subscribeChatSession(t, hub, sid)
 
 	eng.emit(spawner.EngineEvent{

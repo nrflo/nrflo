@@ -79,6 +79,58 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 	return nil
 }
 
+// SteerUserTurn types text into the BUSY TUI: claude natively queues input
+// submitted mid-turn and steers it to the model at the next tool boundary
+// (or auto-submits it as the next turn when the turn ends first — either
+// way it is delivered, so this method persists the user row itself).
+// turnActive is re-checked after the submit-delay pause: if the turn ended
+// in that window, submitting would start a turn behind the server's back,
+// so the typed line is cleared (Ctrl+U) and ErrNoActiveTurn tells the
+// caller to send a normal turn instead.
+func (e *claudeEngine) SteerUserTurn(ctx context.Context, text string) error {
+	e.mu.Lock()
+	if !e.turnActive {
+		e.mu.Unlock()
+		return ErrNoActiveTurn
+	}
+	sess, spec := e.ptySession, e.spec
+	if sess == nil {
+		e.mu.Unlock()
+		return fmt.Errorf("console engine: not started")
+	}
+	e.mu.Unlock()
+
+	if _, err := sess.Write([]byte(text)); err != nil {
+		return fmt.Errorf("console engine: steer turn: %w", err)
+	}
+	if strings.HasPrefix(text, "/") {
+		if _, err := sess.Write([]byte(" ")); err != nil {
+			return fmt.Errorf("console engine: steer turn: %w", err)
+		}
+	}
+	e.pause(ctx, e.submitDelay)
+
+	e.mu.Lock()
+	active := e.turnActive
+	if active {
+		// Arm the echo dedupe before the submit CR can trigger the
+		// UserPromptSubmit hook for this text.
+		e.pendingEcho = text
+	}
+	e.mu.Unlock()
+	if !active {
+		sess.Write([]byte{0x15}) //nolint:errcheck // Ctrl+U clears the typed line
+		return ErrNoActiveTurn
+	}
+	if e.sink != nil {
+		emitMessage(spec.SessionID, text, "user_input", e.sink)
+	}
+	if _, err := sess.Write([]byte("\r")); err != nil {
+		return fmt.Errorf("console engine: steer submit: %w", err)
+	}
+	return nil
+}
+
 // InterruptTurn sends Ctrl+C to Claude's PTY. The Stop hook remains the owner
 // of the idle transition and EventTurnCompleted emission.
 func (e *claudeEngine) InterruptTurn(_ context.Context) error {

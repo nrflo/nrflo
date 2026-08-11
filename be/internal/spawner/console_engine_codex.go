@@ -211,6 +211,12 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 	return nil
 }
 
+// SteerUserTurn: the app-server protocol has no mid-turn user-input channel
+// (codex's own TUI queueing is client-side), so callers queue instead.
+func (e *codexEngine) SteerUserTurn(context.Context, string) error {
+	return ErrSteeringUnsupported
+}
+
 // Events returns the normalized event channel, closed when the run loop exits.
 func (e *codexEngine) Events() <-chan EngineEvent { return e.events }
 

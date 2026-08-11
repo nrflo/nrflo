@@ -97,6 +97,12 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTur
 	return nil
 }
 
+// SteerUserTurn behaves like a non-steering engine so the REST tests keep
+// exercising the queue path.
+func (f *fakeConsoleEngine) SteerUserTurn(context.Context, string) error {
+	return spawner.ErrSteeringUnsupported
+}
+
 func (f *fakeConsoleEngine) Events() <-chan spawner.EngineEvent { return f.events }
 
 // ReplyApproval mirrors the real engines' contract

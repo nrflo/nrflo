@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"be/internal/model"
 	"be/internal/service"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
@@ -19,14 +20,29 @@ const delegateMaxContextBytes = 4096
 // extractor or verifier call omits wait_sec: both are by definition quick
 // one-shots, and async-by-default teaches callers to bare-poll get_delegation
 // once per model turn. Explicit wait_sec:0 still starts async.
+//
+// Console chats are the exception (defaultWaitSec): an inline block keeps the
+// interactive turn busy for up to 2 minutes, deafening the chat to its human,
+// and the ChatNotifier already delivers completions as a turn — so every tier
+// defaults async there. kind='console' (mcp-external) sessions are NOT held
+// by ChatService and get no notification, so they keep the inline default.
 const delegateDefaultInlineWaitSec = 120
+
+// defaultWaitSec derives the omitted-wait_sec default from tier and caller
+// kind — see delegateDefaultInlineWaitSec.
+func defaultWaitSec(env apirun.ToolEnv, tier string) int {
+	if tier == "executor" || env.SessionKind == model.AgentSessionKindConsoleChat {
+		return 0
+	}
+	return delegateDefaultInlineWaitSec
+}
 
 type delegateHandler struct{}
 
 func (delegateHandler) Spec() provider.ToolSpec {
 	return provider.ToolSpec{
 		Name:        "delegate",
-		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"verifier\" adversarially re-checks one specific claim on a stronger model (use it for absence claims, contradictions between workers, and audit-critical positives), also no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further (delegate_max_depth, default 2 — past it the tool is simply absent). Returns the workers' structured findings, never a transcript. Every worker receives the same brief and context; fanout is how one call becomes many workers, each differing only in its own fanout item. wait_sec blocks inline for the result (max 240s; extractor/verifier default 120); wait_sec 0 (executor default) starts async and returns a delegation_id — collect it with ONE get_delegation call passing wait_sec, never by re-polling in a loop. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error.",
+		Description: "Delegate work downward to a cheaper tier worker (or a fanout of them). tier=\"extractor\" answers one focused question with no further delegation; tier=\"verifier\" adversarially re-checks one specific claim on a stronger model (use it for absence claims, contradictions between workers, and audit-critical positives), also no further delegation; tier=\"executor\" owns a slice of work end to end and may itself delegate one level further (delegate_max_depth, default 2 — past it the tool is simply absent). Returns the workers' structured findings, never a transcript. Every worker receives the same brief and context; fanout is how one call becomes many workers, each differing only in its own fanout item. wait_sec blocks inline for the result (max 240s; extractor/verifier default 120 — except in interactive console chats, where every tier defaults async and completion arrives as a chat notification); wait_sec 0 (executor default) starts async and returns a delegation_id — collect it with ONE get_delegation call passing wait_sec, never by re-polling in a loop. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error.",
 		InputSchema: json.RawMessage(`{
 "type":"object",
 "properties":{
@@ -71,11 +87,9 @@ func (delegateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input jso
 		return fmt.Sprintf("fanout of %d exceeds delegate_max_fanout (%d)", len(args.Fanout), maxFanout), true, nil
 	}
 
-	waitSec := 0
+	waitSec := defaultWaitSec(env, args.Tier)
 	if args.WaitSec != nil {
 		waitSec = *args.WaitSec
-	} else if args.Tier != "executor" {
-		waitSec = delegateDefaultInlineWaitSec
 	}
 
 	result, err := env.Delegator.Delegate(ctx, env.SessionID, apirun.DelegateRequest{
@@ -89,7 +103,7 @@ func (delegateHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input jso
 		return err.Error(), true, nil
 	}
 	if waitSec <= 0 {
-		return appendPollHint(result), false, nil
+		return appendPollHint(env, result), false, nil
 	}
 	delegationID := delegationID(result)
 	if delegationID == "" {

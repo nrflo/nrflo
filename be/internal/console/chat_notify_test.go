@@ -35,10 +35,11 @@ func TestChatNotifier_DelegateCompleted_DeliversTurn(t *testing.T) {
 	}
 
 	// A second non-delegation notification while that turn is still running
-	// queues instead of erroring, coalescing until the turn ends.
+	// is steered into it (the default fake supports steering, like the
+	// claude/api engines); a non-steering engine would queue instead.
 	n.deliver(chatNotification{sid: sid, text: "[nrflo] second"})
-	if sess, _ := svc.get(sid); len(sess.queuedPrompts()) != 1 {
-		t.Fatalf("queuedPrompts = %v, want the mid-turn notification queued", sess.queuedPrompts())
+	if steers := eng.steerTexts(); len(steers) != 1 || steers[0] != "[nrflo] second" {
+		t.Fatalf("steerTexts = %v, want the mid-turn notification steered", steers)
 	}
 }
 

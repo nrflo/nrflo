@@ -52,10 +52,10 @@ func TestChatService_SendMessage_UnknownSession_ReturnsErrChatSessionNotFound(t 
 	}
 }
 
-// A second POST /messages while a turn is in flight is queued (queued=true,
-// no engine round trip) — never an error. The fake engine never emits
-// EventTurnCompleted here, so the turn stays "running" for the whole test;
-// delivery is chat_queue_test.go's territory.
+// A second POST /messages while a turn is in flight on a NON-steering engine
+// is queued (queued=true, no engine round trip) — never an error. The fake
+// engine never emits EventTurnCompleted here, so the turn stays "running"
+// for the whole test; delivery is chat_queue_test.go's territory.
 func TestChatService_SendMessage_SecondCallWhileTurnActive_QueuesWithoutEngineRoundTrip(t *testing.T) {
 	t.Parallel()
 	svc, _, _, factory := newChatTestService(t)
@@ -65,6 +65,7 @@ func TestChatService_SendMessage_SecondCallWhileTurnActive_QueuesWithoutEngineRo
 		t.Fatalf("Create: %v", err)
 	}
 	eng := factory.last()
+	eng.setSteerUnsupported(true)
 
 	if _, err := svc.SendMessage(sid, "first turn"); err != nil {
 		t.Fatalf("first SendMessage: %v", err)
@@ -138,5 +139,36 @@ func TestChatService_SendMessage_EngineError_RollsBackTurnState(t *testing.T) {
 	// Turn state must have rolled back to idle; a retry should now succeed.
 	if _, err := svc.SendMessage(sid, "retry"); err != nil {
 		t.Fatalf("retry SendMessage after engine error = %v, want nil (turn state must roll back)", err)
+	}
+}
+
+// A mid-turn message on a steering-capable engine (claude/api) is delivered
+// into the running turn — queued=false, no queue entry, no new engine turn.
+func TestChatService_SendMessage_MidTurn_SteersIntoRunningTurn(t *testing.T) {
+	t.Parallel()
+	svc, _, _, factory := newChatTestService(t)
+
+	sid, err := svc.Create("codex", "", "", chatTestProjectID, "", "", false)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	eng := factory.last()
+
+	if _, err := svc.SendMessage(sid, "first turn"); err != nil {
+		t.Fatalf("first SendMessage: %v", err)
+	}
+	queued, err := svc.SendMessage(sid, "steer me")
+	if err != nil || queued {
+		t.Fatalf("mid-turn SendMessage = (%v, %v), want (false, nil) via steering", queued, err)
+	}
+	if steers := eng.steerTexts(); len(steers) != 1 || steers[0] != "steer me" {
+		t.Errorf("steerTexts = %v, want [steer me]", steers)
+	}
+	if got := eng.turnCount(); got != 1 {
+		t.Errorf("engine turn count = %d, want still 1 (steered, not a new turn)", got)
+	}
+	snap, ok := svc.Snapshot(sid)
+	if !ok || len(snap.QueuedPrompts) != 0 {
+		t.Errorf("queued prompts = %v (ok=%v), want empty", snap.QueuedPrompts, ok)
 	}
 }

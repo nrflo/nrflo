@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"be/internal/model"
 	"be/internal/spawner/apirun"
 )
 
@@ -48,5 +49,35 @@ func TestDelegate_VerifierOmittedWaitSec_BlocksInline(t *testing.T) {
 	}
 	if polls < 2 {
 		t.Errorf("polls=%d, want >=2 (default verifier wait must poll)", polls)
+	}
+}
+
+// In a console chat (SessionKind console_chat) an omitted wait_sec launches
+// async for every tier — the interactive turn must not block; completion
+// arrives via the ChatNotifier. The hint points at the notification contract.
+func TestDelegate_ConsoleChat_OmittedWaitSec_StaysAsync(t *testing.T) {
+	env := newBuiltinTestEnv(t)
+	env.env.SessionKind = model.AgentSessionKindConsoleChat
+	env.env.Delegator = &fakeDelegator{
+		delegateFn: func(context.Context, string, apirun.DelegateRequest) (string, error) {
+			return `{"delegation_id":"wfi.cc","status":"running"}`, nil
+		},
+		getDelegationFn: func(context.Context, string, string) (string, error) {
+			t.Fatal("GetDelegation must not be called — console chats default async")
+			return "", nil
+		},
+	}
+
+	for _, tier := range []string{"extractor", "verifier"} {
+		out, isErr, err := invoke(t, env.env, "delegate", `{"tier":"`+tier+`","brief":"do it"}`)
+		if err != nil {
+			t.Fatalf("Invoke err: %v", err)
+		}
+		if isErr {
+			t.Errorf("tier %s: isErr=true, want false; out=%q", tier, out)
+		}
+		if !strings.Contains(out, "running") || !strings.Contains(out, "notified when the delegation completes") {
+			t.Errorf("tier %s: out=%q, want async running result with the notification hint", tier, out)
+		}
 	}
 }

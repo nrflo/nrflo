@@ -27,15 +27,29 @@ func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
 	if !ok {
 		return false, ErrChatSessionNotFound
 	}
-	if err := sess.beginTurn(); err != nil {
-		if !errors.Is(err, spawner.ErrTurnActive) {
-			return false, err
+	// Two attempts: steering can lose its race with the turn ending
+	// (ErrNoActiveTurn), in which case the message belongs in a fresh turn.
+	for attempt := 0; ; attempt++ {
+		if err := sess.beginTurn(); err != nil {
+			if !errors.Is(err, spawner.ErrTurnActive) {
+				return false, err
+			}
+			steerErr := sess.getEngine().SteerUserTurn(context.Background(), text)
+			if steerErr == nil {
+				return false, nil // delivered into the running turn
+			}
+			if errors.Is(steerErr, spawner.ErrNoActiveTurn) && attempt == 0 {
+				continue
+			}
+			// ErrSteeringUnsupported (codex) or any real steering failure:
+			// fall back to the mid-turn queue, delivered on turn end.
+			if !sess.enqueuePrompt(text) {
+				return false, ErrPromptQueueFull
+			}
+			pushQueued(s.deps.WSHub, sess)
+			return true, nil
 		}
-		if !sess.enqueuePrompt(text) {
-			return false, ErrPromptQueueFull
-		}
-		pushQueued(s.deps.WSHub, sess)
-		return true, nil
+		break
 	}
 	if q := sess.takeQueuedPrompts(); len(q) > 0 {
 		text = strings.Join(append(q, text), "\n\n")

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"be/internal/model"
 	"be/internal/spawner/apirun"
 	"be/internal/spawner/apirun/provider"
 )
@@ -55,21 +56,27 @@ func (getDelegationHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inpu
 		if err != nil {
 			return err.Error(), true, nil
 		}
-		return appendPollHint(result), delegationStatus(result) == "failed", nil
+		return appendPollHint(env, result), delegationStatus(result) == "failed", nil
 	}
 	return pollDelegation(ctx, env, args.DelegationID, args.WaitSec)
 }
 
 // appendPollHint stamps a "hint" field onto a still-running result returned
-// from a non-blocking call, steering the model to a single bounded wait — an
-// async return with no hint reliably produces a get_delegation call per model
-// turn until the workers finish.
-func appendPollHint(raw string) string {
+// from a non-blocking call. For a console chat the hint points at the
+// notification contract (the ChatNotifier delivers completion as a turn);
+// everywhere else it steers the model to a single bounded wait — an async
+// return with no hint reliably produces a get_delegation call per model turn
+// until the workers finish.
+func appendPollHint(env apirun.ToolEnv, raw string) string {
 	var v map[string]interface{}
 	if err := json.Unmarshal([]byte(raw), &v); err != nil || v["status"] != "running" {
 		return raw
 	}
-	v["hint"] = "still running — collect with one get_delegation call passing wait_sec (max 240), do not re-poll without it. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error."
+	if env.SessionKind == model.AgentSessionKindConsoleChat {
+		v["hint"] = "running async — end your turn now; this chat is notified when the delegation completes, then collect it with ONE get_delegation call. Never poll and never block on waits."
+	} else {
+		v["hint"] = "still running — collect with one get_delegation call passing wait_sec (max 240), do not re-poll without it. Under a CLI console engine a wait over ~120s may return as a background-task notification carrying a non-terminal status — that notification does not consume the delegation: call get_delegation once more after it, and never treat the backgrounding as an error."
+	}
 	b, err := json.Marshal(v)
 	if err != nil {
 		return raw
@@ -113,9 +120,9 @@ func pollDelegation(ctx context.Context, env apirun.ToolEnv, delegationID string
 		}
 		select {
 		case <-ctx.Done():
-			return appendPollHint(last), false, nil
+			return appendPollHint(env, last), false, nil
 		case <-deadline.C:
-			return appendPollHint(last), false, nil
+			return appendPollHint(env, last), false, nil
 		case <-ticker.C:
 			heartbeatEvery++
 			if env.Heartbeat != nil && heartbeatEvery%10 == 0 { // ~every 30s

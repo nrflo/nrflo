@@ -51,6 +51,7 @@ type apiConsoleEngine struct {
 	runCtx            context.Context
 	turnActive        bool
 	turnCancel        context.CancelFunc
+	steered           []string // mid-turn user input awaiting delivery (console_engine_api_steer.go)
 	stopped           bool
 	seedConsumed      bool
 	lastTurnStatus    string
@@ -163,6 +164,7 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		// as a console chat with no profile always got. Idle-gap GC is still
 		// driven by cache_ttl_sec.
 		Watcher: newAPIContextWatcher(e.api.Pool, e.api.Clock, spec.SessionID, spec.Model, watcherBudget(e.api.Pool, spec.ContextBudgetTokens, spec.MaxContext)),
+		Steer:   apiEngineSteerSource{e: e},
 	})
 
 	return nil
@@ -242,10 +244,23 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, turn UserTurn) erro
 			}
 		}
 
-		e.mu.Lock()
-		e.turnActive = false
-		e.turnCancel = nil
-		e.mu.Unlock()
+		// Steered input that arrived after the loop's last tool boundary would
+		// be dropped if the turn went idle now — run it as a continuation
+		// first. The empty-check and the idle flip share one critical section,
+		// so a SteerUserTurn racing the flip either lands in a continuation or
+		// is rejected with ErrNoActiveTurn (console_engine_api_steer.go).
+		for {
+			e.mu.Lock()
+			if status != "PASS" || len(e.steered) == 0 {
+				e.turnActive = false
+				e.turnCancel = nil
+				e.mu.Unlock()
+				break
+			}
+			leftover := e.takeSteeredLocked()
+			e.mu.Unlock()
+			status = conv.SendTurn(turnCtx, proc, leftover)
+		}
 
 		if status == "PASS" {
 			e.emit(EngineEvent{Type: EventTurnCompleted, SessionID: spec.SessionID})

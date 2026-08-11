@@ -126,6 +126,11 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 				toolResults = append(toolResults, provider.ContentBlock{Type: "text", Text: notice})
 				r.cfg.Sink.TrackMessage(notice, "system")
 			}
+			if r.cfg.Steer != nil {
+				for _, steered := range r.cfg.Steer.Drain() {
+					toolResults = append(toolResults, provider.ContentBlock{Type: "text", Text: "[user — delivered mid-turn] " + steered})
+				}
+			}
 			// Do NOT filter resp.Content — thinking blocks must ride along for required API replay.
 			msgs = append(msgs,
 				provider.Message{Role: "assistant", Content: resp.Content},

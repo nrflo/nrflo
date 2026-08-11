@@ -281,7 +281,7 @@ A consultant is a named api-mode agent that a caller invokes inline via the `con
 - `brief` (required) — the shared task statement every worker receives.
 - `context` (optional) — inline context shared by all workers, capped at 4KB (rejected over the cap); larger context belongs in an artifact.
 - `artifacts` (optional) — names of artifacts already materialized for this run, passed to workers as a which-to-read hint.
-- `wait_sec` (optional; extractor/verifier default 120, executor default 0) — block inline up to this many seconds (max 240) for the result; `0` returns immediately with a `delegation_id` to poll via `get_delegation`.
+- `wait_sec` (optional; extractor/verifier default 120, executor default 0 — in interactive console chats every tier defaults 0 and completion arrives as a chat notification) — block inline up to this many seconds (max 240) for the result; `0` returns immediately with a `delegation_id` to poll via `get_delegation`.
 - `fanout` (optional) — spawn one worker per item, concurrently; each worker gets the same brief/context plus only its own item (its per-worker slice of the job). Capped by `delegate_max_fanout` (default 20, project-override, else global).
 
 **Result:** each worker's structured findings (its `_delegate_findings` finding), aggregated per fanout item — never the worker's transcript. The `_delegate` worker phase is hidden from the v4 read model, same as `_consult`.

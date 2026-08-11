@@ -34,6 +34,15 @@ type ConsoleEngine interface {
 	// provider-visible text (codex, api) — see UserTurn's doc comment.
 	// Returns ErrTurnActive when a turn is already in flight.
 	SendUserTurn(ctx context.Context, turn UserTurn) error
+	// SteerUserTurn delivers text into the ACTIVE turn so the model sees it
+	// at the next tool boundary instead of after the whole turn: claude types
+	// it into the busy TUI (the CLI queues and steers natively), the api
+	// engine injects it into the running tool loop. Returns ErrNoActiveTurn
+	// when idle (caller should send a normal turn instead) and
+	// ErrSteeringUnsupported when the engine cannot steer (codex — the
+	// app-server protocol has no mid-turn input), in which case the caller
+	// falls back to queueing.
+	SteerUserTurn(ctx context.Context, text string) error
 	// Events returns the channel of normalized events for this session. It is
 	// closed when the engine's run loop exits (see Stop).
 	Events() <-chan EngineEvent
@@ -190,6 +199,10 @@ var ErrEngineStopped = fmt.Errorf("console engine: stopped")
 
 // ErrNoActiveTurn is returned when interruption is requested while idle.
 var ErrNoActiveTurn = fmt.Errorf("console engine: no active turn")
+
+// ErrSteeringUnsupported is returned by SteerUserTurn on engines with no
+// mid-turn input channel (codex); callers fall back to the prompt queue.
+var ErrSteeringUnsupported = fmt.Errorf("console engine: steering unsupported")
 
 // EngineDeps bundles what GetConsoleEngine needs to construct any engine.
 // PTY is the exported concrete *pty.Manager so callers outside this package

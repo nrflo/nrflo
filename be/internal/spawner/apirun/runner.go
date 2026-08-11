@@ -55,6 +55,18 @@ type Config struct {
 	// maybeCompactInLoop/maybeCompact fallback. Nil-safe — every call site
 	// guards it.
 	Watcher ContextWatcher
+	// Steer, when non-nil, is drained at every tool-results boundary; each
+	// drained text rides the tool-results user message as its own text block,
+	// so input arriving mid-turn (a console user steering a busy chat)
+	// reaches the model without waiting for the turn to end. The feeder owns
+	// persistence of the user rows — the runner only forwards.
+	Steer SteerSource
+}
+
+// SteerSource hands the runner user text that arrived while a turn was
+// running. Drain returns and clears everything pending (nil when none).
+type SteerSource interface {
+	Drain() []string
 }
 
 // Runner drives an API-mode agent through one or more turns. Each Runner

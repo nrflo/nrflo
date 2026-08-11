@@ -32,10 +32,16 @@ type fakeConsoleEngine struct {
 	// skills mirrors turns index-for-index: the resolved spawner.SkillMatch
 	// (nil when the turn carried none) ChatService.SendMessage attached to
 	// UserTurn.Skill for that call.
-	skills     []*spawner.SkillMatch
-	sendErr    error // consumed once by the next SendUserTurn call
-	approvals  []fakeApprovalCall
-	approveErr error // consumed once by the next ReplyApproval call
+	skills  []*spawner.SkillMatch
+	sendErr error // consumed once by the next SendUserTurn call
+	// steering: steers records SteerUserTurn texts; steerUnsupported makes
+	// the fake behave like codex (ErrSteeringUnsupported); steerErr is
+	// consumed once by the next SteerUserTurn call.
+	steers           []string
+	steerUnsupported bool
+	steerErr         error
+	approvals        []fakeApprovalCall
+	approveErr       error // consumed once by the next ReplyApproval call
 
 	sessionAllowed []string // returned by SessionApprovals
 	revoked        []string // tools passed to RevokeSessionApproval

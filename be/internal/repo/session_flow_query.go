@@ -69,7 +69,8 @@ func (r *AgentSessionRepo) CacheRollup(sessionIDs []string) (input, cacheRead, c
 		           COALESCE(json_extract(s.tokens_json, '$.output_tokens'), 0) / 1e6 * COALESCE(m.price_out, 0)
 		       ), 0)
 		FROM agent_sessions s
-		LEFT JOIN models m ON m.id = s.model_id
+		LEFT JOIN models m ON m.id = CASE WHEN instr(s.model_id, ':') > 0
+			THEN substr(s.model_id, instr(s.model_id, ':') + 1) ELSE s.model_id END
 		WHERE s.id IN (SELECT value FROM json_each(?))`, string(idsJSON)).
 		Scan(&input, &cacheRead, &cacheWrite, &output, &noCacheCostUSD)
 	return input, cacheRead, cacheWrite, output, noCacheCostUSD, err

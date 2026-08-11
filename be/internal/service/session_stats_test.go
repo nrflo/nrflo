@@ -72,7 +72,9 @@ func TestBuildSessionStats_CacheRollup(t *testing.T) {
 	// 250k fresh + 750k cache-read = 75% hit, no-cache = 1M * $1 = $1.
 	// Worker: 500k fresh + 500k cache-write = 0% hit, no-cache = $1.
 	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-4-5', tokens_json = '{"input_tokens":250000,"output_tokens":0,"cache_read_tokens":750000,"cache_write_tokens":0}' WHERE id = 's-cache-root'`)
-	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-4-5', tokens_json = '{"input_tokens":500000,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":500000}' WHERE id = 's-cache-worker'`)
+	// CLI sessions store the adapter-prefixed id ('claude:haiku-4-5'); the
+	// rollup's pricing join must strip the prefix to find the models row.
+	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'claude:haiku-4-5', tokens_json = '{"input_tokens":500000,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":500000}' WHERE id = 's-cache-worker'`)
 
 	flow, err := BuildSessionFlow(pool, clock.Real(), "s-cache-root")
 	if err != nil {

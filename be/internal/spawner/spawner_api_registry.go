@@ -115,8 +115,8 @@ func (s *Spawner) buildAPIRegistry(
 		specs = stripTool(specs, handlers, "dynamic_workflow")
 	}
 	// Nesting guard: delegate workers at the delegate-depth cap may not
-	// delegate further. _t2_extractor never has "delegate" in its tools CSV
-	// to begin with (native guard); this only bites _t1_executor once its
+	// delegate further. _t2_extractor/_t3_verifier never have "delegate" in
+	// their tools CSV (native guard); this only bites _t1_executor once its
 	// chain depth reaches the cap. Depth is this spawner's own in-memory
 	// Config.DelegateDepth (0 for a top-level spawner, N for an N-levels-down
 	// delegate worker's child spawner) — per-chain and race-free, unlike a

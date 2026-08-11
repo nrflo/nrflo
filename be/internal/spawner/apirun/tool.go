@@ -48,7 +48,7 @@ type ConsultantSpawner interface {
 // owned by the delegate/get_delegation builtin handlers around the two
 // non-blocking Delegator calls, so it is not carried here.
 type DelegateRequest struct {
-	Tier      string   // "extractor" (_t2_extractor) or "executor" (_t1_executor)
+	Tier      string   // "extractor" (_t2_extractor), "verifier" (_t3_verifier) or "executor" (_t1_executor)
 	Brief     string   // required; templated per fanout item
 	Context   string   // inline context, capped at 4KB by the handler
 	Artifacts []string // artifact names materialized for the worker(s)

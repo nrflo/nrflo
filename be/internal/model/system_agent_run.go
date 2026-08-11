@@ -37,7 +37,8 @@ type SystemAgentRun struct {
 
 	// Delegation group key, populated only for delegate-worker sessions via
 	// the LEFT JOIN in ListSystemAgentRuns. DelegateTier is delegations.tier
-	// (TEXT: "extractor"|"executor"), distinct from the numeric Tier above.
+	// (TEXT: "extractor"|"verifier"|"executor"), distinct from the numeric
+	// Tier above.
 	DelegationID     string `json:"delegation_id,omitempty"`
 	CallerSessionID  string `json:"caller_session_id,omitempty"`
 	DelegateTier     string `json:"delegate_tier,omitempty"`

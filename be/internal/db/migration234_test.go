@@ -27,7 +27,9 @@ func TestMigration234_T0TemplatesExtractorInline(t *testing.T) {
 		if template != defaultTemplate {
 			t.Errorf("template != default_template (readonly invariant violated) for %q", id)
 		}
-		if !strings.Contains(template, "Extractor delegations return their findings inline") {
+		// 000239 widens the sentence to "Extractor and verifier delegations
+		// return ..." — anchor on the stable tail.
+		if !strings.Contains(template, "delegations return their findings inline") {
 			t.Errorf("%s template missing extractor-inline guidance; got %q", id, template)
 		}
 		if strings.Contains(template, "After launching a delegation or a run (delegate/dynamic_workflow/workflow_run)") {

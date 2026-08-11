@@ -15,12 +15,12 @@ import (
 )
 
 // delegateHiddenWorkflow is the lazily-seeded global workflow definition that
-// hosts a fresh workflow instance for a Delegate caller with no bound
-// workflow instance of its own (a console session).
+// hosts instances for Delegate callers with no bound instance (console sessions).
 const delegateHiddenWorkflow = "_delegate_host"
 
 var delegateTierDefs = map[string]string{
 	"extractor": "_t2_extractor",
+	"verifier":  "_t3_verifier",
 	"executor":  "_t1_executor",
 }
 

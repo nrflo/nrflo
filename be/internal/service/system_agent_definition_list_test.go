@@ -24,6 +24,7 @@ func TestSystemAgentDef_List(t *testing.T) {
 	_ = svc.Delete("_refinery")
 	_ = svc.Delete("_refinery-cli")
 	_ = svc.Delete("_t2_extractor")
+	_ = svc.Delete("_t3_verifier")
 	_ = svc.Delete("_t1_executor")
 
 	// Initially empty.

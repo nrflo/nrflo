@@ -10,6 +10,8 @@ HTTP API server providing REST endpoints and WebSocket for the web UI. Deep flow
 - **Request ID** middleware generates a trx (`logger.NewTrx()`) per HTTP request, injects it into context via `logger.WithTrx()`, and sets `X-Request-ID` response header
 - **WebSocket** at `/api/v1/ws` for real-time updates
 
+`Server.Start` runs `startupOrphanSweep` before any listener exists — the same fixed-order in-flight sweep graceful shutdown runs (`sweepInFlight`, `server_shutdown.go`), stamped `startup_orphan_sweep`, so rows a crashed/killed process left `running`/`user_interactive`/active are failed at next boot instead of lingering forever.
+
 ## Authentication
 
 ### Middleware Chain

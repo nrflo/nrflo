@@ -35,15 +35,22 @@ func DelegateMaxDepth(pool *db.Pool, projectID string) int {
 }
 
 // DelegateWorktreeIsolation reports whether per-delegation worktree
-// isolation is enabled (default true; project override first, then global).
-// Clones SubworkflowToolsEnabled's shape.
+// isolation is enabled (project config override first, then global). Absent
+// any explicit config it follows the project's own worktree stance
+// (projects.use_git_worktrees): a project that disabled git worktrees gets
+// in-place delegations too, not nrdelegate branches its rules never expect.
+// An unknown project defaults to enabled.
 func DelegateWorktreeIsolation(pool *db.Pool, projectID string) bool {
 	raw, err := pool.GetProjectConfig(projectID, DelegateWorktreeIsolationKey)
 	if err != nil || raw == "" {
 		raw, err = pool.GetConfig(DelegateWorktreeIsolationKey)
-		if err != nil || raw == "" {
-			return true
-		}
 	}
-	return !strings.EqualFold(strings.TrimSpace(raw), "false")
+	if err == nil && raw != "" {
+		return !strings.EqualFold(strings.TrimSpace(raw), "false")
+	}
+	var useWorktrees bool
+	if err := pool.QueryRow(`SELECT use_git_worktrees FROM projects WHERE id = ?`, projectID).Scan(&useWorktrees); err != nil {
+		return true
+	}
+	return useWorktrees
 }

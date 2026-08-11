@@ -92,6 +92,15 @@ func (s *WorktreeService) CommitAndCollect(projectRoot, worktreePath, branchName
 	if _, err := runGit(worktreePath, "add", "-A"); err != nil {
 		return nil, fmt.Errorf("commit and collect: git add: %w", err)
 	}
+	// Unstage the agent-context files seedAgentContext materialized: in a
+	// project that does not gitignore CLAUDE.md/.claude they are visible to
+	// the add -A above and would ride the delegation commit into the merge.
+	if seeds := seededContextPaths(worktreePath); len(seeds) > 0 {
+		args := append([]string{"rm", "-r", "--cached", "-q", "--ignore-unmatch", "--"}, seeds...)
+		if _, err := runGit(worktreePath, args...); err != nil {
+			return nil, fmt.Errorf("commit and collect: unstage seeded context: %w", err)
+		}
+	}
 
 	summary := &DelegateWorktreeSummary{}
 	_, cleanErr := runGit(worktreePath, "diff", "--cached", "--quiet")

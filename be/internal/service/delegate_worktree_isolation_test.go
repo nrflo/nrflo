@@ -24,13 +24,48 @@ func setupDelegateIsolationTestPool(t *testing.T) *db.Pool {
 }
 
 // TestDelegateWorktreeIsolation_DefaultsTrue verifies the escape hatch
-// defaults to enabled absent any config row.
+// defaults to enabled absent any config row (unknown project).
 func TestDelegateWorktreeIsolation_DefaultsTrue(t *testing.T) {
 	t.Parallel()
 	pool := setupDelegateIsolationTestPool(t)
 
 	if !DelegateWorktreeIsolation(pool, "proj-1") {
 		t.Error("DelegateWorktreeIsolation() = false, want true by default")
+	}
+}
+
+// TestDelegateWorktreeIsolation_FollowsProjectWorktreeFlag verifies that
+// absent explicit config, isolation follows projects.use_git_worktrees — a
+// project that disabled git worktrees gets in-place delegations — and that
+// an explicit config key still overrides the flag in both directions.
+func TestDelegateWorktreeIsolation_FollowsProjectWorktreeFlag(t *testing.T) {
+	t.Parallel()
+	pool := setupDelegateIsolationTestPool(t)
+	for _, p := range []struct {
+		id   string
+		flag int
+	}{{"proj-nowt", 0}, {"proj-wt", 1}} {
+		if _, err := pool.Exec(
+			`INSERT INTO projects (id, name, use_git_worktrees, created_at, updated_at) VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
+			p.id, p.id, p.flag,
+		); err != nil {
+			t.Fatalf("seed project %s: %v", p.id, err)
+		}
+	}
+
+	if DelegateWorktreeIsolation(pool, "proj-nowt") {
+		t.Error("DelegateWorktreeIsolation(proj-nowt) = true, want false (use_git_worktrees=0)")
+	}
+	if !DelegateWorktreeIsolation(pool, "proj-wt") {
+		t.Error("DelegateWorktreeIsolation(proj-wt) = false, want true (use_git_worktrees=1)")
+	}
+
+	// Explicit config beats the project flag.
+	if err := pool.SetProjectConfig("proj-nowt", DelegateWorktreeIsolationKey, "true"); err != nil {
+		t.Fatalf("SetProjectConfig: %v", err)
+	}
+	if !DelegateWorktreeIsolation(pool, "proj-nowt") {
+		t.Error("DelegateWorktreeIsolation(proj-nowt) = false, want true (explicit config overrides flag)")
 	}
 }
 

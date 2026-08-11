@@ -20,11 +20,13 @@ func getSysDef(t *testing.T, env *delegateTestEnv, id string) *model.SystemAgent
 	return sysDef
 }
 
-// setProjectRootPath gives the test env's project a git root so
-// prepareDelegateWorktree's project-resolution gate passes.
+// setProjectRootPath gives the test env's project a git root (so
+// prepareDelegateWorktree's project-resolution gate passes) and enables its
+// use_git_worktrees flag — absent explicit delegate_worktree_isolation
+// config, isolation follows that flag.
 func setProjectRootPath(t *testing.T, env *delegateTestEnv, path string) {
 	t.Helper()
-	if _, err := env.database.Exec(`UPDATE projects SET root_path = ? WHERE id = ?`, path, env.projectID); err != nil {
+	if _, err := env.database.Exec(`UPDATE projects SET root_path = ?, use_git_worktrees = 1 WHERE id = ?`, path, env.projectID); err != nil {
 		t.Fatalf("set project root_path: %v", err)
 	}
 }

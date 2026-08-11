@@ -39,6 +39,26 @@ func (a *projectEnvAdapter) Get(_ string, name string) (string, bool, error) {
 	return v, ok, nil
 }
 
+// HasAPICredentials reports whether providerName's credentials resolve for
+// projectID without constructing the provider — the static half of
+// BuildAPIProvider. Chain walkers use it to skip an api-mode entry that can
+// only fail at build time instead of erroring on every spawn/fold.
+// Custom-registry providers carry credentials in their row, so any
+// non-builtin name reports true and lets the build decide.
+func HasAPICredentials(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) bool {
+	envRepo := newProjectEnvAdapter(pool, clk, projectID)
+	var err error
+	switch providerName {
+	case "anthropic":
+		_, err = anthropic.ResolveAPIKey(ctx, envRepo, projectID)
+	case "openai":
+		_, err = openai.Resolve(ctx, envRepo, projectID)
+	case "openrouter":
+		_, err = openrouter.Resolve(ctx, envRepo, projectID)
+	}
+	return err == nil
+}
+
 // BuildAPIProvider resolves credentials and constructs a provider.Provider for
 // the given providerName: a builtin ("anthropic", "openai", "openrouter") or
 // the name of an enabled row in the custom_providers registry (Rule 6: the

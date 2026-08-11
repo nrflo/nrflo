@@ -24,6 +24,18 @@ func stubBuildProviderErr(t *testing.T, err error) {
 		return nil, err
 	}
 	t.Cleanup(func() { buildProvider = orig })
+	stubHasAPICreds(t, true)
+}
+
+// stubHasAPICreds pins the static credential pre-check so chain-walk tests
+// stay deterministic regardless of the host's real provider env vars.
+func stubHasAPICreds(t *testing.T, available bool) {
+	t.Helper()
+	orig := hasAPICreds
+	hasAPICreds = func(ctx context.Context, pool *db.Pool, clk clock.Clock, providerName, projectID string) bool {
+		return available
+	}
+	t.Cleanup(func() { hasAPICreds = orig })
 }
 
 func queryRefineryRuns(t *testing.T, pool *db.Pool) []refineryRunRow {

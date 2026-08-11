@@ -21,6 +21,10 @@ const defaultFoldMaxTokens = 1500
 // real credentials or a network call.
 var buildProvider = service.BuildAPIProvider
 
+// hasAPICreds is the matching seam for the static credential pre-check the
+// chain walk uses to skip doomed api entries (fold_chain.go).
+var hasAPICreds = service.HasAPICredentials
+
 // runFoldCore is the provider-run core shared by the console fold
 // (fold_console.go) and the autonomous fold (session_sidecar.go): load the
 // `_refinery` api-mode def, resolve its model fallback chain, and walk the

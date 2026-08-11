@@ -38,6 +38,15 @@ func (m *Manager) walkFoldChain(ctx context.Context, target foldTarget, projectI
 	for pos := 0; pos < len(chain); pos++ {
 		entry := chain[pos]
 
+		// A statically doomed api entry (credentials unresolvable) is skipped
+		// when a later entry exists — no attempt, no refinery_runs row —
+		// instead of failing the same way on every fold.
+		if entry.ExecutionMode != "cli_interactive" && pos < len(chain)-1 &&
+			!hasAPICreds(ctx, m.pool, m.clock, entry.Provider, projectID) {
+			logger.Debug(ctx, "refinery: skipping api entry, credentials unavailable", "key", logKey, "chain_pos", pos, "provider", entry.Provider)
+			continue
+		}
+
 		var res foldAttemptResult
 		if entry.ExecutionMode == "cli_interactive" {
 			res = m.attemptFoldCLI(ctx, target, projectID, userText, entry)

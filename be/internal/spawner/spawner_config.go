@@ -81,6 +81,11 @@ type Config struct {
 	// Called once per spawn with the provider name (e.g. "anthropic", "openai")
 	// and project ID. Required when any agent definition selects api mode.
 	BuildAPIProvider func(ctx context.Context, providerName, projectID string) (provider.Provider, error)
+	// HasAPICredentials reports whether an api-mode provider's credentials
+	// statically resolve (test seam; nil = default service.HasAPICredentials
+	// via Pool). Used by spawnEntryWithBuildFallback to skip a doomed
+	// api-mode chain entry when a later entry exists.
+	HasAPICredentials func(ctx context.Context, providerName, projectID string) bool
 	// AgentSvc persists context_left for API-mode agents (mirrors what the
 	// CLI hook does for CLI agents).
 	AgentSvc apirun.AgentSvc

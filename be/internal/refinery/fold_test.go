@@ -22,6 +22,7 @@ func stubBuildProvider(t *testing.T, prov provider.Provider) {
 		return prov, nil
 	}
 	t.Cleanup(func() { buildProvider = orig })
+	stubHasAPICreds(t, true)
 }
 
 func TestFold_UpsertsDigestAndIncrementsVersionAndFoldCount(t *testing.T) {

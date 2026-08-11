@@ -17,7 +17,7 @@ The registry supplies the exact CLI model and effort; adapters do not maintain a
 
 ## Model Resolution
 
-`Config.ModelConfigs` (`map[string]ModelConfig`) carries each row's provider, CLI/API model IDs, per-mode contexts/effort lists, fallback models, and default effort. CLI selection is derived from provider (`anthropic`→claude, `openai`→codex); cli mode reads the CLI fields, api mode reads the API fields and rejects a missing `APIModel`, while unknown CLI slugs retain raw passthrough. `resolveReasoningEffort` keeps def override > materialized `AgentConfig.ReasoningEffort` > row `DefaultEffort`, then validates the winner against the selected mode's effort list.
+`Config.ModelConfigs` (`map[string]ModelConfig`) carries each row's provider, CLI/API model IDs, per-mode contexts/effort lists, fallback models, and default effort; CLI selection derives from provider. Field selection per mode + effort precedence: [REFERENCE.md](REFERENCE.md#model-resolution).
 
 ## Execution Backends
 
@@ -75,7 +75,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Tier Fallback
 
-A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics + per-spawn observability columns: [REFERENCE.md](REFERENCE.md#tier-fallback).
+A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. A credential-less api entry is pre-skipped, never attempted ([REFERENCE.md](REFERENCE.md#tier-fallback)). Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics + per-spawn observability columns: [REFERENCE.md](REFERENCE.md#tier-fallback).
 
 ## Context Ledger
 

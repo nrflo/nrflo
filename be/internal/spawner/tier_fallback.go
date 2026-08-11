@@ -59,6 +59,11 @@ func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequ
 	var lastErr error
 	for pos := 0; pos < len(chain); pos++ {
 		entry := chain[pos]
+		if pos < len(chain)-1 && s.skipAPIEntryNoCredentials(ctx, entry, req.ProjectID) {
+			logger.Info(ctx, "tier fallback: skipping api entry, credentials unavailable",
+				"agent_type", req.AgentType, "chain_pos", pos, "provider", entry.Provider)
+			continue
+		}
 		entryReq := req
 		entryReq.ExecutionModeOverride = entry.ExecutionMode
 		entryReq.ReasoningEffortOverride = entry.ReasoningEffort
@@ -76,6 +81,27 @@ func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequ
 			"agent_type", req.AgentType, "chain_pos", pos, "provider", entry.Provider, "err", err)
 	}
 	return nil, len(chain) - 1, fmt.Errorf("tier fallback: chain exhausted: %w", lastErr)
+}
+
+// skipAPIEntryNoCredentials reports whether an api-mode chain entry is
+// statically doomed: its provider's credentials do not resolve, so the spawn
+// could only fail at build time. api-via-cli anthropic entries route through
+// the Claude CLI and need no API key, so they are never skipped.
+func (s *Spawner) skipAPIEntryNoCredentials(ctx context.Context, entry service.AgentChainEntry, projectID string) bool {
+	if entry.ExecutionMode != "api" {
+		return false
+	}
+	if s.config.APIViaCLI && entry.Provider == "anthropic" {
+		return false
+	}
+	if s.config.HasAPICredentials != nil {
+		return !s.config.HasAPICredentials(ctx, entry.Provider, projectID)
+	}
+	pool := s.pool()
+	if pool == nil {
+		return false
+	}
+	return !service.HasAPICredentials(ctx, pool, s.config.Clock, entry.Provider, projectID)
 }
 
 // shouldAdvanceChain is the monotonic advance guard consulted by monitorAll's

@@ -40,8 +40,8 @@ func TestRelaunchForContinuation_PersistsResolvedEffortOnNewSession(t *testing.T
 	})
 
 	chain := []service.AgentChainEntry{
-		{Provider: "anthropic", ModelID: "m0", ExecutionMode: "api", ReasoningEffort: "low", Tier: 1},
-		{Provider: "openai", ModelID: "m1", ExecutionMode: "api", ReasoningEffort: "medium", Tier: 2},
+		{Provider: "anthropic", ModelID: "m0", ExecutionMode: "api", ReasoningEffort: "low", Tier: 1, Position: 0},
+		{Provider: "openai", ModelID: "m1", ExecutionMode: "api", ReasoningEffort: "medium", Tier: 2, Position: 1},
 	}
 	oldSessionID := uuid.New().String()
 	if !sp.createAgentSessionRow(env.projectID, env.ticketID, env.wfiID, "impl", "impl", oldSessionID, "claude:m0", "impl", "", "", "", "", "api", 0) {

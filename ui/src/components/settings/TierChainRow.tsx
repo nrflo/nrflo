@@ -8,10 +8,10 @@ import { TierChainEntryForm } from './TierChainEntryForm'
 import type { SetTierChainEntry, TierModel } from '@/api/tierModels'
 
 function toEntry(row: TierModel): SetTierChainEntry {
-  return { execution_mode: row.execution_mode, model_id: row.model_id, reasoning_effort: row.reasoning_effort }
+  return { execution_mode: row.execution_mode, model_id: row.model_id, reasoning_effort: row.reasoning_effort, weight: row.weight }
 }
 
-const EMPTY_ENTRY: SetTierChainEntry = { execution_mode: '', model_id: '', reasoning_effort: '' }
+const EMPTY_ENTRY: SetTierChainEntry = { execution_mode: '', model_id: '', reasoning_effort: '', weight: 0 }
 
 // TierChainRow is one tier's ordered fallback-chain editor: add/remove
 // entries plus up/down reorder (position = fallback priority, 1 = primary).
@@ -35,7 +35,7 @@ export function TierChainRow({
   useEffect(() => {
     setEntries(isInherited ? [] : savedEntries.map(toEntry))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tier, isInherited, savedEntries.map((e) => `${e.position}:${e.model_id}:${e.reasoning_effort}`).join(',')])
+  }, [tier, isInherited, savedEntries.map((e) => `${e.position}:${e.model_id}:${e.reasoning_effort}:${e.weight}`).join(',')])
 
   const moveUp = (index: number) => {
     if (index === 0) return

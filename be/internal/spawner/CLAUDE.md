@@ -75,7 +75,7 @@ When context usage crosses the threshold, the spawner kills the agent and calls 
 
 ## Tier Fallback
 
-A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. A credential-less api entry is pre-skipped, never attempted ([REFERENCE.md](REFERENCE.md#tier-fallback)). Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics + per-spawn observability columns: [REFERENCE.md](REFERENCE.md#tier-fallback).
+A HARD provider failure (build-time construct, auth, persistent 5xx — never rate-limit) advances the resolved chain monotonically and relaunches under the next entry, cross-mode allowed; exhaustion fails as today. A credential-less api entry is pre-skipped, never attempted ([REFERENCE.md](REFERENCE.md#tier-fallback)). `tier_models.weight` > 0 opts a chain into weighted rotation: spawns start at the most under-served weighted entry, rest ordinal (`tier_weighted.go`; mechanics: [REFERENCE.md](REFERENCE.md#tier-fallback)). Scoped to the 4 system-agent spawn sites that resolve a chain (delegate, context-saver, planner, conflict-resolver) — main phase agents carry a length-1 chain and never advance. Mechanics + per-spawn observability columns: [REFERENCE.md](REFERENCE.md#tier-fallback).
 
 ## Context Ledger
 

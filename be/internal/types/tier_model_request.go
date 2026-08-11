@@ -7,6 +7,7 @@ type TierChainEntry struct {
 	ExecutionMode   string `json:"execution_mode"`
 	ModelID         string `json:"model_id"`
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
+	Weight          int    `json:"weight,omitempty"`
 }
 
 // SetTierChainRequest replaces a tier's entire ordered chain.

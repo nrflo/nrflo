@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Input'
 import { Dropdown, type DropdownOption, type DropdownOptionGroup } from '@/components/ui/Dropdown'
 import { AgentDefEffortField } from '@/components/workflow/AgentDefEffortField'
 import { useModelOptions, useModels } from '@/hooks/useModels'
@@ -65,6 +66,17 @@ export function TierChainEntryForm({
           model={entry.model_id}
           value={entry.reasoning_effort}
           onChange={(val) => onChange({ ...entry, reasoning_effort: val })}
+        />
+      </div>
+      <div className="w-20">
+        <label className="block text-xs font-medium text-muted-foreground mb-1" title="Rotation weight: entries with weight > 0 share spawns proportionally; 0 on all entries = strict fallback order">
+          Weight
+        </label>
+        <Input
+          type="number"
+          min={0}
+          value={entry.weight}
+          onChange={(e) => onChange({ ...entry, weight: Math.max(0, Number(e.target.value) || 0) })}
         />
       </div>
       <Badge variant="outline" className="mb-1.5 shrink-0">

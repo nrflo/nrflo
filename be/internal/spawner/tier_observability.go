@@ -23,11 +23,15 @@ func (s *Spawner) recordResolvedSpawn(proc *processInfo, chain []service.AgentCh
 
 	var provider, execMode, effort string
 	var tier *int
+	chainPos := pos
 	if pos >= 0 && pos < len(chain) {
 		entry := chain[pos]
 		provider, execMode, effort = entry.Provider, entry.ExecutionMode, entry.ReasoningEffort
 		t := entry.Tier
 		tier = &t
+		// The DB column records the canonical tier_models position, which a
+		// weighted rotation may have moved away from the slice index.
+		chainPos = entry.Position
 	} else {
 		cli, modelSlug := parseModelID(proc.modelID)
 		if mc, ok := s.config.ModelConfigs[modelSlug]; ok {
@@ -47,7 +51,7 @@ func (s *Spawner) recordResolvedSpawn(proc *processInfo, chain []service.AgentCh
 	}
 
 	sessionRepo := repo.NewAgentSessionRepo(pool, s.config.Clock)
-	if err := sessionRepo.UpdateTierResolution(proc.sessionID, tier, provider, execMode, effort, pos, fallbackFrom); err != nil {
+	if err := sessionRepo.UpdateTierResolution(proc.sessionID, tier, provider, execMode, effort, chainPos, fallbackFrom); err != nil {
 		logger.Warn(context.Background(), "record resolved spawn: update tier resolution failed",
 			"session_id", proc.sessionID, "err", err)
 	}

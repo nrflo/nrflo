@@ -29,11 +29,14 @@ type foldAttemptResult struct {
 // advancing over a provider-build/credential/hard-transport failure
 // (mirrors spawnEntryWithBuildFallback, be/internal/spawner/tier_fallback.go)
 // and stopping (ok=false, no advance) on a structural error, rate-limit, or
-// degenerate output. Every attempt writes its own refinery_runs row via
-// recordFoldRun: chain_position=pos, execution_mode=the landing/attempted
-// entry's mode, fallback_from=json(chain[:pos]) for pos>0.
+// degenerate output. A weighted chain is reordered first
+// (applyWeightedRotation) so a non-primary entry can lead. Every attempt
+// writes its own refinery_runs row via recordFoldRun: chain_position=the
+// entry's canonical tier_models position, execution_mode=the
+// landing/attempted entry's mode, fallback_from=json(chain[:pos]) for pos>0.
 func (m *Manager) walkFoldChain(ctx context.Context, target foldTarget, projectID, userText string, def *model.SystemAgentDefinition, chain []service.AgentChainEntry) (content string, usage provider.Usage, execMode string, ok bool) {
 	logKey := target.logKey()
+	chain = m.applyWeightedRotation(ctx, chain, projectID)
 
 	for pos := 0; pos < len(chain); pos++ {
 		entry := chain[pos]
@@ -62,11 +65,11 @@ func (m *Manager) walkFoldChain(ctx context.Context, target foldTarget, projectI
 		}
 
 		if res.err == nil {
-			m.recordFoldRun(ctx, target, projectID, res.provName, res.modelID, res.usage, "ok", "", pos, entry.ExecutionMode, fallbackFrom)
+			m.recordFoldRun(ctx, target, projectID, res.provName, res.modelID, res.usage, "ok", "", entry.Position, entry.ExecutionMode, fallbackFrom)
 			return res.content, res.usage, entry.ExecutionMode, true
 		}
 
-		m.recordFoldRun(ctx, target, projectID, res.provName, res.modelID, res.usage, "failed", res.err.Error(), pos, entry.ExecutionMode, fallbackFrom)
+		m.recordFoldRun(ctx, target, projectID, res.provName, res.modelID, res.usage, "failed", res.err.Error(), entry.Position, entry.ExecutionMode, fallbackFrom)
 
 		if !res.advance {
 			logger.Warn(ctx, "refinery: fold attempt stopped, not advancing chain", "key", logKey, "chain_pos", pos, "execution_mode", entry.ExecutionMode, "error", res.err)

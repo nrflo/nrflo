@@ -16,8 +16,8 @@ import (
 // always fails at BuildAPIProvider, entry 1 ("goodprov") always succeeds.
 func buildFallbackChain() []service.AgentChainEntry {
 	return []service.AgentChainEntry{
-		{Provider: "badprov", ExecutionMode: "api", ModelID: "bad-model", ReasoningEffort: "low"},
-		{Provider: "goodprov", ExecutionMode: "api", ModelID: "good-model", ReasoningEffort: "low"},
+		{Provider: "badprov", ExecutionMode: "api", ModelID: "bad-model", ReasoningEffort: "low", Position: 0},
+		{Provider: "goodprov", ExecutionMode: "api", ModelID: "good-model", ReasoningEffort: "low", Position: 1},
 	}
 }
 

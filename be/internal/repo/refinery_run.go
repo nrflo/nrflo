@@ -35,6 +35,30 @@ func (r *RefineryRunRepo) Insert(run *model.RefineryRun) error {
 	return err
 }
 
+// CountLandedByPosition returns status='ok' fold counts per canonical chain
+// position since cutoff. Feeds the weighted-rotation deficit pick
+// (service.WeightedChainOrder) for the refinery fold chain.
+func (r *RefineryRunRepo) CountLandedByPosition(since time.Time) (map[int]int, error) {
+	rows, err := r.db.Query(
+		`SELECT chain_position, COUNT(*) FROM refinery_runs
+		 WHERE status = 'ok' AND folded_at >= ? GROUP BY chain_position`,
+		since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := map[int]int{}
+	for rows.Next() {
+		var pos, n int
+		if err := rows.Scan(&pos, &n); err != nil {
+			return nil, err
+		}
+		counts[pos] = n
+	}
+	return counts, rows.Err()
+}
+
 // ListRecent returns up to limit refinery_runs rows, newest first, folded_at
 // >= since when since is non-zero.
 func (r *RefineryRunRepo) ListRecent(limit int, since time.Time) ([]*model.RefineryRun, error) {

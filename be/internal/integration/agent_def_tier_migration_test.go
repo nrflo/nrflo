@@ -2,6 +2,7 @@ package integration
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	"be/internal/model"
 	"be/internal/service"
 
+	migrate "github.com/golang-migrate/migrate/v4"
 	_ "modernc.org/sqlite"
 )
 
@@ -69,21 +71,12 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	}
 
 	migrateTo(t, m, 200)
-	sqlDB.Close()
-
-	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
-	if err != nil {
-		t.Fatalf("open pool: %v", err)
-	}
-	t.Cleanup(func() { pool.Close() })
-	clk := clock.Real()
-	modelSvc := service.NewModelService(pool, clk)
 
 	// setup-analyzer: re-tiered.
 	var saModel, saTemplate string
 	var saEffort sql.NullString
 	var saTier sql.NullInt64
-	if err := pool.QueryRow(
+	if err := sqlDB.QueryRow(
 		`SELECT model, reasoning_effort, system_template_id, tier FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=?`,
 		"proj-200", "feature", "setup-analyzer",
 	).Scan(&saModel, &saEffort, &saTemplate, &saTier); err != nil {
@@ -102,21 +95,10 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 		t.Errorf("setup-analyzer system_template_id = %q, want tier-t2-extractor", saTemplate)
 	}
 
-	// Resolves to the exact same (model, effort) it had pre-migration.
-	tier := 2
-	def := &model.AgentDefinition{ID: "setup-analyzer", ExecutionMode: "cli_interactive", Tier: &tier}
-	chain, err := service.ResolveDefChain(pool, clk, modelSvc, def)
-	if err != nil {
-		t.Fatalf("ResolveDefChain(setup-analyzer): %v", err)
-	}
-	if len(chain) == 0 || chain[0].ModelID != "sonnet-5" || chain[0].ReasoningEffort != "low" {
-		t.Errorf("resolved chain = %+v, want primary sonnet-5/low (pre-migration values preserved)", chain)
-	}
-
 	// implementor (original seed model): untouched.
 	var implModel string
 	var implTier sql.NullInt64
-	if err := pool.QueryRow(
+	if err := sqlDB.QueryRow(
 		`SELECT model, tier FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=?`,
 		"proj-200", "feature", "implementor",
 	).Scan(&implModel, &implTier); err != nil {
@@ -132,7 +114,7 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	// qa-verifier (hand-customized): untouched.
 	var qaModel string
 	var qaTier sql.NullInt64
-	if err := pool.QueryRow(
+	if err := sqlDB.QueryRow(
 		`SELECT model, tier FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=?`,
 		"proj-200", "feature", "qa-verifier",
 	).Scan(&qaModel, &qaTier); err != nil {
@@ -148,7 +130,7 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	// hotfix implementor: untouched despite matching the re-tier shape.
 	var hotfixModel string
 	var hotfixTier sql.NullInt64
-	if err := pool.QueryRow(
+	if err := sqlDB.QueryRow(
 		`SELECT model, tier FROM agent_definitions WHERE project_id=? AND workflow_id=? AND id=?`,
 		"proj-200", "hotfix", "implementor",
 	).Scan(&hotfixModel, &hotfixTier); err != nil {
@@ -159,5 +141,32 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	}
 	if hotfixTier.Valid {
 		t.Errorf("hotfix implementor tier = %+v, want NULL (untouched)", hotfixTier)
+	}
+
+	// Resolves to the exact same (model, effort) it had pre-migration.
+	// ResolveDefChain reads the head schema (e.g. tier_models.weight,
+	// migration 000237), so bring the DB fully up first — head migrations may
+	// rewrite model ids, hence the at-200 assertions above ran before this.
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		t.Fatalf("migrate up to head: %v", err)
+	}
+	sqlDB.Close()
+
+	pool, err := db.OpenPoolExisting(dbPath, db.DefaultPoolConfig())
+	if err != nil {
+		t.Fatalf("open pool: %v", err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	clk := clock.Real()
+	modelSvc := service.NewModelService(pool, clk)
+
+	tier := 2
+	def := &model.AgentDefinition{ID: "setup-analyzer", ExecutionMode: "cli_interactive", Tier: &tier}
+	chain, err := service.ResolveDefChain(pool, clk, modelSvc, def)
+	if err != nil {
+		t.Fatalf("ResolveDefChain(setup-analyzer): %v", err)
+	}
+	if len(chain) == 0 || chain[0].ModelID != "sonnet-5" || chain[0].ReasoningEffort != "low" {
+		t.Errorf("resolved chain = %+v, want primary sonnet-5/low (pre-migration values preserved)", chain)
 	}
 }

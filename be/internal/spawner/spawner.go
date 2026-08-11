@@ -179,15 +179,13 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 		// spawnEntryWithBuildFallback), silently overriding it.
 		chain = nil
 	}
-	proc, chainPos, err := s.spawnEntryWithBuildFallback(ctx, req, modelID, phase.NodeID, wi.ID, chain)
+	proc, _, err := s.spawnEntryWithBuildFallback(ctx, req, modelID, phase.NodeID, wi.ID, chain)
 	if err != nil {
 		return fmt.Errorf("failed to spawn %s: %w", modelID, err)
 	}
 	if proc.backend == nil {
 		return fmt.Errorf("internal: spawned proc has nil backend")
 	}
-	proc.chain = chain
-	proc.chainPos = chainPos
 	proc.trx = logger.TrxFromContext(ctx)
 	pid := proc.pid
 	if proc.cmd != nil && proc.cmd.Process != nil {

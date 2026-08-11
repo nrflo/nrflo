@@ -21,3 +21,28 @@ func (r *AgentSessionRepo) UpdateTierResolution(id string, tier *int, provider, 
 		sql.NullString{String: fallbackFrom, Valid: fallbackFrom != ""}, now, id)
 	return err
 }
+
+// CountTierResolutions returns landed-spawn counts per canonical chain
+// position for tier, over sessions created since cutoff. Feeds the
+// weighted-rotation deficit pick (service.WeightedChainOrder).
+func (r *AgentSessionRepo) CountTierResolutions(tier int, since time.Time) (map[int]int, error) {
+	rows, err := r.db.Query(
+		`SELECT chain_position, COUNT(*) FROM agent_sessions
+		 WHERE tier = ? AND chain_position IS NOT NULL AND created_at >= ?
+		 GROUP BY chain_position`,
+		tier, since.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := map[int]int{}
+	for rows.Next() {
+		var pos, n int
+		if err := rows.Scan(&pos, &n); err != nil {
+			return nil, err
+		}
+		counts[pos] = n
+	}
+	return counts, rows.Err()
+}

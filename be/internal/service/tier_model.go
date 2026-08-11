@@ -24,7 +24,7 @@ func NewTierModelService(pool *db.Pool, clk clock.Clock, modelSvc *ModelService)
 // List returns every tier_models row ordered by tier, then position.
 func (s *TierModelService) List() ([]model.TierModel, error) {
 	rows, err := s.pool.Query(
-		`SELECT tier, position, provider, execution_mode, model_id, reasoning_effort
+		`SELECT tier, position, provider, execution_mode, model_id, reasoning_effort, weight
 		 FROM tier_models ORDER BY tier ASC, position ASC`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list tier models: %w", err)
@@ -34,7 +34,7 @@ func (s *TierModelService) List() ([]model.TierModel, error) {
 	result := []model.TierModel{}
 	for rows.Next() {
 		var tm model.TierModel
-		if err := rows.Scan(&tm.Tier, &tm.Position, &tm.Provider, &tm.ExecutionMode, &tm.ModelID, &tm.ReasoningEffort); err != nil {
+		if err := rows.Scan(&tm.Tier, &tm.Position, &tm.Provider, &tm.ExecutionMode, &tm.ModelID, &tm.ReasoningEffort, &tm.Weight); err != nil {
 			return nil, fmt.Errorf("failed to scan tier model: %w", err)
 		}
 		result = append(result, tm)
@@ -60,6 +60,9 @@ func (s *TierModelService) SetTierChain(tier int, entries []types.TierChainEntry
 		}
 		if entry.ExecutionMode != "" && entry.ExecutionMode != "cli_interactive" && entry.ExecutionMode != "api" {
 			return validationErrorf("entry %d: invalid execution_mode %q", i, entry.ExecutionMode)
+		}
+		if entry.Weight < 0 {
+			return validationErrorf("entry %d: weight must be >= 0", i)
 		}
 
 		if entry.ExecutionMode == "" {
@@ -103,6 +106,7 @@ func (s *TierModelService) SetTierChain(tier int, entries []types.TierChainEntry
 			ExecutionMode:   entry.ExecutionMode,
 			ModelID:         entry.ModelID,
 			ReasoningEffort: effort,
+			Weight:          entry.Weight,
 		})
 	}
 
@@ -124,9 +128,9 @@ func (s *TierModelService) setTierChainOnce(tier int, entries []model.TierModel)
 
 	for _, e := range entries {
 		if _, err := tx.Exec(
-			`INSERT INTO tier_models (tier, position, provider, execution_mode, model_id, reasoning_effort)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
-			e.Tier, e.Position, e.Provider, e.ExecutionMode, e.ModelID, e.ReasoningEffort,
+			`INSERT INTO tier_models (tier, position, provider, execution_mode, model_id, reasoning_effort, weight)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			e.Tier, e.Position, e.Provider, e.ExecutionMode, e.ModelID, e.ReasoningEffort, e.Weight,
 		); err != nil {
 			return fmt.Errorf("failed to insert tier chain entry: %w", err)
 		}

@@ -68,7 +68,7 @@ describe('TierChainEntryForm', () => {
   })
 
   it('cli_interactive mode shows only cli-enabled models', async () => {
-    renderEntry({ execution_mode: 'cli_interactive', model_id: '', reasoning_effort: '' })
+    renderEntry({ execution_mode: 'cli_interactive', model_id: '', reasoning_effort: '', weight: 0 })
     const user = userEvent.setup()
     await screen.findByText('Select a model')
     await user.click(getModelDropdownButton())
@@ -79,7 +79,7 @@ describe('TierChainEntryForm', () => {
   })
 
   it('selecting "Inherit (agent mode)" restricts the model list to the cli ∩ api intersection', async () => {
-    renderControlledEntry({ execution_mode: 'cli_interactive', model_id: '', reasoning_effort: '' })
+    renderControlledEntry({ execution_mode: 'cli_interactive', model_id: '', reasoning_effort: '', weight: 0 })
     const user = userEvent.setup()
     await screen.findByText('Select a model')
 
@@ -96,7 +96,7 @@ describe('TierChainEntryForm', () => {
 
   it('switching mode clears the previously selected model_id', async () => {
     const onChange = vi.fn()
-    renderEntry({ execution_mode: 'cli_interactive', model_id: 'm-cli-only', reasoning_effort: '' }, onChange)
+    renderEntry({ execution_mode: 'cli_interactive', model_id: 'm-cli-only', reasoning_effort: '', weight: 0 }, onChange)
     const user = userEvent.setup()
     await screen.findByText('Select a model')
 
@@ -108,7 +108,7 @@ describe('TierChainEntryForm', () => {
   })
 
   it('shows the derived read-only provider badge for the selected model', async () => {
-    renderEntry({ execution_mode: 'cli_interactive', model_id: 'm-cli-only', reasoning_effort: '' })
+    renderEntry({ execution_mode: 'cli_interactive', model_id: 'm-cli-only', reasoning_effort: '', weight: 0 })
     await screen.findByText('Anthropic')
     expect(screen.getByText('Anthropic')).toBeInTheDocument()
   })

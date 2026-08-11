@@ -44,8 +44,10 @@ func chainEntryModelID(entry service.AgentChainEntry) string {
 // chain entry, capped at len(chain)-1. A structural error is returned
 // immediately without advancing. modelID is used verbatim when chain is
 // empty (main workflow-phase agents, which never carry a resolved chain) so
-// behavior there is byte-identical to a bare spawnSingle call. Returns the
-// winning processInfo and the chain position it landed on (0 for the
+// behavior there is byte-identical to a bare spawnSingle call. A weighted
+// chain is reordered first (applyWeightedRotation); the winning proc's
+// chain/chainPos are set here from the possibly-rotated slice. Returns the
+// winning processInfo and the chain index it landed on (0 for the
 // no-chain case).
 func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequest, modelID, phase, wfiID string, chain []service.AgentChainEntry) (*processInfo, int, error) {
 	if len(chain) == 0 {
@@ -55,6 +57,8 @@ func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequ
 		}
 		return proc, 0, err
 	}
+
+	chain = s.applyWeightedRotation(ctx, chain, req.ProjectID)
 
 	var lastErr error
 	for pos := 0; pos < len(chain); pos++ {
@@ -70,6 +74,8 @@ func (s *Spawner) spawnEntryWithBuildFallback(ctx context.Context, req SpawnRequ
 
 		proc, err := s.spawnSingle(ctx, entryReq, chainEntryModelID(entry), phase, wfiID)
 		if err == nil {
+			proc.chain = chain
+			proc.chainPos = pos
 			s.recordResolvedSpawn(proc, chain, pos)
 			return proc, pos, nil
 		}

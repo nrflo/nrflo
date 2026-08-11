@@ -16,6 +16,13 @@ type AgentChainEntry struct {
 	ModelID         string `json:"model_id"`
 	ReasoningEffort string `json:"reasoning_effort"`
 	Tier            int    `json:"tier"`
+	// Position is the entry's canonical tier_models position — stable under
+	// weighted rotation, which reorders the chain slice but not this field.
+	// It is what agent_sessions.chain_position / refinery_runs.chain_position
+	// record, so rotation deficits key on it.
+	Position int `json:"position"`
+	// Weight > 0 marks a weighted-rotation candidate; see WeightedChainOrder.
+	Weight int `json:"weight,omitempty"`
 }
 
 // TierSpec is the def-type-agnostic input to resolveChain: the fields any
@@ -108,7 +115,7 @@ func resolveOverrideEntry(modelSvc *ModelService, spec TierSpec) (AgentChainEntr
 // the tier has no rows, so callers can walk down to the next lower tier.
 func loadTierChain(pool *db.Pool, modelSvc *ModelService, tier int, spec TierSpec) ([]AgentChainEntry, error) {
 	rows, err := pool.Query(
-		`SELECT provider, execution_mode, model_id, reasoning_effort
+		`SELECT position, provider, execution_mode, model_id, reasoning_effort, weight
 		 FROM tier_models WHERE tier = ? ORDER BY position ASC`, tier)
 	if err != nil {
 		return nil, fmt.Errorf("resolve agent chain: query tier_models tier=%d: %w", tier, err)
@@ -118,7 +125,7 @@ func loadTierChain(pool *db.Pool, modelSvc *ModelService, tier int, spec TierSpe
 	entries := []AgentChainEntry{}
 	for rows.Next() {
 		var e AgentChainEntry
-		if err := rows.Scan(&e.Provider, &e.ExecutionMode, &e.ModelID, &e.ReasoningEffort); err != nil {
+		if err := rows.Scan(&e.Position, &e.Provider, &e.ExecutionMode, &e.ModelID, &e.ReasoningEffort, &e.Weight); err != nil {
 			return nil, fmt.Errorf("resolve agent chain: scan tier_models tier=%d: %w", tier, err)
 		}
 		if e.ExecutionMode == "" {

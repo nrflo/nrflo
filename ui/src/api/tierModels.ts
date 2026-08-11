@@ -10,6 +10,8 @@ export interface TierModel {
   execution_mode: '' | 'cli_interactive' | 'api'
   model_id: string
   reasoning_effort: string
+  // > 0 opts the entry into weighted rotation; all-zero = strict ordinal.
+  weight: number
 }
 
 export interface SetTierChainEntry {
@@ -17,6 +19,7 @@ export interface SetTierChainEntry {
   execution_mode: '' | 'cli_interactive' | 'api'
   model_id: string
   reasoning_effort: string
+  weight: number
 }
 
 export async function listTierModels(): Promise<TierModel[]> {

@@ -72,12 +72,22 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 		return false
 	}
 
+	// The session's bearer token is durable on the row; without it the
+	// rotated engine's mcp-external bridge cannot adopt the session and every
+	// nrflo tool silently vanishes from the fresh CLI conversation.
+	row, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).Get(sess.id)
+	if err != nil || !row.SpawnToken.Valid || row.SpawnToken.String == "" {
+		logger.Error(ctx, "console rotation: resolve session bearer failed", "session_id", sess.id, "error", err)
+		return false
+	}
+
 	spec, err := buildChatEngineSpec(s.deps.Pool, s.deps.Clock, chatSpecParams{
 		SessionID:           sess.id,
 		ProjectID:           sess.ProjectID(),
 		Engine:              sess.EngineName(),
 		ModelID:             sess.ModelID(),
 		ReasoningEffort:     sess.ReasoningEffort(),
+		SpawnToken:          row.SpawnToken.String,
 		ServerURL:           s.deps.ServerURL,
 		SystemTemplateID:    sess.SystemTemplateID(),
 		Catalogue:           profile.Catalogue,

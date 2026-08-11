@@ -186,6 +186,12 @@ func TestChatService_Rotation_FullFlow(t *testing.T) {
 	if got := newEng.spec().SeededContext; got != "carried-forward working set" {
 		t.Errorf("new engine spec.SeededContext = %q, want the upserted digest content", got)
 	}
+	// The rotated engine must carry the session bearer in its MCP env — an
+	// empty NRFLO_CONSOLE_TOKEN means the mcp-external bridge cannot adopt
+	// the session and every nrflo tool silently vanishes after rotation.
+	if got, old := newEng.spec().MCPEnv["NRFLO_CONSOLE_TOKEN"], oldEng.spec().MCPEnv["NRFLO_CONSOLE_TOKEN"]; got == "" || got != old {
+		t.Errorf("rotated engine MCPEnv NRFLO_CONSOLE_TOKEN = %q, want the session bearer %q", got, old)
+	}
 
 	// Session row stays open under the same id (chat history preserved).
 	row, err := repo.NewAgentSessionRepo(pool, svc.deps.Clock).GetConsoleChat(sid)

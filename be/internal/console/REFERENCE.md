@@ -32,7 +32,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ### Rotation
 
-`ProactiveRestartConsoleThreshold(pool, maxContext, budget)` (`spawner/context_restart.go`) computes the usual percentage-of-window ceiling, then caps it at `budget` when `budget>0` — so t0-decider's 50k budget rotates a 200k-window claude chat at 50k tokens, well under the default 75% (150k) ceiling. `chat_service_rotate.go`'s `maybeRotate`/`rotate` resolve `ProfileByName(sess.Profile())` fresh each call and rebuild the registry (`BuildRegistry(d, profile.Catalogue)`) and spec (`NativeToolPolicy`/`ContextBudgetTokens`) identically to `create()`, so a rotated engine keeps the same restricted catalogue/budget as the one it replaced.
+`ProactiveRestartConsoleThreshold(pool, maxContext, budget)` (`spawner/context_restart.go`) computes the usual percentage-of-window ceiling, then caps it at `budget` when `budget>0` — so t0-decider's 50k budget rotates a 200k-window claude chat at 50k tokens, well under the default 75% (150k) ceiling. `chat_service_rotate.go`'s `maybeRotate`/`rotate` resolve `ProfileByName(sess.Profile())` fresh each call and rebuild the registry (`BuildRegistry(d, profile.Catalogue)`) and spec (`NativeToolPolicy`/`ContextBudgetTokens`) identically to `create()`, so a rotated engine keeps the same restricted catalogue/budget as the one it replaced; `rotate()` also re-reads the session bearer from `agent_sessions.spawn_token` into `chatSpecParams.SpawnToken` (aborting the rotation, old engine kept, when it cannot) — an empty `NRFLO_CONSOLE_TOKEN` in the rebuilt MCP env would leave the mcp-external bridge unable to adopt the session and silently strip every nrflo tool from the fresh engine.
 
 ### Persistence
 

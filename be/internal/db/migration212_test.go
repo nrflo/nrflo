@@ -25,7 +25,9 @@ func TestMigration212_DelegateTimeoutsRescaledToMinutes(t *testing.T) {
 		t.Fatalf("migrate up: %v", err)
 	}
 
-	want := map[string]int{"_t2_extractor": 5, "_t1_executor": 30}
+	// _t1_executor lands at 60 after the full chain: 212 rescales 1800->30,
+	// then 236 raises the seeded 30 to 60.
+	want := map[string]int{"_t2_extractor": 5, "_t1_executor": 60}
 	for id, wantTimeout := range want {
 		var got int
 		if err := sqlDB.QueryRow(`SELECT timeout FROM system_agent_definitions WHERE id = ?`, id).Scan(&got); err != nil {

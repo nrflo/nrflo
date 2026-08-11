@@ -51,6 +51,9 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     proactive_restart_console_pct: 90,
     refinery_fold_start_context_pct: 40,
     refinery_console_fold_start_context_pct: 75,
+    refinery_fold_start_pct_premium: null,
+    refinery_fold_start_pct_mid: null,
+    refinery_fold_start_pct_cheap: null,
     ...overrides,
   }
 }

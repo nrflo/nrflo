@@ -138,21 +138,28 @@ func (m *Manager) autonomousEnabled() bool {
 }
 
 // foldGateOpen reports whether context_left has dropped to or below the
-// configured refinery_fold_start_context_pct threshold (default 45), i.e.
-// whether this session is due for an autonomous fold. Re-reads both the
-// threshold and context_left per call so an admin edit takes effect on live
-// sessions. A read error fails closed (returns false): the kill-time
+// session's fold-start threshold — resolved per model tier/model with the
+// refinery_fold_start_context_pct generic fallback
+// (GetRefineryFoldStartPctForModel; cheap-tier models default to 0 = never
+// fold) — i.e. whether this session is due for an autonomous fold. Re-reads
+// both the threshold and context_left per call so an admin edit takes effect
+// on live sessions. A read error fails closed (returns false): the kill-time
 // context-saver already covers an unexpected early death, so the worst case
 // of skipping here is a slightly less rich handoff, never data loss.
 func (m *Manager) foldGateOpen(ctx context.Context, sessionID string) bool {
-	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryFoldStartContextPct()
+	left, modelID, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeftAndModel(sessionID)
+	if err != nil {
+		logger.Error(ctx, "refinery: read context_left failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryFoldStartPctForModel(modelID, false)
 	if err != nil {
 		logger.Error(ctx, "refinery: read fold-start threshold failed", "session_id", sessionID, "error", err)
 		return false
 	}
-	left, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeft(sessionID)
-	if err != nil {
-		logger.Error(ctx, "refinery: read context_left failed", "session_id", sessionID, "error", err)
+	if threshold <= 0 {
+		logger.Info(ctx, "refinery: autonomous fold disabled for model tier",
+			"session_id", sessionID, "model_id", modelID)
 		return false
 	}
 	if left > threshold {

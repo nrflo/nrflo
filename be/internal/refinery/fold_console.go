@@ -29,19 +29,26 @@ type consoleSession struct {
 }
 
 // consoleFoldGateOpen reports whether the chat session's context_left has
-// dropped to or below refinery_console_fold_start_context_pct (default 75,
-// i.e. >=25% used) — a barely-used chat has nothing worth paying a fold for.
+// dropped to or below its fold-start threshold — resolved per model
+// tier/model with the refinery_console_fold_start_context_pct generic
+// fallback (default 75, i.e. >=25% used; cheap-tier models default to 0 =
+// never fold) — a barely-used chat has nothing worth paying a fold for.
 // Mirrors the autonomous foldGateOpen: re-read per call so an admin edit
 // takes effect live; a read error fails closed.
 func (m *Manager) consoleFoldGateOpen(ctx context.Context, sessionID string) bool {
-	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryConsoleFoldStartContextPct()
+	left, modelID, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeftAndModel(sessionID)
+	if err != nil {
+		logger.Error(ctx, "refinery: read console context_left failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryFoldStartPctForModel(modelID, true)
 	if err != nil {
 		logger.Error(ctx, "refinery: read console fold-start threshold failed", "session_id", sessionID, "error", err)
 		return false
 	}
-	left, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeft(sessionID)
-	if err != nil {
-		logger.Error(ctx, "refinery: read console context_left failed", "session_id", sessionID, "error", err)
+	if threshold <= 0 {
+		logger.Info(ctx, "refinery: console fold disabled for model tier",
+			"session_id", sessionID, "model_id", modelID)
 		return false
 	}
 	if left > threshold {

@@ -108,6 +108,11 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	tierFoldPcts, err := refineryTierFoldSettings(svc)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	consoleYoloVal, err := svc.Get("console_yolo")
 	if err != nil {
@@ -132,6 +137,9 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		"refinery_fold_start_context_pct":         foldStartPct,
 		"refinery_console_fold_start_context_pct": consoleFoldStartPct,
 		"console_yolo":                            consoleYoloVal != "false",
+	}
+	for key, v := range tierFoldPcts {
+		resp[key] = v
 	}
 	for _, ms := range menuSettings {
 		v, err := boolWithDefault(svc, ms.key, ms.def)

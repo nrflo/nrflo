@@ -29,6 +29,7 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		ConsoleYolo                        *bool           `json:"console_yolo"`
 		menuPatchFields
 		watcherPatchFields
+		refineryTierPatchFields
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
@@ -178,6 +179,10 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := applyMenuToggles(req.menuPatchFields, svc, w); err != nil {
+		return
+	}
+
+	if err := applyRefineryTierSettings(req.refineryTierPatchFields, svc, w); err != nil {
 		return
 	}
 

@@ -6,7 +6,12 @@ import { Info } from 'lucide-react'
 import { updateGlobalSettings, settingsKeys, type GlobalSettings } from '@/api/settings'
 import { parseOptionalInt } from './AgentForm'
 
-type PctKey = 'refinery_fold_start_context_pct' | 'refinery_console_fold_start_context_pct'
+type PctKey =
+  | 'refinery_fold_start_context_pct'
+  | 'refinery_console_fold_start_context_pct'
+  | 'refinery_fold_start_pct_premium'
+  | 'refinery_fold_start_pct_mid'
+  | 'refinery_fold_start_pct_cheap'
 
 function PctSettingRow({
   settings,
@@ -82,6 +87,27 @@ export function GlobalRefinerySettings({ settings }: { settings: GlobalSettings 
         label="Console refinery fold-start context (%)"
         tooltip="% context free below which console-chat refinery folding begins. Default 75 (folds once ≥25% of context is used) — a barely-used chat never folds."
         placeholder="75"
+      />
+      <PctSettingRow
+        settings={settings}
+        settingKey="refinery_fold_start_pct_premium"
+        label="Fold-start override: premium models (%)"
+        tooltip="Per-tier fold-start override for premium-class models (opus/fable). Empty inherits the generic thresholds above; 0 disables folding for the tier."
+        placeholder="inherit"
+      />
+      <PctSettingRow
+        settings={settings}
+        settingKey="refinery_fold_start_pct_mid"
+        label="Fold-start override: mid models (%)"
+        tooltip="Per-tier fold-start override for mid-class models (sonnet, gpt-*). Empty inherits the generic thresholds above; 0 disables folding for the tier."
+        placeholder="inherit"
+      />
+      <PctSettingRow
+        settings={settings}
+        settingKey="refinery_fold_start_pct_cheap"
+        label="Fold-start override: cheap models (%)"
+        tooltip="Per-tier fold-start override for cheap-class models (haiku). Cheap models run simple tasks, so folding them is off by default — empty keeps it off; set a % to re-enable."
+        placeholder="off"
       />
     </>
   )

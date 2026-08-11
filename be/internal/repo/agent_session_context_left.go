@@ -1,12 +1,14 @@
 package repo
 
-// GetContextLeft returns the stored context_left percentage for an agent
-// session, treating a NULL (unreported) value as 100 (full context) so a
-// fresh session never appears due for a fold. Lean single-column read used
-// by the refinery autonomous fold gate — split from agent_session.go, which
-// is baselined shrink-only.
-func (r *AgentSessionRepo) GetContextLeft(id string) (int, error) {
+// GetContextLeftAndModel returns the stored context_left percentage for an
+// agent session — treating a NULL (unreported) value as 100 (full context)
+// so a fresh session never appears due for a fold — plus the session's model
+// id for the refinery fold gates' per-model-tier threshold resolution. Lean
+// two-column read split from agent_session.go, which is baselined
+// shrink-only.
+func (r *AgentSessionRepo) GetContextLeftAndModel(id string) (int, string, error) {
 	var contextLeft int
-	err := r.db.QueryRow(`SELECT COALESCE(context_left, 100) FROM agent_sessions WHERE id = ?`, id).Scan(&contextLeft)
-	return contextLeft, err
+	var modelID string
+	err := r.db.QueryRow(`SELECT COALESCE(context_left, 100), COALESCE(model_id, '') FROM agent_sessions WHERE id = ?`, id).Scan(&contextLeft, &modelID)
+	return contextLeft, modelID, err
 }

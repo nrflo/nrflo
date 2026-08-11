@@ -39,6 +39,9 @@ export interface GlobalSettings {
   proactive_restart_console_pct: number | null
   refinery_fold_start_context_pct: number | null
   refinery_console_fold_start_context_pct: number | null
+  refinery_fold_start_pct_premium: number | null
+  refinery_fold_start_pct_mid: number | null
+  refinery_fold_start_pct_cheap: number | null
 }
 
 export const settingsKeys = {

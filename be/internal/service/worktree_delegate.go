@@ -76,9 +76,13 @@ func (s *WorktreeService) LiveHead(projectRoot string) (string, error) {
 // CommitAndCollect commits the worktree's working tree (git add -A, skipped
 // when the tree is clean relative to its index) tagged with the delegation
 // id, diffs the result against baseCommit, removes the worktree, and — when
-// nothing was committed — deletes the now-pointless branch. The branch is
-// kept (and reported back to the caller) whenever a commit was made, even if
-// individual workers failed or timed out: partial work stays recoverable.
+// the branch never moved past baseCommit — deletes the now-pointless branch.
+// Committed reflects the branch HEAD, not just the staged diff: a worker that
+// ran `git commit` itself leaves a clean tree but an advanced branch, and
+// that branch must survive (deleting it orphans the worker's commits as
+// dangling objects). The branch is kept (and reported back to the caller)
+// whenever it advanced, even if individual workers failed or timed out:
+// partial work stays recoverable.
 func (s *WorktreeService) CommitAndCollect(projectRoot, worktreePath, branchName, baseCommit, delegationID, briefHead string) (*DelegateWorktreeSummary, error) {
 	repoPath, err := resolveRepoPath(projectRoot)
 	if err != nil {
@@ -91,14 +95,20 @@ func (s *WorktreeService) CommitAndCollect(projectRoot, worktreePath, branchName
 
 	summary := &DelegateWorktreeSummary{}
 	_, cleanErr := runGit(worktreePath, "diff", "--cached", "--quiet")
-	summary.Committed = cleanErr != nil // non-nil == staged changes exist
-
-	if summary.Committed {
+	if cleanErr != nil { // staged changes exist — server-owned commit
 		msg := fmt.Sprintf("delegate(%s): %s", delegationID, briefHead)
 		if _, err := runGit(worktreePath, "commit", "-m", msg); err != nil {
 			return nil, fmt.Errorf("commit and collect: git commit: %w", err)
 		}
+	}
 
+	headOut, err := runGit(worktreePath, "rev-parse", "HEAD")
+	if err != nil {
+		return nil, fmt.Errorf("commit and collect: resolve worktree HEAD: %w", err)
+	}
+	summary.Committed = strings.TrimSpace(headOut) != baseCommit
+
+	if summary.Committed {
 		if out, err := runGit(worktreePath, "diff", "--name-only", baseCommit, "HEAD"); err == nil {
 			for _, f := range strings.Split(strings.TrimSpace(out), "\n") {
 				if f != "" {

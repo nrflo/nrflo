@@ -35,7 +35,10 @@ for m in d:
 ```
 
 Filter to candidate families per tier plus the current tier models as
-baselines (query the `models` table for what tier chains resolve to today —
+baselines. When a vendor ships a flagship as a price-tiered family (e.g.
+GPT-5.6 Sol/Terra/Luna), enumerate EVERY sibling — the cheap siblings are
+exactly the tier candidates, and family names don't match the flagship's
+grep pattern (query the `models` table for what tier chains resolve to today —
 `SELECT * FROM tier_models ORDER BY tier, position`, falling back to the
 seeded sonnet/haiku defaults). Skip `:free` variants (rate-limited, no SLA)
 and note `:batch` variants only as a footnote. A model with cache-read price

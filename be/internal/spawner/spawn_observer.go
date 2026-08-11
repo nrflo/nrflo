@@ -191,7 +191,7 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 	})
 	s.broadcastGlobal()
 
-	proc.trx = logger.NewTrx()
+	proc.trx = logger.TrxForSession(req.SessionID)
 
 	// Update agent_sessions with spawn details now that we have them.
 	if pool := s.pool(); pool != nil {

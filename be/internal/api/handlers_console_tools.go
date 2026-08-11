@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"be/internal/console"
+	"be/internal/logger"
 	"be/internal/model"
 )
 
@@ -96,8 +97,13 @@ func (s *Server) handleCallConsoleTool(w http.ResponseWriter, r *http.Request) {
 	projectID := consoleToolProject(r, sess)
 	env := console.NewToolEnv(deps, sess.ID, projectID, sess.Kind)
 
+	// Dispatch under the session-derived trx (not the per-request random one)
+	// so a chat's tool calls — and everything they spawn (delegate workers,
+	// consults) — share the session's log grep key.
+	ctx := logger.WithTrx(r.Context(), logger.TrxForSession(sess.ID))
+
 	start := s.clock.Now()
-	output, isError, callErr := console.Dispatch(r.Context(), reg, env, name, body.Arguments)
+	output, isError, callErr := console.Dispatch(ctx, reg, env, name, body.Arguments)
 	dur := s.clock.Now().Sub(start)
 
 	outcome := "ok"

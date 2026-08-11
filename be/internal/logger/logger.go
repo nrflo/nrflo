@@ -53,6 +53,16 @@ func NewTrx() string {
 	return hex.EncodeToString(b)
 }
 
+// TrxForSession derives a stable trx from a session id (its first 8 chars),
+// so every log line tied to that session shares one grep key. Falls back to
+// a fresh trx when the id is too short.
+func TrxForSession(sessionID string) string {
+	if len(sessionID) >= 8 {
+		return sessionID[:8]
+	}
+	return NewTrx()
+}
+
 // WithTrx stores a trx ID in the context.
 func WithTrx(ctx context.Context, trx string) context.Context {
 	return context.WithValue(ctx, ctxKey{}, trx)

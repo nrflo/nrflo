@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,7 +11,23 @@ import (
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
+	"be/internal/spawner/apirun"
 )
+
+// delegateContext appends a hint naming the caller-supplied artifacts to the
+// inline context so the worker knows which #{ARTIFACT:name} to fetch out of
+// the #{ARTIFACTS} listing (all materialized artifacts on the shared
+// instance, not just the ones the caller named).
+func delegateContext(req apirun.DelegateRequest) string {
+	if len(req.Artifacts) == 0 {
+		return req.Context
+	}
+	hint := "Relevant artifacts: " + strings.Join(req.Artifacts, ", ")
+	if req.Context == "" {
+		return hint
+	}
+	return req.Context + "\n\n" + hint
+}
 
 // delegateRun bundles the per-fanout identifiers threaded through
 // runDelegateFanout/spawnDelegateWorker, instead of growing their already-long
@@ -21,6 +38,9 @@ type delegateRun struct {
 	// Spawner as Config.DelegateDepth (replacing the old in-memory
 	// s.config.DelegateDepth+1 threading).
 	depth int
+	// trx is the caller's log trx, carried across the detached fanout so
+	// worker spawns log under the caller's grep key instead of "-".
+	trx string
 }
 
 // createDelegationRecord seeds the durable delegations row (migration 000216)

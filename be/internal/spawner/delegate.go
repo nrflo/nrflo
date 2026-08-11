@@ -3,10 +3,10 @@ package spawner
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/service"
@@ -85,6 +85,10 @@ func (s *Spawner) Delegate(ctx context.Context, callerSessionID string, req apir
 	run, err := s.createDelegationRecord(pool, wfi.ID, callerSession.ProjectID, callerSessionID, req.Tier, req.Brief, len(items))
 	if err != nil {
 		return "", fmt.Errorf("delegate: seed tracking: %w", err)
+	}
+	run.trx = logger.TrxFromContext(ctx)
+	if run.trx == "-" {
+		run.trx = logger.TrxForSession(callerSessionID)
 	}
 
 	// Degrades to in-place ("" worktreePath) on any ineligibility or setup
@@ -239,7 +243,8 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 	ownSp = sp
 	mu.Unlock()
 
-	spawnCtx, cancel := context.WithTimeout(context.Background(), SpawnDeadline(sysDef.Timeout, 30*time.Minute))
+	// Detached from the caller's cancellation, but not from its trx.
+	spawnCtx, cancel := context.WithTimeout(logger.WithTrx(context.Background(), run.trx), SpawnDeadline(sysDef.Timeout, 30*time.Minute))
 	defer cancel()
 
 	spawnErr := sp.Spawn(spawnCtx, SpawnRequest{
@@ -282,19 +287,4 @@ func (s *Spawner) spawnDelegateWorker(wfi *model.WorkflowInstance, callerSession
 		})
 	}
 	return resultSID, errMsg
-}
-
-// delegateContext appends a hint naming the caller-supplied artifacts to the
-// inline context so the worker knows which #{ARTIFACT:name} to fetch out of
-// the #{ARTIFACTS} listing (all materialized artifacts on the shared
-// instance, not just the ones the caller named).
-func delegateContext(req apirun.DelegateRequest) string {
-	if len(req.Artifacts) == 0 {
-		return req.Context
-	}
-	hint := "Relevant artifacts: " + strings.Join(req.Artifacts, ", ")
-	if req.Context == "" {
-		return hint
-	}
-	return req.Context + "\n\n" + hint
 }

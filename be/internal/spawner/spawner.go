@@ -93,6 +93,12 @@ func (s *Spawner) loadProjectPythonTools(projectID, _ string) ([]apirun.ToolHand
 
 // Spawn spawns agents for a phase with context cancellation support.
 func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
+	// Every spawn carries a real trx: proc.trx, the spawner's own log lines,
+	// and the NRF_TRX env the agent's hooks echo back all derive from it.
+	if logger.TrxFromContext(ctx) == "-" {
+		ctx = logger.WithTrx(ctx, logger.NewTrx())
+	}
+
 	// Validate workflow
 	workflow, ok := s.config.Workflows[req.WorkflowName]
 	if !ok {

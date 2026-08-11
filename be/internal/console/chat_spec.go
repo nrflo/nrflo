@@ -7,6 +7,7 @@ import (
 
 	"be/internal/clock"
 	"be/internal/db"
+	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
 	"be/internal/spawner"
@@ -136,10 +137,13 @@ func resolveNrfloPath() string {
 // plus session identity. Claude's hooks shell out to `nrflo_server agent
 // record-event --console` (spawner/hooks_settings_console.go), which needs
 // NRF_SESSION_ID and the socket vars to reach back into this server.
+// NRF_TRX is the session-derived trx those hooks echo back over the socket,
+// so every hook event of one chat shares a single log grep key.
 func chatEnv(sessionID, projectID string) []string {
 	return append(spawner.HostEnvWithoutClaudeMarkers(),
 		"NRF_SESSION_ID="+sessionID,
 		"NRFLO_PROJECT="+projectID,
+		"NRF_TRX="+logger.TrxForSession(sessionID),
 	)
 }
 

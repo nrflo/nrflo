@@ -22,9 +22,9 @@ func (h *Handler) Handle(req Request) Response {
 	// Reuse the caller-supplied trx (set by spawned agents via NRF_TRX env)
 	// so socket-driven log lines share the parent workflow's id. Fall back
 	// to a fresh trx when the caller did not provide one (e.g. ad-hoc CLI
-	// invocations).
+	// invocations) or forwarded the "-" no-trx sentinel.
 	trx := req.Trx
-	if trx == "" {
+	if trx == "" || trx == "-" {
 		trx = logger.NewTrx()
 	}
 	ctx := logger.WithTrx(context.Background(), trx)

@@ -144,6 +144,11 @@ func (s *sidecar) loop() {
 // since an autonomous fold ignores the buffer entirely while a console fold
 // must also consider its own agent_messages delta.
 func (s *sidecar) foldNow(ctx context.Context) bool {
+	// Fold logs carry the session-derived trx: the loop's own ctx is a bare
+	// Background, and flush callers don't thread a session trx either.
+	if logger.TrxFromContext(ctx) == "-" {
+		ctx = logger.WithTrx(ctx, logger.TrxForSession(s.sessionID))
+	}
 	s.mu.Lock()
 	events := s.buffered
 	s.buffered = nil

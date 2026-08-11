@@ -95,6 +95,32 @@ claim (classic contamination signature) unless price alone justifies a
 fallback-chained trial. A model with NO independent benchmark data ranks on
 popularity + price alone and must be labeled "unbenchmarked wildcard".
 
+## Step 3.5 — Speed and reliability
+
+Speed is tier-critical, not cosmetic: extractor findings return inline only
+within the delegate call's wait window (default 120s), so t2 TTFT + output
+tok/s decide inline-vs-spilled; slow t1 generation burns the executor
+timeout budget on the same work.
+
+1. Per-provider operational data (populated unauthenticated: uptime; the
+   latency/throughput fields usually come back null without auth — take
+   them when present, skip when null):
+
+```bash
+curl -s "https://openrouter.ai/api/v1/models/<author>/<slug>/endpoints" | python3 -c "
+import json,sys
+for e in json.load(sys.stdin)['data']['endpoints']:
+    print(e['provider_name'], e.get('uptime_last_1d'), e.get('throughput_last_30m'), e.get('latency_last_30m'))"
+```
+
+   Flag candidates whose serving pool is dominated by <95%-uptime providers
+   — OpenRouter routes across them and a flaky pool means retries eat the
+   inline window.
+2. Median output tok/s + TTFT: `WebSearch "<model> output tokens per second
+   artificial analysis"` (Artificial Analysis publishes both). Vendor
+   claims about "fewer output tokens per task" also count — a model that
+   solves in half the tokens is effectively 2x faster at equal tok/s.
+
 ## Step 4 — Reprice a real workload from the local DB
 
 Pull per-tier token totals from a recent delegation-heavy session (argument,
@@ -122,7 +148,8 @@ Output (chat only — no repo files; scratch goes to /tmp):
 
 - One table per tier: candidate, $/MTok (in/out/cache-rd), repriced workload
   cost, multiplier vs current, quality signal (fresh-issue score > vendor
-  claim > popularity), context window.
+  claim > popularity), speed (tok/s + TTFT, with a worst-provider-uptime
+  flag), context window.
 - A recommended fallback chain per tier (`candidate → current-model`), so a
   bad run degrades to today's behavior instead of failing.
 - Mandatory caveats: candidates run api-mode via the OpenRouter provider

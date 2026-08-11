@@ -42,8 +42,8 @@ func TestView_FreshFrameHasNoPadding(t *testing.T) {
 		t.Errorf("first line = %q, want frame content, not padding", lines[0])
 	}
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "ctrl+t graph") {
-		t.Errorf("last line = %q, want it to contain footer help %q", last, "ctrl+t graph")
+	if !strings.Contains(last, "claude/opus") {
+		t.Errorf("last line = %q, want it to contain the status bar", last)
 	}
 }
 

@@ -114,8 +114,8 @@ func TestUpdate_HistoryMsgPrintsAndDocksToBottom(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "ctrl+t graph") {
-		t.Errorf("last line = %q, want it to contain footer help", last)
+	if !strings.Contains(last, "claude/opus") {
+		t.Errorf("last line = %q, want it to contain the status bar", last)
 	}
 }
 
@@ -144,8 +144,8 @@ func TestUpdate_LongGlamourPageNeverExceedsHeight(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "ctrl+t graph") {
-		t.Errorf("last line = %q, want it to contain footer help", last)
+	if !strings.Contains(last, "claude/opus") {
+		t.Errorf("last line = %q, want it to contain the status bar", last)
 	}
 }
 
@@ -175,8 +175,8 @@ func TestUpdate_ResizeAfterPrintsRedocksToNewHeight(t *testing.T) {
 	}
 	lines := strings.Split(content, "\n")
 	last := lines[len(lines)-1]
-	if !strings.Contains(last, "ctrl+t graph") {
-		t.Errorf("after resize: last line = %q, want it to contain footer help", last)
+	if !strings.Contains(last, "claude/opus") {
+		t.Errorf("after resize: last line = %q, want it to contain the status bar", last)
 	}
 }
 
@@ -194,7 +194,6 @@ func TestView_TinyTerminalDropsOptionalChromeKeepsMandatoryTail(t *testing.T) {
 	mandatorySections := []string{
 		composerBox.Width(max(1, m.width-2)).Render(m.input.View()),
 		m.statusBar(),
-		m.footer(),
 	}
 	mandatoryChrome := lipgloss.JoinVertical(lipgloss.Left, mandatorySections...)
 	mandatoryHeight := lipgloss.Height(mandatoryChrome)
@@ -223,11 +222,11 @@ func TestView_TinyTerminalDropsOptionalChromeKeepsMandatoryTail(t *testing.T) {
 
 // TestView_ExtremeTinyTerminalDropsComposerKeepsFooterVisible verifies that
 // when the terminal is too short even for the mandatory composer section,
-// clampChrome keeps dropping front sections (composer, then status) until
-// what remains fits, View() pads the slack with blank lines to still fill
+// clampChrome keeps dropping front sections (the composer) until what
+// remains fits, View() pads the slack with blank lines to still fill
 // exactly m.height (the same bottom-docking pad as a normal frame), and the
-// footer — the last section — is never dropped and stays on the last line.
-func TestView_ExtremeTinyTerminalDropsComposerKeepsFooterVisible(t *testing.T) {
+// status bar — the last section — is never dropped and stays on the last line.
+func TestView_ExtremeTinyTerminalDropsComposerKeepsStatusBarVisible(t *testing.T) {
 	m := pinTestModel(t)
 	m.resize(80, 24)
 
@@ -241,7 +240,7 @@ func TestView_ExtremeTinyTerminalDropsComposerKeepsFooterVisible(t *testing.T) {
 	if strings.Contains(content, "╭") || strings.Contains(content, "nrflo…") {
 		t.Errorf("View().Content = %q, want the composer box dropped at h=%d", content, tinyHeight)
 	}
-	if !strings.Contains(content, "ctrl+t graph") {
-		t.Errorf("View().Content = %q, want the footer still visible on the single remaining line", content)
+	if !strings.Contains(content, "claude/opus") {
+		t.Errorf("View().Content = %q, want the status bar still visible on the single remaining line", content)
 	}
 }

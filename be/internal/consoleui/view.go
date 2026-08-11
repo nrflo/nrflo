@@ -66,7 +66,10 @@ func (m *model) View() tea.View {
 	if m.invoke.active {
 		chromeSections = append(chromeSections, m.invokeView())
 	}
-	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar(), m.footer())
+	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar())
+	if footer := m.footer(); footer != "" {
+		chromeSections = append(chromeSections, footer)
+	}
 	chrome := clampChrome(chromeSections, m.height)
 	budget := m.height - lipgloss.Height(chrome)
 	sections := []string{}
@@ -144,10 +147,11 @@ func (m *model) liveRegionView(maxLines int) string {
 	return strings.Join(lines, "\n")
 }
 
-// footer renders the bottom help line; while a turn runs it carries the
-// animated working indicator plus the in-flight tool detail and elapsed time
-// (the live region shows no spinner line — this is the single working
-// indicator).
+// footer renders the bottom status line; while a turn runs it carries the
+// animated working indicator plus the in-flight tool detail and elapsed time,
+// and while delegated workers are active it shows a delegating indicator with
+// the live worker count (the live region shows no spinner line — this is the
+// single working indicator). Empty when there is nothing to show.
 func (m *model) footer() string {
 	if m.lastErr != "" {
 		return errorStyle.Render(" " + truncate(m.lastErr, max(20, m.width-2)))
@@ -163,10 +167,16 @@ func (m *model) footer() string {
 		if m.queuedCount > 0 {
 			line += " · queued:" + strconv.Itoa(m.queuedCount)
 		}
-		line += " · ctrl+c interrupt · ctrl+t graph"
+		if m.delegating > 0 {
+			line += " · delegating:" + strconv.Itoa(m.delegating)
+		}
 		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
 	}
-	return mutedStyle.Render(" " + "ctrl+t graph")
+	if m.delegating > 0 {
+		line := " delegating… · " + strconv.Itoa(m.delegating) + " active"
+		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
+	}
+	return ""
 }
 
 func (m *model) approvalView() string {
@@ -188,10 +198,10 @@ func (m *model) resize(width, height int) {
 
 // clampChrome guarantees the chrome block never exceeds maxHeight rows.
 // Optional sections (approvals/suggestions/invoke, prepended before the
-// mandatory composer/status/footer tail) are dropped front-to-back first;
-// if the mandatory tail alone still exceeds maxHeight, the block is
-// tail-truncated so the bottom-most rows (footer, then status, then the
-// tail of the composer) stay visible.
+// mandatory composer/status tail plus the footer when non-empty) are dropped
+// front-to-back first; if the mandatory tail alone still exceeds maxHeight,
+// the block is tail-truncated so the bottom-most rows (footer/status, then
+// the tail of the composer) stay visible.
 func clampChrome(sections []string, maxHeight int) string {
 	if maxHeight < 1 {
 		maxHeight = 1

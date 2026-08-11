@@ -106,11 +106,11 @@ func TestWorkingIndicator(t *testing.T) {
 	if strings.Contains(m.liveRegionView(m.height), "working…") {
 		t.Fatalf("running live region = %q, want no working indicator (footer owns it)", m.liveRegionView(m.height))
 	}
-	if m.tickOnRunning(false) == nil {
-		t.Fatal("idle→running must start the spinner tick chain")
+	if m.tickOnBusy(false) == nil {
+		t.Fatal("idle→busy must start the spinner tick chain")
 	}
-	if m.tickOnRunning(true) != nil {
-		t.Fatal("already-running must not fork a second tick chain")
+	if m.tickOnBusy(true) != nil {
+		t.Fatal("already-busy must not fork a second tick chain")
 	}
 	m.applyStream(streamUpdate{Events: []Event{
 		event("console_chat.turn", "s1", map[string]any{"state": "idle"}),

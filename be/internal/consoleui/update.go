@@ -8,7 +8,7 @@ import (
 )
 
 func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
-	wasRunning := m.status == "running"
+	wasBusy := m.busy()
 	var commands []tea.Cmd
 	switch msg := message.(type) {
 	case tea.WindowSizeMsg:
@@ -19,12 +19,13 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		if cmd, handled := m.handleKey(msg); handled {
-			return m, tea.Batch(cmd, m.tickOnRunning(wasRunning))
+			return m, tea.Batch(cmd, m.tickOnBusy(wasBusy))
 		}
 	case spinner.TickMsg:
-		// The tick chain lives only while a turn runs; it restarts on the
-		// next idle→running transition via tickOnRunning.
-		if m.status == "running" {
+		// The tick chain lives only while a turn runs or delegated workers
+		// are active; it restarts on the next idle→busy transition via
+		// tickOnBusy.
+		if m.busy() {
 			var cmd tea.Cmd
 			m.spin, cmd = m.spin.Update(msg)
 			return m, cmd
@@ -34,7 +35,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		m.applyStream(msg)
 		commands = append(commands, waitForStream(m.events))
 		if msg.Connected != nil && *msg.Connected {
-			commands = append(commands, m.syncState(), m.loadBgCount())
+			commands = append(commands, m.syncState(), m.loadBgCount(), m.loadDelegateCount())
 			if !m.skillsFetched {
 				m.skillsFetched = true
 				commands = append(commands, m.loadSkills())
@@ -53,6 +54,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				commands = append(commands, m.loadGraph())
 			}
 		}
+		if delegateRelevant(msg.Events) {
+			commands = append(commands, m.loadDelegateCount())
+		}
 	case graphMsg:
 		m.applyGraph(msg)
 	case skillsMsg:
@@ -66,6 +70,10 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	case bgCountMsg:
 		if msg.err == nil {
 			m.bgRunning = msg.count
+		}
+	case delegateCountMsg:
+		if msg.err == nil {
+			m.delegating = msg.count
 		}
 	case historyMsg:
 		if msg.err != nil {
@@ -119,7 +127,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	commands = append(commands, m.tickOnRunning(wasRunning))
+	commands = append(commands, m.tickOnBusy(wasBusy))
 
 	var cmd tea.Cmd
 	before := m.input.Value()
@@ -133,10 +141,16 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(commands...)
 }
 
-// tickOnRunning starts the spinner tick chain when this message flipped the
-// turn to running (send, stream event, or reconnect sync).
-func (m *model) tickOnRunning(wasRunning bool) tea.Cmd {
-	if !wasRunning && m.status == "running" {
+// busy reports whether the footer spinner should animate: a turn is running
+// or delegated workers are still active.
+func (m *model) busy() bool {
+	return m.status == "running" || m.delegating > 0
+}
+
+// tickOnBusy starts the spinner tick chain when this message flipped the
+// model to busy (send, stream event, reconnect sync, or delegate count).
+func (m *model) tickOnBusy(wasBusy bool) tea.Cmd {
+	if !wasBusy && m.busy() {
 		return m.spin.Tick
 	}
 	return nil

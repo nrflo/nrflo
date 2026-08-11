@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"be/internal/types"
 )
 
 func TestWorkingSuffixAndElapsed(t *testing.T) {
@@ -74,8 +76,27 @@ func TestFooter_RunningToolOnWorkingLine(t *testing.T) {
 	if !strings.Contains(out, "[Bash] make test") {
 		t.Errorf("footer() = %q, want it to contain the running tool detail", out)
 	}
-	if !strings.Contains(out, "ctrl+c interrupt") {
-		t.Errorf("footer() = %q, want the interrupt hint kept", out)
+	if strings.Contains(out, "ctrl+") {
+		t.Errorf("footer() = %q, want no key hints", out)
+	}
+	m.delegating = 2
+	if out := m.footer(); !strings.Contains(out, "delegating:2") {
+		t.Errorf("running footer with delegating=2 = %q, want delegating:2 marker", out)
+	}
+}
+
+// TestFooter_DelegatingIdle verifies the idle footer shows the delegating
+// spinner line with the active worker count, and stays empty otherwise.
+func TestFooter_DelegatingIdle(t *testing.T) {
+	m := liveTestModel(80, 24)
+	m.status = "idle"
+	if out := m.footer(); out != "" {
+		t.Errorf("idle footer = %q, want empty", out)
+	}
+	m.delegating = 3
+	out := m.footer()
+	if !strings.Contains(out, "delegating…") || !strings.Contains(out, "3 active") {
+		t.Errorf("idle footer with delegating=3 = %q, want delegating indicator with count", out)
 	}
 }
 
@@ -88,6 +109,32 @@ func TestBgRelevant(t *testing.T) {
 	}
 	if !bgRelevant([]Event{{Type: "orchestration.completed"}}) {
 		t.Error("bgRelevant = false for orchestration.completed, want true")
+	}
+}
+
+func TestDelegateRelevantAndActiveCount(t *testing.T) {
+	if delegateRelevant([]Event{{Type: "workflow.updated"}, {Type: "messages.updated"}}) {
+		t.Error("delegateRelevant = true for non-delegate events, want false")
+	}
+	if !delegateRelevant([]Event{{Type: "delegate.completed"}}) {
+		t.Error("delegateRelevant = false for delegate.completed, want true")
+	}
+	flow := types.SessionFlowResponse{
+		RootSessionID: "root",
+		Nodes: []types.SessionFlowNode{
+			{SessionID: "root", Status: "running"},
+			{SessionID: "w1", Status: "running"},
+			{SessionID: "w2", Status: "completed"},
+			{SessionID: "c1", Status: "running"},
+		},
+		Edges: []types.SessionFlowEdge{
+			{FromSessionID: "root", ToSessionID: "w1", Kind: types.SessionFlowEdgeDelegate},
+			{FromSessionID: "root", ToSessionID: "w2", Kind: types.SessionFlowEdgeDelegate},
+			{FromSessionID: "root", ToSessionID: "c1", Kind: types.SessionFlowEdgeConsult},
+		},
+	}
+	if got := activeDelegateCount(flow); got != 1 {
+		t.Errorf("activeDelegateCount = %d, want 1 (only the running delegate worker)", got)
 	}
 }
 

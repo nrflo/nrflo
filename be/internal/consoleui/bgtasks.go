@@ -5,6 +5,8 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+
+	"be/internal/types"
 )
 
 // runningTool is the live in-flight tool line, fed by
@@ -64,6 +66,56 @@ func bgRelevant(events []Event) bool {
 		switch e.Type {
 		case "workflow.updated", "orchestration.started", "orchestration.completed",
 			"delegate.started", "delegate.completed", "delegate.failed":
+			return true
+		}
+	}
+	return false
+}
+
+// delegateCountMsg carries the refreshed count of this session's active
+// (running) delegated workers, from the session flow graph.
+type delegateCountMsg struct {
+	count int
+	err   error
+}
+
+// loadDelegateCount fetches the session flow and counts running delegate
+// workers — called on WS connect and on delegate lifecycle events, never on a
+// timer.
+func (m *model) loadDelegateCount() tea.Cmd {
+	return func() tea.Msg {
+		flow, err := m.client.Flow(m.ctx)
+		if err != nil {
+			return delegateCountMsg{err: err}
+		}
+		return delegateCountMsg{count: activeDelegateCount(flow)}
+	}
+}
+
+// activeDelegateCount counts flow nodes reached via a delegate edge whose
+// session is still running.
+func activeDelegateCount(flow types.SessionFlowResponse) int {
+	workers := make(map[string]bool)
+	for _, edge := range flow.Edges {
+		if edge.Kind == types.SessionFlowEdgeDelegate {
+			workers[edge.ToSessionID] = true
+		}
+	}
+	count := 0
+	for _, node := range flow.Nodes {
+		if workers[node.SessionID] && node.Status == "running" {
+			count++
+		}
+	}
+	return count
+}
+
+// delegateRelevant reports whether any event can change the active delegated
+// worker count.
+func delegateRelevant(events []Event) bool {
+	for _, e := range events {
+		switch e.Type {
+		case "delegate.started", "delegate.completed", "delegate.failed":
 			return true
 		}
 	}

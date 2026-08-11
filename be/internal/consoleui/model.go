@@ -42,6 +42,7 @@ type model struct {
 	status       string
 	tool         runningTool
 	bgRunning    int
+	delegating   int
 	lastErr      string
 	width        int
 	height       int

@@ -49,32 +49,51 @@ token volume).
 ## Step 2 — Popularity (deployment-proven signal)
 
 Real token volume is the best available proxy for "tool-calling works in
-agentic harnesses at scale". Sources, in order:
+agentic harnesses at scale". The candidate pool is the FULL top-20 of the
+OpenRouter leaderboard — every entry gets priced and considered, not just
+pre-picked families; note the week-over-week growth % too (a +400% riser is
+the market discovering a price/quality outlier before benchmarks catch up).
+Sources, in order:
 
-1. `WebFetch https://tokenmaxxing.com/openrouter-rankings` — top models by
-   daily/30-day tokens (openrouter.ai/rankings itself is JS-rendered and
-   returns no data to fetchers; don't burn time on it).
-2. `WebSearch "openrouter rankings top models programming token share <month year>"`
+1. Ask the user to paste openrouter.ai/rankings if they have it open — the
+   page is JS-rendered and returns no data to fetchers, and mirrors truncate
+   it (tokenmaxxing showed 12 of 20 entries when checked).
+2. `WebFetch https://tokenmaxxing.com/openrouter-rankings` — partial mirror,
+   better than nothing.
+3. `WebSearch "openrouter rankings top models programming token share <month year>"`
    for the programming-category split and cross-checks.
 
-## Step 3 — Quality (contamination-resistant first)
+Drop from the pool only for concrete reasons, stated in the output: `:free`
+variants (no SLA), no tool-calling support, context window too small for the
+tier, or no cache-read discount (see Step 1).
+
+## Step 3 — Quality (contamination-resistant first, per-tier axes)
 
 Vendor-reported SWE-bench Verified numbers are contamination-suspect (models
-train on the issues). Rank by fresh-issue evals first:
+train on the issues). Weight benchmarks by what each tier actually does:
 
+**t1 executor (edits code agentically in a worktree):**
 1. `WebFetch https://swe-rebench.com/` — resolved-rate on GitHub issues
-   posted AFTER training cutoffs, with cost-per-task. This is the primary
-   quality axis for the t1 executor tier.
-2. `WebSearch "<model> terminal-bench SWE-bench Pro benchmark <year>"` for
-   Terminal-Bench (agentic terminal work — closest to our executor shape)
-   and SWE-bench Pro. Label vendor self-reported numbers as such.
-3. For the t2 extractor tier no coding benchmark maps cleanly; weight
-   popularity (Step 2) and price. The adversarial-verify template pass is
-   the quality net for extraction; say so in the caveats.
+   posted AFTER training cutoffs, with cost-per-task. Primary axis.
+2. Terminal-Bench and SWE-bench Pro (multi-language, standardized scaffold —
+   the contamination-resistant SWE-bench successor) via WebSearch.
+3. Artificial Analysis Coding Agent Index (independent aggregator, standard
+   suites — label as gameable) and Aider polyglot for edit-format
+   discipline. LiveCodeBench/Codeforces measure competitive programming, NOT
+   agentic repo work — a model can top them and still flop on fresh issues
+   (observed: DeepSeek V4 Pro 93.5% LiveCodeBench vs 40.2% SWE-rebench).
+
+**t2 extractor (read-and-report, one question one answer):**
+SWE-bench barely applies. Weight instead: tau²-bench / tool-calling evals
+(does it drive tools correctly), IFBench-style instruction following (does
+it answer exactly what was asked), long-context retrieval (MRCR/RULER — the
+brief points it at big files), then popularity and price. The
+adversarial-verify template pass is the quality net; say so in the caveats.
 
 Discard candidates whose fresh-issue score collapses far below their vendor
 claim (classic contamination signature) unless price alone justifies a
-fallback-chained trial.
+fallback-chained trial. A model with NO independent benchmark data ranks on
+popularity + price alone and must be labeled "unbenchmarked wildcard".
 
 ## Step 4 — Reprice a real workload from the local DB
 

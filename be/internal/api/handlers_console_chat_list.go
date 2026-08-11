@@ -146,6 +146,9 @@ func (s *Server) handleGetConsoleChat(w http.ResponseWriter, r *http.Request) {
 		}
 		resp["turn"] = snap.Turn
 		resp["work_dir"] = snap.WorkDir
+		if snap.RotateAtPct > 0 {
+			resp["rotate_at_pct"] = snap.RotateAtPct
+		}
 		if snap.GitBranch != "" {
 			resp["git_branch"] = snap.GitBranch
 			resp["git_added"] = snap.GitAdded

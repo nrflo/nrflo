@@ -24,6 +24,9 @@ func (m *model) statusBar() string {
 	contextText := ""
 	if m.detail.ContextLeft != nil {
 		contextText = fmt.Sprintf("  context used %d%%", 100-*m.detail.ContextLeft)
+		if m.detail.RotateAtPct > 0 {
+			contextText += fmt.Sprintf(" (rotate @%d%%)", m.detail.RotateAtPct)
+		}
 	}
 	costText := ""
 	if m.detail.CostEstimate != nil {

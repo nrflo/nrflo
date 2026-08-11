@@ -22,6 +22,26 @@ func TestStatusBar_YoloBadge(t *testing.T) {
 	}
 }
 
+// TestStatusBar_RotateAtPct verifies the context segment appends the
+// rotation ceiling when the server reports one, and omits it otherwise.
+func TestStatusBar_RotateAtPct(t *testing.T) {
+	left := 88
+	m := &model{detail: ChatDetail{Engine: "claude", ProjectID: "proj-1", ContextLeft: &left}}
+	if got := m.statusBar(); strings.Contains(got, "rotate") {
+		t.Errorf("statusBar() with RotateAtPct=0 = %q, want no rotate segment", got)
+	}
+
+	m.detail.RotateAtPct = 15
+	if got := m.statusBar(); !strings.Contains(got, "context used 12% (rotate @15%)") {
+		t.Errorf("statusBar() with RotateAtPct=15 = %q, want rotate ceiling next to context", got)
+	}
+
+	m.detail.ContextLeft = nil
+	if got := m.statusBar(); strings.Contains(got, "rotate") {
+		t.Errorf("statusBar() with no context signal = %q, want no rotate segment", got)
+	}
+}
+
 // TestStatusBar_Profile verifies the profile segment renders the profile
 // name (as used by --profile) when set, and is omitted entirely when empty.
 func TestStatusBar_Profile(t *testing.T) {

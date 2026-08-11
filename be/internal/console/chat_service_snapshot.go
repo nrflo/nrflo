@@ -23,6 +23,10 @@ type ChatSnapshot struct {
 	GitBranch        string
 	GitAdded         int
 	GitDeleted       int
+	// RotateAtPct is the proactive-rotation ceiling as a percentage of the
+	// context window (profile budget capped — see maybeRotate); 0 = disabled
+	// or unknown window.
+	RotateAtPct int
 }
 
 type ChatLiveItem struct {
@@ -40,6 +44,12 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 	}
 	state := sess.snapshot()
 	branch, added, deleted, _ := gitWorkdirStatus(sess.WorkDir())
+	rotateAtPct := 0
+	if maxContext := sess.MaxContext(); maxContext > 0 {
+		profile, _ := ProfileByName(sess.Profile())
+		threshold := spawner.ProactiveRestartConsoleThreshold(s.deps.Pool, maxContext, profile.ContextBudgetTokens)
+		rotateAtPct = threshold * 100 / maxContext
+	}
 	return ChatSnapshot{
 		Engine:           sess.EngineName(),
 		ModelID:          sess.ModelID(),
@@ -54,6 +64,7 @@ func (s *ChatService) Snapshot(sid string) (ChatSnapshot, bool) {
 		GitBranch:        branch,
 		GitAdded:         added,
 		GitDeleted:       deleted,
+		RotateAtPct:      rotateAtPct,
 	}, true
 }
 

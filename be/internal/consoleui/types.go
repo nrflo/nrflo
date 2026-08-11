@@ -23,6 +23,7 @@ type ChatDetail struct {
 	Turn             string     `json:"turn"`
 	WorkDir          string     `json:"work_dir"`
 	ContextLeft      *int       `json:"context_left"`
+	RotateAtPct      int        `json:"rotate_at_pct,omitempty"`
 	CostEstimate     *float64   `json:"cost_estimate"`
 	Live             bool       `json:"live"`
 	PendingApprovals []Approval `json:"pending_approvals"`

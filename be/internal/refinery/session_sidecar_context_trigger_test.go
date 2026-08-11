@@ -36,7 +36,7 @@ func TestAutonomousTrigger_ContextUpdated_FoldsWithoutAnyFindings(t *testing.T) 
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventAgentContextUpdated, ProjectID: projectID, SessionID: sessionID})
 	settle(50 * time.Millisecond) // let the sidecar goroutine register its debounce timer
-	clk.Advance(30 * time.Second)
+	clk.Advance(40 * time.Second)
 
 	waitForCondition(t, 2*time.Second, func() bool {
 		s := getSlot(t, mgr, wfiID, nodeID)
@@ -64,11 +64,11 @@ func TestAutonomousTrigger_ContextUpdated_RespectsDebounce(t *testing.T) {
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventAgentContextUpdated, ProjectID: projectID, SessionID: sessionID})
 	settle(50 * time.Millisecond)
-	clk.Advance(29 * time.Second)
+	clk.Advance(39 * time.Second)
 
 	settle(200 * time.Millisecond)
 	if s := getSlot(t, mgr, wfiID, nodeID); s != nil {
-		t.Errorf("GetSlot after 29s = %+v, want nil (context updates debounce, they do not fold immediately)", s)
+		t.Errorf("GetSlot after 39s = %+v, want nil (context updates debounce, they do not fold immediately)", s)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestAutonomousTrigger_RequiresSessionID(t *testing.T) {
 		Data:      map[string]interface{}{"session_id": sessionID, "context_left": 30},
 	})
 	settle(50 * time.Millisecond)
-	clk.Advance(30 * time.Second)
+	clk.Advance(40 * time.Second)
 
 	settle(200 * time.Millisecond)
 	if s := getSlot(t, mgr, wfiID, nodeID); s != nil {

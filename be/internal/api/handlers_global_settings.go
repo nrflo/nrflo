@@ -103,6 +103,11 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	consoleFoldStartPct, err := svc.GetRefineryConsoleFoldStartContextPct()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	consoleYoloVal, err := svc.Get("console_yolo")
 	if err != nil {
@@ -111,21 +116,22 @@ func (s *Server) handleGetGlobalSettings(w http.ResponseWriter, r *http.Request)
 	}
 
 	resp := map[string]interface{}{
-		"low_consumption_mode":                  val == "true",
-		"simplified_agents_graph":               simplifiedAgentsGraphVal == "true",
-		"experimental":                          experimentalVal == "true",
-		"api_mode_enabled":                      apiModeVal == "true",
-		"api_native_tools_enabled":              apiNativeToolsVal == "true",
-		"dynamic_workflow_auto_enabled":         dynamicAutoVal == "true",
-		"capture_thinking_enabled":              captureThinkingVal == "true",
-		"claude_system_prompt_override_enabled": claudeSysPromptOverrideVal == "true",
-		"api_via_cli_enabled":                   apiViaCLIEnabled,
-		"experimental_observer_enabled":         observerEnabled,
-		"observer_system_context":               observerSysCtx,
-		"observer_provider":                     observerProvider,
-		"observer_model":                        observerModel,
-		"refinery_fold_start_context_pct":       foldStartPct,
-		"console_yolo":                          consoleYoloVal != "false",
+		"low_consumption_mode":                    val == "true",
+		"simplified_agents_graph":                 simplifiedAgentsGraphVal == "true",
+		"experimental":                            experimentalVal == "true",
+		"api_mode_enabled":                        apiModeVal == "true",
+		"api_native_tools_enabled":                apiNativeToolsVal == "true",
+		"dynamic_workflow_auto_enabled":           dynamicAutoVal == "true",
+		"capture_thinking_enabled":                captureThinkingVal == "true",
+		"claude_system_prompt_override_enabled":   claudeSysPromptOverrideVal == "true",
+		"api_via_cli_enabled":                     apiViaCLIEnabled,
+		"experimental_observer_enabled":           observerEnabled,
+		"observer_system_context":                 observerSysCtx,
+		"observer_provider":                       observerProvider,
+		"observer_model":                          observerModel,
+		"refinery_fold_start_context_pct":         foldStartPct,
+		"refinery_console_fold_start_context_pct": consoleFoldStartPct,
+		"console_yolo":                            consoleYoloVal != "false",
 	}
 	for _, ms := range menuSettings {
 		v, err := boolWithDefault(svc, ms.key, ms.def)

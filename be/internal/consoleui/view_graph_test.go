@@ -20,14 +20,15 @@ func fixtureFlow() types.SessionFlowResponse {
 			{SessionID: "root-session-id", Kind: "console_chat", Status: "user_interactive",
 				ModelID: "opus-5", StartedAt: "2026-08-10T10:00:00Z"},
 			{SessionID: "worker-1", Kind: "workflow_agent", AgentType: "_t2_extractor", Status: "completed",
-				Result: "pass", ModelID: "haiku-4-5", ContextLeft: &ctx71,
+				Result: "pass", ModelID: "haiku-4-5", ContextLeft: &ctx71, Title: "Report the working-tree state",
 				StartedAt: "2026-08-10T10:01:00Z", EndedAt: "2026-08-10T10:01:54Z"},
 			{SessionID: "worker-2", Kind: "workflow_agent", AgentType: "_t1_executor", Status: "running",
 				ModelID: "sonnet-5", StartedAt: "2026-08-10T10:02:00Z"},
 		},
+		// Deliberately newest-first: renderFlowTree must re-sort by start time.
 		Edges: []types.SessionFlowEdge{
-			{FromSessionID: "root-session-id", ToSessionID: "worker-1", Kind: "delegate"},
 			{FromSessionID: "root-session-id", ToSessionID: "worker-2", Kind: "delegate"},
+			{FromSessionID: "root-session-id", ToSessionID: "worker-1", Kind: "delegate"},
 		},
 	}
 }
@@ -47,13 +48,25 @@ func TestRenderFlowTree(t *testing.T) {
 		t.Errorf("root line = %q, want kind + model", plain[0])
 	}
 	if !strings.Contains(plain[1], "├─ ") || !strings.Contains(plain[1], "_t2_extractor") ||
-		!strings.Contains(plain[1], "54s") || !strings.Contains(plain[1], "ctx 71%") ||
-		!strings.Contains(plain[1], "[delegate]") {
-		t.Errorf("worker-1 line = %q, want connector + agent + elapsed + ctx + edge kind", plain[1])
+		!strings.Contains(plain[1], "54s") || !strings.Contains(plain[1], "used 29%") ||
+		!strings.Contains(plain[1], "[delegate]") ||
+		!strings.Contains(plain[1], "— Report the working-tree state") {
+		t.Errorf("worker-1 line = %q, want connector + agent + elapsed + ctx + edge kind + title, sorted before worker-2", plain[1])
 	}
 	if !strings.Contains(plain[2], "└─ ") || !strings.Contains(plain[2], "_t1_executor") ||
 		!strings.Contains(plain[2], "1m00s") || !strings.Contains(plain[2], "running") {
 		t.Errorf("worker-2 line = %q, want last connector + running elapsed", plain[2])
+	}
+}
+
+// A failed session whose result is "fail" renders "failed", not the
+// redundant "failed/fail".
+func TestFlowNodeLine_FailedResultNotDoubled(t *testing.T) {
+	t.Parallel()
+	line := ansi.Strip(flowNodeLine(types.SessionFlowNode{
+		SessionID: "x", AgentType: "_refinery-cli", Status: "failed", Result: "fail"}, "origin", time.Time{}))
+	if strings.Contains(line, "failed/fail") {
+		t.Errorf("line = %q, want plain 'failed' without '/fail'", line)
 	}
 }
 
@@ -93,10 +106,14 @@ func TestGraphOverlay_ToggleAndKeySwallow(t *testing.T) {
 		t.Error("overlay view must use the alt screen")
 	}
 
-	m.applyGraph(graphMsg{flow: fixtureFlow(), stats: types.SessionStatsResponse{SelfCostUSD: 0.42}})
+	m.applyGraph(graphMsg{flow: fixtureFlow(), stats: types.SessionStatsResponse{
+		SelfCostUSD: 0.42, SubtreeCostUSD: 5.1, SubtreeCacheHitPct: 91.2, SubtreeCostNoCacheUSD: 48.2}})
 	content := m.View().Content
 	if !strings.Contains(content, "Session flow") || !strings.Contains(content, "_t2_extractor") {
 		t.Errorf("overlay content missing header/tree:\n%s", content)
+	}
+	if !strings.Contains(content, "cache 91%") || !strings.Contains(content, "no-cache ≈$48.20") {
+		t.Errorf("overlay stats missing cache hit / no-cache cost:\n%s", content)
 	}
 
 	// Typing while open never reaches the composer.

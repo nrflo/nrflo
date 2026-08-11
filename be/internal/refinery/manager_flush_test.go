@@ -20,7 +20,7 @@ func TestManager_Flush_FoldsBufferedEventsSynchronously(t *testing.T) {
 	t.Cleanup(func() { mgr.Stop(sessionID) })
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID})
-	settle(50 * time.Millisecond) // let the sidecar goroutine buffer the event (below the 30s debounce floor)
+	settle(50 * time.Millisecond) // let the sidecar goroutine buffer the event (below the 40s debounce floor)
 
 	mgr.Flush(context.Background(), sessionID)
 

@@ -14,7 +14,7 @@ import (
 )
 
 // cliFoldTimeout bounds a cli_interactive fold attempt's one-off headless
-// child — well under the 30s sidecar debounce and the 10s console Stop
+// child — well under the 40s sidecar debounce and the 10s console Stop
 // budget, so a stuck child never blocks either.
 const cliFoldTimeout = 90 * time.Second
 

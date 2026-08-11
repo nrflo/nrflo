@@ -50,6 +50,7 @@ function makeSettings(overrides: Partial<GlobalSettings> = {}): GlobalSettings {
     proactive_restart_boundary_window_turns: 2,
     proactive_restart_console_pct: 90,
     refinery_fold_start_context_pct: 40,
+    refinery_console_fold_start_context_pct: 75,
     ...overrides,
   }
 }
@@ -59,11 +60,11 @@ describe('GlobalRefinerySettings', () => {
 
   it('renders seeded from the settings value, and empty when null', () => {
     const { unmount } = renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
-    expect(screen.getByPlaceholderText('40')).toHaveValue('40')
+    expect(screen.getByPlaceholderText('60')).toHaveValue('40')
     unmount()
 
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: null })} />)
-    expect(screen.getByPlaceholderText('40')).toHaveValue('')
+    expect(screen.getByPlaceholderText('60')).toHaveValue('')
   })
 
   it('typing a value and blurring calls updateGlobalSettings with exactly the parsed field', async () => {
@@ -71,7 +72,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.type(input, '25')
     await user.tab()
@@ -86,7 +87,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.type(input, '55{Enter}')
 
@@ -100,7 +101,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.type(input, String(boundary))
     await user.tab()
@@ -115,7 +116,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.type(input, String(bad))
     await user.tab()
@@ -131,7 +132,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.tab()
 
@@ -145,11 +146,26 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.click(input)
     await user.tab()
 
     expect(settingsApi.updateGlobalSettings).not.toHaveBeenCalled()
+  })
+
+  it('console fold-start row submits its own key', async () => {
+    vi.mocked(settingsApi.updateGlobalSettings).mockResolvedValue(undefined)
+    renderWithQuery(<GlobalRefinerySettings settings={makeSettings()} />)
+    const user = userEvent.setup()
+
+    const input = screen.getByPlaceholderText('75')
+    await user.clear(input)
+    await user.type(input, '80')
+    await user.tab()
+
+    await waitFor(() => {
+      expect(settingsApi.updateGlobalSettings).toHaveBeenCalledWith({ refinery_console_fold_start_context_pct: 80 })
+    })
   })
 
   it('non-numeric input parses to null (per parseOptionalInt) and submits null', async () => {
@@ -157,7 +173,7 @@ describe('GlobalRefinerySettings', () => {
     renderWithQuery(<GlobalRefinerySettings settings={makeSettings({ refinery_fold_start_context_pct: 40 })} />)
     const user = userEvent.setup()
 
-    const input = screen.getByPlaceholderText('40')
+    const input = screen.getByPlaceholderText('60')
     await user.clear(input)
     await user.type(input, 'abc')
     await user.tab()

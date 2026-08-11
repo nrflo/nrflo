@@ -12,7 +12,7 @@ import (
 )
 
 // debounceFloor is the minimum gap enforced between non-immediate folds.
-const debounceFloor = 30 * time.Second
+const debounceFloor = 40 * time.Second
 
 // foldFunc runs one fold for sessionID/projectID over the buffered event
 // lines since the last fold.

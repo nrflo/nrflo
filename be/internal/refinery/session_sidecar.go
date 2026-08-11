@@ -109,7 +109,7 @@ const stopFoldTimeout = 20 * time.Second
 // StopSession, which is the teardown path).
 //
 // The spawner's kill-time save path calls this before deciding whether to
-// spawn a context-saver agent. Folds are debounced >=30s, so a session that
+// spawn a context-saver agent. Folds are debounced >=40s, so a session that
 // burns from refinery_fold_start_context_pct down to the relaunch threshold
 // inside one debounce window dies with no digest even though the refinery is
 // healthy — the fold it had scheduled lands seconds later and is never read.
@@ -257,7 +257,7 @@ func (m *Manager) foldAutonomous(ctx context.Context, as *autonomousSession, ses
 // carrying session_id (FE matches on it, mirroring context_ledger) so the
 // UI can pick up the new digest without polling. Debounce is inherited from
 // the fold cadence — one broadcast per successful UpsertSlot is already
-// server-side rate-limited by the sidecar's >=30s trigger coalescing, so no
+// server-side rate-limited by the sidecar's >=40s trigger coalescing, so no
 // extra per-slot timer is needed here. Best-effort: a re-read failure is
 // logged, never propagated.
 func (m *Manager) broadcastHandoffDigest(ctx context.Context, sessionID, projectID, workflowInstanceID, nodeID string) {

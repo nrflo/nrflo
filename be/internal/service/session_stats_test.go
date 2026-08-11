@@ -57,6 +57,46 @@ func TestBuildSessionStats_ToolDistributionAndSelfVsSubtreeRollup(t *testing.T) 
 	}
 }
 
+// TestBuildSessionStats_CacheRollup verifies the cache-hit percentage
+// (cache_read over ALL prompt tokens) and the no-cache cost (every prompt
+// token at the model's full price_in) across the subtree.
+func TestBuildSessionStats_CacheRollup(t *testing.T) {
+	t.Parallel()
+	pool, _, wfiID := setupTraceTestEnv(t)
+	insertTraceSession(t, pool, traceSession{id: "s-cache-root", wfiID: wfiID, agentType: "caller", status: "completed", startedAt: "2025-01-01T00:00:00Z"})
+	insertSubLaneSession(t, pool, subLaneSession{id: "s-cache-worker", wfiID: wfiID, phase: "_delegate", nodeID: "_delegate",
+		agentType: "_t1_executor", status: "completed", startedAt: "2025-01-01T00:01:00Z"})
+	insertDelegation(t, pool, &model.Delegation{ID: "wfi-trace.cache1", CallerSessionID: "s-cache-root", WorkflowInstanceID: wfiID, ProjectID: "test-proj", Tier: "executor", Fanout: 1, Depth: 1}, 0, "s-cache-worker")
+
+	// haiku-4-5 is seeded with price_in=1/price_out=5 per MTok. Root:
+	// 250k fresh + 750k cache-read = 75% hit, no-cache = 1M * $1 = $1.
+	// Worker: 500k fresh + 500k cache-write = 0% hit, no-cache = $1.
+	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-4-5', tokens_json = '{"input_tokens":250000,"output_tokens":0,"cache_read_tokens":750000,"cache_write_tokens":0}' WHERE id = 's-cache-root'`)
+	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-4-5', tokens_json = '{"input_tokens":500000,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":500000}' WHERE id = 's-cache-worker'`)
+
+	flow, err := BuildSessionFlow(pool, clock.Real(), "s-cache-root")
+	if err != nil {
+		t.Fatalf("BuildSessionFlow: %v", err)
+	}
+	stats, err := BuildSessionStats(pool, clock.Real(), flow)
+	if err != nil {
+		t.Fatalf("BuildSessionStats: %v", err)
+	}
+
+	if stats.SelfCacheHitPct != 75 {
+		t.Errorf("SelfCacheHitPct = %v, want 75", stats.SelfCacheHitPct)
+	}
+	if stats.SubtreeCacheHitPct != 37.5 {
+		t.Errorf("SubtreeCacheHitPct = %v, want 37.5 (750k of 2M prompt tokens)", stats.SubtreeCacheHitPct)
+	}
+	if stats.SelfCostNoCacheUSD != 1.0 {
+		t.Errorf("SelfCostNoCacheUSD = %v, want 1.0", stats.SelfCostNoCacheUSD)
+	}
+	if stats.SubtreeCostNoCacheUSD != 2.0 {
+		t.Errorf("SubtreeCostNoCacheUSD = %v, want 2.0", stats.SubtreeCostNoCacheUSD)
+	}
+}
+
 func TestBuildSessionStats_SharedChildCountedOnceInSubtree(t *testing.T) {
 	t.Parallel()
 	pool, _, wfiID := setupTraceTestEnv(t)

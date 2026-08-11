@@ -39,8 +39,26 @@ func BuildSessionStats(pool *db.Pool, clk clock.Clock, flow *types.SessionFlowRe
 		resp.SubtreeCostUSD = subCost
 		resp.SubtreeTokens = subTokens
 	}
+	if in, cr, cw, _, noCache, err := sessionRepo.CacheRollup([]string{flow.RootSessionID}); err == nil {
+		resp.SelfCacheHitPct = cacheHitPct(in, cr, cw)
+		resp.SelfCostNoCacheUSD = noCache
+	}
+	if in, cr, cw, _, noCache, err := sessionRepo.CacheRollup(sessionIDs); err == nil {
+		resp.SubtreeCacheHitPct = cacheHitPct(in, cr, cw)
+		resp.SubtreeCostNoCacheUSD = noCache
+	}
 
 	return resp, nil
+}
+
+// cacheHitPct is cache-read tokens over all prompt tokens, 0 when no prompt
+// tokens were recorded.
+func cacheHitPct(input, cacheRead, cacheWrite int64) float64 {
+	total := input + cacheRead + cacheWrite
+	if total == 0 {
+		return 0
+	}
+	return 100 * float64(cacheRead) / float64(total)
 }
 
 // mergeToolCallStats folds repo.ToolCallStat's (tool_name, status, count)

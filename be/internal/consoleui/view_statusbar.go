@@ -23,7 +23,7 @@ func (m *model) statusBar() string {
 	}
 	contextText := ""
 	if m.detail.ContextLeft != nil {
-		contextText = fmt.Sprintf("  context %d%%", *m.detail.ContextLeft)
+		contextText = fmt.Sprintf("  context used %d%%", 100-*m.detail.ContextLeft)
 	}
 	costText := ""
 	if m.detail.CostEstimate != nil {

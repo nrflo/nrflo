@@ -38,7 +38,7 @@ func foldCount(t *testing.T, mgr *Manager, sessionID string) int {
 }
 
 // TestManager_Debounce_BelowFloorDoesNotFold verifies a single trigger does
-// not fold until the 30s debounce floor has elapsed.
+// not fold until the 40s debounce floor has elapsed.
 func TestManager_Debounce_BelowFloorDoesNotFold(t *testing.T) {
 	mgr, clk := newTestManager(t)
 	sessionID, projectID := "sess-debounce-1", "proj-debounce-1"
@@ -48,13 +48,13 @@ func TestManager_Debounce_BelowFloorDoesNotFold(t *testing.T) {
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID})
 	settle(50 * time.Millisecond) // let the sidecar goroutine register its debounce timer
-	clk.Advance(29 * time.Second)
+	clk.Advance(39 * time.Second)
 
 	// Give the sidecar goroutine a chance to run if it were (incorrectly)
 	// going to fold; then assert it did not.
 	settle(200 * time.Millisecond)
 	if got := foldCount(t, mgr, sessionID); got != 0 {
-		t.Errorf("fold_count after 29s = %d, want 0 (below the 30s debounce floor)", got)
+		t.Errorf("fold_count after 39s = %d, want 0 (below the 40s debounce floor)", got)
 	}
 }
 
@@ -79,7 +79,29 @@ func TestManager_SelfInflictedEventNeverTriggers(t *testing.T) {
 	}
 }
 
-// TestManager_Debounce_AtFloorFolds verifies crossing the 30s floor triggers
+// TestManager_ConsoleFoldGate_ClosedAboveThreshold verifies a barely-used
+// chat (context_left above refinery_console_fold_start_context_pct, default
+// 75 — here NULL, which reads as 100) never folds, even on an immediate
+// trigger.
+func TestManager_ConsoleFoldGate_ClosedAboveThreshold(t *testing.T) {
+	mgr, _ := newTestManager(t)
+	sessionID, projectID := "sess-gate-1", "proj-gate-1"
+	seedConsoleChatSession(t, mgr.pool, sessionID, projectID)
+	if _, err := mgr.pool.Exec(`UPDATE agent_sessions SET context_left = NULL WHERE id = ?`, sessionID); err != nil {
+		t.Fatalf("clear context_left: %v", err)
+	}
+	mgr.Start(sessionID, projectID)
+	t.Cleanup(func() { mgr.Stop(sessionID) })
+
+	mgr.OnEvent(&ws.Event{Type: ws.EventOrchestrationCompleted, ProjectID: projectID})
+
+	settle(200 * time.Millisecond)
+	if got := foldCount(t, mgr, sessionID); got != 0 {
+		t.Errorf("fold_count = %d, want 0 (console fold gate closed above threshold)", got)
+	}
+}
+
+// TestManager_Debounce_AtFloorFolds verifies crossing the 40s floor triggers
 // exactly one fold.
 func TestManager_Debounce_AtFloorFolds(t *testing.T) {
 	mgr, clk := newTestManager(t)
@@ -90,7 +112,7 @@ func TestManager_Debounce_AtFloorFolds(t *testing.T) {
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID})
 	settle(50 * time.Millisecond) // let the sidecar goroutine register its debounce timer
-	clk.Advance(30 * time.Second)
+	clk.Advance(40 * time.Second)
 
 	waitForCondition(t, 2*time.Second, func() bool { return foldCount(t, mgr, sessionID) == 1 })
 }
@@ -109,7 +131,7 @@ func TestManager_Debounce_CoalescesTriggersWithinWindow(t *testing.T) {
 		mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectID})
 	}
 	settle(50 * time.Millisecond) // let the sidecar goroutine drain all 5 triggers
-	clk.Advance(30 * time.Second)
+	clk.Advance(40 * time.Second)
 
 	waitForCondition(t, 2*time.Second, func() bool { return foldCount(t, mgr, sessionID) >= 1 })
 	// Give any (incorrect) extra folds a chance to land before asserting.
@@ -201,7 +223,7 @@ func TestManager_OnEvent_RoutesByProjectID(t *testing.T) {
 
 	mgr.OnEvent(&ws.Event{Type: ws.EventFindingsUpdated, ProjectID: projectA})
 	settle(50 * time.Millisecond) // let the sidecar goroutine register its debounce timer
-	clk.Advance(30 * time.Second)
+	clk.Advance(40 * time.Second)
 
 	waitForCondition(t, 2*time.Second, func() bool { return foldCount(t, mgr, sessionA) == 1 })
 	settle(200 * time.Millisecond)

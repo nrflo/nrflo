@@ -9,23 +9,24 @@ import (
 
 func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		LowConsumptionMode                *bool           `json:"low_consumption_mode"`
-		SimplifiedAgentsGraph             *bool           `json:"simplified_agents_graph"`
-		Experimental                      *bool           `json:"experimental"`
-		APIModeEnabled                    *bool           `json:"api_mode_enabled"`
-		APINativeToolsEnabled             *bool           `json:"api_native_tools_enabled"`
-		DynamicWorkflowAutoEnabled        *bool           `json:"dynamic_workflow_auto_enabled"`
-		ClaudeSystemPromptOverrideEnabled *bool           `json:"claude_system_prompt_override_enabled"`
-		StallStartTimeoutSec              json.RawMessage `json:"stall_start_timeout_sec"`
-		StallRunningTimeoutSec            json.RawMessage `json:"stall_running_timeout_sec"`
-		RefineryFoldStartContextPct       json.RawMessage `json:"refinery_fold_start_context_pct"`
-		CaptureThinkingEnabled            *bool           `json:"capture_thinking_enabled"`
-		APIViaCLIEnabled                  *bool           `json:"api_via_cli_enabled"`
-		ExperimentalObserverEnabled       *bool           `json:"experimental_observer_enabled"`
-		ObserverSystemContext             *string         `json:"observer_system_context"`
-		ObserverProvider                  *string         `json:"observer_provider"`
-		ObserverModel                     *string         `json:"observer_model"`
-		ConsoleYolo                       *bool           `json:"console_yolo"`
+		LowConsumptionMode                 *bool           `json:"low_consumption_mode"`
+		SimplifiedAgentsGraph              *bool           `json:"simplified_agents_graph"`
+		Experimental                       *bool           `json:"experimental"`
+		APIModeEnabled                     *bool           `json:"api_mode_enabled"`
+		APINativeToolsEnabled              *bool           `json:"api_native_tools_enabled"`
+		DynamicWorkflowAutoEnabled         *bool           `json:"dynamic_workflow_auto_enabled"`
+		ClaudeSystemPromptOverrideEnabled  *bool           `json:"claude_system_prompt_override_enabled"`
+		StallStartTimeoutSec               json.RawMessage `json:"stall_start_timeout_sec"`
+		StallRunningTimeoutSec             json.RawMessage `json:"stall_running_timeout_sec"`
+		RefineryFoldStartContextPct        json.RawMessage `json:"refinery_fold_start_context_pct"`
+		RefineryConsoleFoldStartContextPct json.RawMessage `json:"refinery_console_fold_start_context_pct"`
+		CaptureThinkingEnabled             *bool           `json:"capture_thinking_enabled"`
+		APIViaCLIEnabled                   *bool           `json:"api_via_cli_enabled"`
+		ExperimentalObserverEnabled        *bool           `json:"experimental_observer_enabled"`
+		ObserverSystemContext              *string         `json:"observer_system_context"`
+		ObserverProvider                   *string         `json:"observer_provider"`
+		ObserverModel                      *string         `json:"observer_model"`
+		ConsoleYolo                        *bool           `json:"console_yolo"`
 		menuPatchFields
 		watcherPatchFields
 	}
@@ -120,6 +121,9 @@ func (s *Server) handlePatchGlobalSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := applyOptionalBoundedIntSetting(svc, req.RefineryFoldStartContextPct, service.RefineryFoldStartContextPctKey, 0, 100, w); err != nil {
+		return
+	}
+	if err := applyOptionalBoundedIntSetting(svc, req.RefineryConsoleFoldStartContextPct, service.RefineryConsoleFoldStartContextPctKey, 0, 100, w); err != nil {
 		return
 	}
 

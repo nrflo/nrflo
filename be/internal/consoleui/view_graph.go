@@ -64,10 +64,16 @@ func graphUpdatedSuffix(g graphState) string {
 
 // graphStatsLines renders the cost/token rollup and the top tool calls.
 func graphStatsLines(stats types.SessionStatsResponse, width int) []string {
-	lines := []string{mutedStyle.Render(truncate(fmt.Sprintf(
-		" cost ~$%.2f (subtree $%.2f) · tokens %s (subtree %s)",
+	head := fmt.Sprintf(" cost ~$%.2f (subtree $%.2f) · tokens %s (subtree %s)",
 		stats.SelfCostUSD, stats.SubtreeCostUSD,
-		compactCount(stats.SelfTokens), compactCount(stats.SubtreeTokens)), width-1))}
+		compactCount(stats.SelfTokens), compactCount(stats.SubtreeTokens))
+	if stats.SubtreeCacheHitPct > 0 {
+		head += fmt.Sprintf(" · cache %.0f%%", stats.SubtreeCacheHitPct)
+	}
+	if stats.SubtreeCostNoCacheUSD > stats.SubtreeCostUSD {
+		head += fmt.Sprintf(" · no-cache ≈$%.2f", stats.SubtreeCostNoCacheUSD)
+	}
+	lines := []string{mutedStyle.Render(truncate(head, width-1))}
 	if len(stats.ToolCalls) > 0 {
 		entries := append([]types.ToolCallDistributionEntry(nil), stats.ToolCalls...)
 		sort.Slice(entries, func(i, j int) bool {
@@ -103,7 +109,8 @@ func compactCount(n int64) string {
 }
 
 // renderFlowTree renders the session flow as an ASCII tree rooted at the
-// root session, one line per node, children ordered by edge appearance.
+// root session, one line per node, each node's children ordered by start
+// time so successive delegation cycles read chronologically.
 func renderFlowTree(flow types.SessionFlowResponse, width int, now time.Time) []string {
 	nodesByID := map[string]types.SessionFlowNode{}
 	for _, n := range flow.Nodes {
@@ -112,6 +119,17 @@ func renderFlowTree(flow types.SessionFlowResponse, width int, now time.Time) []
 	children := map[string][]types.SessionFlowEdge{}
 	for _, e := range flow.Edges {
 		children[e.FromSessionID] = append(children[e.FromSessionID], e)
+	}
+	startOf := func(id string) string {
+		if s := nodesByID[id].StartedAt; s != "" {
+			return s
+		}
+		return "\xff" // unstarted sorts last
+	}
+	for _, kids := range children {
+		sort.SliceStable(kids, func(i, j int) bool {
+			return startOf(kids[i].ToSessionID) < startOf(kids[j].ToSessionID)
+		})
 	}
 
 	lines := []string{}
@@ -158,10 +176,11 @@ func flowNodeLine(node types.SessionFlowNode, edgeKind string, now time.Time) st
 		parts = append(parts, elapsed)
 	}
 	if node.ContextLeft != nil {
-		parts = append(parts, "ctx "+strconv.Itoa(*node.ContextLeft)+"%")
+		parts = append(parts, "used "+strconv.Itoa(100-*node.ContextLeft)+"%")
 	}
 	status := node.Status
-	if node.Result != "" && node.Result != "pass" {
+	if node.Result != "" && node.Result != "pass" &&
+		(node.Status != "failed" || node.Result != "fail") {
 		status += "/" + node.Result
 	}
 	if status != "" {
@@ -170,6 +189,9 @@ func flowNodeLine(node types.SessionFlowNode, edgeKind string, now time.Time) st
 	line := strings.Join(parts, " · ")
 	if edgeKind != "" {
 		line += " " + mutedStyle.Render("["+edgeKind+"]")
+	}
+	if node.Title != "" {
+		line += " " + mutedStyle.Render("— "+node.Title)
 	}
 	return line
 }

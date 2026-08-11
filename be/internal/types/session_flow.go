@@ -34,9 +34,13 @@ type SessionFlowNode struct {
 	Result             string `json:"result,omitempty"`
 	WorkflowInstanceID string `json:"workflow_instance_id,omitempty"`
 	ModelID            string `json:"model_id,omitempty"`
-	StartedAt          string `json:"started_at,omitempty"`
-	EndedAt            string `json:"ended_at,omitempty"`
-	ContextLeft        *int   `json:"context_left,omitempty"`
+	// Title is the task this session works on: the delegation brief's first
+	// line for delegate workers, the consult question for consult children,
+	// the launched workflow's name for origin/subworkflow entries.
+	Title       string `json:"title,omitempty"`
+	StartedAt   string `json:"started_at,omitempty"`
+	EndedAt     string `json:"ended_at,omitempty"`
+	ContextLeft *int   `json:"context_left,omitempty"`
 	// Depth is hops from the root session (0 = root).
 	Depth int `json:"depth"`
 }
@@ -91,4 +95,11 @@ type SessionStatsResponse struct {
 	SubtreeCostUSD float64 `json:"subtree_cost_usd"`
 	SelfTokens     int64   `json:"self_tokens"`
 	SubtreeTokens  int64   `json:"subtree_tokens"`
+	// CacheHitPct is cache-read tokens over ALL prompt tokens
+	// (input + cache_read + cache_write), 0-100; CostNoCacheUSD is the
+	// would-be cost with every prompt token billed at the full input rate.
+	SelfCacheHitPct       float64 `json:"self_cache_hit_pct"`
+	SubtreeCacheHitPct    float64 `json:"subtree_cache_hit_pct"`
+	SelfCostNoCacheUSD    float64 `json:"self_cost_no_cache_usd"`
+	SubtreeCostNoCacheUSD float64 `json:"subtree_cost_no_cache_usd"`
 }

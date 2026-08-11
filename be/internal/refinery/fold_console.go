@@ -8,6 +8,7 @@ import (
 	"be/internal/logger"
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 )
 
 // maxConsoleFoldDeltaChars caps the message-delta text handed to a single
@@ -27,12 +28,43 @@ type consoleSession struct {
 	nextFoldSeq int
 }
 
+// consoleFoldGateOpen reports whether the chat session's context_left has
+// dropped to or below refinery_console_fold_start_context_pct (default 75,
+// i.e. >=25% used) — a barely-used chat has nothing worth paying a fold for.
+// Mirrors the autonomous foldGateOpen: re-read per call so an admin edit
+// takes effect live; a read error fails closed.
+func (m *Manager) consoleFoldGateOpen(ctx context.Context, sessionID string) bool {
+	threshold, err := service.NewGlobalSettingsService(m.pool, m.clock).GetRefineryConsoleFoldStartContextPct()
+	if err != nil {
+		logger.Error(ctx, "refinery: read console fold-start threshold failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	left, err := repo.NewAgentSessionRepo(m.pool, m.clock).GetContextLeft(sessionID)
+	if err != nil {
+		logger.Error(ctx, "refinery: read console context_left failed", "session_id", sessionID, "error", err)
+		return false
+	}
+	if left > threshold {
+		logger.Info(ctx, "refinery: console fold skipped, context above fold-start threshold",
+			"session_id", sessionID, "context_left", left, "threshold", threshold)
+		return false
+	}
+	return true
+}
+
 // foldConsole folds the agent_messages delta since cs.nextFoldSeq, combined
 // with the buffered WS event lines, into sessionID's digest. No-op when both
 // the message delta and events are empty. Best-effort: errors are logged,
 // never propagated — the caller is a sidecar goroutine that does not block
 // on fold outcome.
 func (m *Manager) foldConsole(ctx context.Context, cs *consoleSession, sessionID, projectID string, events []string) {
+	if !m.consoleFoldGateOpen(ctx, sessionID) {
+		// nextFoldSeq stays put, so the conversation delta is still covered
+		// by the first gate-open fold; only the already-drained WS event
+		// lines are dropped — early-session event metadata a barely-used
+		// chat's digest doesn't need.
+		return
+	}
 	messageRepo := repo.NewAgentMessageRepo(m.pool, m.clock)
 	cs.mu.Lock()
 	fromSeq := cs.nextFoldSeq

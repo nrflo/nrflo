@@ -76,6 +76,9 @@ func copyDBFile(src, dst string) error {
 // seedConsoleChatSession inserts the minimal projects + agent_sessions rows a
 // refinery_digests row's FK (console_session_id -> agent_sessions.id) needs,
 // mirroring console.ChatService.create's console_chat row shape.
+// seedConsoleChatSession seeds a chat with context_left=50 — below the
+// console fold-start threshold (default 75), so the fold gate is open and
+// debounce/trigger tests exercise actual folds.
 func seedConsoleChatSession(t *testing.T, pool *db.Pool, sessionID, projectID string) {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
@@ -86,8 +89,8 @@ func seedConsoleChatSession(t *testing.T, pool *db.Pool, sessionID, projectID st
 		t.Fatalf("seed project %s: %v", projectID, err)
 	}
 	if _, err := pool.Exec(
-		`INSERT INTO agent_sessions (id, project_id, ticket_id, phase, node_id, agent_type, status, kind, created_at, updated_at)
-		 VALUES (?, ?, '', 'console_chat', 'console_chat', 'console_chat', 'user_interactive', 'console_chat', ?, ?)`,
+		`INSERT INTO agent_sessions (id, project_id, ticket_id, phase, node_id, agent_type, status, kind, context_left, created_at, updated_at)
+		 VALUES (?, ?, '', 'console_chat', 'console_chat', 'console_chat', 'user_interactive', 'console_chat', 50, ?, ?)`,
 		sessionID, projectID, now, now,
 	); err != nil {
 		t.Fatalf("seed console_chat session %s: %v", sessionID, err)

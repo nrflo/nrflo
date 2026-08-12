@@ -71,6 +71,13 @@ type ConsoleEngine interface {
 	SetYolo(on bool) error
 	// Yolo reports the engine's current yolo state.
 	Yolo() bool
+	// UsesToolBridge reports whether this engine's nrflo tools arrive over the
+	// out-of-process `agent mcp-external` bridge (claude/codex) rather than
+	// being injected in-process (api). Only a bridged engine can come up with
+	// its whole tool surface silently missing — the bridge failing to launch
+	// or adopt the session leaves a conversation that looks healthy and can do
+	// nothing — so only a bridged engine needs the console watchdog.
+	UsesToolBridge() bool
 	// Stop tears down the engine: cancels the run context, closes the
 	// underlying client/process, and closes the Events channel.
 	Stop()

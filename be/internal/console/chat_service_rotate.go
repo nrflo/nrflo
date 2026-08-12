@@ -127,6 +127,12 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 	if s.deps.PTY != nil {
 		s.deps.PTY.Remove(sess.id)
 	}
+	// The swapped-in engine relaunches its own mcp-external bridge, so the old
+	// engine's proof of contact says nothing about the new one — a rotation
+	// that silently loses the tool surface is the exact failure the watchdog
+	// exists for. Cleared BEFORE Start so the fresh bridge's first contact
+	// cannot be erased by this reset.
+	dropToolSurface(sess.id)
 
 	if err := newEngine.Start(ctx, spec); err != nil {
 		logger.Error(ctx, "console rotation: start engine failed; session will close", "session_id", sess.id, "error", err)
@@ -153,5 +159,6 @@ func (s *ChatService) rotate(sess *chatSession, tokensBefore int, seedDigest str
 	})
 
 	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sess.id) }, s.maybeRotate, s.flushQueuedPrompts)
+	go s.watchToolSurface(sess, toolSurfaceGrace)
 	return true
 }

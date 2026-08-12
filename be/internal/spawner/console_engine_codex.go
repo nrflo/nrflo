@@ -64,6 +64,10 @@ func newCodexEngine(sink Sink) *codexEngine {
 
 func (e *codexEngine) Name() string { return "codex" }
 
+// UsesToolBridge is true: nrflo tools reach the thread only through the
+// profile-configured `agent mcp-external` bridge.
+func (e *codexEngine) UsesToolBridge() bool { return true }
+
 // Start writes the per-session CODEX_HOME profile with
 // WriteConsoleCodexProfile, dials the app-server, and performs
 // the initialize/initialized/thread/start handshake before launching the

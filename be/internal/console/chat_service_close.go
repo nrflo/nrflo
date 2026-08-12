@@ -29,6 +29,7 @@ func (s *ChatService) engineExited(sid string) {
 	}
 	spawner.FinalizeSessionCost(sid)
 	spawner.DropProactiveRestartState(sid)
+	dropToolSurface(sid)
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		logger.Error(context.Background(), "console chat: close row after engine exit", "session_id", sid, "error", err)
 	}
@@ -52,6 +53,7 @@ func (s *ChatService) Close(sid string) error {
 	}
 	spawner.FinalizeSessionCost(sid)
 	spawner.DropProactiveRestartState(sid)
+	dropToolSurface(sid)
 	if _, err := repo.NewAgentSessionRepo(s.deps.Pool, s.deps.Clock).CloseConsoleChat(sid); err != nil {
 		return fmt.Errorf("close console_chat session: %w", err)
 	}

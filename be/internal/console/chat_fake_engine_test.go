@@ -47,6 +47,9 @@ type fakeConsoleEngine struct {
 	revoked        []string // tools passed to RevokeSessionApproval
 	answers        []fakeAnswerCall
 	answerErr      error // consumed once by the next AnswerQuestion call
+	// noToolBridge makes the fake report UsesToolBridge false (the api
+	// engine's in-process tool shape).
+	noToolBridge bool
 }
 
 type fakeAnswerCall struct {
@@ -97,6 +100,14 @@ func (f *fakeEngineFactory) last() *fakeConsoleEngine {
 
 func (f *fakeConsoleEngine) Name() string { return "fake" }
 
+// UsesToolBridge defaults to true (the claude/codex shape the tool-surface
+// watchdog guards); a test flips noToolBridge to take the api engine branch.
+func (f *fakeConsoleEngine) UsesToolBridge() bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return !f.noToolBridge
+}
+
 func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -139,74 +150,6 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTur
 }
 
 func (f *fakeConsoleEngine) Events() <-chan spawner.EngineEvent { return f.events }
-
-// ReplyApproval mirrors the real engines' contract (console_engine_claude_approval.go,
-// console_engine_codex_approval.go): after successfully forwarding the
-// decision, the engine itself emits EventApprovalResolved — pumpChatEvents is
-// the only thing that resolves the pending approval / pushes
-// console_chat.approval_resolved, never ChatService.ReplyApproval directly.
-func (f *fakeConsoleEngine) ReplyApproval(id string, decision spawner.ApprovalDecision) error {
-	f.mu.Lock()
-	if f.approveErr != nil {
-		err := f.approveErr
-		f.approveErr = nil
-		f.mu.Unlock()
-		return err
-	}
-	f.approvals = append(f.approvals, fakeApprovalCall{id: id, decision: decision})
-	f.mu.Unlock()
-	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: decision})
-	return nil
-}
-
-// AnswerQuestion mirrors claudeEngine.AnswerQuestion's contract: on success
-// the engine itself emits EventApprovalResolved with Decision=ApprovalAnswer
-// and the answer as Text.
-func (f *fakeConsoleEngine) AnswerQuestion(id, answer string) error {
-	f.mu.Lock()
-	if f.answerErr != nil {
-		err := f.answerErr
-		f.answerErr = nil
-		f.mu.Unlock()
-		return err
-	}
-	f.answers = append(f.answers, fakeAnswerCall{id: id, answer: answer})
-	f.mu.Unlock()
-	f.emit(spawner.EngineEvent{Type: spawner.EventApprovalResolved, ApprovalID: id, Decision: spawner.ApprovalAnswer, Text: answer})
-	return nil
-}
-
-func (f *fakeConsoleEngine) answerCalls() []fakeAnswerCall {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]fakeAnswerCall, len(f.answers))
-	copy(out, f.answers)
-	return out
-}
-
-func (f *fakeConsoleEngine) SessionApprovals() []string {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	out := make([]string, len(f.sessionAllowed))
-	copy(out, f.sessionAllowed)
-	return out
-}
-
-// RevokeSessionApproval records the tool and drops it from sessionAllowed,
-// mirroring the claude/api engines' idempotent revoke.
-func (f *fakeConsoleEngine) RevokeSessionApproval(tool string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.revoked = append(f.revoked, tool)
-	kept := f.sessionAllowed[:0]
-	for _, t := range f.sessionAllowed {
-		if t != tool {
-			kept = append(kept, t)
-		}
-	}
-	f.sessionAllowed = kept
-	return nil
-}
 
 func (f *fakeConsoleEngine) InterruptTurn(context.Context) error {
 	f.mu.Lock()

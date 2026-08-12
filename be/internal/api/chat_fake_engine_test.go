@@ -66,6 +66,8 @@ func (f *fakeEngineFactory) last() *fakeConsoleEngine {
 
 func (f *fakeConsoleEngine) Name() string { return "fake" }
 
+func (f *fakeConsoleEngine) UsesToolBridge() bool { return true }
+
 func (f *fakeConsoleEngine) Start(_ context.Context, spec spawner.EngineSpec) error {
 	f.mu.Lock()
 	f.startSpec = spec

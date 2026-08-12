@@ -114,6 +114,10 @@ func newClaudeEngine(deps EngineDeps) *claudeEngine {
 
 func (e *claudeEngine) Name() string { return "claude" }
 
+// UsesToolBridge is true: nrflo tools reach the CLI only through the
+// --mcp-config `agent mcp-external` bridge.
+func (e *claudeEngine) UsesToolBridge() bool { return true }
+
 // Start writes the per-session --mcp-config file, builds the console argv (no
 // --dangerously-skip-permissions, --disallowedTools, --strict-mcp-config, or
 // safety-hook merge — this is a human-driven console conversation), registers
@@ -147,10 +151,13 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 		args = append(args, "--fallback-model", spec.FallbackModels)
 	}
 	if spec.NativeToolsCSV == model.NativeToolsNone {
-		// Sentinel: disable every native tool (MCP-only chat). Mirrors
-		// cli_adapter_claude.go's autonomous-spawn precedent — an empty
-		// --tools value means "no built-in tools".
-		args = append(args, "--tools", "")
+		// Sentinel: no native tool EXCEPT the question card. An empty --tools
+		// value (cli_adapter_claude.go's autonomous-spawn precedent) also
+		// strips AskUserQuestion, which is the one native tool a
+		// human-attended chat cannot do without: without it a decider profile
+		// has no way to put a numbered choice in front of its owner and buries
+		// every decision in prose instead. It reads no files and runs nothing.
+		args = append(args, "--tools", AskUserQuestionTool)
 	} else if spec.NativeToolsCSV != "" {
 		args = append(args, "--tools", spec.NativeToolsCSV)
 	}

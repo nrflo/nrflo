@@ -13,7 +13,8 @@ var ErrUnknownProfile = errors.New("console: unknown profile")
 // NativeToolPolicy values for Profile.NativeToolPolicy: how the started
 // console engine treats its provider's own native tools (independent of the
 // console MCP tool catalogue, which BuildRegistry's allowlist controls).
-// "none" -> claude gets --tools "" (MCP-only) / codex gets a read-only
+// "none" -> claude gets --tools AskUserQuestion (MCP-only for work, question
+// card kept so a decision has a surface) / codex gets a read-only
 // sandbox / the api engine never adds FS regardless of the
 // api_native_tools_enabled global. "full" -> unrestricted (today's
 // pre-profile behavior). "" behaves like "full" for claude/codex and keeps

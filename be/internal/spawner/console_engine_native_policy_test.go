@@ -8,12 +8,12 @@ import (
 	"be/internal/model"
 )
 
-// TestClaudeEngine_Start_NativeToolsNone_EmitsEmptyToolsFlag verifies a
+// TestClaudeEngine_Start_NativeToolsNone_KeepsQuestionTool verifies a
 // console.Profile with NativeToolPolicy="none" (nativeToolFieldsForPolicy
 // maps it to model.NativeToolsNone) reaches the claude engine's argv as
-// `--tools ""` — MCP-only, mirroring cli_adapter_claude.go's autonomous-spawn
-// precedent.
-func TestClaudeEngine_Start_NativeToolsNone_EmitsEmptyToolsFlag(t *testing.T) {
+// `--tools AskUserQuestion`: MCP-only for real work, but the question card
+// survives so a decider chat can put numbered choices to its owner.
+func TestClaudeEngine_Start_NativeToolsNone_KeepsQuestionTool(t *testing.T) {
 	sink := &testSink{}
 	e, mgr := startTestClaudeEngine(t, sink, nil, EngineSpec{
 		SessionID:      "sess-native-none",
@@ -24,8 +24,8 @@ func TestClaudeEngine_Start_NativeToolsNone_EmitsEmptyToolsFlag(t *testing.T) {
 	if pos == -1 || pos+1 >= len(launch.Args) {
 		t.Fatalf("argv %v missing --tools flag", launch.Args)
 	}
-	if launch.Args[pos+1] != "" {
-		t.Errorf("--tools value = %q, want empty (MCP-only)", launch.Args[pos+1])
+	if launch.Args[pos+1] != AskUserQuestionTool {
+		t.Errorf("--tools value = %q, want %q", launch.Args[pos+1], AskUserQuestionTool)
 	}
 }
 

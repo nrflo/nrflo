@@ -87,6 +87,10 @@ func newAPIConsoleEngine(deps EngineDeps) *apiConsoleEngine {
 
 func (e *apiConsoleEngine) Name() string { return "api" }
 
+// UsesToolBridge is false: EngineDeps.API injects the console registry
+// in-process, so there is no bridge that can fail to come up.
+func (e *apiConsoleEngine) UsesToolBridge() bool { return false }
+
 // Start gates api_mode_enabled (mirrors spawner_prepare.go's autonomous
 // api_mode_disabled gate — a runtime toggle read fresh here, not at server
 // boot), resolves the provider, and builds the Conversation. No process, no

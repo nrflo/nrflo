@@ -47,6 +47,9 @@ func (s *Server) handleListConsoleTools(w http.ResponseWriter, r *http.Request) 
 		writeError(w, http.StatusUnauthorized, "console session required")
 		return
 	}
+	// An authenticated listing IS the proof a chat's mcp-external bridge came
+	// up and adopted the session — the console watchdog waits on it.
+	console.MarkToolSurfaceLive(sess.ID)
 
 	reg, err := console.BuildRegistry(s.consoleDeps(), catalogueForSession(sess))
 	if err != nil {
@@ -72,6 +75,7 @@ func (s *Server) handleCallConsoleTool(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "console session required")
 		return
 	}
+	console.MarkToolSurfaceLive(sess.ID)
 
 	name := r.PathValue("name")
 

@@ -38,7 +38,7 @@ The third engine, `api`, has no CLI/PTY: `ChatDeps.Tools` injects the console to
 
 `ChatNotifier` (`chat_notify.go`) pushes delegation/sub-workflow lifecycle events to the launching chat as a turn — chat agents wait for notification instead of polling; sessions ChatService doesn't hold keep polling. See [REFERENCE.md](REFERENCE.md#chat-lifecycle-notifications).
 
-An engine that dies is not a stuck chat: `pumpChatEvents` ends the turn on every `EventError` (each one is turn-terminal), and when `Events()` closes — Stop, or the engine dying on its own — it tears the session down (drop from the map, `CloseConsoleChat`, killing the bearer token) and pushes `console_chat.turn` state=idle **last**, so a subscriber that sees it knows the row is already closed. Without that, an engine that died mid-turn would pin the turn `running` and 409 every later message forever. Both close paths (`Close`, `engineExited`, in `chat_service_close.go`) also call `spawner.DropProactiveRestartState`, releasing the session's `globalRestartStore` entry so it doesn't leak past the chat's lifetime.
+An engine that dies is not a stuck chat, and a chat whose tool bridge never came up is not a working one: `pumpChatEvents` ends the turn on every `EventError` and tears the session down when `Events()` closes, and `chat_toolsurface.go`'s watchdog warns both human and model when a bridged engine (`ConsoleEngine.UsesToolBridge`) never reaches its tool routes. Both: [REFERENCE.md](REFERENCE.md#engine-teardown--tool-surface-watchdog).
 
 `ChatSnapshot`/`console_chat.git` report the workdir's git branch and uncommitted added/deleted line counts (`chat_gitstatus.go`), recomputed on snapshot fetch and pushed on turn completion; omitted entirely when the workdir is not a git repo.
 

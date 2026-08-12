@@ -247,6 +247,7 @@ func (s *ChatService) create(engine, modelID, effort, projectID, systemTemplateI
 	s.mu.Unlock()
 
 	go pumpChatEvents(s.deps.Pool, s.deps.Clock, s.deps.WSHub, sess, func() { s.engineExited(sessionID) }, s.maybeRotate, s.flushQueuedPrompts)
+	go s.watchToolSurface(sess, toolSurfaceGrace)
 
 	return sessionID, token, nil
 }

@@ -130,6 +130,38 @@ func TestTranslateRequest_CacheBreakpoint_Message(t *testing.T) {
 	}
 }
 
+// TestTranslateRequest_CacheBreakpoint_Message_Media verifies the marker lands
+// on the trailing media block, not on the label text before it — otherwise the
+// media payload (the largest part of the turn) falls outside the cached prefix.
+func TestTranslateRequest_CacheBreakpoint_Message_Media(t *testing.T) {
+	req := provider.Request{
+		Model:     "claude-opus-4-7",
+		MaxTokens: 100,
+		Messages: []provider.Message{{
+			Role: "user",
+			Content: []provider.ContentBlock{{
+				Type: "tool_result", ToolUseID: "tool_doc", Output: "loaded",
+				OutputMedia: []provider.MediaBlock{
+					{Kind: "document", MediaType: "application/pdf", DataB64: "JVBERi0="},
+				},
+			}},
+		}},
+		CacheBreakpoints: []provider.CacheBreakpoint{{Target: provider.CacheTargetMessage}},
+	}
+	params, err := translateRequest(req)
+	if err != nil {
+		t.Fatalf("translateRequest: %v", err)
+	}
+	content := params.Messages[0].Content
+	last := content[len(content)-1]
+	if last.OfDocument == nil {
+		t.Fatalf("last block = %+v, want the document block", last)
+	}
+	if last.OfDocument.CacheControl.TTL == "" {
+		t.Errorf("document block carries no cache_control; media falls outside the cached prefix")
+	}
+}
+
 // TestTranslateRequest_CacheBreakpoint_Message_LongTail verifies that when the
 // conversation tail exceeds the lookback spacing, intermediate markers are
 // placed at earlier message boundaries (so the previous turn's marker stays

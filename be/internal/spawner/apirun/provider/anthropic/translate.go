@@ -144,6 +144,10 @@ func translateRequest(req provider.Request) (sdk.MessageNewParams, error) {
 
 func translateContentBlocks(blocks []provider.ContentBlock) ([]sdk.ContentBlockParamUnion, error) {
 	out := make([]sdk.ContentBlockParamUnion, 0, len(blocks))
+	// Media travels as sibling blocks appended after the message's tool_result
+	// blocks, not inside them: OpenRouter's anthropic passthrough rejects
+	// document parts on tool_result, and tool_result blocks must lead the turn.
+	var media []sdk.ContentBlockParamUnion
 	for _, b := range blocks {
 		switch b.Type {
 		case "text":
@@ -183,25 +187,42 @@ func translateContentBlocks(blocks []provider.ContentBlock) ([]sdk.ContentBlockP
 					OfText: &sdk.TextBlockParam{Text: b.Output},
 				})
 			}
-			for _, m := range b.OutputMedia {
-				mb, err := translateMediaBlock(m)
-				if err != nil {
-					return nil, fmt.Errorf("tool_result %s: %w", b.ToolUseID, err)
-				}
-				content = append(content, mb)
-			}
 			tr.Content = content
 			out = append(out, sdk.ContentBlockParamUnion{OfToolResult: tr})
+			if len(b.OutputMedia) > 0 {
+				mb, err := mediaFollowupBlocks(b)
+				if err != nil {
+					return nil, err
+				}
+				media = append(media, mb...)
+			}
 		default:
 			return nil, fmt.Errorf("unsupported content block type: %q", b.Type)
 		}
 	}
+	return append(out, media...), nil
+}
+
+// mediaFollowupBlocks renders a tool_result's OutputMedia as standalone content
+// blocks, led by a text block naming the originating tool call so the model can
+// bind the media to it when several tools return media in one turn.
+func mediaFollowupBlocks(b provider.ContentBlock) ([]sdk.ContentBlockParamUnion, error) {
+	out := []sdk.ContentBlockParamUnion{{
+		OfText: &sdk.TextBlockParam{Text: "Media returned by tool call " + b.ToolUseID + ":"},
+	}}
+	for _, m := range b.OutputMedia {
+		mb, err := translateMediaBlock(m)
+		if err != nil {
+			return nil, fmt.Errorf("tool_result %s: %w", b.ToolUseID, err)
+		}
+		out = append(out, mb)
+	}
 	return out, nil
 }
 
-// translateMediaBlock maps a provider.MediaBlock into the SDK's tool_result
-// content union (image or document base64 source).
-func translateMediaBlock(m provider.MediaBlock) (sdk.ToolResultBlockParamContentUnion, error) {
+// translateMediaBlock maps a provider.MediaBlock into a standalone content
+// block union (image or document base64 source).
+func translateMediaBlock(m provider.MediaBlock) (sdk.ContentBlockParamUnion, error) {
 	switch m.Kind {
 	case "image":
 		var mt sdk.Base64ImageSourceMediaType
@@ -215,9 +236,9 @@ func translateMediaBlock(m provider.MediaBlock) (sdk.ToolResultBlockParamContent
 		case "image/webp":
 			mt = sdk.Base64ImageSourceMediaTypeImageWebP
 		default:
-			return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported image media type: %q", m.MediaType)
+			return sdk.ContentBlockParamUnion{}, fmt.Errorf("unsupported image media type: %q", m.MediaType)
 		}
-		return sdk.ToolResultBlockParamContentUnion{
+		return sdk.ContentBlockParamUnion{
 			OfImage: &sdk.ImageBlockParam{
 				Source: sdk.ImageBlockParamSourceUnion{
 					OfBase64: &sdk.Base64ImageSourceParam{Data: m.DataB64, MediaType: mt},
@@ -226,7 +247,7 @@ func translateMediaBlock(m provider.MediaBlock) (sdk.ToolResultBlockParamContent
 		}, nil
 	case "document":
 		if m.MediaType != "application/pdf" {
-			return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported document media type: %q", m.MediaType)
+			return sdk.ContentBlockParamUnion{}, fmt.Errorf("unsupported document media type: %q", m.MediaType)
 		}
 		doc := &sdk.DocumentBlockParam{
 			Source: sdk.DocumentBlockParamSourceUnion{
@@ -236,9 +257,9 @@ func translateMediaBlock(m provider.MediaBlock) (sdk.ToolResultBlockParamContent
 		if m.Name != "" {
 			doc.Title = param.NewOpt(m.Name)
 		}
-		return sdk.ToolResultBlockParamContentUnion{OfDocument: doc}, nil
+		return sdk.ContentBlockParamUnion{OfDocument: doc}, nil
 	default:
-		return sdk.ToolResultBlockParamContentUnion{}, fmt.Errorf("unsupported media kind: %q", m.Kind)
+		return sdk.ContentBlockParamUnion{}, fmt.Errorf("unsupported media kind: %q", m.Kind)
 	}
 }
 

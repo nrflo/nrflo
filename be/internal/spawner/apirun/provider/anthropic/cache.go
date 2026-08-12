@@ -94,6 +94,10 @@ func setBlockCacheControl(b *sdk.ContentBlockParamUnion) bool {
 		b.OfToolUse.CacheControl = cc
 	case b.OfToolResult != nil:
 		b.OfToolResult.CacheControl = cc
+	case b.OfImage != nil:
+		b.OfImage.CacheControl = cc
+	case b.OfDocument != nil:
+		b.OfDocument.CacheControl = cc
 	default:
 		return false
 	}

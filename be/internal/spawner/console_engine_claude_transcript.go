@@ -153,6 +153,7 @@ func (e *claudeEngine) emitText(text string) {
 	}
 	e.mu.Lock()
 	sessionID := e.spec.SessionID
+	e.turnTextSeen = true
 	e.mu.Unlock()
 	if e.sink != nil {
 		emitAgentText(sessionID, text, e.sink)

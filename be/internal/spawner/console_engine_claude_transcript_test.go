@@ -197,6 +197,59 @@ func TestClaudeEngine_FlushTranscript_MissingFileNoOp(t *testing.T) {
 	}
 }
 
+// TestClaudeEngine_DrainFinalText_PicksUpLateText simulates the Stop hook
+// outrunning the CLI's final transcript append: no flush has surfaced the
+// line when the drain starts, so its re-flush must — otherwise a consumer
+// stopping the engine on EventTurnCompleted (console rotation) loses the
+// turn's reply entirely.
+func TestClaudeEngine_DrainFinalText_PicksUpLateText(t *testing.T) {
+	cfg, workDir, sid := t.TempDir(), "/work/console-drain", "sess-drain-late"
+	sink := &testSink{}
+	e := newTranscriptTestEngine(sink, cfg, workDir, sid)
+	path := claudeTranscriptPath(e.spec.Env, workDir, sid)
+	writeRawTranscript(t, path, `{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"final reply"}]}}`+"\n")
+
+	e.drainFinalText()
+	events := drainEvents(e)
+	if len(events) != 1 || events[0].Type != EventText || events[0].Text != "final reply" {
+		t.Errorf("events = %+v, want one EventText %q", events, "final reply")
+	}
+	if !e.textSeenThisTurn() {
+		t.Error("textSeenThisTurn() = false after the drain surfaced the final text")
+	}
+	if n := countCategory(sink, "text"); n != 1 {
+		t.Errorf("text rows = %d, want 1 (the drained final reply persisted)", n)
+	}
+}
+
+// TestClaudeEngine_DrainFinalText_BoundedWithoutText: a turn that ends with
+// no assistant text at all (e.g. interrupted) must not wedge NotifyTurnEnd —
+// the drain gives up after turnEndDrainRetries.
+func TestClaudeEngine_DrainFinalText_BoundedWithoutText(t *testing.T) {
+	e := newTranscriptTestEngine(&testSink{}, t.TempDir(), "/work/console-drain-none", "sess-drain-none")
+	e.drainFinalText()
+	if events := drainEvents(e); len(events) != 0 {
+		t.Errorf("drain with no transcript should emit nothing, got %+v", events)
+	}
+}
+
+// TestClaudeEngine_NotifyTurnEnd_TextPrecedesTurnCompleted pins the event
+// order the rotation path depends on: the turn's final assistant text must be
+// emitted (and persisted) before EventTurnCompleted reaches consumers.
+func TestClaudeEngine_NotifyTurnEnd_TextPrecedesTurnCompleted(t *testing.T) {
+	cfg, workDir, sid := t.TempDir(), "/work/console-drain-order", "sess-drain-order"
+	sink := &testSink{}
+	e := newTranscriptTestEngine(sink, cfg, workDir, sid)
+	path := claudeTranscriptPath(e.spec.Env, workDir, sid)
+	writeRawTranscript(t, path, `{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"the answer"}]}}`+"\n")
+
+	e.NotifyTurnEnd()
+	events := drainEvents(e)
+	if len(events) != 2 || events[0].Type != EventText || events[1].Type != EventTurnCompleted {
+		t.Fatalf("events = %+v, want [EventText EventTurnCompleted]", events)
+	}
+}
+
 // TestClaudeEngine_FlushTranscript_ConcurrentFlushesNoDuplicates guards the
 // serialization: flushes are driven by the tail ticker AND by the socket
 // goroutines carrying the Stop / PreToolUse hooks. Unserialized, two

@@ -160,6 +160,14 @@ func TestChatService_Rotation_FullFlow(t *testing.T) {
 		t.Errorf("console.context_rotated session_id = %v, want %q", rotatedEv.Data["session_id"], sid)
 	}
 
+	// The rotated path must still push turn state=idle — the fresh pump only
+	// pushes turn state on later events, so without this the client stays
+	// pinned "working" forever.
+	turnEv := waitForEventType(t, ch, ws.EventConsoleChatTurn, 2*time.Second)
+	if turnEv.Data["state"] != "idle" {
+		t.Errorf("console_chat.turn after rotation state = %v, want idle", turnEv.Data["state"])
+	}
+
 	if !oldEng.isStopped() {
 		t.Error("old engine was not stopped by rotation")
 	}

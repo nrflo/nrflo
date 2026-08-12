@@ -34,10 +34,12 @@ import (
 //
 // maybeRotate is consulted on every EventTurnCompleted (the idle task
 // boundary): when it performs a proactive-restart rotation it returns true,
-// and this pump's normal channel-close teardown is skipped for the rest of
-// its lifetime — rotate already started a fresh engine + a new pump, which
-// owns teardown/idle-push from here on. maybeRotate may be nil (no
-// rotation support wired, e.g. tests) — nil is a no-op, never a rotation.
+// this pump pushes the boundary's own turn-idle (the fresh pump only pushes
+// turn state on later events), and its normal channel-close teardown is
+// skipped for the rest of its lifetime — rotate already started a fresh
+// engine + a new pump, which owns teardown from here on. maybeRotate may be
+// nil (no rotation support wired, e.g. tests) — nil is a no-op, never a
+// rotation.
 //
 // flushQueued (nil-safe) runs after every EventTurnCompleted — rotated or
 // not — on its own goroutine, delivering prompts queued mid-turn as the next
@@ -76,6 +78,10 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			pushGitStatus(wsHub, sess)
 			if maybeRotate != nil && maybeRotate(sess) {
 				rotated = true
+				// The fresh pump rotate started only pushes turn state on
+				// later events — without an idle push here the client stays
+				// pinned "working" forever.
+				pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatTurn, map[string]interface{}{"state": "idle"})
 				appendChatAudit(auditRepo, sess.id, "console_chat.turn_completed", nil)
 				if flushQueued != nil {
 					go flushQueued(sess)

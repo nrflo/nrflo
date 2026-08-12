@@ -52,10 +52,10 @@ func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 		eng.emit(spawner.EngineEvent{Type: spawner.EventTurnCompleted, SessionID: sid})
 
 		// pumpChatEvents processes the boundary (possibly rotating)
-		// asynchronously; a rotated turn pushes console.context_rotated
-		// instead of console_chat.turn state=idle (chat_events.go), so wait
-		// for either — whichever arrives proves the boundary is fully
-		// processed before the next SendMessage/factory.last() read.
+		// asynchronously; every turn — rotated or not — ends with a
+		// console_chat.turn state=idle push (chat_events.go), which proves
+		// the boundary is fully processed before the next
+		// SendMessage/factory.last() read.
 		waitForIdleOrRotated(t, ch, 2*time.Second)
 
 		if tokens, ok := sess.currentTokens(); ok && tokens > budget {
@@ -72,10 +72,11 @@ func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 	drainEvents(ch)
 }
 
-// waitForIdleOrRotated blocks until either a console_chat.turn state=idle or
-// a console.context_rotated event arrives — the two mutually-exclusive ways
-// pumpChatEvents signals it has finished processing one EventTurnCompleted
-// boundary (chat_events.go: a rotated turn skips the idle push entirely).
+// waitForIdleOrRotated blocks until a console_chat.turn state=idle event
+// arrives — pumpChatEvents pushes it last on every EventTurnCompleted
+// boundary, rotated or not (chat_events.go), so it alone proves the boundary
+// is fully processed. console.context_rotated precedes it on rotated turns
+// and is skipped over here.
 func waitForIdleOrRotated(t *testing.T, ch <-chan []byte, timeout time.Duration) {
 	t.Helper()
 	deadline := time.After(timeout)
@@ -86,14 +87,11 @@ func waitForIdleOrRotated(t *testing.T, ch <-chan []byte, timeout time.Duration)
 			if err := json.Unmarshal(raw, &ev); err != nil {
 				t.Fatalf("unmarshal WS event: %v", err)
 			}
-			if ev.Type == ws.EventConsoleContextRotated {
-				return
-			}
 			if ev.Type == ws.EventConsoleChatTurn && ev.Data["state"] == "idle" {
 				return
 			}
 		case <-deadline:
-			t.Fatal("timed out waiting for console_chat.turn idle or console.context_rotated")
+			t.Fatal("timed out waiting for console_chat.turn idle")
 		}
 	}
 }

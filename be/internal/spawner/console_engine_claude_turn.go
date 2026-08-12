@@ -30,6 +30,7 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 		return fmt.Errorf("console engine: not started")
 	}
 	e.turnActive = true
+	e.turnTextSeen = false
 	e.mu.Unlock()
 
 	e.waitUntilReady(ctx)

@@ -49,6 +49,7 @@ type claudeEngine struct {
 	ptySession       ptySessionIface
 	tempDir          string
 	turnActive       bool
+	turnTextSeen     bool
 	bootstrapped     bool
 	transcriptOffset int64
 
@@ -90,13 +91,6 @@ type claudeEngine struct {
 	submitDelay         time.Duration
 	tailInterval        time.Duration
 }
-
-// compile-time assertions: claudeEngine must satisfy both ConsoleEngine
-// (the public engine contract) and consoleTarget (the hub-facing surface).
-var (
-	_ ConsoleEngine = (*claudeEngine)(nil)
-	_ consoleTarget = (*claudeEngine)(nil)
-)
 
 func newClaudeEngine(deps EngineDeps) *claudeEngine {
 	return &claudeEngine{

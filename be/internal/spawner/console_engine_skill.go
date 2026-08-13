@@ -10,9 +10,31 @@ package spawner
 // handling), while the codex/api engines expand Skill into the
 // provider-visible turn text via expandSkillTurn, mirroring
 // codexFirstTurnText/seededTurnText's provider-text-vs-persisted-text split.
+// Category selects the agent_messages category the engine persists this turn
+// under. Empty means CategoryUserInput — a real human typed it. The console
+// notifier sets CategorySystemTurn for server-authored wake-ups (a delegation
+// or workflow run finishing), which are user turns to the model but were never
+// typed by anyone: rendering them as human input misattributes authorship, and
+// they then pollute the composer's input-history recall.
 type UserTurn struct {
-	Text  string
-	Skill *SkillMatch
+	Text     string
+	Skill    *SkillMatch
+	Category string
+}
+
+// Message categories a console turn can persist under.
+const (
+	CategoryUserInput  = "user_input"
+	CategorySystemTurn = "system_turn"
+)
+
+// MessageCategory resolves the category this turn's row is written under,
+// defaulting an unset Category to human input.
+func (t UserTurn) MessageCategory() string {
+	if t.Category == "" {
+		return CategoryUserInput
+	}
+	return t.Category
 }
 
 // SkillMatch is a project skill resolved against a user's leading "/name"

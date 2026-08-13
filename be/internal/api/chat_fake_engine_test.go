@@ -101,7 +101,7 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTur
 
 // SteerUserTurn behaves like a non-steering engine so the REST tests keep
 // exercising the queue path.
-func (f *fakeConsoleEngine) SteerUserTurn(context.Context, string) error {
+func (f *fakeConsoleEngine) SteerUserTurn(context.Context, spawner.UserTurn) error {
 	return spawner.ErrSteeringUnsupported
 }
 

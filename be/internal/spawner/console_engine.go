@@ -34,7 +34,7 @@ type ConsoleEngine interface {
 	// provider-visible text (codex, api) — see UserTurn's doc comment.
 	// Returns ErrTurnActive when a turn is already in flight.
 	SendUserTurn(ctx context.Context, turn UserTurn) error
-	// SteerUserTurn delivers text into the ACTIVE turn so the model sees it
+	// SteerUserTurn delivers turn.Text into the ACTIVE turn so the model sees it
 	// at the next tool boundary instead of after the whole turn: claude types
 	// it into the busy TUI (the CLI queues and steers natively), the api
 	// engine injects it into the running tool loop. Returns ErrNoActiveTurn
@@ -42,7 +42,7 @@ type ConsoleEngine interface {
 	// ErrSteeringUnsupported when the engine cannot steer (codex — the
 	// app-server protocol has no mid-turn input), in which case the caller
 	// falls back to queueing.
-	SteerUserTurn(ctx context.Context, text string) error
+	SteerUserTurn(ctx context.Context, turn UserTurn) error
 	// Events returns the channel of normalized events for this session. It is
 	// closed when the engine's run loop exits (see Stop).
 	Events() <-chan EngineEvent

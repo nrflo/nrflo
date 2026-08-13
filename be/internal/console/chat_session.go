@@ -49,7 +49,7 @@ type chatSession struct {
 	seedContext string
 	// queued holds prompts submitted while a turn was in flight, delivered as
 	// the next turn — see chat_queue.go.
-	queued []string
+	queued []queuedPrompt
 }
 
 const (

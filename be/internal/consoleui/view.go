@@ -273,6 +273,8 @@ func renderMessageBody(message Message, width int) string {
 		return ""
 	case "task_notification":
 		return mutedStyle.Render(fitWidth(collapseTaskNotification(message.Content), width))
+	case "system_turn":
+		return mutedStyle.Render(fitWidth(collapseServerNotice(message.Content), width))
 	default:
 		renderer, err := glamour.NewTermRenderer(glamour.WithStyles(assistantGlamour), glamour.WithWordWrap(width))
 		if err == nil {

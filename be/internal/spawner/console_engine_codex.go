@@ -185,7 +185,7 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 	// issuing turn/start: the agent rows this turn produces are written from
 	// runLoop's goroutine, which would otherwise race ahead of this one and
 	// land an assistant message before the user message it answers.
-	emitMessage(spec.SessionID, text, "user_input", e.sink)
+	emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
 
 	resp, err := client.call(ctx, "turn/start", turnStartParams(threadID, turnText, spec.ReasoningEffort, spec.Model))
 	if err != nil {
@@ -217,7 +217,7 @@ func (e *codexEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 
 // SteerUserTurn: the app-server protocol has no mid-turn user-input channel
 // (codex's own TUI queueing is client-side), so callers queue instead.
-func (e *codexEngine) SteerUserTurn(context.Context, string) error {
+func (e *codexEngine) SteerUserTurn(context.Context, UserTurn) error {
 	return ErrSteeringUnsupported
 }
 

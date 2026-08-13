@@ -219,7 +219,7 @@ func (e *apiConsoleEngine) SendUserTurn(ctx context.Context, turn UserTurn) erro
 	// UI/DB row shows only what the user typed — the seeded digest is
 	// model-visible context, not a persisted user message (matching codex's
 	// original-text persistence and claude's hook additionalContext).
-	emitMessage(spec.SessionID, text, "user_input", e.sink)
+	emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
 	e.emit(EngineEvent{Type: EventTurnStarted, SessionID: spec.SessionID})
 
 	go func() {

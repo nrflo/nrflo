@@ -36,7 +36,7 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 	e.waitUntilReady(ctx)
 
 	if e.sink != nil {
-		emitMessage(spec.SessionID, text, "user_input", e.sink)
+		emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
 	}
 	// Arm the echo dedupe: the UserPromptSubmit hook for THIS text is our own
 	// submission and must not be persisted twice (NotifyUserPrompt).
@@ -88,7 +88,8 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 // in that window, submitting would start a turn behind the server's back,
 // so the typed line is cleared (Ctrl+U) and ErrNoActiveTurn tells the
 // caller to send a normal turn instead.
-func (e *claudeEngine) SteerUserTurn(ctx context.Context, text string) error {
+func (e *claudeEngine) SteerUserTurn(ctx context.Context, turn UserTurn) error {
+	text := turn.Text
 	e.mu.Lock()
 	if !e.turnActive {
 		e.mu.Unlock()
@@ -124,7 +125,7 @@ func (e *claudeEngine) SteerUserTurn(ctx context.Context, text string) error {
 		return ErrNoActiveTurn
 	}
 	if e.sink != nil {
-		emitMessage(spec.SessionID, text, "user_input", e.sink)
+		emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
 	}
 	if _, err := sess.Write([]byte("\r")); err != nil {
 		return fmt.Errorf("console engine: steer submit: %w", err)

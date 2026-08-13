@@ -157,7 +157,7 @@ func (n *ChatNotifier) delegationConsumed(id string) bool {
 	return err == nil && d.ConsumedAt != nil
 }
 
-// deliver hands the notification to the chat via the normal SendMessage path
+// deliver hands the notification to the chat via the normal turn path
 // (idle → immediate turn; mid-turn → queued, coalesced with anything else
 // that lands before the turn ends). A delegation notification first waits out
 // the in-flight turn and is dropped when the delegation was consumed inline.
@@ -172,7 +172,7 @@ func (n *ChatNotifier) deliver(note chatNotification) {
 	if _, ok := n.chats.get(note.sid); !ok {
 		return
 	}
-	if _, err := n.chats.SendMessage(note.sid, note.text); err != nil {
+	if _, err := n.chats.SendNotification(note.sid, note.text); err != nil {
 		logger.Error(context.Background(), "console chat: notification delivery failed", "session_id", note.sid, "error", err)
 	}
 }

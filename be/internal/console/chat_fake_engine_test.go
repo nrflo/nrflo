@@ -29,6 +29,9 @@ type fakeConsoleEngine struct {
 	turnActive bool
 	yolo       bool
 	turns      []string
+	// turnCategories mirrors turns index-for-index with each turn's
+	// resolved agent_messages category.
+	turnCategories []string
 	// skills mirrors turns index-for-index: the resolved spawner.SkillMatch
 	// (nil when the turn carried none) ChatService.SendMessage attached to
 	// UserTurn.Skill for that call.
@@ -38,6 +41,7 @@ type fakeConsoleEngine struct {
 	// the fake behave like codex (ErrSteeringUnsupported); steerErr is
 	// consumed once by the next SteerUserTurn call.
 	steers           []string
+	steerCategories  []string
 	steerUnsupported bool
 	steerErr         error
 	approvals        []fakeApprovalCall
@@ -144,6 +148,7 @@ func (f *fakeConsoleEngine) SendUserTurn(_ context.Context, turn spawner.UserTur
 		return err
 	}
 	f.turns = append(f.turns, turn.Text)
+	f.turnCategories = append(f.turnCategories, turn.MessageCategory())
 	f.skills = append(f.skills, turn.Skill)
 	f.turnActive = true
 	return nil
@@ -190,6 +195,16 @@ func (f *fakeConsoleEngine) turnTexts() []string {
 	defer f.mu.Unlock()
 	out := make([]string, len(f.turns))
 	copy(out, f.turns)
+	return out
+}
+
+// turnCategoryTexts returns the resolved message category of each turn,
+// index-for-index with turnTexts.
+func (f *fakeConsoleEngine) turnCategoryTexts() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]string, len(f.turnCategories))
+	copy(out, f.turnCategories)
 	return out
 }
 

@@ -36,6 +36,29 @@ func collapseTaskNotification(content string) string {
 	return b.String()
 }
 
+// serverNoticePrefix marks a ChatNotifier wake-up. The server owns this
+// literal (be/internal/console/chat_notify.go); it is stripped for display
+// because the category already conveys authorship.
+const serverNoticePrefix = "[nrflo] "
+
+// serverNoticeSummaryMax bounds the collapsed line.
+const serverNoticeSummaryMax = 160
+
+// collapseServerNotice renders a category="system_turn" row — a server
+// -authored wake-up telling the model a delegation or run finished — as one
+// muted line: "nrflo · Delegation <id> finished". The trailing clause of every
+// notice is an instruction addressed to the model ("collect the results with
+// get_delegation…"), useless to a human reading the transcript, so the line is
+// cut at the em dash that introduces it. A notice without one (a failure,
+// which carries its error message after a colon) is kept whole.
+func collapseServerNotice(content string) string {
+	body := strings.TrimPrefix(strings.TrimSpace(content), serverNoticePrefix)
+	if idx := strings.Index(body, " — "); idx > 0 {
+		body = body[:idx]
+	}
+	return "nrflo · " + truncateSummary(firstLine(body), serverNoticeSummaryMax)
+}
+
 // extractTag returns the trimmed text between the first <tag>...</tag> (or
 // self-describing <tag ...>...</tag>) pair, or "" if the tag isn't present.
 func extractTag(content, tag string) string {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"be/internal/logger"
+	"be/internal/spawner"
 	"be/internal/ws"
 )
 
@@ -51,20 +52,28 @@ const maxQueuedPrompts = 32
 // be queued because the session's queue is at capacity.
 var ErrPromptQueueFull = errors.New("console_chat_prompt_queue_full")
 
+// queuedPrompt is one deferred prompt plus the message category it will be
+// persisted under, so a server-authored notification that had to wait out an
+// in-flight turn still lands as one (mergeCategory).
+type queuedPrompt struct {
+	text     string
+	category string
+}
+
 // enqueuePrompt appends text for delivery when the current turn ends.
 // Reports false when the queue is at capacity.
-func (c *chatSession) enqueuePrompt(text string) bool {
+func (c *chatSession) enqueuePrompt(text, category string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.queued) >= maxQueuedPrompts {
 		return false
 	}
-	c.queued = append(c.queued, text)
+	c.queued = append(c.queued, queuedPrompt{text: text, category: category})
 	return true
 }
 
 // takeQueuedPrompts returns and clears every queued prompt (nil when empty).
-func (c *chatSession) takeQueuedPrompts() []string {
+func (c *chatSession) takeQueuedPrompts() []queuedPrompt {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	q := c.queued
@@ -72,12 +81,40 @@ func (c *chatSession) takeQueuedPrompts() []string {
 	return q
 }
 
-// queuedPrompts returns a copy of the queue for snapshots.
+// queuedPrompts returns the queue's texts for snapshots/WS pushes — consumers
+// render what is pending, never its authorship.
 func (c *chatSession) queuedPrompts() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	out := make([]string, len(c.queued))
-	copy(out, c.queued)
+	out := make([]string, 0, len(c.queued))
+	for _, q := range c.queued {
+		out = append(out, q.text)
+	}
+	return out
+}
+
+// mergeCategory resolves the category of a turn composed from several queued
+// prompts: any human-authored part makes the whole row human input, since a
+// merged row cannot be attributed two ways and under-claiming authorship is
+// the safe direction.
+func mergeCategory(prompts []queuedPrompt, incoming string) string {
+	if incoming == spawner.CategoryUserInput {
+		return spawner.CategoryUserInput
+	}
+	for _, p := range prompts {
+		if p.category == spawner.CategoryUserInput {
+			return spawner.CategoryUserInput
+		}
+	}
+	return incoming
+}
+
+// queuedTexts extracts the texts of prompts in order.
+func queuedTexts(prompts []queuedPrompt) []string {
+	out := make([]string, 0, len(prompts))
+	for _, p := range prompts {
+		out = append(out, p.text)
+	}
 	return out
 }
 
@@ -107,7 +144,7 @@ func (s *ChatService) flushQueuedPrompts(sess *chatSession) {
 		sess.endTurn()
 		return
 	}
-	if err := s.dispatchTurn(sess, strings.Join(q, "\n\n")); err != nil {
+	if err := s.dispatchTurn(sess, strings.Join(queuedTexts(q), "\n\n"), mergeCategory(q, spawner.CategorySystemTurn)); err != nil {
 		logger.Error(context.Background(), "console chat: flush queued prompts failed", "session_id", sess.id, "error", err)
 		pushSessionEvent(s.deps.WSHub, sess.id, sess.projectID, ws.EventConsoleChatError, map[string]interface{}{
 			"text":     "queued message failed to send: " + err.Error(),

@@ -114,11 +114,11 @@ func TestChatSession_EnqueuePrompt_CapEnforced(t *testing.T) {
 	t.Parallel()
 	sess := newChatSession("s", "p", "codex", "", "", "", "", "", 0, nil)
 	for i := 0; i < maxQueuedPrompts; i++ {
-		if !sess.enqueuePrompt("x") {
+		if !sess.enqueuePrompt("x", spawner.CategoryUserInput) {
 			t.Fatalf("enqueue %d rejected below cap", i)
 		}
 	}
-	if sess.enqueuePrompt("overflow") {
+	if sess.enqueuePrompt("overflow", spawner.CategoryUserInput) {
 		t.Error("enqueue past cap must report false")
 	}
 }

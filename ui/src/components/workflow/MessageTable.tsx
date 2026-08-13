@@ -18,6 +18,7 @@ export const CATEGORY_TABS: { value: MessageCategory | 'all'; label: string }[] 
   { value: 'thinking', label: 'Thinking' },
   { value: 'task_notification', label: 'Tasks' },
   { value: 'system_notice', label: 'Notices' },
+  { value: 'system_turn', label: 'Wake-ups' },
 ]
 
 // Live transcripts run to thousands of rows; render the newest slice and let

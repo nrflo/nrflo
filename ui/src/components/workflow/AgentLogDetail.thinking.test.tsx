@@ -80,7 +80,7 @@ describe('AgentLogDetail - thinking category', () => {
     await waitFor(() => expect(screen.getByText('1 messages')).toBeInTheDocument())
 
     const tabs = screen.getAllByRole('tab')
-    expect(tabs).toHaveLength(12)
+    expect(tabs).toHaveLength(13)
     expect(tabs[9].textContent).toMatch(/Thinking/)
   })
 

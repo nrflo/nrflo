@@ -11,7 +11,8 @@ import (
 // (apirun.Config.Steer), and the turn goroutine runs any leftover as a
 // continuation turn before going idle (console_engine_api.go). Rejected with
 // ErrNoActiveTurn when idle — the buffer would have no consumer.
-func (e *apiConsoleEngine) SteerUserTurn(_ context.Context, text string) error {
+func (e *apiConsoleEngine) SteerUserTurn(_ context.Context, turn UserTurn) error {
+	text := turn.Text
 	e.mu.Lock()
 	if e.stopped {
 		e.mu.Unlock()
@@ -25,7 +26,7 @@ func (e *apiConsoleEngine) SteerUserTurn(_ context.Context, text string) error {
 	spec := e.spec
 	e.mu.Unlock()
 
-	emitMessage(spec.SessionID, text, "user_input", e.sink)
+	emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
 	return nil
 }
 

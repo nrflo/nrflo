@@ -23,6 +23,19 @@ import (
 // Pass-through-vs-expand for a matched skill is entirely an engine decision
 // (Rule 6) — this method never inspects sess.EngineName().
 func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
+	return s.sendTurn(sid, text, spawner.CategoryUserInput)
+}
+
+// SendNotification delivers a server-authored wake-up (ChatNotifier: a
+// delegation or workflow run finishing) through the identical turn path, but
+// persisted under spawner.CategorySystemTurn. Same delivery semantics as
+// SendMessage — the distinction is authorship, not routing: nobody typed this,
+// so it must not render as human input or seed the composer's input history.
+func (s *ChatService) SendNotification(sid, text string) (queued bool, err error) {
+	return s.sendTurn(sid, text, spawner.CategorySystemTurn)
+}
+
+func (s *ChatService) sendTurn(sid, text, category string) (queued bool, err error) {
 	sess, ok := s.get(sid)
 	if !ok {
 		return false, ErrChatSessionNotFound
@@ -34,7 +47,7 @@ func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
 			if !errors.Is(err, spawner.ErrTurnActive) {
 				return false, err
 			}
-			steerErr := sess.getEngine().SteerUserTurn(context.Background(), text)
+			steerErr := sess.getEngine().SteerUserTurn(context.Background(), spawner.UserTurn{Text: text, Category: category})
 			if steerErr == nil {
 				return false, nil // delivered into the running turn
 			}
@@ -43,7 +56,7 @@ func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
 			}
 			// ErrSteeringUnsupported (codex) or any real steering failure:
 			// fall back to the mid-turn queue, delivered on turn end.
-			if !sess.enqueuePrompt(text) {
+			if !sess.enqueuePrompt(text, category) {
 				return false, ErrPromptQueueFull
 			}
 			pushQueued(s.deps.WSHub, sess)
@@ -52,16 +65,17 @@ func (s *ChatService) SendMessage(sid, text string) (queued bool, err error) {
 		break
 	}
 	if q := sess.takeQueuedPrompts(); len(q) > 0 {
-		text = strings.Join(append(q, text), "\n\n")
+		category = mergeCategory(q, category)
+		text = strings.Join(append(queuedTexts(q), text), "\n\n")
 		defer pushQueued(s.deps.WSHub, sess)
 	}
-	return false, s.dispatchTurn(sess, text)
+	return false, s.dispatchTurn(sess, text, category)
 }
 
 // dispatchTurn hands one composed turn to the engine; the caller has already
 // won beginTurn. Shared by SendMessage and flushQueuedPrompts.
-func (s *ChatService) dispatchTurn(sess *chatSession, text string) error {
-	turn := spawner.UserTurn{Text: text}
+func (s *ChatService) dispatchTurn(sess *chatSession, text, category string) error {
+	turn := spawner.UserTurn{Text: text, Category: category}
 	if match := s.resolveSkill(sess.WorkDir(), text); match != nil {
 		turn.Skill = match
 	} else if seed := sess.takeSeedContext(); seed != "" {

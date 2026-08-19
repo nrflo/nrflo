@@ -28,6 +28,7 @@ func TestAppendCodexMCPServer(t *testing.T) {
 		"[mcp_servers.nrflo]",
 		`command = "/opt/nrflo_server"`,
 		`args = ["agent", "mcp"]`,
+		`default_tools_approval_mode = "approve"`,
 		"[mcp_servers.nrflo.env]",
 		`NRF_SESSION_ID = "sess-1"`,
 		`NRF_WORKFLOW_INSTANCE_ID = "wfi-1"`,

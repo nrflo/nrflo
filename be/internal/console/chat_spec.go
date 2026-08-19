@@ -53,7 +53,10 @@ type chatSpecParams struct {
 // spawner.EngineSpec fields each CLI engine reads: "none" locks the claude
 // engine to MCP-only tools (model.NativeToolsNone, console_engine_claude.go)
 // and the codex engine to a read-only sandbox; "full"/"" leave both at their
-// engine default (unrestricted).
+// engine default (unrestricted). The nrflo MCP server itself is exempted from
+// codex's sandbox/approval gating via default_tools_approval_mode="approve"
+// (appendCodexMCPServer, cli_adapter_codex_profile.go) so a read-only sandbox
+// restricts only codex's native shell/file tools, not MCP tools like delegate.
 func nativeToolFieldsForPolicy(policy string) (nativeToolsCSV, sandbox string) {
 	if policy == NativeToolPolicyNone {
 		return model.NativeToolsNone, model.SandboxReadOnly

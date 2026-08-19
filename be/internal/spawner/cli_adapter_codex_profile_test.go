@@ -267,6 +267,7 @@ func TestWriteConsoleCodexProfile(t *testing.T) {
 		"[mcp_servers.nrflo]",
 		`command = "/opt/nrflo_server"`,
 		`args = ["agent", "mcp-external"]`,
+		`default_tools_approval_mode = "approve"`,
 		"[mcp_servers.nrflo.env]",
 		`NRFLO_CONSOLE_TOKEN = "console-bearer"`,
 		`NRFLO_CONSOLE_SESSION_ID = "sess-1"`,

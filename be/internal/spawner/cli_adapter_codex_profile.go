@@ -127,6 +127,17 @@ func WriteConsoleCodexProfile(dir, workDir, serverPath string, env map[string]st
 // Codex does not forward parent process env to MCP server subprocesses, so the
 // session env the bridge needs (NRF_SESSION_ID, socket path, …) is embedded here.
 //
+// default_tools_approval_mode = "approve" exempts every nrflo tool from
+// codex's own approval/sandbox gating of MCP tool calls: nrflo already
+// authorizes each call at the tool-dispatch layer via the session's bearer
+// token, so codex's approval is redundant here — and, under a restrictive
+// sandbox_mode (e.g. a decider-profile console chat), codex silently
+// self-denies ungated MCP tool calls with no approval round-trip to the
+// client at all (reported as a generic "user rejected MCP tool call", not an
+// EventApprovalRequest — see console_engine_codex_approval.go). Without this,
+// delegate/findings/etc. are unusable from any codex thread whose sandbox
+// isn't danger-full-access.
+//
 // This table stays in config.toml rather than an argv `-c` override: moving
 // it there would put NRF_SESSION_ID/NRF_WORKFLOW_INSTANCE_ID/NRFLO_PROJECT/
 // NRFLO_SOCKET — and the console engine's NRFLO_CONSOLE_TOKEN bearer — into
@@ -137,7 +148,7 @@ func appendCodexMCPServer(dir, serverPath string, args []string, env map[string]
 	for i, a := range args {
 		quotedArgs[i] = fmt.Sprintf("%q", a)
 	}
-	fmt.Fprintf(&b, "\n[mcp_servers.nrflo]\ncommand = %q\nargs = [%s]\n", serverPath, strings.Join(quotedArgs, ", "))
+	fmt.Fprintf(&b, "\n[mcp_servers.nrflo]\ncommand = %q\nargs = [%s]\ndefault_tools_approval_mode = \"approve\"\n", serverPath, strings.Join(quotedArgs, ", "))
 	if len(env) > 0 {
 		b.WriteString("\n[mcp_servers.nrflo.env]\n")
 		keys := make([]string, 0, len(env))

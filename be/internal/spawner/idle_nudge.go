@@ -16,9 +16,9 @@ import (
 // the nudge-less api-via-cli lane and, when it fires, kills the proc with
 // finalStatus=CONTINUE for the monitor to relaunch. Otherwise, when the agent
 // has been silent past its idle window (proc.nudgeMax > 0), it sends a
-// finish-reminder nudge or triggers an auto-fail once the nudge cap is spent.
-// The nudge path itself does not remove the proc from the running list; its
-// auto-fail relies on RequestTerminalSignal to drive the kill.
+// finish-reminder nudge or, once the nudge cap is spent, hands off to
+// handleNudgeAutoFail (kill+relaunch while stall-restart budget remains,
+// terminal fail once that's also exhausted — see handleNudgeAutoFail).
 func (s *Spawner) checkIdleNudge(ctx context.Context, proc *processInfo, req SpawnRequest) {
 	if proc.backend == nil || proc.backend.Name() != "cli_interactive" {
 		return
@@ -181,12 +181,25 @@ func (s *Spawner) recordNudgeSent(ctx context.Context, proc *processInfo, req Sp
 		"attempt", attempt, "max", proc.nudgeMax)
 }
 
-// handleNudgeAutoFail marks the agent as failed with reason "unresponsive_after_nudges",
-// requests a terminal kill signal, and records an error.
-func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, _ SpawnRequest) {
+// handleNudgeAutoFail runs once the nudge cap is spent. Plain-text nudges
+// cannot dismiss a stuck interactive CLI state (a permission prompt, a
+// rate-limit banner, a model-switch dialog) — the process needs a fresh PTY,
+// not more stdin text. So this first tries a stall-style kill+relaunch,
+// sharing the stall-restart cap/counter (maxStallRestarts) with genuine
+// silent stalls; only once that budget is also exhausted does it mark the
+// agent terminally failed via RequestTerminalSignal.
+func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, req SpawnRequest) {
+	if proc.stallRestartCount < maxStallRestarts {
+		logger.Warn(ctx, "idle nudge: cap exhausted, restarting process instead of failing",
+			"session_id", proc.sessionID, "agent_type", proc.agentType,
+			"nudge_count", proc.nudgeCount, "stall_restart_count", proc.stallRestartCount)
+		s.handleStallRestart(ctx, proc, req, "nudge_exhausted")
+		return
+	}
+
 	logger.Warn(ctx, "idle nudge: auto-fail after cap exhausted",
 		"session_id", proc.sessionID, "agent_type", proc.agentType,
-		"nudge_count", proc.nudgeCount)
+		"nudge_count", proc.nudgeCount, "stall_restart_count", proc.stallRestartCount)
 
 	reason := "unresponsive_after_nudges"
 

@@ -229,7 +229,8 @@ func TestCheckIdleNudge_NudgeCapReached_OldLastNudge_AutoFail(t *testing.T) {
 	base := clk.Now()
 	proc := &processInfo{
 		nudgeMax:                5,
-		nudgeCount:              5, // cap reached
+		nudgeCount:              5,                // cap reached
+		stallRestartCount:       maxStallRestarts, // restart budget also exhausted — must terminally fail
 		backend:                 &cliInteractiveBackend{},
 		hasReceivedMessage:      true,
 		lastMessageTime:         base.Add(-10 * time.Minute),

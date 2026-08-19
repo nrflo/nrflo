@@ -49,12 +49,13 @@ func TestTriggerImmediateNudge_AtCap_AutoFails(t *testing.T) {
 	s := New(Config{Clock: clk})
 
 	proc := &processInfo{
-		nudgeMax:   3,
-		nudgeCount: 3, // cap reached
-		backend:    &cliInteractiveBackend{},
-		sessionID:  "sess-imm-cap",
-		agentType:  "implementor",
-		projectID:  "proj-1",
+		nudgeMax:          3,
+		nudgeCount:        3,                // cap reached
+		stallRestartCount: maxStallRestarts, // restart budget also exhausted — must terminally fail
+		backend:           &cliInteractiveBackend{},
+		sessionID:         "sess-imm-cap",
+		agentType:         "implementor",
+		projectID:         "proj-1",
 	}
 
 	ch := make(chan terminalSignal, 1)

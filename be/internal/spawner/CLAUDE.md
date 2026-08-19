@@ -119,7 +119,7 @@ When an agent finishes `result=pass`, `handleCompletion` runs `agent_definitions
 
 ## Idle/Nudge Loop
 
-Active for `cli_interactive` backends only; after `nudgeMax` unanswered idle windows the session force-fails, and the Claude Stop hook enforces end-of-turn completion in-band. A Claude Notification hook indicating the agent is parked (idle-waiting/permission-prompt) fires the same nudge immediately via `TerminalSignaler.TriggerIdleNudge`; wall-clock timers stay the fallback. Mechanics: [REFERENCE.md](REFERENCE.md#idlenudge-loop).
+Active for `cli_interactive` backends only; `nudgeMax` unanswered idle windows kill+relaunch (stall-restart budget), else force-fail; Claude Stop hook enforces end-of-turn completion. A Claude Notification hook indicating the agent is parked (idle-waiting/permission-prompt) fires the same nudge immediately via `TerminalSignaler.TriggerIdleNudge`; wall-clock timers stay the fallback. Mechanics: [REFERENCE.md](REFERENCE.md#idlenudge-loop).
 
 ## Template Variables
 

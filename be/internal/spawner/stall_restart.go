@@ -50,8 +50,11 @@ func (s *Spawner) checkStall(ctx context.Context, proc *processInfo, req SpawnRe
 // Unlike fail restart, no delay before retry (agent is stuck).
 func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req SpawnRequest, reason string) {
 	stallType := "start"
-	if reason == "running_stall" {
+	switch reason {
+	case "running_stall":
 		stallType = "running"
+	case "nudge_exhausted":
+		stallType = "nudge"
 	}
 
 	// Broadcast stall restart event before killing

@@ -8,6 +8,7 @@ import {
   runScheduledTaskNow,
 } from '@/api/scheduledTasks'
 import type {
+  ScheduledTask,
   ScheduledTaskCreateRequest,
   ScheduledTaskUpdateRequest,
 } from '@/types/schedules'
@@ -58,7 +59,18 @@ export function useUpdateScheduledTask() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: ScheduledTaskUpdateRequest }) =>
       updateScheduledTask(id, data),
-    onSuccess: () => {
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: scheduleKeys.lists() })
+      const previous = queryClient.getQueriesData<ScheduledTask[]>({ queryKey: scheduleKeys.lists() })
+      queryClient.setQueriesData<ScheduledTask[]>({ queryKey: scheduleKeys.lists() }, (old) =>
+        old?.map((task) => (task.id === id ? { ...task, ...data } : task))
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data))
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: scheduleKeys.all })
     },
   })

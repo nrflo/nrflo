@@ -16,6 +16,18 @@ import (
 // unbounded python subprocesses / consultant spawns.
 const maxParallelToolDispatch = 4
 
+// deriveStopReasonFromContent infers a stop reason when a provider returned an
+// empty one (e.g. a stream that ended without its terminal event): tool_use
+// blocks mean a tool turn, anything else means the model finished.
+func deriveStopReasonFromContent(content []provider.ContentBlock) string {
+	for _, b := range content {
+		if b.Type == "tool_use" {
+			return "tool_use"
+		}
+	}
+	return "end_turn"
+}
+
 // capWarningTurns: when exactly this many provider turns remain before
 // MaxIterations, a wrap-up notice rides as a text block on that turn's
 // tool-results message (never as a standalone message — it must not split an
@@ -94,6 +106,13 @@ func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.M
 
 		if pct, ok := r.updateContext(ctx, proc, resp.Usage); ok {
 			pctLeft, pctKnown = pct, true
+		}
+
+		// Defensive: never let an empty stop reason reach the switch below.
+		// Derive from content — tool_use blocks mean a tool turn, anything
+		// else means the model finished (mirrors the provider-layer fallback).
+		if resp.StopReason == "" {
+			resp.StopReason = deriveStopReasonFromContent(resp.Content)
 		}
 
 		switch resp.StopReason {

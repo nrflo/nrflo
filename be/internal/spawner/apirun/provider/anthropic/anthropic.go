@@ -174,6 +174,9 @@ func decodeStream(stream *ssestream.Stream[sdk.MessageStreamEventUnion], sink pr
 			final.Usage = mergeDeltaUsage(final.Usage, md.Usage)
 
 		case "message_stop":
+			if final.StopReason == "" {
+				final.StopReason = deriveStopReason(final.Content)
+			}
 			sink.OnUsage(final.Usage)
 			return final, nil
 		}
@@ -183,9 +186,24 @@ func decodeStream(stream *ssestream.Stream[sdk.MessageStreamEventUnion], sink pr
 		return nil, err
 	}
 	// Stream ended without explicit message_stop — still report usage so the
-	// runner can record what little we know.
+	// runner can record what little we know. Derive a stop reason from the
+	// assembled content: an empty StopReason here would fail the whole agent
+	// session with "unexpected stop_reason" in the runner loop.
+	final.StopReason = deriveStopReason(final.Content)
 	sink.OnUsage(final.Usage)
 	return final, nil
+}
+
+// deriveStopReason infers a provider-neutral stop reason from content when the
+// stream terminated without one: tool_use blocks mean a tool turn, anything
+// else means the model simply finished.
+func deriveStopReason(content []provider.ContentBlock) string {
+	for _, b := range content {
+		if b.Type == "tool_use" {
+			return "tool_use"
+		}
+	}
+	return "end_turn"
 }
 
 func finalizeBlock(acc *blockAccumulator, sink provider.EventSink) (provider.ContentBlock, error) {

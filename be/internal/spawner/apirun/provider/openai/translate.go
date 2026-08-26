@@ -195,6 +195,11 @@ func decodeStream(stream *ssestream.Stream[responses.ResponseStreamEventUnion], 
 	if err := stream.Err(); err != nil {
 		return nil, err
 	}
+	// The stream ended without a response.completed event — some OpenRouter
+	// upstreams close the SSE right after the last output_item.done. Derive
+	// the stop reason from the assembled content instead of returning ""
+	// (which the runner rejects as an unexpected stop reason).
+	final.StopReason = resolveStopReason(responses.Response{}, final.Content)
 	sink.OnUsage(final.Usage)
 	return final, nil
 }

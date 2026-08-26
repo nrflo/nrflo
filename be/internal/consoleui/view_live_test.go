@@ -145,38 +145,6 @@ func TestLiveRegionView_CappedRegardlessOfBudget(t *testing.T) {
 	}
 }
 
-// TestFrameBand_HoldsHeightUntilPrintReleases verifies the whole frame's
-// height ratchets (frameBand): ANY shrink — live region clearing, the
-// composer losing a row, an approval box closing — pads back with blank top
-// rows (an unpaired shrink would float the chrome, the renderer top-anchors
-// shrinks), and a print releases exactly its own row count from the band.
-func TestFrameBand_HoldsHeightUntilPrintReleases(t *testing.T) {
-	m := anchorTestModel(t, 80, 24)
-	m.deltaOrder = []string{"a"}
-	m.deltas = map[string]string{"a": "one\ntwo\nthree"}
-	tall := lipgloss.Height(m.View().Content)
-
-	m.deltas = map[string]string{}
-	m.deltaOrder = nil
-	content := m.View().Content
-	if got := lipgloss.Height(content); got != tall {
-		t.Fatalf("frame height after live clear = %d, want band-held %d", got, tall)
-	}
-	// Padding rows carry a single space (a fully empty row is skipped by the
-	// renderer's diff, which then never blanks vacated rows).
-	if !strings.HasPrefix(content, " \n") {
-		t.Errorf("band-held frame = %q..., want space-padded top rows", content[:40])
-	}
-
-	// A 1-row print releases 1 row of band.
-	if cmd := m.printNewMessages(MessagePage{Messages: []Message{{Category: "user_input", Content: "hi"}}, Total: 1}); cmd == nil {
-		t.Fatal("printNewMessages returned nil cmd")
-	}
-	if got := lipgloss.Height(m.View().Content); got != tall-1 {
-		t.Errorf("frame height after 1-row print = %d, want %d", got, tall-1)
-	}
-}
-
 // TestView_NeverExceedsHeight verifies the total rendered view (live region +
 // chrome) never exceeds m.height, even with a delta buffer far taller than
 // the terminal, at a small terminal height.

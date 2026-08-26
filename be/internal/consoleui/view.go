@@ -92,15 +92,6 @@ func (m *model) View() tea.View {
 		// Padding rows carry a space: a fully empty top row is skipped by the
 		// renderer's diff, which then never blanks the rows a shrink vacated.
 		frame = strings.Repeat(" \n", pad) + frame
-		// printNewMessages releases band rows only when it has printed rows to
-		// fund them (release = min(printed rows, band excess)). A short or
-		// already-printed finalized reply funds nothing — without this paired
-		// decay the blank band between the transcript and the bottom panel
-		// persists indefinitely (the "gap above the composer" bug): each
-		// insert scrolls one padding row into native scrollback while the
-		// ticker repaints the full-height frame, so the deficit self-heals by
-		// exactly one row per print without ever printing a blank row.
-		m.bandDecay = pad
 	}
 	view := tea.NewView(frame)
 	view.AltScreen = false

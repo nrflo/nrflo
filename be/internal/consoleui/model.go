@@ -35,23 +35,19 @@ type model struct {
 
 	frameBand    int
 	frameNatural int
-	// bandDecay is the current band excess (padded rows above frameNatural).
-	// printNewMessages consumes it one row per printed row so an unfunded
-	// deficit decays instead of persisting as a permanent blank gap.
-	bandDecay   int
-	approvals   []Approval
-	qa          questionState
-	queuedCount int
-	connected   bool
-	status      string
-	tool        runningTool
-	bgRunning   int
-	delegating  int
-	lastErr     string
-	width       int
-	height      int
-	ready       bool
-	notice      string
+	approvals    []Approval
+	qa           questionState
+	queuedCount  int
+	connected    bool
+	status       string
+	tool         runningTool
+	bgRunning    int
+	delegating   int
+	lastErr      string
+	width        int
+	height       int
+	ready        bool
+	notice       string
 
 	input   textarea.Model
 	spin    spinner.Model

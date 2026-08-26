@@ -71,9 +71,11 @@ func decodeStream(stream *ssestream.Stream[openaisdk.ChatCompletionChunk], sink 
 		}
 
 		if chunk.Usage.TotalTokens > 0 {
+			fresh, cached := provider.SplitCachedInput(int(chunk.Usage.PromptTokens), int(chunk.Usage.PromptTokensDetails.CachedTokens))
 			final.Usage = provider.Usage{
-				InputTokens:  int(chunk.Usage.PromptTokens),
-				OutputTokens: int(chunk.Usage.CompletionTokens),
+				InputTokens:     fresh,
+				OutputTokens:    int(chunk.Usage.CompletionTokens),
+				CacheReadTokens: cached,
 			}
 		}
 	}

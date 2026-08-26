@@ -36,7 +36,8 @@ func deriveStopReasonFromContent(content []provider.ContentBlock) string {
 const capWarningTurns = 2
 
 // runTurns drives the shared tool-use loop starting from msgs until a
-// terminal status is reached, returning the accumulated message history
+// terminal status is reached (MaxIterations < 0 means no turn bound at all —
+// only ctx cancellation, the deadline, or a terminal stop reason ends the loop), returning the accumulated message history
 // alongside the terminal status string. It calls proc.SetFinalStatus/r.fail()
 // at exactly the same points Run's inline loop used to. Run (single-shot
 // autonomous agents) discards the returned history; Conversation.SendTurn
@@ -45,7 +46,7 @@ const capWarningTurns = 2
 // Conversation can replay it in the next turn's request.
 func (r *Runner) runTurns(ctx context.Context, proc ProcState, msgs []provider.Message) ([]provider.Message, string) {
 	pctLeft, pctKnown := 0, false
-	for turn := 0; turn < r.cfg.MaxIterations; turn++ {
+	for turn := 0; r.cfg.MaxIterations < 0 || turn < r.cfg.MaxIterations; turn++ {
 		if ctx.Err() != nil {
 			proc.SetFinalStatus("CANCELLED")
 			return msgs, "CANCELLED"

@@ -235,6 +235,26 @@ func TestDecodeStream_UsageFromIncludeUsageChunk(t *testing.T) {
 	}
 }
 
+// TestDecodeStream_CachedTokensSplitOutOfInput verifies
+// prompt_tokens_details.cached_tokens lands in Usage.CacheReadTokens and is
+// subtracted from Usage.InputTokens — prompt_tokens is the superset, and
+// consumers sum the input fields (context %) and price them separately.
+func TestDecodeStream_CachedTokensSplitOutOfInput(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(sseData(chunkJSON(`{"content":"hi"}`, "stop", "")))
+	b.WriteString(sseData(chunkJSON(`{}`, "",
+		`{"prompt_tokens":1000,"completion_tokens":7,"total_tokens":1007,"prompt_tokens_details":{"cached_tokens":900}}`)))
+	b.WriteString(sseDone())
+
+	resp, err := newTestProvider(b.String()).Run(context.Background(), minimalRequest(), &recordingSink{})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if resp.Usage.InputTokens != 100 || resp.Usage.CacheReadTokens != 900 {
+		t.Errorf("Usage = %+v, want in=100 cache_read=900", resp.Usage)
+	}
+}
+
 // TestDecodeStream_MalformedToolArgs_Error verifies argument deltas that
 // assemble into invalid JSON cause Run to return an error.
 func TestDecodeStream_MalformedToolArgs_Error(t *testing.T) {

@@ -3,6 +3,7 @@ package apirun
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"be/internal/spawner/apirun/provider"
@@ -170,44 +171,43 @@ func TestConversation_ToolUse_RoundTripReplaysInNextTurn(t *testing.T) {
 	}
 }
 
-// TestConversation_PerTurnIterationCap_ResetsOnNextTurn verifies MaxIterations
-// applies per SendTurn, not per session: a tool_use-forever script fails THAT
-// turn (max iterations reached), and a subsequent SendTurn with an end_turn
-// script succeeds — proving the loop counter reset for the new turn.
-func TestConversation_PerTurnIterationCap_ResetsOnNextTurn(t *testing.T) {
+// TestConversation_IterationCapLifted verifies a conversation is not bound by
+// defaultMaxIterations: a tool_use script far longer than that cap runs to its
+// end_turn instead of failing with "max iterations reached", and an explicit
+// MaxIterations in the Config does not reinstate a bound.
+func TestConversation_IterationCapLifted(t *testing.T) {
 	sink := &recordingSink{}
 	handler := &recordingHandler{name: "loop_tool", output: "again"}
 
-	toolUseForever := func() mock.Script {
-		return mock.Script{Final: provider.FinalResponse{
+	const toolTurns = defaultMaxIterations + 10
+	scripts := make([]mock.Script, 0, toolTurns+1)
+	for i := 0; i < toolTurns; i++ {
+		scripts = append(scripts, mock.Script{Final: provider.FinalResponse{
 			StopReason: "tool_use",
 			Content:    []provider.ContentBlock{toolUseBlock("tu_x", "loop_tool", `{}`)},
-		}}
+		}})
 	}
-	prov := newRecordingProvider(
-		toolUseForever(), toolUseForever(), // MaxIterations=2 exhausts here
-		mock.Script{Final: provider.FinalResponse{StopReason: "end_turn"}}, // next turn
-	)
+	scripts = append(scripts, mock.Script{Final: provider.FinalResponse{StopReason: "end_turn"}})
+
+	prov := newRecordingProvider(scripts...)
 	conv := NewConversation(Config{
 		Provider:      prov,
 		Sink:          sink,
 		Handlers:      Registry{"loop_tool": handler},
-		MaxIterations: 2,
+		MaxIterations: 2, // ignored: conversations are always unbounded
 		MaxContext:    1000,
 	})
-	proc := newConvTestProc()
 
-	status1 := conv.SendTurn(context.Background(), proc, "loop please")
-	if status1 != "FAIL" {
-		t.Fatalf("turn 1 status = %q, want FAIL (max iterations reached)", status1)
+	if status := conv.SendTurn(context.Background(), newConvTestProc(), "loop please"); status != "PASS" {
+		t.Fatalf("status = %q, want PASS (no tool-turn bound)", status)
 	}
-
-	status2 := conv.SendTurn(context.Background(), proc, "now stop")
-	if status2 != "PASS" {
-		t.Fatalf("turn 2 status = %q, want PASS (cap is per-turn, not per-session)", status2)
+	if len(prov.requests) != toolTurns+1 {
+		t.Fatalf("provider.Run called %d times, want %d", len(prov.requests), toolTurns+1)
 	}
-	if len(prov.requests) != 3 {
-		t.Fatalf("provider.Run called %d times, want 3", len(prov.requests))
+	for _, m := range sink.calls {
+		if strings.Contains(m.content, "Iteration cap") {
+			t.Errorf("unbounded conversation emitted a cap warning: %q", m.content)
+		}
 	}
 }
 

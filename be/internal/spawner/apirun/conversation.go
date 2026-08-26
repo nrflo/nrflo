@@ -30,11 +30,11 @@ type StreamHook interface {
 // Conversation drives a multi-turn API-mode session: unlike Runner (single-
 // shot, discards history after Run returns), it keeps the provider.Message
 // history across SendTurn calls so a console chat engine can hold a
-// multi-turn conversation over the same tool-use loop Run uses. MaxIterations
-// applies per SendTurn, never across the whole session — a turn ending in
-// end_turn is a turn boundary, not a session end, so SendTurn never sets a
-// session-final status itself (whatever runTurns sets on proc is the calling
-// engine's concern, not Conversation's).
+// multi-turn conversation over the same tool-use loop Run uses. The tool-turn
+// bound is lifted (UnlimitedIterations) — a turn ending in end_turn is a turn
+// boundary, not a session end, so SendTurn never sets a session-final status
+// itself (whatever runTurns sets on proc is the calling engine's concern, not
+// Conversation's).
 type Conversation struct {
 	cfg Config
 
@@ -45,9 +45,13 @@ type Conversation struct {
 }
 
 // NewConversation constructs a Conversation from cfg, applying the same
-// defaults as NewRunner (MaxIterations/MaxTokens/MaxContext).
+// defaults as NewRunner (MaxTokens/MaxContext). MaxIterations is forced to
+// UnlimitedIterations: a conversation is interactive, so the user watching the
+// stream is the stop condition, and cutting a turn off mid-exploration at an
+// arbitrary tool-call count only costs the work done so far.
 func NewConversation(cfg Config) *Conversation {
 	r := NewRunner(cfg)
+	r.cfg.MaxIterations = UnlimitedIterations
 	return &Conversation{cfg: r.cfg}
 }
 

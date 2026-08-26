@@ -113,9 +113,26 @@ type FinalResponse struct {
 }
 
 // Usage is the token accounting reported by the provider for one turn.
+// InputTokens is the uncached remainder only: consumers sum all three input
+// fields (context-left %) and price them at separate rates (session cost), so
+// a provider must never report the same token twice.
 type Usage struct {
 	InputTokens         int
 	OutputTokens        int
 	CacheReadTokens     int
 	CacheCreationTokens int
+}
+
+// SplitCachedInput adapts an OpenAI-family usage report to Usage's field
+// semantics: those APIs count cached tokens inside their input total, while
+// Usage.InputTokens means the uncached remainder. Returns (fresh, cached).
+func SplitCachedInput(inputTotal, cached int) (int, int) {
+	if cached < 0 {
+		cached = 0
+	}
+	fresh := inputTotal - cached
+	if fresh < 0 {
+		return 0, inputTotal
+	}
+	return fresh, cached
 }

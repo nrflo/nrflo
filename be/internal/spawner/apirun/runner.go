@@ -12,6 +12,12 @@ import (
 // specify api_max_iterations.
 const defaultMaxIterations = 50
 
+// UnlimitedIterations disables the tool-turn bound entirely. Interactive
+// conversations run with it (NewConversation) — a human watching the stream is
+// the stop condition, and context growth is already bounded by the watcher and
+// in-loop compaction.
+const UnlimitedIterations = -1
+
 // defaultMaxTokens is the per-turn output cap when the spawner doesn't supply
 // one. Per-agent overrides come from agent_definitions.api_max_tokens.
 const defaultMaxTokens = 16384
@@ -77,9 +83,10 @@ type Runner struct {
 }
 
 // NewRunner constructs a Runner from cfg. Defaults are applied for
-// MaxIterations and MaxTokens when zero.
+// MaxIterations and MaxTokens when zero; a negative MaxIterations
+// (UnlimitedIterations) is preserved as-is.
 func NewRunner(cfg Config) *Runner {
-	if cfg.MaxIterations <= 0 {
+	if cfg.MaxIterations == 0 {
 		cfg.MaxIterations = defaultMaxIterations
 	}
 	if cfg.MaxTokens <= 0 {

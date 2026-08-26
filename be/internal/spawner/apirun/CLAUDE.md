@@ -26,7 +26,7 @@ In-process tool-use loop for API-mode agents. Files: `runner.go` (Run + Config),
 | `CALLBACK` | `agent_callback` | `finalizePhase` reads `callback_level`, returns `CallbackError` |
 | `RATE_LIMITED` | `classifyProviderError` → `RetryClassRateLimit` | api_backend rate-limit dance → `relaunchForContinuation` |
 
-Each terminal handler also calls the corresponding `AgentService` method, so DB row + WS broadcast happen identically to CLI agents. `agent_finished` additionally rejects (tool error, non-terminal) for a `_delegate`-node session with no `_delegate_findings` session finding — a delegate worker's findings are its deliverable. When `capWarningTurns` (2) provider turns remain before `MaxIterations`, `runTurns` appends a wrap-up notice as a text block on that turn's tool-results message so the model records findings instead of dying at the cap (`runner_loop.go`).
+Each terminal handler also calls the corresponding `AgentService` method, so DB row + WS broadcast happen identically to CLI agents. `agent_finished` additionally rejects (tool error, non-terminal) for a `_delegate`-node session with no `_delegate_findings` session finding — a delegate worker's findings are its deliverable. When `capWarningTurns` (2) provider turns remain before `MaxIterations`, `runTurns` appends a wrap-up notice as a text block on that turn's tool-results message so the model records findings instead of dying at the cap (`runner_loop.go`); a negative `MaxIterations` (`UnlimitedIterations`, always used by `Conversation`) drops the bound and the warning entirely.
 
 ## Builtins
 

@@ -234,9 +234,11 @@ func finalizeItemAcc(acc *itemAcc, sink provider.EventSink) (*provider.ContentBl
 }
 
 func fromResponseUsage(u responses.ResponseUsage) provider.Usage {
+	fresh, cached := provider.SplitCachedInput(int(u.InputTokens), int(u.InputTokensDetails.CachedTokens))
 	return provider.Usage{
-		InputTokens:  int(u.InputTokens),
-		OutputTokens: int(u.OutputTokens),
+		InputTokens:     fresh,
+		OutputTokens:    int(u.OutputTokens),
+		CacheReadTokens: cached,
 	}
 }
 

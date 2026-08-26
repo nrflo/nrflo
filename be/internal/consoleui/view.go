@@ -27,7 +27,7 @@ var (
 	composerBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
 )
 
-// renderMessage, renderMessageBody, preRender, capToolBody and styleFor live
+// renderMessage, renderMessageBody, preRender, headLine and styleFor live
 // in view_message.go (the single unified transcript renderer).
 
 // footer renders the bottom status line; while a turn runs it carries the

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // timePrefixWidth is the printed width of "HH:MM:SS " — the muted local-time
@@ -53,9 +54,8 @@ func renderMessage(message Message, width int) string {
 
 // renderMessageBody is the single transcript renderer: preRender reduces the
 // row's content where raw text isn't human prose (notice envelopes collapse
-// to one line, tool payloads cap at toolBodyLines with a forced ellipsis),
-// then fitWidth applies the shared wrap/clip invariant and styleFor colors by
-// role alone.
+// to one line, tool-family rows collapse to ONE clipped line), then fitWidth
+// applies the shared wrap/clip invariant and styleFor colors by role alone.
 func renderMessageBody(message Message, width int) string {
 	content := preRender(message, width)
 	if content == "" {
@@ -71,9 +71,9 @@ func renderMessageBody(message Message, width int) string {
 //     skips the empty result; does not consume the watermark oddly).
 //   - task_notification / system_turn envelopes collapse to their one-line
 //     summary (the model-facing instruction tail is useless to a human).
-//   - tool-family rows keep their "tool · [Name] …" head line but drop the
-//     per-tool head-param parsing; the body is capped at toolBodyLines with a
-//     forced ellipsis so a large delegate brief can't blow out scrollback.
+//   - tool-family rows collapse to ONE line: the "tool · [Name]" head plus the
+//     payload's first line, ellipsis-marked when more followed — the full
+//     payload lives in the web UI's tool card; scrollback only needs the gist.
 //   - everything else (user_input, thinking, assistant) passes through as-is.
 func preRender(message Message, width int) string {
 	switch message.Category {
@@ -90,11 +90,15 @@ func preRender(message Message, width int) string {
 		if name != "" {
 			b.WriteString("[" + name + "]")
 		}
-		if rest = strings.TrimSpace(rest); rest != "" {
-			b.WriteString("\n")
-			b.WriteString(capToolBody(rest, width))
+		if rest = headLine(rest); rest != "" {
+			b.WriteString(" ")
+			b.WriteString(rest)
 		}
-		return b.String()
+		// Tabs are expanded BEFORE the width clip: ansi.StringWidth counts a
+		// tab as zero, so an unexpanded tab measures short here and then
+		// widens under fitWidth's expandTabs, wrapping the row onto extra
+		// physical lines — exactly what the one-line collapse exists to stop.
+		return clipOneLine(expandTabs(b.String()), width)
 	default:
 		// Trim outer whitespace: a whitespace-only row must still render ""
 		// (printNewMessages skips empty renders), matching the previous
@@ -108,10 +112,35 @@ func preRender(message Message, width int) string {
 // row.
 const toolRowPrefix = "tool · "
 
-// toolBodyLines caps a tool row's wrapped body so a large payload (e.g. a
-// delegate brief) can't blow out scrollback; the cut is always marked via
-// forceEllipsis inside capToolBody.
-const toolBodyLines = 6
+// headLine collapses a tool payload to its first line: leading blank lines
+// are dropped, everything after the first "\n" is cut, and the cut is marked
+// with forceEllipsis so a multi-line payload is visibly truncated rather than
+// silently shortened. The width cap itself still comes from the shared
+// fitWidth pass.
+func headLine(body string) string {
+	body = strings.TrimLeft(body, " \t\r\n")
+	if i := strings.IndexByte(body, '\n'); i >= 0 {
+		// fitWidth runs after preRender, so use a generous width here and let
+		// the shared clip enforce the real terminal width on this line.
+		return forceEllipsis(strings.TrimRight(body[:i], " \t\r"), maxInlineHeadWidth)
+	}
+	return strings.TrimRight(body, " \t\r")
+}
+
+// maxInlineHeadWidth bounds the ellipsis-marked head line before the shared
+// wrap/clip pass; generous, since fitWidth does the final clipping.
+const maxInlineHeadWidth = 4096
+
+// clipOneLine hard-clips s to width with a trailing '…' when cut — the
+// tool-row counterpart of fitWidth's word-wrap: one logical row must stay ONE
+// physical row, so overflow is clipped rather than wrapped.
+func clipOneLine(s string, width int) string {
+	width = max(1, width)
+	if ansi.StringWidth(s) <= width {
+		return s
+	}
+	return forceEllipsis(ansi.Truncate(s, width-1, ""), width)
+}
 
 // splitToolRow splits a "[Name] rest" row into its bracketed name and trimmed
 // remainder. Rows without a leading "[" (the "Name: err" error-row shape from
@@ -125,21 +154,6 @@ func splitToolRow(content string) (name, rest string) {
 		return "", content
 	}
 	return content[1:idx], strings.TrimSpace(content[idx+1:])
-}
-
-// capToolBody wraps body to width and caps it at toolBodyLines lines, marking
-// any cut with forceEllipsis. Short bodies pass through uncapped with no
-// marker — the marker only ever means truncation.
-func capToolBody(body string, width int) string {
-	lines := strings.Split(fitWidth(body, width), "\n")
-	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
-		lines = lines[1:]
-	}
-	if len(lines) > toolBodyLines {
-		lines = lines[:toolBodyLines]
-		lines[toolBodyLines-1] = forceEllipsis(lines[toolBodyLines-1], width)
-	}
-	return strings.Join(lines, "\n")
 }
 
 // styleFor returns the single role color for a transcript row: user light

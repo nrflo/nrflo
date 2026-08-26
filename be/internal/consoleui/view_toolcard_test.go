@@ -13,24 +13,24 @@ func delegateRow(name, brief string) string {
 	return `[` + name + `] {"tier":"executor","brief":"` + brief + `","fanout":["a","b","c"]}`
 }
 
-// TestRenderTool_LongDelegateBrief_CapsBodyWithForcedEllipsis verifies the
-// unified renderer still caps a large delegate payload at toolBodyLines
-// wrapped body lines (plus the head line), marks any cut with forceEllipsis,
-// and keeps every line within width and tab-free.
-func TestRenderTool_LongDelegateBrief_CapsBodyWithForcedEllipsis(t *testing.T) {
+// TestRenderTool_LongDelegateBrief_CollapsesToOneLine verifies the unified
+// renderer collapses a large delegate payload to ONE transcript line (head +
+// first payload line), marks the cut with an ellipsis, and keeps the line
+// within width and tab-free.
+func TestRenderTool_LongDelegateBrief_CollapsesToOneLine(t *testing.T) {
 	const width = 80
 	brief := strings.Repeat("this is a long delegate brief sentence. ", 60) // ~2.4KB
 	content := delegateRow("Mcp__nrflo__delegate", brief)
 
 	rendered := renderMessage(Message{Category: "tool", Content: content}, width)
-	lines := strings.Split(ansi.Strip(rendered), "\n")
+	stripped := ansi.Strip(rendered)
+	lines := strings.Split(stripped, "\n")
 
-	if len(lines) > 1+toolBodyLines {
-		t.Fatalf("tool row rendered %d lines, want <= %d (1 head + %d body)", len(lines), 1+toolBodyLines, toolBodyLines)
+	if len(lines) != 1 {
+		t.Fatalf("tool row rendered %d lines, want exactly 1", len(lines))
 	}
-	last := lines[len(lines)-1]
-	if !strings.HasSuffix(last, "…") {
-		t.Errorf("tool row last line = %q, want it to end with the forced ellipsis marker", last)
+	if !strings.Contains(stripped, "tool · [Mcp__nrflo__delegate]") {
+		t.Errorf("tool row %q, want the unified head prefix with the tool name", stripped)
 	}
 	for i, line := range lines {
 		if lw := ansi.StringWidth(line); lw > width {
@@ -106,18 +106,49 @@ func TestRenderTool_Fallbacks(t *testing.T) {
 	}
 }
 
-// TestRenderTool_ShortPayload_StaysUncappedNoMarker verifies the marker only
-// ever means truncation: a short two-line tool result renders both lines
-// verbatim with no forced-ellipsis.
-func TestRenderTool_ShortPayload_StaysUncappedNoMarker(t *testing.T) {
+// TestRenderTool_ShortPayload_StaysOneLineUnmarked verifies the marker only
+// ever means truncation: a short two-line tool result keeps its first line
+// (the second is dropped as the collapse cut) — but a single-line payload
+// renders verbatim with no ellipsis.
+func TestRenderTool_ShortPayload_StaysOneLineUnmarked(t *testing.T) {
 	const width = 80
 	content := "[Read] file.go → line one\nline two"
 	card := ansi.Strip(renderMessage(Message{Category: "tool", Content: content}, width))
 
-	if strings.Contains(card, "…") {
-		t.Errorf("renderMessage(tool, %q) = %q, want no ellipsis marker for a short payload", content, card)
+	if !strings.Contains(card, "line one") {
+		t.Errorf("renderMessage(tool, %q) = %q, want the first body line preserved", content, card)
 	}
-	if !strings.Contains(card, "line one") || !strings.Contains(card, "line two") {
-		t.Errorf("renderMessage(tool, %q) = %q, want both body lines preserved verbatim", content, card)
+	if strings.Contains(card, "line two") {
+		t.Errorf("renderMessage(tool, %q) = %q, want second-line payload dropped by the one-line collapse", content, card)
+	}
+	if strings.Contains(card, "…\n") || strings.HasSuffix(card, "\n…") {
+		t.Errorf("renderMessage(tool, %q) = %q, want no spurious ellipsis rows", content, card)
+	}
+
+	single := ansi.Strip(renderMessage(Message{Category: "tool", Content: "[Bash] ls -la"}, width))
+	if single != toolRowPrefix+"[Bash] ls -la" {
+		t.Errorf("renderMessage(tool, single line) = %q, want head + payload on ONE line with no ellipsis", single)
+	}
+}
+
+// TestRenderTool_TabbedPayload_StaysOneLine pins the collapse against tabs:
+// ansi.StringWidth counts a tab as zero while fitWidth expands it to four
+// cells, so a tab-bearing payload (raw command output in a tool result) would
+// otherwise measure short, pass the clip, and then wrap onto extra rows.
+func TestRenderTool_TabbedPayload_StaysOneLine(t *testing.T) {
+	const width = 40
+	content := "[Read] " + strings.Repeat("a\tb", 12)
+
+	out := ansi.Strip(renderMessage(Message{Category: "tool", Content: content}, width))
+
+	lines := strings.Split(out, "\n")
+	if len(lines) != 1 {
+		t.Fatalf("tabbed tool row rendered %d lines, want exactly 1: %q", len(lines), lines)
+	}
+	if strings.Contains(out, "\t") {
+		t.Errorf("rendered row %q still contains a tab — printed rows must be tab-free", out)
+	}
+	if w := ansi.StringWidth(out); w > width {
+		t.Errorf("rendered row width = %d, want <= %d", w, width)
 	}
 }

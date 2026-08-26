@@ -49,7 +49,7 @@ func TestSplitChunks(t *testing.T) {
 func TestMaxPrintRows(t *testing.T) {
 	tests := []struct{ height, want int }{
 		{40, 40 - liveRegionCap - chromeAllowance},
-		{24, 1}, // 24-12-12=0 floors to 1
+		{liveRegionCap + chromeAllowance, 1}, // exactly zero headroom floors to 1
 		{10, 1},
 	}
 	for _, tt := range tests {
@@ -72,10 +72,13 @@ func TestPrintNewMessages_EmptyAndBlankRowsStayAccounted(t *testing.T) {
 		t.Errorf("printNewMessages(empty-rendered message) returned a cmd, want nil")
 	}
 
-	// h=24 floors the chunk size to 1 row, so the interior blank line becomes
-	// its own chunk and must print as " ", never "".
+	// A height with exactly zero headroom floors the chunk size to 1 row, so
+	// the interior blank line becomes its own chunk and must print as " ",
+	// never "".
+	m2 := printTestModel(0, "")
+	m2.height = liveRegionCap + chromeAllowance
 	multi := MessagePage{Messages: []Message{{Category: "user_input", Content: "a\n\nb"}}, Total: 2}
-	bodies := printlnBodies(t, m.printNewMessages(multi))
+	bodies := printlnBodies(t, m2.printNewMessages(multi))
 	if len(bodies) != 3 {
 		t.Fatalf("printlnBodies = %#v, want 3 chunks", bodies)
 	}

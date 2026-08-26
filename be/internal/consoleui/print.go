@@ -70,15 +70,28 @@ func (m *model) printNewMessages(page MessagePage) tea.Cmd {
 	if len(cmds) == 0 {
 		return nil
 	}
-	// Release the frame band's padding (up to the printed row count): the
-	// resulting frame shrink is refilled exactly by these inserts. The pause
-	// lets the frame ticker flush the shrunken frame FIRST — an insert running
-	// against the taller on-screen frame would land fine, but the shrink flush
-	// after it would float the chrome until the next print.
+	// Release the frame band's padding. The first min(rows, excess) rows are
+	// funded by this print itself: the resulting frame shrink is refilled
+	// exactly by these inserts. The pause lets the frame ticker flush the
+	// shrunken frame FIRST — an insert running against the taller on-screen
+	// frame would land fine, but the shrink flush after it would float the
+	// chrome until the next print.
 	if release := min(rows, m.frameBand-m.frameNatural); release > 0 {
 		m.frameBand -= release
+		m.bandDecay = max(0, m.bandDecay-release)
 		cmds = append([]tea.Cmd{printReleasePause}, cmds...)
 	}
+	// Any remaining deficit (a short reply can't fund its full release) decays
+	// passively: every subsequent tea.Println insert scrolls one padded row up
+	// into native scrollback, so each future print — even a one-liner — docks
+	// the transcript one band-row closer to the bottom panel without printing
+	// a blank row or shrinking the on-screen frame (which would top-anchor and
+	// float the chrome). Without this, an unfunded deficit persists as a
+	// permanent blank gap between the last transcript rows and the composer.
+	for i := 0; i < m.bandDecay; i++ {
+		cmds = append(cmds, tea.Println(" "))
+	}
+	m.bandDecay = 0
 	return tea.Sequence(cmds...)
 }
 

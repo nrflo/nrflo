@@ -6,9 +6,6 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/glamour/v2"
-	glamouransi "charm.land/glamour/v2/ansi"
-	"charm.land/glamour/v2/styles"
 	"charm.land/lipgloss/v2"
 )
 
@@ -30,15 +27,10 @@ var (
 	composerBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
 )
 
-// assistantGlamour is DarkStyleConfig with the document color lifted to match
-// assistantStyle, so glamour body text doesn't read as the same gray as tool
-// rows.
-var assistantGlamour = func() glamouransi.StyleConfig {
-	cfg := styles.DarkStyleConfig
-	color := "254"
-	cfg.Document.Color = &color
-	return cfg
-}()
+// assistantGlamour lives in view_message.go with the message renderers it
+// configures.
+
+// footer renders the bottom status line; while a turn runs it carries the
 
 func (m *model) View() tea.View {
 	if !m.ready {
@@ -85,21 +77,30 @@ func (m *model) View() tea.View {
 	// The renderer top-anchors a frame SHRINK (chrome would float up with
 	// blank rows below), so the frame's height ratchets via m.frameBand:
 	// any shrink — live region clearing, the composer losing a row, an
-	// approval box closing — is padded back with blank top rows, and only
-	// printNewMessages releases band rows, paired with an insert that
-	// refills exactly the vacated rows. The band is capped so inserts always
-	// keep at least maxPrintRows free rows above the frame: insertAbove can
-	// only insert into free rows above the on-screen frame, and a
-	// full-height frame desyncs the renderer one row per insert. Run() parks
-	// the cursor on the terminal's bottom row before starting the program,
-	// so the inline region starts bottom-anchored.
+	// approval box closing — is padded back with blank top rows. The band is
+	// capped so inserts always keep at least maxPrintRows free rows above
+	// the frame: insertAbove can only insert into free rows above the
+	// on-screen frame, and a full-height frame desyncs the renderer one row
+	// per insert. Run() parks the cursor on the terminal's bottom row before
+	// starting the program, so the inline region starts bottom-anchored.
 	m.frameNatural = lipgloss.Height(frame)
-	m.frameBand = max(m.frameBand, m.frameNatural)
+	if m.frameBand < m.frameNatural {
+		m.frameBand = m.frameNatural
+	}
 	m.frameBand = min(m.frameBand, max(m.frameNatural, m.height-m.maxPrintRows()))
 	if pad := m.frameBand - m.frameNatural; pad > 0 {
 		// Padding rows carry a space: a fully empty top row is skipped by the
 		// renderer's diff, which then never blanks the rows a shrink vacated.
 		frame = strings.Repeat(" \n", pad) + frame
+		// printNewMessages releases band rows only when it has printed rows to
+		// fund them (release = min(printed rows, band excess)). A short or
+		// already-printed finalized reply funds nothing — without this paired
+		// decay the blank band between the transcript and the bottom panel
+		// persists indefinitely (the "gap above the composer" bug): each
+		// insert scrolls one padding row into native scrollback while the
+		// ticker repaints the full-height frame, so the deficit self-heals by
+		// exactly one row per print without ever printing a blank row.
+		m.bandDecay = pad
 	}
 	view := tea.NewView(frame)
 	view.AltScreen = false
@@ -113,7 +114,11 @@ func (m *model) View() tea.View {
 // write immediately), so any live-region row can be pushed into native
 // scrollback permanently; keeping the region small keeps headroom above the
 // frame larger than a print chunk (see maxPrintRows) so that never happens.
-const liveRegionCap = 12
+// It also bounds the frame-band deficit: the idle clear shrinks the frame by
+// up to this many rows, and a short finalized reply cannot always fund the
+// band release — a smaller cap means a smaller worst-case gap (and less
+// high-frequency churn fighting the insert-driven scrolling above it).
+const liveRegionCap = 6
 
 // liveRegionView renders the bounded managed region: the optimistic pending
 // user line and in-flight deltas/thinking, wrapped to content width and
@@ -218,78 +223,5 @@ func clampChrome(sections []string, maxHeight int) string {
 	return chrome
 }
 
-// timePrefixWidth is the printed width of "HH:MM:SS " — the muted local-time
-// prefix on every transcript row.
-const timePrefixWidth = 9
-
-// timePrefix formats a message's persisted created_at as a local "HH:MM:SS "
-// prefix; "" (no prefix) when the timestamp is absent or unparseable.
-func timePrefix(createdAt string) string {
-	t, err := time.Parse(time.RFC3339Nano, createdAt)
-	if err != nil {
-		return ""
-	}
-	return t.Local().Format("15:04:05") + " "
-}
-
-// renderMessage renders a transcript row for printing: the body (rendered at
-// width minus the timestamp column) prefixed on its first line with the muted
-// local created_at time, continuation lines indented to align. Rows without a
-// parseable timestamp — and terminals too narrow for the column — render the
-// body alone at full width. Every line stays tab-free and within width:
-// bubbletea's insertAbove row math desyncs otherwise (ansi.StringWidth counts
-// "\t" as 0 while the terminal advances to the next tab stop) and ghost rows
-// of the live frame leak into native scrollback.
-func renderMessage(message Message, width int) string {
-	prefix := timePrefix(message.CreatedAt)
-	if prefix == "" || width-timePrefixWidth < 20 {
-		return renderMessageBody(message, width)
-	}
-	body := renderMessageBody(message, width-timePrefixWidth)
-	if body == "" {
-		return ""
-	}
-	pad := strings.Repeat(" ", timePrefixWidth)
-	lines := strings.Split(body, "\n")
-	for i := range lines {
-		if i == 0 {
-			lines[i] = mutedStyle.Render(prefix) + lines[i]
-		} else if lines[i] != "" {
-			lines[i] = pad + lines[i]
-		}
-	}
-	return strings.Join(lines, "\n")
-}
-
-func renderMessageBody(message Message, width int) string {
-	switch message.Category {
-	case "user_input":
-		return userStyle.Render(fitWidth(message.Content, width))
-	case "tool", "tool_use", "tool_result", "subagent":
-		return mutedStyle.Render(toolCard(message.Content, width))
-	case "thinking":
-		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
-	case "system_notice":
-		return ""
-	case "task_notification":
-		return mutedStyle.Render(fitWidth(collapseTaskNotification(message.Content), width))
-	case "system_turn":
-		return mutedStyle.Render(fitWidth(collapseServerNotice(message.Content), width))
-	default:
-		renderer, err := glamour.NewTermRenderer(glamour.WithStyles(assistantGlamour), glamour.WithWordWrap(width))
-		if err == nil {
-			if rendered, renderErr := renderer.Render(message.Content); renderErr == nil {
-				return fitWidth(strings.TrimSpace(rendered), width)
-			}
-		}
-		return assistantStyle.Render(fitWidth(message.Content, width))
-	}
-}
-
-func truncate(value string, width int) string {
-	value = strings.ReplaceAll(value, "\n", " ")
-	if lipgloss.Width(value) <= width {
-		return value
-	}
-	return lipgloss.NewStyle().MaxWidth(max(1, width-1)).Render(value) + "…"
-}
+// renderMessage, renderMessageBody, timePrefix and truncate live in
+// view_message.go (message rendering for the print pipeline).

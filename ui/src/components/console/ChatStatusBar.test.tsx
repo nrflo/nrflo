@@ -8,7 +8,7 @@ describe('ChatStatusBar', () => {
       <ChatStatusBar
         engine="claude"
         model="sonnet"
-        profile="t0-bare"
+        profile="t0-decider"
         workDir="/tmp/w"
         contextLeft={42}
         cost={1.234}
@@ -18,7 +18,7 @@ describe('ChatStatusBar', () => {
 
     expect(screen.getByText('claude')).toBeInTheDocument()
     expect(screen.getByText('· sonnet')).toBeInTheDocument()
-    expect(screen.getByText('t0-bare')).toBeInTheDocument()
+    expect(screen.getByText('t0-decider')).toBeInTheDocument()
     expect(screen.getByText('/tmp/w')).toBeInTheDocument()
     expect(screen.getByText('Context left: 42%')).toBeInTheDocument()
     expect(screen.getByText('~$1.23')).toBeInTheDocument()

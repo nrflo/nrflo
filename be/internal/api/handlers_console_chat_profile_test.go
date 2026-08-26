@@ -52,7 +52,7 @@ func TestHandleCreateConsoleChat_T0DeciderProfile_ThreadsNativeToolsNone(t *test
 	if eng.startSpec.NativeToolsCSV != "none" {
 		t.Errorf("startSpec.NativeToolsCSV = %q, want none", eng.startSpec.NativeToolsCSV)
 	}
-	if eng.startSpec.ContextBudgetTokens != 50000 {
-		t.Errorf("startSpec.ContextBudgetTokens = %d, want 50000", eng.startSpec.ContextBudgetTokens)
+	if eng.startSpec.ContextBudgetTokens != 30000 {
+		t.Errorf("startSpec.ContextBudgetTokens = %d, want 30000", eng.startSpec.ContextBudgetTokens)
 	}
 }

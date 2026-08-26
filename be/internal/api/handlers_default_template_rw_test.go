@@ -216,7 +216,7 @@ func TestHandleDeleteDefaultTemplate_NotFound(t *testing.T) {
 func TestHandleDefaultTemplate_FullCRUDFlow(t *testing.T) {
 	s := newDefaultTemplateServer(t)
 
-	// 1. List — 25 pre-seeded readonly (migration 064 adds finish-reminder + system-prompt-suffix; migration 126 adds system-prompt; migration 176 adds working-set; migration 177 adds api-system-prompt; migration 178 adds the three tier-t* templates; migration 188 adds delegation-guidance; migration 190 adds tier-t0-bare; migration 199 adds crash-resume; migration 203 adds stepwise-guidance; migration 219 adds validation-failure + timeout-restart; migration 228 adds workspace-live-tree + workspace-worktree).
+	// 1. List — 25 pre-seeded readonly templates; migration 243 replaces tier-t0-bare with tier-t0-hands.
 	listRR := httptest.NewRecorder()
 	s.handleListDefaultTemplates(listRR, httptest.NewRequest(http.MethodGet, "/api/v1/default-templates", nil))
 	if got := decodeDefaultTemplateList(t, listRR); len(got) != 25 {

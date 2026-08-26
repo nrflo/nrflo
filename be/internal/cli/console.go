@@ -46,7 +46,7 @@ resume; Ctrl+X closes the server-owned conversation.
 Examples:
   nrflo_server console
   nrflo_server console --engine codex --model gpt-5.5 --effort high
-  nrflo_server console --profile t0-bare
+  nrflo_server console --profile t0-decider
   nrflo_server console --resume <session-id>
   nrflo_server console --engine api --model sonnet-5 --token <token>`,
 	Args: cobra.NoArgs,
@@ -71,7 +71,7 @@ Examples:
 func init() {
 	consoleCmd.Flags().StringVar(&consoleEngineFlag, "engine", "claude", "conversation engine: claude, codex, or api")
 	consoleCmd.Flags().StringVar(&consoleModelFlag, "model", "", "model registry id (API engine requires one; CLI engines may use their default)")
-	consoleCmd.Flags().StringVar(&consoleProfileFlag, "profile", "", "console profile name (e.g. t0-decider, t0-hands, t0-bare); unset model/effort inherit the profile's defaults")
+	consoleCmd.Flags().StringVar(&consoleProfileFlag, "profile", "", "console profile name (t0-decider or t0-hands); unset model/effort inherit the profile's defaults")
 	consoleCmd.Flags().StringVar(&consoleProjectFlag, "project", "", "project id (default: NRFLO_PROJECT, cwd match, then global)")
 	consoleCmd.Flags().StringVar(&consoleServerFlag, "server", "", "nrflo_server base URL (default: NRFLO_SERVER_URL, then "+defaultConsoleServer+")")
 	consoleCmd.Flags().StringVar(&consoleTokenFlag, "token", "", "remote service token (default: NRFLO_MCP_TOKEN)")

@@ -10,8 +10,8 @@ export interface ConsoleChatSummary {
   ended_at?: string
   context_left?: number
   live: boolean
-  // Console profile the chat was created from (e.g. 't0-decider',
-  // 't0-hands'); omitted for chats created via the manual/Custom path.
+  // Console profile the chat was created from (t0-decider or t0-hands);
+  // omitted for chats created via the manual/Custom path.
   profile?: string
   // Effective YOLO (approval-gate-down) state — BE already resolves
   // NULL->global before sending, so this is always a plain boolean.
@@ -61,7 +61,7 @@ export interface CreateConsoleChatRequest {
   // Optional injectable system-template override; empty/omitted preserves
   // today's mode-default behavior.
   system_template_id?: string
-  // Optional console profile (e.g. 't0-decider', 't0-hands'); when set, the
+  // Optional console profile (t0-decider or t0-hands); when set, the
   // server resolves engine/model/effort/system-template/tool-catalogue
   // defaults from the profile registry.
   profile?: string

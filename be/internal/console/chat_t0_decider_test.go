@@ -88,7 +88,7 @@ func TestChatT0Decider_ExposesExactCatalogue_FSToolsStructurallyAbsent(t *testin
 			t.Errorf("Handlers missing catalogued tool %q", name)
 		}
 	}
-	for _, banned := range []string{"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch"} {
+	for _, banned := range []string{"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch", "web_search"} {
 		if _, ok := api.Handlers[banned]; ok {
 			t.Errorf("Handlers unexpectedly contains %q", banned)
 		}
@@ -115,8 +115,8 @@ func TestChatT0Decider_ExposesExactCatalogue_FSToolsStructurallyAbsent(t *testin
 	if spec.MaxContext != 200000 {
 		t.Errorf("spec.MaxContext = %d, want 200000 (opus-4-8 CLIContext)", spec.MaxContext)
 	}
-	if spec.ContextBudgetTokens != 50000 {
-		t.Errorf("spec.ContextBudgetTokens = %d, want 50000", spec.ContextBudgetTokens)
+	if spec.ContextBudgetTokens != 30000 {
+		t.Errorf("spec.ContextBudgetTokens = %d, want 30000", spec.ContextBudgetTokens)
 	}
 }
 

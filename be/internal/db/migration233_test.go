@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// 000232 appended workflow_wait guidance to the tier-t0-decider/tier-t0-bare
+// The current tier-t0-decider template retains the post-000233
 // injectables; 000233 replaced it with wait-for-notification guidance (the
 // server pushes delegation/sub-workflow completions into the launching
 // console chat — console.ChatNotifier). This asserts the post-233 state.
@@ -16,7 +16,7 @@ func TestMigration233_T0TemplatesWaitForNotification(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	for _, id := range []string{"tier-t0-decider", "tier-t0-bare"} {
+	for _, id := range []string{"tier-t0-decider"} {
 		var template, defaultTemplate string
 		err := pool.QueryRow(
 			`SELECT template, default_template FROM default_templates WHERE id = ?`, id,

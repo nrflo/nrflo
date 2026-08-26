@@ -85,13 +85,13 @@ func TestHandleListDefaultTemplates_SixReadonly(t *testing.T) {
 	// "API system prompt" — uppercase letters sort before lowercase under SQLite's default binary collation;
 	// migration 178 adds tier-t0-decider/tier-t1-executor/tier-t2-extractor, sorting after ticket-creator;
 	// migration 188 adds delegation-guidance, sorting right after api-system-prompt;
-	// migration 190 adds tier-t0-bare, sorting right before tier-t0-decider;
+	// migration 243 replaces tier-t0-bare with tier-t0-hands;
 	// migration 199 adds crash-resume, sorting right after callback;
 	// migration 203 adds stepwise-guidance, sorting right after setup-analyzer).
 	// migration 219 adds timeout-restart (sorting right after tier-t2-extractor)
 	// and validation-failure (sorting right after user-instructions).
 	// migration 228 adds workspace-live-tree/workspace-worktree (sorting right after working-set).
-	wantOrder := []string{"api-system-prompt", "callback", "crash-resume", "delegation-guidance", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "stepwise-guidance", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-bare", "tier-t0-decider", "tier-t1-executor", "tier-t2-extractor", "timeout-restart", "user-instructions", "validation-failure", "working-set", "workspace-live-tree", "workspace-worktree"}
+	wantOrder := []string{"api-system-prompt", "callback", "crash-resume", "delegation-guidance", "doc-updater", "finish-reminder", "implementor", "low-context", "qa-verifier", "setup-analyzer", "stepwise-guidance", "system-prompt", "system-prompt-suffix", "test-writer", "ticket-creator", "tier-t0-decider", "tier-t0-hands", "tier-t1-executor", "tier-t2-extractor", "timeout-restart", "user-instructions", "validation-failure", "working-set", "workspace-live-tree", "workspace-worktree"}
 	for i, want := range wantOrder {
 		if list[i].ID != want {
 			t.Errorf("list[%d].ID = %q, want %q", i, list[i].ID, want)

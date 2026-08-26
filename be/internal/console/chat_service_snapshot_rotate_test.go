@@ -23,7 +23,7 @@ func TestSnapshot_RotateAtPct(t *testing.T) {
 		t.Errorf("RotateAtPct (no profile) = %d, want 50 (config pct of window)", snap.RotateAtPct)
 	}
 
-	// t0-decider's 50k budget caps the 200k-window ceiling at 25%.
+	// t0-decider's 30k budget caps the 200k-window ceiling at 15%.
 	deciderSID, err := svc.Create("claude", "", "", chatTestProjectID, "", "t0-decider", false)
 	if err != nil {
 		t.Fatalf("Create t0-decider: %v", err)
@@ -32,8 +32,8 @@ func TestSnapshot_RotateAtPct(t *testing.T) {
 	if !ok {
 		t.Fatal("Snapshot: no live t0-decider session")
 	}
-	if snap.RotateAtPct != 25 {
-		t.Errorf("RotateAtPct (t0-decider) = %d, want 25 (50000 budget / 200000 window)", snap.RotateAtPct)
+	if snap.RotateAtPct != 15 {
+		t.Errorf("RotateAtPct (t0-decider) = %d, want 15 (30000 budget / 200000 window)", snap.RotateAtPct)
 	}
 
 	setProactiveRestartConsolePct(t, pool, "0")

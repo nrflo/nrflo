@@ -102,8 +102,8 @@ func TestEffortItemsAlwaysStartWithDefault(t *testing.T) {
 func TestSelectionItemsProfileBranches(t *testing.T) {
 	catalog := Catalog{
 		Profiles: []types.ConsoleProfileOption{{
-			Name: "t0-bare", DisplayName: "T0 Bare", Description: "Pure-delegation T0",
-			DefaultEngine: "claude", DefaultModelID: "opus-5", DefaultEffort: "xhigh",
+			Name: "t0-decider", DisplayName: "T0 Decider", Description: "Delegating T0",
+			DefaultEngine: "claude", DefaultModelID: "opus-5", DefaultEffort: "high",
 		}},
 		Engines: []types.ConsoleEngineOption{
 			{ID: "claude", DisplayName: "Claude", Kind: "cli", Brand: "claude", Enabled: true,
@@ -116,21 +116,21 @@ func TestSelectionItemsProfileBranches(t *testing.T) {
 	}
 
 	profile := items[0].(selectionItem)
-	if profile.title != "T0 Bare" || profile.crumb != "T0 Bare" || len(profile.children) != 2 {
+	if profile.title != "T0 Decider" || profile.crumb != "T0 Decider" || len(profile.children) != 2 {
 		t.Fatalf("profile branch = %+v, want defaults leaf + Claude brand", profile)
 	}
 	defaults := profile.children[0].(selectionItem)
-	want := Selection{Engine: "claude", Model: "opus-5", Effort: "xhigh", Profile: "t0-bare"}
+	want := Selection{Engine: "claude", Model: "opus-5", Effort: "high", Profile: "t0-decider"}
 	if defaults.title != "Profile defaults" || defaults.selection != want {
 		t.Fatalf("defaults leaf = %+v", defaults)
 	}
-	if defaults.detail != "claude / opus-5 · xhigh" {
+	if defaults.detail != "claude / opus-5 · high" {
 		t.Fatalf("defaults detail = %q", defaults.detail)
 	}
 
 	stamped := profile.children[1].(selectionItem).
 		children[0].(selectionItem).children[0].(selectionItem).children[0].(selectionItem)
-	if stamped.selection != (Selection{Engine: "claude", Model: "sonnet-5", Profile: "t0-bare"}) {
+	if stamped.selection != (Selection{Engine: "claude", Model: "sonnet-5", Profile: "t0-decider"}) {
 		t.Fatalf("stamped brand-tree leaf = %+v", stamped)
 	}
 

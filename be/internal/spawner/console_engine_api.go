@@ -163,7 +163,7 @@ func (e *apiConsoleEngine) Start(ctx context.Context, spec EngineSpec) error {
 		Stream:          &apiEngineStream{e: e},
 		Observer:        costOnlyObserver{sessionID: spec.SessionID},
 		// A profile's ContextBudgetTokens wins when set (e.g. t0-decider's
-		// 50k); otherwise the derived per-model default (context_budget_fraction
+		// 30k); otherwise the derived per-model default (context_budget_fraction
 		// * MaxContext, or the context_budget_default absolute override), same
 		// as a console chat with no profile always got. Idle-gap GC is still
 		// driven by cache_ttl_sec.

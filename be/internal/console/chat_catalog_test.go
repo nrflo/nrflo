@@ -79,15 +79,15 @@ func TestChatService_Catalog_ListsBuiltinProfiles(t *testing.T) {
 	if !ok {
 		t.Fatal("catalog.Profiles missing t0-decider")
 	}
-	if decider.DefaultEngine != "claude" || decider.DefaultModelID != "opus-5" || decider.ContextBudgetTokens != 50000 || !decider.RefineryDefault {
-		t.Errorf("t0-decider profile option = %+v, want claude/opus-5/50000/refinery-on", decider)
+	if decider.DefaultEngine != "claude" || decider.DefaultModelID != "opus-5" || decider.DefaultEffort != "high" || decider.ContextBudgetTokens != 30000 || !decider.RefineryDefault {
+		t.Errorf("t0-decider profile option = %+v, want claude/opus-5/high/30000/refinery-on", decider)
 	}
 	hands, ok := byName["t0-hands"]
 	if !ok {
 		t.Fatal("catalog.Profiles missing t0-hands")
 	}
-	if hands.DefaultModelID != "sonnet-5" || hands.ContextBudgetTokens != 150000 || !hands.RefineryDefault {
-		t.Errorf("t0-hands profile option = %+v, want sonnet-5/150000/refinery-on", hands)
+	if hands.DefaultModelID != "sonnet-5" || hands.DefaultEffort != "medium" || hands.ContextBudgetTokens != 80000 || !hands.RefineryDefault {
+		t.Errorf("t0-hands profile option = %+v, want sonnet-5/medium/80000/refinery-on", hands)
 	}
 }
 

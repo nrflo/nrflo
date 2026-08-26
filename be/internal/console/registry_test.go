@@ -125,7 +125,7 @@ func TestBuildRegistry_T0DeciderCatalogue_ExactSet(t *testing.T) {
 			t.Errorf("registry missing catalogued tool %q", name)
 		}
 	}
-	for _, banned := range []string{"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch"} {
+	for _, banned := range []string{"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch", "web_search"} {
 		if _, ok := reg[banned]; ok {
 			t.Errorf("t0-decider registry unexpectedly contains %q (structurally, this registry composes no fs/bash handler at all)", banned)
 		}
@@ -143,41 +143,6 @@ func TestBuildRegistry_T0DeciderCatalogue_ExactSet(t *testing.T) {
 			if _, ok := reg[name]; ok {
 				t.Errorf("t0-decider registry unexpectedly contains non-catalogued tool %q", name)
 			}
-		}
-	}
-}
-
-// TestBuildRegistry_T0BareCatalogue_ExactSet mirrors
-// TestBuildRegistry_T0DeciderCatalogue_ExactSet for the t0-bare profile: its
-// 15-tool catalogue filters BuildRegistry down to exactly that set, and
-// fs/bash/findings/artifact/consult/web tools are structurally absent.
-func TestBuildRegistry_T0BareCatalogue_ExactSet(t *testing.T) {
-	env := newConsoleTestEnv(t)
-	profile, err := ProfileByName("t0-bare")
-	if err != nil {
-		t.Fatalf("ProfileByName: %v", err)
-	}
-	reg, err := BuildRegistry(env.deps, profile.Catalogue)
-	if err != nil {
-		t.Fatalf("BuildRegistry(t0-bare catalogue): %v", err)
-	}
-	if len(reg) != len(profile.Catalogue) {
-		t.Fatalf("len(reg) = %d, want %d (exactly the catalogue)", len(reg), len(profile.Catalogue))
-	}
-	if len(profile.Catalogue) != 15 {
-		t.Fatalf("len(profile.Catalogue) = %d, want 15", len(profile.Catalogue))
-	}
-	for _, name := range profile.Catalogue {
-		if _, ok := reg[name]; !ok {
-			t.Errorf("registry missing catalogued tool %q", name)
-		}
-	}
-	for _, banned := range []string{
-		"read_file", "edit_file", "write_file", "bash", "glob", "grep", "web_fetch",
-		"web_search", "consult", "project_findings_add", "ticket_create", "artifact_list",
-	} {
-		if _, ok := reg[banned]; ok {
-			t.Errorf("t0-bare registry unexpectedly contains %q", banned)
 		}
 	}
 }

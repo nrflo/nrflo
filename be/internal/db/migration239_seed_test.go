@@ -73,7 +73,7 @@ func TestMigration239_GuidanceRoutesToVerifier(t *testing.T) {
 		t.Error("_t1_executor prompt does not route re-checks to the verifier tier")
 	}
 
-	for _, id := range []string{"delegation-guidance", "tier-t0-decider", "tier-t0-bare"} {
+	for _, id := range []string{"delegation-guidance", "tier-t0-decider"} {
 		var tpl, def string
 		if err := pool.QueryRow(
 			`SELECT template, default_template FROM default_templates WHERE id = ?`, id,
@@ -84,7 +84,7 @@ func TestMigration239_GuidanceRoutesToVerifier(t *testing.T) {
 			t.Errorf("%s template/default_template does not mention the verifier tier", id)
 		}
 	}
-	for _, id := range []string{"tier-t0-decider", "tier-t0-bare"} {
+	for _, id := range []string{"tier-t0-decider"} {
 		var tpl string
 		if err := pool.QueryRow(
 			`SELECT template FROM default_templates WHERE id = ?`, id,

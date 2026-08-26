@@ -53,9 +53,9 @@ type Profile struct {
 
 // t0DeciderCatalogue is the T0 decider's tool allowlist: delegation +
 // read/drive access to workflows, sub-workflow plans, findings, tickets,
-// artifacts, and web search/consult — deliberately no fs/bash (the profile's
-// NativeToolPolicy also locks out the engine's own native tools) and no
-// retry_failed/project_list/project_status. workflow_wait is included: with
+// artifacts, and consult — deliberately no fs/bash or direct web search.
+// NativeToolPolicy also locks out the engine's own native tools; the catalogue
+// omits retry_failed/project_list/project_status. workflow_wait is included: with
 // no bash/sleep, a decider denied a blocking wait invents sleep-timer
 // delegations to pace get_subworkflow polling instead (nrworkflow-513592).
 var t0DeciderCatalogue = []string{
@@ -67,18 +67,7 @@ var t0DeciderCatalogue = []string{
 	"project_findings_get", "project_findings_delete",
 	"ticket_create", "ticket_update", "ticket_add_dependency", "ticket_list", "ticket_get", "ticket_current",
 	"artifact_list", "artifact_get",
-	"web_search", "consult",
-}
-
-// t0BareCatalogue is the T0 bare profile's tool allowlist: pure delegation +
-// read/drive access to workflows, sub-workflow plans, and tickets — no
-// findings, artifacts, web search/consult, or fs/bash. workflow_wait is the
-// profile's only blocking wait (see t0DeciderCatalogue). Exactly 15 tools.
-var t0BareCatalogue = []string{
-	"delegate", "get_delegation", "merge_delegation",
-	"dynamic_workflow", "get_subworkflow", "revise_plan", "approve_plan",
-	"workflow_run", "workflow_list", "workflow_get", "workflow_continue", "workflow_stop", "workflow_wait",
-	"ticket_list", "ticket_current",
+	"consult",
 }
 
 // builtinProfiles is the registry populated by init(). Unexported: callers go
@@ -93,11 +82,11 @@ func init() {
 	registerProfile(Profile{
 		Name:                "t0-decider",
 		DisplayName:         "T0 Decider",
-		Description:         "Decides, plans, judges, and synthesizes only — delegates all execution. No fs/bash, restricted tool catalogue, tight context budget.",
+		Description:         "Decides, plans, judges, and synthesizes; delegates execution and evidence gathering. No fs/bash, restricted tools, tight context budget.",
 		DefaultEngine:       "claude",
 		DefaultModelID:      "opus-5",
-		DefaultEffort:       "xhigh",
-		ContextBudgetTokens: 50000,
+		DefaultEffort:       "high",
+		ContextBudgetTokens: 30000,
 		RefineryDefault:     true,
 		SystemTemplateID:    "tier-t0-decider",
 		NativeToolPolicy:    NativeToolPolicyNone,
@@ -107,29 +96,15 @@ func init() {
 	registerProfile(Profile{
 		Name:                "t0-hands",
 		DisplayName:         "T0 Hands",
-		Description:         "Full-tools companion to T0 Decider: executes directly instead of delegating, seeded with the decider's refinery digest.",
+		Description:         "Bounded full-tools companion to T0 Decider: executes one coherent work slice directly, seeded with the decider's refinery digest.",
 		DefaultEngine:       "claude",
 		DefaultModelID:      "sonnet-5",
-		DefaultEffort:       "",
-		ContextBudgetTokens: 150000,
+		DefaultEffort:       "medium",
+		ContextBudgetTokens: 80000,
 		RefineryDefault:     true,
-		SystemTemplateID:    "",
+		SystemTemplateID:    "tier-t0-hands",
 		NativeToolPolicy:    NativeToolPolicyFull,
 		Catalogue:           nil,
-		SiblingFlows:        true,
-	})
-	registerProfile(Profile{
-		Name:                "t0-bare",
-		DisplayName:         "T0 Bare",
-		Description:         "Pure-delegation T0: decides and delegates only, with the narrowest tool catalogue of the three t0 profiles.",
-		DefaultEngine:       "claude",
-		DefaultModelID:      "opus-5",
-		DefaultEffort:       "xhigh",
-		ContextBudgetTokens: 30000,
-		RefineryDefault:     true,
-		SystemTemplateID:    "tier-t0-bare",
-		NativeToolPolicy:    NativeToolPolicyNone,
-		Catalogue:           t0BareCatalogue,
 		SiblingFlows:        true,
 	})
 }

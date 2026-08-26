@@ -3,7 +3,7 @@ package spawner
 import "testing"
 
 // TestProactiveRestartConsoleThreshold_BudgetCapsPctOfWindow verifies a
-// console.Profile's ContextBudgetTokens (e.g. t0-decider's 50000) caps the
+// console.Profile's ContextBudgetTokens (e.g. t0-decider's 30000) caps the
 // percentage-of-window ceiling when it is the smaller value.
 func TestProactiveRestartConsoleThreshold_BudgetCapsPctOfWindow(t *testing.T) {
 	t.Parallel()
@@ -11,10 +11,10 @@ func TestProactiveRestartConsoleThreshold_BudgetCapsPctOfWindow(t *testing.T) {
 	if err := pool.SetConfig("proactive_restart_console_pct", "75"); err != nil {
 		t.Fatalf("SetConfig: %v", err)
 	}
-	// 75% of 200000 = 150000, well above the 50000 budget.
-	got := ProactiveRestartConsoleThreshold(pool, 200000, 50000)
-	if got != 50000 {
-		t.Errorf("ProactiveRestartConsoleThreshold(200000, 50000) = %d, want 50000 (budget wins)", got)
+	// 75% of 200000 = 150000, well above the 30000 budget.
+	got := ProactiveRestartConsoleThreshold(pool, 200000, 30000)
+	if got != 30000 {
+		t.Errorf("ProactiveRestartConsoleThreshold(200000, 30000) = %d, want 30000 (budget wins)", got)
 	}
 }
 
@@ -27,7 +27,7 @@ func TestProactiveRestartConsoleThreshold_BudgetAboveWindow_PctWins(t *testing.T
 	if err := pool.SetConfig("proactive_restart_console_pct", "75"); err != nil {
 		t.Fatalf("SetConfig: %v", err)
 	}
-	// 75% of 200000 = 150000, under the 150000 t0-hands-sized budget: equal,
+	// 75% of 200000 = 150000, equal to the supplied budget,
 	// so pct-of-window still governs (not raised above it).
 	got := ProactiveRestartConsoleThreshold(pool, 200000, 150000)
 	if got != 150000 {
@@ -67,20 +67,20 @@ func TestProactiveRestartConsoleThreshold_NoMaxContext_ReturnsZero(t *testing.T)
 }
 
 // TestWatcherBudget_ProfileBudgetWins verifies a positive profile budget
-// (e.g. t0-decider's 50000) is used verbatim, ignoring the global default.
+// (e.g. t0-decider's 30000) is used verbatim, ignoring the global default.
 func TestWatcherBudget_ProfileBudgetWins(t *testing.T) {
 	t.Parallel()
 	pool, _ := newRestartConfigPool(t)
 	if err := pool.SetConfig("context_budget_default", "9999"); err != nil {
 		t.Fatalf("SetConfig: %v", err)
 	}
-	if got := watcherBudget(pool, 50000, 200000); got != 50000 {
-		t.Errorf("watcherBudget(pool, 50000, 200000) = %d, want 50000", got)
+	if got := watcherBudget(pool, 30000, 200000); got != 30000 {
+		t.Errorf("watcherBudget(pool, 30000, 200000) = %d, want 30000", got)
 	}
 }
 
 // TestWatcherBudget_NoProfile_FallsBackToGlobalDefault verifies budget=0 (no
-// profile, or t0-hands-style unset override) falls back to the
+// profile) falls back to the
 // context_budget_default global config — today's pre-profile behavior.
 func TestWatcherBudget_NoProfile_FallsBackToGlobalDefault(t *testing.T) {
 	t.Parallel()

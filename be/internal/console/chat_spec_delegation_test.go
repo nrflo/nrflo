@@ -11,8 +11,8 @@ import (
 // TestBuildChatEngineSpec_CatalogueWithDelegate_AppendsGuidanceOnce verifies
 // buildChatEngineSpec's Catalogue param feeds
 // spawner.AppendDelegationGuidanceForTools: a catalogue enumerating
-// "delegate" (e.g. t0-bare's) gets the delegation-guidance injectable
-// appended after the rendered tier-t0-bare role template, exactly once.
+// "delegate" (t0-decider's) gets the delegation-guidance injectable
+// appended after the rendered tier-t0-decider role template, exactly once.
 func TestBuildChatEngineSpec_CatalogueWithDelegate_AppendsGuidanceOnce(t *testing.T) {
 	t.Parallel()
 	pool, clk := newSpecTestPool(t)
@@ -20,7 +20,7 @@ func TestBuildChatEngineSpec_CatalogueWithDelegate_AppendsGuidanceOnce(t *testin
 
 	spec, err := buildChatEngineSpec(pool, clk, chatSpecParams{
 		SessionID: "s1", ProjectID: "proj-spec-delegation", Engine: "codex", ModelID: "",
-		SpawnToken: "tok", SystemTemplateID: "tier-t0-bare",
+		SpawnToken: "tok", SystemTemplateID: "tier-t0-decider",
 		Catalogue: []string{"delegate", "get_delegation", "ticket_list"},
 	})
 	if err != nil {
@@ -32,8 +32,8 @@ func TestBuildChatEngineSpec_CatalogueWithDelegate_AppendsGuidanceOnce(t *testin
 	if !strings.Contains(spec.SystemPrompt, "extractor") {
 		t.Errorf("spec.SystemPrompt missing %q anchor; got %q", "extractor", spec.SystemPrompt)
 	}
-	if got := strings.Count(spec.SystemPrompt, "## Role: T0 Bare"); got != 1 {
-		t.Errorf("count(%q) = %d, want 1; spec.SystemPrompt = %q", "## Role: T0 Bare", got, spec.SystemPrompt)
+	if got := strings.Count(spec.SystemPrompt, "## Role: T0 Decider"); got != 1 {
+		t.Errorf("count(%q) = %d, want 1; spec.SystemPrompt = %q", "## Role: T0 Decider", got, spec.SystemPrompt)
 	}
 }
 

@@ -13,10 +13,10 @@ import (
 // TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns drives >=20 turns
 // through the real EventTurnCompleted->pumpChatEvents->maybeRotate path with
 // a pre-folded digest present: whenever reported usage crosses the profile's
-// 50k budget (well under opus-4-8's 200k window, so the pct-of-window
+// 30k budget (well under opus-4-8's 200k window, so the pct-of-window
 // default ceiling never governs — ProactiveRestartConsoleThreshold caps at
 // budget), the session rotates in place and resets to 0 tokens used, so
-// currentTokens() is always observed under the 50k budget between turns.
+// currentTokens() is always observed under the 30k budget between turns.
 func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 	t.Parallel()
 	svc, pool, hub, factory := newT0DeciderTestService(t, nil)
@@ -34,7 +34,7 @@ func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 	}
 
 	ch := subscribeChatSession(t, hub, sid)
-	const budget = 50000
+	const budget = 30000
 	for i := 0; i < 20; i++ {
 		sess, ok := svc.get(sid)
 		if !ok {
@@ -46,7 +46,7 @@ func TestChatT0Decider_ContextStaysUnderBudget_AcrossManyTurns(t *testing.T) {
 		eng := factory.last()
 
 		// Simulate steadily climbing usage: contextLeftPct steps down each
-		// turn so currentTokens grows toward (and past) the 50k budget.
+		// turn so currentTokens grows toward (and past) the 30k budget.
 		pctLeft := 100 - ((i%10)+1)*8 // ranges from 92 down to 12, cycling
 		eng.emit(spawner.EngineEvent{Type: spawner.EventTokenUsage, SessionID: sid, ContextLeftPct: pctLeft})
 		eng.emit(spawner.EngineEvent{Type: spawner.EventTurnCompleted, SessionID: sid})

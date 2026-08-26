@@ -8,7 +8,7 @@ import { useConsoleCatalog, useSwitchConsoleChatModel, useOpenHandsSibling } fro
 // Profiles that support sibling flows (backend Profile.SiblingFlows): their
 // chats never mutate their live engine in place, so switching model or
 // opening the t0-hands companion always spawns a sibling instead.
-const T0_PROFILES = new Set(['t0-decider', 't0-hands', 't0-bare'])
+const T0_PROFILES = new Set(['t0-decider', 't0-hands'])
 
 export function isT0Profile(profile: string | undefined): boolean {
   return !!profile && T0_PROFILES.has(profile)

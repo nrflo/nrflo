@@ -205,53 +205,6 @@ func TestChatService_OpenHandsSibling_OpensT0HandsProfile(t *testing.T) {
 	}
 }
 
-// TestChatService_SwitchModel_T0BareOrigin_KeepsProfile verifies a t0-bare
-// origin chat can SwitchModel and the sibling stays under t0-bare.
-func TestChatService_SwitchModel_T0BareOrigin_KeepsProfile(t *testing.T) {
-	t.Parallel()
-	svc, _, _, _ := newChatTestService(t)
-	sid, err := svc.Create("claude", "", "", chatTestProjectID, "", "t0-bare", false)
-	if err != nil {
-		t.Fatalf("Create(t0-bare): %v", err)
-	}
-
-	siblingID, err := svc.SwitchModel(sid, "claude", "sonnet-5", "")
-	if err != nil {
-		t.Fatalf("SwitchModel: %v", err)
-	}
-	sibSess, ok := svc.get(siblingID)
-	if !ok {
-		t.Fatal("sibling session not found after SwitchModel")
-	}
-	if sibSess.Profile() != "t0-bare" {
-		t.Errorf("sibling Profile() = %q, want t0-bare (SwitchModel keeps the origin's profile)", sibSess.Profile())
-	}
-}
-
-// TestChatService_OpenHandsSibling_T0BareOrigin_OpensT0Hands verifies a
-// t0-bare origin (not just t0-decider) can open a t0-hands sibling — the
-// gate is Profile.SiblingFlows, not a hardcoded profile name.
-func TestChatService_OpenHandsSibling_T0BareOrigin_OpensT0Hands(t *testing.T) {
-	t.Parallel()
-	svc, _, _, _ := newChatTestService(t)
-	sid, err := svc.Create("claude", "", "", chatTestProjectID, "", "t0-bare", false)
-	if err != nil {
-		t.Fatalf("Create(t0-bare): %v", err)
-	}
-
-	siblingID, err := svc.OpenHandsSibling(sid)
-	if err != nil {
-		t.Fatalf("OpenHandsSibling: %v", err)
-	}
-	sibSess, ok := svc.get(siblingID)
-	if !ok {
-		t.Fatal("sibling session not found after OpenHandsSibling")
-	}
-	if sibSess.Profile() != "t0-hands" {
-		t.Errorf("sibling Profile() = %q, want t0-hands", sibSess.Profile())
-	}
-}
-
 // TestChatService_SwitchModel_T0HandsOrigin_NowAllowed verifies a t0-hands
 // origin — previously refused under the hardcoded t0-decider-only gate —
 // can now SwitchModel/OpenHandsSibling per Profile.SiblingFlows.

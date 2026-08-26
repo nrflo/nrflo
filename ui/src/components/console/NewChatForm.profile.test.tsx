@@ -48,8 +48,8 @@ function makeProfile(overrides: Partial<ConsoleProfileOption> = {}): ConsoleProf
     display_name: 'T0 Decider',
     default_engine: 'claude',
     default_model_id: 'opus-4-8',
-    default_effort: 'xhigh',
-    context_budget_tokens: 50000,
+    default_effort: 'high',
+    context_budget_tokens: 30000,
     refinery_default: true,
     system_template_id: 'tier-t0-decider',
     ...overrides,
@@ -60,10 +60,10 @@ const T0_HANDS = makeProfile({
   name: 't0-hands',
   display_name: 'T0 Hands',
   default_model_id: 'sonnet-5',
-  default_effort: undefined,
-  context_budget_tokens: 150000,
-  refinery_default: false,
-  system_template_id: undefined,
+  default_effort: 'medium',
+  context_budget_tokens: 80000,
+  refinery_default: true,
+  system_template_id: 'tier-t0-hands',
 })
 
 function makeCatalog(engines: ConsoleEngineOption[], profiles: ConsoleProfileOption[] = []): ConsoleCatalog {
@@ -132,7 +132,7 @@ describe('NewChatForm - profile picker', () => {
 
     expect(screen.getByRole('button', { name: 'T0 Decider' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Opus 4.8' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Xhigh' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'High' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tier T0 Decider' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'New chat' }))
@@ -140,7 +140,7 @@ describe('NewChatForm - profile picker', () => {
     expect(mutateAsync).toHaveBeenCalledWith({
       engine: 'claude',
       model: 'opus-4-8',
-      reasoning_effort: 'xhigh',
+      reasoning_effort: 'high',
       system_template_id: 'tier-t0-decider',
       profile: 't0-decider',
     })

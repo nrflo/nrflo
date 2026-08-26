@@ -46,13 +46,13 @@ func TestStatusBar_RotateAtPct(t *testing.T) {
 // name (as used by --profile) when set, and is omitted entirely when empty.
 func TestStatusBar_Profile(t *testing.T) {
 	m := &model{detail: ChatDetail{Engine: "claude", Model: "opus-5", ProjectID: "proj-1"}}
-	if got := m.statusBar(); strings.Contains(got, "t0-bare") {
+	if got := m.statusBar(); strings.Contains(got, "t0-decider") {
 		t.Errorf("statusBar() with empty Profile = %q, want no profile segment", got)
 	}
 
-	m.detail.Profile = "t0-bare"
-	if got := m.statusBar(); !strings.Contains(got, "t0-bare") {
-		t.Errorf("statusBar() with Profile=t0-bare = %q, want the profile name rendered", got)
+	m.detail.Profile = "t0-decider"
+	if got := m.statusBar(); !strings.Contains(got, "t0-decider") {
+		t.Errorf("statusBar() with Profile=t0-decider = %q, want the profile name rendered", got)
 	}
 }
 

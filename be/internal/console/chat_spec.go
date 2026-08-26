@@ -26,7 +26,7 @@ type chatSpecParams struct {
 	// Catalogue is the profile's BuildRegistry allowlist (nil for no
 	// profile/full tool set). Passed to
 	// spawner.AppendDelegationGuidanceForTools so a profile enumerating
-	// `delegate` (t0-decider, t0-bare) gets the same readonly
+	// `delegate` (t0-decider) gets the same readonly
 	// delegation-guidance append every other prompt-assembly seam applies.
 	Catalogue []string
 

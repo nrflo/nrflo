@@ -46,7 +46,7 @@ func TestHandleListDefaultTemplates_FilterByTypeInjectable(t *testing.T) {
 		"system-prompt-suffix": true, "finish-reminder": true, "system-prompt": true, "working-set": true,
 		"api-system-prompt": true,
 		"tier-t0-decider":   true, "tier-t1-executor": true, "tier-t2-extractor": true,
-		"delegation-guidance": true, "tier-t0-bare": true, "crash-resume": true, "stepwise-guidance": true,
+		"delegation-guidance": true, "tier-t0-hands": true, "crash-resume": true, "stepwise-guidance": true,
 		"validation-failure": true, "timeout-restart": true,
 		"workspace-live-tree": true, "workspace-worktree": true}
 	for _, tmpl := range list {

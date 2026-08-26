@@ -15,7 +15,7 @@ func TestMigration240_ConsoleAsyncDelegateGuidance(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	for _, id := range []string{"tier-t0-decider", "tier-t0-bare"} {
+	for _, id := range []string{"tier-t0-decider"} {
 		var tpl, def string
 		if err := pool.QueryRow(
 			`SELECT template, default_template FROM default_templates WHERE id = ?`, id,

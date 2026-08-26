@@ -13,70 +13,39 @@ func delegateRow(name, brief string) string {
 	return `[` + name + `] {"tier":"executor","brief":"` + brief + `","fanout":["a","b","c"]}`
 }
 
-// TestToolCard_LongDelegateBrief_CapsBodyWithForcedEllipsis verifies item 1:
-// a large delegate brief is capped at toolCardBodyLines wrapped body lines,
-// the cut is always marked via forceEllipsis, and no line exceeds width.
-func TestToolCard_LongDelegateBrief_CapsBodyWithForcedEllipsis(t *testing.T) {
+// TestRenderTool_LongDelegateBrief_CapsBodyWithForcedEllipsis verifies the
+// unified renderer still caps a large delegate payload at toolBodyLines
+// wrapped body lines (plus the head line), marks any cut with forceEllipsis,
+// and keeps every line within width and tab-free.
+func TestRenderTool_LongDelegateBrief_CapsBodyWithForcedEllipsis(t *testing.T) {
 	const width = 80
 	brief := strings.Repeat("this is a long delegate brief sentence. ", 60) // ~2.4KB
 	content := delegateRow("Mcp__nrflo__delegate", brief)
 
-	card := toolCard(content, width)
-	lines := strings.Split(card, "\n")
+	rendered := renderMessage(Message{Category: "tool", Content: content}, width)
+	lines := strings.Split(ansi.Strip(rendered), "\n")
 
-	if len(lines) > 1+toolCardBodyLines {
-		t.Fatalf("toolCard produced %d lines, want <= %d (1 head + %d body)", len(lines), 1+toolCardBodyLines, toolCardBodyLines)
+	if len(lines) > 1+toolBodyLines {
+		t.Fatalf("tool row rendered %d lines, want <= %d (1 head + %d body)", len(lines), 1+toolBodyLines, toolBodyLines)
 	}
 	last := lines[len(lines)-1]
 	if !strings.HasSuffix(last, "…") {
-		t.Errorf("toolCard last line = %q, want it to end with the forced ellipsis marker", last)
+		t.Errorf("tool row last line = %q, want it to end with the forced ellipsis marker", last)
 	}
 	for i, line := range lines {
 		if lw := ansi.StringWidth(line); lw > width {
-			t.Errorf("toolCard line %d width = %d, want <= %d (line %q)", i, lw, width, line)
+			t.Errorf("tool row line %d width = %d, want <= %d (line %q)", i, lw, width, line)
 		}
 		if strings.Contains(line, "\t") {
-			t.Errorf("toolCard line %d contains a literal tab: %q", i, line)
+			t.Errorf("tool row line %d contains a literal tab: %q", i, line)
 		}
 	}
 }
 
-// TestToolCard_DelegateHeadParams verifies the head line carries
-// tier=/fanout=<N>/first-sentence-of-brief, and that the CLI/hook
-// title-cased name and the api-mode lowercase name normalize to the same
-// params (item 3's name-normalization requirement).
-func TestToolCard_DelegateHeadParams(t *testing.T) {
-	const brief = "First sentence. Rest of the brief that should not appear."
-	cliContent := delegateRow("Mcp__nrflo__delegate", brief)
-	apiContent := delegateRow("delegate", brief)
-
-	cliHead := strings.SplitN(toolCard(cliContent, 200), "\n", 2)[0]
-	apiHead := strings.SplitN(toolCard(apiContent, 200), "\n", 2)[0]
-
-	for _, want := range []string{toolRowPrefix, "[Mcp__nrflo__delegate]", "tier=executor", "fanout=3", "First sentence."} {
-		if !strings.Contains(cliHead, want) {
-			t.Errorf("cli head line = %q, want it to contain %q", cliHead, want)
-		}
-	}
-	if strings.Contains(cliHead, "Rest of the brief") {
-		t.Errorf("cli head line = %q, want only the first sentence of the brief", cliHead)
-	}
-
-	cliParams := toolHeadParams("Mcp__nrflo__delegate", strings.TrimPrefix(cliContent, "[Mcp__nrflo__delegate] "))
-	apiParams := toolHeadParams("delegate", strings.TrimPrefix(apiContent, "[delegate] "))
-	if cliParams != apiParams {
-		t.Errorf("toolHeadParams CLI-name = %q, api-name = %q, want identical params after normalization", cliParams, apiParams)
-	}
-	if !strings.Contains(apiHead, "[delegate]") || !strings.Contains(apiHead, "tier=executor") {
-		t.Errorf("api head line = %q, want the [delegate] name and same params", apiHead)
-	}
-}
-
-// TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour verifies item
-// 3: tool/tool_use/tool_result/subagent all emit renderMessage output through
-// the same toolCard path, sharing one literal prefix, and subagent no longer
-// falls through to the glamour default branch (which would strip/transform
-// markdown-like content instead of passing it through verbatim).
+// TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour verifies all
+// four tool-family categories emit through the one shared pipeline with the
+// same literal prefix, and that markdown-like content passes through verbatim
+// (the glamour default branch is gone).
 func TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour(t *testing.T) {
 	const width = 80
 	content := "[Task] **bold** general-purpose: investigate the thing"
@@ -84,7 +53,7 @@ func TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour(t *testing.T) {
 	categories := []string{"tool", "tool_use", "tool_result", "subagent"}
 	var first string
 	for i, cat := range categories {
-		rendered := renderMessage(Message{Category: cat, Content: content}, width)
+		rendered := ansi.Strip(renderMessage(Message{Category: cat, Content: content}, width))
 		if !strings.Contains(rendered, toolRowPrefix) {
 			t.Errorf("renderMessage(%s) = %q, want it to contain the unified prefix %q", cat, rendered, toolRowPrefix)
 		}
@@ -96,18 +65,16 @@ func TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour(t *testing.T) {
 			t.Errorf("renderMessage(%s) = %q, want identical output to renderMessage(%s) = %q for the same content", cat, rendered, categories[0], first)
 		}
 	}
-	// Glamour would render markdown emphasis (strip/transform "**bold**" into
-	// an ANSI bold sequence); toolCard passes it through as literal text.
 	if !strings.Contains(first, "**bold**") {
-		t.Errorf("renderMessage(subagent) = %q, want the literal markdown preserved (not glamour-rendered)", first)
+		t.Errorf("renderMessage(subagent) = %q, want the literal markdown preserved (not markdown-rendered)", first)
 	}
 }
 
-// TestToolCard_Fallbacks verifies non-JSON payloads, the bracket-less
+// TestRenderTool_Fallbacks verifies non-JSON payloads, the bracket-less
 // error-row shape, and empty content all degrade gracefully: no panic, a
 // bare-name/firstLine head, and no forced-ellipsis marker since nothing was
 // truncated.
-func TestToolCard_Fallbacks(t *testing.T) {
+func TestRenderTool_Fallbacks(t *testing.T) {
 	const width = 80
 	tests := []struct {
 		name    string
@@ -119,38 +86,38 @@ func TestToolCard_Fallbacks(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			card := toolCard(tt.content, width)
+			card := ansi.Strip(renderMessage(Message{Category: "tool", Content: tt.content}, width))
 			if strings.Contains(card, "…") {
-				t.Errorf("toolCard(%q) = %q, want no forced-ellipsis marker for untruncated content", tt.content, card)
+				t.Errorf("renderMessage(tool, %q) = %q, want no forced-ellipsis marker for untruncated content", tt.content, card)
 			}
 			for i, line := range strings.Split(card, "\n") {
 				if lw := ansi.StringWidth(line); lw > width {
-					t.Errorf("toolCard(%q) line %d width = %d, want <= %d", tt.content, i, lw, width)
+					t.Errorf("renderMessage(tool, %q) line %d width = %d, want <= %d", tt.content, i, lw, width)
 				}
 				if strings.Contains(line, "\t") {
-					t.Errorf("toolCard(%q) line %d contains a literal tab", tt.content, i)
+					t.Errorf("renderMessage(tool, %q) line %d contains a literal tab", tt.content, i)
 				}
 			}
 		})
 	}
 
-	if got := toolCard("", width); got != toolRowPrefix {
-		t.Errorf("toolCard(empty) = %q, want bare prefix %q", got, toolRowPrefix)
+	if got := ansi.Strip(renderMessage(Message{Category: "tool", Content: ""}, width)); got != toolRowPrefix {
+		t.Errorf("renderMessage(tool, empty) = %q, want bare prefix %q", got, toolRowPrefix)
 	}
 }
 
-// TestToolCard_ShortPayload_StaysUncappedNoMarker verifies the marker only
+// TestRenderTool_ShortPayload_StaysUncappedNoMarker verifies the marker only
 // ever means truncation: a short two-line tool result renders both lines
 // verbatim with no forced-ellipsis.
-func TestToolCard_ShortPayload_StaysUncappedNoMarker(t *testing.T) {
+func TestRenderTool_ShortPayload_StaysUncappedNoMarker(t *testing.T) {
 	const width = 80
 	content := "[Read] file.go → line one\nline two"
-	card := toolCard(content, width)
+	card := ansi.Strip(renderMessage(Message{Category: "tool", Content: content}, width))
 
 	if strings.Contains(card, "…") {
-		t.Errorf("toolCard(%q) = %q, want no ellipsis marker for a short payload", content, card)
+		t.Errorf("renderMessage(tool, %q) = %q, want no ellipsis marker for a short payload", content, card)
 	}
 	if !strings.Contains(card, "line one") || !strings.Contains(card, "line two") {
-		t.Errorf("toolCard(%q) = %q, want both body lines preserved verbatim", content, card)
+		t.Errorf("renderMessage(tool, %q) = %q, want both body lines preserved verbatim", content, card)
 	}
 }

@@ -27,8 +27,8 @@ var (
 	composerBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
 )
 
-// assistantGlamour lives in view_message.go with the message renderers it
-// configures.
+// renderMessage, renderMessageBody, preRender, capToolBody and styleFor live
+// in view_message.go (the single unified transcript renderer).
 
 // footer renders the bottom status line; while a turn runs it carries the
 
@@ -223,5 +223,6 @@ func clampChrome(sections []string, maxHeight int) string {
 	return chrome
 }
 
-// renderMessage, renderMessageBody, timePrefix and truncate live in
-// view_message.go (message rendering for the print pipeline).
+// renderMessage, timePrefix and truncate live in
+// view_message.go (the single unified transcript renderer for the print
+// pipeline).

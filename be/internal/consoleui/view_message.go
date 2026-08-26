@@ -1,25 +1,11 @@
 package consoleui
 
 import (
-	"strconv"
 	"strings"
 	"time"
 
-	"charm.land/glamour/v2"
-	glamouransi "charm.land/glamour/v2/ansi"
-	"charm.land/glamour/v2/styles"
 	"charm.land/lipgloss/v2"
 )
-
-// assistantGlamour is DarkStyleConfig with the document color lifted to match
-// assistantStyle, so glamour body text doesn't read as the same gray as tool
-// rows.
-var assistantGlamour = func() glamouransi.StyleConfig {
-	cfg := styles.DarkStyleConfig
-	color := "254"
-	cfg.Document.Color = &color
-	return cfg
-}()
 
 // timePrefixWidth is the printed width of "HH:MM:SS " — the muted local-time
 // prefix on every transcript row.
@@ -35,14 +21,15 @@ func timePrefix(createdAt string) string {
 	return t.Local().Format("15:04:05") + " "
 }
 
-// renderMessage renders a transcript row for printing: the body (rendered at
-// width minus the timestamp column) prefixed on its first line with the muted
-// local created_at time, continuation lines indented to align. Rows without a
-// parseable timestamp — and terminals too narrow for the column — render the
-// body alone at full width. Every line stays tab-free and within width:
-// bubbletea's insertAbove row math desyncs otherwise (ansi.StringWidth counts
-// "\t" as 0 while the terminal advances to the next tab stop) and ghost rows
-// of the live frame leak into native scrollback.
+// renderMessage renders a transcript row for printing: the body rendered by
+// ONE pipeline — category-specific pre-render (collapse/cap), then
+// expandTabs → ANSI word-wrap → clip, then role color — prefixed on its first
+// line with the muted local created_at time, continuation lines indented to
+// align. Rows without a parseable timestamp — and terminals too narrow for
+// the column — render the body alone at full width. Every line stays tab-free
+// and within width: bubbletea's insertAbove row math desyncs otherwise
+// (ansi.StringWidth counts "\t" as 0 while the terminal advances to the next
+// tab stop) and ghost rows of the live frame leak into native scrollback.
 func renderMessage(message Message, width int) string {
 	prefix := timePrefix(message.CreatedAt)
 	if prefix == "" || width-timePrefixWidth < 20 {
@@ -64,40 +51,117 @@ func renderMessage(message Message, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// renderMessageBody is the single transcript renderer: preRender reduces the
+// row's content where raw text isn't human prose (notice envelopes collapse
+// to one line, tool payloads cap at toolBodyLines with a forced ellipsis),
+// then fitWidth applies the shared wrap/clip invariant and styleFor colors by
+// role alone.
 func renderMessageBody(message Message, width int) string {
+	content := preRender(message, width)
+	if content == "" {
+		return ""
+	}
+	return styleFor(message.Category).Render(fitWidth(content, width))
+}
+
+// preRender maps a message's content to its display text before the shared
+// wrap/clip/style pass:
+//
+//   - system_notice rows are server-internal and never print (printNewMessages
+//     skips the empty result; does not consume the watermark oddly).
+//   - task_notification / system_turn envelopes collapse to their one-line
+//     summary (the model-facing instruction tail is useless to a human).
+//   - tool-family rows keep their "tool · [Name] …" head line but drop the
+//     per-tool head-param parsing; the body is capped at toolBodyLines with a
+//     forced ellipsis so a large delegate brief can't blow out scrollback.
+//   - everything else (user_input, thinking, assistant) passes through as-is.
+func preRender(message Message, width int) string {
 	switch message.Category {
-	case "user_input":
-		return userStyle.Render(fitWidth(message.Content, width))
-	case "tool", "tool_use", "tool_result", "subagent":
-		return mutedStyle.Render(toolCard(message.Content, width))
-	case "thinking":
-		return mutedStyle.Italic(true).Render(fitWidth("thinking · "+message.Content, width))
 	case "system_notice":
 		return ""
 	case "task_notification":
-		return mutedStyle.Render(fitWidth(collapseTaskNotification(message.Content), width))
+		return collapseTaskNotification(message.Content)
 	case "system_turn":
-		return mutedStyle.Render(fitWidth(collapseServerNotice(message.Content), width))
-	default:
-		renderer, err := glamour.NewTermRenderer(glamour.WithStyles(assistantGlamour), glamour.WithWordWrap(width))
-		if err == nil {
-			if rendered, renderErr := renderer.Render(message.Content); renderErr == nil {
-				return fitWidth(strings.TrimSpace(rendered), width)
-			}
+		return collapseServerNotice(message.Content)
+	case "tool", "tool_use", "tool_result", "subagent":
+		name, rest := splitToolRow(message.Content)
+		var b strings.Builder
+		b.WriteString(toolRowPrefix)
+		if name != "" {
+			b.WriteString("[" + name + "]")
 		}
-		return assistantStyle.Render(fitWidth(message.Content, width))
+		if rest = strings.TrimSpace(rest); rest != "" {
+			b.WriteString("\n")
+			b.WriteString(capToolBody(rest, width))
+		}
+		return b.String()
+	default:
+		// Trim outer whitespace: a whitespace-only row must still render ""
+		// (printNewMessages skips empty renders), matching the previous
+		// glamour pipeline's TrimSpace on its rendered document.
+		return strings.TrimSpace(message.Content)
 	}
 }
 
+// toolRowPrefix is the single prefix shared by every tool-family transcript
+// row (tool, tool_use, tool_result, subagent) so they read as one kind of
+// row.
+const toolRowPrefix = "tool · "
+
+// toolBodyLines caps a tool row's wrapped body so a large payload (e.g. a
+// delegate brief) can't blow out scrollback; the cut is always marked via
+// forceEllipsis inside capToolBody.
+const toolBodyLines = 6
+
+// splitToolRow splits a "[Name] rest" row into its bracketed name and trimmed
+// remainder. Rows without a leading "[" (the "Name: err" error-row shape from
+// spawner/tool_format.go) have no name.
+func splitToolRow(content string) (name, rest string) {
+	if !strings.HasPrefix(content, "[") {
+		return "", content
+	}
+	idx := strings.Index(content, "]")
+	if idx < 0 {
+		return "", content
+	}
+	return content[1:idx], strings.TrimSpace(content[idx+1:])
+}
+
+// capToolBody wraps body to width and caps it at toolBodyLines lines, marking
+// any cut with forceEllipsis. Short bodies pass through uncapped with no
+// marker — the marker only ever means truncation.
+func capToolBody(body string, width int) string {
+	lines := strings.Split(fitWidth(body, width), "\n")
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
+	}
+	if len(lines) > toolBodyLines {
+		lines = lines[:toolBodyLines]
+		lines[toolBodyLines-1] = forceEllipsis(lines[toolBodyLines-1], width)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// styleFor returns the single role color for a transcript row: user light
+// blue, assistant near-white, tools/thinking/notices dim gray. Role is
+// conveyed by color alone — no "you"/"assistant" header rows.
+func styleFor(category string) lipgloss.Style {
+	switch category {
+	case "user_input":
+		return userStyle
+	case "thinking":
+		return mutedStyle.Italic(true)
+	default:
+		return assistantStyle
+	}
+}
+
+// truncate collapses newlines and clips value to width, appending the
+// ellipsis marker when cut (chrome/footer/status-bar helper).
 func truncate(value string, width int) string {
 	value = strings.ReplaceAll(value, "\n", " ")
 	if lipgloss.Width(value) <= width {
 		return value
 	}
 	return lipgloss.NewStyle().MaxWidth(max(1, width-1)).Render(value) + "…"
-}
-
-// itoa is a tiny non-negative int → string helper for test fixtures.
-func itoa(n int) string {
-	return strconv.Itoa(n)
 }

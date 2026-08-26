@@ -105,7 +105,14 @@ type processInfo struct {
 	// ferryPTYOutput. Read by deliverPrompt's quiescence gate to wait for
 	// the TUI to finish its splash render before submitting the prompt.
 	// Protected by messagesMutex. Zero-valued for non-PTY backends.
-	lastPTYByteAt   time.Time
+	lastPTYByteAt time.Time
+	// bracketedPaste records whether the CLI's TUI currently has bracketed
+	// paste mode enabled (DECSET ?2004). Set by ferryPTYOutput from the
+	// TUI's own init burst; read by writePromptOnce, which must wrap the
+	// prompt body in paste markers when it is on — an unmarked bulk write
+	// is processed as keystrokes and the TUI drops all but the tail.
+	// Protected by messagesMutex.
+	bracketedPaste  bool
 	agentID         string
 	agentType       string
 	nodeID          string // execution identity (which slot in the run); distinct from agentType (template)

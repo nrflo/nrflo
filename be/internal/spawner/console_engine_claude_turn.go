@@ -44,7 +44,7 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 	e.pendingEcho = text
 	e.mu.Unlock()
 
-	if _, err := sess.Write([]byte(text)); err != nil {
+	if err := e.writeTurnText(sess, text); err != nil {
 		e.mu.Lock()
 		e.turnActive = false
 		e.mu.Unlock()
@@ -102,7 +102,7 @@ func (e *claudeEngine) SteerUserTurn(ctx context.Context, turn UserTurn) error {
 	}
 	e.mu.Unlock()
 
-	if _, err := sess.Write([]byte(text)); err != nil {
+	if err := e.writeTurnText(sess, text); err != nil {
 		return fmt.Errorf("console engine: steer turn: %w", err)
 	}
 	if strings.HasPrefix(text, "/") {
@@ -191,4 +191,22 @@ func (e *claudeEngine) pause(ctx context.Context, d time.Duration) {
 	case <-ctx.Done():
 	case <-e.stopping:
 	}
+}
+
+// writeTurnText writes turn text into the TUI, wrapped in bracketed-paste
+// markers while the TUI has DECSET ?2004 on (it does, for its whole input
+// loop). Unmarked, a multi-KB body goes through the per-keystroke path and the
+// TUI keeps only its last ~100 bytes — the write reports full length and the
+// submit CR is still accepted, so the truncation is silent. The submit CR and
+// the slash-command dismissal space stay outside the markers: pasted, they
+// would be inserted as text instead of acted on.
+func (e *claudeEngine) writeTurnText(sess ptySessionIface, text string) error {
+	e.mu.Lock()
+	paste := e.bracketedPaste
+	e.mu.Unlock()
+	if paste {
+		text = bracketedPasteSet2004 + stripPasteEnd(text) + bracketedPasteEnd
+	}
+	_, err := sess.Write([]byte(text))
+	return err
 }

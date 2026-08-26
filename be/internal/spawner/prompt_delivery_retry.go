@@ -2,6 +2,7 @@ package spawner
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -68,12 +69,20 @@ func submitPromptWithRetry(s *Spawner, proc *processInfo, sess ptySessionIface, 
 // write failed, which is terminal for delivery — retrying a broken PTY only
 // burns the attempt budget.
 func writePromptOnce(s *Spawner, proc *processInfo, sess ptySessionIface, body, adapterName string) bool {
-	n, err := sess.Write([]byte(body))
+	proc.messagesMutex.Lock()
+	paste := proc.bracketedPaste
+	proc.messagesMutex.Unlock()
+
+	payload := body
+	if paste {
+		payload = bracketedPasteSet2004 + stripPasteEnd(body) + bracketedPasteEnd
+	}
+	n, err := sess.Write([]byte(payload))
 	if err != nil {
 		s.errorAgent(proc, fmt.Sprintf("deliverPrompt: write body failed: %v", err))
 		return false
 	}
-	s.logAgent(proc, fmt.Sprintf("deliverPrompt: wrote %d-byte body (adapter=%s)", n, adapterName))
+	s.logAgent(proc, fmt.Sprintf("deliverPrompt: wrote %d-byte body (adapter=%s, bracketed_paste=%t)", n, adapterName, paste))
 
 	// In raw-mode TUIs Enter is \r; the short gap lets the paste settle before
 	// the submit keystroke.
@@ -83,6 +92,28 @@ func writePromptOnce(s *Spawner, proc *processInfo, sess ptySessionIface, body, 
 		return false
 	}
 	return true
+}
+
+// bracketedPasteSet2004 / bracketedPasteEnd delimit a bracketed paste. A TUI
+// that enabled DECSET ?2004 (Claude does, for its whole input loop) treats the
+// enclosed bytes as one atomic paste. Without the markers the same bytes go
+// through the per-keystroke path, where a multi-KB body is silently reduced to
+// its last ~100 bytes — the prompt looks delivered (write returns the full
+// length, the submit CR is accepted, the UserPromptSubmit hook fires and acks)
+// but the agent receives a fragment starting mid-word.
+const (
+	bracketedPasteSet2004 = "\x1b[200~"
+	bracketedPasteEnd     = "\x1b[201~"
+)
+
+// stripPasteEnd removes any literal paste terminator from the body so embedded
+// text cannot end the paste early and drop the remainder back onto the
+// keystroke path.
+func stripPasteEnd(body string) string {
+	if !strings.Contains(body, bracketedPasteEnd) {
+		return body
+	}
+	return strings.ReplaceAll(body, bracketedPasteEnd, "")
 }
 
 // waitPromptAck reports whether the proc recorded any activity within timeout,

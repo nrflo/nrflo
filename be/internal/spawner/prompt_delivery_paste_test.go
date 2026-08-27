@@ -210,3 +210,25 @@ func TestClaudeEngine_WriteTurnText_NoWrapWhenPasteModeOff(t *testing.T) {
 		t.Errorf("payload = %q, want %q", got, "hello")
 	}
 }
+
+// TestClaudeEngine_WriteTurnText_SlashBypassesPasteMode guards the native
+// command-palette path: Claude 2.1.247 consumes bracketed-pasted slash
+// commands without submitting them, so short command turns stay raw even
+// while the TUI advertises bracketed paste for ordinary prompt bodies.
+func TestClaudeEngine_WriteTurnText_SlashBypassesPasteMode(t *testing.T) {
+	t.Parallel()
+
+	e := &claudeEngine{bracketedPaste: true}
+	sess := newMockSession()
+
+	if err := e.writeTurnText(sess, "/address-comments"); err != nil {
+		t.Fatalf("writeTurnText: %v", err)
+	}
+
+	sess.mu.Lock()
+	got := string(sess.writtenBytes)
+	sess.mu.Unlock()
+	if got != "/address-comments" {
+		t.Errorf("slash payload = %q, want raw command without paste markers", got)
+	}
+}

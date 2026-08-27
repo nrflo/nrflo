@@ -74,13 +74,18 @@ func (h *Handler) consoleSessionReady(sessionID string) {
 // hookSpecificOutput.additionalContext. A nil injector or an empty/error
 // result leaves the response byte-identical to the pre-injector shape.
 func (h *Handler) handleUserPromptSubmit(ctx context.Context, req Request, sessionID, prompt string) Response {
+	// Acknowledge the engine-owned PTY write before resolving optional context:
+	// injection may touch the DB/refinery, while turn delivery needs a prompt
+	// acceptance signal immediately to avoid a needless retry.
+	own := h.consoleHooks != nil && h.consoleHooks.ConsoleUserPrompt(sessionID, prompt)
+
 	var injected string
 	if h.contextInjector != nil {
 		injected = h.contextInjector.InjectUserPromptContext(ctx, sessionID, prompt)
 	}
 
 	var resp Response
-	if h.consoleHooks != nil && h.consoleHooks.ConsoleUserPrompt(sessionID, prompt) {
+	if own {
 		resp = MakeResponse(req.ID, map[string]interface{}{"recorded": false})
 	} else {
 		category := "user_input"

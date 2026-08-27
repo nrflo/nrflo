@@ -50,10 +50,9 @@ type ConsoleHooks interface {
 	// ConsoleContextLeft forwards an agent.context_update to the engine.
 	ConsoleContextLeft(sessionID string, pct int) (handled bool)
 	// ConsoleUserPrompt routes a UserPromptSubmit hook echo to the live
-	// console engine. handled=true means the engine already persisted this
-	// user turn itself (SendUserTurn's echo) — skip recording; false means
-	// no live engine OR a human-typed prompt from an attached terminal,
-	// which the caller must record as usual.
+	// console engine. handled=true means the engine acknowledged and persisted
+	// this user turn — skip recording; false means no live engine OR a
+	// human-typed prompt from an attached terminal, which the caller records.
 	ConsoleUserPrompt(sessionID, prompt string) (handled bool)
 }
 

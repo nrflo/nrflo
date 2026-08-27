@@ -214,7 +214,6 @@ func (m *model) handleKey(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		m.skillsDismissed = false
 		m.pendingUser = text
 		m.history = m.history.record(text)
-		m.status = "running"
 		return func() tea.Msg {
 			queued, err := m.client.Send(m.ctx, text)
 			return sendResultMsg{queued: queued, err: err}

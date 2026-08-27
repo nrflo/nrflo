@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-// SendUserTurn waits for the TUI to be ready, persists the user turn BEFORE
-// writing it to the PTY (so the transcript tailer's assistant rows cannot
-// land first), writes the body + a submit CR, and marks a turn active. Only
-// the Stop hook (NotifyTurnEnd) clears turnActive, so a mid-turn turn is
-// rejected with ErrTurnActive rather than typed into a busy TUI.
+// SendUserTurn waits for the TUI to be ready, writes the body + a submit CR,
+// and waits for Claude's UserPromptSubmit hook to acknowledge it. The hook
+// persists the user row and emits turn_started before returning to Claude, so
+// assistant transcript rows cannot land first and an unaccepted write cannot
+// leave a false user row or a permanently active turn.
 //
 // turn.Skill is ignored: the raw turn.Text (e.g. "/name args") is typed into
 // the TUI unchanged, letting claude's own slash-command handling resolve it —
@@ -30,54 +30,116 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 		return fmt.Errorf("console engine: not started")
 	}
 	e.turnActive = true
+	e.turnAcknowledged = false
 	e.turnTextSeen = false
+	ack := make(chan struct{})
+	e.promptAck = ack
+	e.pendingEcho = text
+	e.pendingEchoCategory = turn.MessageCategory()
 	e.mu.Unlock()
 
 	e.waitUntilReady(ctx)
 
-	if e.sink != nil {
-		emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
-	}
-	// Arm the echo dedupe: the UserPromptSubmit hook for THIS text is our own
-	// submission and must not be persisted twice (NotifyUserPrompt).
-	e.mu.Lock()
-	e.pendingEcho = text
-	e.mu.Unlock()
+	for attempt := 1; attempt <= maxPromptSubmits; attempt++ {
+		if attempt > 1 {
+			select {
+			case <-ack:
+				return nil
+			default:
+			}
+			// Close any palette and clear text left by a swallowed submit before
+			// retyping; UserPromptSubmit has not fired, so no model turn exists.
+			if _, err := sess.Write([]byte{0x1b, 0x15}); err != nil {
+				e.resetUnackedTurn(ack)
+				return fmt.Errorf("console engine: reset unaccepted turn: %w", err)
+			}
+			e.pause(ctx, e.submitDelay)
+		}
+		if err := e.writeTurnAttempt(ctx, sess, text); err != nil {
+			e.resetUnackedTurn(ack)
+			return err
+		}
 
+		// Tests collapse the ack wait to zero; preserve their synchronous
+		// engine seam while production always confirms through the hook.
+		if e.turnAckTimeout <= 0 {
+			e.mu.Lock()
+			if e.promptAck == ack {
+				e.promptAck = nil
+				e.turnAcknowledged = true
+			}
+			e.mu.Unlock()
+			if e.sink != nil {
+				emitMessage(spec.SessionID, text, turn.MessageCategory(), e.sink)
+			}
+			e.emit(EngineEvent{Type: EventTurnStarted, SessionID: spec.SessionID})
+			return nil
+		}
+		if e.waitTurnAck(ctx, ack) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			e.resetUnackedTurn(ack)
+			return fmt.Errorf("console engine: wait for claude acknowledgement: %w", ctx.Err())
+		case <-e.stopping:
+			e.resetUnackedTurn(ack)
+			return ErrEngineStopped
+		default:
+		}
+	}
+
+	select {
+	case <-ack:
+		return nil
+	default:
+	}
+	e.resetUnackedTurn(ack)
+	return fmt.Errorf("console engine: claude did not acknowledge turn after %d submits", maxPromptSubmits)
+}
+
+func (e *claudeEngine) writeTurnAttempt(ctx context.Context, sess ptySessionIface, text string) error {
 	if err := e.writeTurnText(sess, text); err != nil {
-		e.mu.Lock()
-		e.turnActive = false
-		e.mu.Unlock()
 		return fmt.Errorf("console engine: write turn: %w", err)
 	}
-	// A leading '/' opens the TUI's own command-palette autocomplete, which
-	// would otherwise swallow the submit CR below as a palette-navigation
-	// keystroke instead of submitting the line. A trailing space dismisses
-	// the palette the same way a human typing a space after the command name
-	// would, without changing what is actually submitted. This write is
-	// isolated to claudeEngine: pendingEcho (armed below) stays the un-spaced
-	// text so NotifyUserPrompt dedupe still matches the hook's echoed line.
 	if strings.HasPrefix(text, "/") {
 		if _, err := sess.Write([]byte(" ")); err != nil {
-			e.mu.Lock()
-			e.turnActive = false
-			e.mu.Unlock()
 			return fmt.Errorf("console engine: write turn: %w", err)
 		}
 	}
-	// Gap before the submit CR: coalesced into a single PTY read, the TUI can
-	// swallow the CR and the turn is typed but never sent (deliverPrompt takes
-	// the same 150ms precaution).
 	e.pause(ctx, e.submitDelay)
 	if _, err := sess.Write([]byte("\r")); err != nil {
-		e.mu.Lock()
-		e.turnActive = false
-		e.mu.Unlock()
 		return fmt.Errorf("console engine: submit turn: %w", err)
 	}
-
-	e.emit(EngineEvent{Type: EventTurnStarted, SessionID: spec.SessionID})
 	return nil
+}
+
+func (e *claudeEngine) waitTurnAck(ctx context.Context, ack <-chan struct{}) bool {
+	t := time.NewTimer(e.turnAckTimeout)
+	defer t.Stop()
+	select {
+	case <-ack:
+		return true
+	case <-t.C:
+		return false
+	case <-ctx.Done():
+		return false
+	case <-e.stopping:
+		return false
+	}
+}
+
+func (e *claudeEngine) resetUnackedTurn(ack chan struct{}) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.promptAck != ack {
+		return
+	}
+	e.promptAck = nil
+	e.pendingEcho = ""
+	e.pendingEchoCategory = ""
+	e.turnActive = false
+	e.turnAcknowledged = false
 }
 
 // SteerUserTurn types text into the BUSY TUI: claude natively queues input
@@ -91,7 +153,7 @@ func (e *claudeEngine) SendUserTurn(ctx context.Context, turn UserTurn) error {
 func (e *claudeEngine) SteerUserTurn(ctx context.Context, turn UserTurn) error {
 	text := turn.Text
 	e.mu.Lock()
-	if !e.turnActive {
+	if !e.turnActive || !e.turnAcknowledged {
 		e.mu.Unlock()
 		return ErrNoActiveTurn
 	}
@@ -202,7 +264,10 @@ func (e *claudeEngine) pause(ctx context.Context, d time.Duration) {
 // would be inserted as text instead of acted on.
 func (e *claudeEngine) writeTurnText(sess ptySessionIface, text string) error {
 	e.mu.Lock()
-	paste := e.bracketedPaste
+	// Claude 2.1.247 consumes a bracketed-pasted slash command in its command
+	// palette without submitting it. Slash turns are short and must follow the
+	// native per-keystroke path; ordinary/large turns retain atomic paste mode.
+	paste := e.bracketedPaste && !strings.HasPrefix(text, "/")
 	e.mu.Unlock()
 	if paste {
 		text = bracketedPasteSet2004 + stripPasteEnd(text) + bracketedPasteEnd

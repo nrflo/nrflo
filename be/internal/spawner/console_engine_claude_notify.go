@@ -28,6 +28,7 @@ func (e *claudeEngine) NotifyTurnEnd() {
 	e.drainFinalText()
 	e.mu.Lock()
 	e.turnActive = false
+	e.turnAcknowledged = false
 	sessionID := e.spec.SessionID
 	e.mu.Unlock()
 	e.emit(EngineEvent{Type: EventTurnCompleted, SessionID: sessionID})

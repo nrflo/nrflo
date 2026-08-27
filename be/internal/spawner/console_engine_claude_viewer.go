@@ -70,19 +70,35 @@ func (e *claudeEngine) ViewerResize(rows, cols uint16) error {
 	return sess.Resize(rows, cols)
 }
 
-// NotifyUserPrompt reports whether a UserPromptSubmit hook echo is the
-// engine's own SendUserTurn (suppress persisting — SendUserTurn already
-// wrote the user_input row) or a human-typed prompt from an attached
-// terminal (persist it — nothing else records it). Matched at most once per
-// SendUserTurn so a human later typing the identical text still persists.
+// NotifyUserPrompt acknowledges and persists the engine's own SendUserTurn,
+// or reports a human-typed attached-terminal prompt for the socket handler to
+// persist. An own echo is matched at most once so a human later typing the
+// identical text still persists.
 func (e *claudeEngine) NotifyUserPrompt(prompt string) (own bool) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-	if e.pendingEcho != "" && prompt == e.pendingEcho {
-		e.pendingEcho = ""
-		return true
+	if e.pendingEcho == "" || prompt != e.pendingEcho {
+		e.mu.Unlock()
+		return false
 	}
-	return false
+	ack := e.promptAck
+	category := e.pendingEchoCategory
+	sessionID := e.spec.SessionID
+	e.pendingEcho = ""
+	e.pendingEchoCategory = ""
+	e.promptAck = nil
+	e.turnAcknowledged = true
+	e.mu.Unlock()
+
+	// A nil ack is the zero-timeout test seam: SendUserTurn already persisted
+	// and emitted synchronously. Production reaches this branch with ack set.
+	if ack != nil {
+		if e.sink != nil {
+			emitMessage(sessionID, prompt, category, e.sink)
+		}
+		e.emit(EngineEvent{Type: EventTurnStarted, SessionID: sessionID})
+		close(ack)
+	}
+	return true
 }
 
 // ferry reads and drops PTY output until the session closes — claude's

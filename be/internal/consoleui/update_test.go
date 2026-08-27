@@ -1,11 +1,14 @@
 package consoleui
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
 
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func TestApplyStream_AccumulatesProviderAgnosticState(t *testing.T) {
@@ -117,6 +120,25 @@ func TestWorkingIndicator(t *testing.T) {
 	}})
 	if strings.Contains(m.footer(), "working…") {
 		t.Fatal("idle footer must drop the working indicator")
+	}
+}
+
+func TestSubmitWaitsForServerTurnStartedBeforeShowingWorking(t *testing.T) {
+	input := textarea.New()
+	input.SetValue("/address-comments")
+	m := &model{
+		ctx: context.Background(), client: &Client{}, input: input,
+		status: "idle", deltas: map[string]string{},
+	}
+	cmd, handled := m.handleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
+	if !handled || cmd == nil {
+		t.Fatal("Enter did not produce a send command")
+	}
+	if m.status != "idle" {
+		t.Errorf("status immediately after submit = %q, want idle until console_chat.turn running", m.status)
+	}
+	if m.pendingUser != "/address-comments" {
+		t.Errorf("pendingUser = %q, want optimistic submitted text", m.pendingUser)
 	}
 }
 

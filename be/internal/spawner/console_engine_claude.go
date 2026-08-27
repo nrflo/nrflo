@@ -26,6 +26,7 @@ const (
 	claudeSessionStartTimeout = 20 * time.Second
 	claudeBootstrapFloor      = 1500 * time.Millisecond
 	claudeSubmitDelay         = 150 * time.Millisecond
+	claudeTurnAckTimeout      = 5 * time.Second
 )
 
 // claudeEngine drives a human-attended console session over the existing PTY
@@ -49,6 +50,7 @@ type claudeEngine struct {
 	ptySession       ptySessionIface
 	tempDir          string
 	turnActive       bool
+	turnAcknowledged bool
 	turnTextSeen     bool
 	bootstrapped     bool
 	transcriptOffset int64
@@ -58,7 +60,9 @@ type claudeEngine struct {
 
 	// pendingEcho (mu-guarded) is the last SendUserTurn text awaiting its
 	// UserPromptSubmit hook echo — see NotifyUserPrompt.
-	pendingEcho string
+	pendingEcho         string
+	pendingEchoCategory string
+	promptAck           chan struct{}
 
 	// bracketedPaste (mu-guarded) mirrors the TUI's DECSET ?2004 state, read
 	// off its own output by the ferry. Turn text must be wrapped in paste
@@ -94,6 +98,7 @@ type claudeEngine struct {
 	sessionStartTimeout time.Duration
 	bootstrapFloor      time.Duration
 	submitDelay         time.Duration
+	turnAckTimeout      time.Duration
 	tailInterval        time.Duration
 }
 
@@ -113,6 +118,7 @@ func newClaudeEngine(deps EngineDeps) *claudeEngine {
 		sessionStartTimeout: claudeSessionStartTimeout,
 		bootstrapFloor:      claudeBootstrapFloor,
 		submitDelay:         claudeSubmitDelay,
+		turnAckTimeout:      claudeTurnAckTimeout,
 		tailInterval:        claudeTranscriptTailInterval,
 	}
 }

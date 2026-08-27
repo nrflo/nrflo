@@ -15,9 +15,9 @@ type consoleTarget interface {
 	NotifySessionReady()
 	NotifyContextLeft(pct int)
 	NotifyToolResult(toolName string, isError bool)
-	// NotifyUserPrompt reports whether a UserPromptSubmit hook echo is the
-	// engine's own submitted turn (true → the socket handler must not persist
-	// it again) or human-typed input from an attached terminal (false).
+	// NotifyUserPrompt acknowledges and persists the engine's own submitted
+	// turn (true → the socket handler must not persist it again), or reports
+	// human-typed input from an attached terminal (false).
 	NotifyUserPrompt(prompt string) (own bool)
 }
 
@@ -101,9 +101,8 @@ func (h *ConsoleHub) ConsoleSessionReady(sessionID string) (handled bool) {
 }
 
 // ConsoleUserPrompt routes a UserPromptSubmit hook echo to the live engine
-// (if any). handled=true means the engine owns the row (its own SendUserTurn
-// echo) and the caller must not persist it; false covers no-live-engine AND
-// human-typed prompts from an attached terminal, which the caller records.
+// (if any). handled=true means the engine acknowledged and persisted its own
+// SendUserTurn; false covers no-live-engine and attached-terminal input.
 func (h *ConsoleHub) ConsoleUserPrompt(sessionID, prompt string) (handled bool) {
 	t, ok := h.get(sessionID)
 	if !ok {

@@ -57,7 +57,6 @@ type model struct {
 	skillIndex      int
 	skillsDismissed bool
 	skillsFetched   bool
-	skillDetails    bool
 
 	tools        []ConsoleTool
 	toolsFetched bool

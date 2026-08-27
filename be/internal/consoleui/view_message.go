@@ -131,6 +131,16 @@ func headLine(body string) string {
 // wrap/clip pass; generous, since fitWidth does the final clipping.
 const maxInlineHeadWidth = 4096
 
+// forceEllipsis rewrites a clipped line's tail to end in an ellipsis while
+// keeping it within width.
+func forceEllipsis(line string, width int) string {
+	width = max(1, width)
+	if width == 1 {
+		return "…"
+	}
+	return lipgloss.NewStyle().MaxWidth(width-1).Render(line) + "…"
+}
+
 // clipOneLine hard-clips s to width with a trailing '…' when cut — the
 // tool-row counterpart of fitWidth's word-wrap: one logical row must stay ONE
 // physical row, so overflow is clipped rather than wrapped.

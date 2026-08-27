@@ -52,15 +52,17 @@ func (m *model) View() tea.View {
 	} else if len(m.approvals) > 0 {
 		chromeSections = append(chromeSections, m.approvalView())
 	}
-	if m.suggestionsOpen() {
-		chromeSections = append(chromeSections, m.suggestionView())
-	}
 	if m.invoke.active {
 		chromeSections = append(chromeSections, m.invokeView())
 	}
-	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()), m.statusBar())
 	if footer := m.footer(); footer != "" {
 		chromeSections = append(chromeSections, footer)
+	}
+	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()))
+	if m.suggestionsOpen() {
+		chromeSections = append(chromeSections, m.suggestionView())
+	} else {
+		chromeSections = append(chromeSections, m.statusBar())
 	}
 	chrome := clampChrome(chromeSections, m.height)
 	budget := m.height - lipgloss.Height(chrome)

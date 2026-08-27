@@ -16,11 +16,7 @@ type skillsMsg struct {
 	err    error
 }
 
-// maxSuggestionRows caps how many matching rows the "/" / "/invoke " dropdown
-// renders at once, mirroring the web dropdown's scroll cutoff.
-const maxSuggestionRows = 8
-
-// suggestionItem is the row shape the windowed suggestion box renders,
+// suggestionItem is the row shape the suggestion status renders,
 // generalized over skills (the "/" directive) and tools (the "/invoke "
 // directive).
 type suggestionItem struct {
@@ -154,7 +150,7 @@ func (m *model) suggestionMatches() []suggestionItem {
 	}
 }
 
-// suggestionsOpen reports whether the "/" / "/invoke " dropdown should
+// suggestionsOpen reports whether the "/" / "/invoke " completion status should
 // render: a valid directive query with at least one match, not dismissed by
 // the user, and no invoke flow already in progress.
 func (m *model) suggestionsOpen() bool {

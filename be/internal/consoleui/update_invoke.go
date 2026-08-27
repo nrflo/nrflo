@@ -34,7 +34,6 @@ func (m *model) beginInvoke(name string) {
 	m.invoke = startInvoke(tool.Name, toolArgFields(tool.InputSchema))
 	m.skillIndex = 0
 	m.skillsDismissed = false
-	m.skillDetails = false
 	m.prefillInvokeComposer()
 }
 

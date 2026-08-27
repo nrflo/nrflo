@@ -7,12 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// maxDetailLines caps the word-wrapped full-description block rendered when
-// ctrl+o toggles details open (header line + up to maxDetailLines-1 body
-// lines, the last marked truncated when the wrapped text overflows).
-const maxDetailLines = 6
-
-// clampInt clamps v into [0, hi], returning 0 when hi < 0 (empty range).
+// clampInt clamps v into [0, hi], returning 0 when hi < 0.
 func clampInt(v, hi int) int {
 	if hi < 0 {
 		return 0
@@ -26,100 +21,66 @@ func clampInt(v, hi int) int {
 	return v
 }
 
-// suggestionWindowSize returns how many rows the "/" dropdown renders for
-// total matches: all of them when they fit within maxSuggestionRows,
-// otherwise one fewer to reserve a row for the "N/total" indicator line.
-func suggestionWindowSize(total int) int {
-	if total <= maxSuggestionRows {
-		return total
-	}
-	return maxSuggestionRows - 1
-}
-
-// suggestionWindow computes the [start, end) slice of matches to render so
-// the selected row stays visible: it centers the window on selected,
-// clamping so the window never runs past [0, total). Guarantees
-// start <= selected < end when total > 0 and size > 0.
-func suggestionWindow(total, selected, size int) (int, int) {
-	if size <= 0 || total <= 0 {
-		return 0, 0
-	}
-	if total <= size {
-		return 0, total
-	}
-	selected = clampInt(selected, total-1)
-	start := selected - size/2
-	start = clampInt(start, total-size)
-	return start, start + size
-}
-
-// detailLines renders the ctrl+o full-description block: a header line
-// ("/name") followed by word-wrapped description lines, capped at
-// maxDetailLines total (the last line is truncated with an ellipsis when the
-// wrap overflows the cap). Pure function — no *model, no terminal — for unit
-// testing.
-func detailLines(name, description string, width int) []string {
-	width = max(1, width)
-	lines := []string{truncate("/"+name, width)}
-	if description != "" {
-		wrapped := lipgloss.NewStyle().Width(width).Render(description)
-		lines = append(lines, strings.Split(wrapped, "\n")...)
-	}
-	if len(lines) > maxDetailLines {
-		lines = lines[:maxDetailLines]
-		lines[maxDetailLines-1] = forceEllipsis(lines[maxDetailLines-1], width)
-	}
-	return lines
-}
-
-// forceEllipsis marks line as truncated by rewriting its tail to end in '…'
-// within width, regardless of whether line itself overflows width. Unlike
-// truncate() (which only appends '…' on a width overflow), this always
-// stamps the marker — used when a line is being cut for a line-count cap
-// rather than a width cap, so the cap itself must still be visible to the
-// user.
-func forceEllipsis(line string, width int) string {
-	width = max(1, width)
-	if width == 1 {
-		return "…"
-	}
-	return lipgloss.NewStyle().MaxWidth(width-1).Render(line) + "…"
-}
-
-// suggestionView renders the bordered "/" skill-suggestion box above the
-// composer: a scrolling window of matches that follows the selected row
-// (every row truncated to one terminal line so suggestionRows/chromeRows
-// accounting stays exact), an overflow position indicator, and an optional
-// ctrl+o full-description block.
+// suggestionView occupies the status bar's existing row. Completion must not
+// grow the inline frame: shrinking a multi-row popup leaves stale frame-band
+// padding between the transcript and composer after submission.
 func (m *model) suggestionView() string {
 	matches := m.suggestionMatches()
-	total := len(matches)
-	selected := clampInt(m.skillIndex, total-1)
-	inner := max(1, m.width-6)
+	selected := clampInt(m.skillIndex, len(matches)-1)
+	if len(matches) == 0 {
+		return ""
+	}
 
-	start, end := suggestionWindow(total, selected, suggestionWindowSize(total))
-	rows := make([]string, 0, end-start+2)
+	position := fmt.Sprintf(" %d/%d", selected+1, len(matches))
+	width := max(1, m.width)
+	if lipgloss.Width(position)+2 >= width {
+		return mutedStyle.Render(truncate(position, width))
+	}
+	available := width - lipgloss.Width(position) - 1
+	start, end := suggestionRange(matches, selected, available)
+	items := make([]string, 0, end-start)
 	for i := start; i < end; i++ {
-		skill := matches[i]
-		line := "/" + skill.Name
-		if skill.Description != "" {
-			line += " — " + skill.Description
-		}
-		line = truncate(line, inner)
+		name := truncate("/"+matches[i].Name, available)
 		if i == selected {
-			rows = append(rows, lipgloss.NewStyle().Bold(true).Foreground(accent).Render(line))
+			items = append(items, headerStyle.Render(name))
 		} else {
-			rows = append(rows, mutedStyle.Render(line))
+			items = append(items, mutedStyle.Render(name))
 		}
 	}
-	if total > maxSuggestionRows {
-		indicator := fmt.Sprintf(" %d/%d · ctrl+o details", selected+1, total)
-		rows = append(rows, mutedStyle.Render(truncate(indicator, inner)))
+	return " " + strings.Join(items, "  ") + mutedStyle.Render(position)
+}
+
+// suggestionRange returns the largest contiguous name-only window around the
+// selection that fits in width. The position marker communicates omitted
+// matches while Up/Down keeps the selected item in view.
+func suggestionRange(matches []suggestionItem, selected, width int) (int, int) {
+	selected = clampInt(selected, len(matches)-1)
+	if len(matches) == 0 || width < 1 {
+		return 0, 0
 	}
-	if m.skillDetails && total > 0 {
-		for _, line := range detailLines(matches[selected].Name, matches[selected].Description, inner) {
-			rows = append(rows, mutedStyle.Render(line))
+	start, end := selected, selected+1
+	used := lipgloss.Width("/" + matches[selected].Name)
+	for {
+		grew := false
+		if end < len(matches) {
+			cost := 2 + lipgloss.Width("/"+matches[end].Name)
+			if used+cost <= width {
+				used += cost
+				end++
+				grew = true
+			}
+		}
+		if start > 0 {
+			cost := 2 + lipgloss.Width("/"+matches[start-1].Name)
+			if used+cost <= width {
+				used += cost
+				start--
+				grew = true
+			}
+		}
+		if !grew {
+			break
 		}
 	}
-	return approvalBox.BorderForeground(accent).Width(max(1, m.width-2)).Render(strings.Join(rows, "\n"))
+	return start, end
 }

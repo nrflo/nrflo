@@ -29,15 +29,8 @@ func (m *model) handleSuggestionKey(key string) bool {
 			m.completeSkill(name)
 		}
 		return true
-	case "ctrl+o":
-		m.skillDetails = !m.skillDetails
-		return true
 	case "esc":
-		if m.skillDetails {
-			m.skillDetails = false
-		} else {
-			m.skillsDismissed = true
-		}
+		m.skillsDismissed = true
 		return true
 	}
 	return false
@@ -49,7 +42,6 @@ func (m *model) completeSkill(name string) {
 	m.input.SetValue("/" + name + " ")
 	m.skillIndex = 0
 	m.skillsDismissed = false
-	m.skillDetails = false
 }
 
 // enterInvokeDirective completes the reserved invoke directive row to
@@ -60,5 +52,4 @@ func (m *model) enterInvokeDirective() {
 	m.input.SetValue("/invoke ")
 	m.skillIndex = 0
 	m.skillsDismissed = false
-	m.skillDetails = false
 }

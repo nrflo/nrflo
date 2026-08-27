@@ -153,6 +153,17 @@ describe('ScheduleRunsDialog', () => {
     renderDialog()
     expect(screen.getByText('Something went wrong')).toBeInTheDocument()
   })
+
+  it('shows a missed offline occurrence as skipped', () => {
+    mockUseScheduleRuns.mockReturnValue({
+      data: [makeRun({ status: 'skipped', workflows: [], error: 'server_offline' })],
+      isLoading: false,
+    })
+    renderDialog()
+    expect(screen.getByText('Skipped')).toBeInTheDocument()
+    expect(screen.getByText('Server was offline')).toBeInTheDocument()
+    expect(screen.getByText('Scheduled')).toBeInTheDocument()
+  })
 })
 
 describe('ScheduleRunsDialog - Chains column', () => {

@@ -23,6 +23,10 @@ type schedTestEnv struct {
 }
 
 func newSchedTestEnv(t *testing.T) *schedTestEnv {
+	return newSchedTestEnvWithClock(t, clock.Real())
+}
+
+func newSchedTestEnvWithClock(t *testing.T, clk clock.Clock) *schedTestEnv {
 	t.Helper()
 	dbPath := filepath.Join(t.TempDir(), "sched_test.db")
 	if err := schedCopyTemplateDB(dbPath); err != nil {
@@ -32,10 +36,10 @@ func newSchedTestEnv(t *testing.T) *schedTestEnv {
 	if err != nil {
 		t.Fatalf("open pool: %v", err)
 	}
-	hub := ws.NewHub(clock.Real())
+	hub := ws.NewHub(clk)
 	go hub.Run()
-	orch := orchestrator.New(dbPath, hub, clock.Real(), nil, "")
-	sched := New(pool, orch, hub, clock.Real(), nil, nil)
+	orch := orchestrator.New(dbPath, hub, clk, nil, "")
+	sched := New(pool, orch, hub, clk, nil, nil)
 	t.Cleanup(func() {
 		sched.Stop()
 		hub.Stop()

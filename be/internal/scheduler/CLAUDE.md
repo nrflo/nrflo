@@ -5,7 +5,7 @@ Cron-driven scheduled workflow triggers using `github.com/robfig/cron/v3`.
 ## Lifecycle
 
 - `New(pool, orch, hub, clk, wfChainRunSvc, wfChainRunner)` — constructs; does not start scheduling
-- `Start(ctx)` — loads enabled tasks via `repo.ScheduledTaskRepo.ListEnabled()`, registers cron entries, computes and persists `next_run_at`, calls `cron.Start()`
+- `Start(ctx)` — loads enabled tasks via `repo.ScheduledTaskRepo.ListEnabled()`, records each overdue `next_run_at` occurrence as a `skipped`/`server_offline` schedule run, advances and persists the cursor, registers cron entries, then calls `cron.Start()`
 - `Reload()` — mutex-guarded stop + rebuild; called by `service.ScheduledTaskService` after every Create/Update/Delete mutation
 - `Stop()` — drains in-flight cron jobs via `cron.Stop()` context, then returns
 - `RunNow(taskID)` — loads task, calls `dispatch()` immediately, returns the inserted `ScheduleRun`
@@ -24,6 +24,7 @@ Cron-driven scheduled workflow triggers using `github.com/robfig/cron/v3`.
 
 The scheduler does **not** block on chain completion — chains execute asynchronously via `chainrunner.Runner`.
 Project scope allows multiple concurrent workflow instances — `IsRunning` is not called.
+Cron expressions and `next_run_at` calculations use the scheduler clock's local timezone; persisted timestamps remain UTC.
 
 ## Integration
 

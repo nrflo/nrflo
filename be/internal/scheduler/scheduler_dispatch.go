@@ -166,13 +166,14 @@ func (s *Scheduler) dispatch(ctx context.Context, task *model.ScheduledTask) (*m
 	}
 
 	// 8. Update task timestamps
-	now := s.clock.Now().UTC()
+	now := s.clock.Now()
 	var nextRunAt *time.Time
 	if sched, err := cron.ParseStandard(task.CronExpression); err == nil {
 		next := sched.Next(now)
 		nextRunAt = &next
 	}
-	if err := taskRepo.UpdateTriggerTimestamps(task.ID, &now, nextRunAt); err != nil {
+	triggeredAt := now.UTC()
+	if err := taskRepo.UpdateTriggerTimestamps(task.ID, &triggeredAt, nextRunAt); err != nil {
 		logger.Info(ctx, "scheduler: failed to update task timestamps", "id", task.ID, "err", err)
 	}
 

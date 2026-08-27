@@ -1,4 +1,4 @@
-export type ScheduleRunStatus = 'pending' | 'triggered' | 'running' | 'failed'
+export type ScheduleRunStatus = 'pending' | 'triggered' | 'running' | 'failed' | 'skipped'
 
 export interface ScheduleRunWorkflow {
   workflow: string

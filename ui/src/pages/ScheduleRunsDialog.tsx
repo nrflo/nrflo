@@ -44,7 +44,7 @@ export function ScheduleRunsDialog({ open, onClose, task }: ScheduleRunsDialogPr
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-36">Triggered</TableHead>
+                  <TableHead className="w-36">Scheduled</TableHead>
                   <TableHead>Workflows</TableHead>
                   <TableHead>Chains</TableHead>
                 </TableRow>
@@ -86,7 +86,9 @@ export function ScheduleRunsDialog({ open, onClose, task }: ScheduleRunsDialogPr
                         </div>
                       )}
                       {run.error && (
-                        <p className="text-xs text-destructive mt-1">{run.error}</p>
+                        <p className={run.status === 'skipped' ? 'text-xs text-muted-foreground mt-1' : 'text-xs text-destructive mt-1'}>
+                          {run.error === 'server_offline' ? 'Server was offline' : run.error}
+                        </p>
                       )}
                     </TableCell>
                     <TableCell>

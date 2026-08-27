@@ -124,10 +124,12 @@ func (s *ScheduledTaskService) Update(id string, req *types.ScheduledTaskUpdateR
 	if req.Description != nil {
 		task.Description = *req.Description
 	}
+	resetNextRun := false
 	if req.CronExpression != nil {
 		if _, parseErr := cron.ParseStandard(*req.CronExpression); parseErr != nil {
 			return nil, fmt.Errorf("invalid cron expression: %s", parseErr.Error())
 		}
+		resetNextRun = task.CronExpression != *req.CronExpression
 		task.CronExpression = *req.CronExpression
 	}
 	if req.Workflows != nil {
@@ -147,7 +149,11 @@ func (s *ScheduledTaskService) Update(id string, req *types.ScheduledTaskUpdateR
 		return nil, fmt.Errorf("workflows_required")
 	}
 	if req.Enabled != nil {
+		resetNextRun = resetNextRun || task.Enabled != *req.Enabled
 		task.Enabled = *req.Enabled
+	}
+	if resetNextRun {
+		task.NextRunAt = nil
 	}
 
 	if err := r.Update(task); err != nil {

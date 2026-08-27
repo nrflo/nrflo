@@ -22,6 +22,8 @@ Pages receive real-time updates via WebSocket (no REST polling):
 - Layout.tsx subscribes to all project events for sidebar counts and dashboard updates
 - Subscriptions must be gated on `projectsLoaded` (see [hooks/CLAUDE.md](../hooks/CLAUDE.md))
 
+`ScheduleRunsDialog.tsx` presents each run's scheduled time and renders offline-missed occurrences as neutral `Skipped` rows.
+
 ## Testing
 
 Tests are co-located with page components using `.test.tsx` suffix. Some pages use a `__tests__/` subdirectory for additional test organization.

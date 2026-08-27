@@ -4,6 +4,7 @@ package scheduler
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/robfig/cron/v3"
 
@@ -84,8 +85,8 @@ func (s *Scheduler) rebuild() error {
 		return err
 	}
 
-	c := cron.New()
 	now := s.clock.Now()
+	c := cron.New(cron.WithLocation(now.Location()))
 
 	for _, task := range tasks {
 		task := task // capture loop var
@@ -95,7 +96,13 @@ func (s *Scheduler) rebuild() error {
 			continue
 		}
 
-		nextRun := sched.Next(now)
+		nextRun, skipped, skipErr := s.advancePastMissedRuns(task, sched, now)
+		if skipErr != nil {
+			return skipErr
+		}
+		if skipped > 0 {
+			logger.Info(context.Background(), "scheduler: recorded missed runs", "id", task.ID, "count", skipped)
+		}
 		if updateErr := taskRepo.UpdateTriggerTimestamps(task.ID, task.LastTriggeredAt, &nextRun); updateErr != nil {
 			logger.Info(context.Background(), "scheduler: failed to update next_run_at", "id", task.ID, "err", updateErr)
 		}
@@ -120,6 +127,10 @@ func (s *Scheduler) rebuild() error {
 	s.cron = c
 	c.Start()
 	return nil
+}
+
+func scheduledTimeMatches(sched cron.Schedule, candidate time.Time) bool {
+	return sched.Next(candidate.Add(-time.Nanosecond)).Equal(candidate)
 }
 
 // stopCron stops the cron scheduler and waits for in-flight jobs to finish.

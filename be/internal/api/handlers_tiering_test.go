@@ -79,8 +79,8 @@ func TestHandleTieringReport_Admin(t *testing.T) {
 		for _, d := range p.Defs {
 			if d.WorkflowID == "feature" && d.DefID == "implementor" {
 				found = true
-				if d.RecommendedModel != "sonnet-5" {
-					t.Errorf("RecommendedModel = %q, want sonnet-5", d.RecommendedModel)
+				if d.RecommendedModel != "glm-5.3-flash" {
+					t.Errorf("RecommendedModel = %q, want glm-5.3-flash", d.RecommendedModel)
 				}
 			}
 		}

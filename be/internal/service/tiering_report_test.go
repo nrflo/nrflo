@@ -56,7 +56,7 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 	proj := findProjectReport(t, report, "alpha")
 
 	implementor := findDefRow(t, proj.Defs, "feature", "implementor")
-	if implementor.RecommendedModel != "sonnet-5" || implementor.Customized || implementor.SkipReason != "" {
+	if implementor.RecommendedModel != "glm-5.3-flash" || implementor.Customized || implementor.SkipReason != "" {
 		t.Errorf("stock implementor row = %+v", implementor)
 	}
 	if implementor.EstMonthlyDelta == nil || *implementor.EstMonthlyDelta >= 0 {
@@ -67,7 +67,7 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 	}
 
 	docUpdater := findDefRow(t, proj.Defs, "feature", "doc-updater")
-	if docUpdater.RecommendedModel != "haiku-4-5" || docUpdater.Customized || docUpdater.SkipReason != "" {
+	if docUpdater.RecommendedModel != "glm-5.3-flash" || docUpdater.Customized || docUpdater.SkipReason != "" {
 		t.Errorf("doc-updater row = %+v", docUpdater)
 	}
 	if docUpdater.GrantsDelegation {

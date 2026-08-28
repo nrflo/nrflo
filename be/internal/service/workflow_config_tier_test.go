@@ -41,14 +41,14 @@ func TestBuildSpawnerConfig_TierOnlyDef_FillsModelEffortAndChain(t *testing.T) {
 	if !ok {
 		t.Fatal("agents missing entry for impl")
 	}
-	if cfg.Model != "haiku-4-5" {
-		t.Errorf("Model = %q, want haiku-4-5 (tier1 chain primary)", cfg.Model)
+	if cfg.Model != "glm-5.3-flash" {
+		t.Errorf("Model = %q, want glm-5.3-flash (tier1 chain primary)", cfg.Model)
 	}
 	if cfg.ReasoningEffort == nil || *cfg.ReasoningEffort != "low" {
 		t.Errorf("ReasoningEffort = %v, want low", cfg.ReasoningEffort)
 	}
-	if len(cfg.Chain) != 3 {
-		t.Errorf("Chain length = %d, want 3 (tier1 chain incl. 000220 codex hop)", len(cfg.Chain))
+	if len(cfg.Chain) != 4 {
+		t.Errorf("Chain length = %d, want 4 (GLM plus subscription fallbacks)", len(cfg.Chain))
 	}
 }
 

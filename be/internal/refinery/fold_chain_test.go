@@ -56,25 +56,26 @@ func TestResolveRefineryChain_TierOneShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveAgentChain: %v", err)
 	}
-	if len(chain) != 3 {
-		t.Fatalf("len(chain) = %d, want 3 (000195 api+cli haiku, 000220 cli luna)", len(chain))
+	if len(chain) != 4 {
+		t.Fatalf("len(chain) = %d, want 4 (GLM, api+cli haiku, cli luna)", len(chain))
 	}
-	if chain[0].ExecutionMode != "api" || chain[0].ModelID != "haiku-4-5" {
-		t.Errorf("chain[0] = %+v, want {ExecutionMode:api ModelID:haiku-4-5}", chain[0])
+	if chain[0].ExecutionMode != "api" || chain[0].ModelID != "glm-5.3-flash" {
+		t.Errorf("chain[0] = %+v, want {ExecutionMode:api ModelID:glm-5.3-flash}", chain[0])
 	}
-	if chain[1].ExecutionMode != "cli_interactive" || chain[1].ModelID != "haiku-4-5" {
-		t.Errorf("chain[1] = %+v, want {ExecutionMode:cli_interactive ModelID:haiku-4-5}", chain[1])
+	if chain[1].ExecutionMode != "api" || chain[1].ModelID != "haiku-4-5" {
+		t.Errorf("chain[1] = %+v, want {ExecutionMode:api ModelID:haiku-4-5}", chain[1])
 	}
-	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "gpt-5.6-luna" {
-		t.Errorf("chain[2] = %+v, want {ExecutionMode:cli_interactive ModelID:gpt-5.6-luna}", chain[2])
+	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-4-5" {
+		t.Errorf("chain[2] = %+v, want {ExecutionMode:cli_interactive ModelID:haiku-4-5}", chain[2])
+	}
+	if chain[3].ExecutionMode != "cli_interactive" || chain[3].ModelID != "gpt-5.6-luna" {
+		t.Errorf("chain[3] = %+v, want {ExecutionMode:cli_interactive ModelID:gpt-5.6-luna}", chain[3])
 	}
 }
 
 // TestWalkFoldChain_APIBuildFailureAdvancesToCLILanding drives the full
-// console fold through the real 3-entry chain: pos0 (api) fails at the
-// buildProvider seam, pos1 (cli_interactive) lands via a fake CLIFolder.
-// Expects the digest written from the CLI landing and exactly two
-// refinery_runs rows (failed pos0, ok pos1 with a non-empty fallback_from).
+// console fold through the real chain: GLM and Haiku API fail at the
+// buildProvider seam, then Haiku CLI lands via a fake CLIFolder.
 func TestWalkFoldChain_APIBuildFailureAdvancesToCLILanding(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -101,14 +102,14 @@ func TestWalkFoldChain_APIBuildFailureAdvancesToCLILanding(t *testing.T) {
 	}
 
 	rows := queryRefineryRuns(t, pool)
-	if len(rows) != 2 {
-		t.Fatalf("len(rows) = %d, want 2 (failed pos0, ok pos1)", len(rows))
+	if len(rows) != 3 {
+		t.Fatalf("len(rows) = %d, want 3 (two failed API entries, one CLI landing)", len(rows))
 	}
 	if rows[0].status != "failed" {
 		t.Errorf("rows[0].status = %q, want failed", rows[0].status)
 	}
-	if rows[1].status != "ok" {
-		t.Errorf("rows[1].status = %q, want ok", rows[1].status)
+	if rows[2].status != "ok" {
+		t.Errorf("rows[2].status = %q, want ok", rows[2].status)
 	}
 
 	var pos0, pos1 int
@@ -122,8 +123,8 @@ func TestWalkFoldChain_APIBuildFailureAdvancesToCLILanding(t *testing.T) {
 	if pos0 != 0 || mode0 != "api" || fb0 != "" {
 		t.Errorf("failed row = pos:%d mode:%q fallback:%q, want pos:0 mode:api fallback:\"\"", pos0, mode0, fb0)
 	}
-	if pos1 != 1 || mode1 != "cli_interactive" || fb1 == "" {
-		t.Errorf("ok row = pos:%d mode:%q fallback:%q, want pos:1 mode:cli_interactive non-empty fallback", pos1, mode1, fb1)
+	if pos1 != 2 || mode1 != "cli_interactive" || fb1 == "" {
+		t.Errorf("ok row = pos:%d mode:%q fallback:%q, want pos:2 mode:cli_interactive non-empty fallback", pos1, mode1, fb1)
 	}
 }
 
@@ -152,8 +153,8 @@ func TestWalkFoldChain_ChainExhausted_AllRowsFailedDigestUntouched(t *testing.T)
 	}
 
 	rows := queryRefineryRuns(t, pool)
-	if len(rows) != 3 {
-		t.Fatalf("len(rows) = %d, want 3 (one per chain entry)", len(rows))
+	if len(rows) != 4 {
+		t.Fatalf("len(rows) = %d, want 4 (one per chain entry)", len(rows))
 	}
 	for i, r := range rows {
 		if r.status != "failed" {

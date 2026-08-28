@@ -49,9 +49,8 @@ func TestResolvePlannerDef_WorkflowLocalOverride(t *testing.T) {
 
 // TestResolvePlannerDef_SystemDefaultFallback verifies that, absent a
 // workflow-local planner def, resolvePlannerDef falls back to the
-// system_agent_definitions role='planner' row for the cli_interactive
-// backend (seeded by migration 000158 as "planner-system") ahead of the
-// "planner-system-api" row.
+// system_agent_definitions role='planner' row seeded as "planner-system";
+// its tier-4 chain resolves to the API-mode GLM primary.
 func TestResolvePlannerDef_SystemDefaultFallback(t *testing.T) {
 	env := newTestEnv(t)
 
@@ -62,8 +61,11 @@ func TestResolvePlannerDef_SystemDefaultFallback(t *testing.T) {
 	if cfg.ID != "planner-system" {
 		t.Errorf("ID = %q, want %q", cfg.ID, "planner-system")
 	}
-	if cfg.ExecutionMode != "cli_interactive" {
-		t.Errorf("ExecutionMode = %q, want %q", cfg.ExecutionMode, "cli_interactive")
+	if cfg.ExecutionMode != "api" {
+		t.Errorf("ExecutionMode = %q, want %q", cfg.ExecutionMode, "api")
+	}
+	if cfg.Model != "glm-5.3-flash" {
+		t.Errorf("Model = %q, want %q", cfg.Model, "glm-5.3-flash")
 	}
 }
 

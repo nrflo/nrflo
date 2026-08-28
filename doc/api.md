@@ -273,9 +273,9 @@ A consultant is a named api-mode agent that a caller invokes inline via the `con
 `delegate` spawns one or more downward workers to do execution work a decider/executor agent shouldn't do itself, returning their structured findings — never a transcript.
 
 **Tiers** — `tier` resolves to a fixed system agent definition, not a caller-chosen model:
-- `extractor` → `_t2_extractor` (tier-1 chain: haiku-class, low effort, read-only tools). Answers exactly one question; cannot itself call `delegate`.
-- `verifier` → `_t3_verifier` (tier-2 chain: sonnet-class, low effort, read-only tools). Adversarially re-checks exactly one claim (absence claims, contradictions between workers, audit-critical positives), refute-by-default; cannot itself call `delegate`.
-- `executor` → `_t1_executor` (sonnet-5, medium effort, full tool set). Owns a slice of work end to end and may itself call `delegate` (tier `extractor` or `verifier`) one level further down.
+- `extractor` → `_t2_extractor` (tier-1 chain: GLM 5.3 Flash low primary, subscription fallbacks, read-only tools). Answers exactly one question; cannot itself call `delegate`.
+- `verifier` → `_t3_verifier` (tier-2 chain: GLM 5.3 Flash high primary, subscription fallbacks, read-only tools). Adversarially re-checks exactly one claim (absence claims, contradictions between workers, audit-critical positives), refute-by-default; cannot itself call `delegate`.
+- `executor` → `_t1_executor` (tier-4 chain: GLM 5.3 Flash max primary, subscription fallbacks, full tool set). Owns a slice of work end to end and may itself call `delegate` (tier `extractor` or `verifier`) one level further down.
 
 **Inputs:**
 - `brief` (required) — the shared task statement every worker receives.

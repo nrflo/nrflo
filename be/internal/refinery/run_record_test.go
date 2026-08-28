@@ -107,7 +107,7 @@ func TestRecordFoldRun_SuccessWritesOkRow(t *testing.T) {
 
 // TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts reproduces a
 // "no anthropic API key" build failure at chain position 0: with no
-// CLIFolder wired, the two cli_interactive fallback entries (positions 1-2)
+// CLIFolder wired, the two cli_interactive fallback entries (positions 2-3)
 // are also advance-eligible (unavailable-backend) and get walked, so the
 // chain exhausts with one failed row per entry. Asserts position 0's row
 // (the api attempt) carries the original error and provider, and that
@@ -132,8 +132,8 @@ func TestRecordFoldRun_FailureWritesFailedRowAndBroadcasts(t *testing.T) {
 	foldConsoleOnce(context.Background(), mgr, sessionID, projectID, []string{"event"})
 
 	rows := queryRefineryRuns(t, pool)
-	if len(rows) != 3 {
-		t.Fatalf("len(rows) = %d, want 3 (chain exhausted: api pos0 + 2 cli fallback entries, no CLIFolder wired)", len(rows))
+	if len(rows) != 4 {
+		t.Fatalf("len(rows) = %d, want 4 (chain exhausted: 2 api + 2 cli entries, no CLIFolder wired)", len(rows))
 	}
 	for i, row := range rows {
 		if row.status != "failed" {

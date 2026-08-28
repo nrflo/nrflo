@@ -131,10 +131,12 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		tier, position int
 		want           want
 	}{
-		{1, 0, want{"anthropic", "", "haiku-4-5", "low"}},
-		{1, 1, want{"anthropic", "cli_interactive", "haiku-4-5", "low"}},
-		{4, 0, want{"anthropic", "", "sonnet-5", "medium"}},
-		{4, 1, want{"anthropic", "cli_interactive", "sonnet-5", "medium"}},
+		{1, 0, want{"openrouter", "api", "glm-5.3-flash", "low"}},
+		{1, 1, want{"anthropic", "", "haiku-4-5", "low"}},
+		{1, 2, want{"anthropic", "cli_interactive", "haiku-4-5", "low"}},
+		{4, 0, want{"openrouter", "api", "glm-5.3-flash", "max"}},
+		{4, 1, want{"anthropic", "", "sonnet-5", "medium"}},
+		{4, 2, want{"anthropic", "cli_interactive", "sonnet-5", "medium"}},
 	}
 
 	for _, c := range cases {
@@ -152,9 +154,9 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		}
 	}
 
-	// No stray fallback rows: every seeded tier is its two anthropic
-	// entries plus one codex hop (000220 tier 1, 000222 tiers 2-4).
-	for tier, want := range map[int]int{1: 3, 4: 3} {
+	// Every worker tier is GLM followed by two Anthropic entries and one
+	// Codex subscription fallback.
+	for tier, want := range map[int]int{1: 4, 4: 4} {
 		var count int
 		if err := pool.QueryRow(`SELECT COUNT(*) FROM tier_models WHERE tier = ?`, tier).Scan(&count); err != nil {
 			t.Fatalf("count tier=%d: %v", tier, err)

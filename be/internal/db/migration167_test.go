@@ -37,6 +37,7 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 		"gpt-5.6-sol":   "openai|gpt-5.6-sol|gpt-5.6-sol|272000|1050000||low",
 		"gpt-5.6-terra": "openai|gpt-5.6-terra|gpt-5.6-terra|272000|1050000||medium",
 		"gpt-5.6-luna":  "openai|gpt-5.6-luna|gpt-5.6-luna|272000|1050000||medium",
+		"glm-5.3-flash": "openrouter||z-ai/glm-5.3-flash|1048576|1048576||high",
 	}
 
 	rows, err := pool.Query(`SELECT id, provider, cli_model, api_model, cli_context,

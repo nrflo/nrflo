@@ -71,10 +71,10 @@ func TestMigration220_Tier1ChainGainsCodexHop(t *testing.T) {
 		}
 		chain = append(chain, e)
 	}
-	if len(chain) != 3 {
-		t.Fatalf("tier-1 chain length = %d, want 3 (haiku api, haiku cli, luna codex): %+v", len(chain), chain)
+	if len(chain) != 4 {
+		t.Fatalf("tier-1 chain length = %d, want 4 (GLM, haiku api, haiku cli, luna codex): %+v", len(chain), chain)
 	}
-	if chain[2].provider != "openai" || chain[2].mode != "cli_interactive" || chain[2].model != "gpt-5.6-luna" || chain[2].effort != "low" {
-		t.Errorf("position 2 = %+v, want openai/cli_interactive/gpt-5.6-luna/low", chain[2])
+	if chain[3].provider != "openai" || chain[3].mode != "cli_interactive" || chain[3].model != "gpt-5.6-luna" || chain[3].effort != "low" {
+		t.Errorf("position 3 = %+v, want openai/cli_interactive/gpt-5.6-luna/low", chain[3])
 	}
 }

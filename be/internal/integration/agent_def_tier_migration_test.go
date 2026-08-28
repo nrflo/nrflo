@@ -143,10 +143,9 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 		t.Errorf("hotfix implementor tier = %+v, want NULL (untouched)", hotfixTier)
 	}
 
-	// Resolves to the exact same (model, effort) it had pre-migration.
-	// ResolveDefChain reads the head schema (e.g. tier_models.weight,
-	// migration 000237), so bring the DB fully up first — head migrations may
-	// rewrite model ids, hence the at-200 assertions above ran before this.
+	// ResolveDefChain reads the head schema (e.g. tier_models.weight), so bring
+	// the DB fully up first. Migration 244 intentionally makes GLM the tier-2
+	// primary while retaining Sonnet as the subscription fallback.
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		t.Fatalf("migrate up to head: %v", err)
 	}
@@ -166,7 +165,10 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDefChain(setup-analyzer): %v", err)
 	}
-	if len(chain) == 0 || chain[0].ModelID != "sonnet-5" || chain[0].ReasoningEffort != "low" {
-		t.Errorf("resolved chain = %+v, want primary sonnet-5/low (pre-migration values preserved)", chain)
+	if len(chain) != 4 || chain[0].ModelID != "glm-5.3-flash" || chain[0].ReasoningEffort != "high" || chain[0].ExecutionMode != "api" {
+		t.Errorf("resolved chain = %+v, want four entries with primary glm-5.3-flash/high/api", chain)
+	}
+	if len(chain) >= 2 && (chain[1].ModelID != "sonnet-5" || chain[1].ReasoningEffort != "low") {
+		t.Errorf("resolved chain = %+v, want sonnet-5/low subscription fallback", chain)
 	}
 }

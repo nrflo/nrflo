@@ -53,8 +53,8 @@ func TestResolveDefChain_TierOrderedByPosition(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDefChain: %v", err)
 	}
-	if len(chain) != 3 || chain[0].ModelID != "haiku-4-5" {
-		t.Errorf("chain = %+v, want 3-entry tier1 chain (haiku-4-5 primary)", chain)
+	if len(chain) != 4 || chain[0].ModelID != "glm-5.3-flash" {
+		t.Errorf("chain = %+v, want 4-entry tier1 chain (GLM primary)", chain)
 	}
 }
 
@@ -74,8 +74,8 @@ func TestResolveDefChain_InheritanceWalksDown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveDefChain: %v", err)
 	}
-	if len(chain) != 3 || chain[0].ModelID != "sonnet-5" {
-		t.Errorf("chain = %+v, want inherited tier4 chain (sonnet-5 primary)", chain)
+	if len(chain) != 4 || chain[0].ModelID != "glm-5.3-flash" {
+		t.Errorf("chain = %+v, want inherited tier4 chain (GLM primary)", chain)
 	}
 }
 
@@ -126,7 +126,8 @@ func TestResolveDefChain_ExecutionModeInherit(t *testing.T) {
 	svc, cleanup := setupSysAgentDefTestEnv(t)
 	t.Cleanup(cleanup)
 
-	// Tier 2 position 0 is seeded execution_mode='' by migration 000200.
+	// Tier 2 position 1 is the inherited-mode Anthropic entry; position 0 is
+	// the API-only GLM primary.
 	tier := 2
 	def := agentDef("", "cli_interactive", &tier, nil)
 	chain, err := ResolveDefChain(svc.pool, clock.Real(), svc.modelSvc, def)
@@ -136,8 +137,11 @@ func TestResolveDefChain_ExecutionModeInherit(t *testing.T) {
 	if len(chain) == 0 {
 		t.Fatal("chain is empty")
 	}
-	if chain[0].ExecutionMode != "cli_interactive" {
-		t.Errorf("chain[0].ExecutionMode = %q, want cli_interactive (inherited from def)", chain[0].ExecutionMode)
+	if len(chain) < 2 {
+		t.Fatalf("chain length = %d, want at least 2", len(chain))
+	}
+	if chain[1].ExecutionMode != "cli_interactive" {
+		t.Errorf("chain[1].ExecutionMode = %q, want cli_interactive (inherited from def)", chain[1].ExecutionMode)
 	}
 }
 

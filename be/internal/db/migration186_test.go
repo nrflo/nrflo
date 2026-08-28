@@ -98,9 +98,9 @@ func TestMigration186_PreservedReadOnlyRowsAndPricingSurvive(t *testing.T) {
 	}
 }
 
-// TestMigration186_NoSeededOpenRouterRows verifies the migration seeds no
-// openrouter catalog rows — openrouter rows are strictly user-created.
-func TestMigration186_NoSeededOpenRouterRows(t *testing.T) {
+// TestMigration186_OnlyCanonicalOpenRouterRow verifies the final catalog has
+// only the migration-owned GLM route; other OpenRouter rows are user-created.
+func TestMigration186_OnlyCanonicalOpenRouterRow(t *testing.T) {
 	pool, err := newMigratedTestPool(t)
 	if err != nil {
 		t.Fatalf("newMigratedTestPool: %v", err)
@@ -108,11 +108,12 @@ func TestMigration186_NoSeededOpenRouterRows(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	var count int
-	if err := pool.QueryRow(`SELECT COUNT(*) FROM models WHERE provider = 'openrouter'`).Scan(&count); err != nil {
-		t.Fatalf("count openrouter rows: %v", err)
+	var id string
+	if err := pool.QueryRow(`SELECT COUNT(*), MIN(id) FROM models WHERE provider = 'openrouter'`).Scan(&count, &id); err != nil {
+		t.Fatalf("query openrouter rows: %v", err)
 	}
-	if count != 0 {
-		t.Errorf("openrouter row count = %d, want 0 (no seeded catalog)", count)
+	if count != 1 || id != "glm-5.3-flash" {
+		t.Errorf("openrouter catalog = count %d, id %q; want canonical GLM row only", count, id)
 	}
 }
 

@@ -17,10 +17,10 @@ func TestMigration222_SonnetTiersGainTerraHop(t *testing.T) {
 	for tier, effort := range map[int]string{2: "low", 3: "medium", 4: "medium"} {
 		var provider, mode, model, gotEffort string
 		err := pool.QueryRow(
-			`SELECT provider, execution_mode, model_id, reasoning_effort FROM tier_models WHERE tier = ? AND position = 2`, tier,
+			`SELECT provider, execution_mode, model_id, reasoning_effort FROM tier_models WHERE tier = ? AND position = 3`, tier,
 		).Scan(&provider, &mode, &model, &gotEffort)
 		if err != nil {
-			t.Fatalf("tier %d position 2: %v", tier, err)
+			t.Fatalf("tier %d position 3: %v", tier, err)
 		}
 		if provider != "openai" || mode != "cli_interactive" || model != "gpt-5.6-terra" || gotEffort != effort {
 			t.Errorf("tier %d hop = %s/%s/%s/%s, want openai/cli_interactive/gpt-5.6-terra/%s",

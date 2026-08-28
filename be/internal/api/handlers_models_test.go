@@ -58,8 +58,8 @@ func TestHandleModelsListAndGetUnifiedRows(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&models); err != nil {
 		t.Fatal(err)
 	}
-	if len(models) != 20 {
-		t.Fatalf("model count = %d, want 20", len(models))
+	if len(models) != 21 {
+		t.Fatalf("model count = %d, want 21", len(models))
 	}
 
 	rr = httptest.NewRecorder()

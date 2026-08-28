@@ -33,7 +33,7 @@ func TestProfileByName_T0BareRemoved(t *testing.T) {
 }
 
 // TestProfileByName_T0Decider_Defaults locks in every defaulted field the
-// ticket specifies: claude/opus-5/high, 30k budget, refinery on,
+// ticket specifies: claude/opus-5/medium, 30k budget, refinery on,
 // tier-t0-decider template, native policy none, and the restricted catalogue.
 func TestProfileByName_T0Decider_Defaults(t *testing.T) {
 	t.Parallel()
@@ -47,8 +47,8 @@ func TestProfileByName_T0Decider_Defaults(t *testing.T) {
 	if p.DefaultModelID != "opus-5" {
 		t.Errorf("DefaultModelID = %q, want opus-5", p.DefaultModelID)
 	}
-	if p.DefaultEffort != "high" {
-		t.Errorf("DefaultEffort = %q, want high", p.DefaultEffort)
+	if p.DefaultEffort != "medium" {
+		t.Errorf("DefaultEffort = %q, want medium", p.DefaultEffort)
 	}
 	if p.ContextBudgetTokens != 30000 {
 		t.Errorf("ContextBudgetTokens = %d, want 30000", p.ContextBudgetTokens)

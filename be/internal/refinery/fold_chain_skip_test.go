@@ -11,8 +11,8 @@ import (
 )
 
 // TestWalkFoldChain_NoCredentialsSkipsAPIEntry verifies that when the static
-// credential pre-check reports the api provider unavailable, the walk skips
-// pos0 without an attempt (no refinery_runs row) and lands the cli entry.
+// credential pre-check reports API providers unavailable, the walk skips
+// GLM and Haiku API without attempt rows and lands the Haiku CLI entry.
 func TestWalkFoldChain_NoCredentialsSkipsAPIEntry(t *testing.T) {
 	pool := newTestPool(t)
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
@@ -40,7 +40,7 @@ func TestWalkFoldChain_NoCredentialsSkipsAPIEntry(t *testing.T) {
 
 	rows := queryRefineryRuns(t, pool)
 	if len(rows) != 1 {
-		t.Fatalf("len(rows) = %d, want 1 (skipped pos0 records no row)", len(rows))
+		t.Fatalf("len(rows) = %d, want 1 (skipped API entries record no row)", len(rows))
 	}
 	if rows[0].status != "ok" {
 		t.Errorf("rows[0].status = %q, want ok", rows[0].status)
@@ -50,7 +50,7 @@ func TestWalkFoldChain_NoCredentialsSkipsAPIEntry(t *testing.T) {
 	if err := pool.QueryRow(`SELECT chain_position, execution_mode FROM refinery_runs WHERE status='ok'`).Scan(&pos, &mode); err != nil {
 		t.Fatalf("query ok row: %v", err)
 	}
-	if pos != 1 || mode != "cli_interactive" {
-		t.Errorf("ok row = pos:%d mode:%q, want pos:1 mode:cli_interactive", pos, mode)
+	if pos != 2 || mode != "cli_interactive" {
+		t.Errorf("ok row = pos:%d mode:%q, want pos:2 mode:cli_interactive", pos, mode)
 	}
 }

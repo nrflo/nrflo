@@ -21,7 +21,7 @@ export interface ConsoleChatSummary {
 export interface PendingApproval {
   approval_id: string
   kind: string
-  // CLI tool name behind a PreToolUse request (claude only); 'AskUserQuestion'
+  // CLI question marker; 'AskUserQuestion' and 'RequestUserInput'
   // renders as an interactive question card instead of allow/deny buttons.
   tool?: string
   command: string

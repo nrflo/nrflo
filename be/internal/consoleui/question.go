@@ -12,26 +12,37 @@ import (
 // askUserQuestionTool mirrors spawner.AskUserQuestionTool by value (consoleui
 // talks to the server over REST/WS only, never imports spawner).
 const askUserQuestionTool = "AskUserQuestion"
+const codexQuestionTool = "RequestUserInput"
 
-// chatQuestion is one entry of an AskUserQuestion payload (Approval.Input).
+// chatQuestion is one entry of a CLI question payload (Approval.Input).
 type chatQuestion struct {
+	ID          string `json:"id"`
 	Question    string `json:"question"`
 	Header      string `json:"header"`
 	MultiSelect bool   `json:"multiSelect"`
+	IsSecret    bool   `json:"isSecret"`
 	Options     []struct {
 		Label       string `json:"label"`
 		Description string `json:"description"`
 	} `json:"options"`
 }
 
-// questionState drives the interactive card for the front approval when it is
-// an AskUserQuestion: questions are answered one at a time (number keys pick
+func (m *model) composerView() string {
+	if !m.questionActive() || !m.qa.questions[m.qa.idx].IsSecret || m.input.Value() == "" {
+		return m.input.View()
+	}
+	return fitWidth(strings.Repeat("•", len([]rune(m.input.Value()))), m.input.Width())
+}
+
+// questionState drives the interactive card for the front question: questions
+// are answered one at a time (number keys pick
 // an option, typed text is a free-form answer, multiSelect toggles + enter
 // confirms), and the combined answer resolves the approval with
 // decision=answer. Keyed by approval id; syncQuestion rebuilds it whenever
 // the front approval changes and clears it when the card resolves.
 type questionState struct {
 	id        string
+	codex     bool
 	questions []chatQuestion
 	idx       int
 	answers   []string
@@ -44,7 +55,7 @@ type questionState struct {
 // false and the generic approval card takes over (its allow maps to the
 // server-side plain-text redirect, so the chat cannot deadlock).
 func (m *model) syncQuestion() {
-	if len(m.approvals) == 0 || m.approvals[0].Tool != askUserQuestionTool {
+	if len(m.approvals) == 0 || (m.approvals[0].Tool != askUserQuestionTool && m.approvals[0].Tool != codexQuestionTool) {
 		m.qa = questionState{}
 		return
 	}
@@ -52,7 +63,7 @@ func (m *model) syncQuestion() {
 	if m.qa.id == front.ID {
 		return
 	}
-	m.qa = questionState{id: front.ID, questions: parseQuestions(front.Input), picks: map[int]bool{}}
+	m.qa = questionState{id: front.ID, codex: front.Tool == codexQuestionTool, questions: parseQuestions(front.Input), picks: map[int]bool{}}
 }
 
 func parseQuestions(input string) []chatQuestion {
@@ -125,7 +136,19 @@ func (m *model) recordAnswer(answer string) tea.Cmd {
 	m.qa.sent = true
 	id := m.qa.id
 	final := composeAnswer(m.qa.questions, m.qa.answers)
+	if m.qa.codex {
+		final = composeCodexAnswer(m.qa.questions, m.qa.answers)
+	}
 	return action("answer", func() error { return m.client.Answer(m.ctx, id, final) })
+}
+
+func composeCodexAnswer(questions []chatQuestion, answers []string) string {
+	entries := make(map[string]any, len(questions))
+	for i, q := range questions {
+		entries[q.ID] = map[string]any{"answers": []string{answers[i]}}
+	}
+	out, _ := json.Marshal(map[string]any{"answers": entries})
+	return string(out)
 }
 
 // composeAnswer flattens per-question answers into the single string the

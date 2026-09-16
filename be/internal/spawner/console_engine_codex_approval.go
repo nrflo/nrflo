@@ -15,7 +15,7 @@ import (
 // approvalDecisionWire maps each approval-shaped server-request method to the
 // ApprovalDecision -> wire-string table for that method. Every other server
 // request (item/permissions/requestApproval — not decision-shaped, response
-// is {permissions,scope,strictAutoReview} — item/tool/requestUserInput,
+// is {permissions,scope,strictAutoReview} —
 // mcpServer/elicitation/request, item/tool/call,
 // account/chatgptAuthTokens/refresh, attestation/generate, ...) is rejected
 // via replyError instead of guessed at.
@@ -48,6 +48,7 @@ func autoApproveWire(method string) (string, bool) {
 type pendingApproval struct {
 	rawID  json.RawMessage
 	method string
+	params json.RawMessage
 }
 
 // pendingApprovals is a mutex-guarded id->pendingApproval table.
@@ -103,6 +104,10 @@ func (e *codexEngine) onServerRequest(env rpcEnvelope) {
 	if env.ID == nil {
 		return
 	}
+	if env.Method == codexQuestionMethod {
+		e.onQuestionRequest(env)
+		return
+	}
 	if _, ok := approvalDecisionWire[env.Method]; !ok {
 		_ = e.client.replyError(*env.ID, -32601, "console engine: unhandled server request: "+env.Method)
 		return
@@ -111,7 +116,7 @@ func (e *codexEngine) onServerRequest(env rpcEnvelope) {
 	_ = json.Unmarshal(env.Params, &p)
 
 	id := string(*env.ID)
-	e.approvals.register(id, pendingApproval{rawID: *env.ID, method: env.Method})
+	e.approvals.register(id, pendingApproval{rawID: *env.ID, method: env.Method, params: env.Params})
 	e.emit(EngineEvent{
 		Type:      EventApprovalRequest,
 		SessionID: e.spec.SessionID,
@@ -204,9 +209,4 @@ func (e *codexEngine) ReplyApproval(id string, decision ApprovalDecision) error 
 	e.approvals.drop(id)
 	e.emit(EngineEvent{Type: EventApprovalResolved, SessionID: e.spec.SessionID, ApprovalID: id, Decision: decision})
 	return nil
-}
-
-// AnswerQuestion: codex has no interactive question tool.
-func (e *codexEngine) AnswerQuestion(id, _ string) error {
-	return fmt.Errorf("console engine: approval %q is not a question", id)
 }

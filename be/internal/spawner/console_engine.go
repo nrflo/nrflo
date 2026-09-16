@@ -48,9 +48,8 @@ type ConsoleEngine interface {
 	Events() <-chan EngineEvent
 	// ReplyApproval answers a pending approval request by id.
 	ReplyApproval(id string, decision ApprovalDecision) error
-	// AnswerQuestion resolves a pending AskUserQuestion approval with the
-	// user's free-form answer (claude only — the other engines have no
-	// interactive question tool and error).
+	// AnswerQuestion resolves a pending question card. Claude takes plain
+	// text; Codex takes a question-id-keyed JSON answer object.
 	AnswerQuestion(id, answer string) error
 	// SessionApprovals lists the tool names auto-allowed for the rest of the
 	// session by approve_for_session decisions. Engines whose session scope
@@ -168,10 +167,8 @@ func (e EventEmitter) emit(ev EngineEvent) {
 }
 
 // ApprovalRequest describes one pending server->client approval prompt.
-// Tool is the CLI tool name behind a PreToolUse request (claude only) — a
-// consumer renders Tool==AskUserQuestionTool as an interactive question card
-// (options parsed from Raw, the verbatim tool input) instead of an
-// allow/deny prompt.
+// Tool marks a CLI question request; consumers render AskUserQuestionTool and
+// CodexQuestionTool as question cards using the verbatim Raw questions JSON.
 type ApprovalRequest struct {
 	ID      string
 	Kind    string // the wire method name, e.g. "item/commandExecution/requestApproval"

@@ -58,6 +58,30 @@ func TestQuestionCard_DigitSelect_AdvancesAndComposes(t *testing.T) {
 	}
 }
 
+func TestQuestionCard_CodexAnswerUsesQuestionIDs(t *testing.T) {
+	questions := parseQuestions(`{"questions":[{"id":"scope","question":"Scope?"},{"id":"ship","question":"Ship?"}]}`)
+	got := composeCodexAnswer(questions, []string{"Small", "yes"})
+	want := `{"answers":{"scope":{"answers":["Small"]},"ship":{"answers":["yes"]}}}`
+	if got != want {
+		t.Errorf("codex answer = %s, want %s", got, want)
+	}
+}
+
+func TestQuestionCard_CodexSecretMasksComposer(t *testing.T) {
+	m := questionModel(t)
+	m.qa.codex = true
+	m.qa.questions[0].IsSecret = true
+	m.input.SetWidth(40)
+	m.input.SetValue("sensitive-value")
+	view := m.composerView()
+	if strings.Contains(view, "sensitive-value") || !strings.Contains(view, "•••") {
+		t.Fatalf("secret composer view = %q, want masked value", view)
+	}
+	if m.input.Value() != "sensitive-value" {
+		t.Fatalf("masking changed input value to %q", m.input.Value())
+	}
+}
+
 // Typed text is a free-form answer; digits typed into a non-empty composer
 // are composer input, never option picks.
 func TestQuestionCard_FreeTextAnswer(t *testing.T) {

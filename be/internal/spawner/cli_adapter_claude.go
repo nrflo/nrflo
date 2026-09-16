@@ -13,13 +13,12 @@ type ClaudeAdapter struct{}
 // claudeDisallowedNativeTools denies the CLI's own multi-agent orchestration
 // tools so a managed session cannot spawn children invisible to nrflo.
 //
-// The delegation tool is "Agent" in both the Docker-pinned 2.1.178 and 2.1.207;
-// "Task" is its pre-rename name, kept for older CLIs. Deny names are matched
-// exactly and unknown ones are silently ignored, so listing "Task" neither
-// fails the spawn nor prefix-matches the unrelated Task* background-task tools.
+// Claude 2.1.272 exposes Task plus the collaboration-only ListAgents, Monitor,
+// ReportFindings, and SendMessage tools. Deny names are matched exactly, so
+// TaskOutput/TaskStop remain available for ordinary background commands.
 // mcp__nrflo__* and ordinary coding tools (Bash/Edit/Read/Write/...) survive.
 // Drift alarm for these names: TestNativeOrchestrationCLI (-tags clitools).
-const claudeDisallowedNativeTools = "Agent Task Workflow SendMessage"
+const claudeDisallowedNativeTools = "Task ListAgents Monitor ReportFindings SendMessage"
 
 func (a *ClaudeAdapter) Name() string {
 	return "claude"

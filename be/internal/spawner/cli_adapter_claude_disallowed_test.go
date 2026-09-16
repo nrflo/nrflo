@@ -22,8 +22,8 @@ func TestClaudeAdapter_DisallowsNativeOrchestration(t *testing.T) {
 	if pos == -1 {
 		t.Fatalf("BuildInteractiveCommand missing --disallowedTools: %v", cmdArgs)
 	}
-	if pos+1 >= len(cmdArgs) || cmdArgs[pos+1] != "Agent Task Workflow SendMessage" {
-		t.Errorf("--disallowedTools value = %q, want %q: %v", cmdArgs[pos+1], "Agent Task Workflow SendMessage", cmdArgs)
+	if pos+1 >= len(cmdArgs) || cmdArgs[pos+1] != "Task ListAgents Monitor ReportFindings SendMessage" {
+		t.Errorf("--disallowedTools value = %q, want %q: %v", cmdArgs[pos+1], "Task ListAgents Monitor ReportFindings SendMessage", cmdArgs)
 	}
 }
 

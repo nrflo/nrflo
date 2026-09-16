@@ -11,9 +11,11 @@ interface QuestionOption {
 }
 
 interface ChatQuestion {
+  id?: string
   question: string
   header?: string
   multiSelect?: boolean
+  isSecret?: boolean
   options?: QuestionOption[]
 }
 
@@ -36,6 +38,12 @@ export function parseQuestions(input?: string): ChatQuestion[] | null {
 export function composeAnswer(questions: ChatQuestion[], answers: string[]): string {
   if (answers.length === 1) return answers[0]
   return answers.map((answer, i) => `${questions[i].header || questions[i].question}: ${answer}`).join('; ')
+}
+
+function composeCodexAnswer(questions: ChatQuestion[], answers: string[]): string {
+  return JSON.stringify({
+    answers: Object.fromEntries(questions.map((q, i) => [q.id, { answers: [answers[i]] }])),
+  })
 }
 
 interface QuestionCardProps {
@@ -85,7 +93,8 @@ export function QuestionCard({ sid, approval, questions, resolved }: QuestionCar
       sid,
       aid: approval.approval_id,
       decision: 'answer',
-      answer: composeAnswer(questions, answers),
+      answer: approval.tool === 'RequestUserInput'
+        ? composeCodexAnswer(questions, answers) : composeAnswer(questions, answers),
     })
   }
 
@@ -118,8 +127,9 @@ export function QuestionCard({ sid, approval, questions, resolved }: QuestionCar
                 )
               })}
               <Input
+                type={q.isSecret ? 'password' : 'text'}
                 className="h-8 w-56 text-xs"
-                placeholder="Custom answer…"
+                placeholder={q.isSecret ? 'Secret answer…' : 'Custom answer…'}
                 value={custom[qi] ?? ''}
                 onChange={(e) => setCustom((prev) => ({ ...prev, [qi]: e.target.value }))}
               />

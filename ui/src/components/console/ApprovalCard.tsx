@@ -23,7 +23,8 @@ export function ApprovalCard({ sid, approval, resolved }: ApprovalCardProps) {
   // AskUserQuestion renders as an interactive question card; an unparseable
   // payload falls through to the generic card (its Allow maps to the
   // server-side plain-text redirect, never the unreachable TUI picker).
-  const questions = approval.tool === 'AskUserQuestion' ? parseQuestions(approval.input) : null
+  const questions = approval.tool === 'AskUserQuestion' || approval.tool === 'RequestUserInput'
+    ? parseQuestions(approval.input) : null
   if (questions) {
     return <QuestionCard sid={sid} approval={approval} questions={questions} resolved={resolved} />
   }

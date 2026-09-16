@@ -94,7 +94,6 @@ func TestCodexEngine_Approval_UnknownMethodRejected(t *testing.T) {
 
 	cases := []struct{ id, method string }{
 		{"201", "item/permissions/requestApproval"},
-		{"202", "item/tool/requestUserInput"},
 		{"203", "execCommandApproval"},
 		{"204", "applyPatchApproval"},
 	}

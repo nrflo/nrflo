@@ -58,7 +58,7 @@ func (m *model) View() tea.View {
 	if footer := m.footer(); footer != "" {
 		chromeSections = append(chromeSections, footer)
 	}
-	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.input.View()))
+	chromeSections = append(chromeSections, composerBox.Width(max(1, m.width-2)).Render(m.composerView()))
 	if m.suggestionsOpen() {
 		chromeSections = append(chromeSections, m.suggestionView())
 	} else {

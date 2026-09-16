@@ -5,6 +5,7 @@ package spawner
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os/exec"
 	"strings"
 	"testing"
@@ -26,61 +27,69 @@ import (
 // drift alarms live in native_orchestration_codex_cli_test.go (split for the
 // 300-line file cap).
 
-// listToolsPrompt asks the CLI to enumerate its live tool registry. Enumerating
-// and diffing the registry is deterministic in a way that asking the model
-// "can you delegate?" is not — the answer is a list of names, not a judgement.
+// listToolsPrompt gives each CLI a minimal turn to initialize its tool surface.
 const listToolsPrompt = "List the exact names of every tool currently available to you, one per line, nothing else."
 
-// claudeToolRegistry runs a real claude CLI with the given extra args and
-// returns the set of tool names it reports.
+// claudeToolRegistry reads the CLI's deterministic stream-json init event and
+// kills the process before a model response. This avoids relying on the model
+// to reproduce the registry without omissions.
 func claudeToolRegistry(t *testing.T, extraArgs ...string) map[string]bool {
 	t.Helper()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
-	args := append([]string{"--print", "--dangerously-skip-permissions"}, extraArgs...)
+	args := append([]string{"--print", "--verbose", "--output-format", "stream-json", "--dangerously-skip-permissions"}, extraArgs...)
 	cmd := exec.CommandContext(ctx, "claude", args...)
-	// Prompt goes over stdin, never positionally: --disallowedTools is variadic
-	// and would swallow a trailing positional prompt as a denied tool name.
 	cmd.Stdin = strings.NewReader(listToolsPrompt)
 	cmd.Env = append(cmd.Environ(), "DISABLE_AUTOUPDATER=1")
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatalf("claude stdout pipe: %v", err)
+	}
+	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("claude --print %v: %v\nstderr:\n%s", extraArgs, err, stderr.String())
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("claude --print %v: %v", extraArgs, err)
 	}
 
-	tools := map[string]bool{}
-	for _, line := range strings.Split(stdout.String(), "\n") {
-		if name := strings.TrimSpace(line); name != "" {
+	dec := json.NewDecoder(stdout)
+	for {
+		var ev struct {
+			Type    string   `json:"type"`
+			Subtype string   `json:"subtype"`
+			Tools   []string `json:"tools"`
+		}
+		if err := dec.Decode(&ev); err != nil {
+			_ = cmd.Wait()
+			t.Fatalf("decode claude init event: %v\nstderr:\n%s", err, stderr.String())
+		}
+		if ev.Type != "system" || ev.Subtype != "init" {
+			continue
+		}
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		tools := make(map[string]bool, len(ev.Tools))
+		for _, name := range ev.Tools {
 			tools[name] = true
 		}
+		if len(tools) == 0 {
+			t.Fatal("claude init event reported no tools")
+		}
+		return tools
 	}
-	if len(tools) == 0 {
-		t.Fatalf("claude reported no tools at all; stdout:\n%s", stdout.String())
-	}
-	return tools
 }
 
 // TestNativeOrchestrationCLI_ClaudeDenyBlocksDelegation diffs claude's live
 // tool registry with and without the production deny list.
 //
-// The baseline assertion is the actual drift alarm: if a future CLI renames the
-// delegation tool (it was "Task" in older versions, "Agent" as of 2.1.178 and
-// 2.1.207), "Agent" vanishes from the *undenied* registry and this fails loudly
-// — whereas the deny-side assertion alone would still pass, vacuously.
+// The baseline assertion keeps the deny list from passing vacuously when a
+// future CLI renames or removes an orchestration tool.
 func TestNativeOrchestrationCLI_ClaudeDenyBlocksDelegation(t *testing.T) {
 	baseline := claudeToolRegistry(t)
 
-	// Drift alarm: every name we deny that is meant to exist must actually
-	// exist in this CLI version. "Task" is deliberately excluded — it is the
-	// legacy pre-rename name, kept in the deny list for older CLIs and absent
-	// from current ones.
-	for _, tool := range []string{"Agent", "Workflow"} {
+	for _, tool := range strings.Fields(claudeDisallowedNativeTools) {
 		if !baseline[tool] {
 			t.Errorf("claudeDisallowedNativeTools has drifted stale: %q is not in this CLI's tool registry — the native delegation tool was likely renamed; update the deny list", tool)
 		}
@@ -95,9 +104,8 @@ func TestNativeOrchestrationCLI_ClaudeDenyBlocksDelegation(t *testing.T) {
 		}
 	}
 
-	// No collateral damage: deny matching is by exact name, so denying "Task"
-	// must not take out the unrelated Task* background-task tools, and ordinary
-	// coding tools must survive.
+	// No collateral damage: exact matching must preserve ordinary coding and
+	// background-task control tools.
 	for _, tool := range []string{"Bash", "Edit", "Read", "Write"} {
 		if baseline[tool] && !denied[tool] {
 			t.Errorf("coding tool %q was collaterally denied by --disallowedTools %q", tool, claudeDisallowedNativeTools)
@@ -105,7 +113,7 @@ func TestNativeOrchestrationCLI_ClaudeDenyBlocksDelegation(t *testing.T) {
 	}
 	for _, tool := range []string{"TaskCreate", "TaskGet", "TaskList", "TaskOutput", "TaskStop", "TaskUpdate"} {
 		if baseline[tool] && !denied[tool] {
-			t.Errorf("denying %q prefix-matched and collaterally denied %q; the deny list must match exact tool names only", "Task", tool)
+			t.Errorf("denying Task prefix-matched and collaterally denied %q; the deny list must match exact tool names only", tool)
 		}
 	}
 }

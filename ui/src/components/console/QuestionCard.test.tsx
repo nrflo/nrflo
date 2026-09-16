@@ -87,6 +87,40 @@ describe('QuestionCard', () => {
     })
   })
 
+  it('maps Codex answers to question ids on the app-server wire', async () => {
+    const mutate = mockMutation()
+    const user = userEvent.setup()
+    const input = JSON.stringify({ questions: [
+      { id: 'scope', header: 'Scope', question: 'Pick scope', options: [{ label: 'Small' }] },
+      { id: 'ship', header: 'Ship', question: 'Ship now?', options: [{ label: 'Yes' }] },
+    ] })
+    renderWithQuery(<ApprovalCard sid="sid-1" approval={{ ...questionApproval, tool: 'RequestUserInput', input }} />)
+    await user.click(screen.getByRole('button', { name: 'Small' }))
+    await user.click(screen.getByRole('button', { name: 'Yes' }))
+    await user.click(screen.getByRole('button', { name: 'Answer' }))
+    expect(mutate).toHaveBeenCalledWith({
+      sid: 'sid-1', aid: 'q1', decision: 'answer',
+      answer: JSON.stringify({ answers: { scope: { answers: ['Small'] }, ship: { answers: ['Yes'] } } }),
+    })
+  })
+
+  it('masks a Codex secret answer while preserving its wire value', async () => {
+    const mutate = mockMutation()
+    const user = userEvent.setup()
+    const input = JSON.stringify({ questions: [
+      { id: 'token', header: 'Token', question: 'Enter token', isSecret: true },
+    ] })
+    renderWithQuery(<ApprovalCard sid="sid-1" approval={{ ...questionApproval, tool: 'RequestUserInput', input }} />)
+    const secret = screen.getByPlaceholderText('Secret answer…')
+    expect(secret).toHaveAttribute('type', 'password')
+    await user.type(secret, 'sensitive-value')
+    await user.click(screen.getByRole('button', { name: 'Answer' }))
+    expect(mutate).toHaveBeenCalledWith({
+      sid: 'sid-1', aid: 'q1', decision: 'answer',
+      answer: JSON.stringify({ answers: { token: { answers: ['sensitive-value'] } } }),
+    })
+  })
+
   it('falls back to the generic approval card on an unparseable payload', () => {
     mockMutation()
     renderWithQuery(

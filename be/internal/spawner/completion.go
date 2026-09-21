@@ -187,6 +187,11 @@ func (s *Spawner) relaunchForContinuation(ctx context.Context, oldProc *processI
 	newProc.maxFailRestarts = oldProc.maxFailRestarts
 	newProc.failRestartCount = oldProc.failRestartCount
 	newProc.stallRestartCount = oldProc.stallRestartCount
+	oldProc.messagesMutex.Lock()
+	if !oldProc.hasReceivedMessage {
+		newProc.consecutiveStartStalls = oldProc.consecutiveStartStalls
+	}
+	oldProc.messagesMutex.Unlock()
 	newProc.stallStartTimeout = oldProc.stallStartTimeout
 	newProc.stallRunningTimeout = oldProc.stallRunningTimeout
 	newProc.validationCommands = oldProc.validationCommands

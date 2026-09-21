@@ -201,14 +201,20 @@ func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, re
 		"session_id", proc.sessionID, "agent_type", proc.agentType,
 		"nudge_count", proc.nudgeCount, "stall_restart_count", proc.stallRestartCount)
 
-	reason := "unresponsive_after_nudges"
+	s.failAgentTerminal(ctx, proc, "unresponsive_after_nudges",
+		fmt.Sprintf("%s: unresponsive after %d reminders", proc.agentType, proc.nudgeMax))
+}
 
+// failAgentTerminal marks the agent terminally failed: records the failure via
+// the agent service, signals the monitor to finish the session as "fail", and
+// logs an error row.
+func (s *Spawner) failAgentTerminal(ctx context.Context, proc *processInfo, reason, errMsg string) {
 	if s.config.AgentSvcReal != nil {
 		if _, err := s.config.AgentSvcReal.Fail(&types.AgentRequest{
 			SessionID: proc.sessionID,
 			Reason:    reason,
 		}); err != nil {
-			logger.Warn(ctx, "idle nudge: fail request error",
+			logger.Warn(ctx, "terminal fail request error",
 				"session_id", proc.sessionID, "error", err)
 		}
 	}
@@ -216,9 +222,8 @@ func (s *Spawner) handleNudgeAutoFail(ctx context.Context, proc *processInfo, re
 	s.RequestTerminalSignal(proc.sessionID, "fail")
 
 	if s.config.ErrorSvc != nil {
-		msg := fmt.Sprintf("%s: unresponsive after %d reminders", proc.agentType, proc.nudgeMax)
-		if err := s.config.ErrorSvc.RecordError(proc.projectID, "agent", proc.sessionID, msg); err != nil {
-			logger.Warn(ctx, "idle nudge: record error failed",
+		if err := s.config.ErrorSvc.RecordError(proc.projectID, "agent", proc.sessionID, errMsg); err != nil {
+			logger.Warn(ctx, "terminal fail: record error failed",
 				"session_id", proc.sessionID, "error", err)
 		}
 	}

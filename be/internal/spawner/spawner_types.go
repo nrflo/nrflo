@@ -52,12 +52,16 @@ type ErrorRecorder interface {
 }
 
 const (
-	defaultMaxContinuations        = 10
-	defaultContextThreshold        = 25
-	defaultFailRetryDelay          = 15 * time.Second
-	defaultStallStartTimeout       = 2 * time.Minute
-	defaultStallRunningTimeout     = 8 * time.Minute
-	maxStallRestarts               = 15
+	defaultMaxContinuations    = 10
+	defaultContextThreshold    = 25
+	defaultFailRetryDelay      = 15 * time.Second
+	defaultStallStartTimeout   = 2 * time.Minute
+	defaultStallRunningTimeout = 8 * time.Minute
+	maxStallRestarts           = 15
+	// maxConsecutiveStartStalls fails an agent whose consecutive sessions all
+	// stalled before recording any message: the identical prompt keeps being
+	// rejected, so further restarts cannot help.
+	maxConsecutiveStartStalls      = 3
 	defaultIdleAfterMessageTimeout = 4 * time.Minute
 	defaultIdleStartTimeout        = 2 * time.Minute
 	defaultNudgeMax                = 5
@@ -167,8 +171,12 @@ type processInfo struct {
 	stallStartTimeout   time.Duration // from agent_definition or default 120s
 	stallRunningTimeout time.Duration // from agent_definition or default 480s
 	stallRestartCount   int           // incremented on each stall restart
-	validationCommands  []string      // parsed from agent_def.ValidationCommands at spawn time
-	workDir             string        // resolved working directory for validation commands
+	// consecutiveStartStalls counts back-to-back start stalls across relaunches
+	// (carried only from a predecessor that recorded no message).
+	consecutiveStartStalls int
+	startStallFailed       bool     // terminal fail already requested
+	validationCommands     []string // parsed from agent_def.ValidationCommands at spawn time
+	workDir                string   // resolved working directory for validation commands
 	// Idle/nudge detection (cli_interactive backend only; nudgeMax=0 means disabled)
 	nudgeCount              int
 	nudgeMax                int

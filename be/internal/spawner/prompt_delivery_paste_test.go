@@ -232,3 +232,17 @@ func TestClaudeEngine_WriteTurnText_SlashBypassesPasteMode(t *testing.T) {
 		t.Errorf("slash payload = %q, want raw command without paste markers", got)
 	}
 }
+
+func TestSanitizePromptBody(t *testing.T) {
+	cases := map[string]string{
+		"We\u0080\u0094\u0099re": "Were",
+		"a\x00b\x1b[31mc\x7f":    "ab[31mc",
+		"line1\nline2\tx\r":      "line1\nline2\tx",
+		"héllo — “quoted” 日本語 ✓": "héllo — “quoted” 日本語 ✓",
+	}
+	for in, want := range cases {
+		if got := sanitizePromptBody(in); got != want {
+			t.Errorf("sanitizePromptBody(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -18,7 +18,7 @@ func (s *Spawner) checkStall(ctx context.Context, proc *processInfo, req SpawnRe
 	if proc.lowContextSaving {
 		return false
 	}
-	if proc.stallRestartCount >= maxStallRestarts {
+	if proc.stallRestartCount >= maxStallRestarts || proc.startStallFailed {
 		return false
 	}
 
@@ -31,6 +31,13 @@ func (s *Spawner) checkStall(ctx context.Context, proc *processInfo, req SpawnRe
 	if !hasMsg && proc.stallStartTimeout > 0 && sinceLastMsg > proc.stallStartTimeout {
 		logger.Warn(ctx, "stall detected: no output since start",
 			"agent_type", proc.agentType, "session_id", proc.sessionID, "elapsed", sinceLastMsg)
+		if proc.consecutiveStartStalls+1 >= maxConsecutiveStartStalls {
+			proc.startStallFailed = true
+			s.failAgentTerminal(ctx, proc, "prompt_not_accepted", fmt.Sprintf(
+				"%s: prompt not accepted — %d consecutive sessions recorded no activity",
+				proc.agentType, proc.consecutiveStartStalls+1))
+			return false
+		}
 		s.handleStallRestart(ctx, proc, req, "start_stall")
 		return true
 	}
@@ -101,6 +108,9 @@ func (s *Spawner) handleStallRestart(ctx context.Context, proc *processInfo, req
 
 	// Increment stall restart count and set continuation status
 	proc.stallRestartCount++
+	if reason == "start_stall" {
+		proc.consecutiveStartStalls++
+	}
 	proc.finalStatus = "CONTINUE"
 }
 

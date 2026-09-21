@@ -130,3 +130,30 @@ func TestCheckStall_RunningStallDisabled(t *testing.T) {
 		t.Error("checkStall should return false when stallRunningTimeout=0 (disabled)")
 	}
 }
+
+// TestCheckStall_ConsecutiveStartStallsFail verifies the Nth back-to-back start
+// stall fails the agent terminally instead of requesting another restart.
+func TestCheckStall_ConsecutiveStartStallsFail(t *testing.T) {
+	t.Parallel()
+	clk := clock.NewTest(time.Now())
+	s := New(Config{WSHub: nil, Clock: clk})
+
+	proc := &processInfo{
+		lastMessageTime:        clk.Now().Add(-10 * time.Minute),
+		stallStartTimeout:      2 * time.Minute,
+		consecutiveStartStalls: maxConsecutiveStartStalls - 1,
+	}
+
+	if s.checkStall(context.Background(), proc, SpawnRequest{}) {
+		t.Fatal("checkStall must not request a restart at the consecutive-start-stall cap")
+	}
+	if !proc.startStallFailed {
+		t.Error("startStallFailed not set")
+	}
+	if proc.finalStatus == "CONTINUE" {
+		t.Error("finalStatus must not be CONTINUE")
+	}
+	if s.checkStall(context.Background(), proc, SpawnRequest{}) {
+		t.Error("checkStall must stay quiet after the terminal fail was requested")
+	}
+}

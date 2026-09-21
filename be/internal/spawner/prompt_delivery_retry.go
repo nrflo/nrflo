@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 )
 
 const (
@@ -73,6 +74,7 @@ func writePromptOnce(s *Spawner, proc *processInfo, sess ptySessionIface, body, 
 	paste := proc.bracketedPaste
 	proc.messagesMutex.Unlock()
 
+	body = sanitizePromptBody(body)
 	payload := body
 	if paste {
 		payload = bracketedPasteSet2004 + stripPasteEnd(body) + bracketedPasteEnd
@@ -105,6 +107,23 @@ const (
 	bracketedPasteSet2004 = "\x1b[200~"
 	bracketedPasteEnd     = "\x1b[201~"
 )
+
+// sanitizePromptBody drops control characters other than \n and \t: C0, DEL,
+// and C1 (U+0080–U+009F). A single C1 character anywhere in a pasted body
+// leaves Claude's TUI with the text sitting unsubmitted in the input box, and
+// retrying the identical body can never succeed. Scraped text is the usual
+// source.
+func sanitizePromptBody(body string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\t' {
+			return r
+		}
+		if unicode.IsControl(r) {
+			return -1
+		}
+		return r
+	}, body)
+}
 
 // stripPasteEnd removes any literal paste terminator from the body so embedded
 // text cannot end the paste early and drop the remainder back onto the

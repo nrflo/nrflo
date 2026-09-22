@@ -2,8 +2,9 @@ package spawner
 
 import "testing"
 
-func TestHostEnvWithoutClaudeMarkers_PreservesOAuthAndSkipsOnboarding(t *testing.T) {
+func TestHostEnvWithoutClaudeMarkers_PreservesSafeClaudeEnvironment(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_OAUTH_TOKEN", "oauth-test-token")
+	t.Setenv("CLAUDE_CODE_SANDBOXED", "1")
 	t.Setenv("CLAUDE_CODE_SKIP_ONBOARDING", "0")
 	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "child")
 	t.Setenv("CLAUDECODE", "parent")
@@ -11,7 +12,8 @@ func TestHostEnvWithoutClaudeMarkers_PreservesOAuthAndSkipsOnboarding(t *testing
 	env := HostEnvWithoutClaudeMarkers()
 
 	assertEnvValue(t, env, "CLAUDE_CODE_OAUTH_TOKEN", "oauth-test-token")
-	assertEnvValue(t, env, "CLAUDE_CODE_SKIP_ONBOARDING", "1")
+	assertEnvValue(t, env, "CLAUDE_CODE_SANDBOXED", "1")
+	assertEnvMissing(t, env, "CLAUDE_CODE_SKIP_ONBOARDING")
 	assertEnvMissing(t, env, "CLAUDE_CODE_CHILD_SESSION")
 	assertEnvMissing(t, env, "CLAUDECODE")
 }

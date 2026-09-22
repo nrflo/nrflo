@@ -84,7 +84,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 
 ## Docker image
 
-`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction). Non-root; `/data`=`NRFLO_HOME` vol; logs `$NRFLO_HOME/logs/be.log`.
+`ghcr.io/nrflo/nrflo-server` ([Dockerfile](Dockerfile)). Api-mode off by default; bundles Claude Code + codex CLIs (native musl, sha256-pinned) and poppler-utils (codex PDF extraction). Non-root; `/data`=`NRFLO_HOME` vol; the entrypoint atomically merges Claude's completed-onboarding and bypass-permissions acceptance state without replacing other settings, while `CLAUDE_CODE_SANDBOXED=1` suppresses per-workspace trust prompts; logs `$NRFLO_HOME/logs/be.log`.
 
 ## Web search (SearXNG)
 

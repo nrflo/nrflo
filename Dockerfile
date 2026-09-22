@@ -113,14 +113,16 @@ RUN set -eux; \
     apk del .codex-build
 
 COPY --from=go-builder /out/nrflo_server /usr/local/bin/nrflo_server
+COPY --chmod=0755 scripts/docker_entrypoint.py /usr/local/bin/nrflo-entrypoint
 
 # USE_BUILTIN_RIPGREP=0 -> use the apk musl ripgrep; DISABLE_AUTOUPDATER=1 ->
 # pin the bundled version (the root-owned binary is unwritable to the agent user
 # anyway). Both propagate to spawned claude agents via the inherited env.
-ENV NRFLO_HOME=/data \
+ENV HOME=/data \
+    NRFLO_HOME=/data \
     USE_BUILTIN_RIPGREP=0 \
     DISABLE_AUTOUPDATER=1 \
-    CLAUDE_CODE_SKIP_ONBOARDING=1
+    CLAUDE_CODE_SANDBOXED=1
 VOLUME ["/data"]
 EXPOSE 6587
 USER nrflo:nrflo
@@ -129,5 +131,6 @@ WORKDIR /data
 # api-mode ships off by default (enable via Settings UI); cli-mode can drive
 # the bundled claude (ANTHROPIC_API_KEY / ANTHROPIC_OAUTH_TOKEN) or codex
 # (OPENAI_API_KEY / CODEX_API_KEY auth) once credentials are in the env.
-ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/nrflo_server", "serve", \
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/nrflo-entrypoint", \
+            "/usr/local/bin/nrflo_server", "serve", \
             "--host", "0.0.0.0", "--port", "6587"]

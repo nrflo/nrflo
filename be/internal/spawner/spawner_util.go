@@ -3,7 +3,6 @@ package spawner
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"syscall"
 	"time"
@@ -247,25 +246,6 @@ func (s *Spawner) cancelRunningProcs(ctx context.Context, running []*processInfo
 		completed = append(completed, proc)
 	}
 	return completed
-}
-
-// HostEnvWithoutClaudeMarkers returns os.Environ() minus the nested-Claude
-// markers (CLAUDECODE, CLAUDE_CODE_*). A child claude CLI that inherits a
-// parent Claude Code session's markers treats itself as a nested child
-// session — most damagingly CLAUDE_CODE_CHILD_SESSION, which makes claude
-// ≥2.1 skip writing the project transcript JSONL that the console engine
-// tailer and the resume-based context save read (verified against 2.1.211).
-// Every spawned CLI env must start from this, never raw os.Environ().
-func HostEnvWithoutClaudeMarkers() []string {
-	hostEnv := os.Environ()
-	out := make([]string, 0, len(hostEnv))
-	for _, e := range hostEnv {
-		if strings.HasPrefix(e, "CLAUDECODE=") || strings.HasPrefix(e, "CLAUDE_CODE_") {
-			continue
-		}
-		out = append(out, e)
-	}
-	return out
 }
 
 func (s *Spawner) maxContextForModel(model string) int {

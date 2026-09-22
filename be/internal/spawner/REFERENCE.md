@@ -186,7 +186,7 @@ Both the cli/api and script spawn paths resolve `restartThreshold`/`maxFailResta
 | `NRF_EXTERNAL_CONTEXT` | `external_context` from the workflow instance ("" if unset) |
 | *(per-project vars)* | `Config.ProjectEnv` entries appended last (last-wins) |
 
-Every child env starts from `HostEnvWithoutClaudeMarkers()` (`spawner_util.go`) — `os.Environ()` minus `CLAUDECODE`/`CLAUDE_CODE_*`. Inheriting a parent Claude Code session's markers makes a spawned claude treat itself as a nested child session (`CLAUDE_CODE_CHILD_SESSION` suppresses its project transcript JSONL entirely — verified on 2.1.211), starving the console transcript tailer and the take-control resume launch. Used by CLI/script/observer spawns, `api/handlers_pty.go` resume launches, and `console.chatEnv`; `tools_python` mirrors the rule inline (import cycle).
+Every child env starts from `HostEnvWithoutClaudeMarkers()` (`spawner_host_env.go`) — `os.Environ()` minus `CLAUDECODE`/`CLAUDE_CODE_*`, except that `CLAUDE_CODE_OAUTH_TOKEN` is preserved and `CLAUDE_CODE_SKIP_ONBOARDING=1` is forced so fresh installations cannot trap the first prompt in onboarding. Inheriting a parent Claude Code session's markers makes a spawned claude treat itself as a nested child session (`CLAUDE_CODE_CHILD_SESSION` suppresses its project transcript JSONL entirely — verified on 2.1.211), starving the console transcript tailer and the take-control resume launch. Used by CLI/script/observer spawns, `api/handlers_pty.go` resume launches, and `console.chatEnv`; `tools_python` mirrors the marker-removal rule inline (import cycle).
 
 ## Model Resolution
 

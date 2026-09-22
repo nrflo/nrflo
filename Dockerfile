@@ -119,7 +119,8 @@ COPY --from=go-builder /out/nrflo_server /usr/local/bin/nrflo_server
 # anyway). Both propagate to spawned claude agents via the inherited env.
 ENV NRFLO_HOME=/data \
     USE_BUILTIN_RIPGREP=0 \
-    DISABLE_AUTOUPDATER=1
+    DISABLE_AUTOUPDATER=1 \
+    CLAUDE_CODE_SKIP_ONBOARDING=1
 VOLUME ["/data"]
 EXPOSE 6587
 USER nrflo:nrflo

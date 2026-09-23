@@ -22,8 +22,8 @@ func TestMigration222_SonnetTiersGainTerraHop(t *testing.T) {
 		if err != nil {
 			t.Fatalf("tier %d position 3: %v", tier, err)
 		}
-		if provider != "openai" || mode != "cli_interactive" || model != "gpt-5.6-terra" || gotEffort != effort {
-			t.Errorf("tier %d hop = %s/%s/%s/%s, want openai/cli_interactive/gpt-5.6-terra/%s",
+		if provider != "openai" || mode != "cli_interactive" || model != "gpt-6-sol" || gotEffort != effort { // terra rewritten by 000245
+			t.Errorf("tier %d hop = %s/%s/%s/%s, want openai/cli_interactive/gpt-6-sol/%s",
 				tier, provider, mode, model, gotEffort, effort)
 		}
 	}
@@ -77,7 +77,7 @@ func TestMigration222_Tier5Seeded(t *testing.T) {
 		}
 		got = append(got, provider+"/"+model+"/"+effort)
 	}
-	want := []string{"anthropic/opus-5/high", "anthropic/opus-5/high", "openai/gpt-5.6-sol/high"}
+	want := []string{"anthropic/opus-5-5/high", "anthropic/opus-5-5/high", "openai/gpt-6-sol/high"} // 000245 rewrite
 	if len(got) != len(want) {
 		t.Fatalf("tier 5 = %v, want %v", got, want)
 	}

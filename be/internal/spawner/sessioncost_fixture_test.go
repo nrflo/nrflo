@@ -55,7 +55,7 @@ func TestCostStore_CostMathWithinFivePercent(t *testing.T) {
 			name:       "codex: cumulative totals split fresh/cached",
 			sessionID:  "sess-fixture-codex",
 			modelID:    "gpt-5.6-terra",
-			pricePerMT: [4]float64{2.5, 15, 3.125, 0.25},
+			pricePerMT: [4]float64{2, 12, 2.5, 0.2},
 			feed: func(store *costStore, sid string) {
 				store.setUsage(sid, 50_000, 10_000, 5_000, 0)
 				store.setUsage(sid, 120_000, 22_000, 15_000, 0)

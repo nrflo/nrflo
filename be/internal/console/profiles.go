@@ -84,7 +84,7 @@ func init() {
 		DisplayName:         "T0 Decider",
 		Description:         "Decides, plans, judges, and synthesizes; delegates execution and evidence gathering. No fs/bash, restricted tools, tight context budget.",
 		DefaultEngine:       "claude",
-		DefaultModelID:      "opus-5",
+		DefaultModelID:      "opus-5-5",
 		DefaultEffort:       "medium",
 		ContextBudgetTokens: 30000,
 		RefineryDefault:     true,

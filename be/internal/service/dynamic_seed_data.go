@@ -40,7 +40,7 @@ type dynAgent struct {
 var dynAgents = []dynAgent{
 	{
 		ID:          "dynamic-planner",
-		Model:       "opus-5",
+		Model:       "opus-5-5",
 		Tools:       "emit_findings",
 		NodeRole:    "planner",
 		Description: "Workflow-local planner for the dynamic workflow: decomposes a goal into a layered manifest bound to the templates below.",
@@ -63,7 +63,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "module-reviewer-codex",
-		Model:           "gpt-5.6-terra",
+		Model:           "gpt-6-sol",
 		ReasoningEffort: "high",
 		Tools:           "emit_findings,findings_get,artifact_get,artifact_list,read_document",
 		Description:     "Provider-diverse twin of module-reviewer (codex GPT-5.6 Terra) for a cross-provider review quorum. Read-only by prompt discipline. Emits to finding key `report`.",
@@ -111,7 +111,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "finding-verifier-codex",
-		Model:           "gpt-5.6-sol",
+		Model:           "gpt-6-sol",
 		ReasoningEffort: "high",
 		Tools:           "emit_findings,findings_get,web_search",
 		Description:     "Provider-diverse twin of finding-verifier (codex GPT-5.6 Sol) for a cross-provider verification quorum. Emits to finding key `verdicts`.",
@@ -135,7 +135,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "synthesizer",
-		Model:           "opus-5",
+		Model:           "opus-5-5",
 		ReasoningEffort: "medium",
 		Tools:           "emit_findings,findings_get",
 		Description:     "Final, result-carrying node: merges semantic duplicates across earlier findings, ranks by confidence, and emits exactly once. Emits to finding key `workflow_final_result`.",

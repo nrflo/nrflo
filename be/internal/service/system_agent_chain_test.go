@@ -106,8 +106,8 @@ func TestResolveAgentChain_TierPopulated(t *testing.T) {
 	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-4-5" {
 		t.Errorf("chain[2] = %+v, want cli_interactive/haiku-4-5 (position 2)", chain[2])
 	}
-	if chain[3].ExecutionMode != "cli_interactive" || chain[3].ModelID != "gpt-5.6-luna" {
-		t.Errorf("chain[3] = %+v, want cli_interactive/gpt-5.6-luna (000220 codex hop)", chain[3])
+	if chain[3].ExecutionMode != "cli_interactive" || chain[3].ModelID != "gpt-6-luna" {
+		t.Errorf("chain[3] = %+v, want cli_interactive/gpt-6-luna (000220 codex hop, 000245 rewrite)", chain[3])
 	}
 }
 

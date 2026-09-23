@@ -53,7 +53,8 @@ func (p *openaiProvider) MaxContext(model string) int {
 		return 1000000
 	case "gpt-5.2", "gpt-5.3-codex", "gpt-5.4-mini":
 		return 400000
-	case "gpt-5.4", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna":
+	case "gpt-5.4", "gpt-5.5", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna",
+		"gpt-6-astra", "gpt-6-sol", "gpt-6-luna":
 		return 1050000
 	case "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano":
 		return 1047576

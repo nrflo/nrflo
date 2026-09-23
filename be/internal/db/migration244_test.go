@@ -51,8 +51,8 @@ func TestMigration244SeedsGLMAndTierRouting(t *testing.T) {
 	if err := pool.QueryRow(`SELECT model_id FROM tier_models WHERE tier = 5 AND position = 0`).Scan(&tierFivePrimary); err != nil {
 		t.Fatalf("select tier 5 primary: %v", err)
 	}
-	if tierFivePrimary != "opus-5" {
-		t.Errorf("tier 5 primary = %q, want opus-5", tierFivePrimary)
+	if tierFivePrimary != "opus-5-5" { // opus-5 rewritten by 000245
+		t.Errorf("tier 5 primary = %q, want opus-5-5", tierFivePrimary)
 	}
 	var oldModelCount int
 	if err := pool.QueryRow(`SELECT COUNT(*) FROM models WHERE id = 'ox-alpha'`).Scan(&oldModelCount); err != nil {

@@ -142,7 +142,7 @@ func (s *Spawner) Spawn(ctx context.Context, req SpawnRequest) error {
 	}
 
 	// Determine model to spawn (single agent per Spawn call)
-	model := "opus-5"
+	model := "opus-5-5"
 	if agentCfg, ok := s.config.Agents[req.AgentType]; ok && agentCfg.Model != "" {
 		model = agentCfg.Model
 	}

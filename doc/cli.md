@@ -25,14 +25,14 @@ The seeded CLI-capable rows are:
 
 | provider | id | CLI model | context | default effort |
 |----------|----|-----------|---------|----------------|
-| anthropic | `fable-5` | `claude-fable-5` | 1M | provider default |
+| anthropic | `fable-5-1`, `fable-5` | matching Claude model | 1M | provider default |
 | anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | provider default |
 | anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | provider default |
-| anthropic | `opus-5`, `opus-4-6`, `opus-4-7`, `opus-4-8` | matching Claude model | 200k | provider default |
-| anthropic | `opus-5-1m`, `opus-4-6-1m`, `opus-4-7-1m`, `opus-4-8-1m` | matching Claude model with `[1m]` | 1M | provider default |
+| anthropic | `opus-5-5`, `opus-5`, `opus-4-6`, `opus-4-7`, `opus-4-8` | matching Claude model | 200k | provider default |
+| anthropic | `opus-5-5-1m`, `opus-5-1m`, `opus-4-6-1m`, `opus-4-7-1m`, `opus-4-8-1m` | matching Claude model with `[1m]` | 1M | provider default |
 | openai | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.5` | matching GPT model | 200k | medium |
-| openai | `gpt-5.6-sol` | `gpt-5.6-sol` | 372k | low |
-| openai | `gpt-5.6-terra`, `gpt-5.6-luna` | matching GPT model | 372k | medium |
+| openai | `gpt-5.6-sol`, `gpt-6-astra` | matching GPT model | 272k | low |
+| openai | `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol`, `gpt-6-luna` | matching GPT model | 272k | medium |
 
 `reasoning_effort` may override the row default when the selected model supports
 that level. The API exposes the exact per-mode effort lists; custom enabled rows

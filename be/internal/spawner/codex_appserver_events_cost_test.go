@@ -43,8 +43,8 @@ func TestDispatchTokenUsage_SplitsFreshVsCachedInput(t *testing.T) {
 	if snap.OutputTokens != 8_000 {
 		t.Errorf("OutputTokens = %d, want 8000", snap.OutputTokens)
 	}
-	// gpt-5.6-terra: price_in=2.5, price_out=15, cache_read=0.25 per MTok.
-	want := 90_000.0/1e6*2.5 + 8_000.0/1e6*15 + 30_000.0/1e6*0.25
+	// gpt-5.6-terra: price_in=2, price_out=12, cache_read=0.2 per MTok.
+	want := 90_000.0/1e6*2 + 8_000.0/1e6*12 + 30_000.0/1e6*0.2
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}
@@ -94,8 +94,8 @@ func TestDispatchTokenUsage_CacheWriteBilling(t *testing.T) {
 	if snap.OutputTokens != 8_000 {
 		t.Errorf("OutputTokens = %d, want 8000", snap.OutputTokens)
 	}
-	// gpt-5.6-terra: price_in=2.5, price_out=15, cache_read=0.25, cache_write=3.125 per MTok.
-	want := 80_000.0/1e6*2.5 + 8_000.0/1e6*15 + 30_000.0/1e6*0.25 + 10_000.0/1e6*3.125
+	// gpt-5.6-terra: price_in=2, price_out=12, cache_read=0.2, cache_write=2.5 per MTok.
+	want := 80_000.0/1e6*2 + 8_000.0/1e6*12 + 30_000.0/1e6*0.2 + 10_000.0/1e6*2.5
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

@@ -219,9 +219,9 @@ func TestHandleGetConsoleChat_CostEstimate_LiveAndAfterEngineExit(t *testing.T) 
 	sid := createBody["session_id"]
 	eng := factory.last()
 
-	// gpt-5.6-sol: price_in=5, price_out=30 per MTok (migration 000183 seed).
+	// gpt-5.6-sol: price_in=4, price_out=20 per MTok (migration 000245 reprice).
 	spawner.AddSessionCostUsage(sid, 1_000_000, 200_000, 0, 0)
-	wantCost := 1_000_000.0/1e6*5 + 200_000.0/1e6*30
+	wantCost := 1_000_000.0/1e6*4 + 200_000.0/1e6*20
 
 	getChain := s.sessionMgr.LoadAndSave(s.requireAuth(http.HandlerFunc(s.handleGetConsoleChat)))
 	liveReq := getChatReq(sid)

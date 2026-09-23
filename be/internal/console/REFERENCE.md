@@ -8,7 +8,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ### t0-decider
 
-`engine=claude`, `model=opus-5` (the 200k-context, non-`[1m]` row), `effort=medium`, `budget=30000`, `refinery=true`, `system_template_id=tier-t0-decider`, `native_tool_policy=none`. Catalogue (`t0DeciderCatalogue`): `delegate`, `get_delegation`, `workflow_run`, `workflow_get`, `workflow_list`, `workflow_continue`, `workflow_stop`, `workflow_wait`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `project_findings_add/_add_bulk/_append/_append_bulk/_get/_delete`, `ticket_create/_update/_add_dependency/_list/_get/_current`, `artifact_list`, `artifact_get`, `consult`. Direct web search and fs/bash tools are absent: the parent answers from known context or delegates evidence gathering, prefers one scoped worker, and ends its turn after async launches for `ChatNotifier` to wake it.
+`engine=claude`, `model=opus-5-5` (the 200k-context, non-`[1m]` row), `effort=medium`, `budget=30000`, `refinery=true`, `system_template_id=tier-t0-decider`, `native_tool_policy=none`. Catalogue (`t0DeciderCatalogue`): `delegate`, `get_delegation`, `workflow_run`, `workflow_get`, `workflow_list`, `workflow_continue`, `workflow_stop`, `workflow_wait`, `dynamic_workflow`, `get_subworkflow`, `revise_plan`, `approve_plan`, `project_findings_add/_add_bulk/_append/_append_bulk/_get/_delete`, `ticket_create/_update/_add_dependency/_list/_get/_current`, `artifact_list`, `artifact_get`, `consult`. Direct web search and fs/bash tools are absent: the parent answers from known context or delegates evidence gathering, prefers one scoped worker, and ends its turn after async launches for `ChatNotifier` to wake it.
 
 ### t0-hands
 

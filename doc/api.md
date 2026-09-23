@@ -55,9 +55,12 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 
 | provider | id | api_model | api_context | api_efforts |
 |----------|----|-----------|-------------|-------------|
+| anthropic | `fable-5-1` | `claude-fable-5-1` | 1M | low, medium, high, xhigh, max |
 | anthropic | `fable-5` | `claude-fable-5` | 1M | low, medium, high, xhigh, max |
 | anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | low, medium, high, xhigh, max |
 | anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | low, medium, high |
+| anthropic | `opus-5-5` | `claude-opus-5-5` | 1M | low, medium, high, xhigh, max |
+| anthropic | `opus-5-5-1m` | `claude-opus-5-5[1m]` | 1M | low, medium, high, xhigh, max |
 | anthropic | `opus-5` | `claude-opus-5` | 1M | low, medium, high, xhigh, max |
 | anthropic | `opus-5-1m` | `claude-opus-5[1m]` | 1M | low, medium, high, xhigh, max |
 | anthropic | `opus-4-6` | `claude-opus-4-6` | 1M | low, medium, high, max |
@@ -74,6 +77,9 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 | openai | `gpt-5.6-sol` | `gpt-5.6-sol` | 1.05M | low, medium, high, xhigh, max |
 | openai | `gpt-5.6-terra` | `gpt-5.6-terra` | 1.05M | low, medium, high, xhigh, max |
 | openai | `gpt-5.6-luna` | `gpt-5.6-luna` | 1.05M | low, medium, high, xhigh, max |
+| openai | `gpt-6-astra` | `gpt-6-astra` | 1.05M | low, medium, high, xhigh, max |
+| openai | `gpt-6-sol` | `gpt-6-sol` | 1.05M | low, medium, high, xhigh, max |
+| openai | `gpt-6-luna` | `gpt-6-luna` | 1.05M | low, medium, high, xhigh, max |
 
 `reasoning_effort` on an agent definition is an optional per-agent override
 validated against `api_efforts`; when omitted, `default_effort` from the model

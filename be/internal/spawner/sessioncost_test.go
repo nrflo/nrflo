@@ -116,8 +116,8 @@ func TestCostStore_SetUsage_AccumulatesHighWaterDeltas(t *testing.T) {
 		t.Errorf("snapshot tokens = in:%d out:%d, want in:400000 out:90000 (sum of high-water deltas across the increasing sequence)",
 			snap.InputTokens, snap.OutputTokens)
 	}
-	// gpt-5.6-sol: price_in=5, price_out=30 per MTok.
-	want := 400_000.0/1e6*5 + 90_000.0/1e6*30
+	// gpt-5.6-sol: price_in=4, price_out=20 per MTok.
+	want := 400_000.0/1e6*4 + 90_000.0/1e6*20
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

@@ -17,7 +17,10 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	want := map[string]string{
-		"fable-5":       "anthropic|claude-fable-5|claude-fable-5|1000000|1000000|claude-opus-5|",
+		"fable-5-1":     "anthropic|claude-fable-5-1|claude-fable-5-1|1000000|1000000|claude-opus-5-5|",
+		"fable-5":       "anthropic|claude-fable-5|claude-fable-5|1000000|1000000|claude-opus-5-5|",
+		"opus-5-5":      "anthropic|claude-opus-5-5|claude-opus-5-5|200000|1000000||",
+		"opus-5-5-1m":   "anthropic|claude-opus-5-5[1m]|claude-opus-5-5[1m]|1000000|1000000|claude-opus-5-5|",
 		"opus-5":        "anthropic|claude-opus-5|claude-opus-5|200000|1000000||",
 		"opus-5-1m":     "anthropic|claude-opus-5[1m]|claude-opus-5[1m]|1000000|1000000|claude-opus-5|",
 		"sonnet-5":      "anthropic|claude-sonnet-5|claude-sonnet-5|1000000|1000000||",
@@ -37,6 +40,9 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 		"gpt-5.6-sol":   "openai|gpt-5.6-sol|gpt-5.6-sol|272000|1050000||low",
 		"gpt-5.6-terra": "openai|gpt-5.6-terra|gpt-5.6-terra|272000|1050000||medium",
 		"gpt-5.6-luna":  "openai|gpt-5.6-luna|gpt-5.6-luna|272000|1050000||medium",
+		"gpt-6-astra":   "openai|gpt-6-astra|gpt-6-astra|272000|1050000||low",
+		"gpt-6-sol":     "openai|gpt-6-sol|gpt-6-sol|272000|1050000||medium",
+		"gpt-6-luna":    "openai|gpt-6-luna|gpt-6-luna|272000|1050000||medium",
 		"glm-5.3-flash": "openrouter||z-ai/glm-5.3-flash|1048576|1048576||high",
 	}
 
@@ -126,7 +132,7 @@ func TestMigration167_CustomMergeAndReferenceRewrite(t *testing.T) {
 		t.Errorf("custom collision overwrote canonical row: model=%q effort=%q", collisionModel, collisionEffort)
 	}
 
-	assertDefinitionRewrite(t, sqlDB, "def-inherit", "gpt-5.6-sol", "high", "gpt-5.6-luna")
+	assertDefinitionRewrite(t, sqlDB, "def-inherit", "gpt-6-sol", "high", "gpt-6-luna")
 	assertDefinitionRewrite(t, sqlDB, "def-override", "gpt-5.4", "xhigh", "")
 	assertScalar(t, sqlDB, `SELECT model FROM system_agent_definitions WHERE id = 'sys-rewrite'`, "gpt-5.3-codex")
 	assertScalar(t, sqlDB, `SELECT reasoning_effort FROM system_agent_definitions WHERE id = 'sys-rewrite'`, "medium")

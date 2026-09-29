@@ -31,7 +31,7 @@ func TestCostStore_CostMathWithinFivePercent(t *testing.T) {
 			name:       "api mode: per-turn Usage deltas",
 			sessionID:  "sess-fixture-api",
 			modelID:    "sonnet-5",
-			pricePerMT: [4]float64{3, 15, 3.75, 0.3},
+			pricePerMT: [4]float64{2, 10, 2.5, 0.2},
 			feed: func(store *costStore, sid string) {
 				store.addUsage(sid, 12_000, 3_000, 500, 200)
 				store.addUsage(sid, 8_000, 2_500, 300, 0)

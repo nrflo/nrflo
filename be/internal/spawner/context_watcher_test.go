@@ -111,9 +111,9 @@ func TestNewAPIContextWatcher_DefaultCostEstimator_UsesSeededPricing(t *testing.
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	w := newAPIContextWatcher(pool, clk, "sess-cost-default", "sonnet-5", 1000)
 
-	// sonnet-5 cache_read = 0.3 per MTok (migration 000183 seed).
+	// sonnet-5 cache_read = 0.2 per MTok (migration 000247 seed).
 	got := w.cost.EstCostSaved("sonnet-5", 2_000_000)
-	want := 2_000_000.0 / 1e6 * 0.3
+	want := 2_000_000.0 / 1e6 * 0.2
 	if got != want {
 		t.Errorf("default cost estimator EstCostSaved = %v, want %v (seeded sonnet-5 cache_read rate)", got, want)
 	}

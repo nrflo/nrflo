@@ -39,8 +39,8 @@ func TestClaudeEngine_FlushTranscript_AssistantUsageFeedsSessionCost(t *testing.
 	if snap.InputTokens != 6_000 || snap.OutputTokens != 1_500 || snap.CacheReadTokens != 1_000 || snap.CacheWriteTokens != 200 {
 		t.Errorf("token snapshot = %+v, want in:6000 out:1500 cacheRd:1000 cacheWr:200", snap)
 	}
-	// sonnet-5: price_in=3, price_out=15, cache_write=3.75, cache_read=0.3 per MTok.
-	want := 6_000.0/1e6*3 + 1_500.0/1e6*15 + 200.0/1e6*3.75 + 1_000.0/1e6*0.3
+	// sonnet-5: price_in=2, price_out=10, cache_write=2.5, cache_read=0.2 per MTok.
+	want := 6_000.0/1e6*2 + 1_500.0/1e6*10 + 200.0/1e6*2.5 + 1_000.0/1e6*0.2
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

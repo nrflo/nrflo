@@ -85,8 +85,8 @@ func TestMigration186_PreservedReadOnlyRowsAndPricingSurvive(t *testing.T) {
 	if readOnly != 1 {
 		t.Errorf("sonnet-5 read_only = %d, want 1 (seeded built-in model)", readOnly)
 	}
-	if priceIn == nil || *priceIn != 3 {
-		t.Errorf("sonnet-5 price_in = %v, want 3 (seeded by migration 000183)", priceIn)
+	if priceIn == nil || *priceIn != 2 {
+		t.Errorf("sonnet-5 price_in = %v, want 2 (repriced by migration 000247)", priceIn)
 	}
 
 	var total int

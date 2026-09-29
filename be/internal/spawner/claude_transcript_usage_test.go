@@ -54,8 +54,8 @@ func TestSpawnerIngestClaudeTranscript_UsageFeedsSessionCost(t *testing.T) {
 		t.Errorf("token snapshot = %+v, want in:%d out:%d cacheRd:%d cacheWr:%d",
 			snap, wantIn, wantOut, wantCacheRd, wantCacheWr)
 	}
-	// sonnet-5: price_in=3, price_out=15, cache_write=3.75, cache_read=0.3 per MTok.
-	want := float64(wantIn)/1e6*3 + float64(wantOut)/1e6*15 + float64(wantCacheWr)/1e6*3.75 + float64(wantCacheRd)/1e6*0.3
+	// sonnet-5: price_in=2, price_out=10, cache_write=2.5, cache_read=0.2 per MTok.
+	want := float64(wantIn)/1e6*2 + float64(wantOut)/1e6*10 + float64(wantCacheWr)/1e6*2.5 + float64(wantCacheRd)/1e6*0.2
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

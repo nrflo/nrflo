@@ -58,17 +58,17 @@ func TestModelServiceGet_SeededPricingRoundTrips(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get(sonnet-5): %v", err)
 	}
-	if sonnet.PriceIn == nil || *sonnet.PriceIn != 3 {
-		t.Errorf("sonnet-5 PriceIn = %v, want 3", sonnet.PriceIn)
+	if sonnet.PriceIn == nil || *sonnet.PriceIn != 2 {
+		t.Errorf("sonnet-5 PriceIn = %v, want 2", sonnet.PriceIn)
 	}
-	if sonnet.PriceOut == nil || *sonnet.PriceOut != 15 {
-		t.Errorf("sonnet-5 PriceOut = %v, want 15", sonnet.PriceOut)
+	if sonnet.PriceOut == nil || *sonnet.PriceOut != 10 {
+		t.Errorf("sonnet-5 PriceOut = %v, want 10", sonnet.PriceOut)
 	}
-	if sonnet.PriceCacheWrite == nil || *sonnet.PriceCacheWrite != 3.75 {
-		t.Errorf("sonnet-5 PriceCacheWrite = %v, want 3.75", sonnet.PriceCacheWrite)
+	if sonnet.PriceCacheWrite == nil || *sonnet.PriceCacheWrite != 2.5 {
+		t.Errorf("sonnet-5 PriceCacheWrite = %v, want 2.5", sonnet.PriceCacheWrite)
 	}
-	if sonnet.PriceCacheRead == nil || *sonnet.PriceCacheRead != 0.3 {
-		t.Errorf("sonnet-5 PriceCacheRead = %v, want 0.3", sonnet.PriceCacheRead)
+	if sonnet.PriceCacheRead == nil || *sonnet.PriceCacheRead != 0.2 {
+		t.Errorf("sonnet-5 PriceCacheRead = %v, want 0.2", sonnet.PriceCacheRead)
 	}
 
 	// gpt-5.5 exists in the registry but was not touched by migration 000183

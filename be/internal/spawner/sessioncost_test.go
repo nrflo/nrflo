@@ -20,8 +20,8 @@ func insertCostTestSession(t *testing.T, pool *db.Pool, id, modelID string) {
 
 // TestCostStore_AddUsage_ComputesCostAndDebouncesFlush drives the api/claude-CLI
 // delta-accumulation shape (AddSessionCostUsage) against a session registered
-// with sonnet-5's seeded pricing (price_in=3, price_out=15, cache_write=3.75,
-// cache_read=0.3 per MTok), and asserts: the first addUsage flushes+broadcasts
+// with sonnet-5's seeded pricing (price_in=2, price_out=10, cache_write=2.5,
+// cache_read=0.2 per MTok), and asserts: the first addUsage flushes+broadcasts
 // immediately (zero-value lastFlush), a call inside the debounce window does
 // neither, and one after the window elapses does both with the coalesced total.
 func TestCostStore_AddUsage_ComputesCostAndDebouncesFlush(t *testing.T) {
@@ -43,7 +43,7 @@ func TestCostStore_AddUsage_ComputesCostAndDebouncesFlush(t *testing.T) {
 	if len(broadcasts) != 1 {
 		t.Fatalf("broadcasts after first addUsage = %d, want 1", len(broadcasts))
 	}
-	wantFirst := 1_000_000.0/1e6*3 + 500_000.0/1e6*15 // = 3 + 7.5 = 10.5
+	wantFirst := 1_000_000.0/1e6*2 + 500_000.0/1e6*10 // = 2 + 5 = 7
 	if diff := broadcasts[0].CostUSD - wantFirst; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("first broadcast CostUSD = %v, want %v", broadcasts[0].CostUSD, wantFirst)
 	}
@@ -72,7 +72,7 @@ func TestCostStore_AddUsage_ComputesCostAndDebouncesFlush(t *testing.T) {
 	if len(broadcasts) != 2 {
 		t.Fatalf("broadcasts after debounce window elapsed = %d, want 2", len(broadcasts))
 	}
-	wantSecond := 2_000_000.0/1e6*3 + 500_000.0/1e6*15 // = 6 + 7.5 = 13.5
+	wantSecond := 2_000_000.0/1e6*2 + 500_000.0/1e6*10 // = 4 + 5 = 9
 	if diff := broadcasts[1].CostUSD - wantSecond; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("second broadcast CostUSD = %v, want %v", broadcasts[1].CostUSD, wantSecond)
 	}

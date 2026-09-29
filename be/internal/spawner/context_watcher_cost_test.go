@@ -19,8 +19,8 @@ func TestLookupModelPricing_SeededModel_ReturnsPricing(t *testing.T) {
 	if !ok {
 		t.Fatal("lookupModelPricing ok = false for seeded sonnet-5")
 	}
-	if pr.in != 3 || pr.out != 15 || pr.cacheWrite != 3.75 || pr.cacheRead != 0.3 {
-		t.Errorf("pricing = %+v, want in:3 out:15 cacheWrite:3.75 cacheRead:0.3", pr)
+	if pr.in != 2 || pr.out != 10 || pr.cacheWrite != 2.5 || pr.cacheRead != 0.2 {
+		t.Errorf("pricing = %+v, want in:2 out:10 cacheWrite:2.5 cacheRead:0.2", pr)
 	}
 
 	// "claude:sonnet-5" is the processInfo.modelID composite form; the cli
@@ -73,9 +73,9 @@ func TestPricingCostEstimator_KnownModel_ScalesByCacheReadRate(t *testing.T) {
 	clk := clock.NewTest(time.Now())
 	est := newPricingCostEstimator(pool, clk)
 
-	// sonnet-5 cache_read = 0.3 per MTok.
+	// sonnet-5 cache_read = 0.2 per MTok.
 	got := est.EstCostSaved("sonnet-5", 2_000_000)
-	want := 2_000_000.0 / 1e6 * 0.3
+	want := 2_000_000.0 / 1e6 * 0.2
 	if got != want {
 		t.Errorf("EstCostSaved = %v, want %v", got, want)
 	}

@@ -221,8 +221,8 @@ func TestAPILedgerObserver_OnUsage_FeedsSessionCost(t *testing.T) {
 	if snap.InputTokens != 8_000 || snap.OutputTokens != 2_000 || snap.CacheReadTokens != 1_000 || snap.CacheWriteTokens != 500 {
 		t.Errorf("token snapshot = %+v, want in:8000 out:2000 cacheRd:1000 cacheWr:500", snap)
 	}
-	// sonnet-5: price_in=3, price_out=15, cache_write=3.75, cache_read=0.3 per MTok.
-	want := 8_000.0/1e6*3 + 2_000.0/1e6*15 + 500.0/1e6*3.75 + 1_000.0/1e6*0.3
+	// sonnet-5: price_in=2, price_out=10, cache_write=2.5, cache_read=0.2 per MTok.
+	want := 8_000.0/1e6*2 + 2_000.0/1e6*10 + 500.0/1e6*2.5 + 1_000.0/1e6*0.2
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

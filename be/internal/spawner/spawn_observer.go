@@ -25,7 +25,7 @@ func (s *Spawner) SpawnObserver(req service.ObserverSpawnRequest) error {
 
 	model := req.Model
 	if model == "" {
-		model = "sonnet-5"
+		model = "sonnet-5-5"
 	}
 
 	// Explicit CLI overrides remain supported; otherwise derive the CLI from

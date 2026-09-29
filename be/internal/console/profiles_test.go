@@ -103,7 +103,7 @@ func TestProfileByName_T0Decider_NotA1MModel(t *testing.T) {
 }
 
 // TestProfileByName_T0Hands_Defaults verifies the full-tools companion
-// profile: sonnet-5/medium, full tools (nil catalogue), 80k budget, refinery on
+// profile: sonnet-5-5/medium, full tools (nil catalogue), 80k budget, refinery on
 // (per-profile, not the global refinery_enabled flag).
 func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 	t.Parallel()
@@ -114,8 +114,8 @@ func TestProfileByName_T0Hands_Defaults(t *testing.T) {
 	if p.DefaultEngine != "claude" {
 		t.Errorf("DefaultEngine = %q, want claude", p.DefaultEngine)
 	}
-	if p.DefaultModelID != "sonnet-5" {
-		t.Errorf("DefaultModelID = %q, want sonnet-5", p.DefaultModelID)
+	if p.DefaultModelID != "sonnet-5-5" {
+		t.Errorf("DefaultModelID = %q, want sonnet-5-5", p.DefaultModelID)
 	}
 	if p.DefaultEffort != "medium" {
 		t.Errorf("DefaultEffort = %q, want medium", p.DefaultEffort)

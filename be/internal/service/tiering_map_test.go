@@ -15,11 +15,11 @@ func TestTierMap_MatchesTicket(t *testing.T) {
 		wantTemplate           string
 		wantWorker, wantGrants bool
 	}{
-		{"setup-analyzer", "sonnet-5", 2, "tier-t2-extractor", true, true},
+		{"setup-analyzer", "sonnet-5-5", 2, "tier-t2-extractor", true, true},
 		{"test-writer", "opus-5-5", 3, "tier-t1-executor", true, true},
 		{"implementor", "opus-5-5", 3, "tier-t1-executor", true, true},
 		{"qa-verifier", "opus-5-5", 2, "tier-t2-extractor", true, false},
-		{"doc-updater", "sonnet-5", 1, "tier-t1-executor", true, false},
+		{"doc-updater", "sonnet-5-5", 1, "tier-t1-executor", true, false},
 	}
 	for _, c := range cases {
 		t.Run(c.role, func(t *testing.T) {

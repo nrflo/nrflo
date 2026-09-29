@@ -140,7 +140,7 @@ func (s *Spawner) loadTemplate(agentType, ticketID, projectID, parentSession, ch
 
 	_, model := parseModelID(modelID)
 	if model == "" {
-		model = "sonnet-5"
+		model = "sonnet-5-5"
 	}
 
 	// nodeVar falls back to agentType when nodeID is unset (Preview, interactive L0 starts).

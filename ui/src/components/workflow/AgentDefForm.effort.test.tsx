@@ -15,10 +15,10 @@ vi.mock('@/hooks/useDefaultTemplates', () => ({
 
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
-    { label: 'Anthropic', options: [{ value: 'sonnet-5', label: 'Anthropic: Sonnet' }] },
+    { label: 'Anthropic', options: [{ value: 'sonnet-5-5', label: 'Anthropic: Sonnet' }] },
   ],
   useModels: () => ({
-    data: [{ id: 'sonnet-5', provider: 'anthropic', display_name: 'Sonnet', cli_model: 'claude-sonnet-5', cli_efforts: ['low', 'medium', 'high', 'max'], api_efforts: [], default_effort: 'high' }],
+    data: [{ id: 'sonnet-5-5', provider: 'anthropic', display_name: 'Sonnet', cli_model: 'claude-sonnet-5-5', cli_efforts: ['low', 'medium', 'high', 'max'], api_efforts: [], default_effort: 'high' }],
   }),
 }))
 
@@ -48,7 +48,7 @@ function makeAgentDef(overrides: Partial<AgentDef> = {}): AgentDef {
     project_id: 'test-project',
     workflow_id: 'feature',
     layer: 0,
-    model: 'sonnet-5',
+    model: 'sonnet-5-5',
     timeout: 20,
     prompt: 'Test prompt',
     execution_mode: 'cli_interactive',

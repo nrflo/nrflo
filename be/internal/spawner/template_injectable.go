@@ -17,12 +17,12 @@ var injectablePlaceholderRe = regexp.MustCompile(`\$\{[^}]+\}`)
 // the system-prompt-suffix injectable, and (for api-mode) the api-system-prompt
 // injectable, so all three render from identical vars. nodeID falls back to
 // agentType when unset (Preview, interactive L0 starts); modelID's model part
-// falls back to "sonnet-5" when parseModelID yields none. extraVars is merged
+// falls back to "sonnet-5-5" when parseModelID yields none. extraVars is merged
 // last (caller-injected vars win on key collision).
 func stdTemplateVars(agentType, nodeID, ticketID, projectID, workflowName, parentSession, childSession, modelID string, extraVars map[string]string) map[string]string {
 	_, model := parseModelID(modelID)
 	if model == "" {
-		model = "sonnet-5"
+		model = "sonnet-5-5"
 	}
 
 	nodeVar := nodeID

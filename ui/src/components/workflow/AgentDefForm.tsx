@@ -39,7 +39,7 @@ export function AgentDefForm({
 }) {
   const [id, setId] = useState(initial?.id || '')
   const [layer, setLayer] = useState(initial?.layer ?? 0)
-  const [model, setModel] = useState(initial?.model || 'sonnet-5')
+  const [model, setModel] = useState(initial?.model || 'sonnet-5-5')
   const [tier, setTier] = useState(initial?.tier ?? 1)
   const [override, setOverride] = useState(!!initial?.model)
   const [timeout, setTimeout] = useState(initial?.timeout || 20)

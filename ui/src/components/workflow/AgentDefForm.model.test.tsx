@@ -18,7 +18,7 @@ vi.mock('@/hooks/useModels', () => ({
       { value: 'haiku-4-5', label: 'Anthropic: Haiku' },
       { value: 'opus-4-8', label: 'Anthropic: Opus' },
       { value: 'opus-4-8-1m', label: 'Anthropic: Opus 1M' },
-      { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
+      { value: 'sonnet-5-5', label: 'Anthropic: Sonnet' },
     ]},
     { label: 'OpenAI', options: [
       { value: 'gpt-5.3-codex', label: 'OpenAI: GPT 5.3 Codex' },

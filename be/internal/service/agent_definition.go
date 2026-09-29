@@ -158,7 +158,7 @@ func (s *AgentDefinitionService) CreateAgentDef(projectID, workflowID string, re
 	if executionMode == "script" {
 		modelName = "script" // force sentinel model for script agents
 	} else if modelName == "" && req.Tier == nil {
-		modelName = "sonnet-5"
+		modelName = "sonnet-5-5"
 	}
 
 	if executionMode != "script" && modelName == "" && req.Tier == nil {

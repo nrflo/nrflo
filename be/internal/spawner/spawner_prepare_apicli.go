@@ -52,7 +52,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	proc.adapter = adapter
 	// modelID must start "claude:" so BuildInteractiveSettingsJSON emits hooks+statusLine
 	// and startBackend routes to the PTY backend (not codex app-server). The incoming
-	// modelID is "<cliForModel>:<model>" (e.g. "claude:sonnet-5"), not "api:" — parse it.
+	// modelID is "<cliForModel>:<model>" (e.g. "claude:sonnet-5-5"), not "api:" — parse it.
 	_, rawModel := parseModelID(proc.modelID)
 	claudeModel := am.APIModel
 	if claudeModel == "" {
@@ -62,7 +62,7 @@ func (s *Spawner) prepareAPIViaCLISpawn(
 	// --model, not from proc.maxContext: bare "claude-opus-5" opens 200k, the
 	// "[1m]" suffix opens 1M. The hybrid reports am.APIContext as the window, so
 	// when the API window is 1M and exceeds what the bare string opens in the CLI
-	// (am.CLIContext), the string must request 1M explicitly. sonnet-5 (API 1M,
+	// (am.CLIContext), the string must request 1M explicitly. sonnet-5-5 (API 1M,
 	// CLI 1M) stays bare; opus-4-6/4-7/4-8/5 (API 1M > CLI 200k) gets the suffix.
 	if am.APIContext >= 1_000_000 && am.APIContext > am.CLIContext && !strings.HasSuffix(claudeModel, "[1m]") {
 		claudeModel += "[1m]"

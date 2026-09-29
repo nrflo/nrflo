@@ -26,6 +26,7 @@ The seeded CLI-capable rows are:
 | provider | id | CLI model | context | default effort |
 |----------|----|-----------|---------|----------------|
 | anthropic | `fable-5-1`, `fable-5` | matching Claude model | 1M | provider default |
+| anthropic | `sonnet-5-5` | `claude-sonnet-5-5` | 1M | provider default |
 | anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | provider default |
 | anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | provider default |
 | anthropic | `opus-5-5`, `opus-5`, `opus-4-6`, `opus-4-7`, `opus-4-8` | matching Claude model | 200k | provider default |

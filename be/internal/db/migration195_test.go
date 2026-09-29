@@ -135,8 +135,8 @@ func TestMigration195_TierChainSeed(t *testing.T) {
 		{1, 1, want{"anthropic", "", "haiku-4-5", "low"}},
 		{1, 2, want{"anthropic", "cli_interactive", "haiku-4-5", "low"}},
 		{4, 0, want{"openrouter", "api", "glm-5.3-flash", "max"}},
-		{4, 1, want{"anthropic", "", "sonnet-5", "medium"}},
-		{4, 2, want{"anthropic", "cli_interactive", "sonnet-5", "medium"}},
+		{4, 1, want{"anthropic", "", "sonnet-5-5", "medium"}},
+		{4, 2, want{"anthropic", "cli_interactive", "sonnet-5-5", "medium"}}, // 000246 rewrite
 	}
 
 	for _, c := range cases {

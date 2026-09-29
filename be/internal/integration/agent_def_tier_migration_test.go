@@ -168,7 +168,7 @@ func TestMigration200_RetierBackfillPreservesResolvedBehavior(t *testing.T) {
 	if len(chain) != 4 || chain[0].ModelID != "glm-5.3-flash" || chain[0].ReasoningEffort != "high" || chain[0].ExecutionMode != "api" {
 		t.Errorf("resolved chain = %+v, want four entries with primary glm-5.3-flash/high/api", chain)
 	}
-	if len(chain) >= 2 && (chain[1].ModelID != "sonnet-5" || chain[1].ReasoningEffort != "low") {
-		t.Errorf("resolved chain = %+v, want sonnet-5/low subscription fallback", chain)
+	if len(chain) >= 2 && (chain[1].ModelID != "sonnet-5-5" || chain[1].ReasoningEffort != "low") {
+		t.Errorf("resolved chain = %+v, want sonnet-5-5/low subscription fallback", chain)
 	}
 }

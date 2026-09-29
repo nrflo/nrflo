@@ -42,7 +42,7 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "implementor", model: "opus-5-5"})
 	seedTieringCostSession(t, pool, "alpha", "feature", "implementor", 100, now.AddDate(0, 0, -5))
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "feature", defID: "doc-updater", model: "sonnet-5-5"})
 
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "hotfix", defID: "implementor", model: "opus-5-5"})
 
@@ -150,11 +150,11 @@ func TestBuildReport_WorkerTemplateAssignment(t *testing.T) {
 	seedProjectAndWorkflow(t, pool, "gamma", "feature", "ticket")
 
 	roles := map[string]string{
-		"setup-analyzer": "sonnet-5",
+		"setup-analyzer": "sonnet-5-5",
 		"test-writer":    "opus-5-5",
 		"implementor":    "opus-5-5",
 		"qa-verifier":    "opus-5-5",
-		"doc-updater":    "sonnet-5",
+		"doc-updater":    "sonnet-5-5",
 	}
 	for defID, model := range roles {
 		seedTieringDef(t, pool, tieringDefSeed{projectID: "gamma", workflowID: "feature", defID: defID, model: model})

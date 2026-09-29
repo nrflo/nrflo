@@ -83,8 +83,8 @@ func TestProjectCreate_HotfixImplementorUntouched(t *testing.T) {
 	}
 
 	model, effort, template, _ := getAgentDefFields(t, pool, "hotfix-seed", "hotfix", "implementor")
-	if model != "sonnet-5" {
-		t.Errorf("hotfix implementor model = %q, want sonnet-5 (TierMap implementor recommendation)", model)
+	if model != "sonnet-5-5" {
+		t.Errorf("hotfix implementor model = %q, want sonnet-5-5 (TierMap implementor recommendation)", model)
 	}
 	if effort != "" {
 		t.Errorf("hotfix implementor reasoning_effort = %q, want empty (not forced)", effort)

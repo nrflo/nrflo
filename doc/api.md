@@ -57,6 +57,7 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 |----------|----|-----------|-------------|-------------|
 | anthropic | `fable-5-1` | `claude-fable-5-1` | 1M | low, medium, high, xhigh, max |
 | anthropic | `fable-5` | `claude-fable-5` | 1M | low, medium, high, xhigh, max |
+| anthropic | `sonnet-5-5` | `claude-sonnet-5-5` | 1M | low, medium, high, xhigh, max |
 | anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | low, medium, high, xhigh, max |
 | anthropic | `haiku-4-5` | `claude-haiku-4-5` | 200k | low, medium, high |
 | anthropic | `opus-5-5` | `claude-opus-5-5` | 1M | low, medium, high, xhigh, max |

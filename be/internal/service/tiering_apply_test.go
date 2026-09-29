@@ -35,7 +35,7 @@ func TestApplyForProject_Idempotent(t *testing.T) {
 	svc, pool := setupTieringApplyTestEnv(t)
 	seedProjectAndWorkflow(t, pool, "idem", "feature", "ticket")
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "implementor", model: "opus-5-5"})
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "idem", workflowID: "feature", defID: "doc-updater", model: "sonnet-5-5"})
 
 	confirmation := types.TieringApplyConfirmation{ProjectID: "idem", ConfirmAll: true}
 
@@ -133,7 +133,7 @@ func TestApplyForProject_UnconfirmedDefSkipped(t *testing.T) {
 	svc, pool := setupTieringApplyTestEnv(t)
 	seedProjectAndWorkflow(t, pool, "unconf", "feature", "ticket")
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "implementor", model: "opus-5-5"})
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "doc-updater", model: "sonnet-5"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "unconf", workflowID: "feature", defID: "doc-updater", model: "sonnet-5-5"})
 
 	result, err := svc.ApplyForProject(types.TieringApplyConfirmation{
 		ProjectID: "unconf",
@@ -152,8 +152,8 @@ func TestApplyForProject_UnconfirmedDefSkipped(t *testing.T) {
 		t.Errorf("unconfirmed doc-updater outcome = %q, want skipped-unconfirmed", docOutcome.Outcome)
 	}
 	model, _, _, _ := getAgentDefFields(t, pool, "unconf", "feature", "doc-updater")
-	if model != "sonnet-5" {
-		t.Errorf("unconfirmed doc-updater model = %q, want unchanged sonnet-5", model)
+	if model != "sonnet-5-5" {
+		t.Errorf("unconfirmed doc-updater model = %q, want unchanged sonnet-5-5", model)
 	}
 }
 
@@ -166,11 +166,11 @@ func TestApplyForProject_WorkerTemplateAssignment(t *testing.T) {
 	seedProjectAndWorkflow(t, pool, "tmpl", "feature", "ticket")
 
 	roles := map[string]string{
-		"setup-analyzer": "sonnet-5",
+		"setup-analyzer": "sonnet-5-5",
 		"test-writer":    "opus-5-5",
 		"implementor":    "opus-5-5",
 		"qa-verifier":    "opus-5-5",
-		"doc-updater":    "sonnet-5",
+		"doc-updater":    "sonnet-5-5",
 	}
 	for defID, model := range roles {
 		seedTieringDef(t, pool, tieringDefSeed{projectID: "tmpl", workflowID: "feature", defID: defID, model: model})

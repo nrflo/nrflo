@@ -48,7 +48,7 @@ Examples:
   nrflo_server console --engine codex --model gpt-5.5 --effort high
   nrflo_server console --profile t0-decider
   nrflo_server console --resume <session-id>
-  nrflo_server console --engine api --model sonnet-5 --token <token>`,
+  nrflo_server console --engine api --model sonnet-5-5 --token <token>`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if consoleResumeFlag != "" && (cmd.Flags().Changed("engine") || cmd.Flags().Changed("model") || cmd.Flags().Changed("profile")) {

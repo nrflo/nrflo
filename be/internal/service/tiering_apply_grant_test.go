@@ -16,11 +16,11 @@ func TestApplyForProject_GrantsDelegationTools(t *testing.T) {
 	seedProjectAndWorkflow(t, pool, "grant", "feature", "ticket")
 
 	roles := map[string]string{
-		"setup-analyzer": "sonnet-5",
+		"setup-analyzer": "sonnet-5-5",
 		"test-writer":    "opus-5-5",
 		"implementor":    "opus-5-5",
 		"qa-verifier":    "opus-5-5",
-		"doc-updater":    "sonnet-5",
+		"doc-updater":    "sonnet-5-5",
 	}
 	for defID, model := range roles {
 		seedTieringDef(t, pool, tieringDefSeed{projectID: "grant", workflowID: "feature", defID: defID, model: model})

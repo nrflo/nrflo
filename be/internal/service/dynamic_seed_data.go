@@ -55,7 +55,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "module-reviewer",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "emit_findings,findings_get,artifact_get,artifact_list,read_document",
 		Description:     "Reviews a module, change, or another node's finding critically and reports a pass/fail/concerns verdict; read-only by prompt discipline. Emits to finding key `report`.",
@@ -71,7 +71,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "implementor-worker",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "*",
 		Description:     "General-purpose implementation node with full tool access — writes code, runs commands, edits files in the shared working tree. Emits to finding key `work_log`.",
@@ -79,7 +79,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "web-researcher",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
 		Description:     "Web research node: searches, fetches, and extracts falsifiable claims with verbatim quotes and sources. Emits to finding key `claims`.",
@@ -95,7 +95,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "premise-auditor",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "web_search,web_fetch,emit_findings",
 		Description:     "Attacks the goal itself rather than the findings: names assumptions the plan treats as settled but never tests, and the measurement that would falsify each. Bind it in the FIRST layer alongside the research nodes, never after them, so it is not anchored by their output. Emits to finding key `premises`.",
@@ -103,7 +103,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "finding-verifier",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "emit_findings,findings_get,web_search",
 		Description:     "Adversarial, refute-oriented verifier: checks an earlier node's findings and returns a CONFIRMED|PLAUSIBLE|REFUTED verdict per item (plausible-by-default). Emits to finding key `verdicts`.",
@@ -119,7 +119,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "generic-worker",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "findings_add,findings_get,artifact_get,artifact_list,read_document",
 		Description:     "Moderate, read-leaning general-purpose node for tasks that don't fit the other templates (analysis, drafting, light investigation). Emits to finding key `notes`.",
@@ -127,7 +127,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "cross-checker",
-		Model:           "sonnet-5",
+		Model:           "sonnet-5-5",
 		ReasoningEffort: "low",
 		Tools:           "emit_findings,findings_get",
 		Description:     "Reads two prior nodes' findings (bind via #{NODE_FINDINGS:<a>} / #{NODE_FINDINGS:<b>} in its instructions) and reports where they agree or disagree. Emits to finding key `cross_check`.",

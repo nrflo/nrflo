@@ -12,7 +12,7 @@ Uncapped overflow from [CLAUDE.md](CLAUDE.md). Read the relevant section before 
 
 ### t0-hands
 
-`engine=claude`, `model=sonnet-5` (already 1M-context natively, no `[1m]` row needed), `effort=medium`, `budget=80000`, `refinery=true`, `system_template_id=tier-t0-hands`, `native_tool_policy=full`, `Catalogue=nil` (full console catalogue). The prompt owns one coherent direct-execution slice, forbids further delegation unless explicitly requested, and returns materially expanded scope or product decisions to the decider. Opened through `OpenHandsSibling`; the profile remains selectable directly and supports sibling flows.
+`engine=claude`, `model=sonnet-5-5` (already 1M-context natively, no `[1m]` row needed), `effort=medium`, `budget=80000`, `refinery=true`, `system_template_id=tier-t0-hands`, `native_tool_policy=full`, `Catalogue=nil` (full console catalogue). The prompt owns one coherent direct-execution slice, forbids further delegation unless explicitly requested, and returns materially expanded scope or product decisions to the decider. Opened through `OpenHandsSibling`; the profile remains selectable directly and supports sibling flows.
 
 ### Chat lifecycle notifications
 

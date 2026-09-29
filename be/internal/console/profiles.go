@@ -98,7 +98,7 @@ func init() {
 		DisplayName:         "T0 Hands",
 		Description:         "Bounded full-tools companion to T0 Decider: executes one coherent work slice directly, seeded with the decider's refinery digest.",
 		DefaultEngine:       "claude",
-		DefaultModelID:      "sonnet-5",
+		DefaultModelID:      "sonnet-5-5",
 		DefaultEffort:       "medium",
 		ContextBudgetTokens: 80000,
 		RefineryDefault:     true,

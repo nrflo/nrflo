@@ -76,12 +76,12 @@ func (s *ProjectService) seedTieredWorkflows(projectID, now string) {
 			}
 
 			// The hotfix implementor is the one exception: "urgency over
-			// cost" keeps its explicit seed model override (sonnet-5), no
+			// cost" keeps its explicit seed model override (sonnet-5-5), no
 			// tier, no forced effort/template.
 			var model string
 			var tierVal interface{}
 			if IsHotfixImplementor(wf.id, phase.role) {
-				model, systemTemplateID = "sonnet-5", ""
+				model, systemTemplateID = "sonnet-5-5", ""
 			} else {
 				tierVal = target.Tier
 			}

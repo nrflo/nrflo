@@ -29,8 +29,8 @@ func TestCreateAgentDef_ModelOrTierRequired(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateAgentDef: %v, want success (silently defaults to sonnet-5)", err)
 	}
-	if def.Model != "sonnet-5" {
-		t.Errorf("Model = %q, want sonnet-5 (default fallback)", def.Model)
+	if def.Model != "sonnet-5-5" {
+		t.Errorf("Model = %q, want sonnet-5-5 (default fallback)", def.Model)
 	}
 }
 

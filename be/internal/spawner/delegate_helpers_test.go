@@ -26,8 +26,9 @@ import (
 // (migration 000182) so resolveReasoningEffort's fallback validates cleanly.
 func delegateModelConfigs() map[string]ModelConfig {
 	return map[string]ModelConfig{
-		"haiku-4-5": {Provider: "anthropic", APIModel: "claude-haiku-4-5", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}, DefaultEffort: "low"},
-		"sonnet-5":  {Provider: "anthropic", APIModel: "claude-sonnet-5", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}, DefaultEffort: "medium"},
+		"haiku-4-5":  {Provider: "anthropic", APIModel: "claude-haiku-4-5", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}, DefaultEffort: "low"},
+		"sonnet-5":   {Provider: "anthropic", APIModel: "claude-sonnet-5", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}, DefaultEffort: "medium"},
+		"sonnet-5-5": {Provider: "anthropic", APIModel: "claude-sonnet-5-5", APIContext: 200000, APIEfforts: []string{"low", "medium", "high"}, DefaultEffort: "medium"},
 	}
 }
 

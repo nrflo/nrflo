@@ -19,7 +19,7 @@ vi.mock('@/hooks/useModels', () => ({
     {
       label: 'Anthropic',
       options: [
-        { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
+        { value: 'sonnet-5-5', label: 'Anthropic: Sonnet' },
         { value: 'opus-4-8', label: 'Anthropic: Opus' },
       ],
     },
@@ -44,7 +44,7 @@ function makeRow(overrides: Partial<TierModel> = {}): TierModel {
     position: 0,
     provider: 'anthropic',
     execution_mode: 'cli_interactive',
-    model_id: 'sonnet-5',
+    model_id: 'sonnet-5-5',
     reasoning_effort: '',
     ...overrides,
   }
@@ -89,18 +89,18 @@ describe('AgentDefForm - tier UX', () => {
     await user.type(screen.getByLabelText('Prompt Template'), 'Test prompt')
     await user.click(screen.getByRole('button', { name: /create/i }))
 
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ model: 'sonnet-5', tier: null }))
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ model: 'sonnet-5-5', tier: null }))
   })
 
   it('switching execution mode while overriding re-picks a valid model', async () => {
     vi.mocked(useTierModels).mockReturnValue({ data: [] } as any)
     const user = userEvent.setup()
-    renderForm({ initial: { model: 'sonnet-5', prompt: 'test' } })
+    renderForm({ initial: { model: 'sonnet-5-5', prompt: 'test' } })
 
     const modelButton = screen.getByText('Model').parentElement!.querySelector('button[type="button"]') as HTMLButtonElement
     expect(modelButton.textContent).toContain('Anthropic: Sonnet')
 
-    // Switching to API mode re-derives model options; sonnet-5 stays valid here
+    // Switching to API mode re-derives model options; sonnet-5-5 stays valid here
     // since useModelOptions is mocked identically for both modes.
     const executionModeButton = screen.getByText('Execution Mode').parentElement!.querySelector('button[type="button"]') as HTMLButtonElement
     await user.click(executionModeButton)

@@ -6,7 +6,7 @@ import "strings"
 // plus the original seed model used to detect per-def customization.
 type TierTarget struct {
 	Role              string
-	OriginalSeedModel string // pre-retier seed default (post-000168/000210/000245 model-ref rewrites)
+	OriginalSeedModel string // pre-retier seed default (post-000168/000210/000245/000246 model-ref rewrites)
 	Tier              int    // tier_models chain to select (resolves to a model/effort pair)
 	SystemTemplateID  string // resolves to a type='injectable' default_templates row
 	IsWorker          bool
@@ -55,7 +55,7 @@ func grantDelegationTools(existing string) (csv string, changed bool) {
 // and new-project seeding (project_seed.go).
 var TierMap = map[string]TierTarget{
 	"setup-analyzer": {
-		Role: "setup-analyzer", OriginalSeedModel: "sonnet-5",
+		Role: "setup-analyzer", OriginalSeedModel: "sonnet-5-5",
 		Tier:             2,
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true, GrantsDelegation: true,
 	},
@@ -75,7 +75,7 @@ var TierMap = map[string]TierTarget{
 		SystemTemplateID: "tier-t2-extractor", IsWorker: true,
 	},
 	"doc-updater": {
-		Role: "doc-updater", OriginalSeedModel: "sonnet-5",
+		Role: "doc-updater", OriginalSeedModel: "sonnet-5-5",
 		Tier:             1,
 		SystemTemplateID: "tier-t1-executor", IsWorker: true,
 	},

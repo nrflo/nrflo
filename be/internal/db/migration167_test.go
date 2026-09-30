@@ -43,6 +43,7 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 		"gpt-5.6-luna":  "openai|gpt-5.6-luna|gpt-5.6-luna|272000|1050000||medium",
 		"gpt-6-astra":   "openai|gpt-6-astra|gpt-6-astra|272000|1050000||low",
 		"gpt-6-sol":     "openai|gpt-6-sol|gpt-6-sol|272000|1050000||medium",
+		"gpt-6.1-sol":   "openai|gpt-6.1-sol|gpt-6.1-sol|272000|1050000||low",
 		"gpt-6-luna":    "openai|gpt-6-luna|gpt-6-luna|272000|1050000||medium",
 		"glm-5.3-flash": "openrouter||z-ai/glm-5.3-flash|1048576|1048576||high",
 	}
@@ -77,6 +78,8 @@ func TestMigration167_CanonicalModels(t *testing.T) {
 	}
 
 	assertEfforts(t, pool, "gpt-5.6-sol", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\",\"ultra\"]", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\"]")
+	assertEfforts(t, pool, "gpt-6.1-sol", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\",\"ultra\"]", "[\"low\",\"medium\",\"high\",\"xhigh\",\"max\"]")
+	assertScalar(t, pool.DB, `SELECT price_in || '|' || price_out || '|' || price_cache_write || '|' || price_cache_read || '|' || enabled FROM models WHERE id = 'gpt-6.1-sol'`, "2.0|10.0|2.5|0.1|1")
 	assertEfforts(t, pool, "gpt-5.3-codex", "[]", "[\"low\",\"medium\",\"high\",\"xhigh\"]")
 	assertEfforts(t, pool, "opus-4-6", "[\"low\",\"medium\",\"high\",\"max\"]", "[\"low\",\"medium\",\"high\",\"max\"]")
 	assertScalar(t, pool.DB, `SELECT enabled FROM models WHERE id = 'gpt-5.5-mini'`, "0")

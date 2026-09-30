@@ -80,6 +80,7 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 | openai | `gpt-5.6-luna` | `gpt-5.6-luna` | 1.05M | low, medium, high, xhigh, max |
 | openai | `gpt-6-astra` | `gpt-6-astra` | 1.05M | low, medium, high, xhigh, max |
 | openai | `gpt-6-sol` | `gpt-6-sol` | 1.05M | low, medium, high, xhigh, max |
+| openai | `gpt-6.1-sol` | `gpt-6.1-sol` | 1.05M | low, medium, high, xhigh, max |
 | openai | `gpt-6-luna` | `gpt-6-luna` | 1.05M | low, medium, high, xhigh, max |
 
 `reasoning_effort` on an agent definition is an optional per-agent override

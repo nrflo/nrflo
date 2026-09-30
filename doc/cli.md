@@ -33,6 +33,7 @@ The seeded CLI-capable rows are:
 | anthropic | `opus-5-5-1m`, `opus-5-1m`, `opus-4-6-1m`, `opus-4-7-1m`, `opus-4-8-1m` | matching Claude model with `[1m]` | 1M | provider default |
 | openai | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.5` | matching GPT model | 200k | medium |
 | openai | `gpt-5.6-sol`, `gpt-6-astra` | matching GPT model | 272k | low |
+| openai | `gpt-6.1-sol` | `gpt-6.1-sol` | 272k | low |
 | openai | `gpt-5.6-terra`, `gpt-5.6-luna`, `gpt-6-sol`, `gpt-6-luna` | matching GPT model | 272k | medium |
 
 `reasoning_effort` may override the row default when the selected model supports

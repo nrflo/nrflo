@@ -108,9 +108,10 @@ const (
 	bracketedPasteEnd     = "\x1b[201~"
 )
 
-// sanitizePromptBody drops control characters other than \n and \t: C0, DEL,
-// and C1 (U+0080–U+009F). A single C1 character anywhere in a pasted body
-// leaves Claude's TUI with the text sitting unsubmitted in the input box, and
+// sanitizePromptBody drops control characters other than \n and \t (C0, DEL,
+// C1) and all format characters (Cf: zero-width space/joiner, BOM, bidi marks,
+// soft hyphen, tag chars). Claude's TUI holds a paste containing any of these
+// unsubmitted ("Removed N invisible character · review and press Enter"), and
 // retrying the identical body can never succeed. Scraped text is the usual
 // source.
 func sanitizePromptBody(body string) string {
@@ -118,7 +119,7 @@ func sanitizePromptBody(body string) string {
 		if r == '\n' || r == '\t' {
 			return r
 		}
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || unicode.Is(unicode.Cf, r) {
 			return -1
 		}
 		return r

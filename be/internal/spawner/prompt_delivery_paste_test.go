@@ -235,10 +235,11 @@ func TestClaudeEngine_WriteTurnText_SlashBypassesPasteMode(t *testing.T) {
 
 func TestSanitizePromptBody(t *testing.T) {
 	cases := map[string]string{
-		"We\u0080\u0094\u0099re": "Were",
-		"a\x00b\x1b[31mc\x7f":    "ab[31mc",
-		"line1\nline2\tx\r":      "line1\nline2\tx",
-		"héllo — “quoted” 日本語 ✓": "héllo — “quoted” 日本語 ✓",
+		"We\u0080\u0094\u0099re":                             "Were",
+		"a\x00b\x1b[31mc\x7f":                                "ab[31mc",
+		"line1\nline2\tx\r":                                  "line1\nline2\tx",
+		"héllo — “quoted” 日本語 ✓":                             "héllo — “quoted” 日本語 ✓",
+		"text: \u200b Hey\ufeff\u200e\u2060\u00ad\U000E0041": "text:  Hey",
 	}
 	for in, want := range cases {
 		if got := sanitizePromptBody(in); got != want {

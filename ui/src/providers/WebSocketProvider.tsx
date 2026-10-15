@@ -1,3 +1,4 @@
+import { deliverDesktopNotification } from '@/lib/desktopNotifications'
 import { createContext, useContext, useEffect, useRef, useMemo, type ReactNode } from 'react'
 import { useWebSocket, type WSEvent } from '@/hooks/useWebSocket'
 import { useProjectStore } from '@/stores/projectStore'
@@ -35,6 +36,7 @@ export function WebSocketProvider({ children, onEvent }: WebSocketProviderProps)
 
   function handleEvent(event: WSEvent) {
     onEvent?.(event)
+    void deliverDesktopNotification(event).catch((error: unknown) => console.warn('OS notification delivery failed', error))
     listenersRef.current.forEach((fn) => fn(event))
   }
 

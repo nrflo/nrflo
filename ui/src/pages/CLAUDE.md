@@ -22,6 +22,8 @@ Pages receive real-time updates via WebSocket (no REST polling):
 - Layout.tsx subscribes to all project events for sidebar counts and dashboard updates
 - Subscriptions must be gated on `projectsLoaded` (see [hooks/CLAUDE.md](../hooks/CLAUDE.md))
 
+`/notifications` offers current-project and combined inbox views; Settings → Notifications and Project Settings embed the same inbox, with Markdown prose, formatted JSON, read actions, and an amber unread bell in the header; `?scope=all&id=…&connection=…` opens an exact item on its originating server. Settings → Notifications can enable browser-backed OS alerts while a tab is open; the service worker opens the exact item when an alert is clicked.
+
 `ScheduleRunsDialog.tsx` presents each run's scheduled time and renders offline-missed occurrences as neutral `Skipped` rows.
 
 ## Testing

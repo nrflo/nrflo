@@ -19,6 +19,7 @@ import { ChainListPage } from '@/pages/ChainListPage'
 import { ChainDetailPage } from '@/pages/ChainDetailPage'
 import { GitStatusPage } from '@/pages/GitStatusPage'
 import { DocumentationPage } from '@/pages/DocumentationPage'
+import { NotificationsPage } from '@/pages/NotificationsPage'
 import { ErrorsPage } from '@/pages/ErrorsPage'
 import { LogsPage } from '@/pages/LogsPage'
 import { SchedulesPage } from '@/pages/SchedulesPage'
@@ -68,6 +69,7 @@ function AppRoutes() {
               <Route path="schedules" element={<SchedulesPage />} />
               {experimentalEnabled && <Route path="workflow-chains" element={<WorkflowChainsPage />} />}
               {experimentalEnabled && <Route path="workflow-chains/:id" element={<WorkflowChainEditorPage />} />}
+              <Route path="notifications" element={<NotificationsPage />} />
               <Route path="errors" element={<ErrorsPage />} />
               <Route path="logs" element={<LogsPage />} />
               {experimentalEnabled && <Route path="python-scripts" element={<PythonScriptsPage />} />}

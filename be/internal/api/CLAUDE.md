@@ -31,7 +31,7 @@ Writes on global configuration resources require an admin user (`admin()`); proj
 
 ### External MCP proxy (`agent mcp-external`)
 
-Any standalone MCP client (not spawned by nrflo, not Claude-specific) drives the server via `nrflo_server agent mcp-external` — a service-token-authed (`NRFLO_MCP_TOKEN`) dumb JSON-RPC stdio bridge (`cli/agent_mcp_external.go`) that opens a console session at connect and forwards `tools/list`/`tools/call` to `GET/POST /api/v1/console/tools*` with the console bearer, closing the session at disconnect. Console-chat Claude/Codex engines instead inject a pre-minted session (`NRFLO_CONSOLE_TOKEN`/`NRFLO_CONSOLE_SESSION_ID`) for the bridge to adopt; `ChatService` owns its close. The tool catalogue is entirely server-owned (the console profile); the bridge contains zero per-tool code. The project resolves once, at session creation (cwd auto-detect → `NRFLO_PROJECT` → hidden global project). Mechanics: [REFERENCE.md](REFERENCE.md#external-mcp-proxy-agent-mcp-external) — read before changing the bridge, auth, or project resolution.
+Standalone MCP clients use service-token-authenticated console sessions through `agent mcp-external`; read [REFERENCE.md](REFERENCE.md#external-mcp-proxy-agent-mcp-external) before changing bridge startup, session adoption, or shutdown.
 
 ### Login Rate Limiter
 
@@ -107,3 +107,7 @@ Plan lifecycle endpoints (`/api/v1/workflow-instances/{iid}/plan*`, `POST /api/v
 #### Console chats
 
 `GET /api/v1/console/catalog` discovers enabled engines/models and live resumable chats; `POST /api/v1/console/chats` starts a `ChatService`-owned engine. Path-scoped routes cover paginated history, approval, interruption, reconnect detail (including bounded in-flight output), and close under the shared chat authorization predicate. Live events stream over the WS session channel — see [ws/CLAUDE.md](../ws/CLAUDE.md). `GET /api/v1/pty/{sid}` on a `kind='console_chat'` row routes to the viewer-only relay (`handlers_pty_console.go`): raw terminal onto a live claude chat's PTY, detach-on-disconnect, never completes or kills anything. `GET .../tools` (the chat's own catalogue) and `POST .../invoke` (deterministic server-side dispatch, transcript rows + optional inform-model) live under the same shared chat auth predicate as the routes above.
+
+## Notification inbox
+
+Inbox routes and scope checks live in `handlers_notification_inbox.go`: authenticated project reads/read actions check resolved scope against bearer ownership, including query overrides, while combined access rejects project-scoped service principals and agent-session bearers. Item lookup supports exact notification links; shared read-state and delivery semantics are documented in [service/REFERENCE.md](../service/REFERENCE.md#notification-inbox).

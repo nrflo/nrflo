@@ -21,7 +21,7 @@ Top-level packages under `be/internal/`:
 - `client/` — Unix socket client
 - `static/` — Embedded UI assets + per-kind agent docs (`//go:embed`; `Manual(kind)`)
 - `socket/` — Unix socket server (agent communication: findings, callbacks, ws.broadcast)
-- `notify/` — Notification dispatch: Slack/Telegram/Script transports, async retry queue
+- `notify/` — Default in-app inbox delivery plus Slack/Telegram/Script transports and async retry queue; [inbox mechanics](internal/service/REFERENCE.md#notification-inbox)
 - `service/` — Business logic layer (see [service/CLAUDE.md](internal/service/CLAUDE.md))
 - `db/` — SQLite connection pool, migrations (see [db/CLAUDE.md](internal/db/CLAUDE.md))
 - `model/` — Data models (structs)
@@ -53,6 +53,8 @@ All build targets are in the **root** `Makefile` (not `be/`): `make build` (incl
 - **HTTP API** on `127.0.0.1:6587` by default — web UI, REST API, WebSocket. Use `--host 0.0.0.0` for LAN access
 - **Unix socket** at `$NRFLO_HOME/agent.sock` (override `NRFLO_SOCKET`) — agent communication only; eagerly bound at startup before HTTP listener
 - **Auto-migration** — database schema is automatically migrated on startup
+
+The macOS tray shows running-agent and orange-marked unread-notification counts, with a Notifications menu entry opening the combined inbox (`internal/tray/tray.go`).
 
 ### Serve Flags
 

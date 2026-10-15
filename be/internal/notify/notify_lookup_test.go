@@ -44,7 +44,7 @@ func TestDispatcher_OnEvent_ProjectLookup_EnrichesPayload(t *testing.T) {
 	})
 
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, projectLookup, nil, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, projectLookup, nil, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
 
 	chModel := insertNotifyChannel(t, channelRepo, projectID, workflowID, "dummy", false, nil)
@@ -89,7 +89,7 @@ func TestDispatcher_OnEvent_TicketLookup_EnrichesPayload(t *testing.T) {
 	})
 
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 
 	// Fire event with ticket_id set
 	evt := ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-99", workflowID, nil)
@@ -127,7 +127,7 @@ func TestDispatcher_OnEvent_TicketLookup_NotCalledWithoutTicketID(t *testing.T) 
 	})
 
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
 
 	if lookupCalled {
@@ -162,7 +162,7 @@ func TestDispatcher_OnEvent_LookupError_DispatchContinues(t *testing.T) {
 	})
 
 	wakeCh := make(chan struct{}, 1)
-	d := NewDispatcher(channelRepo, deliveryRepo, errProjectLookup, errTicketLookup, wakeCh)
+	d := NewDispatcher(channelRepo, deliveryRepo, errProjectLookup, errTicketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-1", workflowID, nil))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)

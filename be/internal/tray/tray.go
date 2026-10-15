@@ -16,20 +16,21 @@ import (
 	"fyne.io/systray"
 )
 
-// AgentCountFn returns the number of running agents across all projects.
-type AgentCountFn func() (int, error)
+// CountFn returns a server-wide count.
+type CountFn func() (int, error)
 
 // Run starts the systray on the main thread. onServerStart is called in a
 // goroutine once the tray is ready. onQuit is called when the user quits
 // (via menu or Ctrl+C). agentCount is polled every 3s to update the icon
-// with the running agent count. This function blocks until the tray exits.
-func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), onQuit func()) {
+// with running agents and unread notifications. This function blocks until the tray exits.
+func Run(host string, port int, agentCount CountFn, unreadCount CountFn, onServerStart func(), onQuit func()) {
 	systray.Run(func() {
 		initialIcon := renderIcon()
 		systray.SetTemplateIcon(initialIcon, initialIcon)
 		systray.SetTooltip(fmt.Sprintf("nrflo server — %s:%d", host, port))
 
 		mOpen := systray.AddMenuItem("Open nrflo", "Open web UI in browser")
+		mNotifications := systray.AddMenuItem("Notifications", "Open notification inbox")
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Stop server and quit")
 
@@ -38,7 +39,7 @@ func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), o
 		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
 		done := make(chan struct{})
-		lastCount := 0
+		lastCount, lastUnread := -1, -1
 
 		// Poll agent count every 3s and update title on change
 		go func() {
@@ -51,14 +52,24 @@ func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), o
 					if err != nil {
 						continue
 					}
-					if count != lastCount {
-						lastCount = count
-						if count == 0 {
-							systray.SetTitle("")
-						} else {
-							systray.SetTitle(fmt.Sprintf(" %d", count))
-						}
+					unread, err := unreadCount()
+					if err != nil {
+						continue
 					}
+					if count != lastCount || unread != lastUnread {
+						lastCount, lastUnread = count, unread
+						title := ""
+						if count > 0 {
+							title = fmt.Sprintf(" %d", count)
+						}
+						if unread > 0 {
+							title += fmt.Sprintf(" 🟠 %d", unread)
+						}
+						systray.SetTitle(title)
+						systray.SetTooltip(fmt.Sprintf("nrflo — %d running agents, %d unread notifications", count, unread))
+						mNotifications.SetTitle(fmt.Sprintf("Notifications (%d unread)", unread))
+					}
+
 				case <-done:
 					return
 				}
@@ -74,6 +85,12 @@ func Run(host string, port int, agentCount AgentCountFn, onServerStart func(), o
 						openHost = "localhost"
 					}
 					_ = exec.Command("open", fmt.Sprintf("http://%s:%d", openHost, port)).Start()
+				case <-mNotifications.ClickedCh:
+					openHost := host
+					if openHost == "0.0.0.0" || openHost == "" {
+						openHost = "localhost"
+					}
+					_ = exec.Command("open", fmt.Sprintf("http://%s:%d/notifications?scope=all", openHost, port)).Start()
 				case <-mQuit.ClickedCh:
 					count, _ := agentCount()
 					if count > 0 && !confirmQuit() {

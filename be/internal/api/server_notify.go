@@ -40,6 +40,8 @@ func buildNotifySubsystem(pool *db.Pool, clk clock.Clock, hub *ws.Hub, errorSvc 
 			return t.Title, true, nil
 		}),
 		notifyWakeCh,
+		repo.NewNotificationInboxRepo(pool, clk),
+		hub,
 	)
 	hub.RegisterListener(dispatcher)
 	notifyWorker := notify.NewWorker(deliveryRepo, channelRepo, hub, errorSvc, clk, notifyWakeCh)

@@ -50,6 +50,8 @@ v1 clients (no `since_seq`) continue working unchanged — no replay, no snapsho
 
 `BroadcastGlobal(event)` sends an event to ALL connected clients regardless of subscription scope. Used for cross-project signal events like `global.running_agents`. These events are ephemeral — not persisted to the event log and not eligible for cursor-based replay.
 
+`global.notifications` is an ephemeral inbox signal; payload and refetch semantics are owned by [service/REFERENCE.md](../service/REFERENCE.md#notification-inbox).
+
 The spawner emits `global.running_agents` whenever an agent starts or completes. The frontend refetches running agents via `GET /api/v1/agents/running` on receipt.
 
 ## Architecture

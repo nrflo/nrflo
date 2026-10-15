@@ -21,7 +21,7 @@ The WS layer uses protocol v2 with seq tracking, cursor resume, snapshot hydrati
 
 ### Files
 
-- `useWebSocket.ts` — core connection, message routing, reconnect with cursor resume
+- `useWebSocket.ts` — connection and reconnect with cursor resume; `useWSEventHandler.ts` owns message routing, `useWebSocketTypes.ts` owns event types
 - `useWSProtocol.ts` — protocol v2 types: `WSEventV2`, `WSSubscribeMessage`, control event types
 - `useWSReducer.ts:1` — event dispatch + seq tracking; per-subscription `seqMap` with idempotency; persists to sessionStorage
 - `useWSSnapshot.ts` — snapshot state machine: `idle → receiving → applying`; buffers live events during snapshot
@@ -84,7 +84,7 @@ Representative sample — canonical list in [be/internal/api/CLAUDE.md](../../..
 
 All v2 events include: `type`, `project_id`, `ticket_id`, `workflow`, `timestamp`, `protocol_version`, `sequence`.
 
-`global.running_agents` is a global broadcast handled as an early return before `dispatchV2Event`.
+`global.running_agents` and `global.notifications` bypass sequence tracking in `useWSEventHandler.ts`; the latter invalidates the connection/scope-keyed inbox queries from `useNotificationInbox.ts`, which also refresh on reconnect.
 
 ### Session channel
 

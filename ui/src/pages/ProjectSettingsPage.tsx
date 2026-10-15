@@ -1,3 +1,4 @@
+import { NotificationInbox } from '@/components/notifications/NotificationInbox'
 import { useState, useEffect } from 'react'
 import { useProjectStore } from '@/stores/projectStore'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
@@ -70,6 +71,7 @@ export function ProjectSettingsPage() {
           />
         </CardContent>
       </Card>
+      <div className="mt-6"><NotificationInbox key={currentProject} /></div>
     </div>
   )
 }

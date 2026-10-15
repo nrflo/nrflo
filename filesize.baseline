@@ -32,7 +32,7 @@ be/internal/api/handlers_spec_import_test.go	465
 be/internal/api/handlers_system_agent_def_test.go	461
 be/internal/api/handlers_workflow.go	360
 be/internal/api/handlers_workflow_chains_steps_test.go	366
-be/internal/api/server.go	687
+be/internal/api/server.go	677
 be/internal/api/static_handler_test.go	310
 be/internal/clock/clock_test.go	309
 be/internal/integration/agent_callback_test.go	308
@@ -187,7 +187,6 @@ ui/src/hooks/useWSReducer.test.ts	1048
 ui/src/hooks/useWSReducer.ts	382
 ui/src/hooks/useWSSnapshot.test.ts	623
 ui/src/hooks/useWebSocket.eventHandling.test.tsx	735
-ui/src/hooks/useWebSocket.ts	467
 ui/src/hooks/useWebSocket.v2Protocol.test.ts	394
 ui/src/pages/ChainDetailPage.test.tsx	1038
 ui/src/pages/ChainListPage.test.tsx	549

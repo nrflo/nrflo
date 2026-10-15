@@ -11,6 +11,8 @@ API client modules for communicating with the nrflo backend.
 
 Modules under `src/api/` wrap `apiFetch`; one file per resource group, mirroring the backend route grouping. Run `ls ui/src/api/` for the full list.
 
+`notificationInbox.ts` wraps scoped/combined inbox listing, exact-item lookup, and read actions; view and OS-alert behavior lives in [pages/CLAUDE.md](../pages/CLAUDE.md).
+
 All responses use `{error: {code, message}}` for error bodies. Backend route enumeration: [be/internal/api/CLAUDE.md](../../../be/internal/api/CLAUDE.md).
 
 ## Request / Response Conventions

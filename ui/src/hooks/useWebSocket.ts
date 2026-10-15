@@ -1,122 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConnectionsStore } from '../stores/connectionsStore'
-import { runningAgentsKeys } from './useRunningAgents'
 import type { WSEventV2, WSSubscribeMessage } from './useWSProtocol'
-import { isControlEvent, subscriptionKey } from './useWSProtocol'
-import { useWSSessionChannel, handleSessionScopedEvent, deniedSessionID } from './useWSSessionChannel'
+import { subscriptionKey } from './useWSProtocol'
+import { useWSSessionChannel, deniedSessionID } from './useWSSessionChannel'
 import { getWebSocketUrl, invalidateAllQueries } from './useWSBootstrap'
 import {
-  dispatchV2Event,
   getLastSeq,
   setLastSeq,
-  persistSeqs, schedulePersistSeqs,
+  persistSeqs,
   restoreSeqs,
   resetSeqs,
 } from './useWSReducer'
-import {
-  handleSnapshotBegin,
-  handleSnapshotChunk,
-  handleSnapshotEnd,
-  isReceivingSnapshot,
-  bufferEventDuringSnapshot,
-} from './useWSSnapshot'
 import { computeReconnectDelay, useConnectionRecovery } from './useWSReconnect'
-
-// Event types from backend
-export type WSEventType =
-  | 'agent.started'
-  | 'agent.completed'
-  | 'agent.continued'
-  | 'agent.context_updated'
-  | 'agent.retry_waiting'
-  | 'agent.context_saving'
-  | 'agent.stall_restart'
-  | 'agent.nudged' | 'agent.context_ledger' | 'agent.handoff_digest' | 'refinery.fold_failed' | 'step.advanced'
-  | 'findings.updated'
-  | 'project_findings.updated'
-  | 'messages.updated'
-  | 'workflow.updated'
-  | 'workflow_def.created'
-  | 'workflow_def.updated'
-  | 'workflow_def.deleted'
-  | 'agent_def.created'
-  | 'agent_def.updated'
-  | 'agent_def.deleted'
-  | 'model.created' | 'model.updated' | 'model.deleted'
-  | 'custom_provider.created' | 'custom_provider.updated' | 'custom_provider.deleted'
-  | 'orchestration.started'
-  | 'orchestration.completed'
-  | 'orchestration.failed'
-  | 'orchestration.retried'
-  | 'orchestration.callback'
-  | 'agent.take_control'
-  | 'agent.take_control_rejected' | 'console.context_rotated'
-  | 'agent.killed' | 'agent.stall_waiting'
-  | 'chain.updated'
-  | 'layer.skipped'
-  | 'merge.conflict_resolving'
-  | 'merge.conflict_resolved'
-  | 'merge.conflict_failed'
-  | 'ticket.updated'
-  | 'global.running_agents'
-  | 'error.created'
-  | 'schedule.created'
-  | 'schedule.updated'
-  | 'schedule.deleted'
-  | 'schedule.triggered'
-  | 'notification_channel.created'
-  | 'notification_channel.updated'
-  | 'notification_channel.deleted'
-  | 'notification.delivered'
-  | 'notification.failed'
-  | 'chain_def.created'
-  | 'chain_def.updated'
-  | 'chain_def.deleted'
-  | 'chain.run_started'
-  | 'chain.step_started'
-  | 'chain.step_completed'
-  | 'chain.run_completed'
-  | 'chain.run_failed'
-  | 'workflow.finalize_succeeded'
-  | 'workflow.finalize_failed'
-  | 'workflow.paused'
-  | 'workflow.resumed'
-  | 'project.env_vars_updated'
-  | 'service_tokens.updated'
-  | 'spec_import.started'
-  | 'spec_import.ready'
-  | 'spec_import.failed'
-  | 'artifact.created'
-  | 'artifact.deleted'
-  | 'agent.rate_limited'
-  | 'consult.started'
-  | 'consult.answered'
-  | 'consult.failed' | 'delegate.started' | 'delegate.completed' | 'delegate.failed'
-  | 'plan.drafted'
-  | 'plan.revised'
-  | 'plan.approved'
-  | 'plan.cancelled'
-  | 'plan.materialized'
-  | 'workflow.plan_waiting'
-  | 'test.echo'
-  | 'console_chat.delta'
-  | 'console_chat.thinking'
-  | 'console_chat.turn'
-  | 'console_chat.approval_request'
-  | 'console_chat.approval_resolved'
-  | 'console_chat.error'
-  | 'console_chat.session_approvals' | 'console_chat.sibling_opened' | 'session.cost_updated' | 'console_chat.yolo' | 'console_chat.queued'
-
-export interface WSEvent {
-  type: WSEventType
-  project_id: string
-  ticket_id: string
-  workflow?: string
-  timestamp: string
-  session_id?: string
-  data?: Record<string, unknown>
-}
+import type { WSEvent } from './useWebSocketTypes'
+export type { WSEvent, WSEventType } from './useWebSocketTypes'
+import { handleIncomingEvent } from './useWSEventHandler'
 
 interface UseWebSocketOptions {
   enabled?: boolean
@@ -187,76 +86,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     wsRef.current.send(JSON.stringify(message))
   }, [])
 
-  // Handle incoming WebSocket events via v2 reducer (uses refs, no deps needed)
   const handleEvent = useCallback((event: WSEventV2) => {
-    if (isDev) {
-      console.debug('[ws] event:', event.type, event.ticket_id, event.sequence, event.data)
-    }
-
-    // Call custom handler if provided (cast to WSEvent for backward compat)
-    onEventRef.current?.(event as WSEvent)
-
-    const qc = queryClientRef.current
-
-    // Handle control events
-    if (isControlEvent(event.type)) {
-      switch (event.type) {
-        case 'snapshot.begin':
-          handleSnapshotBegin(event)
-          return
-        case 'snapshot.chunk':
-          handleSnapshotChunk(event)
-          return
-        case 'snapshot.end': {
-          const buffered = handleSnapshotEnd(event, qc)
-          // Replay buffered live events in order
-          for (const e of buffered) {
-            dispatchV2Event(e, qc)
-          }
-          persistSeqs()
-          return
-        }
-        case 'resync.required':
-          if (isDev) console.debug('[ws] resync required for', event.project_id, event.ticket_id)
-          requestResync(event.project_id, event.ticket_id)
-          return
-        case 'heartbeat':
-          // Heartbeat handled by resetHeartbeat in onmessage
-          return
-      }
-    }
-
-    // Ephemeral session-channel events bypass seq/snapshot entirely — see
-    // useWSSessionChannel.ts and the global.running_agents return below.
-    if (event.session_id) {
-      handleSessionScopedEvent(event, qc)
-      return
-    }
-
-    // Buffer events that arrive during snapshot
-    if (isReceivingSnapshot(event.project_id, event.ticket_id)) {
-      bufferEventDuringSnapshot(event.project_id, event.ticket_id, event)
-      return
-    }
-
-    // Handle test echo
-    if (event.type === 'test.echo') {
-      console.log('[ws] TEST BROADCAST RECEIVED:', event)
-      return
-    }
-
-    // Handle global running agents signal (no subscription scope)
-    if (event.type === 'global.running_agents') {
-      qc.invalidateQueries({ queryKey: runningAgentsKeys.all })
-      return
-    }
-
-    // Dispatch through v2 reducer (handles seq tracking + cache invalidation)
-    dispatchV2Event(event, qc)
-    schedulePersistSeqs()
+    handleIncomingEvent(event, queryClientRef.current, onEventRef.current, requestResync)
   }, [requestResync]) // stable — requestResync uses refs
 
-  // Invalidate all queries on connect/reconnect to catch up on missed events
   const invalidateAll = useCallback(() => {
     invalidateAllQueries(queryClientRef.current)
   }, [])
@@ -310,6 +143,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       })
 
       resendSessionSubscriptions(ws)
+      queryClientRef.current.invalidateQueries({ queryKey: ['notification-inbox'] })
 
       const hasAnyCursor = Array.from(subscriptionsRef.current).some((ticketId) => {
         const subKey = subscriptionKey(projectId, ticketId)
@@ -375,7 +209,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     wsRef.current = ws
   }, [enabled, handleEvent, invalidateAll, resetHeartbeat, buildSubscribeMessage, resendSessionSubscriptions])
 
-  // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
@@ -421,7 +254,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
   }, [])
 
-  // Connect on mount, disconnect on unmount
   useEffect(() => {
     mountedRef.current = true
 

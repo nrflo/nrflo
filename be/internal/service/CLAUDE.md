@@ -42,6 +42,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 | `global_settings.go` | Key-value settings (wraps `pool.GetConfig`/`SetConfig`/`GetProjectConfig`/`SetProjectConfig`) |
 | `error_service.go` | `RecordError` (UUID, clock, DB insert, WS broadcast), `ListErrors` (paginated) |
 | `notification.go` | Notification channel CRUD + secret masking + TestSend + ListDeliveries |
+| `notification_inbox.go` | Persistent shared inbox + scoped read state; dispatch mechanics in `../notify/notify.go` |
 | `snapshot.go` | WS snapshot provider |
 | `insights.go` | `Summary`/`EditRate`/`Throughput`; `ParseRange` (7d/30d), `ParseBucket` (1h/6h/1d) |
 | `workflow_chain.go` | `WorkflowChainService`: chain+step CRUD; validates dense positions, step 0 project-scope, workflow_name resolves |
@@ -65,7 +66,7 @@ Business logic layer separating domain logic from HTTP/socket handlers.
 
 ## Global workflows
 
-A workflow definition is global when `workflows.is_global=1`. Global defs are project-agnostic: `ListWorkflowDefs` (`workflow_defs_read_list.go`) unions them into **every** project's listing with **local-name precedence** (a project-local def shadows a same-named global one), so they are selectable/runnable from any project while execution stays project-scoped. `GetWorkflowDef` (`workflow_defs_read.go`), `loadFindingSchemas` (`finding_schema.go`), and the orchestrator's `resolveWorkflowDef` resolve a name under the selected project, then fall back to the global namespace.
+Global workflow definitions resolve by name with project-local precedence; read [REFERENCE.md](REFERENCE.md#global-workflow-storage) before changing resolution or storage.
 
 Global defs are stored under the reserved `GlobalProjectID` (`"__global__"`, `workflow_reserved.go`); storage/runnable-scratch-project mechanics: [REFERENCE.md](REFERENCE.md#global-workflow-storage).
 
@@ -78,3 +79,7 @@ Most service constructors take `(pool *db.Pool, clk clock.Clock)`. Pass `clock.R
 **Exception:** `NewAgentDefinitionService(pool, clk, modelSvc, pythonScriptRepo)` and `NewSystemAgentDefinitionService(pool, clk, modelSvc)` require the shared `*ModelService`; definition validation selects `cli_efforts` or `api_efforts` from the row according to execution mode.
 
 Workflow/agent definition CRUD routes: see [api/CLAUDE.md](../api/CLAUDE.md).
+
+## Notification inbox
+
+Inbox dispatch, shared read state, and WebSocket signals: [REFERENCE.md](REFERENCE.md#notification-inbox) — read before changing notification delivery.

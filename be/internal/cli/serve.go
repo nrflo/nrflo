@@ -82,7 +82,9 @@ Example usage:
 			return repo.NewAgentSessionRepo(sc.pool, clock.Real()).CountRunning()
 		}
 		var serverErr error
-		runWithTray(sc.cfg.Server.Host, sc.cfg.Server.Port, agentCount, func() {
+		runWithTray(sc.cfg.Server.Host, sc.cfg.Server.Port, agentCount, func() (int, error) {
+			return repo.NewNotificationInboxRepo(sc.pool, clock.Real()).CountUnread()
+		}, func() {
 			serverError := make(chan error, 1)
 			go func() {
 				serverError <- sc.httpServer.Start(sc.cfg.Server.Host, sc.cfg.Server.Port)

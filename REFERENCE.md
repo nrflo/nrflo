@@ -76,6 +76,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 - **Service tokens** (long-lived project or global bearer tokens) → [api](be/internal/api/CLAUDE.md)
 
 ### Storage & operations
+- **Notification inbox, external deliveries, unread badges, and OS alerts** → [service](be/internal/service/CLAUDE.md#notification-inbox) + [pages](ui/src/pages/CLAUDE.md)
 - **Artifact storage + agent runtime** (`NRF_ARTIFACTS_DIR`, `#{ARTIFACTS}`, `artifact_*` MCP tools) → [artifact/](be/internal/artifact/) + [service/artifact.go](be/internal/service/artifact.go)
 - **Agent session logs + live sessions** → [api](be/internal/api/CLAUDE.md)
 - **Per-project env vars** → [service](be/internal/service/CLAUDE.md)

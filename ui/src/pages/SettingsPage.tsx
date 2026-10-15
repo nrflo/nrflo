@@ -1,8 +1,10 @@
+import { DesktopNotificationSettings } from '@/components/notifications/DesktopNotificationSettings'
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, Settings, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectStore } from '@/stores/projectStore'
+import { NotificationInbox } from '@/components/notifications/NotificationInbox'
 import { GlobalSettingsSection } from '@/components/settings/GlobalSettingsSection'
 import { MenuPanelSection } from '@/components/settings/MenuPanelSection'
 import { ProjectsSection } from '@/components/settings/ProjectsSection'
@@ -20,12 +22,13 @@ import { TieringSection } from '@/components/settings/TieringSection'
 import { TierModelsSection } from '@/components/settings/TierModelsSection'
 import { useCustomProviders } from '@/hooks/useCustomProviders'
 
-type SettingsTab = 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'tier-models' | 'logs' | 'connections' | 'administration'
+type SettingsTab = 'notifications' | 'general' | 'menu-panel' | 'projects' | 'system-agents' | 'default-templates' | 'models' | 'tiering' | 'tier-models' | 'logs' | 'connections' | 'administration'
 type AdministrationSubTab = 'users' | 'audit' | 'tokens'
 type SystemAgentsSubTab = 'definitions' | 'activity'
 
 const tabs: { id: SettingsTab; label: string }[] = [
   { id: 'general', label: 'General' },
+  { id: 'notifications', label: 'Notifications' },
   { id: 'menu-panel', label: 'Menu Panel' },
   { id: 'projects', label: 'Projects' },
   { id: 'system-agents', label: 'System Agents' },
@@ -191,6 +194,7 @@ export function SettingsPage() {
         <ModelsProviderTabs activeProvider={activeProvider} onSelect={handleProviderSubTabClick} />
       )}
 
+      {activeTab === 'notifications' && <div className="space-y-6"><DesktopNotificationSettings /><NotificationInbox global /></div>}
       {activeTab === 'general' && <GlobalSettingsSection />}
       {activeTab === 'menu-panel' && <MenuPanelSection />}
       {activeTab === 'projects' && <ProjectsSection />}

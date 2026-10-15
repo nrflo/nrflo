@@ -76,6 +76,8 @@ Rules every change must respect.
 
 ## Feature Index
 
+Notification inbox and delivery: [service](be/internal/service/CLAUDE.md#notification-inbox); inbox views and OS alerts: [pages](ui/src/pages/CLAUDE.md).
+
 Feature → owning-doc routing table: [REFERENCE.md](REFERENCE.md#feature-index). Per-package doc table: [be/CLAUDE.md](be/CLAUDE.md).
 
 ## Workflows

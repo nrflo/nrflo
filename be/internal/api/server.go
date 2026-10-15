@@ -523,17 +523,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 
 	s.registerObservabilityRoutes(admin)
 
-	// Notification variables (global, no project scope)
-	protected("GET /api/v1/notification-channels/variables", s.handleGetNotificationVariables)
-
-	// Notification channels (workflow-scoped)
-	protected("GET /api/v1/workflows/{wid}/notification-channels", s.handleListNotificationChannels)
-	protected("POST /api/v1/workflows/{wid}/notification-channels", s.handleCreateNotificationChannel)
-	protected("GET /api/v1/workflows/{wid}/notification-channels/{id}", s.handleGetNotificationChannel)
-	protected("PATCH /api/v1/workflows/{wid}/notification-channels/{id}", s.handleUpdateNotificationChannel)
-	protected("DELETE /api/v1/workflows/{wid}/notification-channels/{id}", s.handleDeleteNotificationChannel)
-	protected("POST /api/v1/workflows/{wid}/notification-channels/{id}/test", s.handleTestNotificationChannel)
-	protected("GET /api/v1/workflows/{wid}/notification-deliveries", s.handleListNotificationDeliveries)
+	s.registerNotificationRoutes(protected)
 
 	// Scheduled tasks (project-scoped) — writes are admin-only
 	protected("GET /api/v1/scheduled-tasks", s.handleListScheduledTasks)

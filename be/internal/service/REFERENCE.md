@@ -17,6 +17,8 @@ Files: `plan.go`, `plan_revise.go`, `plan_manifest.go`, `plan_validate.go`/`plan
 
 ## Global Workflow Storage
 
+A workflow definition is global when `workflows.is_global=1`. Global defs are project-agnostic: `ListWorkflowDefs` (`workflow_defs_read_list.go`) unions them into **every** project's listing with **local-name precedence** (a project-local def shadows a same-named global one), so they are selectable/runnable from any project while execution stays project-scoped. `GetWorkflowDef` (`workflow_defs_read.go`), `loadFindingSchemas` (`finding_schema.go`), and the orchestrator's `resolveWorkflowDef` resolve a name under the selected project, then fall back to the global namespace.
+
 Global defs are stored under the reserved `GlobalProjectID` (`"__global__"`, `workflow_reserved.go`) — a hidden project (kept out of `ProjectRepo.List`/`ProjectService.List`) that keeps the composite `(project_id, id)` keys + child FKs intact. It is also a **runnable** project (a scratch `root_path`) so it's the execution home for project-agnostic tool runs with no real project in scope (e.g. via the `mcp-external` proxy). UI surfaces global defs in run pickers but hides them from workflow management (run-only, admin-managed); `WorkflowExportService.Export` excludes them. `workflow_instances.def_project_id` stamps the project the definition resolved under (`__global__` for globals) and carries the workflows FK, while `project_id` (the executing project) FKs to `projects` — so a global def runs under any real project (migration `000165`).
 
 ## Global Workflow Seeds
@@ -36,3 +38,7 @@ Agent definition CRUD; validates `layer >= 0`; `execution_mode` cli_interactive/
 ## Per-project env vars
 
 Stored in `project_env_vars`. CRUD under `GET|PUT|DELETE /api/v1/projects/{id}/env-vars[/{name}]` (`handlers_project_env_vars.go`; writes admin-only). `ProjectEnvVarService` validates: name matches `^[A-Za-z_][A-Za-z0-9_]*$`, not in the reserved set (`NRFLO_PROJECT`, `NRFLO_AGENT_TOKEN`, `NRF_SESSION_ID`, `NRF_WORKFLOW_INSTANCE_ID`, `PATH`, `HOME`, …), value ≤ 4096 bytes. At workflow start `orchestrator.loadProjectEnv` fills `spawner.Config.ProjectEnv`; `prepareSpawn`/`prepareScriptSpawn` append them after nrflo-controlled vars for all backends.
+
+## Notification inbox
+
+Every notification event is saved once in `notification_inbox` by the dispatcher, independently of external channels and delivery outcomes; project-less events belong to General. The shared operator inbox supports project and combined views, scoped mark-read/mark-all-read, and a server-wide unread count used by the tray. `global.notifications` carries an item ID for new arrivals (no content) or a read-state invalidation signal; clients refetch their authorized scope and refresh on reconnect.

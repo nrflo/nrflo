@@ -1,7 +1,7 @@
 // Package notify implements the notification dispatch subsystem.
 // A Dispatcher (ws.Listener) watches 5 event types, resolves enabled channels,
-// and inserts pending delivery rows. A Worker drains the queue with exponential
-// backoff and broadcasts WS events on success or giving_up.
+// and saves inbox notifications plus pending external delivery rows. A Worker
+// drains the queue with exponential backoff and broadcasts delivery outcomes.
 package notify
 
 import (
@@ -52,6 +52,8 @@ type Dispatcher struct {
 	projectLookup ProjectLookup
 	ticketLookup  TicketLookup
 	wakeCh        chan struct{}
+	inboxRepo     *repo.NotificationInboxRepo
+	hub           *ws.Hub
 }
 
 // NewDispatcher creates a Dispatcher. projectLookup and ticketLookup may be nil.
@@ -61,6 +63,8 @@ func NewDispatcher(
 	projectLookup ProjectLookup,
 	ticketLookup TicketLookup,
 	wakeCh chan struct{},
+	inboxRepo *repo.NotificationInboxRepo,
+	hub *ws.Hub,
 ) *Dispatcher {
 	return &Dispatcher{
 		channelRepo:   channelRepo,
@@ -68,6 +72,8 @@ func NewDispatcher(
 		projectLookup: projectLookup,
 		ticketLookup:  ticketLookup,
 		wakeCh:        wakeCh,
+		inboxRepo:     inboxRepo,
+		hub:           hub,
 	}
 }
 
@@ -85,19 +91,7 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 	}
 
 	projectID := event.ProjectID
-	if projectID == "" {
-		return
-	}
-
 	workflowID := event.Workflow
-	if workflowID == "" {
-		return
-	}
-
-	channels, err := d.channelRepo.ListEnabledForEvent(projectID, workflowID, event.Type)
-	if err != nil || len(channels) == 0 {
-		return
-	}
 
 	enriched := make(map[string]interface{}, len(event.Data)+6)
 	for k, v := range event.Data {
@@ -115,7 +109,7 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 	}
 
 	// Enrich with resolved names (best-effort; lookup errors are logged, not fatal).
-	if d.projectLookup != nil {
+	if event.ProjectID != "" && d.projectLookup != nil {
 		if name, ok, err := d.projectLookup.Get(event.ProjectID); err != nil {
 			logger.Warn(context.Background(), "notify: project lookup failed", "project_id", event.ProjectID, "error", err)
 		} else if ok {
@@ -132,6 +126,21 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 
 	payloadBytes, _ := json.Marshal(enriched)
 	payloadStr := string(payloadBytes)
+
+	n := &model.InboxNotification{ProjectID: projectID, TicketID: event.TicketID, WorkflowID: workflowID, EventType: event.Type, Payload: payloadBytes}
+	if err := d.inboxRepo.Insert(n); err != nil {
+		logger.Error(context.Background(), "notify: inbox insert failed", "error", err)
+	} else if d.hub != nil {
+		d.hub.BroadcastGlobal(ws.NewEvent(ws.EventGlobalNotifications, "", "", "", map[string]interface{}{"notification_id": n.ID}))
+	}
+	if projectID == "" || workflowID == "" {
+		return
+	}
+	channels, err := d.channelRepo.ListEnabledForEvent(projectID, workflowID, event.Type)
+	if err != nil {
+		logger.Error(context.Background(), "notify: channel lookup failed", "error", err)
+		return
+	}
 
 	for _, ch := range channels {
 		// Validate kind is supported; worker will render body at dispatch time.

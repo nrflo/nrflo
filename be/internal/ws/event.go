@@ -75,6 +75,7 @@ const (
 	EventNotificationChannelCreated  = "notification_channel.created"
 	EventNotificationChannelUpdated  = "notification_channel.updated"
 	EventNotificationChannelDeleted  = "notification_channel.deleted"
+	EventGlobalNotifications         = "global.notifications"
 	EventNotificationDelivered       = "notification.delivered"
 	EventNotificationFailed          = "notification.failed"
 	EventToolDispatched              = "tool.dispatched"

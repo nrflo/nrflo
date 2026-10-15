@@ -13,8 +13,8 @@ the value.
 - Appears as a top-level field in the workflow state API response
 - Displayed in the UI above the agent flow tree after workflow completion
 - **Last-writer-wins:** the value from the session with the latest `ended_at` is used
-- When notification channels (Slack, Telegram) are configured, the summary is
-  included as a blockquote in completion notifications
+- Completion summaries are saved in the in-app notification inbox by default
+  and rendered as Markdown. Configured external channels also receive them.
 
 ---
 

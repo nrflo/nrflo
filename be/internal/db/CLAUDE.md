@@ -24,6 +24,8 @@ Schema is defined by the migration files. List them with `ls be/internal/db/migr
 
 Migrations are forward-only SQL files in `migrations/`, embedded via `//go:embed *.sql` in `migrations/embed.go`. They run automatically on server startup via golang-migrate. To add a migration: create `migrations/NNNNNN_description.up.sql` (next sequence number). Down migrations are not used — rollbacks are done via new forward migrations.
 
+`notification_inbox` (migration `000249`) stores notification payloads and shared read timestamps without parent foreign keys, so history survives project/workflow deletion; dispatch and scope semantics live in [service/REFERENCE.md](../service/REFERENCE.md#notification-inbox).
+
 Readonly `default_templates` rows used by console profiles are migration-owned; the current profile/template roster lives in [console/REFERENCE.md](../console/REFERENCE.md#console-chat-profiles).
 
 The clock abstraction (`internal/clock`) drives all `created_at`/`updated_at` timestamp writes in repo constructors; pass `clock.Real()` in production and `clock.NewTest(t)` in tests.

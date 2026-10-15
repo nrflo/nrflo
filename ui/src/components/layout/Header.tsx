@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { Input } from '@/components/ui/Input'
 import { ProjectSelect } from '@/components/ui/ProjectSelect'
 import { DailyStats } from '@/components/layout/DailyStats'
+import { NotificationIndicator } from '@/components/layout/NotificationIndicator'
 import { RunningAgentsIndicator } from '@/components/layout/RunningAgentsIndicator'
 import { InteractiveSessionsTab } from '@/components/interactive/InteractiveSessionsTab'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -107,6 +108,7 @@ export function Header() {
         <div className="flex-1" />
 
         <RunningAgentsIndicator />
+        <NotificationIndicator />
 
         <form onSubmit={handleSearch} className="hidden sm:block">
           <div className="relative">

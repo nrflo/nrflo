@@ -62,11 +62,11 @@ func TestResolveRefineryChain_TierOneShape(t *testing.T) {
 	if chain[0].ExecutionMode != "api" || chain[0].ModelID != "glm-5.3-flash" {
 		t.Errorf("chain[0] = %+v, want {ExecutionMode:api ModelID:glm-5.3-flash}", chain[0])
 	}
-	if chain[1].ExecutionMode != "api" || chain[1].ModelID != "haiku-4-5" {
-		t.Errorf("chain[1] = %+v, want {ExecutionMode:api ModelID:haiku-4-5}", chain[1])
+	if chain[1].ExecutionMode != "api" || chain[1].ModelID != "haiku-5-5" {
+		t.Errorf("chain[1] = %+v, want {ExecutionMode:api ModelID:haiku-5-5}", chain[1])
 	}
-	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-4-5" {
-		t.Errorf("chain[2] = %+v, want {ExecutionMode:cli_interactive ModelID:haiku-4-5}", chain[2])
+	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-5-5" {
+		t.Errorf("chain[2] = %+v, want {ExecutionMode:cli_interactive ModelID:haiku-5-5}", chain[2])
 	}
 	if chain[3].ExecutionMode != "cli_interactive" || chain[3].ModelID != "gpt-6-luna" {
 		t.Errorf("chain[3] = %+v, want {ExecutionMode:cli_interactive ModelID:gpt-6-luna}", chain[3])

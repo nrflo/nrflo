@@ -85,7 +85,7 @@ func TestWarnAgent_WarnLevelWithTrx(t *testing.T) {
 func TestErrorAgent_ErrorLevelWithTrx(t *testing.T) {
 	buf := captureLog(t)
 	s := noPoolSpawner()
-	proc := procWithTrx("setup-analyzer", "claude:haiku-4-5", "cafebabe")
+	proc := procWithTrx("setup-analyzer", "claude:haiku-5-5", "cafebabe")
 
 	s.errorAgent(proc, "scanner error: unexpected EOF")
 
@@ -96,7 +96,7 @@ func TestErrorAgent_ErrorLevelWithTrx(t *testing.T) {
 	if !strings.Contains(out, "[cafebabe]") {
 		t.Errorf("errorAgent: expected trx [cafebabe] in output, got: %s", out)
 	}
-	if !strings.Contains(out, "[setup-analyzer:haiku-4-5]") {
+	if !strings.Contains(out, "[setup-analyzer:haiku-5-5]") {
 		t.Errorf("errorAgent: expected prefix in output, got: %s", out)
 	}
 	if !strings.Contains(out, "scanner error: unexpected EOF") {
@@ -208,7 +208,7 @@ func TestPrintStatus_MultipleAgents_OneLineEach(t *testing.T) {
 	r1.startTime = time.Now()
 	r2 := procWithTrx("test-writer", "claude:sonnet-5", "bbbb0002")
 	r2.startTime = time.Now()
-	c1 := procWithTrx("setup-analyzer", "claude:haiku-4-5", "cccc0003")
+	c1 := procWithTrx("setup-analyzer", "claude:haiku-5-5", "cccc0003")
 	c1.finalStatus = "PASS"
 
 	s.printStatus([]*processInfo{r1, r2}, []*processInfo{c1}, "phase-l0")

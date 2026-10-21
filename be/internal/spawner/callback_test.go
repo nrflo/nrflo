@@ -201,7 +201,7 @@ func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	// Set result to callback
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
@@ -212,7 +212,7 @@ func TestHandleCompletion_CallbackGetAgentResult(t *testing.T) {
 	proc := &processInfo{
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		workflowInstanceID: env.wfiID,
 	}
 

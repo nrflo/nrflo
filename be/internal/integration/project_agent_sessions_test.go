@@ -113,7 +113,7 @@ func TestGetProjectAgentSessions_PhaseFilter(t *testing.T) {
 	// Insert sessions in different phases
 	env.InsertAgentSession(t, "phase-setup-1", "", instance.ID, "setup", "setup-agent", "sonnet-5")
 	env.InsertAgentSession(t, "phase-impl-1", "", instance.ID, "impl", "impl-agent", "opus-4-7")
-	env.InsertAgentSession(t, "phase-impl-2", "", instance.ID, "impl", "impl-agent-2", "haiku-4-5")
+	env.InsertAgentSession(t, "phase-impl-2", "", instance.ID, "impl", "impl-agent-2", "haiku-5-5")
 
 	// Filter by "setup" phase
 	setupSessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "setup")
@@ -174,7 +174,7 @@ func TestGetProjectAgentSessions_ExcludesTicketScoped(t *testing.T) {
 	// Insert both ticket-scoped and project-scoped sessions
 	env.InsertAgentSession(t, "ticket-sess-1", "TICKET-1", ticketWFI, "analyzer", "analyzer", "sonnet-5")
 	env.InsertAgentSession(t, "ticket-sess-2", "TICKET-1", ticketWFI, "builder", "builder", "opus-4-7")
-	env.InsertAgentSession(t, "proj-sess-1", "", projectWFI.ID, "setup", "setup-agent", "haiku-4-5")
+	env.InsertAgentSession(t, "proj-sess-1", "", projectWFI.ID, "setup", "setup-agent", "haiku-5-5")
 
 	// Get project sessions - should only return project-scoped
 	sessions, err := env.AgentSvc.GetProjectSessions(env.ProjectID, "")

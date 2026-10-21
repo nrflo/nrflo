@@ -74,12 +74,12 @@ func TestMigration191_SeededReleaseDateOrdering(t *testing.T) {
 		t.Errorf("gpt-5.6-sol release_date %q should be after gpt-5.4 release_date %q", sol, gpt54)
 	}
 
-	// Cross-provider pair: haiku-4-5 (2026-07-01) predates gpt-5.6-sol (2026-07-16).
-	haiku := releaseDate("haiku-4-5")
+	// Cross-provider pair: gpt-5.6-sol (2026-07-16) predates haiku-5-5 (2026-10-07).
+	haiku := releaseDate("haiku-5-5")
 	if haiku == "" {
-		t.Fatal("haiku-4-5 release_date should be seeded")
+		t.Fatal("haiku-5-5 release_date should be seeded")
 	}
-	if haiku >= sol {
-		t.Errorf("haiku-4-5 release_date %q should be before gpt-5.6-sol release_date %q", haiku, sol)
+	if haiku <= sol {
+		t.Errorf("haiku-5-5 release_date %q should be after gpt-5.6-sol release_date %q", haiku, sol)
 	}
 }

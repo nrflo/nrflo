@@ -16,11 +16,11 @@ import (
 func TestCostOnlyObserver_OnUsage_FeedsSessionCost(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
-	insertCostTestSession(t, pool, "sess-console-api-cost", "haiku-4-5")
+	insertCostTestSession(t, pool, "sess-console-api-cost", "haiku-5-5")
 
 	clk := clock.NewTest(time.Now())
 	t.Cleanup(func() { globalCostStore.drop("sess-console-api-cost") })
-	RegisterSessionCost("sess-console-api-cost", "haiku-4-5", pool, clk, nil)
+	RegisterSessionCost("sess-console-api-cost", "haiku-5-5", pool, clk, nil)
 
 	obs := costOnlyObserver{sessionID: "sess-console-api-cost"}
 	obs.OnMessage("assistant", nil) // must not panic; must not create any state
@@ -33,8 +33,8 @@ func TestCostOnlyObserver_OnUsage_FeedsSessionCost(t *testing.T) {
 	if snap.InputTokens != 4_000 || snap.OutputTokens != 1_000 {
 		t.Errorf("token snapshot = %+v, want in:4000 out:1000", snap)
 	}
-	// haiku-4-5: price_in=1, price_out=5 per MTok.
-	want := 4_000.0/1e6*1 + 1_000.0/1e6*5
+	// haiku-5-5: price_in=0.1, price_out=0.5 per MTok.
+	want := 4_000.0/1e6*0.1 + 1_000.0/1e6*0.5
 	if diff := snap.CostUSD - want; diff < -0.0001 || diff > 0.0001 {
 		t.Errorf("CostUSD = %v, want %v", snap.CostUSD, want)
 	}

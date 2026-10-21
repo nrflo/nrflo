@@ -14,11 +14,10 @@ func TestMigration145_AnthropicContext1M(t *testing.T) {
 	t.Cleanup(func() { pool.Close() })
 
 	want := map[string]int{
-		"opus-4-8":  1000000,
-		"opus-4-7":  1000000,
-		"opus-4-6":  1000000,
-		"sonnet-5":  1000000,
-		"haiku-4-5": 200000,
+		"opus-4-8": 1000000,
+		"opus-4-7": 1000000,
+		"opus-4-6": 1000000,
+		"sonnet-5": 1000000,
 	}
 	for id, exp := range want {
 		var got int

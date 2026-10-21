@@ -19,7 +19,7 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	}
 	// Newest-release models sort first; bump one row's release_date so it
 	// wins ahead of the migration-seeded ordering.
-	mustExec(t, pool, `UPDATE models SET release_date = '2099-01-01' WHERE id = 'haiku-4-5'`)
+	mustExec(t, pool, `UPDATE models SET release_date = '2099-01-01' WHERE id = 'haiku-5-5'`)
 	catalog, err := svc.Catalog(chatTestProjectID)
 	if err != nil {
 		t.Fatalf("Catalog: %v", err)
@@ -34,10 +34,10 @@ func TestChatService_CatalogDiscoversModelsAndLiveSessions(t *testing.T) {
 	if api.Kind != "api" || api.Brand != "" {
 		t.Fatalf("api engine kind/brand = %q/%q", api.Kind, api.Brand)
 	}
-	if len(api.Models) == 0 || api.Models[0].ID != "haiku-4-5" || api.Models[0].Brand != "claude" {
-		t.Fatalf("api models[0] = %+v, want newest-added haiku-4-5 with brand claude", api.Models)
+	if len(api.Models) == 0 || api.Models[0].ID != "haiku-5-5" || api.Models[0].Brand != "claude" {
+		t.Fatalf("api models[0] = %+v, want newest-added haiku-5-5 with brand claude", api.Models)
 	}
-	if api.Models[0].MappedModel != "claude-haiku-4-5" || len(api.Models[0].SupportedEfforts) != 3 {
+	if api.Models[0].MappedModel != "claude-haiku-5-5" || len(api.Models[0].SupportedEfforts) != 5 {
 		t.Fatalf("api haiku mode fields = %+v", api.Models[0])
 	}
 	for _, m := range api.Models {

@@ -101,7 +101,7 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 	defs := []*model.AgentDefinition{
 		{ID: "implementor", ProjectID: "proj", WorkflowID: "feature", Model: "opus-4-7", Timeout: 3600, Layer: 0},
 		{ID: "verifier", ProjectID: "proj", WorkflowID: "feature", Model: "sonnet-5", Timeout: 1800, Tag: "qa", Layer: 1},
-		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku-4-5", Timeout: 900, Layer: 2},
+		{ID: "doc-updater", ProjectID: "proj", WorkflowID: "feature", Model: "haiku-5-5", Timeout: 900, Layer: 2},
 	}
 
 	_, agents := service.BuildSpawnerConfig(nil, clock.Real(), []*model.Workflow{wf}, defs)
@@ -114,7 +114,7 @@ func TestBuildSpawnerConfigMultiAgentSingleWorkflow(t *testing.T) {
 	}{
 		{"implementor", "opus-4-7", 3600, ""},
 		{"verifier", "sonnet-5", 1800, "qa"},
-		{"doc-updater", "haiku-4-5", 900, ""},
+		{"doc-updater", "haiku-5-5", 900, ""},
 	}
 
 	for _, tc := range cases {
@@ -148,14 +148,14 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 	defs := []*model.AgentDefinition{
 		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-a", Model: "opus-4-7", Layer: 0},
 		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-b", Model: "sonnet-5", Layer: 0},
-		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-c", Model: "haiku-4-5", Layer: 0},
+		{ID: "implementor", ProjectID: "proj", WorkflowID: "wf-c", Model: "haiku-5-5", Layer: 0},
 	}
 
 	// Mixed: only the last entry survives.
 	t.Run("mixed three workflows: last entry wins", func(t *testing.T) {
 		_, agents := service.BuildSpawnerConfig(nil, clock.Real(), workflows, defs)
-		if got := agents["implementor"].Model; got != "haiku-4-5" {
-			t.Errorf("expected last-written model %q, got %q", "haiku-4-5", got)
+		if got := agents["implementor"].Model; got != "haiku-5-5" {
+			t.Errorf("expected last-written model %q, got %q", "haiku-5-5", got)
 		}
 	})
 
@@ -167,7 +167,7 @@ func TestBuildSpawnerConfigThreeWorkflowsCollision(t *testing.T) {
 	}{
 		{workflows[0], defs[0], "opus-4-7"},
 		{workflows[1], defs[1], "sonnet-5"},
-		{workflows[2], defs[2], "haiku-4-5"},
+		{workflows[2], defs[2], "haiku-5-5"},
 	}
 	for _, tc := range singles {
 		tc := tc

@@ -153,17 +153,17 @@ func TestPrepareSpawn_CLI_ReasoningEffort_IllegalOverrideFailsSpawn(t *testing.T
 	defer env.cleanup()
 
 	// "xhigh" is not in this model row's supported_efforts, so the override is illegal.
-	insertCLIAgentDefWithEffort(t, env, "impl", "haiku-4-5", "xhigh")
+	insertCLIAgentDefWithEffort(t, env, "impl", "haiku-5-5", "xhigh")
 
 	sp := effortSpawner(env, map[string]ModelConfig{
-		"haiku-4-5": {Provider: "anthropic", CLIModel: "haiku-4-5", CLIEfforts: []string{"low", "medium", "high"}},
+		"haiku-5-5": {Provider: "anthropic", CLIModel: "haiku-5-5", CLIEfforts: []string{"low", "medium", "high"}},
 	}, nil)
 
 	_, _, err := sp.prepareSpawn(context.Background(), SpawnRequest{
 		AgentType: "impl", ProjectID: env.projectID, WorkflowName: "feature", WorkflowInstanceID: env.wfiID,
-	}, "claude:haiku-4-5", "impl", env.wfiID)
+	}, "claude:haiku-5-5", "impl", env.wfiID)
 	if err == nil {
-		t.Fatal("prepareSpawn() = nil error; want error for an xhigh override on a haiku-4-5 model row")
+		t.Fatal("prepareSpawn() = nil error; want error for an xhigh override on a haiku-5-5 model row")
 	}
 	if !strings.Contains(err.Error(), "xhigh") {
 		t.Errorf("error = %q, want it to name the invalid effort", err.Error())

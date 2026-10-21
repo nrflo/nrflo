@@ -9,7 +9,7 @@ vi.mock('@/hooks/useModels', () => ({
   useModels: () => ({
     data: [
       { id: 'sonnet-5', provider: 'anthropic', cli_model: 'claude-sonnet-5', display_name: 'Claude Sonnet', enabled: true },
-      { id: 'haiku-4-5', provider: 'anthropic', cli_model: 'claude-haiku-4-5', display_name: 'Claude Haiku', enabled: true },
+      { id: 'haiku-5-5', provider: 'anthropic', cli_model: 'claude-haiku-5-5', display_name: 'Claude Haiku', enabled: true },
       { id: 'gpt-5.4-mini', provider: 'openai', cli_model: 'gpt-5.4-mini', display_name: 'Codex Mini', enabled: true },
     ],
   }),

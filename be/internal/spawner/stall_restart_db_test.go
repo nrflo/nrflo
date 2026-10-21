@@ -138,7 +138,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	clk := clock.NewTest(time.Now())
 	env.spawner.config.Clock = clk
@@ -150,7 +150,7 @@ func TestHandleStallRestart_MaxRestartsGuard(t *testing.T) {
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
 		agentType:          "implementor",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
 		workflowName:       env.workflowID,

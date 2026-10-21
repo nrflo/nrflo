@@ -15,7 +15,7 @@ vi.mock('@/hooks/useDefaultTemplates', () => ({
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
     { label: 'Anthropic', options: [
-      { value: 'haiku-4-5', label: 'Anthropic: Haiku' },
+      { value: 'haiku-5-5', label: 'Anthropic: Haiku' },
       { value: 'opus-4-8', label: 'Anthropic: Opus' },
       { value: 'opus-4-8-1m', label: 'Anthropic: Opus 1M' },
       { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
@@ -128,7 +128,7 @@ describe('AgentDefForm - low consumption dropdown', () => {
     it('pre-selects initial low_consumption_model', () => {
       renderForm({
         isCreate: false,
-        initial: { low_consumption_model: 'haiku-4-5' },
+        initial: { low_consumption_model: 'haiku-5-5' },
       })
       expect(getLCDropdownButton().textContent).toContain('Anthropic: Haiku')
     })
@@ -138,7 +138,7 @@ describe('AgentDefForm - low consumption dropdown', () => {
       const onSubmit = vi.fn()
       renderForm({
         isCreate: false,
-        initial: { low_consumption_model: 'haiku-4-5', prompt: 'Test' },
+        initial: { low_consumption_model: 'haiku-5-5', prompt: 'Test' },
         onSubmit,
       })
 

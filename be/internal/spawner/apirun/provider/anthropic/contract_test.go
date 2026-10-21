@@ -36,7 +36,7 @@ func TestLiveAnthropic_SmokeRun(t *testing.T) {
 	t.Cleanup(cancel)
 
 	resp, err := p.Run(ctx, provider.Request{
-		Model:     "claude-haiku-4-5-20251001",
+		Model:     "claude-haiku-5-5",
 		MaxTokens: 64,
 		Messages: []provider.Message{{
 			Role:    "user",
@@ -75,7 +75,7 @@ func TestLiveAnthropic_OAuthBearer(t *testing.T) {
 	t.Cleanup(cancel)
 
 	resp, err := p.Run(ctx, provider.Request{
-		Model:     "claude-haiku-4-5-20251001",
+		Model:     "claude-haiku-5-5",
 		MaxTokens: 64,
 		Messages: []provider.Message{{
 			Role:    "user",

@@ -41,12 +41,12 @@ func TestHandleCreateAgentDef_UnknownCLIModel_400(t *testing.T) {
 }
 
 // TestHandleCreateAgentDef_UnsupportedEffort_400 verifies that an effort the
-// model row does not support (gpt-5.4-mini cli efforts omit "ultra") returns 400.
+// model row does not support (gpt-6-luna cli efforts omit "ultra") returns 400.
 func TestHandleCreateAgentDef_UnsupportedEffort_400(t *testing.T) {
 	s, pid, wid := newAgentDefAPIModeServer(t, false)
 
 	rr := postAgentDefRequest(t, s, pid, wid,
-		`{"id":"cli-badeffort","prompt":"p","execution_mode":"cli_interactive","model":"gpt-5.4-mini","reasoning_effort":"ultra"}`)
+		`{"id":"cli-badeffort","prompt":"p","execution_mode":"cli_interactive","model":"gpt-6-luna","reasoning_effort":"ultra"}`)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400; body=%s", rr.Code, rr.Body.String())

@@ -208,7 +208,7 @@ func TestSystemAgentDef_Update_PartialUpdate(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "upd-agent", Model: "haiku-4-5", Timeout: 10, Prompt: "original",
+		ID: "upd-agent", Model: "haiku-5-5", Timeout: 10, Prompt: "original",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "noop-agent", Prompt: "p", Model: "haiku-4-5",
+		ID: "noop-agent", Prompt: "p", Model: "haiku-5-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -288,8 +288,8 @@ func TestSystemAgentDef_Update_NoFieldsIsNoOp(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if got.Model != "haiku-4-5" {
-		t.Errorf("Model = %q after no-op update, want %q", got.Model, "haiku-4-5")
+	if got.Model != "haiku-5-5" {
+		t.Errorf("Model = %q after no-op update, want %q", got.Model, "haiku-5-5")
 	}
 }
 

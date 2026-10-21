@@ -100,11 +100,11 @@ func TestResolveAgentChain_TierPopulated(t *testing.T) {
 	if chain[0].ExecutionMode != "api" || chain[0].ModelID != "glm-5.3-flash" {
 		t.Errorf("chain[0] = %+v, want api/glm-5.3-flash (position 0)", chain[0])
 	}
-	if chain[1].ExecutionMode != "api" || chain[1].ModelID != "haiku-4-5" {
-		t.Errorf("chain[1] = %+v, want api/haiku-4-5 (position 1)", chain[1])
+	if chain[1].ExecutionMode != "api" || chain[1].ModelID != "haiku-5-5" {
+		t.Errorf("chain[1] = %+v, want api/haiku-5-5 (position 1)", chain[1])
 	}
-	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-4-5" {
-		t.Errorf("chain[2] = %+v, want cli_interactive/haiku-4-5 (position 2)", chain[2])
+	if chain[2].ExecutionMode != "cli_interactive" || chain[2].ModelID != "haiku-5-5" {
+		t.Errorf("chain[2] = %+v, want cli_interactive/haiku-5-5 (position 2)", chain[2])
 	}
 	if chain[3].ExecutionMode != "cli_interactive" || chain[3].ModelID != "gpt-6-luna" {
 		t.Errorf("chain[3] = %+v, want cli_interactive/gpt-6-luna (000220 codex hop, 000245 rewrite)", chain[3])

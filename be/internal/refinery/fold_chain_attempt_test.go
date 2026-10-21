@@ -32,7 +32,7 @@ func TestAttemptFoldAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveAgentChain: %v", err)
 	}
-	apiEntry := entry[0] // anthropic/api/haiku-4-5
+	apiEntry := entry[0] // anthropic/api/haiku-5-5
 
 	target := foldTarget{sessionID: "sess-attempt-api"}
 

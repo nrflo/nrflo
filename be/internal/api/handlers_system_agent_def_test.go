@@ -227,7 +227,7 @@ func TestHandleGetSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"my-agent","prompt":"hello","model":"haiku-4-5"}`))
+		strings.NewReader(`{"id":"my-agent","prompt":"hello","model":"haiku-5-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agents/my-agent", nil)
@@ -242,8 +242,8 @@ func TestHandleGetSystemAgentDef_Valid(t *testing.T) {
 	if def.ID != "my-agent" {
 		t.Errorf("ID = %q, want %q", def.ID, "my-agent")
 	}
-	if def.Model != "haiku-4-5" {
-		t.Errorf("Model = %q, want %q", def.Model, "haiku-4-5")
+	if def.Model != "haiku-5-5" {
+		t.Errorf("Model = %q, want %q", def.Model, "haiku-5-5")
 	}
 }
 
@@ -266,7 +266,7 @@ func TestHandleUpdateSystemAgentDef_Valid(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"upd-agent","prompt":"p","model":"haiku-4-5"}`))
+		strings.NewReader(`{"id":"upd-agent","prompt":"p","model":"haiku-5-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/upd-agent",

@@ -135,7 +135,7 @@ func TestMigration030BuildSpawnerConfig(t *testing.T) {
 			ID:         "builder",
 			ProjectID:  "proj",
 			WorkflowID: "wf-empty",
-			Model:      "haiku-4-5",
+			Model:      "haiku-5-5",
 			Timeout:    10,
 			Prompt:     "p",
 			Tag:        "",

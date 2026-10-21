@@ -146,7 +146,7 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 	findings3 := map[string]interface{}{
 		"to_resume": "same agent different model",
 	}
-	env.createContinuedSessionForAgent(t, session3, findings3, env.agentType, "claude:haiku-4-5", env.phase)
+	env.createContinuedSessionForAgent(t, session3, findings3, env.agentType, "claude:haiku-5-5", env.phase)
 
 	session4 := uuid.New().String()
 	findings4 := map[string]interface{}{
@@ -165,7 +165,7 @@ func TestToResumeIsolationBetweenAgents(t *testing.T) {
 		t.Errorf("test-writer should get its own data, got %q", data)
 	}
 
-	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku-4-5", env.phase, "")
+	data, _ = env.spawner.fetchPreviousDataAndReason(env.projectID, env.ticketID, env.workflowID, env.agentType, "claude:haiku-5-5", env.phase, "")
 	if !strings.Contains(data, "same agent different model") {
 		t.Errorf("different model should get its own data, got %q", data)
 	}

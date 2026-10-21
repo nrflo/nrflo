@@ -47,7 +47,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "codebase-explorer",
-		Model:           "haiku-4-5",
+		Model:           "haiku-5-5",
 		ReasoningEffort: "low",
 		Tools:           "findings_add,findings_get,artifact_get",
 		Description:     "Fast, lean-context codebase exploration: locates files/symbols/patterns and reports back without editing anything. Read-only by prompt discipline, not sandboxing. Emits to finding key `map`.",
@@ -87,7 +87,7 @@ var dynAgents = []dynAgent{
 	},
 	{
 		ID:              "web-researcher-cheap",
-		Model:           "haiku-4-5",
+		Model:           "haiku-5-5",
 		ReasoningEffort: "low",
 		Tools:           "web_search,web_fetch,read_document,artifact_get,artifact_list,emit_findings",
 		Description:     "Cheap-tier twin of web-researcher (haiku): identical claim-extraction contract at a fraction of the cost. The default binding for wide research fan-outs — reach for web-researcher only when a node needs deeper reasoning over what it reads. Emits to finding key `claims`.",

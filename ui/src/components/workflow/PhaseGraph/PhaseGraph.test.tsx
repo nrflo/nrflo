@@ -230,7 +230,7 @@ describe('PhaseGraph', () => {
         activeAgents: {
           'setup-analyzer:claude:sonnet': makeAgent({ agent_type: 'setup-analyzer', phase: 'investigation' }),
           'setup-analyzer:claude:haiku': makeAgent({
-            agent_type: 'setup-analyzer', phase: 'investigation', model_id: 'claude-haiku-4-5',
+            agent_type: 'setup-analyzer', phase: 'investigation', model_id: 'claude-haiku-5-5',
           }),
         },
       })} />)

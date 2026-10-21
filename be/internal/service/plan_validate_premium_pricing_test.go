@@ -16,13 +16,13 @@ func TestPlanModelTierClass_PricingOverridesNameClass(t *testing.T) {
 	pool, _, _ := setupPlanValidateEnv(t)
 	modelSvc := NewModelService(pool, clock.Real())
 
-	mustExec(t, pool, `UPDATE models SET price_in = 10 WHERE id = 'haiku-4-5'`)
-	haiku, err := modelSvc.Get("haiku-4-5")
+	mustExec(t, pool, `UPDATE models SET price_in = 10 WHERE id = 'haiku-5-5'`)
+	haiku, err := modelSvc.Get("haiku-5-5")
 	if err != nil {
-		t.Fatalf("Get(haiku-4-5): %v", err)
+		t.Fatalf("Get(haiku-5-5): %v", err)
 	}
 	if got := PlanModelTierClass(haiku); got != ModelTierPremium {
-		t.Errorf("PlanModelTierClass(haiku-4-5, price_in=10) = %v, want premium (pricing overrides the cheap name-class)", got)
+		t.Errorf("PlanModelTierClass(haiku-5-5, price_in=10) = %v, want premium (pricing overrides the cheap name-class)", got)
 	}
 
 	mustExec(t, pool, `UPDATE models SET price_in = 3 WHERE id = 'opus-4-8'`)

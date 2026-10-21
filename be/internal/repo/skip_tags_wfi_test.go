@@ -90,7 +90,7 @@ func TestAgentDefinitionTagInList(t *testing.T) {
 
 	for _, d := range []*model.AgentDefinition{
 		{ID: "ag-list-1", ProjectID: "proj", WorkflowID: "wf", Model: "sonnet-5", Timeout: 20, Prompt: "p", Tag: "be"},
-		{ID: "ag-list-2", ProjectID: "proj", WorkflowID: "wf", Model: "haiku-4-5", Timeout: 10, Prompt: "p", Tag: ""},
+		{ID: "ag-list-2", ProjectID: "proj", WorkflowID: "wf", Model: "haiku-5-5", Timeout: 10, Prompt: "p", Tag: ""},
 	} {
 		if err := agentRepo.Create(d); err != nil {
 			t.Fatalf("Create %s: %v", d.ID, err)

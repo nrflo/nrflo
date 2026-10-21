@@ -52,7 +52,7 @@ func TestHandleUpdateSystemAgentDef_ModelEmptyWithTierClearsOverride(t *testing.
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"clear-override","prompt":"p","model":"haiku-4-5"}`))
+		strings.NewReader(`{"id":"clear-override","prompt":"p","model":"haiku-5-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/clear-override",
@@ -85,7 +85,7 @@ func TestHandleUpdateSystemAgentDef_ModelEmptyNoTier400(t *testing.T) {
 	s := newSystemAgentServer(t)
 
 	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/system-agents",
-		strings.NewReader(`{"id":"no-tier-clear","prompt":"p","model":"haiku-4-5"}`))
+		strings.NewReader(`{"id":"no-tier-clear","prompt":"p","model":"haiku-5-5"}`))
 	s.handleCreateSystemAgentDef(httptest.NewRecorder(), createReq)
 
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/system-agents/no-tier-clear",

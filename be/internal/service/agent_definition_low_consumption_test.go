@@ -9,8 +9,8 @@ import (
 
 // lcValidModels is the set of low_consumption_model values accepted by validation.
 var lcValidModels = []string{
-	"fable-5", "opus-4-6", "opus-4-6-1m", "opus-4-7", "opus-4-7-1m", "sonnet-5", "haiku-4-5",
-	"gpt-5.4", "gpt-5.4-mini", "gpt-5.5",
+	"fable-5", "opus-4-6", "opus-4-6-1m", "opus-4-7", "opus-4-7-1m", "sonnet-5", "haiku-5-5",
+	"gpt-5.6-luna", "gpt-6-luna", "gpt-6-sol",
 }
 
 // lcInvalidModels is a set of values that must be rejected by validation.
@@ -114,7 +114,7 @@ func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	_, svc, wfID := setupAgentDefTestEnv(t, nil)
 
 	if _, err := svc.CreateAgentDef("proj1", wfID, &types.AgentDefCreateRequest{
-		ID: "main-agent", Prompt: "main", LowConsumptionModel: "haiku-4-5",
+		ID: "main-agent", Prompt: "main", LowConsumptionModel: "haiku-5-5",
 	}); err != nil {
 		t.Fatalf("create main-agent: %v", err)
 	}
@@ -123,8 +123,8 @@ func TestGetAgentDef_ReturnsLowConsumptionModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAgentDef: %v", err)
 	}
-	if got.LowConsumptionModel != "haiku-4-5" {
-		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku-4-5")
+	if got.LowConsumptionModel != "haiku-5-5" {
+		t.Errorf("GetAgentDef LowConsumptionModel = %q, want %q", got.LowConsumptionModel, "haiku-5-5")
 	}
 }
 

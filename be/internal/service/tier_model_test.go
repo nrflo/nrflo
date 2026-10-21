@@ -37,7 +37,7 @@ func TestTierModel_List_OrderedByTierThenPosition(t *testing.T) {
 	defer cleanup()
 
 	if err := svc.SetTierChain(2, []types.TierChainEntry{
-		{ExecutionMode: "api", ModelID: "haiku-4-5"},
+		{ExecutionMode: "api", ModelID: "haiku-5-5"},
 	}); err != nil {
 		t.Fatalf("SetTierChain(2): %v", err)
 	}
@@ -115,7 +115,7 @@ func TestTierModel_SetTierChain_ReorderPersistsNewOrder(t *testing.T) {
 	defer cleanup()
 
 	if err := svc.SetTierChain(3, []types.TierChainEntry{
-		{ExecutionMode: "api", ModelID: "haiku-4-5"},
+		{ExecutionMode: "api", ModelID: "haiku-5-5"},
 		{ExecutionMode: "api", ModelID: "opus-4-7"},
 	}); err != nil {
 		t.Fatalf("initial SetTierChain: %v", err)
@@ -124,7 +124,7 @@ func TestTierModel_SetTierChain_ReorderPersistsNewOrder(t *testing.T) {
 	// Reorder: opus first, haiku second.
 	if err := svc.SetTierChain(3, []types.TierChainEntry{
 		{ExecutionMode: "api", ModelID: "opus-4-7"},
-		{ExecutionMode: "api", ModelID: "haiku-4-5"},
+		{ExecutionMode: "api", ModelID: "haiku-5-5"},
 	}); err != nil {
 		t.Fatalf("reorder SetTierChain: %v", err)
 	}
@@ -151,8 +151,8 @@ func TestTierModel_SetTierChain_ReorderPersistsNewOrder(t *testing.T) {
 	if tier3[0].pos != 0 || tier3[0].modelID != "opus-4-7" {
 		t.Errorf("tier3[0] = %+v, want pos=0 model=opus-4-7", tier3[0])
 	}
-	if tier3[1].pos != 1 || tier3[1].modelID != "haiku-4-5" {
-		t.Errorf("tier3[1] = %+v, want pos=1 model=haiku-4-5", tier3[1])
+	if tier3[1].pos != 1 || tier3[1].modelID != "haiku-5-5" {
+		t.Errorf("tier3[1] = %+v, want pos=1 model=haiku-5-5", tier3[1])
 	}
 }
 

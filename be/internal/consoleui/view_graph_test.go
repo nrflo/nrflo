@@ -20,7 +20,7 @@ func fixtureFlow() types.SessionFlowResponse {
 			{SessionID: "root-session-id", Kind: "console_chat", Status: "user_interactive",
 				ModelID: "opus-5", StartedAt: "2026-08-10T10:00:00Z"},
 			{SessionID: "worker-1", Kind: "workflow_agent", AgentType: "_t2_extractor", Status: "completed",
-				Result: "pass", ModelID: "haiku-4-5", ContextLeft: &ctx71, Title: "Report the working-tree state",
+				Result: "pass", ModelID: "haiku-5-5", ContextLeft: &ctx71, Title: "Report the working-tree state",
 				StartedAt: "2026-08-10T10:01:00Z", EndedAt: "2026-08-10T10:01:54Z"},
 			{SessionID: "worker-2", Kind: "workflow_agent", AgentType: "_t1_executor", Status: "running",
 				ModelID: "sonnet-5", StartedAt: "2026-08-10T10:02:00Z"},

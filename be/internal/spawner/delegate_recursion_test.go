@@ -17,7 +17,7 @@ func TestDelegateRecursionGuard_T2ExtractorNeverHasDelegate(t *testing.T) {
 
 	sp := buildDelegateSpawner(t, env, mock.New())
 	sp.config.Agents = map[string]AgentConfig{
-		"_t2_extractor": {Model: "haiku-4-5", ExecutionMode: "api", Tools: "findings_add,agent_finished,agent_fail"},
+		"_t2_extractor": {Model: "haiku-5-5", ExecutionMode: "api", Tools: "findings_add,agent_finished,agent_fail"},
 	}
 
 	_, prep, err := sp.prepareSpawn(context.Background(), SpawnRequest{
@@ -26,7 +26,7 @@ func TestDelegateRecursionGuard_T2ExtractorNeverHasDelegate(t *testing.T) {
 		TicketID:           env.ticketID,
 		WorkflowName:       "feature",
 		WorkflowInstanceID: env.wfiID,
-	}, "claude:haiku-4-5", "_delegate", env.wfiID)
+	}, "claude:haiku-5-5", "_delegate", env.wfiID)
 	if err != nil {
 		t.Fatalf("prepareSpawn: %v", err)
 	}

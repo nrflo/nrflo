@@ -97,7 +97,7 @@ func TestRunRefineryFold_MissingProjectID_ReturnsValidationError(t *testing.T) {
 	defer env.cleanup()
 
 	_, err := env.spawner.RunRefineryFold(context.Background(), types.RefineryFoldRequest{
-		ModelID:  "haiku-4-5",
+		ModelID:  "haiku-5-5",
 		UserText: "digest this",
 	})
 	if err == nil {
@@ -124,7 +124,7 @@ func TestRunRefineryFold_MissingUserText_ReturnsValidationError(t *testing.T) {
 
 	_, err := env.spawner.RunRefineryFold(context.Background(), types.RefineryFoldRequest{
 		ProjectID: env.projectID,
-		ModelID:   "haiku-4-5",
+		ModelID:   "haiku-5-5",
 	})
 	if err == nil {
 		t.Fatal("RunRefineryFold() returned nil error; want validation error for missing user_text")
@@ -134,7 +134,7 @@ func TestRunRefineryFold_MissingUserText_ReturnsValidationError(t *testing.T) {
 func TestRunRefineryFold_NoPool_ReturnsError(t *testing.T) {
 	sp := New(Config{Clock: clock.Real()})
 	_, err := sp.RunRefineryFold(context.Background(), types.RefineryFoldRequest{
-		ProjectID: "proj", ModelID: "haiku-4-5", UserText: "text",
+		ProjectID: "proj", ModelID: "haiku-5-5", UserText: "text",
 	})
 	if err == nil {
 		t.Fatal("RunRefineryFold() returned nil error; want error for no database pool")
@@ -150,7 +150,7 @@ func TestRunRefineryFold_MissingRefineryCLIDef_ReturnsError(t *testing.T) {
 
 	_, err := env.spawner.RunRefineryFold(context.Background(), types.RefineryFoldRequest{
 		ProjectID: env.projectID,
-		ModelID:   "haiku-4-5",
+		ModelID:   "haiku-5-5",
 		UserText:  "digest this",
 	})
 	if err == nil {
@@ -164,7 +164,7 @@ func TestRunRefineryFold_ProjectNotFound_ReturnsError(t *testing.T) {
 
 	_, err := env.spawner.RunRefineryFold(context.Background(), types.RefineryFoldRequest{
 		ProjectID: "does-not-exist",
-		ModelID:   "haiku-4-5",
+		ModelID:   "haiku-5-5",
 		UserText:  "digest this",
 	})
 	if err == nil {

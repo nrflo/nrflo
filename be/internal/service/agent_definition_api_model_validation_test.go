@@ -67,13 +67,13 @@ func TestCreateAgentDef_APIMode_LCModel_Valid(t *testing.T) {
 		Prompt:              "do stuff",
 		ExecutionMode:       "api",
 		Model:               "opus-4-7",
-		LowConsumptionModel: "haiku-4-5",
+		LowConsumptionModel: "haiku-5-5",
 	})
 	if err != nil {
 		t.Fatalf("CreateAgentDef with valid lc model: %v", err)
 	}
-	if def.LowConsumptionModel != "haiku-4-5" {
-		t.Errorf("LowConsumptionModel = %q, want haiku-4-5", def.LowConsumptionModel)
+	if def.LowConsumptionModel != "haiku-5-5" {
+		t.Errorf("LowConsumptionModel = %q, want haiku-5-5", def.LowConsumptionModel)
 	}
 }
 

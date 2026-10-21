@@ -59,7 +59,7 @@ func TestValidateResumeSession(t *testing.T) {
 		},
 		{
 			name:    "timeout claude session",
-			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:haiku-4-5", Valid: true}, Status: model.AgentSessionTimeout},
+			session: &model.AgentSession{ModelID: sql.NullString{String: "claude:haiku-5-5", Valid: true}, Status: model.AgentSessionTimeout},
 			wantErr: false,
 		},
 		{

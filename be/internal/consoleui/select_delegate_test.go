@@ -52,8 +52,8 @@ func TestCompactRow_WideWidthKeepsNameAndDescription(t *testing.T) {
 // row's rendering differs from the unselected row's rendering for the same
 // inputs (the accent selection prefix/highlight is actually applied).
 func TestCompactRow_SelectedVariantDiffersFromNormal(t *testing.T) {
-	normal := compactRow("haiku-4-5", "Claude Haiku 4.5", 40, false)
-	selected := compactRow("haiku-4-5", "Claude Haiku 4.5", 40, true)
+	normal := compactRow("haiku-5-5", "Claude Haiku 5.5", 40, false)
+	selected := compactRow("haiku-5-5", "Claude Haiku 5.5", 40, true)
 	if normal == selected {
 		t.Errorf("compactRow selected and normal variants should differ, both = %q", normal)
 	}

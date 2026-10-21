@@ -15,7 +15,7 @@ vi.mock('@/hooks/useDefaultTemplates', () => ({
 vi.mock('@/hooks/useModels', () => ({
   useModelOptions: () => [
     { label: 'Anthropic', options: [
-      { value: 'haiku-4-5', label: 'Anthropic: Haiku' },
+      { value: 'haiku-5-5', label: 'Anthropic: Haiku' },
       { value: 'opus-4-8', label: 'Anthropic: Opus' },
       { value: 'opus-4-8-1m', label: 'Anthropic: Opus 1M' },
       { value: 'sonnet-5', label: 'Anthropic: Sonnet' },
@@ -248,7 +248,7 @@ describe('AgentDefForm', () => {
         isCreate: false,
         initial: {
           id: 'test-agent',
-          model: 'haiku-4-5',
+          model: 'haiku-5-5',
           timeout: 45,
           restart_threshold: 30,
           prompt: 'Initial prompt',

@@ -106,10 +106,10 @@ func TestCreateAgentDef_CLIInteractive_CodexModel(t *testing.T) {
 		ID:            "agent-cli-int-codex",
 		Prompt:        "do stuff",
 		ExecutionMode: "cli_interactive",
-		Model:         "gpt-5.4",
+		Model:         "gpt-6-sol",
 	})
 	if err != nil {
-		t.Fatalf("CreateAgentDef(cli_interactive, gpt-5.4): %v", err)
+		t.Fatalf("CreateAgentDef(cli_interactive, gpt-6-sol): %v", err)
 	}
 	if def.ExecutionMode != "cli_interactive" {
 		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
@@ -205,7 +205,7 @@ func TestUpdateAgentDef_ToCLIInteractive_WithNewModel(t *testing.T) {
 	}
 
 	mode := "cli_interactive"
-	model := "gpt-5.4"
+	model := "gpt-6-sol"
 	if err := svc.UpdateAgentDef("proj1", wfID, "upd-mode-and-model", &types.AgentDefUpdateRequest{
 		ExecutionMode: &mode,
 		Model:         &model,
@@ -220,8 +220,8 @@ func TestUpdateAgentDef_ToCLIInteractive_WithNewModel(t *testing.T) {
 	if def.ExecutionMode != "cli_interactive" {
 		t.Errorf("ExecutionMode = %q, want cli_interactive", def.ExecutionMode)
 	}
-	if def.Model != "gpt-5.4" {
-		t.Errorf("Model = %q, want gpt-5.4", def.Model)
+	if def.Model != "gpt-6-sol" {
+		t.Errorf("Model = %q, want gpt-6-sol", def.Model)
 	}
 }
 
@@ -238,7 +238,7 @@ func TestCreateAgentDef_CLIInteractive_ModelValidation(t *testing.T) {
 		wantOK  bool
 	}{
 		{"claude model", "ag-claude", "opus-4-7", true},
-		{"codex model", "ag-codex", "gpt-5.4", true},
+		{"codex model", "ag-codex", "gpt-6-sol", true},
 		{"unknown model rejected", "ag-unknown", "mycompany_model_v1", false},
 	}
 

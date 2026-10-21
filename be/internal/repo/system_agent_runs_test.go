@@ -36,7 +36,7 @@ func TestListSystemAgentRuns(t *testing.T) {
 
 	if _, err := database.Exec(
 		`INSERT INTO system_agent_definitions (id, model, timeout, prompt, role, execution_mode, created_at, updated_at)
-		 VALUES ('_refinery_test', 'haiku-4-5', 3, 'p', 'test_runs_role', 'api', datetime('now'), datetime('now'))`,
+		 VALUES ('_refinery_test', 'haiku-5-5', 3, 'p', 'test_runs_role', 'api', datetime('now'), datetime('now'))`,
 	); err != nil {
 		t.Fatalf("seed system_agent_definitions: %v", err)
 	}

@@ -103,7 +103,7 @@ func TestWaitBeforeRetry_NoHub_CancelledContext(t *testing.T) {
 	proc := &processInfo{
 		agentType:        "implementor",
 		sessionID:        "sess-no-hub",
-		modelID:          "claude:haiku-4-5",
+		modelID:          "claude:haiku-5-5",
 		projectID:        "proj-1",
 		ticketID:         "ticket-1",
 		workflowName:     "feature",

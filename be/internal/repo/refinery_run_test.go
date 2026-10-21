@@ -19,7 +19,7 @@ func TestRefineryRun_InsertAndListRecent(t *testing.T) {
 		SessionID:    "sess-ok",
 		ProjectID:    "proj",
 		Provider:     "anthropic",
-		Model:        "haiku-4-5",
+		Model:        "haiku-5-5",
 		PromptTokens: 100,
 		OutputTokens: 20,
 		Status:       "ok",
@@ -34,7 +34,7 @@ func TestRefineryRun_InsertAndListRecent(t *testing.T) {
 		SessionID: "sess-failed",
 		ProjectID: "proj",
 		Provider:  "anthropic",
-		Model:     "haiku-4-5",
+		Model:     "haiku-5-5",
 		Status:    "failed",
 		Error:     "no anthropic API key",
 		FoldedAt:  clk.Now().Add(2 * time.Minute),
@@ -74,7 +74,7 @@ func TestRefineryRun_ListRecent_LimitAndSince(t *testing.T) {
 			SessionID: "sess-" + string(rune('a'+i)),
 			ProjectID: "proj",
 			Provider:  "anthropic",
-			Model:     "haiku-4-5",
+			Model:     "haiku-5-5",
 			Status:    "ok",
 			FoldedAt:  base.Add(time.Duration(i) * time.Minute),
 		}
@@ -113,7 +113,7 @@ func TestRefineryRun_ChainFieldsRoundTripThroughInsertAndListRecent(t *testing.T
 	clk := clock.NewTest(time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC))
 	r := NewRefineryRunRepo(pool, clk)
 
-	fallback := `[{"provider":"anthropic","execution_mode":"api","model_id":"haiku-4-5"}]`
+	fallback := `[{"provider":"anthropic","execution_mode":"api","model_id":"haiku-5-5"}]`
 	run := &model.RefineryRun{
 		SessionID:     "sess-chain-fields",
 		ProjectID:     "proj",
@@ -133,7 +133,7 @@ func TestRefineryRun_ChainFieldsRoundTripThroughInsertAndListRecent(t *testing.T
 		SessionID: "sess-chain-fields-default",
 		ProjectID: "proj",
 		Provider:  "anthropic",
-		Model:     "haiku-4-5",
+		Model:     "haiku-5-5",
 		Status:    "ok",
 		FoldedAt:  clk.Now().Add(time.Minute),
 	}
@@ -182,7 +182,7 @@ func TestRefineryRun_Insert_StampsFoldedAtWhenZero(t *testing.T) {
 	clk := clock.NewTest(time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC))
 	r := NewRefineryRunRepo(pool, clk)
 
-	run := &model.RefineryRun{SessionID: "sess-nofoldedat", ProjectID: "proj", Provider: "anthropic", Model: "haiku-4-5", Status: "ok"}
+	run := &model.RefineryRun{SessionID: "sess-nofoldedat", ProjectID: "proj", Provider: "anthropic", Model: "haiku-5-5", Status: "ok"}
 	if err := r.Insert(run); err != nil {
 		t.Fatalf("Insert: %v", err)
 	}

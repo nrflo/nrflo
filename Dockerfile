@@ -51,13 +51,13 @@ FROM alpine:3.20 AS runtime
 ARG TARGETARCH
 # Bundled Claude Code version. Pinned for reproducibility; bump deliberately.
 # "latest" is also accepted and resolves at build time.
-ARG CLAUDE_VERSION=2.1.285
+ARG CLAUDE_VERSION=2.1.306
 # Bundled codex CLI version (native rust musl binary, no Node). Codex publishes
 # no checksum manifest (only sigstore bundles), so the per-arch tarball sha256
 # is pinned here; bump both together.
-ARG CODEX_VERSION=0.159.2
-ARG CODEX_SHA256_AMD64=26586b0d246d41a799b0ef8ee1add370f0fb0721b3709340f28db612381616ea
-ARG CODEX_SHA256_ARM64=472ee4d49464a4f8792bbf0162bd9ac18d7036dbc00900a03e95f715887e930f
+ARG CODEX_VERSION=0.163.0
+ARG CODEX_SHA256_AMD64=beb339e8ecd9ba057a6bb2dc81ad8ca474812edfbf0fc5056ca818797648dde4
+ARG CODEX_SHA256_ARM64=a7261e65f4a96d8f4ca65a069c6cf2dc2c33defc341e48078acefda9461fffe4
 
 # Runtime deps: git + tini + python, the musl libs and ripgrep the native
 # Claude binary needs (its bundled ripgrep is glibc-built, unusable on musl),

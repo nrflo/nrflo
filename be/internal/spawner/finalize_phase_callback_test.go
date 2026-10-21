@@ -166,7 +166,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	findings := map[string]interface{}{
@@ -183,7 +183,7 @@ func TestFinalizePhase_CallbackWithMissingInstructions(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,
@@ -376,7 +376,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	sessionRepo.UpdateResult(env.sessionID, "skip", "explicit")
@@ -388,7 +388,7 @@ func TestFinalizePhase_AllSkipped(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

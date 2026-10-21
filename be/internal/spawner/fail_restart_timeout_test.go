@@ -143,7 +143,7 @@ func TestAutoRestart_TimeoutDisabledAtZero(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 

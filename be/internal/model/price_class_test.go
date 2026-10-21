@@ -20,7 +20,7 @@ func TestModelPriceClass_ThresholdMatrix(t *testing.T) {
 		{"gpt-5.6-sol seeded price_in=5", floatPtr(5), PricePremium, true},
 		{"sonnet-5 seeded price_in=3", floatPtr(3), PriceMid, true},
 		{"gpt-5.6-terra seeded price_in=2.5", floatPtr(2.5), PriceMid, true},
-		{"haiku-4-5 seeded price_in=1", floatPtr(1), PriceCheap, true},
+		{"haiku-5-5 seeded price_in=1", floatPtr(1), PriceCheap, true},
 		{"gpt-5.6-luna seeded price_in=1", floatPtr(1), PriceCheap, true},
 		{"boundary: exactly 5 is premium (>=5)", floatPtr(5.0), PricePremium, true},
 		{"boundary: just under 5 is mid", floatPtr(4.99), PriceMid, true},

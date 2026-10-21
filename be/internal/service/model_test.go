@@ -71,16 +71,6 @@ func TestModelServiceGet_SeededPricingRoundTrips(t *testing.T) {
 		t.Errorf("sonnet-5 PriceCacheRead = %v, want 0.2", sonnet.PriceCacheRead)
 	}
 
-	// gpt-5.5 exists in the registry but was not touched by migration 000183
-	// (only the ticket's named model families were seeded) — all four price
-	// columns must read back nil, not zero.
-	unpriced, err := svc.Get("gpt-5.5")
-	if err != nil {
-		t.Fatalf("Get(gpt-5.5): %v", err)
-	}
-	if unpriced.PriceIn != nil || unpriced.PriceOut != nil || unpriced.PriceCacheWrite != nil || unpriced.PriceCacheRead != nil {
-		t.Errorf("gpt-5.5 pricing = in:%v out:%v cw:%v cr:%v, want all nil", unpriced.PriceIn, unpriced.PriceOut, unpriced.PriceCacheWrite, unpriced.PriceCacheRead)
-	}
 }
 
 // TestModelServiceCreate_NewRowHasNoPricing verifies a freshly Create()'d

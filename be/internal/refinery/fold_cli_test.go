@@ -27,7 +27,7 @@ func TestAttemptFoldCLI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ResolveAgentChain: %v", err)
 	}
-	cliEntry := chain[1] // anthropic/cli_interactive/haiku-4-5
+	cliEntry := chain[1] // anthropic/cli_interactive/haiku-5-5
 
 	target := foldTarget{sessionID: "sess-attempt-cli"}
 

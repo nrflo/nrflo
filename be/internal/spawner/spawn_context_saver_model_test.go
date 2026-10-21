@@ -16,7 +16,7 @@ func TestContextSaverModel_APIDyingAgent(t *testing.T) {
 		backend:        &mockBackend{name: "api"},
 	}
 
-	model, effort := sp.contextSaverModel(proc, "haiku-4-5")
+	model, effort := sp.contextSaverModel(proc, "haiku-5-5")
 
 	if model != "sonnet-5" {
 		t.Errorf("contextSaverModel() model = %q, want %q", model, "sonnet-5")
@@ -36,7 +36,7 @@ func TestContextSaverModel_CLIDyingAgent(t *testing.T) {
 		backend:   &mockBackend{name: "cli"},
 	}
 
-	model, effort := sp.contextSaverModel(proc, "haiku-4-5")
+	model, effort := sp.contextSaverModel(proc, "haiku-5-5")
 
 	if model != "opus-4-8" {
 		t.Errorf("contextSaverModel() model = %q, want %q", model, "opus-4-8")
@@ -53,10 +53,10 @@ func TestContextSaverModel_FallbackEmptyModel(t *testing.T) {
 	sp := New(Config{})
 	proc := &processInfo{agentType: "implementor", modelID: "", backend: &mockBackend{name: "api"}}
 
-	model, effort := sp.contextSaverModel(proc, "haiku-4-5")
+	model, effort := sp.contextSaverModel(proc, "haiku-5-5")
 
-	if model != "haiku-4-5" {
-		t.Errorf("contextSaverModel() model = %q, want fallback %q", model, "haiku-4-5")
+	if model != "haiku-5-5" {
+		t.Errorf("contextSaverModel() model = %q, want fallback %q", model, "haiku-5-5")
 	}
 	if effort != nil {
 		t.Errorf("contextSaverModel() effort = %v, want nil", effort)

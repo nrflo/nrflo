@@ -14,7 +14,7 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 	}
 	ads := []*model.AgentDefinition{
 		{ID: "verifier", ProjectID: "p1", WorkflowID: "feature", Model: "sonnet-5", Timeout: 20, Layer: 2},
-		{ID: "setup", ProjectID: "p1", WorkflowID: "feature", Model: "haiku-4-5", Timeout: 10, Layer: 0},
+		{ID: "setup", ProjectID: "p1", WorkflowID: "feature", Model: "haiku-5-5", Timeout: 10, Layer: 0},
 		{ID: "builder", ProjectID: "p1", WorkflowID: "feature", Model: "opus-4-7", Timeout: 30, Layer: 1},
 	}
 
@@ -48,8 +48,8 @@ func TestBuildSpawnerConfig_PhasesFromAgentDefs(t *testing.T) {
 	if len(agents) != 3 {
 		t.Fatalf("agents count = %d, want 3", len(agents))
 	}
-	if agents["setup"].Model != "haiku-4-5" {
-		t.Errorf("agents[setup].Model = %s, want haiku-4-5", agents["setup"].Model)
+	if agents["setup"].Model != "haiku-5-5" {
+		t.Errorf("agents[setup].Model = %s, want haiku-5-5", agents["setup"].Model)
 	}
 	if agents["builder"].Timeout != 30 {
 		t.Errorf("agents[builder].Timeout = %d, want 30", agents["builder"].Timeout)
@@ -64,7 +64,7 @@ func TestBuildSpawnerConfig_ParallelAgentsSameLayer(t *testing.T) {
 	ads := []*model.AgentDefinition{
 		{ID: "test-fe", ProjectID: "p1", WorkflowID: "parallel", Model: "sonnet-5", Timeout: 20, Layer: 1},
 		{ID: "test-be", ProjectID: "p1", WorkflowID: "parallel", Model: "sonnet-5", Timeout: 20, Layer: 1},
-		{ID: "setup", ProjectID: "p1", WorkflowID: "parallel", Model: "haiku-4-5", Timeout: 10, Layer: 0},
+		{ID: "setup", ProjectID: "p1", WorkflowID: "parallel", Model: "haiku-5-5", Timeout: 10, Layer: 0},
 		{ID: "merge", ProjectID: "p1", WorkflowID: "parallel", Model: "sonnet-5", Timeout: 20, Layer: 2},
 	}
 
@@ -126,7 +126,7 @@ func TestBuildSpawnerConfig_MultipleWorkflows(t *testing.T) {
 	}
 	ads := []*model.AgentDefinition{
 		{ID: "agent-a", ProjectID: "p1", WorkflowID: "wf-a", Model: "sonnet-5", Timeout: 20, Layer: 0},
-		{ID: "agent-b", ProjectID: "p1", WorkflowID: "wf-b", Model: "haiku-4-5", Timeout: 10, Layer: 0},
+		{ID: "agent-b", ProjectID: "p1", WorkflowID: "wf-b", Model: "haiku-5-5", Timeout: 10, Layer: 0},
 	}
 
 	workflows, _ := BuildSpawnerConfig(nil, clock.Real(), wfs, ads)

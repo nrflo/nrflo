@@ -5,7 +5,7 @@ import { AgentDefEffortField } from './AgentDefEffortField'
 
 const models = [
   { id: 'sonnet-5', cli_efforts: ['low', 'medium', 'high', 'xhigh'], api_efforts: ['low', 'high'], default_effort: 'high' },
-  { id: 'haiku-4-5', cli_efforts: ['low', 'medium', 'high'], api_efforts: [], default_effort: '' },
+  { id: 'haiku-5-5', cli_efforts: ['low', 'medium', 'high'], api_efforts: [], default_effort: '' },
 ]
 
 vi.mock('@/hooks/useModels', () => ({ useModels: () => ({ data: models }) }))
@@ -27,7 +27,7 @@ describe('AgentDefEffortField', () => {
   })
 
   it('shows provider default when the row has no default effort', () => {
-    render(<AgentDefEffortField executionMode="cli_interactive" model="haiku-4-5" value="" onChange={vi.fn()} />)
+    render(<AgentDefEffortField executionMode="cli_interactive" model="haiku-5-5" value="" onChange={vi.fn()} />)
     expect(getDropdownButton().textContent).toContain('Inherit from model (provider default)')
   })
 

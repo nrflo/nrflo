@@ -104,7 +104,7 @@ func TestMigration182_ModelsExistForBothTiers(t *testing.T) {
 	}
 	t.Cleanup(func() { pool.Close() })
 
-	for _, id := range []string{"haiku-4-5", "sonnet-5"} {
+	for _, id := range []string{"haiku-5-5", "sonnet-5"} {
 		var apiModel string
 		if err := pool.QueryRow(`SELECT api_model FROM models WHERE id = ?`, id).Scan(&apiModel); err != nil {
 			t.Fatalf("query model %s: %v", id, err)

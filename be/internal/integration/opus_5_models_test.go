@@ -41,7 +41,7 @@ func TestMigration210MigratesOpus48To5(t *testing.T) {
 		{"builder", "opus-4-8", ""},
 		{"planner", "opus-4-8-1m", ""},
 		{"writer", "sonnet-5", "opus-4-8"},
-		{"analyst", "haiku-4-5", "opus-4-8-1m"},
+		{"analyst", "haiku-5-5", "opus-4-8-1m"},
 		{"untouched", "opus-4-7", "sonnet-5"},
 	}
 	for _, a := range agents {
@@ -80,7 +80,7 @@ func TestMigration210MigratesOpus48To5(t *testing.T) {
 		"builder":   "opus-5",
 		"planner":   "opus-5-1m",
 		"writer":    "sonnet-5",
-		"analyst":   "haiku-4-5",
+		"analyst":   "haiku-5-5",
 		"untouched": "opus-4-7",
 	}
 	for id, want := range wantModel {

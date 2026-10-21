@@ -75,7 +75,7 @@ func seedRefineryRun(t *testing.T, s *Server, sessionID, foldedAt string) {
 	t.Helper()
 	if _, err := s.pool.Exec(
 		`INSERT INTO refinery_runs (session_id, project_id, provider, model, prompt_tokens, output_tokens, status, folded_at)
-		 VALUES (?, 'proj', 'anthropic', 'haiku-4-5', 10, 2, 'ok', ?)`,
+		 VALUES (?, 'proj', 'anthropic', 'haiku-5-5', 10, 2, 'ok', ?)`,
 		sessionID, foldedAt,
 	); err != nil {
 		t.Fatalf("seed refinery_run %s: %v", sessionID, err)
@@ -88,7 +88,7 @@ func seedRefineryRunFailed(t *testing.T, s *Server, sessionID, foldedAt string) 
 	t.Helper()
 	if _, err := s.pool.Exec(
 		`INSERT INTO refinery_runs (session_id, project_id, provider, model, prompt_tokens, output_tokens, status, error, folded_at)
-		 VALUES (?, 'proj', 'anthropic', 'haiku-4-5', 7, 0, 'failed', 'no api key', ?)`,
+		 VALUES (?, 'proj', 'anthropic', 'haiku-5-5', 7, 0, 'failed', 'no api key', ?)`,
 		sessionID, foldedAt,
 	); err != nil {
 		t.Fatalf("seed failed refinery_run %s: %v", sessionID, err)

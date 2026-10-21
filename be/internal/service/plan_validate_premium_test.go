@@ -20,7 +20,7 @@ func TestPlanModelTierClass_ClassificationTable(t *testing.T) {
 		{"fable-5", ModelTierPremium},
 		{"opus-4-8", ModelTierPremium},
 		{"opus-4-8-1m", ModelTierPremium},
-		{"haiku-4-5", ModelTierCheap},
+		{"haiku-5-5", ModelTierCheap},
 		{"sonnet-5", ModelTierMid},
 		{"gpt-5.6-sol", ModelTierMid},
 		{"gpt-5.6-terra", ModelTierMid},

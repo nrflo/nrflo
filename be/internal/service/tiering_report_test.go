@@ -46,7 +46,7 @@ func TestBuildReport_ProjectAlpha(t *testing.T) {
 
 	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "hotfix", defID: "implementor", model: "opus-5-5"})
 
-	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "__spec_import__", defID: "spec-normalizer", model: "haiku-4-5"})
+	seedTieringDef(t, pool, tieringDefSeed{projectID: "alpha", workflowID: "__spec_import__", defID: "spec-normalizer", model: "haiku-5-5"})
 
 	report, err := svc.BuildReport()
 	if err != nil {
@@ -196,7 +196,7 @@ func TestBuildReport_WorkerTemplateAssignment(t *testing.T) {
 	if !strings.Contains(report.Markdown, "+delegation") {
 		t.Errorf("Markdown missing '+delegation' marker for granted roles: %s", report.Markdown)
 	}
-	if strings.Contains(report.Markdown, "haiku-4-5 +delegation") {
+	if strings.Contains(report.Markdown, "haiku-5-5 +delegation") {
 		t.Errorf("Markdown must not mark the non-granted doc-updater row with +delegation: %s", report.Markdown)
 	}
 }

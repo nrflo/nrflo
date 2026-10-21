@@ -67,7 +67,7 @@ func TestSystemAgentDef_UpdateModelEmptyWithTierClearsOverride(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "clear-override", Prompt: "p", Model: "haiku-4-5",
+		ID: "clear-override", Prompt: "p", Model: "haiku-5-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestSystemAgentDef_UpdateModelEmptyNoTierErrors(t *testing.T) {
 	defer cleanup()
 
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
-		ID: "no-tier-clear", Prompt: "p", Model: "haiku-4-5",
+		ID: "no-tier-clear", Prompt: "p", Model: "haiku-5-5",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}

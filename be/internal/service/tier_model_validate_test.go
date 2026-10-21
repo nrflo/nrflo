@@ -17,7 +17,7 @@ func TestTierModel_SetTierChain_TierOutOfRange(t *testing.T) {
 
 	for _, tier := range []int{0, 6, -1} {
 		err := svc.SetTierChain(tier, []types.TierChainEntry{
-			{ExecutionMode: "api", ModelID: "haiku-4-5"},
+			{ExecutionMode: "api", ModelID: "haiku-5-5"},
 		})
 		if err == nil {
 			t.Errorf("tier=%d: expected error, got nil", tier)

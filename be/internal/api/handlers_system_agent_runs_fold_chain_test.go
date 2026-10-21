@@ -30,7 +30,7 @@ func TestHandleListSystemAgentRuns_RefineryFoldChainFields(t *testing.T) {
 	seedRunsProjectAndWFI(t, s)
 
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	fallback := `[{"provider":"anthropic","execution_mode":"api","model_id":"haiku-4-5"}]`
+	fallback := `[{"provider":"anthropic","execution_mode":"api","model_id":"haiku-5-5"}]`
 	seedRefineryRunWithChain(t, s, "sess-fold-chained", base.Format(time.RFC3339Nano), 2, "cli_interactive", fallback)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system-agent-runs", nil)

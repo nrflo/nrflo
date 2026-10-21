@@ -198,7 +198,7 @@ func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	cmd := exec.Command("false")
 	_ = cmd.Run()
@@ -207,7 +207,7 @@ func TestAutoRestart_TerminalAtMaxCount(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

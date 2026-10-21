@@ -240,7 +240,7 @@ func TestAgentCallbackDifferentLevels(t *testing.T) {
 		// for level 0, the default-layer-mode zero value).
 		wantLayerMode bool
 	}{
-		{name: "Level 0", ticketID: "AGT-CB-L0", agentType: "analyzer", cliModel: "haiku-4-5", level: 0, wantLayerMode: true},
+		{name: "Level 0", ticketID: "AGT-CB-L0", agentType: "analyzer", cliModel: "haiku-5-5", level: 0, wantLayerMode: true},
 		{name: "Level 1", ticketID: "AGT-CB-L1", agentType: "analyzer", cliModel: "sonnet-5", level: 1},
 		{name: "Level 2 with model filter", ticketID: "AGT-CB-L2", agentType: "builder", cliModel: "opus-4-7", modelFilter: "opus-4-7", level: 2},
 		{name: "Level 5", ticketID: "AGT-CB-L5", agentType: "analyzer", cliModel: "sonnet-5", level: 5},

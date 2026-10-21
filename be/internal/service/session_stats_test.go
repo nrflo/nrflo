@@ -68,13 +68,13 @@ func TestBuildSessionStats_CacheRollup(t *testing.T) {
 		agentType: "_t1_executor", status: "completed", startedAt: "2025-01-01T00:01:00Z"})
 	insertDelegation(t, pool, &model.Delegation{ID: "wfi-trace.cache1", CallerSessionID: "s-cache-root", WorkflowInstanceID: wfiID, ProjectID: "test-proj", Tier: "executor", Fanout: 1, Depth: 1}, 0, "s-cache-worker")
 
-	// haiku-4-5 is seeded with price_in=1/price_out=5 per MTok. Root:
-	// 250k fresh + 750k cache-read = 75% hit, no-cache = 1M * $1 = $1.
-	// Worker: 500k fresh + 500k cache-write = 0% hit, no-cache = $1.
-	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-4-5', tokens_json = '{"input_tokens":250000,"output_tokens":0,"cache_read_tokens":750000,"cache_write_tokens":0}' WHERE id = 's-cache-root'`)
-	// CLI sessions store the adapter-prefixed id ('claude:haiku-4-5'); the
+	// haiku-5-5 is seeded with price_in=0.1/price_out=0.5 per MTok. Root:
+	// 250k fresh + 750k cache-read = 75% hit, no-cache = 1M * $0.1 = $0.1.
+	// Worker: 500k fresh + 500k cache-write = 0% hit, no-cache = $0.1.
+	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'haiku-5-5', tokens_json = '{"input_tokens":250000,"output_tokens":0,"cache_read_tokens":750000,"cache_write_tokens":0}' WHERE id = 's-cache-root'`)
+	// CLI sessions store the adapter-prefixed id ('claude:haiku-5-5'); the
 	// rollup's pricing join must strip the prefix to find the models row.
-	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'claude:haiku-4-5', tokens_json = '{"input_tokens":500000,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":500000}' WHERE id = 's-cache-worker'`)
+	mustExec(t, pool, `UPDATE agent_sessions SET model_id = 'claude:haiku-5-5', tokens_json = '{"input_tokens":500000,"output_tokens":0,"cache_read_tokens":0,"cache_write_tokens":500000}' WHERE id = 's-cache-worker'`)
 
 	flow, err := BuildSessionFlow(pool, clock.Real(), "s-cache-root")
 	if err != nil {
@@ -91,11 +91,11 @@ func TestBuildSessionStats_CacheRollup(t *testing.T) {
 	if stats.SubtreeCacheHitPct != 37.5 {
 		t.Errorf("SubtreeCacheHitPct = %v, want 37.5 (750k of 2M prompt tokens)", stats.SubtreeCacheHitPct)
 	}
-	if stats.SelfCostNoCacheUSD != 1.0 {
-		t.Errorf("SelfCostNoCacheUSD = %v, want 1.0", stats.SelfCostNoCacheUSD)
+	if stats.SelfCostNoCacheUSD != 0.1 {
+		t.Errorf("SelfCostNoCacheUSD = %v, want 0.1", stats.SelfCostNoCacheUSD)
 	}
-	if stats.SubtreeCostNoCacheUSD != 2.0 {
-		t.Errorf("SubtreeCostNoCacheUSD = %v, want 2.0", stats.SubtreeCostNoCacheUSD)
+	if stats.SubtreeCostNoCacheUSD != 0.2 {
+		t.Errorf("SubtreeCostNoCacheUSD = %v, want 0.2", stats.SubtreeCostNoCacheUSD)
 	}
 }
 

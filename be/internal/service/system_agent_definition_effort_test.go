@@ -28,7 +28,7 @@ func TestSystemAgentDef_ReasoningEffort_ValidationMatrix(t *testing.T) {
 	}{
 		{"ultra on claude cli row rejected", "cli_interactive", "sonnet-5", strPtr("ultra"), true},
 		{"ultra on codex sol row accepted", "cli_interactive", "gpt-5.6-sol", strPtr("ultra"), false},
-		{"xhigh on claude haiku rejected", "cli_interactive", "haiku-4-5", strPtr("xhigh"), true},
+		{"xhigh on claude opus 4.6 rejected", "cli_interactive", "opus-4-6", strPtr("xhigh"), true},
 		{"xhigh on claude opus accepted", "cli_interactive", "opus-4-8", strPtr("xhigh"), false},
 		{"xhigh on api openai gpt-5.6 accepted", "api", "gpt-5.6-sol", strPtr("xhigh"), false},
 		{"max on api openai gpt-5.4 rejected", "api", "gpt-5.4", strPtr("max"), true},
@@ -125,7 +125,7 @@ func TestSystemAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if _, err := svc.Create(&types.SystemAgentDefCreateRequest{
 		ID:     "sys-patch-direct",
 		Prompt: "do work",
-		Model:  "haiku-4-5",
+		Model:  "opus-4-6",
 	}); err != nil {
 		t.Fatalf("create: %v", err)
 	}
@@ -134,14 +134,14 @@ func TestSystemAgentDef_ReasoningEffort_DirectPatchValidated(t *testing.T) {
 	if err := svc.Update("sys-patch-direct", &types.SystemAgentDefUpdateRequest{
 		ReasoningEffort: &bad,
 	}); err == nil {
-		t.Fatal("Update(reasoning_effort=xhigh) on a haiku-4-5 def: expected error, got nil")
+		t.Fatal("Update(reasoning_effort=xhigh) on an opus-4-6 def: expected error, got nil")
 	}
 
 	good := "high"
 	if err := svc.Update("sys-patch-direct", &types.SystemAgentDefUpdateRequest{
 		ReasoningEffort: &good,
 	}); err != nil {
-		t.Fatalf("Update(reasoning_effort=high) on a haiku-4-5 def: %v", err)
+		t.Fatalf("Update(reasoning_effort=high) on an opus-4-6 def: %v", err)
 	}
 	def, err := svc.Get("sys-patch-direct")
 	if err != nil {

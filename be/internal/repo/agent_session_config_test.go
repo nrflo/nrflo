@@ -103,7 +103,7 @@ func TestAgentSessionCreate_ConfigRoundTrip(t *testing.T) {
 		config string
 	}{
 		{"sess-a", `{"model":"sonnet-5"}`},
-		{"sess-b", `{"model":"haiku-4-5","safety":true}`},
+		{"sess-b", `{"model":"haiku-5-5","safety":true}`},
 		{"sess-c", ""},
 	}
 

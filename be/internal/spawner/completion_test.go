@@ -247,7 +247,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 	env := setupTestEnv(t)
 	defer env.cleanup()
 
-	env.createSession(t, "claude:haiku-4-5")
+	env.createSession(t, "claude:haiku-5-5")
 
 	sessionRepo := repo.NewAgentSessionRepo(env.database, clock.Real())
 	if err := sessionRepo.UpdateResult(env.sessionID, "fail", "explicit"); err != nil {
@@ -263,7 +263,7 @@ func TestHandleCompletion_ExitZeroWithExplicitFail(t *testing.T) {
 		cmd:                cmd,
 		sessionID:          env.sessionID,
 		agentID:            "test-agent-id",
-		modelID:            "claude:haiku-4-5",
+		modelID:            "claude:haiku-5-5",
 		workflowInstanceID: env.wfiID,
 		projectID:          env.projectID,
 		ticketID:           env.ticketID,

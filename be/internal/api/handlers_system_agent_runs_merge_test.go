@@ -143,8 +143,8 @@ func TestHandleListSystemAgentRuns_RefineryFoldFields(t *testing.T) {
 	if it["resolved_provider"] != "anthropic" {
 		t.Errorf("resolved_provider = %v, want anthropic", it["resolved_provider"])
 	}
-	if it["model_id"] != "haiku-4-5" {
-		t.Errorf("model_id = %v, want haiku-4-5", it["model_id"])
+	if it["model_id"] != "haiku-5-5" {
+		t.Errorf("model_id = %v, want haiku-5-5", it["model_id"])
 	}
 	if it["prompt_tokens"] != float64(7) {
 		t.Errorf("prompt_tokens = %v, want 7", it["prompt_tokens"])

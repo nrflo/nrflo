@@ -124,7 +124,7 @@ func TestCompletedWorkflowTokensBoundary(t *testing.T) {
 		"builder", "agent-no-consumption", "claude:opus-4-7", "completed", "pass", 100)
 	// NULL context_left (using insertCompletedSession which sets context_left=NULL)
 	insertCompletedSession(t, env, "cs3-sess-3", "CS-3", wfiID,
-		"analyzer", "agent-null-context", "claude:haiku-4-5", "completed", "pass")
+		"analyzer", "agent-null-context", "claude:haiku-5-5", "completed", "pass")
 
 	// Mark workflow completed
 	wfiRepo := repo.NewWorkflowInstanceRepo(env.Pool, clock.Real())

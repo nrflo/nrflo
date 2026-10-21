@@ -73,7 +73,7 @@ type prepResult struct {
 	apiMaxIterations          int
 	apiMaxTokens              int
 	apiDeadline               time.Time
-	apiModelID                string // mapped model name, e.g. "claude-haiku-4-5-20251001"
+	apiModelID                string // mapped model name, e.g. "claude-haiku-5-5"
 	apiMaxContext             int
 	apiProvider               provider.Provider // resolved per-spawn from ModelConfigs + BuildAPIProvider
 	apiReasoningEffort        string            // resolved against the model's API-mode efforts

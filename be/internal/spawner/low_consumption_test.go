@@ -124,7 +124,7 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 		{
 			name:          "mode_off_no_substitution",
 			lcMode:        false,
-			lcModel:       "haiku-4-5",
+			lcModel:       "haiku-5-5",
 			originalModel: "opus-4-7",
 			wantModel:     "opus-4-7",
 		},
@@ -138,9 +138,9 @@ func TestLowConsumptionSubstitution_ModelSelection(t *testing.T) {
 		{
 			name:          "mode_on_with_lcm",
 			lcMode:        true,
-			lcModel:       "haiku-4-5",
+			lcModel:       "haiku-5-5",
 			originalModel: "opus-4-7",
-			wantModel:     "haiku-4-5",
+			wantModel:     "haiku-5-5",
 		},
 	}
 

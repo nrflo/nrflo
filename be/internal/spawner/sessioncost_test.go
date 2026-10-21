@@ -233,12 +233,12 @@ func TestCostStore_NoRegisteredSession_IsNoOp(t *testing.T) {
 func TestCostStore_FinalizeSessionCost_FlushesImmediatelyAndDrops(t *testing.T) {
 	t.Parallel()
 	pool := setupTestDB(t)
-	insertCostTestSession(t, pool, "sess-cost-finalize", "haiku-4-5")
+	insertCostTestSession(t, pool, "sess-cost-finalize", "haiku-5-5")
 
 	clk := clock.NewTest(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC))
 	t.Cleanup(func() { globalCostStore.drop("sess-cost-finalize") })
 
-	RegisterSessionCost("sess-cost-finalize", "haiku-4-5", pool, clk, nil)
+	RegisterSessionCost("sess-cost-finalize", "haiku-5-5", pool, clk, nil)
 	AddSessionCostUsage("sess-cost-finalize", 1_000_000, 200_000, 0, 0)
 
 	// A second call inside the same instant would normally be debounced —
@@ -247,8 +247,8 @@ func TestCostStore_FinalizeSessionCost_FlushesImmediatelyAndDrops(t *testing.T) 
 
 	FinalizeSessionCost("sess-cost-finalize")
 
-	// haiku-4-5: price_in=1, price_out=5 per MTok.
-	want := 1_000_000.0/1e6*1 + 300_000.0/1e6*5
+	// haiku-5-5: price_in=0.1, price_out=0.5 per MTok.
+	want := 1_000_000.0/1e6*0.1 + 300_000.0/1e6*0.5
 	var dbCost sql.NullFloat64
 	if err := pool.QueryRow(`SELECT cost_estimate FROM agent_sessions WHERE id = ?`, "sess-cost-finalize").Scan(&dbCost); err != nil {
 		t.Fatalf("query cost_estimate: %v", err)

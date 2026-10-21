@@ -49,8 +49,8 @@ describe('fallbackLabel', () => {
     const run = makeRun({
       kind: 'refinery_fold',
       chain_position: 1,
-      fallback_from: [{ provider: 'anthropic', model_id: 'haiku-4-5', execution_mode: 'api', reasoning_effort: '', tier: 1 }],
-      model_id: 'haiku-4-5',
+      fallback_from: [{ provider: 'anthropic', model_id: 'haiku-5-5', execution_mode: 'api', reasoning_effort: '', tier: 1 }],
+      model_id: 'haiku-5-5',
       resolved_execution_mode: 'cli_interactive',
     })
     expect(fallbackLabel(run)).toBe('api → cli_interactive')
@@ -60,11 +60,11 @@ describe('fallbackLabel', () => {
     const run = makeRun({
       kind: 'refinery_fold',
       chain_position: 1,
-      fallback_from: [{ provider: 'anthropic', model_id: 'haiku-4-5', execution_mode: 'api', reasoning_effort: '', tier: 1 }],
+      fallback_from: [{ provider: 'anthropic', model_id: 'haiku-5-5', execution_mode: 'api', reasoning_effort: '', tier: 1 }],
       model_id: 'gpt-5.6-luna',
       resolved_execution_mode: 'cli_interactive',
     })
-    expect(fallbackLabel(run)).toBe('haiku-4-5 → gpt-5.6-luna')
+    expect(fallbackLabel(run)).toBe('haiku-5-5 → gpt-5.6-luna')
   })
 })
 

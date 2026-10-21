@@ -35,7 +35,7 @@ When `Config.APIViaCLI==true` and the model provider is `anthropic`, `prepareAPI
 
 ### Codex app-server backend
 
-`codexAppServerBackend` drives `codex app-server` over JSON-RPC stdio; a fail-restart resumes the same thread instead of a fresh spawn (other relaunch reasons stay fresh), and take-control hands the live `CODEX_HOME` to a `codex resume` PTY launch. Mechanics: [REFERENCE.md](REFERENCE.md#codex-app-server-backend).
+Codex uses JSON-RPC stdio; file changes persist path/diff payloads (`codex_appserver_files.go`), failed restarts resume the thread, and take-control resumes in a PTY with the live `CODEX_HOME`. Read [REFERENCE.md](REFERENCE.md#codex-app-server-backend) before changing this flow.
 
 ## External MCP Servers
 

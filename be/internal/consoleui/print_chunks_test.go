@@ -118,3 +118,18 @@ func TestRenderMessage_NeverEmitsTabsOrOverWideLines(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintToolBlockPreservesChunkOrder(t *testing.T) {
+	m := printTestModel(0, "")
+	m.height = liveRegionCap + chromeAllowance
+	message := Message{Category: "tool", Content: "[Bash] pwd\n/tmp\nfinished"}
+	chunks := printlnBodies(t, m.printNewMessages(MessagePage{Messages: []Message{message}, Total: 1}))
+	if len(chunks) != 3 {
+		t.Fatalf("tool block chunks = %q, want three rows", chunks)
+	}
+	for i, want := range []string{"[Bash] pwd", "  /tmp", "  finished"} {
+		if got := ansi.Strip(chunks[i]); got != want {
+			t.Errorf("chunk %d = %q, want %q", i, got, want)
+		}
+	}
+}

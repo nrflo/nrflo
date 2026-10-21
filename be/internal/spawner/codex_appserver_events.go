@@ -78,19 +78,20 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 // a strictly-typed field would make json.Unmarshal fail for the other type and
 // dispatchCompletedItem's error guard would then silently drop the whole item.
 type appServerItem struct {
-	Type             string             `json:"type"`
-	Text             string             `json:"text"`             // agentMessage
-	Content          json.RawMessage    `json:"content"`          // reasoning, userMessage
-	Summary          json.RawMessage    `json:"summary"`          // reasoning
-	Command          string             `json:"command"`          // commandExecution
-	AggregatedOutput string             `json:"aggregatedOutput"` // commandExecution
-	ExitCode         *int               `json:"exitCode"`         // commandExecution
-	Server           string             `json:"server"`           // mcpToolCall
-	Tool             string             `json:"tool"`             // mcpToolCall
-	Arguments        json.RawMessage    `json:"arguments"`        // mcpToolCall
-	Result           *mcpToolCallResult `json:"result"`           // mcpToolCall
-	Error            *mcpToolCallError  `json:"error"`            // mcpToolCall
-	Query            string             `json:"query"`            // webSearch
+	Type             string                `json:"type"`
+	Text             string                `json:"text"`             // agentMessage
+	Content          json.RawMessage       `json:"content"`          // reasoning, userMessage
+	Summary          json.RawMessage       `json:"summary"`          // reasoning
+	Command          string                `json:"command"`          // commandExecution
+	AggregatedOutput string                `json:"aggregatedOutput"` // commandExecution
+	ExitCode         *int                  `json:"exitCode"`         // commandExecution
+	Server           string                `json:"server"`           // mcpToolCall
+	Tool             string                `json:"tool"`             // mcpToolCall
+	Arguments        json.RawMessage       `json:"arguments"`        // mcpToolCall
+	Result           *mcpToolCallResult    `json:"result"`           // mcpToolCall
+	Error            *mcpToolCallError     `json:"error"`            // mcpToolCall
+	Query            string                `json:"query"`            // webSearch
+	Changes          []appServerFileChange `json:"changes"`          // fileChange
 }
 
 // mcpToolCallResult mirrors the codex app-server McpToolCallResult shape
@@ -138,11 +139,13 @@ func dispatchCompletedItem(sessionID string, params json.RawMessage, sink Sink, 
 		queryInput, _ := json.Marshal(map[string]string{"query": p.Item.Query})
 		emitMessageWithPayload(sessionID, FormatToolDetail("WebSearch", map[string]interface{}{"query": p.Item.Query}), "tool", BuildToolInvokePayload("", queryInput), sink)
 		emitToolInvokeEvent(sessionID, "WebSearch", map[string]any{"query": p.Item.Query}, emit)
+	case "fileChange":
+		emitFileChanges(sessionID, p.Item.Changes, sink)
 	case "contextCompaction":
 		dispatchContextCompaction(sessionID, sink, emit)
 		return true
 	default:
-		// userMessage, fileChange summaries, etc. — heartbeat only.
+		// userMessage and other non-display items — heartbeat only.
 		sink.BumpLastMessage(sessionID)
 	}
 	return false

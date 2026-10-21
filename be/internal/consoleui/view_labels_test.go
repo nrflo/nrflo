@@ -9,10 +9,10 @@ import (
 
 func TestToolLabelPreservesPayloadColor(t *testing.T) {
 	for _, category := range []string{"tool", "tool_use", "tool_result", "subagent"} {
-		got := renderMessage(Message{Category: category, Content: "[Bash] pwd"}, 80)
-		if ansi.Strip(got) != "[Bash] pwd" ||
-			!strings.Contains(got, toolLabelStyle("Bash").Render("[Bash]")) ||
-			!strings.HasSuffix(got, toolTextStyle.Render(" pwd")) {
+		got := renderMessage(Message{Category: category, Content: "[Read] file.go"}, 80)
+		if ansi.Strip(got) != "[Read] file.go" ||
+			!strings.Contains(got, toolLabelStyle("Read").Render("[Read]")) ||
+			!strings.HasSuffix(got, toolTextStyle.Render("file.go")) {
 			t.Errorf("%s lost its label or payload color: %q", category, got)
 		}
 	}

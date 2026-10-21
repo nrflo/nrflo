@@ -13,7 +13,7 @@ func toolLabelStyle(name string) lipgloss.Style {
 		color = "214"
 	case "read", "read_file", "glob", "grep", "search", "list_dir":
 		color = "81"
-	case "edit", "write", "multiedit", "apply_patch", "write_file":
+	case "edit", "edit_file", "write", "multiedit", "apply_patch", "write_file":
 		color = "114"
 	case "skill":
 		color = "213"
@@ -38,8 +38,6 @@ func highlightToolLabel(content, prefix string, bodyStyle lipgloss.Style) string
 func highlightMessageLabel(category, content string) string {
 	bodyStyle := styleFor(category)
 	switch category {
-	case "tool", "tool_use", "tool_result", "subagent":
-		return highlightToolLabel(content, "", bodyStyle)
 	case "task_notification", "system_turn":
 		label, _, _ := strings.Cut(content, " · ")
 		return toolLabelStyle("").Render(label) + bodyStyle.Render(content[len(label):])

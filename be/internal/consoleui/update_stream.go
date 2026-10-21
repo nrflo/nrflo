@@ -41,6 +41,7 @@ func (m *model) applyStream(update streamUpdate) {
 			}
 			m.thinking = trimDeltaTail(m.thinking + eventString(event, "text"))
 		case "console_chat.turn":
+			m.recordTurnTiming(eventString(event, "state"), time.Now())
 			m.status = eventString(event, "state")
 			if m.status == "idle" {
 				m.thinking = ""

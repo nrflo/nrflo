@@ -29,7 +29,7 @@ func TestRenderTool_LongDelegateBrief_CollapsesToOneLine(t *testing.T) {
 	if len(lines) != 1 {
 		t.Fatalf("tool row rendered %d lines, want exactly 1", len(lines))
 	}
-	if !strings.Contains(stripped, "tool · [Mcp__nrflo__delegate]") {
+	if !strings.Contains(stripped, "[Mcp__nrflo__delegate]") {
 		t.Errorf("tool row %q, want the unified head prefix with the tool name", stripped)
 	}
 	for i, line := range lines {
@@ -54,8 +54,8 @@ func TestRenderMessage_ToolAndSubagent_SharePrefixAndSkipGlamour(t *testing.T) {
 	var first string
 	for i, cat := range categories {
 		rendered := ansi.Strip(renderMessage(Message{Category: cat, Content: content}, width))
-		if !strings.Contains(rendered, toolRowPrefix) {
-			t.Errorf("renderMessage(%s) = %q, want it to contain the unified prefix %q", cat, rendered, toolRowPrefix)
+		if !strings.HasPrefix(rendered, "[Task]") || strings.Contains(rendered, "tool · ") {
+			t.Errorf("renderMessage(%s) = %q, want bracketed tool label without prefix", cat, rendered)
 		}
 		if i == 0 {
 			first = rendered
@@ -101,8 +101,8 @@ func TestRenderTool_Fallbacks(t *testing.T) {
 		})
 	}
 
-	if got := ansi.Strip(renderMessage(Message{Category: "tool", Content: ""}, width)); got != toolRowPrefix {
-		t.Errorf("renderMessage(tool, empty) = %q, want bare prefix %q", got, toolRowPrefix)
+	if got := ansi.Strip(renderMessage(Message{Category: "tool", Content: ""}, width)); got != "" {
+		t.Errorf("renderMessage(tool, empty) = %q, want empty", got)
 	}
 }
 
@@ -126,7 +126,7 @@ func TestRenderTool_ShortPayload_StaysOneLineUnmarked(t *testing.T) {
 	}
 
 	single := ansi.Strip(renderMessage(Message{Category: "tool", Content: "[Bash] ls -la"}, width))
-	if single != toolRowPrefix+"[Bash] ls -la" {
+	if single != "[Bash] ls -la" {
 		t.Errorf("renderMessage(tool, single line) = %q, want head + payload on ONE line with no ellipsis", single)
 	}
 }

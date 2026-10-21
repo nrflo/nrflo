@@ -20,18 +20,21 @@ import (
 const clearScreenSeq = "\x1b[2J\x1b[3J\x1b[999;1H"
 
 type model struct {
-	ctx            context.Context
-	client         *Client
-	events         <-chan streamUpdate
-	detail         ChatDetail
-	printedTotal   int
-	pendingUser    string
-	historyPrinted bool
-	initialPage    MessagePage
-	deltas         map[string]string
-	deltaOrder     []string
-	thinking       string
-	thinkingID     string
+	ctx               context.Context
+	client            *Client
+	events            <-chan streamUpdate
+	detail            ChatDetail
+	printedTotal      int
+	pendingUser       string
+	historyPrinted    bool
+	initialPage       MessagePage
+	deltas            map[string]string
+	deltaOrder        []string
+	thinking          string
+	turnStarted       time.Time
+	turnSummaries     []string
+	deferredSummaries []string
+	thinkingID        string
 
 	frameBand    int
 	frameNatural int
@@ -66,8 +69,9 @@ type model struct {
 }
 
 type historyMsg struct {
-	page MessagePage
-	err  error
+	summaries []string
+	page      MessagePage
+	err       error
 }
 
 type syncMsg struct {

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"be/internal/types"
 )
 
@@ -73,7 +75,7 @@ func TestFooter_RunningToolOnWorkingLine(t *testing.T) {
 	m.status = "running"
 	m.tool = runningTool{Detail: "[Bash] make test", Since: time.Now()}
 	out := m.footer()
-	if !strings.Contains(out, "[Bash] make test") {
+	if !strings.Contains(ansi.Strip(out), "[Bash] make test") {
 		t.Errorf("footer() = %q, want it to contain the running tool detail", out)
 	}
 	if strings.Contains(out, "ctrl+") {

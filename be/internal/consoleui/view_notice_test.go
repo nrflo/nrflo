@@ -3,6 +3,8 @@ package consoleui
 import (
 	"strings"
 	"testing"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 // TestCollapseTaskNotification covers the envelope-collapse table: full
@@ -149,7 +151,7 @@ func TestRenderMessage_SystemTurn_Collapses(t *testing.T) {
 	const width = 80
 	content := `[nrflo] Delegation abc123 finished — collect the results with get_delegation (delegation_id "abc123").`
 	got := renderMessage(Message{Category: "system_turn", Content: content}, width)
-	if !strings.Contains(got, "nrflo · Delegation abc123 finished") {
+	if !strings.Contains(ansi.Strip(got), "nrflo · Delegation abc123 finished") {
 		t.Errorf("renderMessage(system_turn) = %q, want the collapsed summary", got)
 	}
 	if strings.Contains(got, "get_delegation") {

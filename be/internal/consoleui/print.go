@@ -40,9 +40,12 @@ func newMessagesToPrint(printedTotal int, page MessagePage) (toPrint []Message, 
 // m.pendingUser once the optimistic line has landed. The Printlns are
 // returned as one tea.Sequence: tea.Batch runs commands concurrently, which
 // would land chunks (and messages) in scrollback in random order.
-func (m *model) printNewMessages(page MessagePage) tea.Cmd {
+func (m *model) printNewMessages(page MessagePage, summaries ...string) tea.Cmd {
 	toPrint, newTotal := newMessagesToPrint(m.printedTotal, page)
 	m.printedTotal = newTotal
+	for _, summary := range summaries {
+		toPrint = append(toPrint, Message{Category: "turn_summary", Content: summary})
+	}
 	if len(toPrint) == 0 {
 		return nil
 	}

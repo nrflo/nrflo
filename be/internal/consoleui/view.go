@@ -18,10 +18,10 @@ var (
 	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(accent)
 	mutedStyle  = lipgloss.NewStyle().Foreground(muted)
 	// Role is conveyed by color alone — no "you"/"assistant" header rows:
-	// user input light blue, assistant near-white (distinct from the dim-gray
-	// tool/thinking rows).
+	// user input light blue, assistant near-white, tool results muted cyan.
 	userStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("117"))
 	assistantStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("254"))
+	toolTextStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("109"))
 	errorStyle     = lipgloss.NewStyle().Foreground(bad)
 	approvalBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(warn).Padding(0, 1)
 	composerBox    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(accent).Padding(0, 1)
@@ -168,7 +168,9 @@ func (m *model) footer() string {
 		if m.delegating > 0 {
 			line += " · delegating:" + strconv.Itoa(m.delegating)
 		}
-		return m.spin.View() + mutedStyle.Render(truncate(line, max(20, m.width-3)))
+		line = truncate(line, max(20, m.width-3))
+		line = highlightToolLabel(line, " working… · ", mutedStyle)
+		return m.spin.View() + line
 	}
 	if m.delegating > 0 {
 		line := " delegating… · " + strconv.Itoa(m.delegating) + " active"

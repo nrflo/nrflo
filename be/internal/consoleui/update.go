@@ -45,7 +45,9 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 				commands = append(commands, m.loadTools())
 			}
 		}
-		if needsHistory(msg.Events) {
+		if len(m.turnSummaries) > 0 {
+			commands = append(commands, m.loadTurnHistory())
+		} else if needsHistory(msg.Events) {
 			commands = append(commands, m.loadHistory())
 		}
 		if bgRelevant(msg.Events) {
@@ -76,6 +78,7 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			m.delegating = msg.count
 		}
 	case historyMsg:
+		m.deferredSummaries = append(m.deferredSummaries, msg.summaries...)
 		if msg.err != nil {
 			m.lastErr = msg.err.Error()
 		} else if !m.graph.open {
@@ -83,7 +86,8 @@ func (m *model) Update(message tea.Msg) (tea.Model, tea.Cmd) {
 			// open (tea.Println targets the inline region); closing the
 			// overlay reloads the tail and the printedTotal high-water mark
 			// prints only what was missed.
-			commands = append(commands, m.printNewMessages(msg.page))
+			commands = append(commands, m.printNewMessages(msg.page, m.deferredSummaries...))
+			m.deferredSummaries = nil
 		}
 	case syncMsg:
 		if msg.err != nil {

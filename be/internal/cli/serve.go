@@ -65,6 +65,7 @@ Example usage:
 			return err
 		}
 		defer sc.pool.Close()
+		service.TrustClaudeAnchors(sc.pool)
 
 		if dotenvErr != nil {
 			logger.Warn(context.Background(), "failed to read .env", "err", dotenvErr)

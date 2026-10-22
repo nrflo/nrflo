@@ -4,6 +4,7 @@ import (
 	"os/exec"
 	"time"
 
+	"be/internal/claudecfg"
 	"be/internal/model"
 )
 
@@ -98,9 +99,10 @@ func (a *ClaudeAdapter) BuildInteractiveCommand(opts InteractiveSpawnOptions) *e
 
 // PrepareInteractive returns zero extras and a noop cleanup — Claude needs no
 // per-session profile dir or out-of-band hook events; --settings JSON is set
-// directly on InteractiveSpawnOptions by the backend.
-func (a *ClaudeAdapter) PrepareInteractive(_ InteractivePrepOptions) (InteractiveExtras, func(), error) {
-	return InteractiveExtras{}, func() {}, nil
+// directly on InteractiveSpawnOptions by the backend. It only pre-accepts the
+// folder-trust dialog for the work dir.
+func (a *ClaudeAdapter) PrepareInteractive(opts InteractivePrepOptions) (InteractiveExtras, func(), error) {
+	return InteractiveExtras{}, func() {}, claudecfg.TrustFolder(opts.Env, opts.WorkDir)
 }
 
 // DeliversPromptInline returns false — Claude's prompt body is written to PTY

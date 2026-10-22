@@ -75,6 +75,7 @@ func (b *cliInteractiveBackend) Start(ctx context.Context, proc *processInfo, pr
 		WorkflowInstanceID: proc.workflowInstanceID,
 		ProjectID:          proc.projectID,
 		WorkDir:            workDir,
+		Env:                env,
 	})
 	if err != nil {
 		b.s.warnAgent(proc, "interactive prep failed: "+err.Error())

@@ -13,7 +13,7 @@ from lib import console as con
 from lib.credentials import probe_oauth_token
 from lib.runtime import Ctx, Result, make_project
 
-API_MODEL = "haiku-4-5"
+API_MODEL = "haiku-5-5"
 
 
 def run(ctx: Ctx) -> Result:

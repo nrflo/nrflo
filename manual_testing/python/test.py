@@ -34,7 +34,7 @@ def main() -> int:
     return run_all(
         scenarios=ALL_SCENARIOS,
         provider="python",
-        model="haiku-4-5",
+        model="haiku-5-5",
         binary="python3",
         mode="script",
         parallel=args.parallel,

@@ -7,6 +7,7 @@ import (
 
 	"be/internal/model"
 	"be/internal/repo"
+	"be/internal/service"
 	"be/internal/spawner"
 )
 
@@ -97,6 +98,9 @@ func (s *Server) handleCreateProject(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if project.RootPath.Valid {
+		service.TrustClaudeFolder(project.RootPath.String)
+	}
 
 	// Persist safety hook config if provided (stored in config table, not projects table)
 	if req.ClaudeSafetyHook != nil && *req.ClaudeSafetyHook != "" {
@@ -185,6 +189,9 @@ func (s *Server) handleUpdateProject(w http.ResponseWriter, r *http.Request) {
 	if err := projectRepo.Update(id, fields); err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
+	}
+	if req.RootPath != nil && *req.RootPath != "" {
+		service.TrustClaudeFolder(*req.RootPath)
 	}
 
 	// Handle safety hook config (stored in config table, not projects table)

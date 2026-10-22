@@ -30,7 +30,7 @@ def run(ctx: Ctx) -> Result:
         id=model_id,
         provider="anthropic",
         display_name=f"Custom Haiku ({model_id})",
-        cli_model="claude-haiku-4-5",
+        cli_model="claude-haiku-5-5",
         cli_efforts=["low", "medium", "high"],
         cli_context=200000,
     )
@@ -56,4 +56,4 @@ def run(ctx: Ctx) -> Result:
                 f"agent_sessions.model_id = {sess_model!r}, "
                 f"want suffix {model_id!r}")
     return ("S35 custom model", "PASS",
-            f"resolved {sess_model} → claude/claude-haiku-4-5, session={sess['id'][:8]}")
+            f"resolved {sess_model} → claude/claude-haiku-5-5, session={sess['id'][:8]}")

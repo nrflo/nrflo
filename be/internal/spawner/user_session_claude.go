@@ -2,11 +2,13 @@ package spawner
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"be/internal/claudecfg"
 	"be/internal/pty"
 )
 
@@ -42,6 +44,9 @@ func (a *ClaudeAdapter) PrepareUserSession(opts UserSessionOptions) (pty.Launch,
 		args = append(args, "--permission-mode", "plan", "--disallowed-tools", "ExitPlanMode")
 	} else {
 		args = append(args, "--dangerously-skip-permissions")
+	}
+	if err := claudecfg.TrustFolder(nil, opts.WorkDir); err != nil {
+		return pty.Launch{}, nil, fmt.Errorf("trust claude work dir: %w", err)
 	}
 	return pty.Launch{Command: "claude", Args: args, Dir: opts.WorkDir}, func() {}, nil
 }

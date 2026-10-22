@@ -26,7 +26,7 @@ manual_testing/
 - `lib/versions.py` — probes `<binary> --version` for the capability matrix
 - `lib/console.py` — helpers for the console-chat REST surface (create/list/detail/messages/close, yolo toggle)
 - `<folder>/__init__.py` — explicit `ALL_SCENARIOS` list for that folder
-- `<folder>/test.py` — entry point (`--parallel`, `--only`, `--timeout`, `--results`; `python/test.py` has no `--model` flag, its model is fixed to `haiku-4-5`)
+- `<folder>/test.py` — entry point (`--parallel`, `--only`, `--timeout`, `--results`; `python/test.py` has no `--model` flag, its model is fixed to `haiku-5-5`)
 
 ## Concepts
 

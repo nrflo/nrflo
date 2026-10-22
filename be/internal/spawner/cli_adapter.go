@@ -144,6 +144,7 @@ type InteractivePrepOptions struct {
 	WorkflowInstanceID string
 	ProjectID          string
 	WorkDir            string
+	Env                []string
 }
 
 // InteractiveSpawnOptions contains parameters for building an interactive PTY command.

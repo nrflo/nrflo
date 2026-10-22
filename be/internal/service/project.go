@@ -78,6 +78,9 @@ func (s *ProjectService) Create(projectID string, req *types.ProjectCreateReques
 
 	s.seedSpecImportWorkflow(projectID, now)
 	s.seedTieredWorkflows(projectID, now)
+	if project.RootPath.Valid {
+		TrustClaudeFolder(project.RootPath.String)
+	}
 
 	return project, nil
 }

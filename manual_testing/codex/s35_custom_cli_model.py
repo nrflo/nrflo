@@ -29,7 +29,7 @@ def run(ctx: Ctx) -> Result:
         id=model_id,
         provider="openai",
         display_name=f"Custom Codex Mini ({model_id})",
-        cli_model="gpt-5.4-mini",
+        cli_model="gpt-6-luna",
         cli_efforts=["low", "medium", "high", "xhigh"],
         cli_context=200000,
         default_effort="low",
@@ -56,4 +56,4 @@ def run(ctx: Ctx) -> Result:
                 f"agent_sessions.model_id = {sess_model!r}, "
                 f"want suffix {model_id!r}")
     return ("S35 custom model", "PASS",
-            f"resolved {sess_model} → codex/gpt-5.4-mini, session={sess['id'][:8]}")
+            f"resolved {sess_model} → codex/gpt-6-luna, session={sess['id'][:8]}")

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"be/internal/claudecfg"
 	"be/internal/model"
 	ptyPkg "be/internal/pty"
 )
@@ -181,6 +182,11 @@ func (e *claudeEngine) Start(ctx context.Context, spec EngineSpec) error {
 		args = append(args, "--system-prompt-file", sysPromptPath)
 	}
 	args = append(args, "--settings", BuildConsoleSettingsJSON(e.nrfloPath), "--mcp-config", mcpPath)
+
+	if err := claudecfg.TrustFolder(spec.Env, spec.WorkDir); err != nil {
+		_ = os.RemoveAll(tempDir)
+		return fmt.Errorf("claude console engine: trust work dir: %w", err)
+	}
 
 	e.pty.RegisterLaunch(spec.SessionID, ptyPkg.Launch{
 		Command: "claude",

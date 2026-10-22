@@ -45,7 +45,7 @@ func TestDispatcher_OnEvent_ProjectLookup_EnrichesPayload(t *testing.T) {
 
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, projectLookup, nil, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, completedData()))
 
 	chModel := insertNotifyChannel(t, channelRepo, projectID, workflowID, "dummy", false, nil)
 	all, _ := deliveryRepo.ListByChannel(chModel.ID, 10)
@@ -92,7 +92,7 @@ func TestDispatcher_OnEvent_TicketLookup_EnrichesPayload(t *testing.T) {
 	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 
 	// Fire event with ticket_id set
-	evt := ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-99", workflowID, nil)
+	evt := ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-99", workflowID, completedData())
 	d.OnEvent(evt)
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
@@ -128,7 +128,7 @@ func TestDispatcher_OnEvent_TicketLookup_NotCalledWithoutTicketID(t *testing.T) 
 
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, nil, ticketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, completedData()))
 
 	if lookupCalled {
 		t.Error("ticket lookup was called despite no ticket_id in event")
@@ -163,7 +163,7 @@ func TestDispatcher_OnEvent_LookupError_DispatchContinues(t *testing.T) {
 
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, errProjectLookup, errTicketLookup, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-1", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "T-1", workflowID, completedData()))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results) != 1 {

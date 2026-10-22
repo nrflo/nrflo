@@ -104,7 +104,7 @@ func TestDispatcher_OnEvent_WatchedEvent_InsertsDelivery(t *testing.T) {
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "slack-ch", true, []string{ws.EventOrchestrationCompleted})
 
 	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, map[string]interface{}{
-		"workflow": workflowID,
+		"workflow": workflowID, "workflow_final_result": "done",
 	}))
 
 	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
@@ -148,7 +148,7 @@ func TestDispatcher_OnEvent_ScriptKind_InsertsDelivery(t *testing.T) {
 		t.Fatalf("insert script channel: %v", err)
 	}
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, completedData()))
 
 	results, err := deliveryRepo.ListByChannel(ch.ID, 10)
 	if err != nil {
@@ -174,7 +174,7 @@ func TestDispatcher_OnEvent_WakeCh_NonBlockingWhenFull(t *testing.T) {
 	insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch3", true, []string{ws.EventOrchestrationCompleted})
 	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, completedData()))
 }
 
 func TestDispatcher_OnEvent_EmptyProjectID_Ignored(t *testing.T) {
@@ -185,7 +185,7 @@ func TestDispatcher_OnEvent_EmptyProjectID_Ignored(t *testing.T) {
 	wakeCh := make(chan struct{}, 1)
 	d := NewDispatcher(channelRepo, deliveryRepo, nil, nil, wakeCh, repo.NewNotificationInboxRepo(database, clk), nil)
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "", "", "", nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "", "", "", completedData()))
 }
 
 func TestDispatcher_OnEvent_EmptyWorkflowID_Ignored(t *testing.T) {
@@ -198,7 +198,7 @@ func TestDispatcher_OnEvent_EmptyWorkflowID_Ignored(t *testing.T) {
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "ch-wfempty", true, []string{ws.EventOrchestrationCompleted})
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "", nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", "", completedData()))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results) != 0 {
@@ -216,7 +216,7 @@ func TestDispatcher_OnEvent_DisabledChannel_SkipsDelivery(t *testing.T) {
 
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "disabled", false, []string{ws.EventOrchestrationCompleted})
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, projectID, "", workflowID, completedData()))
 
 	results, _ := deliveryRepo.ListByChannel(ch.ID, 10)
 	if len(results) != 0 {
@@ -241,7 +241,7 @@ func TestDispatcher_WatchedEvents_AllFiveTypes(t *testing.T) {
 	ch := insertNotifyChannel(t, channelRepo, projectID, workflowID, "all-events", true, eventTypes)
 
 	for _, et := range eventTypes {
-		d.OnEvent(ws.NewEvent(et, projectID, "", workflowID, nil))
+		d.OnEvent(ws.NewEvent(et, projectID, "", workflowID, completedData()))
 	}
 	d.OnEvent(ws.NewEvent(ws.EventAgentCompleted, projectID, "", workflowID, map[string]interface{}{"result": "fail"}))
 
@@ -323,7 +323,7 @@ func TestDispatcher_OnEvent_WorkflowIsolation(t *testing.T) {
 	chA := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-a", "ch-a", true, []string{ws.EventOrchestrationCompleted})
 	chB := insertNotifyChannel(t, channelRepo, "proj-iso", "wf-iso-b", "ch-b", true, []string{ws.EventOrchestrationCompleted})
 
-	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "proj-iso", "", "wf-iso-a", nil))
+	d.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, "proj-iso", "", "wf-iso-a", completedData()))
 
 	resultsA, err := deliveryRepo.ListByChannel(chA.ID, 10)
 	if err != nil {

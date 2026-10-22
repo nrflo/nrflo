@@ -51,6 +51,7 @@ func TestDispatcherInboxGeneralAndNonWorkflowEvents(t *testing.T) {
 	dispatcher.OnEvent(ws.NewEvent(ws.EventOrchestrationFailed, "", "", "", map[string]any{"reason": "general"}))
 	dispatcher.OnEvent(ws.NewEvent(ws.EventAgentStallRestart, project, "", "", nil))
 	dispatcher.OnEvent(ws.NewEvent(ws.EventAgentCompleted, project, "", "", map[string]any{"result": "pass"}))
+	dispatcher.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, project, "", "wf", map[string]any{"instance_id": "i-1"}))
 	result, err := inbox.List(nil, 50, 0)
 	if err != nil || result.Total != 2 {
 		t.Fatalf("combined inbox: %+v, %v", result, err)
@@ -59,4 +60,26 @@ func TestDispatcherInboxGeneralAndNonWorkflowEvents(t *testing.T) {
 	if err != nil || result.Total != 1 {
 		t.Fatalf("project inbox: %+v, %v", result, err)
 	}
+}
+
+func TestDispatcherSkipsCompletedRunWithoutResult(t *testing.T) {
+	database, project, workflow := setupNotifyDB(t)
+	clk := clock.Real()
+	channels := repo.NewNotificationChannelRepo(database, clk)
+	deliveries := repo.NewNotificationDeliveryRepo(database, clk)
+	inbox := repo.NewNotificationInboxRepo(database, clk)
+	insertNotifyChannel(t, channels, project, workflow, "ch", true, []string{ws.EventOrchestrationCompleted})
+	dispatcher := NewDispatcher(channels, deliveries, nil, nil, make(chan struct{}, 1), inbox, nil)
+	dispatcher.OnEvent(ws.NewEvent(ws.EventOrchestrationCompleted, project, "", workflow, map[string]any{"instance_id": "i-1"}))
+	if result, err := inbox.List(&project, 50, 0); err != nil || result.Total != 0 {
+		t.Fatalf("inbox: %+v, %v", result, err)
+	}
+	if pending, err := deliveries.ListPending(clk.Now(), 50); err != nil || len(pending) != 0 {
+		t.Fatalf("deliveries: %+v, %v", pending, err)
+	}
+}
+
+// completedData is a non-empty run result; completed runs without one are not notified.
+func completedData() map[string]interface{} {
+	return map[string]interface{}{"workflow_final_result": "done"}
 }

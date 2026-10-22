@@ -89,6 +89,12 @@ func (d *Dispatcher) OnEvent(event *ws.Event) {
 			return
 		}
 	}
+	// A completed run with no workflow_final_result has nothing to report.
+	if event.Type == ws.EventOrchestrationCompleted {
+		if result, _ := event.Data["workflow_final_result"].(string); result == "" {
+			return
+		}
+	}
 
 	projectID := event.ProjectID
 	workflowID := event.Workflow

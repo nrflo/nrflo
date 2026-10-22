@@ -15,6 +15,8 @@ the value.
 - **Last-writer-wins:** the value from the session with the latest `ended_at` is used
 - Completion summaries are saved in the in-app notification inbox by default
   and rendered as Markdown. Configured external channels also receive them.
+  A run that completes without a `workflow_final_result` sends no completion
+  notification, so leave it unset when there is nothing to report.
 
 ---
 

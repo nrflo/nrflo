@@ -202,6 +202,7 @@ test-race: embed-assets
 # Pinned tooling is bootstrapped into be/bin (gitignored). golangci-lint's large
 # dependency tree is deliberately kept out of be/go.mod.
 GOLANGCI_VERSION ?= v2.12.2
+DEADCODE_VERSION ?= v0.49.0
 BE_BIN     := $(BE_DIR)/bin
 GOLANGCI   := $(BE_BIN)/golangci-lint
 DEADCODE   := $(BE_BIN)/deadcode
@@ -218,7 +219,7 @@ $(GOLANGCI):
 
 $(DEADCODE):
 	@mkdir -p $(BE_BIN)
-	@cd $(BE_DIR) && GOBIN=$(CURDIR)/$(BE_BIN) $(GO) install golang.org/x/tools/cmd/deadcode@latest
+	@cd $(BE_DIR) && GOBIN=$(CURDIR)/$(BE_BIN) $(GO) install golang.org/x/tools/cmd/deadcode@$(DEADCODE_VERSION)
 
 ## lint: Run golangci-lint over the backend (cleanup gate; enforces gofmt)
 lint: embed-assets $(GOLANGCI)

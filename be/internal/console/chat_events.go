@@ -99,6 +99,8 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 				continue
 			}
 			sess.addPendingApproval(ev.Approval)
+			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.Approval.ID, "command": ev.Approval.Command})
+			appendChatAudit(auditRepo, sess.id, "console_chat.approval_request", meta)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatApprovalRequest, map[string]interface{}{
 				"approval_id": ev.Approval.ID,
 				"kind":        ev.Approval.Kind,
@@ -108,12 +110,12 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 				"reason":      ev.Approval.Reason,
 				"input":       string(ev.Approval.Raw),
 			})
-			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.Approval.ID, "command": ev.Approval.Command})
-			appendChatAudit(auditRepo, sess.id, "console_chat.approval_request", meta)
 
 		case spawner.EventApprovalResolved:
 			sess.resolvePendingApproval(ev.ApprovalID)
 			decision := clientDecision(ev.Decision)
+			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.ApprovalID, "decision": decision})
+			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatApprovalResolved, map[string]interface{}{
 				"approval_id": ev.ApprovalID,
 				"decision":    decision,
@@ -122,8 +124,6 @@ func pumpChatEvents(pool *db.Pool, clk clock.Clock, wsHub *ws.Hub, sess *chatSes
 			if ev.Decision == spawner.ApprovalApproveForSession {
 				pushSessionApprovals(wsHub, sess)
 			}
-			meta, _ := json.Marshal(map[string]interface{}{"approval_id": ev.ApprovalID, "decision": decision})
-			appendChatAudit(auditRepo, sess.id, "console_chat.approval_resolved", meta)
 
 		case spawner.EventToolInvoke:
 			pushSessionEvent(wsHub, sess.id, sess.projectID, ws.EventConsoleChatToolStarted, map[string]interface{}{

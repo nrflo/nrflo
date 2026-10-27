@@ -65,11 +65,12 @@ func (h workflowWaitHandler) Invoke(ctx context.Context, env apirun.ToolEnv, inp
 		timeout = waitMaxTimeoutSec
 	}
 
-	// Subscribe before the first digest read so a broadcast landing between
-	// read and select is never missed (the wake channel buffers one hint).
+	// Arm the deadline before subscribing so an observed waiter always has its
+	// timer registered. Subscribe before the first digest read so a broadcast
+	// landing between read and select is never missed (wake buffers one hint).
+	deadline := h.d.Clock.After(time.Duration(timeout) * time.Second)
 	wake, cancel := h.d.WaitBroker.Subscribe(env.ProjectID)
 	defer cancel()
-	deadline := h.d.Clock.After(time.Duration(timeout) * time.Second)
 
 	for {
 		wi, err := loadGuardedInstance(h.d, env.ProjectID, args.InstanceID)

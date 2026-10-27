@@ -25,6 +25,10 @@ func TestMain(m *testing.M) {
 	}
 	pool.Close()
 
+	// Hermetic CLI probe: every CLI counts as installed unless a test
+	// overrides it via stubLookPath, so results don't depend on the host PATH.
+	lookPath = func(name string) (string, error) { return "/usr/bin/" + name, nil }
+
 	code := m.Run()
 	os.RemoveAll(tmpDir)
 	os.Exit(code)

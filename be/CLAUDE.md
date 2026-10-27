@@ -31,6 +31,7 @@ Top-level packages under `be/internal/`:
 - `types/` — Shared request/response types
 - `clock/` — Time abstraction (`clock.Clock` interface + `Real()` + test clock)
 - `integration/` — Integration tests and test harness
+- `testutil/` — Test-only helpers; `StubAgentCLIsOnPath` makes `service.CLIAvailable` host-independent (call from `TestMain` in packages that hit plan-template validation)
 - `logger/` — Structured logging (DEBUG/INFO/WARN/ERROR) with trx propagation and size-based rotation; console/delegate/refinery paths log under a session-derived trx (`TrxForSession`, first 8 chars of the session id)
 - `venv/` — Per-project Python venv manager
 - `id/` — ID generation

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"be/internal/db"
+	"be/internal/testutil"
 )
 
 // templateDBPath is a pre-migrated SQLite file shared across all tests.
@@ -35,6 +36,10 @@ func TestMain(m *testing.M) {
 	// call loginAdminClient don't spend 200ms+ per Argon2id verification.
 	if err := patchFastAdminHash(templateDBPath); err != nil {
 		panic("failed to patch admin hash: " + err.Error())
+	}
+
+	if err := testutil.StubAgentCLIsOnPath(tmpDir); err != nil {
+		panic("failed to stub agent CLIs: " + err.Error())
 	}
 
 	code := m.Run()

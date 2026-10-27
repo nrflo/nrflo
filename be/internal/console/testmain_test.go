@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"be/internal/db"
+	"be/internal/testutil"
 )
 
 // consoleTemplateDBPath is a pre-migrated SQLite file shared across all
@@ -25,6 +26,10 @@ func TestMain(m *testing.M) {
 		panic("failed to create template DB: " + err.Error())
 	}
 	pool.Close()
+
+	if err := testutil.StubAgentCLIsOnPath(tmpDir); err != nil {
+		panic("failed to stub agent CLIs: " + err.Error())
+	}
 
 	code := m.Run()
 	os.RemoveAll(tmpDir)

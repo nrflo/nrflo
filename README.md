@@ -8,17 +8,12 @@
   <a href="https://github.com/nrflo/nrflo/pkgs/container/nrflo-server"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fnrflo%2Fnrflo--server-blue" alt="Docker image"></a>
 </p>
 
-<p align="center">
-  <a href="https://nrflo.com/#media"><img src="docs/screenshots/workflow-overview.png" alt="NRFLO workflow graph and live message stream" width="900"></a>
-</p>
+https://github.com/user-attachments/assets/fe6f1b00-38d4-4bb7-ab10-871a83b270d5
 
 <p align="center">
-  <a href="https://nrflo.com/#media"><strong>▶ Watch the demo</strong></a> ·
   <a href="https://nrflo.com/"><strong>nrflo.com</strong></a> ·
   <a href="doc/"><strong>Docs</strong></a>
 </p>
-
-https://github.com/user-attachments/assets/fe6f1b00-38d4-4bb7-ab10-871a83b270d5
 
 ## Quick Start
 

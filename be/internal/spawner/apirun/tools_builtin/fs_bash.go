@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"be/internal/spawner/apirun"
@@ -116,11 +117,15 @@ func (bashHandler) Invoke(ctx context.Context, env apirun.ToolEnv, input json.Ra
 }
 
 // buildBashCmd builds the jailed `sh -c command` invocation shared by the
-// foreground run and startBackground.
+// foreground run and startBackground. The shell leads its own process group
+// and cancel kills the whole group: dash forks children rather than exec'ing,
+// and an orphan holding the output pipe would block Wait until it exits.
 func buildBashCmd(ctx context.Context, env apirun.ToolEnv, command string) *exec.Cmd {
 	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 	cmd.Dir = env.WorkDir
 	cmd.Env = bashEnv()
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	return cmd
 }
 

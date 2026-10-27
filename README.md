@@ -16,6 +16,7 @@
   <a href="https://nrflo.com/#media"><strong>▶ Watch the demo</strong></a> ·
   <a href="https://nrflo.com/"><strong>nrflo.com</strong></a> ·
   <a href="doc/"><strong>Docs</strong></a>
+  https://github.com/user-attachments/assets/fe6f1b00-38d4-4bb7-ab10-871a83b270d5
 </p>
 
 ## Quick Start

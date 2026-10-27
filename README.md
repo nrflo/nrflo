@@ -1,16 +1,49 @@
 # NRFLO
 
-Self-hosted orchestrator for coding-agent workflows.
-
-NRFLO orchestrates coding agents across layered workflows, isolated git worktrees, and structured findings handoffs, with real-time monitoring and browser takeover when automation needs human control.
+**Self-hosted orchestrator for Claude Code and Codex agents.** Run multi-agent coding workflows in parallel, in isolated git worktrees, on the CLI subscriptions you already pay for (Claude Pro / Max, ChatGPT) — and take over any live agent from the browser.
 
 <p align="center">
-  <img src="docs/screenshots/workflow-overview.png" alt="NRFLO workflow graph and live message stream" width="900">
+  <a href="https://github.com/nrflo/nrflo/releases/latest"><img src="https://img.shields.io/github/v/release/nrflo/nrflo" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/nrflo/nrflo" alt="License"></a>
+  <a href="https://github.com/nrflo/nrflo/pkgs/container/nrflo-server"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fnrflo%2Fnrflo--server-blue" alt="Docker image"></a>
 </p>
 
 <p align="center">
-  <a href="https://nrflo.com/"><strong>nrflo.com</strong></a>
+  <a href="https://nrflo.com/#media"><img src="docs/screenshots/workflow-overview.png" alt="NRFLO workflow graph and live message stream" width="900"></a>
 </p>
+
+<p align="center">
+  <a href="https://nrflo.com/#media"><strong>▶ Watch the demo</strong></a> ·
+  <a href="https://nrflo.com/"><strong>nrflo.com</strong></a> ·
+  <a href="doc/"><strong>Docs</strong></a>
+</p>
+
+## Quick Start
+
+**macOS (Homebrew):**
+
+```bash
+brew tap nrflo/tap && brew install nrflo
+nrflo_server
+```
+
+**Docker (any OS):**
+
+```bash
+docker run -d -p 6587:6587 -v nrflo-data:/data ghcr.io/nrflo/nrflo-server --insecure-cookies
+```
+
+**Linux (latest release, amd64/arm64):**
+
+```bash
+VERSION=$(curl -fsSLI -o /dev/null -w '%{url_effective}' https://github.com/nrflo/nrflo/releases/latest | sed 's#.*/v##')
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+curl -fsSL "https://github.com/nrflo/nrflo/releases/download/v${VERSION}/nrflo_${VERSION}_linux_${ARCH}.tar.gz" \
+  | sudo tar -xz -C /usr/local/bin nrflo_server
+nrflo_server --insecure-cookies
+```
+
+Open http://localhost:6587 and sign in as **`admin` / `admin`** — change the password immediately (**Settings → Administration → Users**). More install options and details: [Installation](#installation).
 
 ## Why NRFLO
 
@@ -19,62 +52,6 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 - **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
 - **Mixed-agent compatible** — run workflows across Claude Code and Codex without changing the workflow model
 - **Uses your existing CLI subscriptions. No API billing required.** NRFLO drives Claude Code and Codex as PTY-attached interactive sessions you can take over live in the browser, reusing each tool's local login (Claude Pro / Max, ChatGPT). For Anthropic users, an optional in-process **API mode** is available as an admin-toggled runtime setting, with OAuth bearer support to bill against a Claude subscription rather than API keys.
-
-## Core capabilities
-
-### Orchestration
-- Vendor-agnostic orchestration across Claude Code and Codex
-- Layered execution with same-layer parallelism and sequential layer progression
-- Ticket-scoped and project-scoped workflows
-- Dependency-aware sequential ticket chains
-- Endless loop mode for project-scoped workflows that re-spawn after completion
-- Per-agent low-consumption toggle that swaps to a cheaper model on the fly
-- Workflow export/import for sharing definitions between projects or installations
-- Import Spec entry point with a `spec-normalizer` agent that turns free-form specs into workflow input
-- Declarative per-agent `validation_commands` that run after a pass and gate the layer
-
-### Scheduled execution
-- Cron-driven scheduler dispatches workflows or workflow chains on a schedule
-- Per-task fan-out across multiple workflows with run-row tracking
-- Ad-hoc "run now" trigger from the UI; full run history retained per task
-
-### Handoffs and validation
-- Structured findings handoffs between agents
-- Verifier callbacks that re-run earlier layers with explicit instructions
-- Prompt templates, findings expansion, and model controls
-
-### Human control and recovery
-- Browser takeover of live runs (kill-and-resume, or live viewer-attach)
-- Interactive start, plan mode, and resume flows
-- PTY-backed sessions for Claude and Codex with live keystroke capture
-- Idle/nudge loop that prompts unresponsive interactive agents before failing them
-- Low-context continuation, stall restart, manual restart, and retry from the failed layer
-
-### Git and delivery
-- Isolated git worktrees for ticket execution
-- Automatic merge handling
-- Conflict-resolver agent on failed merge
-- Optional push after merge
-
-### Artifacts and external access
-- Per-project artifact storage with local, Cloudflare R2, and S3 backends
-- Artifact uploader in the Run Workflow form; per-agent and all-artifacts UI tabs
-- Service tokens — long-lived project-scoped bearer tokens for external REST callers
-- External MCP bridge (`nrflo_server agent mcp-external`) — any MCP client drives the server's tool catalogue with a service token
-
-### Rate limits
-- CLI-side and API-mode rate-limit detection with automatic backoff and relaunch
-- UI rate-limit badge with WS-driven countdown
-
-### Notifications
-- Per-project Slack and Telegram channels for workflow events
-- Custom Python-script notification channels for routing events to anything else
-
-### Observability
-- Real-time workflow graph
-- Logs, findings, and final results
-- Dedicated errors page recording agent failures, workflow failures, and merge-conflict events
-- Paginated agent session log page (`/logs`) for finished sessions with workflow and schedule context
 
 ## How It Works
 
@@ -85,55 +62,103 @@ NRFLO orchestrates coding agents across layered workflows, isolated git worktree
 5. If automation gets stuck or needs direction, you can switch to interactive control in the browser.
 6. On success, NRFLO merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
 
-## Tech Stack
+## Core capabilities
 
-| Layer | Technologies |
-|-------|-------------|
-| **Backend** | Go 1.25, Cobra CLI, SQLite (modernc.org/sqlite), gorilla/websocket, golang-migrate, creack/pty |
-| **Frontend** | React 19, TypeScript 5.9, TanStack Query, Zustand, Tailwind CSS v4, xterm.js, React Flow, CodeMirror 6, Zod |
-| **Database** | SQLite (`~/.nrflo/nrflo.data`), auto-migrating schema |
+<details>
+<summary>Full feature list</summary>
 
-## Quick Start
 
-The fastest way to try NRFLO on macOS is via Homebrew.
+**Orchestration**
 
-### Install via Homebrew (macOS)
+- Vendor-agnostic orchestration across Claude Code and Codex
+- Layered execution with same-layer parallelism and sequential layer progression
+- Ticket-scoped and project-scoped workflows
+- Dependency-aware sequential ticket chains
+- Endless loop mode for project-scoped workflows that re-spawn after completion
+- Per-agent low-consumption toggle that swaps to a cheaper model on the fly
+- Workflow export/import for sharing definitions between projects or installations
+- Import Spec entry point with a `spec-normalizer` agent that turns free-form specs into workflow input
+- Declarative per-agent `validation_commands` that run after a pass and gate the layer
+
+**Scheduled execution**
+
+- Cron-driven scheduler dispatches workflows or workflow chains on a schedule
+- Per-task fan-out across multiple workflows with run-row tracking
+- Ad-hoc "run now" trigger from the UI; full run history retained per task
+
+**Handoffs and validation**
+
+- Structured findings handoffs between agents
+- Verifier callbacks that re-run earlier layers with explicit instructions
+- Prompt templates, findings expansion, and model controls
+
+**Human control and recovery**
+
+- Browser takeover of live runs (kill-and-resume, or live viewer-attach)
+- Interactive start, plan mode, and resume flows
+- PTY-backed sessions for Claude and Codex with live keystroke capture
+- Idle/nudge loop that prompts unresponsive interactive agents before failing them
+- Low-context continuation, stall restart, manual restart, and retry from the failed layer
+
+**Git and delivery**
+
+- Isolated git worktrees for ticket execution
+- Automatic merge handling
+- Conflict-resolver agent on failed merge
+- Optional push after merge
+
+**Artifacts and external access**
+
+- Per-project artifact storage with local, Cloudflare R2, and S3 backends
+- Artifact uploader in the Run Workflow form; per-agent and all-artifacts UI tabs
+- Service tokens — long-lived project-scoped bearer tokens for external REST callers
+- External MCP bridge (`nrflo_server agent mcp-external`) — any MCP client drives the server's tool catalogue with a service token
+
+**Rate limits**
+
+- CLI-side and API-mode rate-limit detection with automatic backoff and relaunch
+- UI rate-limit badge with WS-driven countdown
+
+**Notifications**
+
+- Per-project Slack and Telegram channels for workflow events
+- Custom Python-script notification channels for routing events to anything else
+
+**Observability**
+
+- Real-time workflow graph
+- Logs, findings, and final results
+- Dedicated errors page recording agent failures, workflow failures, and merge-conflict events
+- Paginated agent session log page (`/logs`) for finished sessions with workflow and schedule context
+
+</details>
+
+## Installation
+
+### Homebrew (macOS)
 
 ```bash
 brew tap nrflo/tap
 brew install nrflo
 ```
 
-To upgrade:
-
-Review [Breaking Changes and Migration Guides](BREAKING_CHANGES.md) before
-upgrading across releases that change external contracts.
+To upgrade, review [Breaking Changes and Migration Guides](BREAKING_CHANGES.md) first, then:
 
 ```bash
 brew update && brew upgrade nrflo
 ```
 
-### Install on Linux
-
-Download the tarball for your architecture from the [releases page](https://github.com/nrflo/nrflo/releases) and extract both binaries to `/usr/local/bin`:
-
-**amd64:**
+### Docker
 
 ```bash
-curl -L https://github.com/nrflo/nrflo/releases/download/<VERSION>/nrflo_<VERSION>_linux_amd64.tar.gz \
-  | sudo tar -xz -C /usr/local/bin nrflo nrflo_server
+docker run -d -p 6587:6587 -v nrflo-data:/data ghcr.io/nrflo/nrflo-server
 ```
 
-**arm64:**
+The image (`linux/amd64`, `linux/arm64`) bundles the Claude Code and Codex CLIs, runs non-root, and keeps all state in the `/data` volume. Append `--insecure-cookies` when serving over plain HTTP. CLI agents authenticate from env (`ANTHROPIC_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` for Claude, `OPENAI_API_KEY` / `CODEX_API_KEY` for Codex); API mode ships off and is enabled from Settings.
 
-```bash
-curl -L https://github.com/nrflo/nrflo/releases/download/<VERSION>/nrflo_<VERSION>_linux_arm64.tar.gz \
-  | sudo tar -xz -C /usr/local/bin nrflo nrflo_server
-```
+### Linux tarball
 
-Replace `<VERSION>` with the desired release tag (e.g. `v1.2.3`).
-
-On Linux there is no system tray; the server runs headless and is reached at http://localhost:6587.
+Releases ship `nrflo_<version>_linux_{amd64,arm64}.tar.gz` (version without the `v` prefix) on the [releases page](https://github.com/nrflo/nrflo/releases); the Quick Start snippet resolves the latest one. There is no system tray on Linux; the server runs headless at http://localhost:6587.
 
 When serving over plain HTTP (e.g. localhost or a LAN), start the server with `--insecure-cookies` so the session cookie is not marked `Secure` and login works in the browser:
 
@@ -147,22 +172,18 @@ Drop `--insecure-cookies` once the server is fronted by HTTPS.
 
 ```bash
 make build && make install
-```
-
-### Run
-
-```bash
 nrflo_server
-# Open http://localhost:6587
 ```
 
-Sign in with the seeded admin account — **username `admin`, password `admin`** — and change the password immediately from **Settings → Administration → Users**. See [Authentication](#authentication) for details.
+Use `nrflo_server --host 0.0.0.0` to make the server accessible on the local network.
 
-To make the server accessible on the local network:
+## Tech Stack
 
-```bash
-nrflo_server --host 0.0.0.0
-```
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | Go 1.25, Cobra CLI, SQLite (modernc.org/sqlite), gorilla/websocket, golang-migrate, creack/pty |
+| **Frontend** | React 19, TypeScript 5.9, TanStack Query, Zustand, Tailwind CSS v4, xterm.js, React Flow, CodeMirror 6, Zod |
+| **Database** | SQLite (`~/.nrflo/nrflo.data`), auto-migrating schema |
 
 ## CLI Overview
 
@@ -221,7 +242,7 @@ The server runs everything in-process: the orchestrator groups phases by layer, 
 
 | Target | Description |
 |--------|-------------|
-| `make build` | Build both binaries (dev, includes UI) |
+| `make build` | Build the server binary (dev, includes UI) |
 | `make build-release` | Optimized release build |
 | `make install` | Install to `/usr/local/bin` (override with `PREFIX=...`) |
 | `make test` | Run backend tests |

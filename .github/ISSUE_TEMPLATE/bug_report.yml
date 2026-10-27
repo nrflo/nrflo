@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in nrflo does not work as expected
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: nrflo version
+      description: Output of `nrflo_server version`
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options: [Homebrew, Docker, Linux tarball, Built from source]
+    validations:
+      required: true
+  - type: input
+    id: agents
+    attributes:
+      label: Agent CLIs and versions
+      description: e.g. Claude Code 2.1.x, Codex 0.x, or API mode
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: From `$NRFLO_HOME/logs/be.log` (default `~/.nrflo/logs/be.log`)
+      render: text

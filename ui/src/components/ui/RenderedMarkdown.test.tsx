@@ -76,4 +76,20 @@ describe('RenderedMarkdown', () => {
     const { container } = render(<RenderedMarkdown content="Hello" />)
     expect(container.querySelector('.markdown-body')).toBeInTheDocument()
   })
+  it('ignores raw HTML by default', () => {
+    const { container } = render(<RenderedMarkdown content={'<details><summary>S</summary>\n\nbody\n\n</details>'} />)
+    expect(container.querySelector('details')).toBeNull()
+  })
+
+  it('renders a sanitized collapsed <details> table when allowHtml is set', () => {
+    const md = '<details><summary>Sources (2)</summary>\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n</details>\n\n<script>alert(1)</script><img src=x onerror="alert(1)">'
+    const { container } = render(<RenderedMarkdown content={md} allowHtml />)
+    const details = container.querySelector('details')
+    expect(details).not.toBeNull()
+    expect(details?.open).toBe(false)
+    expect(details?.querySelector('summary')?.textContent).toBe('Sources (2)')
+    expect(details?.querySelector('table')).not.toBeNull()
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.querySelector('img')?.getAttribute('onerror')).toBeNull()
+  })
 })

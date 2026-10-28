@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Spinner } from '@/components/ui/Spinner'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Tooltip } from '@/components/ui/Tooltip'
+import { RenderedMarkdown } from '@/components/ui/RenderedMarkdown'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { PhaseTimeline } from '@/components/workflow/PhaseTimeline'
 import { WorkflowOriginBadge } from '@/components/workflow/WorkflowOriginBadge'
@@ -116,7 +117,6 @@ export function WorkflowTabContent({
   const agentHistory = displayedState?.agent_history
   const [bannerConfirmOpen, setBannerConfirmOpen] = useState(false)
   const failedAgent = agentHistory?.find(a => a.result === 'fail')
-
   // Find a take-control-eligible agent, preferring the selected panel agent
   const takeControlTarget = pickTakeControlTarget(activeAgents, selectedPanelAgent?.agent)
 
@@ -313,7 +313,7 @@ export function WorkflowTabContent({
             {displayedState.workflow_final_result && (displayedState.status === 'completed' || displayedState.status === 'project_completed') && (
               <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm dark:border-blue-800 dark:bg-blue-950/30">
                 <FileText className="h-4 w-4 mt-0.5 shrink-0 text-blue-700 dark:text-blue-400" />
-                <span className="text-foreground" style={{ whiteSpace: 'pre-wrap' }}>{displayedState.workflow_final_result}</span>
+                <div className="min-w-0 break-words text-foreground [&_pre]:overflow-x-auto"><RenderedMarkdown content={displayedState.workflow_final_result} allowHtml /></div>
               </div>
             )}
             <FinalizeResultPanel result={displayedState.finalize_result} />

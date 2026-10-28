@@ -90,14 +90,16 @@ describe('WorkflowTabContent — workflow_final_result banner', () => {
     expect(screen.queryByText('Should not show on failure')).not.toBeInTheDocument()
   })
 
-  it('renders result text with whitespace-pre-wrap style for multi-line content', () => {
+  it('renders result as markdown with a collapsed <details> section', () => {
     const state = makeState({
       status: 'completed',
-      workflow_final_result: 'Line one\nLine two',
+      workflow_final_result: '## Digest\n\n<details><summary>Sources (1)</summary>\n\n| A |\n|---|\n| 1 |\n\n</details>',
     })
     const { container } = render(<WorkflowTabContent {...defaultProps} displayedState={state} />)
-    const el = container.querySelector('span[style*="pre-wrap"]')
-    expect(el).toBeInTheDocument()
-    expect(el).toHaveStyle({ whiteSpace: 'pre-wrap' })
+    expect(screen.getByRole('heading', { level: 2, name: 'Digest' })).toBeInTheDocument()
+    const details = container.querySelector('details')
+    expect(details).not.toBeNull()
+    expect(details?.open).toBe(false)
+    expect(details?.querySelector('table')).not.toBeNull()
   })
 })

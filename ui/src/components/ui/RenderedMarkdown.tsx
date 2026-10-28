@@ -1,17 +1,21 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeRaw from 'rehype-raw'
+import rehypeSanitize from 'rehype-sanitize'
 
 interface RenderedMarkdownProps {
   content: string
+  /** Render embedded HTML (e.g. <details>) through a sanitizer; highlight runs after so its classes survive. */
+  allowHtml?: boolean
 }
 
-export function RenderedMarkdown({ content }: RenderedMarkdownProps) {
+export function RenderedMarkdown({ content, allowHtml = false }: RenderedMarkdownProps) {
   return (
     <div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
+        rehypePlugins={allowHtml ? [rehypeRaw, rehypeSanitize, rehypeHighlight] : [rehypeHighlight]}
         components={{
           a: ({ href, children }) => (
             <a

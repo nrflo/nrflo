@@ -14,5 +14,5 @@ export function NotificationContent({ value }: { value: unknown }) {
   if (structured !== undefined) {
     return <pre className="max-w-full overflow-x-auto rounded-md bg-muted p-3 text-xs whitespace-pre-wrap break-words"><code>{JSON.stringify(structured, null, 2)}</code></pre>
   }
-  return <div className="min-w-0 break-words text-sm [&_pre]:overflow-x-auto"><RenderedMarkdown content={String(value)} /></div>
+  return <div className="min-w-0 break-words text-sm [&_pre]:overflow-x-auto"><RenderedMarkdown content={String(value)} allowHtml /></div>
 }

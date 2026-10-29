@@ -53,10 +53,12 @@ page and are user-editable.
 | Block | When Prepended | Inner Placeholders |
 |-------|---------------|--------------------|
 | **User Instructions** | User provided instructions at workflow launch | `${USER_INSTRUCTIONS}` |
-| **Low-Context Restart** | Agent saved `to_resume` data before restart | `${PREVIOUS_DATA}` |
+| **Continuation** | Relaunch has continuation data | `${PREVIOUS_DATA}` |
 | **Callback** | A later-layer agent triggered a callback | `${CALLBACK_INSTRUCTIONS}`, `${CALLBACK_FROM_AGENT}` |
 
-**Prepend order:** user-instructions → low-context → callback.
+**Prepend order:** user instructions → restart feedback or continuation → callback.
+Failure/timeout feedback and continuation data are described in
+[recovery](common-50-resilience.md).
 
 Legacy `${USER_INSTRUCTIONS}`, `${CALLBACK_INSTRUCTIONS}`, and `${PREVIOUS_DATA}`
 placeholders in agent prompts are stripped to empty string at runtime.

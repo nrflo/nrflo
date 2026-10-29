@@ -88,5 +88,16 @@ Dockerfile, and release configuration; installers were not executed on the host.
 
 No HA, exactly-once actions, hardened tenant isolation, automatic crash resumption,
 turnkey connectors, customer endorsement, or measured cost reduction is claimed.
-Website and README publication require committing/pushing the local changes;
-website pushes to its production branch deploy through existing Workers Builds.
+Website pushes to the production branch deploy through existing Workers Builds.
+
+## Repository Markdown alignment audit
+
+The tracked Markdown inventory was checked for product identity, execution-mode
+claims, onboarding paths, and relative file links. The root overview (also loaded
+through the AGENTS.md symlink), provider references, console guidance, recovery
+semantics, embedded-document publication guidance, and coding-example entry point
+now agree with the workflow-engine positioning and current implementation.
+Model IDs, contexts, and effort defaults resolve to the installed registry instead
+of duplicated documentation tables. The backlog distinguishes supported finalizers
+from its proposed failure-policy extension. Historical migration notes, generated
+capability results, licenses, and coding test fixtures retain their original roles.

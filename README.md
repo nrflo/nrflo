@@ -235,7 +235,7 @@ The bridge reads `NRFLO_MCP_TOKEN` (required), `NRFLO_SERVER_URL` (default `http
 
 `nrflo_server console [--project <id>] [--server <url>] [--token <service token>]` opens a native terminal picker populated from the server's enabled engines/models and live chats. Choose a new Claude, Codex, or API conversation, or resume one with its existing provider context; scripts can bypass the picker with `--engine ... [--model ...]`, and `--resume <session-id>` attaches directly.
 
-Local use needs no token because the trusted Unix socket returns a bearer scoped to the selected chat. Remote use requires a service token from **Settings → Administration → Service Tokens**; project and server flags fall back to `NRFLO_PROJECT`/cwd detection and `NRFLO_SERVER_URL`. Ctrl+D detaches so the server-owned conversation can be resumed, while Ctrl+X explicitly closes it; Ctrl+F searches, Ctrl+G enters copy/navigation mode, and reconnects reconcile persisted history plus in-flight output and approvals.
+Local use needs no token because the trusted Unix socket returns a bearer scoped to the selected chat. Remote use requires a service token from **Settings → Administration → Service Tokens**; project and server flags fall back to `NRFLO_PROJECT`/cwd detection and `NRFLO_SERVER_URL`. Ctrl+D detaches so the server-owned conversation can be resumed, while Ctrl+X explicitly closes it; use the terminal’s native scrollback, selection, and search; reconnects reconcile persisted history plus in-flight output and approvals.
 
 ## Workflows
 

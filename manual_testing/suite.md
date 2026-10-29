@@ -77,8 +77,8 @@ When you add or remove a scenario, edit this file in the same commit.
 
 ## API-mode scenarios (A-prefix)
 
-Run under `execution_mode='api'` (the in-process Anthropic runner in
-`be/internal/spawner/apirun/`). Authenticated via the macOS Keychain
+Run under `execution_mode='api'` using the Anthropic provider of the in-process
+runtime in `be/internal/spawner/apirun/`. Authenticated via the macOS Keychain
 OAuth bearer token resolved by `lib/credentials.py`; the whole folder
 SKIPs cleanly when no token is reachable.
 

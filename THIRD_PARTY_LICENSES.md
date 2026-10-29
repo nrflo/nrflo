@@ -52,13 +52,14 @@ For a complete list, see `ui/package.json` and run `npm list --all` or inspect
 ## External Tools (invoked as subprocess)
 
 NRFLO invokes the following CLI tools as external processes when users
-configure them. These tools are not bundled or redistributed with NRFLO:
+configure CLI execution. Native installations require separate CLI installation;
+the NRFLO Docker image bundles these executables (see [Dockerfile](Dockerfile)):
 
 - **Claude CLI** by Anthropic
-- **Codex CLI / ChatGPT CLI** by OpenAI
+- **Codex CLI** by OpenAI
 
-Users must install and authenticate these tools separately according to
-their respective terms of service.
+Users must authenticate the configured tools. Their respective license and
+service terms apply independently of NRFLO’s Apache-2.0 license.
 
 ## Trademark Notice
 

@@ -30,8 +30,9 @@ API mode is controlled by the `api_mode_enabled` global setting. Toggle it at
 agent returns an error immediately.
 
 **api-via-cli hybrid** (`api_via_cli_enabled`): when on, Anthropic api-mode
-models are routed through the Claude CLI billed on your subscription instead
-of direct HTTP calls. The hybrid deliberately retains the row's API model,
+models are routed through the locally authenticated Claude CLI instead of
+direct HTTP calls; billing and terms depend on that account. The hybrid retains
+the row's API model,
 context, and effort fields even though it launches a CLI process. The tool
 registry is identical; tools are served over the MCP bridge
 (`nrflo_server agent mcp`). OpenAI models are unaffected and continue to use
@@ -51,37 +52,11 @@ whose `api_model` is non-empty. The row's `provider` selects the backend:
 | `openai` | OpenAI Responses API (streaming) |
 | `openrouter` | OpenAI Responses API via OpenRouter (thin wrapper over the openai decoder) |
 
-**Seeded API-capable rows** (read-only):
-
-| provider | id | api_model | api_context | api_efforts |
-|----------|----|-----------|-------------|-------------|
-| anthropic | `fable-5-1` | `claude-fable-5-1` | 1M | low, medium, high, xhigh, max |
-| anthropic | `fable-5` | `claude-fable-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `sonnet-5-5` | `claude-sonnet-5-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `sonnet-5` | `claude-sonnet-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `haiku-5-5` | `claude-haiku-5-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-5-5` | `claude-opus-5-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-5-5-1m` | `claude-opus-5-5[1m]` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-5` | `claude-opus-5` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-5-1m` | `claude-opus-5[1m]` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-4-6` | `claude-opus-4-6` | 1M | low, medium, high, max |
-| anthropic | `opus-4-6-1m` | `claude-opus-4-6[1m]` | 1M | low, medium, high, max |
-| anthropic | `opus-4-7` | `claude-opus-4-7` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-4-7-1m` | `claude-opus-4-7[1m]` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-4-8` | `claude-opus-4-8` | 1M | low, medium, high, xhigh, max |
-| anthropic | `opus-4-8-1m` | `claude-opus-4-8[1m]` | 1M | low, medium, high, xhigh, max |
-| openai | `gpt-5.2` | `gpt-5.2` | 400k | low, medium, high, xhigh |
-| openai | `gpt-5.3-codex` | `gpt-5.3-codex` | 400k | low, medium, high, xhigh |
-| openai | `gpt-5.4` | `gpt-5.4` | 1.05M | low, medium, high, xhigh |
-| openai | `gpt-5.4-mini` | `gpt-5.4-mini` | 400k | low, medium, high, xhigh |
-| openai | `gpt-5.5` | `gpt-5.5` | 1.05M | low, medium, high, xhigh |
-| openai | `gpt-5.6-sol` | `gpt-5.6-sol` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-5.6-terra` | `gpt-5.6-terra` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-5.6-luna` | `gpt-5.6-luna` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-6-astra` | `gpt-6-astra` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-6-sol` | `gpt-6-sol` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-6.1-sol` | `gpt-6.1-sol` | 1.05M | low, medium, high, xhigh, max |
-| openai | `gpt-6-luna` | `gpt-6-luna` | 1.05M | low, medium, high, xhigh, max |
+Use **Settings → Models** or `GET /api/v1/models` for the installed registry's
+exact API-capable IDs, context windows, effort lists, and defaults. Select an
+enabled row with a nonempty `api_model`; CLI-only rows cannot run in API mode.
+Configured [local OpenAI-compatible providers](local-providers.md) also use
+this execution mode.
 
 `reasoning_effort` on an agent definition is an optional per-agent override
 validated against `api_efforts`; when omitted, `default_effort` from the model

@@ -15,7 +15,7 @@ manual_testing/
 ├── claude/                  # claude-specific scenarios only (s05, s35)
 ├── codex/                   # codex-specific scenarios only (s05, s35)
 ├── python/                  # execution_mode='script' scenarios (no CLI, no LLM)
-├── api/                     # execution_mode='api' scenarios (in-process Anthropic runner)
+├── api/                     # execution_mode='api' scenarios (Anthropic provider)
 ├── openai_api/              # execution_mode='api' scenarios (OpenAI Responses endpoint)
 └── console/                 # console-chat surface (kind='console_chat'), one scenario per engine
 ```
@@ -30,7 +30,7 @@ manual_testing/
 
 ## Concepts
 
-- **Provider**: `engine`, `claude`, `codex`, `python`, `api`, `openai_api`, or `console`. `console` boots under the `claude` binary and drives `kind='console_chat'` sessions over REST — its scenarios are engine-scoped (C02 gates on `codex`, C03 on an OAuth token) rather than provider-scoped. `engine` and the CLI providers run under `cli_interactive` (PTY relay) — `engine` uses the `claude` binary. `python` runs under `script` (execution_mode='script'). `api` runs the in-process Anthropic runner (`execution_mode='api'`); SKIPs when `lib/credentials.probe_oauth_token()` cannot resolve an OAuth bearer token. `openai_api` runs the in-process OpenAI runner (`execution_mode='api'`) on an OpenAI-provider row from the unified models registry; SKIPs when `lib/credentials.probe_openai_key()` finds neither `OPENAI_API_KEY` nor `CODEX_API_KEY`.
+- **Provider**: `engine`, `claude`, `codex`, `python`, `api`, `openai_api`, or `console`. `console` boots under the `claude` binary and drives `kind='console_chat'` sessions over REST — its scenarios are engine-scoped (C02 gates on `codex`, C03 on an OAuth token) rather than provider-scoped. `engine` and the CLI providers run under `cli_interactive` (Claude PTY or Codex app-server) — `engine` uses the `claude` binary. `python` runs under `script` (execution_mode='script'). `api` exercises the in-process runtime with Anthropic (`execution_mode='api'`); SKIPs when `lib/credentials.probe_oauth_token()` cannot resolve an OAuth bearer token. `openai_api` exercises the in-process runtime with OpenAI (`execution_mode='api'`) on an OpenAI-provider row from the unified models registry; SKIPs when `lib/credentials.probe_openai_key()` finds neither `OPENAI_API_KEY` nor `CODEX_API_KEY`.
 - **`Ctx`** (`lib/runtime.py:33`): carries server handle, REST client, provider, model, binary, mode, scenario label.
 - **Scenario**: `run(ctx: Ctx) -> Result` where `Result = (name, "PASS"|"FAIL"|"SKIP", details)`. One function per file. Self-contained — no shared fixtures beyond `lib/runtime.py` helpers and `lib/script_helpers.py` for python scenarios.
 

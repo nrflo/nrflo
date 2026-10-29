@@ -12,11 +12,12 @@ system automatically saves progress and relaunches with a fresh context window.
 
 ### How It Works
 
-1. System detects context usage exceeds threshold (default: 75% used, 25% remaining)
-2. Kills the running agent and resumes the session with instructions to save
-   progress to the `to_resume` finding
-3. Agent calls the `agent_continue` tool after saving (`c.agent.continue_()` in Python SDK)
-4. System launches a fresh agent with `${PREVIOUS_DATA}` populated from `to_resume`
+1. The system stops the agent and flushes pending messages.
+2. Full-prompt agents use a fresh working-set digest when available; otherwise a
+   context-saver agent summarizes recorded history into `to_resume`.
+3. Stepwise agents use the server-owned cursor as their continuation state.
+4. The replacement session receives available continuation data automatically.
+   Script steps have no context-window continuation.
 
 ### Configuration
 
@@ -24,29 +25,25 @@ system automatically saves progress and relaunches with a fresh context window.
 that triggers save (default `25`). Lower values = more aggressive (agent uses
 more context before save).
 
-### Agent Template Pattern
-
-```markdown
-## Previous Progress
-${PREVIOUS_DATA}
-
-## Your Task
-Continue implementation from where the previous session left off.
-```
+Continuation instructions are prepended by the server's configured injectables.
+Do not add `${PREVIOUS_DATA}` to an agent prompt: it is stripped there. See
+[template variables](common-10-intro.md#auto-prepended-blocks).
 
 ---
 
 ## Automatic Failure Restart
 
 When `max_fail_restarts > 0`, a failed agent is automatically restarted up to
-`max_fail_restarts` times before the failure is final. Unlike low-context
-continuation, the agent starts completely fresh — no `${PREVIOUS_DATA}`.
+`max_fail_restarts` times before the failure is final. Available continuation
+findings and fresh working-set data may be carried into the replacement session;
+this does not guarantee that every in-flight action was saved.
 
 ### How It Works
 
-1. Agent exits with non-zero code or calls `agent fail`
+1. Agent exits with non-zero code or calls `agent_fail`
 2. System checks remaining restart budget
-3. If restarts remain: relaunches fresh
+3. If restarts remain: relaunches with available continuation data and
+   applicable failure feedback
 4. If exhausted: failure propagates normally
 
 Failure restarts are tracked independently from low-context restarts, so both
@@ -66,8 +63,10 @@ The system monitors agent output and automatically restarts frozen agents.
 ### How It Works
 
 1. System monitors time since last agent output
-2. On stall: kills agent immediately (no context save) and relaunches fresh
-3. Stall restarts are capped at 15 to prevent infinite loops
+2. On stall: stops the agent without a new context-save attempt and relaunches
+   with available continuation data
+3. Stall restarts are capped at 15; three consecutive starts with no activity
+   fail as `prompt_not_accepted`
 
 ### Configuration
 
@@ -79,3 +78,7 @@ The system monitors agent output and automatically restarts frozen agents.
 
 For depth on global config keys and the broadcast/SIGTERM sequence, see
 [be/internal/spawner/CLAUDE.md](../be/internal/spawner/CLAUDE.md).
+
+Persistent state does not imply crash resumption. See
+[execution boundaries](execution-semantics.md#state-restarts-and-repeated-work)
+for server restarts and external side-effect reconciliation.

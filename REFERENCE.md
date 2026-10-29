@@ -56,7 +56,7 @@ Contents: [Doc Authoring](#doc-authoring-full-rule-1) · [Feature Index](#featur
 - **Unified model registry / per-mode models, contexts, and efforts** → [service](be/internal/service/CLAUDE.md) + [spawner](be/internal/spawner/CLAUDE.md)
 
 ### Execution backends (`execution_mode`)
-- **`api` — in-process Anthropic runner** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
+- **`api` — in-process provider tool-use runtime** → [spawner/apirun](be/internal/spawner/apirun/CLAUDE.md)
 - **`cli_interactive` backend** → [spawner](be/internal/spawner/CLAUDE.md)
 - **`script` — Python scriptBackend** → [spawner](be/internal/spawner/CLAUDE.md)
 - **Per-project venv** → [venv/](be/internal/venv/)

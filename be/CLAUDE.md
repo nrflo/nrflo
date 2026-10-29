@@ -80,7 +80,7 @@ The Unix socket uses line-delimited JSON-RPC; methods in [internal/socket/CLAUDE
 | `internal/scheduler/` | [scheduler/CLAUDE.md](internal/scheduler/CLAUDE.md) | Cron scheduler: lifecycle, dispatch flow |
 | `internal/notify/` | [REFERENCE.md § notify](REFERENCE.md#notify) | Dispatcher (ws.Listener): Slack/Telegram/Script transports, async retry queue |
 | `internal/spawner/` | [spawner/CLAUDE.md](internal/spawner/CLAUDE.md) | CLI adapters, spawn flow, template variables, execution backends (cli_interactive/api/script), `Config.ProjectEnv` |
-| `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process Anthropic runner: turn loop, tool dispatch, builtin tools, HTTP tool handler |
+| `internal/spawner/apirun/` | [spawner/apirun/CLAUDE.md](internal/spawner/apirun/CLAUDE.md) | In-process provider runtime; see the owning apirun documentation for execution and tool dispatch |
 | `internal/orchestrator/` | [orchestrator/CLAUDE.md](internal/orchestrator/CLAUDE.md) | Layer execution, layer aggregation, callback flow, chain runner |
 | `internal/api/` | [api/CLAUDE.md](internal/api/CLAUDE.md) | HTTP endpoints, CORS, WebSocket, authentication middleware |
 | `internal/auth/` | [auth/CLAUDE.md](internal/auth/CLAUDE.md) | Argon2id password hashing (PHC format), SCS session manager |

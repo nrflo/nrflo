@@ -2,7 +2,7 @@
 
 ## Overview
 
-nrflo is a multi-workflow state management system for ticket and project-level implementation with spawned AI agents: multiple workflows per ticket, project-scoped workflows (no ticket required), parallel agents (Claude, OpenAI), real-time WebSocket updates.
+NRFLO is a self-hosted workflow execution engine for AI-powered applications, combining Python scripts and AI agents in ordered or parallel layers with structured findings, validation, and human control. Applications invoke runs through REST or MCP; coding automation is one supported use case.
 
 ## New features
 Do not keep old / deprecated / backward compat / legacy code

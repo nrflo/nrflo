@@ -28,7 +28,7 @@ Configured via the agent form on the **Workflows** page.
 |-------|------|---------|-------------|
 | `id` | string | Required | Agent type identifier (e.g., `setup-analyzer`, `implementor`) |
 | `layer` | int | `0` | Phase execution layer (>=0). Same-layer agents run concurrently; layers execute in ascending order |
-| `model` | string | `sonnet-5-5` | Model to use (see [cli.md](cli.md) for model table) |
+| `model` | string | Mode-dependent | Enabled registry ID (see [model selection](cli.md#supported-models)) |
 | `timeout` | int | `20` | Max execution time in minutes |
 | `prompt` | string | Required | Prompt template with `${VAR}` and `#{FINDINGS:...}` patterns |
 | `restart_threshold` | int | `25` | Percentage of context remaining that triggers low-context save |
@@ -38,7 +38,7 @@ Configured via the agent form on the **Workflows** page.
 | `tag` | string | `""` | Group tag for skip-tag feature; must be in parent workflow's `groups` |
 | `low_consumption_model` | string | `""` | Model override when low consumption mode is enabled globally |
 
-Supported model values are in [cli.md](cli.md). The `model` field is ignored
+Find installed model IDs through the [model registry](cli.md#supported-models). The `model` field is ignored
 for `execution_mode=script` agents.
 
 ---
@@ -102,20 +102,20 @@ changes in the project directory.
 ## Callback Mechanism
 
 A later-layer agent (e.g., `qa-verifier`) can trigger re-execution of
-earlier layers. Exactly one flag must be supplied:
+earlier layers. Supply exactly one tool argument:
 
-| Flag | Effect |
+| Argument | Effect |
 |------|--------|
-| `--level N` | Re-runs all agents in layer N, then every layer between N and the calling layer, then resumes forward |
-| `--agent <id>` | Re-runs only the named agent, then re-runs every higher layer whole, then resumes forward |
-| `--chain a,b,...` | Re-runs named agents sequentially; layers must be strictly ascending and the last ≤ calling layer |
+| `{level: N}` | Re-runs all agents in layer N, then every layer between N and the calling layer, then resumes forward |
+| `{target_agent: "id"}` | Re-runs only the named agent, then re-runs every higher layer whole, then resumes forward |
+| `{chain: ["a", "b", ...]}` | Re-runs named agents sequentially; layers must be strictly ascending and the last ≤ calling layer |
 
 ### Instructions Placement
 
-`${CALLBACK_INSTRUCTIONS}` is expanded for:
-- **`--level`** — every agent in the target layer
-- **`--agent`** — the named agent only
-- **`--chain`** — the first agent in the chain only
+Callback instructions are automatically prepended for:
+- **`level`** — every agent in the target layer
+- **`target_agent`** — the named agent only
+- **`chain`** — the first agent in the chain only
 
 ### How to Trigger
 
@@ -124,11 +124,13 @@ earlier layers. Exactly one flag must be supplied:
 2. Trigger with the `agent_callback` tool, supplying exactly one of:
    - `{level: 2}` — re-run whole layer 2
    - `{target_agent: "implementor"}` — single agent
-   - `{chain: ["implementor", "test-writer"]}` — sequential named agents
+   - `{chain: ["test-writer", "implementor"]}` — sequential named agents
 
-After the callback plan completes, `${CALLBACK_INSTRUCTIONS}` is cleared.
+After the callback plan completes, callback instructions are cleared. Do not
+place `${CALLBACK_INSTRUCTIONS}` in a prompt body; the server strips that
+placeholder and delivers instructions through the callback injectable.
 
 ### Limits
 
 - Maximum **10** cumulative agent spawns across all callback plan steps per workflow run
-- `--agent` and `--chain` steps cannot themselves issue further callbacks (v1 restriction)
+- `target_agent` and `chain` steps cannot themselves issue further callbacks (v1 restriction)

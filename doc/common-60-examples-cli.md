@@ -1,8 +1,12 @@
-# Examples & Spec Import
+# Coding Examples & Spec Import
 
 ---
 
-## Common Patterns & Examples
+For a non-coding script → agent → validation walkthrough, start with the
+[mixed-workflow tutorial](mixed-workflow.md). The examples below specialize
+workflow execution for repository changes.
+
+## Coding Patterns & Examples
 
 ### Example 1: Setup Analyzer Prompt
 
@@ -59,9 +63,9 @@ A project-scoped agent (e.g. a ticket-creator) creates tickets with the
 the new ticket's `ticket_id`; pass it to `ticket_add_dependency` to wire a
 blocking dependency. Both act on the agent's own project. Tickets are also
 managed through the **web UI** and the REST API
-(`/api/v1/tickets`, `/api/v1/dependencies`); reading or mutating other ticket
-fields from an agent still uses a project-scoped python tool (Settings → Python
-Scripts, `kind=tool`) over that REST API.
+(`/api/v1/tickets`, `/api/v1/dependencies`). For fields beyond these tools,
+use a project-scoped Python tool (Settings → Python Scripts, `kind=tool`)
+over that REST API.
 
 ---
 

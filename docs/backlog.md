@@ -4,56 +4,17 @@ Candidate features. Each entry is a self-contained brief: motivation, design, su
 
 ---
 
-## 1. Post-success "finalize" step that is allowed to fail
+## 1. Finalize failure policy
 
-### Motivation
-Today, once a workflow's last layer completes, the orchestrator either:
-- closes the ticket (if `close_ticket_on_complete=true`),
-- spawns `NextWorkflowOnSuccess` (if set and `workflow_final_result` non-empty), and
-- dispatches notifications.
+Current workflows support outcome-selected command or Python finalize slots in
+the project root. They record their outcome without changing workflow status;
+see [finalize mechanics](../be/internal/orchestrator/REFERENCE.md#finalize-slots).
 
-There is no place to run "do this cleanup/push/deploy/rebase work, but if it fails don't fail the workflow."
-
-Concrete use cases:
-- Push the branch + open a draft PR (currently has to be inside the implementor agent, which makes that agent's prompt do double duty).
-- Run a deploy script.
-- Post a custom Slack message that needs the workflow's findings (the existing notification system fires before any post-step would run).
-- Rebase the worktree onto `main` and clean up the worktree.
-- Move a config file, archive a plan, ping an external API.
-
-The "allowed to fail" semantics is the key feature — these tasks are housekeeping, not validation, and a failure shouldn't flip the workflow status.
-
-### Design
-
-Add an optional `finalize_agent_id` field on the workflow definition pointing to an agent definition. Or — cheaper — add a `finalize` block directly on the workflow:
-
-```sql
-ALTER TABLE workflows
-  ADD COLUMN finalize_command TEXT,            -- single shell command, optional
-  ADD COLUMN finalize_agent_definition_id INTEGER REFERENCES agent_definitions(id),
-  ADD COLUMN finalize_required BOOLEAN NOT NULL DEFAULT 0;
-```
-
-Semantics:
-1. Runs **after** `markCompleted` succeeds, **before** `maybeStartNextOnSuccess` and notifications. (Order matters: finalize may add a commit; downstream chain steps should see the final tree.)
-2. If `finalize_agent_definition_id` is set, spawn it as a Layer-N+1 agent with effective_mode and findings inherited from the workflow. Otherwise run `finalize_command` directly in the worktree.
-3. Failure handling:
-   - `finalize_required=false` (default): log failure, write a `finalize_failure` row in `errors`, **keep workflow status = completed**. Emit `workflow.finalize_failed` WS event.
-   - `finalize_required=true`: failure flips workflow to `failed`. Provided as an escape hatch for users who want push-or-bust.
-4. Notifications fire *after* finalize completes (success or fail), so they can include finalize result in payload.
-
-### Why not just chain a workflow?
-`next_workflow_on_success` runs as a **new workflow instance** — heavier (new instance row, new agent sessions, separate UI surface). The use cases above are single-step, want to share the worktree, and want the failure to be visible *on the parent run* rather than a child run.
-
-### UI surface
-- Workflow editor: optional "Finalize step" section with command OR agent picker, plus a "required" toggle.
-- Workflow run view: dedicated finalize panel showing command, exit, output tail.
-
-### Open questions
-- Should finalize have access to the workflow's `workflow_final_result` finding via env? Yes — inject as `NRF_WORKFLOW_FINAL_RESULT`.
-- Does finalize run for project-scoped workflows? Yes, with no worktree (project root).
-- Does finalize run on `retry_failed`? Only if the retry succeeds — same as today's success path.
-- Interaction with chain runs: if a chain step has finalize and finalize fails (non-required), does the chain continue? Yes — chain sees the step as completed.
+Candidate extension: an explicit policy allowing a failed finalizer to fail
+an otherwise successful workflow when delivery is mandatory. This policy is
+not implemented. Design questions include notification ordering, chain
+progression, retries, and whether required delivery should instead be a normal
+validated workflow layer. Preserve the existing non-fatal policy by default.
 
 ---
 

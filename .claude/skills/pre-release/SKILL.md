@@ -15,12 +15,12 @@ No arguments. If the user passes any, ignore them — the skill is fully self-co
 
 ## What you're automating
 
-The manual_testing harness exercises the full path "real REST API → real DB → real spawner → real CLI binary → real agent CLI writes back via socket". Per the project layout (see [manual_testing/CLAUDE.md](manual_testing/CLAUDE.md)):
+The manual_testing harness exercises the full path "real REST API → real DB → real spawner → real CLI binary → real agent CLI writes back via socket". Per the project layout (see [manual_testing/CLAUDE.md](../../../manual_testing/CLAUDE.md)):
 
 - **`engine`**: the provider-agnostic scenarios (orchestrator/REST/WS/spawner/DB/chains/etc.). Runs under the `claude` binary, mode `cli_interactive`.
 - **2 CLI providers**: `claude`, `codex` — each holds only the small set of scenarios whose implementation must diverge per provider (`s05`, `s35`). Both run under `cli_interactive`.
 - **`python`**: script-mode scenarios (execution_mode='script') — no LLM, no provider CLI, just python3.
-- **`api`**: api-mode scenarios (execution_mode='api') — the in-process Anthropic runner; SKIPs cleanly when no OAuth token is reachable from the macOS Keychain or env (see `manual_testing/lib/credentials.py`).
+- **`api`**: api-mode scenarios (execution_mode='api') — the in-process runtime exercised with Anthropic; SKIPs cleanly when no OAuth token is reachable from the macOS Keychain or env (see `manual_testing/lib/credentials.py`).
 - **`openai_api`**: api-mode against the OpenAI Responses endpoint; SKIPs when neither `OPENAI_API_KEY` nor `CODEX_API_KEY` is set.
 - **`console`**: the console-chat surface (`kind='console_chat'`) — one roundtrip per engine (claude/codex/api) plus an MCP tool-dispatch check; C02/C03 gate on their own binary/credentials.
 

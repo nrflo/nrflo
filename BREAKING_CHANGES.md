@@ -36,9 +36,9 @@ affected by this change.
    providers differ, create a replacement under a new ID, update its users, and
    delete the colliding row before upgrading.
 3. Likewise, move custom rows whose IDs collide with seeded built-in IDs.
-   Built-in rows win such collisions during migration; current selectable IDs
-   are in the [CLI](doc/cli.md#supported-models) and
-   [API](doc/api.md#model-and-provider-selection) documentation.
+   Built-in rows win such collisions during migration. Consult the installed
+   registry using the [CLI](doc/cli.md#supported-models) and
+   [API](doc/api.md#model-and-provider-selection) model-selection guides.
    `gpt-5.5-mini` is also reserved as a disabled historical row.
 4. Inventory external workflow JSON, scripts, and service integrations for the
    old paths, fields, events, and model IDs listed below.

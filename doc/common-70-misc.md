@@ -19,7 +19,7 @@ bridge and the other `nrflo_server agent` subcommands read this env var
 automatically — no manual wiring is needed in agent prompts.
 
 The socket uses a JSON-RPC line-delimited protocol. Supported methods:
-`findings.*`, `project_findings.*`, `agent.fail/continue/callback/context_update`,
+`findings.*`, `project_findings.*`, agent lifecycle/context methods,
 `workflow.skip`, `ws.broadcast`, `artifact.add/list/get`.
 
 See [be/internal/socket/CLAUDE.md](../be/internal/socket/CLAUDE.md) for
@@ -29,7 +29,8 @@ protocol details.
 
 ## Doc Layout
 
-The `doc/` folder contains the files served by the documentation UI:
+The `doc/` folder contains onboarding/integration guides as well as the
+execution-mode references served by the documentation UI:
 
 - **`doc/common-*.md`** — Shared concepts served under the "Common" tab.
   The backend concatenates all files matching `doc/common*.md` in lexicographic
@@ -44,10 +45,11 @@ The `doc/` folder contains the files served by the documentation UI:
 - **`doc/mcp-external.md`** — Served 1:1 under the "External MCP" tab
   (connecting external MCP clients via `nrflo_server agent mcp-external`)
 
-To update: edit the markdown files directly. Changes are picked up on next page
-load. Keep each file under 300 lines. If a mode file ever needs splitting, use
-the same numeric-prefix convention and coordinate with the backend glob
-contract.
+Edit the source Markdown files, rebuild the UI assets and server binary, and
+restart the server to publish embedded changes. Refreshing the page alone does
+not reload source files from disk. Keep each file under 300 lines; the numeric
+concatenation convention currently applies only to Common docs.
 
-Focus documentation on what agent authors need to know. Implementation details
+Start with the [documentation index](README.md) for application integration,
+the mixed-workflow tutorial, and execution boundaries. Implementation details
 belong in `be/internal/*/CLAUDE.md`.

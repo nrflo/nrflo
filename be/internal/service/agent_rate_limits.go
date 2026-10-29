@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// RateLimitWindow is one Claude subscription rate-limit window (5h or 7d rolling)
-// from the statusline rate_limits payload.
+// RateLimitWindow is one subscription rate-limit window (5h or 7d rolling)
+// reported by the Claude statusline or codex app-server.
 type RateLimitWindow struct {
 	UsedPercentage *float64
 	ResetsAt       string // RFC3339, e.g. "2026-06-16T05:00:00Z"
@@ -38,8 +38,8 @@ func latestExhaustedReset(now time.Time, windows ...RateLimitWindow) string {
 	return bestStr
 }
 
-// UpdateRateLimits records the latest Claude subscription rate-limit windows for a
-// session (from the statusline rate_limits payload). When a window is near-exhausted
+// UpdateRateLimits records the latest subscription rate-limit windows for a
+// session (Claude statusline or codex account/rateLimits/updated). When a window is near-exhausted
 // with a future reset, the latest-unblocking reset is persisted to
 // rate_limit_reset_ts so a later rate-limited restart waits until the exact reset
 // instead of guessing an exponential backoff. Returns project/ticket/workflow for

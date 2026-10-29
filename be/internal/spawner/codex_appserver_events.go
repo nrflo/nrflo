@@ -61,6 +61,7 @@ func dispatchAppServerEvent(sessionID string, env rpcEnvelope, sink Sink, maxCtx
 		classifyAppServerError(p.Error.Message, &sig)
 		emitErrorEvent(sessionID, p.Error.Message, emit)
 	case "account/rateLimits/updated":
+		recordCodexRateLimits(sessionID, env.Params, sink)
 		if rateLimitReached(env.Params) {
 			sig.rateLimited = true
 			sig.matchedReason = "rate_limit_reached"
@@ -229,21 +230,6 @@ func turnCompletedError(params json.RawMessage) string {
 		return ""
 	}
 	return p.Turn.Error.Message
-}
-
-// rateLimitReached reports whether an account/rateLimits/updated event signals
-// an actually-reached limit (rateLimitReachedType != null). The event also
-// fires for routine usage updates, which must NOT trigger a restart.
-func rateLimitReached(params json.RawMessage) bool {
-	var p struct {
-		RateLimits struct {
-			RateLimitReachedType *json.RawMessage `json:"rateLimitReachedType"`
-		} `json:"rateLimits"`
-	}
-	if json.Unmarshal(params, &p) != nil {
-		return false
-	}
-	return p.RateLimits.RateLimitReachedType != nil && string(*p.RateLimits.RateLimitReachedType) != "null"
 }
 
 // classifyAppServerError sets sig.rateLimited (reusing CodexAdapter's limit

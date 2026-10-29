@@ -83,7 +83,7 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     homepage: https://github.com/nrflo/nrflo
-    description: Multi-workflow agent orchestration system
+    description: Self-hosted workflow engine for AI-powered applications
     hooks:
       post:
         install: |

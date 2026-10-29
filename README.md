@@ -1,14 +1,24 @@
 # NRFLO
 
-**Self-hosted orchestrator for Claude Code and Codex agents.** Run multi-agent coding workflows in parallel, in isolated git worktrees, on the CLI subscriptions you already pay for (Claude Pro / Max, ChatGPT) — and take over any live agent from the browser.
+**Structured workflows for AI-powered applications.**
+
+NRFLO is a self-hosted workflow engine that combines AI agents, deterministic
+Python scripts, and parallel execution with structured outputs, validation,
+and human control. Your application starts and inspects runs through REST or
+MCP; NRFLO coordinates the execution stages.
+
+Use one agent when one agent is enough. Use NRFLO when the process needs more
+structure than a single session.
+
+[Get started](#quick-start) · [Documentation](doc/README.md) ·
+[Mixed workflow example](doc/mixed-workflow.md) · [Application API](doc/application-integration.md) ·
+[Coding workflows](doc/coding-workflows.md)
 
 <p align="center">
   <a href="https://github.com/nrflo/nrflo/releases/latest"><img src="https://img.shields.io/github/v/release/nrflo/nrflo" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/nrflo/nrflo" alt="License"></a>
   <a href="https://github.com/nrflo/nrflo/pkgs/container/nrflo-server"><img src="https://img.shields.io/badge/docker-ghcr.io%2Fnrflo%2Fnrflo--server-blue" alt="Docker image"></a>
 </p>
-
-https://github.com/user-attachments/assets/fe6f1b00-38d4-4bb7-ab10-871a83b270d5
 
 <p align="center">
   <a href="https://nrflo.com/"><strong>nrflo.com</strong></a> ·
@@ -42,93 +52,105 @@ nrflo_server --insecure-cookies
 
 Open http://localhost:6587 and sign in as **`admin` / `admin`** — change the password immediately (**Settings → Administration → Users**). More install options and details: [Installation](#installation).
 
-## Why NRFLO
+## When a prompt becomes a process
 
-- **Repeatable engineering workflows** — define an implementation process once, then run it consistently across tickets and projects
-- **Human supervision built in** — take over a live run, guide the agent directly, then resume orchestration without losing state
-- **Self-hosted by design** — keep prompts, runtime state, execution, and repository access under your own control
-- **Mixed-agent compatible** — run workflows across Claude Code and Codex without changing the workflow model
-- **Uses your existing CLI subscriptions. No API billing required.** NRFLO drives Claude Code and Codex as PTY-attached interactive sessions you can take over live in the browser, reusing each tool's local login (Claude Pro / Max, ChatGPT). For Anthropic users, an optional in-process **API mode** is available as an admin-toggled runtime setting, with OAuth bearer support to bill against a Claude subscription rather than API keys.
+- **Define the stages.** Ordered layers, same-layer parallel work, configurable
+  fan-in, and tag-based conditional skips.
+- **Run code where code is enough.** Python scripts handle transforms, API calls,
+  and checks; agents handle interpretation and reasoning.
+- **Pass explicit results.** Findings and artifacts carry data between steps;
+  configured validation commands and verifier callbacks govern corrections.
+- **Call it from your application.** REST and external MCP access use
+  project-scoped service tokens.
+- **Inspect and intervene.** Live graphs, timelines, logs, notifications,
+  pause boundaries, and supported CLI takeover keep operators involved.
+- **Self-host.** One Go server binary, embedded React UI, SQLite persistence,
+  Docker or native installation, Apache-2.0 license.
 
-## How It Works
+## Example: document intake
 
-1. Pick a ticket-scoped or project-scoped workflow from the web UI.
-2. NRFLO starts agents by layer, running same-layer agents concurrently.
-3. Agents write findings that downstream agents can consume in their prompts.
-4. If a verifier finds a problem, it can callback an earlier layer and re-run the workflow from that point.
-5. If automation gets stuck or needs direction, you can switch to interactive control in the browser.
-6. On success, NRFLO merges worktree changes, can invoke a conflict resolver, and reports the final workflow result.
+```mermaid
+flowchart LR
+    App[Application / schedule] --> NRFLO[NRFLO run]
+    NRFLO --> Prepare[Python: prepare input]
+    Prepare --> Extract[Agent: extract fields]
+    Extract --> Validate[Python: validate evidence]
+    Validate --> Result[Structured findings / result]
+```
 
-## Core capabilities
+The [runnable example](doc/mixed-workflow.md) includes a local fixture, an
+importable workflow bundle generator, and deterministic evidence checks.
+The model interprets text; the script verifies types and source quotations.
+It is a starter workflow, not a built-in document-processing product.
+
+Independent work can share a layer with `all` fan-in when every result is
+required. Conditional skips, callback rework, and human pause points are
+[configured separately](doc/common-40-workflow.md).
+
+## Applications use NRFLO as an execution backend
+
+Your application owns domain state and external side effects. NRFLO runs the
+workflow and records its state, findings, logs, and artifacts.
+
+1. Create a project-scoped service token in the UI.
+2. Start a defined project workflow with
+   `POST /api/v1/projects/{id}/workflow/run`.
+3. Store the returned `instance_id`; retrieve that run through
+   `GET /api/v1/projects/{id}/workflow?instance_id=...`.
+4. Read the matching entry in `all_workflows` for status and findings.
+
+[Integration guide and exact requests](doc/application-integration.md) ·
+[External MCP](doc/mcp-external.md)
+
+[TransferDue](https://transferdue.com), a separate product built by the NRFLO
+maintainer, uses the HTTP API for condominium document analysis. It uploads
+artifacts, starts ticket-scoped workflows, and receives results through
+application-specific Python notification scripts. This is a first-party
+integration, not an independent customer endorsement.
+[Read the verified architecture](doc/transferdue.md).
+
+## Choose the execution mode for each step
+
+| Mode | Executes | Requirements |
+|------|----------|--------------|
+| `script` | Stored Python code using the findings SDK | Python 3; no model needed |
+| `api` | NRFLO's in-process tool-use loop | Admin enables API mode; configured provider credentials and model |
+| `cli_interactive` | Claude Code or Codex integration | Installed, authenticated provider CLI |
+
+API mode supports Anthropic, OpenAI, OpenRouter, and configured local
+OpenAI-compatible providers. CLI accounts and API credentials follow the
+provider's billing and terms. See [API mode](doc/api.md),
+[local providers](doc/local-providers.md), and [Python](doc/python.md).
+
+## Coding workflows
+
+Claude Code and Codex workflows remain fully supported: implementation,
+tests, QA, documentation, ticket worktrees, merge/conflict resolution, and
+browser takeover for supported live CLI sessions.
+
+[Coding setup and workflow walkthrough](doc/coding-workflows.md)
 
 <details>
-<summary>Full feature list</summary>
+<summary>Watch a coding workflow</summary>
 
-
-**Orchestration**
-
-- Vendor-agnostic orchestration across Claude Code and Codex
-- Layered execution with same-layer parallelism and sequential layer progression
-- Ticket-scoped and project-scoped workflows
-- Dependency-aware sequential ticket chains
-- Endless loop mode for project-scoped workflows that re-spawn after completion
-- Per-agent low-consumption toggle that swaps to a cheaper model on the fly
-- Workflow export/import for sharing definitions between projects or installations
-- Import Spec entry point with a `spec-normalizer` agent that turns free-form specs into workflow input
-- Declarative per-agent `validation_commands` that run after a pass and gate the layer
-
-**Scheduled execution**
-
-- Cron-driven scheduler dispatches workflows or workflow chains on a schedule
-- Per-task fan-out across multiple workflows with run-row tracking
-- Ad-hoc "run now" trigger from the UI; full run history retained per task
-
-**Handoffs and validation**
-
-- Structured findings handoffs between agents
-- Verifier callbacks that re-run earlier layers with explicit instructions
-- Prompt templates, findings expansion, and model controls
-
-**Human control and recovery**
-
-- Browser takeover of live runs (kill-and-resume, or live viewer-attach)
-- Interactive start, plan mode, and resume flows
-- PTY-backed sessions for Claude and Codex with live keystroke capture
-- Idle/nudge loop that prompts unresponsive interactive agents before failing them
-- Low-context continuation, stall restart, manual restart, and retry from the failed layer
-
-**Git and delivery**
-
-- Isolated git worktrees for ticket execution
-- Automatic merge handling
-- Conflict-resolver agent on failed merge
-- Optional push after merge
-
-**Artifacts and external access**
-
-- Per-project artifact storage with local, Cloudflare R2, and S3 backends
-- Artifact uploader in the Run Workflow form; per-agent and all-artifacts UI tabs
-- Service tokens — long-lived project-scoped bearer tokens for external REST callers
-- External MCP bridge (`nrflo_server agent mcp-external`) — any MCP client drives the server's tool catalogue with a service token
-
-**Rate limits**
-
-- CLI-side and API-mode rate-limit detection with automatic backoff and relaunch
-- UI rate-limit badge with WS-driven countdown
-
-**Notifications**
-
-- Per-project Slack and Telegram channels for workflow events
-- Custom Python-script notification channels for routing events to anything else
-
-**Observability**
-
-- Real-time workflow graph
-- Logs, findings, and final results
-- Dedicated errors page recording agent failures, workflow failures, and merge-conflict events
-- Paginated agent session log page (`/logs`) for finished sessions with workflow and schedule context
+https://github.com/user-attachments/assets/fe6f1b00-38d4-4bb7-ab10-871a83b270d5
 
 </details>
+
+## Operations and fit
+
+NRFLO is useful when execution needs reusable stages, mixed code and reasoning,
+validation, or external control. For a single model call, an ordinary SDK call
+may be simpler.
+
+Runs execute on one self-hosted server. State persists in SQLite; on startup,
+orphaned in-flight work is marked failed. Retries and callbacks may repeat
+external actions, so the caller must reconcile side effects and implement
+idempotency. Scripts and CLI tools run in a trusted host environment.
+[Execution and security boundaries](doc/execution-semantics.md).
+
+[Provider capability matrix](capabilities.md) records the last manual-suite
+results, including skipped scenarios; it is not a guarantee for every runtime.
 
 ## Installation
 
@@ -217,7 +239,7 @@ Local use needs no token because the trusted Unix socket returns a bearer scoped
 
 ## Workflows
 
-Workflows are stored in the database and edited through the web UI. A workflow is a sequence of agent layers with validation boundaries. Example configurations:
+Workflows are stored in the database and edited through the web UI. A workflow is a sequence of script or agent layers with validation boundaries. Coding templates include: Example configurations:
 
 | Workflow | Phases (by layer) | Use Case |
 |----------|-------------------|----------|
@@ -227,7 +249,7 @@ Workflows are stored in the database and edited through the web UI. A workflow i
 | `docs` | L0: setup-analyzer &rarr; L1: doc-updater | Documentation only |
 | `refactor` | L0: setup-analyzer &rarr; L1: implementor &rarr; L2: qa-verifier | Code refactoring |
 
-All agents in the same layer run concurrently. The next layer starts only after the current layer completes (at least one agent must pass). Parallel-to-parallel topologies are supported — no restriction on the agent count of the next layer.
+All agents in the same layer run concurrently. The next layer starts after the current layer meets its configured fan-in policy (`any` by default; skipped agents are excluded). Parallel-to-parallel topologies are supported — no restriction on the agent count of the next layer.
 
 ## Architecture
 

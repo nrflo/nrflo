@@ -12,7 +12,7 @@ A stored Python script (pure stdlib + `nrflo_sdk`) executes as an agent step.
 This is useful for deterministic logic, external API calls, data transforms, or
 any task that should not be handed to an LLM.
 
-- Exit 0 (or `c.agent.finished()`) = pass. Non-zero exit (or `c.agent.fail(...)`) = fail
+- Exit 0 = pass; non-zero exit = fail. Lifecycle calls record explicit agent status.
 - Full access to findings, project findings, and workflow context via the SDK
 - No prompt template, no model selection, no context window — runs start to finish every time
 - No low-context restart, no resume, and no take-control
@@ -44,7 +44,7 @@ c = nrflo_sdk.client()
 ctx = c.context()
 ticket_id = ctx["ticket_id"]
 
-files = c.findings.get("setup-analyzer", "files_to_modify")
+files = c.findings.get("setup-analyzer", key="files_to_modify")
 c.findings.add("result", "all checks passed")
 
 c.agent.finished()
@@ -101,8 +101,8 @@ for `NRFLO_SOCKET` override details).
 
 | Method | Description |
 |--------|-------------|
-| `c.agent.finished()` | Signal success and exit |
-| `c.agent.fail(reason="")` | Signal failure and exit |
+| `c.agent.finished()` | Signal success (does not exit Python) |
+| `c.agent.fail(reason="")` | Signal failure (exit or raise afterward) |
 | `c.agent.continue_()` | Signal context exhaustion (triggers relaunch; rarely needed) |
 | `c.agent.callback(level)` | Trigger callback to re-run an earlier layer |
 | `c.agent.consult(consultant, question)` | Synchronously ask a named workflow consultant; blocks for and returns the answer string. `consultant` must be an api-mode consultant defined in the same workflow; the script agent shares the same ticket/findings/artifacts context. |
@@ -121,7 +121,7 @@ for `NRFLO_SOCKET` override details).
 | `c.findings.add(key, value)` | Set a finding |
 | `c.findings.add_bulk({key: value, ...})` | Set multiple findings |
 | `c.findings.emit(key, value)` | Validate `value` against the workflow's configured schema for `key`, then set it; raises `NrfloError` with the expected-structure example on mismatch |
-| `c.findings.get(key=None)` | Get own findings (all or by key) |
+| `c.findings.get(*, key=None, keys=None)` | Get own findings; a single key returns its value |
 | `c.findings.append(key, value)` | Append to a finding (creates array) |
 | `c.findings.append_bulk({...})` | Append multiple |
 | `c.findings.delete(*keys)` | Delete findings |
@@ -129,7 +129,7 @@ for `NRFLO_SOCKET` override details).
 Cross-agent read — pass agent type as first arg to `.get()`:
 
 ```python
-c.findings.get("setup-analyzer", "files_to_modify")
+c.findings.get("setup-analyzer", key="files_to_modify")
 ```
 
 ### Project Findings
@@ -208,18 +208,21 @@ import nrflo_sdk
 
 c = nrflo_sdk.client()
 
-files_raw = c.findings.get("setup-analyzer", "files_to_modify")
+files_raw = c.findings.get("setup-analyzer", key="files_to_modify")
 if not files_raw:
     c.agent.fail(reason="setup-analyzer did not set files_to_modify")
+    raise SystemExit(1)
 
 try:
-    files = json.loads(files_raw)
+    files = json.loads(files_raw) if isinstance(files_raw, str) else files_raw
 except Exception:
     c.agent.fail(reason="files_to_modify is not valid JSON")
+    raise SystemExit(1)
 
 if not files:
     c.agent.fail(reason="files_to_modify is empty — nothing to implement")
+    raise SystemExit(1)
 
-c.findings.add("validated_files", files_raw)
+c.findings.add("validated_files", json.dumps(files))
 c.agent.finished()
 ```

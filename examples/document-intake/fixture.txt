@@ -1,0 +1,3 @@
+Supplier onboarding request
+Reference: INTAKE-001
+Please review the attached supplier registration before creating an account.

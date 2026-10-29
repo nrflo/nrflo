@@ -1,4 +1,12 @@
-# Agent Authoring — Common Concepts
+# Structured Workflows — Common Concepts
+
+NRFLO runs ordered layers of Python scripts and model-driven agent steps.
+Scripts handle known operations; agents handle reasoning. Findings carry
+results between stages, and configured checks and callbacks govern progression.
+
+Start with the [mixed-workflow tutorial](https://github.com/nrflo/nrflo/blob/HEAD/doc/mixed-workflow.md)
+or [application integration guide](https://github.com/nrflo/nrflo/blob/HEAD/doc/application-integration.md).
+For coding, see [coding workflows](https://github.com/nrflo/nrflo/blob/HEAD/doc/coding-workflows.md).
 
 This section covers concepts that apply across all execution modes
 (`cli_interactive`, `script`, `api`). Mode-specific details live in

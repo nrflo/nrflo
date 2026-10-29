@@ -21,8 +21,8 @@ var ProjectRoot string
 
 var rootCmd = &cobra.Command{
 	Use:   "nrflo_server",
-	Short: "nrflo - Multi-workflow agent orchestration server",
-	Long: `nrflo_server is the nrflo orchestration server.
+	Short: "NRFLO - Self-hosted workflow engine for AI-powered applications",
+	Long: `nrflo_server runs structured workflows that combine Python scripts and AI agents.
 
 It serves the HTTP API + WebSocket for the web UI and a Unix socket for agent
 communication, and hosts the agent infrastructure subcommands (the MCP tool
